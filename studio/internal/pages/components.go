@@ -143,7 +143,7 @@ func stepTrack(c *ui.Context, number, title string, fn func()) {
 	ui.Row(c).AlignItems(ui.Stretch).Gap(t.Density.Section).Label("阶段步骤 " + number).Children(func() {
 		ui.Column(c).MinWidth(size).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 			ui.Box(c).Label("阶段编号 "+number).Size(size, size).Radius(size / 2).Background(stateColor(c, stateActive)).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-				ui.Text(c, number).Bold().TextColor(theme.Surface)
+				ui.Text(c, number).Bold().FontFeatures("tnum").TextColor(theme.Surface)
 			})
 			ui.Box(c).Width(theme.Space(.5)).Grow(1).Background(theme.Border)
 		})
@@ -186,15 +186,18 @@ func segmentedField[T comparable](c *ui.Context, name, description string, selec
 			}
 		}
 		seg := ui.SegmentedBase(c, &idx, len(options))
+		trackRadius := t.Radius.Floating
 		trackPad := t.Density.Tight
-		itemRadius := concentricRadius(t.Radius.LG, trackPad)
-		applyMaterial(c, seg.Track.AlignSelf(ui.Start).AlignItems(ui.Center).Gap(t.Density.Tight).
-			Padding(trackPad).Label(name), materialSunken).
+		itemRadius := concentricRadius(trackRadius, trackPad)
+		seg.Track.AlignSelf(ui.Start).AlignItems(ui.Center).Gap(t.Density.Tight).
+			Padding(trackPad).Radius(trackRadius).
+			Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).Label(name).
 			Children(func() {
 				for i, option := range options {
 					active := i == idx
 					item := seg.Segment(i).
-						Padding(t.Density.Tight, t.Density.Stack).
+						AlignItems(ui.Center).Justify(ui.Center).
+						Padding(t.Density.Tight+1, t.Density.Stack).
 						Radius(itemRadius).
 						Label(option.Label).
 						Disabled(option.Disabled)

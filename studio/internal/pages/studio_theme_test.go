@@ -124,11 +124,14 @@ func TestStudioSpacingAndConcentricRadius(t *testing.T) {
 		t.Fatalf("unexpected 4px spacing scale: %+v", space)
 	}
 	radius, card, _ := surfaceTokensFor(theme)
-	if radius.Control != 8 || radius.Floating != 12 || radius.Surface != 16 || radius.Modal != 20 || card.Padding != 16 {
-		t.Fatalf("unexpected soft rounded radius/card scale: radius=%+v card=%+v", radius, card)
+	if radius.Control != 8 || radius.Inset != 8 || radius.Floating != 12 || radius.Surface != 20 || radius.Modal != 24 || card.Padding != 12 {
+		t.Fatalf("unexpected concentric radius/card scale: radius=%+v card=%+v", radius, card)
 	}
-	if got := concentricRadius(radius.LG, space.Tight); got != 8 {
-		t.Fatalf("concentricRadius(12, 4) = %v, want 8", got)
+	if radius.Inset != concentricRadius(radius.Surface, card.Padding) {
+		t.Fatalf("card/inset not concentric: surface=%v pad=%v inset=%v", radius.Surface, card.Padding, radius.Inset)
+	}
+	if radius.Control != concentricRadius(radius.Floating, space.Tight) {
+		t.Fatalf("floating/control not concentric: floating=%v pad=%v control=%v", radius.Floating, space.Tight, radius.Control)
 	}
 	if got := concentricRadius(radius.MD, space.Stack); got != 4 {
 		t.Fatalf("concentricRadius(8, 12) = %v, want floor 4", got)

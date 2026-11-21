@@ -14,7 +14,7 @@ import (
 func stateBanner(c *ui.Context, kind stateKind, icon func() *ui.SVG, fn func(foreground ui.Color)) {
 	t := tokens(c)
 	scale := stateScale(c, kind)
-	banner := ui.Column(c).Gap(t.Density.Tight).Padding(t.Density.Stack).Radius(t.Radius.LG)
+	banner := ui.Column(c).Gap(t.Density.Tight).Padding(t.Density.Stack).Radius(t.Radius.Inset)
 	if c.Preferences().HighContrast {
 		banner.Background(scale.SubtleBg).Border(1, scale.Border)
 	} else {
@@ -22,7 +22,9 @@ func stateBanner(c *ui.Context, kind stateKind, icon func() *ui.SVG, fn func(for
 	}
 	banner.Children(func() {
 		ui.Row(c).AlignItems(ui.Start).Gap(t.Density.Row).Children(func() {
-			components.Icon(c, icon).Size(t.Type.Body, t.Type.Body).TextColor(scale.Fg)
+			ui.Box(c).Padding(2, 0, 0, 0).Children(func() {
+				components.Icon(c, icon).Size(t.Type.Body, t.Type.Body).TextColor(scale.Fg)
+			})
 			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() { fn(scale.Fg) })
 		})
 	})
