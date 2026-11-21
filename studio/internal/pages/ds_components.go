@@ -72,6 +72,7 @@ type listRowOptions struct {
 	Title    string
 	Subtitle string
 	Trailing func()
+	Radius   float32
 	Selected bool
 	OnClick  func()
 }
@@ -105,10 +106,10 @@ func badge(c *ui.Context, label string, kind stateKind, opts badgeOptions) ui.El
 	t := tokens(c)
 	scale := stateScale(c, kind)
 	fontSize := t.Type.Caption
-	padY, padX := t.Density.Hairline, t.Density.Row
+	padY, padX := float32(3), float32(10)
 	if opts.Size == sizeSM {
 		fontSize = max(11, t.Type.ShellLabel)
-		padY, padX = 1, t.Density.Tight+2
+		padY, padX = 2, 8
 	}
 	if opts.Style == badgeDot {
 		row := ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight+2).Label(label)
@@ -122,7 +123,8 @@ func badge(c *ui.Context, label string, kind stateKind, opts badgeOptions) ui.El
 		})
 		return row
 	}
-	el := ui.Box(c).AlignSelf(ui.Start).Padding(padY, padX).Radius(t.Radius.Full).Label(label)
+	el := ui.Box(c).AlignSelf(ui.Start).AlignItems(ui.Center).Justify(ui.Center).
+		Padding(padY, padX).Radius(t.Radius.Full).Label(label)
 	switch {
 	case opts.Style == badgeOutline || c.Preferences().HighContrast:
 		el.Background(t.Color.Surface).Border(1, scale.Border)
@@ -162,19 +164,27 @@ func noticeBanner(c *ui.Context, opts noticeBannerOptions) {
 	if opts.Size == bannerCompact {
 		pad = t.Density.Row
 	}
-	banner := ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(pad).Radius(t.Radius.LG)
+	banner := ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(pad).Radius(t.Radius.Inset)
 	if c.Preferences().HighContrast {
 		banner.Background(scale.SubtleBg).Border(1, scale.Border)
 	} else {
 		banner.Background(scale.SubtleBg).BorderWidth(0, 0, 0, 3).BorderColor(scale.Solid)
 	}
 	banner.Children(func() {
-		ui.Row(c).AlignItems(ui.Start).Gap(t.Density.Row).Children(func() {
+		rowAlign := ui.Start
+		iconTop := float32(2)
+		if opts.Size == bannerCompact && opts.Title == "" && opts.Actions == nil && opts.Details == nil {
+			rowAlign = ui.Center
+			iconTop = 0
+		}
+		ui.Row(c).AlignItems(rowAlign).Gap(t.Density.Row).Children(func() {
 			iconSize := t.Type.Body
 			if opts.Size == bannerCompact {
 				iconSize = t.Type.Caption
 			}
-			components.Icon(c, icon).Size(iconSize, iconSize).TextColor(scale.Fg)
+			ui.Box(c).Padding(iconTop, 0, 0, 0).Children(func() {
+				components.Icon(c, icon).Size(iconSize, iconSize).TextColor(scale.Fg)
+			})
 			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
 				if opts.Title != "" {
 					ui.Text(c, opts.Title).Bold().FontSize(t.Type.Body).TextColor(scale.Fg)
@@ -277,8 +287,12 @@ func emptyState(c *ui.Context, opts emptyStateOptions) {
 
 func listRow(c *ui.Context, opts listRowOptions) ui.Element {
 	t := tokens(c)
+	radius := opts.Radius
+	if radius <= 0 {
+		radius = concentricRadius(t.Radius.Inset, t.Density.Tight)
+	}
 	row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).
-		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.MD).Label(opts.Title)
+		Padding(t.Density.Row, t.Density.Stack).Radius(radius).Label(opts.Title)
 	switch {
 	case opts.Selected:
 		row.Background(t.Color.AccentSelection)
@@ -310,9 +324,11 @@ func listRow(c *ui.Context, opts listRowOptions) ui.Element {
 
 func keyValueRow(c *ui.Context, key, value string, tabular bool) {
 	t := tokens(c)
-	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Section).
+	ui.Row(c).FillWidth().AlignItems(ui.Start).Gap(t.Density.Section).
 		Padding(t.Density.Tight, 0).Children(func() {
-		ui.Text(c, key).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).Width(140).Shrink(0)
+		ui.Box(c).Width(140).Shrink(0).Padding(2, 0, 0, 0).Children(func() {
+			ui.Text(c, key).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		})
 		display := value
 		valColor := t.Color.FgPrimary
 		if display == "" {

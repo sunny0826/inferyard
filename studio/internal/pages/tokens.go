@@ -175,23 +175,27 @@ func concentricRadius(outer, padding float32) float32 {
 }
 
 func surfaceTokensFor(t *ui.Theme) (radiusTokens, cardTokens, metricTokens) {
+	cardPad := t.Space(3)
+	cardRadius := t.Space(5)
+	modalRadius := t.Space(6)
+	floatingRadius := t.Space(3)
 	radius := radiusTokens{
 		None:     0,
 		XS:       t.Space(1),
 		SM:       t.Space(1.5),
 		MD:       t.Space(2),
-		LG:       t.Space(3),
-		XL:       t.Space(4),
-		XXL:      t.Space(5),
+		LG:       floatingRadius,
+		XL:       cardRadius,
+		XXL:      modalRadius,
 		Full:     9999,
-		Surface:  t.Space(4),
-		Inset:    t.Space(3),
-		Control:  t.Space(2),
-		Floating: t.Space(3),
-		Modal:    t.Space(5),
+		Surface:  cardRadius,
+		Inset:    concentricRadius(cardRadius, cardPad),
+		Control:  concentricRadius(floatingRadius, t.Space(1)),
+		Floating: floatingRadius,
+		Modal:    modalRadius,
 	}
 	card := cardTokens{
-		Padding:      t.Space(4),
+		Padding:      cardPad,
 		Border:       1,
 		Edge:         1,
 		EmptyPadding: t.Space(8),
@@ -232,17 +236,17 @@ func applyMaterial(c *ui.Context, el ui.Element, kind materialKind) ui.Element {
 	case materialCanvas:
 		return el.Background(t.Color.Canvas).Radius(t.Radius.None).NoShadow()
 	case materialSunken:
-		return el.Background(t.Color.Sunken).Radius(t.Radius.LG).Border(1, t.Color.BorderSubtle).NoShadow()
+		return el.Background(t.Color.Sunken).Radius(t.Radius.Inset).Border(1, t.Color.BorderSubtle).NoShadow()
 	case materialCard:
-		return applyShadow(el.Background(t.Color.Surface).Radius(t.Radius.XL).Border(t.Card.Edge, t.Color.BorderDefault), t.Elevation.XS)
+		return applyShadow(el.Background(t.Color.Surface).Radius(t.Radius.Surface).Border(t.Card.Edge, t.Color.BorderDefault), t.Elevation.XS)
 	case materialInset:
-		return el.Background(t.Color.Surface).Radius(t.Radius.LG).Border(t.Card.Border, t.Color.BorderSubtle).NoShadow()
+		return el.Background(t.Color.Surface).Radius(t.Radius.Inset).Border(t.Card.Border, t.Color.BorderSubtle).NoShadow()
 	case materialControl:
-		return el.Background(t.Color.Surface).Radius(t.Radius.MD).Border(1, t.Color.BorderDefault).NoShadow()
+		return el.Background(t.Color.Surface).Radius(t.Radius.Control).Border(1, t.Color.BorderDefault).NoShadow()
 	case materialFloating:
-		return applyShadow(el.Background(t.Color.Elevated).Radius(t.Radius.LG).Border(1, t.Color.BorderDefault), t.Elevation.MD)
+		return applyShadow(el.Background(t.Color.Elevated).Radius(t.Radius.Floating).Border(1, t.Color.BorderDefault), t.Elevation.MD)
 	case materialModal:
-		return applyShadow(el.Background(t.Color.Elevated).Radius(t.Radius.XXL).Border(1, t.Color.BorderDefault), t.Elevation.LG)
+		return applyShadow(el.Background(t.Color.Elevated).Radius(t.Radius.Modal).Border(1, t.Color.BorderDefault), t.Elevation.LG)
 	default:
 		return el
 	}

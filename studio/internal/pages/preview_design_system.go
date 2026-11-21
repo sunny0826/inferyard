@@ -137,12 +137,12 @@ func dsMaterialAndRadiusSection(c *ui.Context) {
 					name, spec string
 					kind       materialKind
 				}{
-					{"Sunken", "R=12 · 无投影 · 弱描边", materialSunken},
-					{"Card", "R=16 · 轻投影 XS · 默认描边", materialCard},
-					{"Inset", "R=12 · 无投影 · 弱描边", materialInset},
-					{"Control", "R=8 · 轻投影 XS · 默认描边", materialControl},
+					{"Sunken", "R=8 · 无投影 · 弱描边", materialSunken},
+					{"Card", "R=20 · 轻投影 XS · 默认描边", materialCard},
+					{"Inset", "R=8 · 同心 (20-12) · 弱描边", materialInset},
+					{"Control", "R=8 · 同心 (12-4) · 默认描边", materialControl},
 					{"Floating", "R=12 · 中投影 MD · 浮层面", materialFloating},
-					{"Modal", "R=20 · 强投影 LG · 浮层面", materialModal},
+					{"Modal", "R=24 · 强投影 LG · 浮层面", materialModal},
 				}
 				for _, m := range materials {
 					applyMaterial(c, ui.Column(c).Gap(t.Density.Tight).Padding(t.Density.Stack), m.kind).Children(func() {
@@ -152,17 +152,13 @@ func dsMaterialAndRadiusSection(c *ui.Context) {
 				}
 			})
 		})
-		section(c, "等距内缩连续圆角演示（外层 Card R=16 → 嵌套 Inset R=12 → 控件 R=8）", func() {
-			applyMaterial(c, ui.Column(c).Gap(t.Density.Row).Padding(t.Density.Stack), materialInset).Children(func() {
-				ui.Text(c, "嵌套容器（Inset · R=12, P=12）").Bold().FontSize(t.Type.Body)
-				ui.Row(c).Wrap().Gap(t.Density.Row).Children(func() {
-					applyMaterial(c, ui.Box(c).Padding(t.Density.Row, t.Density.Stack), materialControl).Children(func() {
-						ui.Text(c, "内嵌控件（Control · R=8）").FontSize(t.Type.Caption)
-					})
-					ui.Box(c).Padding(t.Density.Tight, t.Density.Row).Radius(concentricRadius(t.Radius.LG, t.Density.Tight)).
-						Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).Children(func() {
-						ui.Text(c, "concentric(12, 4) = 8px").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-					})
+		section(c, "等距内缩同心圆角演示（Card 20 - P12 = Inset 8；Inset 8 - P4 = Item 4）", func() {
+			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Row).Padding(t.Density.Tight), materialInset).Children(func() {
+				ui.Box(c).FillWidth().Padding(t.Density.Row, t.Density.Stack).
+					Radius(concentricRadius(t.Radius.Inset, t.Density.Tight)).
+					Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).Children(func() {
+					ui.Text(c, "内嵌层（Inset R=8, P=4 → 子项 R=4，与外层 Card R=20, P=12 严格同心）").
+						FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 				})
 			})
 		})
@@ -284,7 +280,7 @@ func dsComponentsSection(c *ui.Context, st *dsShowcaseState) {
 			})
 		})
 		section(c, "列表行、键值对与空态组件", func() {
-			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Row), materialInset).Children(func() {
+			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Tight), materialInset).Children(func() {
 				rows := []struct {
 					title, sub, status string
 					kind               stateKind
