@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"inferyard/studio/internal/inferyard"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -109,7 +110,7 @@ func engineReceipt(enginePath string) string {
 
 func (s *Service) registry() registryData {
 	s.mu.Lock()
-	u, device := clone(s.settings), s.device
+	u, device, assets := clone(s.settings), s.device, cloneAssetsState(s.assets)
 	device.Snapshot = append(json.RawMessage(nil), device.Snapshot...)
 	device.LastError = clone(device.LastError)
 	tasks := make([]DownloadTask, len(s.downloads))
@@ -117,23 +118,21 @@ func (s *Service) registry() registryData {
 		tasks[i] = clone(d.Task)
 	}
 	s.mu.Unlock()
-	data := registryData{modelError: device.LastError, refreshing: device.Refreshing}
+	data := registryData{refreshing: assets.AssetsRefreshing || device.Refreshing}
 	models := map[string]int{}
-	var snapshot struct {
-		Models []struct {
-			Path           string
-			SizeBytes      *int64 `json:"size_bytes"`
-			Architecture   string
-			ContextLength  *int64 `json:"context_length"`
-			Status, Reason string
+	var scanned *inferyard.AssetScan
+	if assets.Parsed != nil {
+		scanned = assets.Parsed
+	} else if len(assets.Snapshot) > 0 {
+		if parsed, err := inferyard.ParseAssetScan(assets.Snapshot); err == nil {
+			scanned = &parsed
+		} else {
+			data.modelError = &ApiError{Code: "cli_error", Message: "模型资产快照无法读取，请点击刷新重试。"}
 		}
 	}
-	parseErr := json.Unmarshal(device.Snapshot, &snapshot)
-	if len(device.Snapshot) > 0 && parseErr != nil {
-		data.modelError = &ApiError{Code: "cli_error", Message: "设备快照无法读取，请到设备页刷新。"}
-	}
-	if parseErr == nil {
-		for _, model := range snapshot.Models {
+	if scanned != nil {
+		data.modelError = assets.AssetsError
+		for _, model := range scanned.Models {
 			path, err := canonical(model.Path)
 			if err != nil || !filepath.IsAbs(path) {
 				continue
@@ -141,22 +140,76 @@ func (s *Service) registry() registryData {
 			if _, found := models[path]; found {
 				continue
 			}
+			source := "本地模型"
+			if model.Format == "directory" {
+				source = "模型目录"
+			}
 			models[path] = len(data.models)
-			data.models = append(data.models, registryEntry{path: path, source: "设备快照", model: ModelAsset{
-				Name: filepath.Base(path), Format: "gguf", SizeBytes: model.SizeBytes, Architecture: model.Architecture,
-				ContextLength: model.ContextLength, Available: model.Status == "available", Reason: model.Reason,
-			}})
+			data.models = append(data.models, registryEntry{
+				path:   path,
+				source: source,
+				model: ModelAsset{
+					Name:          filepath.Base(path),
+					Format:        model.Format,
+					SizeBytes:     model.SizeBytes,
+					Architecture:  str(model.Architecture),
+					ContextLength: model.ContextLength,
+					Available:     model.Available,
+					Reason:        str(model.Reason),
+				},
+			})
 		}
-	}
-	if u.ModelsRoot != nil {
-		local, failure := scanDirectoryModels(*u.ModelsRoot)
-		if data.modelError == nil {
-			data.modelError = failure
+	} else {
+		data.modelError = device.LastError
+		if data.modelError == nil && assets.AssetsError != nil && assets.AssetsError.Code != "cli_outdated" {
+			data.modelError = assets.AssetsError
 		}
-		for _, entry := range local {
-			if _, found := models[entry.path]; !found {
-				models[entry.path] = len(data.models)
-				data.models = append(data.models, entry)
+		var snapshot struct {
+			Models []struct {
+				Path                  string
+				SizeBytes             *int64 `json:"size_bytes"`
+				Architecture          string
+				ContextLength         *int64 `json:"context_length"`
+				Status, Reason        string
+				ChatTemplateAvailable *bool `json:"chat_template_available"`
+			}
+		}
+		parseErr := json.Unmarshal(device.Snapshot, &snapshot)
+		if len(device.Snapshot) > 0 && parseErr != nil {
+			data.modelError = &ApiError{Code: "cli_error", Message: "设备快照无法读取，请到设备页刷新。"}
+		}
+		if parseErr == nil {
+			for _, model := range snapshot.Models {
+				path, err := canonical(model.Path)
+				if err != nil || !filepath.IsAbs(path) {
+					continue
+				}
+				if _, found := models[path]; found {
+					continue
+				}
+				available := model.Status == "available"
+				reason := model.Reason
+				if available && model.ChatTemplateAvailable != nil && !*model.ChatTemplateAvailable {
+					available = false
+					reason = "chat_template_unavailable"
+				}
+				models[path] = len(data.models)
+				data.models = append(data.models, registryEntry{path: path, source: "设备快照", model: ModelAsset{
+					Name: filepath.Base(path), Format: "gguf", SizeBytes: model.SizeBytes, Architecture: model.Architecture,
+					ContextLength: model.ContextLength, Available: available, Reason: reason,
+				}})
+			}
+		}
+		if u.ModelsRoot != nil {
+			local, failure := scanDirectoryModels(*u.ModelsRoot)
+			if data.modelError == nil {
+				data.modelError = failure
+			}
+			for _, entry := range local {
+				if _, found := models[entry.path]; !found {
+					models[entry.path] = len(data.models)
+					data.models = append(data.models, entry)
+				}
 			}
 		}
 	}

@@ -255,54 +255,14 @@ def recommend(hardware, models, *, model_loaded=False):
 
 
 def discover_models(roots, model_path=None):
+    from inferyard.platforms.asset_scan import inspect_gguf_file
+
     paths = (
         [Path(model_path)]
         if model_path
         else sorted({p for root in roots for p in Path(root).rglob("*.gguf")})
     )
-    models = []
-    for path in paths:
-        try:
-            metadata = read_metadata(path)
-            architecture = metadata.get("general.architecture")
-            for key in (
-                "general.name",
-                "general.architecture",
-                "tokenizer.chat_template",
-                "tokenizer.chat_template.default",
-            ):
-                if metadata.get(key) is not None and not isinstance(metadata[key], str):
-                    raise ValueError("invalid_gguf_metadata_type")
-            context = metadata.get(str(architecture) + ".context_length")
-            if context is not None and (type(context) is not int or context <= 0):
-                raise ValueError("invalid_gguf_context_length")
-            file_type = metadata.get("general.file_type")
-            if file_type is not None and (type(file_type) is not int or file_type < 0):
-                raise ValueError("invalid_gguf_file_type")
-            models.append(
-                {
-                    "path": str(path.resolve()),
-                    "name": metadata.get("general.name") or path.stem,
-                    "size_bytes": path.stat().st_size,
-                    "architecture": architecture,
-                    "context_length": context,
-                    "file_type": file_type,
-                    "status": "available",
-                    "chat_template_available": bool(
-                        metadata.get("tokenizer.chat_template")
-                        or metadata.get("tokenizer.chat_template.default")
-                    ),
-                }
-            )
-        except OSError, ValueError, UnicodeError:
-            models.append(
-                {
-                    "path": str(path.resolve()),
-                    "status": "unavailable",
-                    "reason": "invalid_or_unreadable_gguf",
-                }
-            )
-    return models
+    return [inspect_gguf_file(path, metadata_reader=read_metadata) for path in paths]
 
 
 def platform_capabilities(system):
