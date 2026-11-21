@@ -105,8 +105,7 @@ func (s *viewState) reportSourcesDialog(c *ui.Context) {
 					}
 				}
 				if len(runs) > 0 {
-					ui.Scroll(c.Key("report-sources")).FillWidth().Height(260).
-						Border(1, c.Theme().Border).Radius(tokens(c).Radius.Inset).
+					applyMaterial(c, ui.Scroll(c.Key("report-sources")).FillWidth().Height(260), materialInset).
 						Label("报告来源运行列表").Children(func() {
 						ui.Column(c).FillWidth().Gap(tokens(c).Density.Tight).Padding(tokens(c).Density.Inset).Children(func() {
 							for _, r := range runs {

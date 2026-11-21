@@ -113,19 +113,19 @@ func failureView(c *ui.Context, title string, e *core.ApiError, next string) {
 	if e != nil {
 		errorView(c, e)
 	} else {
-		ui.Text(c, "未返回原因码。").TextColor(stateColor(c, stateDanger))
+		noticeBanner(c, noticeBannerOptions{Kind: stateDanger, Size: bannerCompact, Message: "未返回原因码。"})
 	}
 	if next != "" {
-		ui.Text(c, next).TextColor(c.Theme().TextMuted)
+		ui.Text(c, next).TextColor(tokens(c).Color.FgSecondary)
 	}
 }
 
 func (w *viewState) serviceView(c *ui.Context) {
 	heading(c, "启动模型服务并绑定", 3)
 	if w.bindingStale {
-		ui.Text(c, "旧绑定已失效，请重启服务并重新绑定").TextColor(stateColor(c, stateDanger))
+		noticeBanner(c, noticeBannerOptions{Kind: stateDanger, Size: bannerCompact, Message: "旧绑定已失效，请重启服务并重新绑定"})
 	}
-	ui.Text(c, "由 Studio 托管模型服务，退出时自动停止。").TextColor(c.Theme().TextMuted)
+	ui.Text(c, "由 Studio 托管模型服务，退出时自动停止。").TextColor(tokens(c).Color.FgSecondary)
 	if w.stepFailed() {
 		title := "模型服务失败"
 		if w.step() == 3 {
@@ -136,7 +136,7 @@ func (w *viewState) serviceView(c *ui.Context) {
 	}
 	switch w.engineState.State {
 	case "orphaned":
-		ui.Text(c, "遗留引擎：请先处理上次 Studio 留下的服务或无效记录。").TextColor(stateColor(c, stateWarning))
+		noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: "遗留引擎：请先处理上次 Studio 留下的服务或无效记录。"})
 		errorView(c, w.engineState.Error)
 		w.stopOrphanButton(c)
 	case "starting":
@@ -147,14 +147,14 @@ func (w *viewState) serviceView(c *ui.Context) {
 			if showBar {
 				progressBar(c, -1, "模型服务启动进度")
 				if elapsed >= loadingSlowThreshold {
-					ui.Text(c, "模型加载耗时较长，可先切换其他页面，右上角状态会持续更新。").TextColor(c.Theme().TextMuted)
+					ui.Text(c, "模型加载耗时较长，可先切换其他页面，右上角状态会持续更新。").TextColor(tokens(c).Color.FgSecondary)
 				}
 			}
 		})
 	case "running":
-		ui.Text(c, fmt.Sprintf("运行中 · PID %d · %s", w.engineState.Pid, w.engineState.Endpoint)).TextColor(stateColor(c, stateSuccess))
+		badge(c, fmt.Sprintf("运行中 · PID %d · %s", w.engineState.Pid, w.engineState.Endpoint), stateSuccess, badgeOptions{Style: badgeDot})
 	case "stopping":
-		ui.Text(c, "正在停止服务…")
+		badge(c, "正在停止服务…", stateWarning, badgeOptions{Style: badgeDot})
 	}
 	candidateReady := w.candidate != "" || w.task.start.candidate != ""
 	if !candidateReady {

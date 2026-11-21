@@ -90,7 +90,11 @@ func catalogDetails(c *ui.Context, source string) {
 		return
 	}
 	if !entry.RunsOnCurrentPlatform() {
-		ui.Text(c, "此资源适用于 "+core.PlatformLabel(entry.Platform)+"，不能在本机运行。").TextColor(stateColor(c, stateWarning))
+		noticeBanner(c, noticeBannerOptions{
+			Kind:    stateWarning,
+			Size:    bannerCompact,
+			Message: "此资源适用于 " + core.PlatformLabel(entry.Platform) + "，不能在本机运行。",
+		})
 	}
 	componentFoldKeyed(c, "catalog-details-"+string(entry.Kind), "版本与校验 · "+entry.Title, func() {
 		ui.Text(c, "版本 "+entry.Revision).Selectable()

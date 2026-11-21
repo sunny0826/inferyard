@@ -239,6 +239,10 @@ func (s *viewState) feedback(c *ui.Context) {
 			errorView(c, s.failure)
 		}
 	} else if s.refreshFailure != "" {
-		ui.Text(c, s.refreshFailure).TextColor(stateColor(c, stateDanger))
+		noticeBanner(c, noticeBannerOptions{
+			Kind:    stateDanger,
+			Size:    bannerCompact,
+			Message: s.refreshFailure,
+		})
 	}
 }

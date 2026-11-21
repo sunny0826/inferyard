@@ -7,6 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 )
 
@@ -204,7 +205,11 @@ func (s *viewState) historyView(c *ui.Context) {
 	ui.Text(c, "扫描时间："+configuredValue(formatTimestamp(s.history.ScannedAt)))
 	runs := s.historyRuns()
 	if len(runs) == 0 && s.historyError == nil && s.loaded {
-		ui.Text(c, "暂无运行记录。")
+		emptyGuideCard(c, emptyGuideOptions{
+			Icon:    lucide.Clock,
+			Title:   "暂无运行记录。",
+			Surface: emptySunken,
+		})
 		return
 	}
 	selectableTable(&s.historyTable, func(i int) any { return runs[i].Path }, func(i int) string { return runs[i].RunId })

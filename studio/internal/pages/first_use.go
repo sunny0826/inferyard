@@ -146,10 +146,10 @@ func (s *viewState) downloadTaskGuide(c *ui.Context) {
 		return
 	}
 	t := tokens(c)
-	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.CardGap).
-		Padding(t.Density.Stack, t.Card.Padding).Radius(t.Radius.Inset).Border(t.Card.Border, c.Theme().Border).
+	applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.CardGap).
+		Padding(t.Density.Stack, t.Card.Padding), materialCard).
 		Children(func() {
-			ui.Text(c, s.downloadGuideStatus()).Grow(1).MinWidth(0).TextColor(c.Theme().TextMuted)
+			ui.Text(c, s.downloadGuideStatus()).Grow(1).MinWidth(0).TextColor(t.Color.FgSecondary)
 			button(c, "返回任务").Shrink(0).OnClick(func() { s.selected = "dashboard" })
 		})
 }
