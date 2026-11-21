@@ -7,17 +7,30 @@ import (
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 )
 
-func (s *viewState) navigateTo(page, detail string) {
+func (s *viewState) guardLeaveSettings(targetPage string, action func()) bool {
+	if s.selected == "settings" && targetPage != "settings" && s.settingsUnsaved() {
+		s.pendingNavAction = action
+		s.settingsLeaveConfirm = true
+		return true
+	}
+	return false
+}
+
+func (s *viewState) navigateToNow(page, detail string) {
 	s.pendingDestructive = destructiveRequest{}
 	s.selected, s.detailID = page, detail
 	s.promptPage = page
 }
 
-func (s *viewState) selectPage(id string) {
-	if s.selected == id {
+func (s *viewState) navigateTo(page, detail string) {
+	if s.guardLeaveSettings(page, func() { s.navigateToNow(page, detail) }) {
 		return
 	}
-	s.navigateTo(id, s.detailID)
+	s.navigateToNow(page, detail)
+}
+
+func (s *viewState) selectPageNow(id string) {
+	s.navigateToNow(id, s.detailID)
 	if id != "models" || s.service == nil {
 		return
 	}
@@ -27,6 +40,16 @@ func (s *viewState) selectPage(id string) {
 			s.win.Update(func() { s.checks = s.service.EngineChecks() })
 		}
 	}()
+}
+
+func (s *viewState) selectPage(id string) {
+	if s.selected == id {
+		return
+	}
+	if s.guardLeaveSettings(id, func() { s.selectPageNow(id) }) {
+		return
+	}
+	s.selectPageNow(id)
 }
 
 func (s *viewState) leftNav(c *ui.Context) {
@@ -81,7 +104,12 @@ func newTaskButton(c *ui.Context, disabled bool) ui.Element {
 func (s *viewState) newTaskEntry(c *ui.Context) {
 	hint := s.newTaskEntryHint()
 	if hint == "" {
-		newTaskButton(c, false).OnClick(func() { s.newBenchmark() })
+		newTaskButton(c, false).OnClick(func() {
+			if s.guardLeaveSettings("dashboard", func() { s.newBenchmark() }) {
+				return
+			}
+			s.newBenchmark()
+		})
 		return
 	}
 	wrap := ui.Column(c).FillWidth()

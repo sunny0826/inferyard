@@ -100,12 +100,16 @@ func modelTaskAction(c *ui.Context, s *viewState, model core.ModelAsset) {
 	label := "用此模型测评"
 	hint := "测评进行中，请在任务页取消后再新建任务"
 	blocked := s.busy || s.roundWorkActive()
-	b := button(c, label).Label(label + " · " + model.Name).Disabled(blocked)
 	if blocked {
-		components.Tooltip(c, b, hint)
-		b = b.Description(hint)
+		wrap := ui.Box(c)
+		wrap.Children(func() {
+			button(c, label).Label(label + " · " + model.Name).Disabled(true).Description(hint)
+		})
+		components.Tooltip(c, wrap, hint)
+		return
 	}
-	if b.Clicked() && !blocked {
+	b := button(c, label).Label(label + " · " + model.Name)
+	if b.Clicked() {
 		s.model = model.Name
 		s.newBenchmark()
 	}

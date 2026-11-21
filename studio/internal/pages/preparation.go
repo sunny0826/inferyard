@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 )
 
@@ -225,6 +226,38 @@ func (s *viewState) downloadNamesValid() bool {
 
 func (s *viewState) settingsEdited() bool {
 	return s.pathsEdited() || s.downloadNamesEdited()
+}
+
+func (s *viewState) settingsUnsaved() bool {
+	if !s.settingsLoaded {
+		return false
+	}
+	if s.service != nil && s.service.BoundPaths() != nil {
+		return s.downloadNamesEdited()
+	}
+	return s.settingsEdited()
+}
+
+func (s *viewState) settingsDiscardDialog(c *ui.Context) {
+	c.Key("settings-discard-dialog")
+	result := components.AlertDialog(c, &s.settingsLeaveConfirm, components.AlertDialogOptions{
+		DialogOptions: components.DialogOptions{Label: "放弃未保存的设置"},
+		Title:         "放弃未保存的设置？",
+		Message:       "路径或下载目录名有尚未保存的修改，离开后将恢复为已保存的设置。",
+		ConfirmLabel:  "放弃修改并离开",
+		CancelLabel:   "留在设置页",
+	})
+	switch result {
+	case components.DialogConfirmed:
+		s.loadSettings(s.settings)
+		action := s.pendingNavAction
+		s.pendingNavAction = nil
+		if action != nil {
+			action()
+		}
+	case components.DialogCancelled:
+		s.pendingNavAction = nil
+	}
 }
 
 func (s *viewState) applySettings(value core.SettingsResponse) {

@@ -113,10 +113,7 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 			ui.Grid(c).Columns(columns).Gap(t.Density.Stack).Children(func() {
 				for _, metric := range options.metrics {
 					ui.Column(c).Gap(t.Density.Tight).Children(func() {
-						metricLabel := ui.Text(c, metric.label).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
-						if metric.reason != "" {
-							components.Tooltip(c, metricLabel, metric.reason)
-						}
+						ui.Text(c, metric.label).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
 						ui.Text(c, metric.value).Bold().FontSize(t.Type.Metric)
 						if metric.reason != "" {
 							ui.Text(c, metric.reason).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)

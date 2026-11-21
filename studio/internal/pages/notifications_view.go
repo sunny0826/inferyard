@@ -177,6 +177,7 @@ func (s *viewState) notificationStackCard(c *ui.Context, item *studioNotificatio
 			closeBtn.Children(func() {
 				components.Icon(c, lucide.X).Size(12, 12).TextColor(t.Color.FgSecondary).Role(ui.RoleNone)
 			})
+			components.Tooltip(c, closeBtn, "关闭通知")
 			if closeBtn.Clicked() {
 				s.dismissNotificationFromScreen(item.ID)
 			}
@@ -272,6 +273,9 @@ func (s *viewState) notificationBell(c *ui.Context) {
 		})
 		if anchor.Clicked() {
 			nc.bellOpen = !nc.bellOpen
+		}
+		if !nc.bellOpen {
+			components.Tooltip(c, anchor, label)
 		}
 		components.Popover(c, anchor, &nc.bellOpen, func(panel ui.Element) {
 			panel.AttachTo(anchor, ui.AnchorBottomRight, ui.AnchorTopRight).

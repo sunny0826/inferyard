@@ -87,11 +87,12 @@ func (s *viewState) closeResumeDialog() {
 func (s *viewState) resumeDialog(c *ui.Context) {
 	open := s.resumeSource != nil
 	dirty := open && s.resumeDirty()
+	dialogOpen := open
 	c.Key("resume-dialog")
-	components.Dialog(c, &open, components.DialogOptions{
+	components.Dialog(c, &dialogOpen, components.DialogOptions{
 		Label:                "续测设置",
-		DisableBackdropClose: dirty,
-		DisableEscapeClose:   dirty,
+		DisableBackdropClose: s.resumeDiscardConfirm,
+		DisableEscapeClose:   s.resumeDiscardConfirm,
 	}, func(panel ui.Element) {
 		if s.resumeSource == nil {
 			return
@@ -111,15 +112,19 @@ func (s *viewState) resumeDialog(c *ui.Context) {
 						if s.resumeDirty() {
 							s.resumeDiscardConfirm = true
 						} else {
-							open = false
+							dialogOpen = false
 						}
 					}
 				})
 			})
 		})
 	})
-	if !open && s.resumeSource != nil {
-		s.closeResumeDialog()
+	if open && !dialogOpen && s.resumeSource != nil {
+		if dirty {
+			s.resumeDiscardConfirm = true
+		} else {
+			s.closeResumeDialog()
+		}
 	}
 	if components.AlertDialog(c, &s.resumeDiscardConfirm, components.AlertDialogOptions{
 		DialogOptions: components.DialogOptions{Label: "放弃未保存的续测设置"},
