@@ -181,22 +181,9 @@ loop:
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	d.Task.FinishedAt = ptr(now())
-	switch {
-	case r.out.ExitCode == inferyard.ExitCancelled || ctx.Err() != nil:
-		d.Task.State = "cancelled"
-	case r.err != nil:
-		d.Task.State = "failed"
-		d.Task.Error = Err("internal_error")
-	case r.out.ExitCode != inferyard.ExitComplete:
-		d.Task.State = "failed"
-		d.Task.Error = exitError(r.out, nil)
-		if d.Task.Error == nil {
-			d.Task.Error = Err("cli_error")
-		}
-	default:
+	s.finishDownloadLocked(ctx, d, r.out, r.err, func(cr inferyard.CommandResult, parseErr error) bool {
 		var result DownloadResult
-		cr, e := inferyard.Parse(r.out.Stdout)
+		e := parseErr
 		if e == nil {
 			e = json.Unmarshal(cr.Details, &result)
 		}
@@ -209,12 +196,35 @@ loop:
 			}
 		}
 		if e != nil || result.Bytes < 0 || len(result.Sha256) != 64 {
+			return false
+		}
+		d.Task.Result = &result
+		d.Task.DownloadedBytes = result.Bytes
+		return true
+	})
+}
+
+func (s *Service) finishDownloadLocked(ctx context.Context, d *downloadEntry, out inferyard.Execution, execErr error, apply func(inferyard.CommandResult, error) bool) {
+	d.Task.FinishedAt = ptr(now())
+	switch {
+	case out.ExitCode == inferyard.ExitCancelled || ctx.Err() != nil:
+		d.Task.State = "cancelled"
+	case execErr != nil:
+		d.Task.State = "failed"
+		d.Task.Error = Err("internal_error")
+	case out.ExitCode != inferyard.ExitComplete:
+		d.Task.State = "failed"
+		d.Task.Error = exitError(out, nil)
+		if d.Task.Error == nil {
+			d.Task.Error = Err("cli_error")
+		}
+	default:
+		cr, parseErr := inferyard.Parse(out.Stdout)
+		if !apply(cr, parseErr) {
 			d.Task.State = "failed"
 			d.Task.Error = Err("internal_error")
 		} else {
 			d.Task.State = "done"
-			d.Task.Result = &result
-			d.Task.DownloadedBytes = result.Bytes
 		}
 	}
 	s.Bus.Publish("download.state", map[string]any{"task": d.Task})
@@ -224,12 +234,8 @@ func (s *Service) CreateEngineDownload(source, outName string) (DownloadTask, *A
 	if !validEngineSource(source) || (outName != "" && !ValidDownloadName(outName)) {
 		return DownloadTask{}, Err("invalid_request")
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.closing {
-		return DownloadTask{}, Err("service_closing")
-	}
-	workspace := str(s.settings.WorkspaceRoot)
+	u := downloadNameDefaults(s.userSettings())
+	workspace := str(u.WorkspaceRoot)
 	if workspace == "" {
 		return DownloadTask{}, Conflict("settings_incomplete")
 	}
@@ -240,7 +246,19 @@ func (s *Service) CreateEngineDownload(source, outName string) (DownloadTask, *A
 	if err != nil {
 		return DownloadTask{}, Err("invalid_request")
 	}
-	outName, dir, failure := s.downloadOutputLocked(root, outName, downloadNameDefaults(s.settings).EngineDownloadName)
+	p := s.probe(u)
+	if p.Status != "ok" {
+		return DownloadTask{}, Err("cli_unavailable")
+	}
+	if e := os.MkdirAll(root, 0755); e != nil {
+		return DownloadTask{}, Err("internal_error")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closing {
+		return DownloadTask{}, Err("service_closing")
+	}
+	outName, dir, failure := s.downloadOutputLocked(root, outName, u.EngineDownloadName)
 	if failure != nil {
 		return DownloadTask{}, failure
 	}
@@ -252,30 +270,52 @@ func (s *Service) CreateEngineDownload(source, outName string) (DownloadTask, *A
 	}, cancel: cancel}
 	s.downloads = append(s.downloads, d)
 	s.Bus.Publish("download.state", map[string]any{"task": d.Task})
-	go s.downloadEngine(ctx, d)
+	go s.downloadEngine(ctx, *p.Path, d)
 	return clone(d.Task), nil
 }
 
-func (s *Service) downloadEngine(ctx context.Context, d *downloadEntry) {
+func enginePrepareArgs(sourceURL, outDir string) []string {
+	args := []string{"engine", "prepare", "--source", sourceURL, "--out", outDir}
+	if entry, ok := CatalogEntryByURL(sourceURL); ok {
+		if entry.SHA256 != "" {
+			args = append(args, "--expected-sha256", entry.SHA256)
+		}
+		if entry.Profile != "" {
+			args = append(args, "--profile", entry.Profile)
+		}
+		if entry.RuntimeURL != "" {
+			args = append(args, "--runtime-source", entry.RuntimeURL)
+		}
+		if entry.RuntimeSHA256 != "" {
+			args = append(args, "--runtime-expected-sha256", entry.RuntimeSHA256)
+		}
+	}
+	return args
+}
+
+func (s *Service) downloadEngine(ctx context.Context, binary string, d *downloadEntry) {
 	defer d.cancel()
-	path, failure := s.FetchEngine(ctx, d.Task.SourceUrl, d.Task.OutDir, func(string) {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		s.Bus.Publish("download.progress", map[string]any{
-			"task_id": d.Task.TaskId, "downloaded_bytes": nil, "bytes_per_second": nil,
-			"progress_reason": d.Task.ProgressReason, "utc": now(),
-		})
+	s.Bus.Publish("download.progress", map[string]any{
+		"task_id": d.Task.TaskId, "downloaded_bytes": nil, "bytes_per_second": nil,
+		"progress_reason": d.Task.ProgressReason, "utc": now(),
 	})
+	out, execErr := s.exec(ctx, binary, enginePrepareArgs(d.Task.SourceUrl, d.Task.OutDir)...)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	d.Task.FinishedAt = ptr(now())
-	switch {
-	case ctx.Err() != nil:
-		d.Task.State = "cancelled"
-	case failure != nil:
-		d.Task.State, d.Task.Error = "failed", failure
-	default:
-		d.Task.State, d.Task.EnginePath = "done", &path
-	}
-	s.Bus.Publish("download.state", map[string]any{"task": d.Task})
+	s.finishDownloadLocked(ctx, d, out, execErr, func(cr inferyard.CommandResult, parseErr error) bool {
+		if parseErr != nil {
+			return false
+		}
+		var details struct {
+			Engine string `json:"engine"`
+			Bytes  int64  `json:"bytes"`
+			Sha256 string `json:"sha256"`
+		}
+		if err := json.Unmarshal(cr.Details, &details); err != nil || details.Engine == "" || details.Bytes < 0 || len(details.Sha256) != 64 {
+			return false
+		}
+		d.Task.EnginePath = ptr(details.Engine)
+		d.Task.Result = &DownloadResult{Bytes: details.Bytes, Sha256: details.Sha256}
+		return true
+	})
 }
