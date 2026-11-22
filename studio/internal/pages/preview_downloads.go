@@ -53,6 +53,94 @@ func (p *previewSession) startDownload(op previewDownload) {
 	p.notice = "模拟下载已开始。"
 }
 
+func (p *previewSession) startPolystrataSetup(req core.PolystrataSetupRequest) {
+	s := p.state
+	for _, task := range s.downloads {
+		if task.Kind == "polystrata" && task.State == "downloading" {
+			return
+		}
+	}
+	id := p.nextID("polystrata")
+	parts := []string{"PolyStrata"}
+	if strings.TrimSpace(req.Family) != "" {
+		parts = append(parts, strings.TrimSpace(req.Family))
+	}
+	if strings.TrimSpace(req.Model) != "" {
+		parts = append(parts, strings.TrimSpace(req.Model))
+	}
+	outName := "polystrata-" + id
+	outDir := filepath.Join(s.workspace, "engines", outName)
+	task := core.DownloadTask{
+		TaskId:      id,
+		Kind:        "polystrata",
+		DisplayName: strings.Join(parts, " · "),
+		State:       "downloading",
+		Stage:       "preflight",
+		Step:        previewValue(1),
+		StepTotal:   previewValue(4),
+		Percent:     previewValue(10.0),
+		Detail:      previewValue("checking environment"),
+		SourceUrl:   "https://github.com/simplexai-labs/PolyStrata/archive/refs/tags/v0.1.45-poly.10.tar.gz",
+		OutName:     outName,
+		OutDir:      outDir,
+		LogPath:     previewValue(filepath.Join(outDir, ".inferyard-setup.log")),
+		StartedAt:   p.timestamp(),
+	}
+	s.downloads = append([]core.DownloadTask{task}, s.downloads...)
+	if p.polystrataReqs == nil {
+		p.polystrataReqs = map[string]core.PolystrataSetupRequest{}
+	}
+	p.polystrataReqs[id] = req
+	p.tickPolystrataSetup(id, p.takeFailure(), 0)
+	p.notice = "模拟 PolyStrata 引导安装已开始。"
+}
+
+func (p *previewSession) tickPolystrataSetup(id string, fail bool, tick int) {
+	p.after("download/"+id, 500*time.Millisecond, func() {
+		s := p.state
+		for i := range s.downloads {
+			task := &s.downloads[i]
+			if task.TaskId != id || task.State != "downloading" {
+				continue
+			}
+			if fail && tick == 1 {
+				apiErr := core.Err("polystrata_preflight_blocked")
+				apiErr.Details = map[string]any{
+					"blockers": []map[string]any{{
+						"code":        "xcode_clt_missing",
+						"message":     "Xcode Command Line Tools are required to build PolyStrata.",
+						"fix_command": "xcode-select --install",
+					}},
+				}
+				task.State, task.Error, task.FinishedAt = "failed", apiErr, previewValue(p.timestamp())
+				return
+			}
+			switch tick {
+			case 0:
+				task.Stage, task.Step, task.Percent = "downloading_runtime", previewValue(2), previewValue(35.0)
+				task.Detail = previewValue("PolyStrata v0.1.45-poly.10")
+			case 1:
+				task.Stage, task.Step, task.Percent = "setup_engine", previewValue(3), previewValue(65.0)
+				task.Detail = previewValue("Metal build")
+			case 2:
+				task.Stage, task.Step, task.Percent = "downloading_model", previewValue(4), previewValue(90.0)
+				task.Detail = previewValue("downloading starter model")
+			default:
+				instPath := filepath.Join(task.OutDir, "installation.json")
+				cfgPath := filepath.Join(task.OutDir, "strata-preview.json")
+				task.State, task.Stage, task.Percent, task.FinishedAt = "done", "", previewValue(100.0), previewValue(p.timestamp())
+				task.EnginePath = previewValue(instPath)
+				task.InstallationPath = previewValue(instPath)
+				task.ModelConfigPath = previewValue(cfgPath)
+				p.installDownloadedAsset(task)
+				return
+			}
+			p.tickPolystrataSetup(id, fail, tick+1)
+			return
+		}
+	})
+}
+
 func (p *previewSession) tickDownload(id string, fail bool, tick int) {
 	p.after("download/"+id, 600*time.Millisecond, func() {
 		s := p.state
@@ -82,6 +170,27 @@ func (p *previewSession) tickDownload(id string, fail bool, tick int) {
 
 func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 	s := p.state
+	if task.Kind == "polystrata" {
+		engName := "polystrata · " + task.OutName
+		s.registry.Engines = append(s.registry.Engines, core.EngineAsset{
+			Name: engName, Family: "polystrata", Kind: "local_installation", Source: "模拟引导安装",
+			Path: emptyText(task.InstallationPath),
+		})
+		s.registry.DefaultEngine = engName
+		if s.checks.Engines == nil {
+			s.checks.Engines = map[string]core.EngineEligibility{}
+		}
+		s.checks.Engines[engName] = core.EngineEligibility{State: core.EngineCheckEligible, Family: "polystrata", VerificationScope: "installation", Version: "v0.1.45-poly.10"}
+		s.registry.Models = append(s.registry.Models, core.ModelAsset{
+			Name:      "strata-preview.json",
+			Format:    "strata_pack",
+			Path:      emptyText(task.ModelConfigPath),
+			Available: true,
+		})
+		s.adoptDownloadedEngine()
+		s.adoptOnlyModel()
+		return
+	}
 	if task.Kind == "engine" {
 		name := task.OutName + " · llama-server"
 		task.EnginePath = previewValue(filepath.Join(task.OutDir, "llama-server"))
@@ -115,6 +224,25 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 		})
 		s.adoptOnlyModel()
 	}
+}
+
+func (p *previewSession) downloadLogTail(taskID string) string {
+	return "[preview] setup_engine: building strata runtime\n[preview] downloading_model: waiting for weights"
+}
+
+func previewPolystrataRequestFromTask(task core.DownloadTask, fallback core.PolystrataSetupRequest) core.PolystrataSetupRequest {
+	parts := strings.Split(task.DisplayName, " · ")
+	if len(parts) >= 2 && strings.TrimSpace(parts[0]) == "PolyStrata" {
+		req := core.PolystrataSetupRequest{
+			Family:      strings.TrimSpace(parts[1]),
+			ModelSource: fallback.ModelSource,
+		}
+		if len(parts) >= 3 {
+			req.Model = strings.TrimSpace(parts[2])
+		}
+		return req
+	}
+	return fallback
 }
 
 func (p *previewSession) cancelDownload(id string) {

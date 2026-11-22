@@ -1,6 +1,10 @@
 package pages
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"inferyard/studio/internal/core"
+)
 
 type previewIntent interface{ previewIntent() }
 
@@ -35,6 +39,10 @@ func (previewBenchmark) previewIntent() {}
 type previewDownload struct{ kind, source, name string }
 
 func (previewDownload) previewIntent() {}
+
+type previewPolystrataSetup struct{ req core.PolystrataSetupRequest }
+
+func (previewPolystrataSetup) previewIntent() {}
 
 type previewCancelDownload struct{ id string }
 

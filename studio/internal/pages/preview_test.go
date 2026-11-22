@@ -106,7 +106,7 @@ func TestPreviewScenesAllLoadAndSaveSettingsPreservesProxy(t *testing.T) {
 	tt := previewTester(p, 1120, 2200)
 	for i, scene := range previewScenes {
 		p.loadScene(i)
-		if scene.label != "下载 · 进行中与失败" && len(p.state.downloads) != 0 {
+		if scene.label != "下载 · 进行中与失败" && scene.label != "下载 · PolyStrata 引导安装" && len(p.state.downloads) != 0 {
 			t.Fatalf("scene %q unexpectedly seeded %d downloads", scene.label, len(p.state.downloads))
 		}
 		p.themeMode = 1
@@ -179,5 +179,59 @@ func TestPreviewRetryDownloadDeduplicatesActiveRetry(t *testing.T) {
 	p.dispatch(previewRetryDownload{id: "dl-rev-a"})
 	if len(p.state.downloads) != 7 || p.state.downloads[0].SourceUrl != pinnedA {
 		t.Fatalf("expected single retry for pinnedA alongside active pinnedB, got %+v", p.state.downloads)
+	}
+}
+
+func TestPreviewPolystrataStarterAndManagedSetup(t *testing.T) {
+	p := newPreviewSession(context.Background())
+	p.loadScene(previewSceneIndex(t, "首次使用 · 无资源"))
+	p.state.selected = "downloads"
+	tt := previewTester(p, 1120, 2600)
+	tt.Frame()
+
+	if !tt.HasText("一键安装 PolyStrata") {
+		t.Fatalf("expected PolyStrata starter button in preview first-use downloads: %v", tt.Texts())
+	}
+	click(t, tt, "一键安装 PolyStrata")
+	if len(p.state.downloads) != 1 || p.state.downloads[0].Kind != "polystrata" || p.state.downloads[0].State != "downloading" {
+		t.Fatalf("expected in-memory polystrata setup task: %+v", p.state.downloads)
+	}
+	if p.state.service != nil {
+		t.Fatal("preview must never initialize real service")
+	}
+	p.advance(5 * time.Second)
+	tt.Frame()
+	if p.state.downloads[0].State != "done" || len(p.state.registry.Engines) != 1 || p.state.registry.Engines[0].Family != "polystrata" {
+		t.Fatalf("expected simulated polystrata setup to finish and register engine: downloads=%+v engines=%+v", p.state.downloads, p.state.registry.Engines)
+	}
+
+	// Pre-seeded PolyStrata scene advances cleanly and retry preserves original family/model
+	p.loadScene(previewSceneIndex(t, "下载 · PolyStrata 引导安装"))
+	p.advance(5 * time.Second)
+	tt.Frame()
+	active := p.state.downloads[0]
+	if active.State != "done" || active.Stage != "" || active.InstallationPath == nil || *active.InstallationPath == "" {
+		t.Fatalf("pre-seeded polystrata task did not finish cleanly: %+v", active)
+	}
+	p.dispatch(previewRetryDownload{id: "preview-polystrata-blocked"})
+	if p.state.downloads[0].DisplayName != "PolyStrata · qwen · Q2_0" {
+		t.Fatalf("retry lost original polystrata family/model: %+v", p.state.downloads[0])
+	}
+	if p.state.unresolvedDownloadFailures() != 0 {
+		t.Fatalf("expected retry to resolve failed polystrata count, got %d", p.state.unresolvedDownloadFailures())
+	}
+
+	// Retry of a failed preview-created setup preserves exact Backend, Context, and ModelSource
+	p.cancelDownload(p.state.downloads[0].TaskId)
+	origReq := core.PolystrataSetupRequest{Family: "coder", Model: "IQ1_M", Context: 65536, Backend: "hip", ModelSource: "huggingface"}
+	p.failNext = true
+	p.dispatch(previewPolystrataSetup{req: origReq})
+	failedID := p.state.downloads[0].TaskId
+	p.advance(2 * time.Second)
+	p.state.ensureDownloadsUI().polystrataModelSource = "modelscope"
+	p.dispatch(previewRetryDownload{id: failedID})
+	retryID := p.state.downloads[0].TaskId
+	if got := p.polystrataReqs[retryID]; got != origReq {
+		t.Fatalf("preview retry lost original request fields: got %+v want %+v", got, origReq)
 	}
 }

@@ -17,6 +17,7 @@ type localEngineWizardState struct {
 	executable      string
 	workingDir      string
 	modelsRoot      string
+	dataDir         string
 	runtimeRoots    []string
 	candidateFamily string
 	candidateExec   string
@@ -27,6 +28,7 @@ type localEngineWizardState struct {
 }
 
 var localEngineFamilyOptions = []components.NativeSelectOption[string]{
+	{Value: "polystrata", Label: "polystrata"},
 	{Value: "llama-cpp", Label: "llama-cpp"},
 	{Value: "mlx-lm", Label: "mlx-lm"},
 	{Value: "vllm", Label: "vllm"},
@@ -92,6 +94,9 @@ func (s *viewState) localEngineWizardView(c *ui.Context) {
 					Description("填写或选择 LM Studio 本地模型目录绝对路径。").
 					Error(s.browseError(browseModelsRootDir.key, pathError(w.modelsRoot)))
 			}
+			if w.family == "polystrata" {
+				monoField(c, "PolyStrata 数据目录（可选）", "模型与 strata-*.json 配置目录（data_dir），留空则由安装目录自动解析。", "", pathError(w.dataDir), &w.dataDir)
+			}
 			monoField(c, "工作目录（可选）", "留空则默认使用可执行文件所在目录。", "", pathError(w.workingDir), &w.workingDir)
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				if wizardActionButton(c, "生成并注册引擎", "注册引擎", s.actionBusy("install-init")).Disabled(s.busy || !wizardCanSubmit(w)).Clicked() {
@@ -122,6 +127,8 @@ func wizardActionButton(c *ui.Context, visibleLabel, accessibleLabel string, act
 
 func wizardExecutableLabels(family string) (string, string) {
 	switch family {
+	case "polystrata":
+		return "PolyStrata Python 路径", "选择 PolyStrata 虚拟环境中的 python 解释器（.venv/bin/python）。"
 	case "mlx-lm", "vllm", "sglang":
 		return "虚拟环境 Python 路径", "选择独立虚拟环境中的 python 解释器（venv/bin/python）。"
 	case "lmstudio":
@@ -137,6 +144,9 @@ func wizardCanSubmit(w *localEngineWizardState) bool {
 		return false
 	}
 	if strings.TrimSpace(w.workingDir) != "" && pathError(strings.TrimSpace(w.workingDir)) != "" {
+		return false
+	}
+	if w.family == "polystrata" && strings.TrimSpace(w.dataDir) != "" && pathError(strings.TrimSpace(w.dataDir)) != "" {
 		return false
 	}
 	if w.family == "lmstudio" {
@@ -159,6 +169,11 @@ func applyDetectedEngine(w *localEngineWizardState, cand inferyard.DetectedEngin
 		w.modelsRoot = *cand.ModelsRoot
 	} else {
 		w.modelsRoot = ""
+	}
+	if cand.DataDir != nil {
+		w.dataDir = *cand.DataDir
+	} else {
+		w.dataDir = ""
 	}
 }
 
@@ -237,6 +252,9 @@ func (s *viewState) initAndRegisterWizardEngine(w *localEngineWizardState) {
 	}
 	if w.family == "lmstudio" {
 		req.ModelsRoot = strings.TrimSpace(w.modelsRoot)
+	}
+	if w.family == "polystrata" {
+		req.DataDir = strings.TrimSpace(w.dataDir)
 	}
 	if w.family == w.candidateFamily && strings.TrimSpace(w.executable) == w.candidateExec {
 		req.RuntimeRoots = slices.Clone(w.runtimeRoots)

@@ -66,7 +66,7 @@ func (s *viewState) taskAssetsView(c *ui.Context) {
 				kind = stateSuccess
 			} else {
 				for _, task := range s.downloads {
-					if task.Kind == asset.kind && task.State == "downloading" {
+					if (task.Kind == asset.kind || task.Kind == "polystrata") && task.State == "downloading" {
 						status = "下载中"
 						kind = stateActive
 						break
@@ -132,6 +132,9 @@ func (s *viewState) downloadResolved(failed core.DownloadTask, failedIndex int) 
 			break
 		}
 		if task.Kind != failed.Kind || task.SourceUrl != failed.SourceUrl || task.TaskId == failed.TaskId {
+			continue
+		}
+		if failed.Kind == "polystrata" && failed.DisplayName != "" && task.DisplayName != "" && task.DisplayName != failed.DisplayName {
 			continue
 		}
 		if task.State == "downloading" || task.State == "done" {

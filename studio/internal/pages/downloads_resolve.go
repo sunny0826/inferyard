@@ -84,6 +84,16 @@ func (s *viewState) acquireStarterBundle(engineURL, modelURL string) {
 	})
 }
 
+func (s *viewState) acquirePolystrataSetup(req core.PolystrataSetupRequest) {
+	if s.simulate(previewPolystrataSetup{req: req}) {
+		return
+	}
+	s.workDownload(func() (string, *core.ApiError) {
+		_, e := s.service.CreatePolystrataSetup(req)
+		return "已开始 PolyStrata 引导安装", e
+	})
+}
+
 func (s *viewState) triggerModelResolve(st *modelResolveState, source, tokenEnv string) {
 	if st.mailbox == nil {
 		st.mailbox = &modelResolveMailbox{}

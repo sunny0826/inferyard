@@ -148,6 +148,7 @@ func (s *Service) CreatePolystrataSetup(req PolystrataSetupRequest) (DownloadTas
 			SourceUrl:   sourceURL,
 			OutName:     outName,
 			OutDir:      outDir,
+			LogPath:     ptr(filepath.Join(outDir, ".inferyard-setup.log")),
 			StartedAt:   now(),
 		},
 		cancel:     cancel,

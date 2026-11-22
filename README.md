@@ -35,9 +35,11 @@ Results stay on your machine. Frozen rules score the quality tasks.
   reading is saved and sealed on disk for offline verification, then projected
   into clean `studio.json` reports.
 - **Native desktop workbench.** [InferYard Studio](studio/README.md) gives you
-  a Go/MyGo desktop window to check device readiness, download or register
-  models and engines, manage local service lifecycles, watch live resource
-  curves, and browse model-grouped reports.
+  a Go/MyGo desktop window to check device readiness with hardware-aware starter
+  recommendations (PolyStrata prioritized on supported Apple Silicon, NVIDIA
+  CUDA, and AMD ROCm hardware with smooth `llama.cpp` fallback), download or
+  register models and engines, manage local service lifecycles, watch live
+  resource curves, and browse model-grouped reports.
 - **Scriptable CLI subproject.** The [CLI](cli/README.md) subproject
   (`inferyard`) handles preflight checks, host locking, frozen execution,
   evidence sealing, and report projection—invoked automatically by Studio or

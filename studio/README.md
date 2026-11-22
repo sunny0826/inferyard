@@ -14,7 +14,7 @@ On macOS, open the downloaded `.dmg` from [Releases](https://github.com/sunny082
 xattr -dr com.apple.quarantine /Applications/InferYard\ Studio.app
 ```
 
-1. Open **任务** (Tasks) and choose **准备环境** (Prepare environment) to set up or reuse `uv`, `inferyard`, and workspace directories. If local assets are missing, open **下载** (Downloads) to fetch a compatible engine and model.
+1. Open **任务** (Tasks) and choose **准备环境** (Prepare environment) to set up or reuse `uv`, `inferyard`, and workspace directories. If local assets are missing, open **下载** (Downloads) to use the hardware-aware starter recommendation (one-click managed **PolyStrata** setup on supported Apple Silicon, NVIDIA CUDA, or AMD ROCm hardware, or switch to lightweight `llama.cpp` + GGUF) or register an existing local engine.
 2. On **任务**, choose an engine, model, and task sets (`zh-core` + `zh-svg-pelican` by default, or switch to **长上下文速度**), then click **开始测评**. Studio manages local services it starts and stops them on exit, or binds a running local service after PID/identity checks.
 3. Click **查看报告** when finished, or browse **报告** (Reports), **模型** (Models), **下载** (Downloads), **设备** (Device), and **设置** (Settings) from the sidebar.
 

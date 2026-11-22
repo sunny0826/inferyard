@@ -3,8 +3,12 @@ package pages
 import (
 	"cmp"
 	"fmt"
+	"io"
 	"math"
+	"os"
 	"slices"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
@@ -35,10 +39,12 @@ func (s *viewState) orderedDownloads() []core.DownloadTask {
 		if a.priority != b.priority {
 			return cmp.Compare(a.priority, b.priority)
 		}
-		if a.task.Kind == "engine" && b.task.Kind != "engine" {
+		aEngine := a.task.Kind == "engine" || a.task.Kind == "polystrata"
+		bEngine := b.task.Kind == "engine" || b.task.Kind == "polystrata"
+		if aEngine && !bEngine {
 			return -1
 		}
-		if a.task.Kind != "engine" && b.task.Kind == "engine" {
+		if !aEngine && bEngine {
 			return 1
 		}
 		return 0
@@ -81,6 +87,16 @@ func downloadStageLabel(stage string) string {
 		return "解压中"
 	case "preparing":
 		return "准备中"
+	case "preflight":
+		return "环境预检"
+	case "downloading_runtime":
+		return "下载运行时"
+	case "setup_engine":
+		return "安装引擎环境"
+	case "downloading_model":
+		return "下载模型"
+	case "verifying_installation":
+		return "核验安装"
 	}
 	return ""
 }
@@ -114,14 +130,58 @@ func formatDownloadETA(seconds float64) string {
 
 func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 	kind := "模型"
-	if task.Kind == "engine" {
+	switch task.Kind {
+	case "engine":
 		kind = "引擎"
+	case "polystrata":
+		kind = "PolyStrata 引导安装"
 	}
 	engineIndeterminate := task.Kind == "engine" && task.TotalBytes == nil && task.DownloadedBytes == 0 && task.BytesPerSecond == nil && task.Stage == ""
 	var metrics []taskMetric
 	var status string
 	active := task.State == "downloading"
 	switch {
+	case task.Kind == "polystrata":
+		stageText := downloadStageLabel(task.Stage)
+		if stageText == "" {
+			stageText = stateLabel(task.State)
+		}
+		stepVal, stepSub := stageText, ""
+		if task.Step != nil && task.StepTotal != nil && *task.StepTotal > 0 {
+			stepVal = fmt.Sprintf("%d / %d", *task.Step, *task.StepTotal)
+			stepSub = stageText
+		}
+		progressVal, progressSub := stageText, ""
+		switch {
+		case task.TotalBytes != nil && *task.TotalBytes > 0:
+			pct := progressValue(task.DownloadedBytes, task.TotalBytes) * 100
+			if pct < 0 {
+				pct = 0
+			}
+			progressVal = fmt.Sprintf("%s / %s", formatDownloadBytes(task.DownloadedBytes), formatDownloadBytes(*task.TotalBytes))
+			progressSub = fmt.Sprintf("%.1f%%", pct)
+			active = false
+		case task.Percent != nil:
+			progressVal = fmt.Sprintf("%.0f%%", math.Max(0, math.Min(100, *task.Percent)))
+			active = false
+		}
+		detailLabel, detailVal, detailSub := "状态", stageText, ""
+		switch {
+		case task.BytesPerSecond != nil:
+			detailLabel = "速率"
+			detailVal = formatRate(*task.BytesPerSecond)
+			if task.State == "downloading" && task.TotalBytes != nil && *task.BytesPerSecond > 0 && task.DownloadedBytes < *task.TotalBytes {
+				detailSub = "剩余 " + formatDownloadETA(float64(*task.TotalBytes-task.DownloadedBytes)/(*task.BytesPerSecond))
+			}
+		case task.Detail != nil && strings.TrimSpace(*task.Detail) != "":
+			detailLabel = "当前"
+			detailVal = strings.TrimSpace(*task.Detail)
+		}
+		metrics = []taskMetric{
+			{"步骤", stepVal, stepSub},
+			{"进度", progressVal, progressSub},
+			{detailLabel, detailVal, detailSub},
+		}
 	case engineIndeterminate:
 		status = engineTaskStatus(task)
 	case task.TotalBytes != nil:
@@ -177,13 +237,18 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 			metrics: metrics,
 			status:  status,
 			notice: func() {
-				if task.State == "downloading" && task.TotalBytes != nil {
-					progressBar(c, progressValue(task.DownloadedBytes, task.TotalBytes), "下载进度").Height(tokens(c).Density.Tight)
+				if task.State == "downloading" {
+					if task.Kind == "polystrata" && task.Percent != nil {
+						ratio := math.Max(0, math.Min(1, *task.Percent/100))
+						progressBar(c, ratio, "安装进度").Height(tokens(c).Density.Tight)
+					} else if task.TotalBytes != nil {
+						progressBar(c, progressValue(task.DownloadedBytes, task.TotalBytes), "下载进度").Height(tokens(c).Density.Tight)
+					}
 				}
-				downloadErrorView(c, task.Error)
+				s.downloadErrorView(c, task.Error)
 			},
 			actions: func() { s.downloadActions(c, task) },
-			details: func() { downloadDetails(c, task) },
+			details: func() { s.downloadDetails(c, task) },
 		})
 	})
 }
@@ -210,6 +275,9 @@ func (s *viewState) downloadRetryActive(task core.DownloadTask) bool {
 	for _, other := range s.downloads {
 		if other.TaskId == task.TaskId || other.State != "downloading" {
 			continue
+		}
+		if task.Kind == "polystrata" && other.Kind == "polystrata" {
+			return true
 		}
 		if downloadTaskSamePinnedSource(task, other) {
 			return true
@@ -262,7 +330,7 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 	})
 }
 
-func downloadDetails(c *ui.Context, task core.DownloadTask) {
+func (s *viewState) downloadDetails(c *ui.Context, task core.DownloadTask) {
 	ui.Text(c, "实际目录名："+task.OutName).Selectable()
 	ui.Text(c, "文件："+displayName(text(task.FileName)))
 	if task.Kind == "engine" && task.TotalBytes == nil && task.DownloadedBytes == 0 && task.BytesPerSecond == nil {
@@ -280,6 +348,29 @@ func downloadDetails(c *ui.Context, task core.DownloadTask) {
 	if task.EnginePath != nil {
 		ui.Text(c, "引擎："+displayName(*task.EnginePath)).Selectable()
 	}
+	if task.InstallationPath != nil && *task.InstallationPath != "" {
+		ui.Text(c, "安装声明："+*task.InstallationPath).Selectable()
+	}
+	if task.ModelConfigPath != nil && *task.ModelConfigPath != "" {
+		ui.Text(c, "模型配置："+*task.ModelConfigPath).Selectable()
+	}
+	if task.LogPath != nil && *task.LogPath != "" {
+		logPath := *task.LogPath
+		ui.Text(c, "安装日志："+logPath).Selectable()
+		componentFoldKeyed(c, "download-log-"+task.TaskId, "查看日志尾部", func() {
+			var snippet string
+			if s.preview != nil {
+				snippet = s.preview.downloadLogTail(task.TaskId)
+			} else {
+				snippet = readLogTail(logPath, 4096)
+			}
+			if snippet == "" {
+				ui.Text(c, "暂无可显示的日志内容。").FontSize(tokens(c).Type.Caption).TextColor(tokens(c).Color.FgSecondary)
+				return
+			}
+			ui.Text(c, snippet).Selectable().FontSize(tokens(c).Type.Caption)
+		})
+	}
 	if task.Result != nil {
 		ui.Text(c, fmt.Sprintf("实测大小：%d bytes · SHA-256：%s", task.Result.Bytes, task.Result.Sha256)).Selectable()
 	}
@@ -289,6 +380,35 @@ func downloadDetails(c *ui.Context, task core.DownloadTask) {
 	if task.State == "failed" || task.State == "cancelled" {
 		ui.Text(c, "输出目录与未完成分片保留；重试时将自动续传或使用新目录名。")
 	}
+}
+
+func readLogTail(path string, maxBytes int64) string {
+	info, err := os.Lstat(path)
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() <= 0 {
+		return ""
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	offset := int64(0)
+	if info.Size() > maxBytes {
+		offset = info.Size() - maxBytes
+	}
+	if _, err := f.Seek(offset, io.SeekStart); err != nil {
+		return ""
+	}
+	buf, err := io.ReadAll(io.LimitReader(f, maxBytes))
+	if err != nil || len(buf) == 0 {
+		return ""
+	}
+	if offset > 0 {
+		for len(buf) > 0 && !utf8.Valid(buf[:1]) && !utf8.RuneStart(buf[0]) {
+			buf = buf[1:]
+		}
+	}
+	return strings.TrimSpace(string(buf))
 }
 
 func downloadFailureStageLabel(stage string) string {
@@ -314,7 +434,7 @@ func remainingDownloadErrorDetails(details map[string]any) map[string]any {
 	}
 	extra := map[string]any{}
 	for k, v := range details {
-		if k == "failure_cause" || k == "failure_stage" {
+		if k == "failure_cause" || k == "failure_stage" || k == "blockers" {
 			continue
 		}
 		if k == "reason" {
@@ -332,10 +452,51 @@ func remainingDownloadErrorDetails(details map[string]any) map[string]any {
 	return extra
 }
 
-func downloadErrorView(c *ui.Context, e *core.ApiError) {
+type preflightBlockerItem struct {
+	code       string
+	message    string
+	fixCommand string
+}
+
+func extractPreflightBlockers(details map[string]any) []preflightBlockerItem {
+	raw, ok := details["blockers"]
+	if !ok || raw == nil {
+		return nil
+	}
+	var out []preflightBlockerItem
+	appendMap := func(m map[string]any) {
+		msg, _ := m["message"].(string)
+		code, _ := m["code"].(string)
+		fix, _ := m["fix_command"].(string)
+		if strings.TrimSpace(msg) == "" && strings.TrimSpace(code) == "" {
+			return
+		}
+		out = append(out, preflightBlockerItem{
+			code:       strings.TrimSpace(code),
+			message:    strings.TrimSpace(msg),
+			fixCommand: strings.TrimSpace(fix),
+		})
+	}
+	switch list := raw.(type) {
+	case []map[string]any:
+		for _, m := range list {
+			appendMap(m)
+		}
+	case []any:
+		for _, item := range list {
+			if m, ok := item.(map[string]any); ok {
+				appendMap(m)
+			}
+		}
+	}
+	return out
+}
+
+func (s *viewState) downloadErrorView(c *ui.Context, e *core.ApiError) {
 	if e == nil {
 		return
 	}
+	t := tokens(c)
 	message := e.Message
 	if message == "" {
 		message = human(e.Code)
@@ -349,8 +510,26 @@ func downloadErrorView(c *ui.Context, e *core.ApiError) {
 	}
 	if stage, ok := e.Details["failure_stage"].(string); ok && stage != "" {
 		ui.Text(c, "失败阶段："+downloadFailureStageLabel(stage)).
-			FontSize(tokens(c).Type.Caption).
-			TextColor(tokens(c).Color.FgSecondary)
+			FontSize(t.Type.Caption).
+			TextColor(t.Color.FgSecondary)
+	}
+	for i, blocker := range extractPreflightBlockers(e.Details) {
+		idx, item := i, blocker
+		applyMaterial(c, ui.Column(c.Key(fmt.Sprintf("download-blocker-%d-%s", idx, item.code))).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Inset), materialInset).Children(func() {
+			text := item.message
+			if text == "" {
+				text = item.code
+			}
+			ui.Text(c, text).FontSize(t.Type.Caption).TextColor(stateColor(c, stateDanger))
+			if item.fixCommand != "" {
+				ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+					ui.Text(c, item.fixCommand).Grow(1).MinWidth(0).Selectable().FontSize(t.Type.Caption)
+					outlineButton(c, "复制修复命令").Label(fmt.Sprintf("复制修复命令 · %d", idx)).OnClick(func() {
+						s.copyDownloadText(c, "修复命令", item.fixCommand)
+					})
+				})
+			}
+		})
 	}
 	if extra := remainingDownloadErrorDetails(e.Details); len(extra) > 0 {
 		kvview(c, "kv-error-details", extra)

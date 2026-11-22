@@ -53,6 +53,51 @@ var previewScenes = []struct {
 	{"报告 · 长表与缺测", func(s *viewState) { s.openReport("long-report") }},
 	{"报告 · 读取失败", func(s *viewState) { s.openReport("broken-report") }},
 	{"下载 · 进行中与失败", previewDownloadsActiveAndFailed},
+	{"下载 · PolyStrata 引导安装", previewDownloadsPolystrata},
+}
+
+func previewDownloadsPolystrata(s *viewState) {
+	s.selected = "downloads"
+	s.registry.Engines = nil
+	s.registry.Models = nil
+	blockerErr := core.Err("polystrata_preflight_blocked")
+	blockerErr.Details = map[string]any{
+		"blockers": []map[string]any{{
+			"code":        "cmake_missing",
+			"message":     "CMake is required to build PolyStrata.",
+			"fix_command": "brew install cmake",
+		}},
+	}
+	s.downloads = []core.DownloadTask{
+		{
+			TaskId:      "preview-polystrata-active",
+			Kind:        "polystrata",
+			DisplayName: "PolyStrata · qwen36 · UD-Q4_K_M",
+			State:       "downloading",
+			Stage:       "setup_engine",
+			Step:        previewValue(3),
+			StepTotal:   previewValue(4),
+			Percent:     previewValue(62.0),
+			Detail:      previewValue("编译 Metal 推理核心"),
+			SourceUrl:   "https://github.com/simplexai-labs/PolyStrata/archive/refs/tags/v0.1.45-poly.10.tar.gz",
+			OutName:     "polystrata-preview",
+			OutDir:      "/preview/engines/polystrata-preview",
+			LogPath:     previewValue("/preview/engines/polystrata-preview/.inferyard-setup.log"),
+			StartedAt:   "2026-10-17T00:00:00Z",
+		},
+		{
+			TaskId:      "preview-polystrata-blocked",
+			Kind:        "polystrata",
+			DisplayName: "PolyStrata · qwen · Q2_0",
+			State:       "failed",
+			Stage:       "preflight",
+			SourceUrl:   "https://github.com/simplexai-labs/PolyStrata/archive/refs/tags/v0.1.45-poly.10.tar.gz",
+			OutName:     "polystrata-blocked",
+			OutDir:      "/preview/engines/polystrata-blocked",
+			Error:       blockerErr,
+			StartedAt:   "2026-10-16T23:55:00Z",
+		},
+	}
 }
 
 func previewDownloadsActiveAndFailed(s *viewState) {
@@ -158,7 +203,7 @@ func previewBase(ctx context.Context) *viewState {
 	seeded := core.RunSummary{RunId: "preview-run", Path: "/preview/results/preview-run", ModelName: previewValue(model), Bundle: previewValue(inferyard.DefaultBundleCore), Status: "complete", Sealed: true, Completeness: previewValue("complete")}
 	seeded.Score = &core.RunScore{Passed: 7, Valid: 13, Rate: previewValue(7.0 / 13)}
 	s.history.StandaloneRuns = []core.RunSummary{seeded}
-	s.device.Snapshot = json.RawMessage(`{"hardware":{"cpu_model":"Preview CPU","logical_cpus":14,"architecture":"arm64","memory_total_bytes":25769803776,"memory_available_bytes":10737418240,"disk_free_bytes":107374182400,"ac_online":true,"gpu":{"devices":[{"name":"Preview GPU","cores":16,"metal_supported":true,"missing":{"memory_total_bytes":"shared_host_memory","memory_free_bytes":"not_measured"}}]},"missing":{"temperature":"unsupported"}}}`)
+	s.device.Snapshot = json.RawMessage(`{"hardware":{"cpu_model":"Preview CPU","logical_cpus":14,"architecture":"arm64","apple_silicon":true,"cpu_features":{"avx2":false,"avx512f":false},"memory_total_bytes":51539607552,"memory_available_bytes":32212254720,"disk_free_bytes":161061273600,"ac_online":true,"gpu":{"devices":[{"name":"Preview GPU","vendor":"apple","arch_family":"Apple Silicon","cores":20,"metal_supported":true,"missing":{"memory_total_bytes":"shared_host_memory","memory_free_bytes":"not_measured"}}]},"missing":{"temperature":"unsupported"}},"starter_recommendation":{"definition":"starter-recommendation.v1","status":"recommended","engine":"polystrata","backend":"metal","model_id":"polystrata-qwen36-ud-q4-k-m","model_title":"Qwen3.6 35B-A3B (UD-Q4_K_M)","family":"qwen36","size":"UD-Q4_K_M","engine_core":"llama","model_format":"gguf","fit_level":"fits","recommended_context":32768,"estimated_download_bytes":23085449216,"estimated_ram_bytes":25769803776,"gpu":{"name":"Preview GPU","vendor":"apple","arch_family":"Apple Silicon","unified_memory_bytes":51539607552},"alternatives":[{"engine":"llama-cpp","backend":"metal","model_id":"model-qwen3-0.6b-q8","model_title":"Qwen3-0.6B-Q8_0 (GGUF)","model_format":"gguf","fit_level":"fits","recommended_context":8192,"estimated_download_bytes":639446688,"estimated_ram_bytes":2147483648}]}}`)
 	return s
 }
 

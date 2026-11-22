@@ -121,6 +121,14 @@ func (s *viewState) engineFamilyRow(c *ui.Context, fam core.EngineFamilyCatalog,
 				st.openEngineDrawer(fam.ID, rel.ID, build.Platform, build.ID)
 			})
 			switch {
+			case build.AcquireMode == core.EngineAcquireManagedSetup && (build.Platform == hostPlatform || build.Platform == "any"):
+				if s.downloadActive("polystrata") {
+					button(c, "安装中…").Label("安装 · " + fam.ID).Disabled(true)
+				} else {
+					s.downloadAction(c, "engine", "一键安装").Label("安装 · " + fam.ID).Disabled(s.busy).OnClick(func() {
+						s.acquirePolystrataSetup(s.defaultPolystrataSetupRequest())
+					})
+				}
 			case build.CanDirectDownloadOn(hostPlatform):
 				if s.isEngineSourceDownloading(build.PrimaryURL()) {
 					button(c, "安装中…").Label("安装 · " + fam.ID).Disabled(true)
@@ -223,7 +231,13 @@ func (s *viewState) isEngineSourceDownloading(sourceURL string) bool {
 
 func (s *viewState) isEngineFamilyDownloading(fam core.EngineFamilyCatalog) bool {
 	for _, task := range s.downloads {
-		if task.Kind != "engine" || task.State != "downloading" {
+		if task.State != "downloading" {
+			continue
+		}
+		if fam.ID == "polystrata" && task.Kind == "polystrata" {
+			return true
+		}
+		if task.Kind != "engine" {
 			continue
 		}
 		for _, rel := range fam.Releases {
