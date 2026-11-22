@@ -14,6 +14,12 @@ _MIN_NVIDIA_COMPUTE = (7, 5)
 _MIN_NVIDIA_DRIVER_MAJOR = 580
 _MIN_MACOS_METAL = (15, 0)
 _PC_RAM_TOLERANCE = int(1.5 * GIB)
+# Real nvidia-smi reports slightly under nominal GiB (e.g. 8188 MiB on 8 GB, 12227 MiB on 12 GB).
+_VRAM_TIER_TOLERANCE = 512 * 1024**2
+_STRATA_MTP_DISK_BYTES = 8_000_000_000
+_MAC_GPU_SHARE = 0.75
+_MAC_RESIDENT_LEAVE_SHARE = 0.30
+_MAC_BIG_RAM_BYTES = 64 * GIB
 _SUPPORTED_AMD_ARCH = frozenset(
     {"gfx1030", "gfx1100", "gfx1101", "gfx1151", "gfx1200", "gfx1201"}
 )
@@ -48,14 +54,9 @@ def _effective_disk(hardware: dict) -> tuple[int | None, list[str]]:
         models_disk = _valid_bytes(hardware.get("models_disk_free_bytes"))
         if models_disk is not None:
             return models_disk, notes
-        if missing.get("models_disk_free_bytes") == "multiple_models_roots_unselected":
-            roots = hardware.get("models_disk_roots")
-            if isinstance(roots, list) and roots and isinstance(roots[0], dict):
-                primary = _valid_bytes(roots[0].get("disk_free_bytes"))
-                notes.append("models_disk_from_primary_models_root")
-                return primary, notes
-            notes.append("models_disk_unselected_using_workspace_disk")
-            return _valid_bytes(hardware.get("disk_free_bytes")), notes
+        reason = missing.get("models_disk_free_bytes")
+        if reason:
+            notes.append(reason)
         return None, notes
     return _valid_bytes(hardware.get("disk_free_bytes")), notes
 
@@ -66,38 +67,52 @@ def _effective_memory(hardware: dict) -> tuple[int | None, int | None]:
     return total, available
 
 
-def _select_polystrata_accelerator(hardware: dict) -> tuple[str | None, dict | None, list[str]]:
+def _mac_metal_budget_bytes(ram_total_bytes: int) -> int:
+    """Upstream metal/setup_mac.py resident working-set budget (in decimal bytes)."""
+    ws = int(ram_total_bytes * _MAC_GPU_SHARE)
+    if ram_total_bytes >= _MAC_BIG_RAM_BYTES:
+        return min(ws, int(ram_total_bytes * (1.0 - _MAC_RESIDENT_LEAVE_SHARE)))
+    return ws
+
+
+def _collect_polystrata_accelerators(
+    hardware: dict,
+) -> tuple[list[tuple[str, dict]], list[str]]:
     system = hardware.get("platform")
     devices = (hardware.get("gpu") or {}).get("devices") or []
     notes: list[str] = []
 
     if system == "Darwin":
         if hardware.get("apple_silicon") is not True:
-            return None, None, ["apple_silicon_required"]
+            return [], ["apple_silicon_required"]
         metal_dev = next((d for d in devices if d.get("metal_supported") is True), None)
         if metal_dev is None:
-            return None, None, ["metal_not_supported"]
+            return [], ["metal_not_supported"]
         os_ver = _parse_version(hardware.get("os_version"))
         if os_ver is None:
-            return None, None, ["macos_version_unverified"]
+            return [], ["macos_version_unverified"]
         if os_ver < _MIN_MACOS_METAL:
-            return None, None, ["macos_version_below_15"]
+            return [], ["macos_version_below_15"]
         ram_total = _valid_bytes(hardware.get("memory_total_bytes"))
         return (
-            "metal",
-            {
-                "vendor": "apple",
-                "name": metal_dev.get("name"),
-                "vram_bytes": None,
-                "unified_memory_bytes": ram_total,
-            },
-            notes,
+            [
+                (
+                    "metal",
+                    {
+                        "vendor": "apple",
+                        "name": metal_dev.get("name"),
+                        "vram_bytes": None,
+                        "unified_memory_bytes": ram_total,
+                    },
+                )
+            ],
+            [],
         )
 
     if system not in ("Linux", "Windows"):
-        return None, None, ["unsupported_platform"]
+        return [], ["unsupported_platform"]
 
-    candidates: list[tuple[int, int, str, dict]] = []
+    best_by_backend: dict[str, tuple[int, dict]] = {}
     for dev in devices:
         vendor = dev.get("vendor")
         if vendor in (None, "nvidia"):
@@ -119,14 +134,10 @@ def _select_polystrata_accelerator(hardware: dict) -> tuple[str | None, dict | N
             if drv[0] < _MIN_NVIDIA_DRIVER_MAJOR:
                 notes.append("nvidia_driver_too_old")
                 continue
-            candidates.append(
-                (
-                    vram,
-                    1,
-                    "cuda",
-                    {"vendor": "nvidia", "name": dev.get("name"), "vram_bytes": vram},
-                )
-            )
+            summary = {"vendor": "nvidia", "name": dev.get("name"), "vram_bytes": vram}
+            prev = best_by_backend.get("cuda")
+            if prev is None or vram > prev[0]:
+                best_by_backend["cuda"] = (vram, summary)
         elif vendor == "amd":
             vram = _valid_bytes(dev.get("memory_total_bytes"))
             if not vram:
@@ -136,38 +147,45 @@ def _select_polystrata_accelerator(hardware: dict) -> tuple[str | None, dict | N
             if arch not in _SUPPORTED_AMD_ARCH:
                 notes.append("amd_arch_unsupported")
                 continue
-            candidates.append(
-                (
-                    vram,
-                    0,
-                    "hip",
-                    {
-                        "vendor": "amd",
-                        "name": dev.get("name"),
-                        "vram_bytes": vram,
-                        "arch_family": arch,
-                    },
-                )
-            )
+            summary = {
+                "vendor": "amd",
+                "name": dev.get("name"),
+                "vram_bytes": vram,
+                "arch_family": arch,
+            }
+            prev = best_by_backend.get("hip")
+            if prev is None or vram > prev[0]:
+                best_by_backend["hip"] = (vram, summary)
 
-    if not candidates:
-        return None, None, list(dict.fromkeys(notes))
+    if not best_by_backend:
+        return [], list(dict.fromkeys(notes))
 
-    candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
-    _vram, _prio, backend, summary = candidates[0]
-    return backend, summary, []
+    ordered = sorted(
+        best_by_backend.items(),
+        key=lambda item: (item[1][0], 1 if item[0] == "cuda" else 0),
+        reverse=True,
+    )
+    return [(backend, entry[1]) for backend, entry in ordered], []
 
 
-def _required_disk_bytes(model: dict) -> int:
+def _required_disk_bytes(model: dict, *, backend: str, avx512: bool | None) -> int:
     if "min_disk_bytes" in model:
         return int(model["min_disk_bytes"])
-    extra = 5 * GIB if model.get("engine_core") == "strata" else 2 * GIB
-    return int(model["download_bytes"] * model.get("disk_multiplier", 1.15)) + extra
+    download = int(model["download_bytes"])
+    if model.get("engine_core") == "strata":
+        extra = _STRATA_MTP_DISK_BYTES
+        if backend == "metal":
+            extra += int(model.get("mac_pack_bytes", 0))
+        elif avx512 is True and model.get("avx512_conversion_bytes"):
+            extra += int(model["avx512_conversion_bytes"])
+        return download + extra + 2 * GIB
+    # strata-poly reads GGUF in place; allow modest headroom for partial writes and metadata.
+    return int(download * 1.1) + 2 * GIB
 
 
 def _estimated_ram_bytes(model: dict, backend: str, vram_bytes: int | None) -> int:
     if backend == "metal":
-        return int(model["mac_min_unified_bytes"])
+        return int(model["mac_resident_bytes"])
     if model.get("engine_core") == "strata":
         return int(model["ram_needed_bytes"])
     beside = int(model.get("beside_vram_bytes", 4 * GIB))
@@ -180,8 +198,15 @@ def _estimated_ram_bytes(model: dict, backend: str, vram_bytes: int | None) -> i
 def _recommended_context(backend: str, capacity_bytes: int | None) -> int:
     cap = capacity_bytes or 0
     if backend == "metal":
-        return 32768 if cap < 36 * GIB else 65536 if cap < 64 * GIB else 131072
-    return 32768 if cap < 14 * GIB else 65536 if cap < 20 * GIB else 131072
+        # Upstream metal/setup_mac.py: 32768 under 96 GiB, 65536 from 96 GiB.
+        return 32768 if cap < 96 * GIB else 65536
+    return (
+        32768
+        if cap < 14 * GIB - _VRAM_TIER_TOLERANCE
+        else 65536
+        if cap < 20 * GIB - _VRAM_TIER_TOLERANCE
+        else 131072
+    )
 
 
 def _fallback_accelerator(hardware: dict) -> tuple[str, dict | None]:
@@ -220,39 +245,41 @@ def _fallback_accelerator(hardware: dict) -> tuple[str, dict | None]:
 def _evaluate_polystrata(
     hardware: dict,
     catalog: dict,
-    backend: str,
-    gpu: dict,
+    accelerators: list[tuple[str, dict]],
     ram_total: int,
     disk_free: int,
 ) -> tuple[list[dict], list[str]]:
     system = hardware.get("platform")
-    vram = gpu.get("vram_bytes")
-    fitting: list[dict] = []
+    avx512 = (hardware.get("cpu_features") or {}).get("avx512")
+    best_by_model: dict[str, dict] = {}
     rejection_reasons: list[str] = []
 
-    for model in catalog["polystrata_models"]:
-        supported_backends = model.get("platforms", {}).get(system, [])
-        if backend not in supported_backends:
-            continue
-        if backend != "metal" and (vram is None or vram < model["min_vram_bytes"]):
-            rejection_reasons.append("insufficient_vram")
-            continue
-        est_ram = _estimated_ram_bytes(model, backend, vram)
-        ram_ok = (
-            ram_total >= est_ram
-            if backend == "metal"
-            else ram_total >= max(0, est_ram - _PC_RAM_TOLERANCE)
-        )
-        if not ram_ok:
-            rejection_reasons.append("insufficient_ram")
-            continue
-        need_disk = _required_disk_bytes(model)
-        if disk_free < need_disk:
-            rejection_reasons.append("insufficient_disk")
-            continue
-        capacity = ram_total if backend == "metal" else vram
-        fitting.append(
-            {
+    for backend, gpu in accelerators:
+        vram = gpu.get("vram_bytes")
+        metal_budget = _mac_metal_budget_bytes(ram_total) if backend == "metal" else None
+        for model in catalog["polystrata_models"]:
+            supported_backends = model.get("platforms", {}).get(system, [])
+            if backend not in supported_backends:
+                continue
+            if backend != "metal":
+                min_vram = int(model["min_vram_bytes"])
+                if vram is None or vram < max(0, min_vram - _VRAM_TIER_TOLERANCE):
+                    rejection_reasons.append("insufficient_vram")
+                    continue
+            est_ram = _estimated_ram_bytes(model, backend, vram)
+            if backend == "metal":
+                ram_ok = metal_budget is not None and est_ram <= metal_budget
+            else:
+                ram_ok = ram_total >= max(0, est_ram - _PC_RAM_TOLERANCE)
+            if not ram_ok:
+                rejection_reasons.append("insufficient_ram")
+                continue
+            need_disk = _required_disk_bytes(model, backend=backend, avx512=avx512)
+            if disk_free < need_disk:
+                rejection_reasons.append("insufficient_disk")
+                continue
+            capacity = ram_total if backend == "metal" else vram
+            candidate = {
                 "engine": "polystrata",
                 "backend": backend,
                 "model_id": model["id"],
@@ -266,10 +293,22 @@ def _evaluate_polystrata(
                 "estimated_download_bytes": model["download_bytes"],
                 "estimated_ram_bytes": est_ram,
                 "quality_rank": model["quality_rank"],
+                "_gpu": gpu,
+                "_vram_sort": vram or 0,
+                "_backend_prio": 1 if backend == "cuda" else 0,
             }
-        )
+            prev = best_by_model.get(model["id"])
+            if prev is None or (candidate["_vram_sort"], candidate["_backend_prio"]) > (
+                prev["_vram_sort"],
+                prev["_backend_prio"],
+            ):
+                best_by_model[model["id"]] = candidate
 
-    fitting.sort(key=lambda item: item["quality_rank"], reverse=True)
+    fitting = sorted(
+        best_by_model.values(),
+        key=lambda item: (item["quality_rank"], item["_vram_sort"], item["_backend_prio"]),
+        reverse=True,
+    )
     return fitting, list(dict.fromkeys(rejection_reasons))
 
 
@@ -307,8 +346,8 @@ def _evaluate_fallbacks(
     return fitting, list(dict.fromkeys(reasons)), fb_gpu
 
 
-def _strip_rank(item: dict) -> dict:
-    return {k: v for k, v in item.items() if k != "quality_rank"}
+def _public_item(item: dict) -> dict:
+    return {k: v for k, v in item.items() if k != "quality_rank" and not k.startswith("_")}
 
 
 def _blocked_result(reason: str, disk_free: int | None, notes: list[str]) -> dict:
@@ -330,7 +369,7 @@ def _blocked_result(reason: str, disk_free: int | None, notes: list[str]) -> dic
         "disk_free_bytes": disk_free,
         "reason": reason,
         "gpu": None,
-        "notes": notes,
+        "notes": list(dict.fromkeys(notes)),
         "alternatives": [],
     }
 
@@ -348,16 +387,16 @@ def recommend_starter(hardware: dict, *, catalog: dict | None = None) -> dict:
     if ram_capacity is None:
         return _blocked_result("host_memory_unavailable", disk_free, notes)
 
-    backend, gpu, accel_notes = _select_polystrata_accelerator(hardware)
+    accelerators, accel_notes = _collect_polystrata_accelerators(hardware)
     notes.extend(accel_notes)
 
     poly_fits: list[dict] = []
     poly_rejects: list[str] = []
-    if backend is not None and gpu is not None and ram_total is not None:
+    if accelerators and ram_total is not None:
         poly_fits, poly_rejects = _evaluate_polystrata(
-            hardware, cat, backend, gpu, ram_total, disk_free
+            hardware, cat, accelerators, ram_total, disk_free
         )
-    elif backend is not None and ram_total is None:
+    elif accelerators and ram_total is None:
         notes.append("total_memory_unverified")
 
     fallback_fits, fallback_rejects, fb_gpu = _evaluate_fallbacks(
@@ -375,22 +414,24 @@ def recommend_starter(hardware: dict, *, catalog: dict | None = None) -> dict:
         if ram_available is not None and ram_available < int(chosen["estimated_ram_bytes"] * 0.6):
             notes.append("host_available_memory_tight")
 
-        alternatives = [_strip_rank(item) for item in poly_fits[1:4]]
+        alternatives = [_public_item(item) for item in poly_fits[1:4]]
         if fallback_fits:
-            alternatives.append(_strip_rank(fallback_fits[0]))
+            alternatives.append(_public_item(fallback_fits[0]))
         return {
             "definition": STARTER_DEFINITION,
             "status": "recommended",
-            **_strip_rank(chosen),
+            **_public_item(chosen),
             "disk_free_bytes": disk_free,
             "reason": "polystrata_hardware_fit",
-            "gpu": gpu,
+            "gpu": chosen["_gpu"],
             "notes": list(dict.fromkeys(notes)),
             "alternatives": alternatives,
         }
 
     if fallback_fits:
         chosen = fallback_fits[0]
+        if ram_available is not None and ram_available < int(chosen["estimated_ram_bytes"] * 0.6):
+            notes.append("host_available_memory_tight")
         if "insufficient_disk" in poly_rejects:
             reason = "fallback_llama_cpp_insufficient_disk_for_polystrata"
         elif "insufficient_ram" in poly_rejects:
@@ -399,14 +440,15 @@ def recommend_starter(hardware: dict, *, catalog: dict | None = None) -> dict:
             reason = "fallback_llama_cpp_insufficient_vram_for_polystrata"
         else:
             reason = "fallback_llama_cpp_no_compatible_polystrata_gpu"
-        alternatives = [_strip_rank(item) for item in fallback_fits[1:3]]
+        alternatives = [_public_item(item) for item in fallback_fits[1:3]]
+        primary_gpu = fb_gpu if fb_gpu is not None else (accelerators[0][1] if accelerators else None)
         return {
             "definition": STARTER_DEFINITION,
             "status": "recommended",
-            **_strip_rank(chosen),
+            **_public_item(chosen),
             "disk_free_bytes": disk_free,
             "reason": reason,
-            "gpu": fb_gpu if fb_gpu is not None else gpu,
+            "gpu": primary_gpu,
             "notes": list(dict.fromkeys(notes)),
             "alternatives": alternatives,
         }
@@ -416,4 +458,4 @@ def recommend_starter(hardware: dict, *, catalog: dict | None = None) -> dict:
         if "insufficient_disk" in fallback_rejects
         else "insufficient_host_memory"
     )
-    return _blocked_result(block_reason, disk_free, list(dict.fromkeys(notes)))
+    return _blocked_result(block_reason, disk_free, notes)

@@ -9,12 +9,12 @@
       "title": "Qwen3.8-Flash-Next (IQ3_S)",
       "engine_core": "strata",
       "model_format": "strata_pack",
-      "download_bytes": 73000000000,
-      "arena_bytes": 54800000000,
-      "ram_needed_bytes": 96636764160,
+      "download_bytes": 83600000000,
+      "arena_bytes": 50300000000,
+      "ram_needed_bytes": 66571993088,
       "min_vram_bytes": 12884901888,
-      "mac_min_unified_bytes": 68719476736,
-      "disk_multiplier": 1.6,
+      "mac_resident_bytes": 62800000000,
+      "mac_pack_bytes": 54800000000,
       "platforms": {
         "Windows": ["cuda", "hip"],
         "Linux": ["cuda", "hip"],
@@ -29,12 +29,12 @@
       "title": "Qwen3.8-Flash-Next (IQ3_XXS)",
       "engine_core": "strata",
       "model_format": "strata_pack",
-      "download_bytes": 68000000000,
-      "arena_bytes": 47000000000,
+      "download_bytes": 75800000000,
+      "arena_bytes": 42900000000,
       "ram_needed_bytes": 64424509440,
       "min_vram_bytes": 12884901888,
-      "mac_min_unified_bytes": 51539607552,
-      "disk_multiplier": 1.6,
+      "mac_resident_bytes": 55000000000,
+      "mac_pack_bytes": 47000000000,
       "platforms": {
         "Windows": ["cuda", "hip"],
         "Linux": ["cuda", "hip"],
@@ -49,12 +49,13 @@
       "title": "Qwen3.8-Flash-Next (Q2_0)",
       "engine_core": "strata",
       "model_format": "strata_pack",
-      "download_bytes": 62000000000,
-      "arena_bytes": 37600000000,
-      "ram_needed_bytes": 47244640256,
+      "download_bytes": 66400000000,
+      "arena_bytes": 34000000000,
+      "ram_needed_bytes": 51539607552,
       "min_vram_bytes": 12884901888,
-      "mac_min_unified_bytes": 51539607552,
-      "disk_multiplier": 1.6,
+      "mac_resident_bytes": 45600000000,
+      "mac_pack_bytes": 37600000000,
+      "avx512_conversion_bytes": 40000000000,
       "platforms": {
         "Windows": ["cuda", "hip"],
         "Linux": ["cuda", "hip"],
@@ -69,12 +70,12 @@
       "title": "Qwen3.8-Flash-Next Coder (IQ1_M)",
       "engine_core": "strata",
       "model_format": "strata_pack",
-      "download_bytes": 42000000000,
-      "arena_bytes": 23000000000,
+      "download_bytes": 58400000000,
+      "arena_bytes": 23400000000,
       "ram_needed_bytes": 34359738368,
       "min_vram_bytes": 12884901888,
-      "mac_min_unified_bytes": 38654705664,
-      "disk_multiplier": 1.6,
+      "mac_resident_bytes": 37000000000,
+      "mac_pack_bytes": 29000000000,
       "platforms": {
         "Windows": ["cuda", "hip"],
         "Linux": ["cuda", "hip"],
@@ -89,22 +90,22 @@
       "title": "Qwen3.6-35B-A3B (UD-Q4_K_M)",
       "engine_core": "strata-poly",
       "model_format": "gguf",
-      "download_bytes": 22700000000,
-      "arena_bytes": 21500000000,
-      "beside_vram_bytes": 4294967296,
+      "download_bytes": 22663387424,
+      "arena_bytes": 20100000000,
+      "beside_vram_bytes": 4700000000,
       "ram_overhead_bytes": 6442450944,
       "min_vram_bytes": 8589934592,
-      "mac_min_unified_bytes": 38654705664,
-      "disk_multiplier": 1.15,
+      "mac_resident_bytes": 28700000000,
       "platforms": {
         "Windows": ["cuda", "hip"],
         "Linux": ["cuda", "hip"],
         "Darwin": ["metal"]
       },
       "gguf_sources": {
-        "huggingface_repo": "unsloth/Qwen3.6-35B-A3B-GGUF",
-        "modelscope_repo": "unsloth/Qwen3.6-35B-A3B-GGUF",
-        "filename": "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf"
+        "huggingface_repo": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF",
+        "modelscope_repo": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF",
+        "filename": "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        "sha256": "0b21525e972670ed59e1812e170b27c26355381f0656ecc4e25617ece7dac58b"
       },
       "quality_rank": 80
     },
@@ -115,22 +116,22 @@
       "title": "Qwen3.6-35B-A3B (UD-Q3_K_M)",
       "engine_core": "strata-poly",
       "model_format": "gguf",
-      "download_bytes": 17100000000,
-      "arena_bytes": 16000000000,
-      "beside_vram_bytes": 4294967296,
+      "download_bytes": 17104402720,
+      "arena_bytes": 14600000000,
+      "beside_vram_bytes": 4800000000,
       "ram_overhead_bytes": 5368709120,
       "min_vram_bytes": 8589934592,
-      "mac_min_unified_bytes": 25769803776,
-      "disk_multiplier": 1.15,
+      "mac_resident_bytes": 23100000000,
       "platforms": {
         "Windows": ["cuda", "hip"],
         "Linux": ["cuda", "hip"],
         "Darwin": ["metal"]
       },
       "gguf_sources": {
-        "huggingface_repo": "unsloth/Qwen3.6-35B-A3B-GGUF",
-        "modelscope_repo": "unsloth/Qwen3.6-35B-A3B-GGUF",
-        "filename": "Qwen3.6-35B-A3B-UD-Q3_K_M.gguf"
+        "huggingface_repo": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF",
+        "modelscope_repo": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF",
+        "filename": "Qwen3.6-35B-A3B-UD-Q3_K_M.gguf",
+        "sha256": "8966dd0cd8c543c4228490a2a8b0e0814fc4f1e6a8e199ceed4de6754ae7b8e1"
       },
       "quality_rank": 78
     },
@@ -141,21 +142,21 @@
       "title": "Flint 40B-A2.5B (UD-Q4_K_XL)",
       "engine_core": "strata-poly",
       "model_format": "gguf",
-      "download_bytes": 24000000000,
-      "arena_bytes": 22500000000,
-      "beside_vram_bytes": 4294967296,
+      "download_bytes": 25054688704,
+      "arena_bytes": 23100000000,
+      "beside_vram_bytes": 4000000000,
       "ram_overhead_bytes": 6442450944,
       "min_vram_bytes": 8589934592,
-      "mac_min_unified_bytes": 51539607552,
-      "disk_multiplier": 1.15,
+      "mac_resident_bytes": 31100000000,
       "platforms": {
         "Windows": ["cuda"],
         "Linux": ["cuda"]
       },
       "gguf_sources": {
-        "huggingface_repo": "unsloth/Flint-40B-A2.5B-GGUF",
-        "modelscope_repo": "unsloth/Flint-40B-A2.5B-GGUF",
-        "filename": "Flint-40B-A2.5B-UD-Q4_K_XL.gguf"
+        "huggingface_repo": "unsloth/flint-GGUF",
+        "modelscope_repo": "unsloth/flint-GGUF",
+        "filename": "flint-UD-Q4_K_XL.gguf",
+        "sha256": "63c2ecc461ca545134b670c660e76fa20f47240f8d39b6510bfd21c4dd6e072f"
       },
       "quality_rank": 76
     },
@@ -166,21 +167,21 @@
       "title": "Flint 40B-A2.5B (UD-Q3_K_XL)",
       "engine_core": "strata-poly",
       "model_format": "gguf",
-      "download_bytes": 18500000000,
-      "arena_bytes": 17200000000,
-      "beside_vram_bytes": 4294967296,
+      "download_bytes": 18494977472,
+      "arena_bytes": 16500000000,
+      "beside_vram_bytes": 3800000000,
       "ram_overhead_bytes": 5368709120,
       "min_vram_bytes": 8589934592,
-      "mac_min_unified_bytes": 34359738368,
-      "disk_multiplier": 1.15,
+      "mac_resident_bytes": 24500000000,
       "platforms": {
         "Windows": ["cuda"],
         "Linux": ["cuda"]
       },
       "gguf_sources": {
-        "huggingface_repo": "unsloth/Flint-40B-A2.5B-GGUF",
-        "modelscope_repo": "unsloth/Flint-40B-A2.5B-GGUF",
-        "filename": "Flint-40B-A2.5B-UD-Q3_K_XL.gguf"
+        "huggingface_repo": "unsloth/flint-GGUF",
+        "modelscope_repo": "unsloth/flint-GGUF",
+        "filename": "flint-UD-Q3_K_XL.gguf",
+        "sha256": "91b8d85ab6ff7fb095d9a972f9afa6f3fa2b9acb642867a079f3e013ea3c350c"
       },
       "quality_rank": 75
     },
@@ -191,13 +192,12 @@
       "title": "Gemma 4 26B-A4B (UD-Q3_K_M)",
       "engine_core": "strata-poly",
       "model_format": "gguf",
-      "download_bytes": 13200000000,
-      "arena_bytes": 12500000000,
-      "beside_vram_bytes": 3758096384,
+      "download_bytes": 13190264704,
+      "arena_bytes": 10300000000,
+      "beside_vram_bytes": 5800000000,
       "ram_overhead_bytes": 5368709120,
       "min_vram_bytes": 8589934592,
-      "mac_min_unified_bytes": 25769803776,
-      "disk_multiplier": 1.15,
+      "mac_resident_bytes": 19200000000,
       "platforms": {
         "Windows": ["cuda", "hip"],
         "Linux": ["cuda", "hip"]
@@ -205,7 +205,11 @@
       "gguf_sources": {
         "huggingface_repo": "unsloth/gemma-4-26B-A4B-it-GGUF",
         "modelscope_repo": "unsloth/gemma-4-26B-A4B-it-GGUF",
-        "filename": "gemma-4-26B-A4B-it-UD-Q3_K_M.gguf"
+        "filename": "gemma-4-26B-A4B-it-UD-Q3_K_M.gguf",
+        "sha256": "811882f6df81c8ea204a5d382f196d6bd601245091786912d4c70df41cdfa052",
+        "draft_filename": "MTP/mtp-gemma-4-26B-A4B-it-Q8_0.gguf",
+        "draft_bytes": 461766816,
+        "draft_sha256": "6326fb9f5e487aa8dcdd313a091e3c67724cb2a666ec3b7d2895b5b26d93ed1b"
       },
       "quality_rank": 74
     },
@@ -216,22 +220,22 @@
       "title": "Qwen3.6-35B-A3B (UD-Q2_K_XL)",
       "engine_core": "strata-poly",
       "model_format": "gguf",
-      "download_bytes": 12600000000,
-      "arena_bytes": 11800000000,
-      "beside_vram_bytes": 3758096384,
+      "download_bytes": 12574128416,
+      "arena_bytes": 10800000000,
+      "beside_vram_bytes": 4200000000,
       "ram_overhead_bytes": 4831838208,
       "min_vram_bytes": 8589934592,
-      "mac_min_unified_bytes": 25769803776,
-      "disk_multiplier": 1.15,
+      "mac_resident_bytes": 18600000000,
       "platforms": {
         "Windows": ["cuda", "hip"],
         "Linux": ["cuda", "hip"],
         "Darwin": ["metal"]
       },
       "gguf_sources": {
-        "huggingface_repo": "unsloth/Qwen3.6-35B-A3B-GGUF",
-        "modelscope_repo": "unsloth/Qwen3.6-35B-A3B-GGUF",
-        "filename": "Qwen3.6-35B-A3B-UD-Q2_K_XL.gguf"
+        "huggingface_repo": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF",
+        "modelscope_repo": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF",
+        "filename": "Qwen3.6-35B-A3B-UD-Q2_K_XL.gguf",
+        "sha256": "ed7cda7e38985b4fcff76475865135039641d2bfbac3c169df15ca770f37fb0c"
       },
       "quality_rank": 72
     },
@@ -242,13 +246,12 @@
       "title": "LFM2.5-24B-A2B (UD-Q4_K_XL)",
       "engine_core": "strata-poly",
       "model_format": "gguf",
-      "download_bytes": 14500000000,
-      "arena_bytes": 13500000000,
-      "beside_vram_bytes": 3221225472,
+      "download_bytes": 14876901632,
+      "arena_bytes": 14000000000,
+      "beside_vram_bytes": 4100000000,
       "ram_overhead_bytes": 4831838208,
       "min_vram_bytes": 8589934592,
-      "mac_min_unified_bytes": 25769803776,
-      "disk_multiplier": 1.15,
+      "mac_resident_bytes": 20900000000,
       "platforms": {
         "Windows": ["cuda"],
         "Linux": ["cuda"],
@@ -257,7 +260,8 @@
       "gguf_sources": {
         "huggingface_repo": "unsloth/LFM2.5-24B-A2B-GGUF",
         "modelscope_repo": "unsloth/LFM2.5-24B-A2B-GGUF",
-        "filename": "LFM2.5-24B-A2B-UD-Q4_K_XL.gguf"
+        "filename": "LFM2.5-24B-A2B-UD-Q4_K_XL.gguf",
+        "sha256": "a235d23638cc5549cb1ff61da7522c8a7e97f056f27093462a1e56f35aba91d8"
       },
       "quality_rank": 70
     },
@@ -268,13 +272,12 @@
       "title": "LFM2.5-24B-A2B (UD-Q3_K_XL)",
       "engine_core": "strata-poly",
       "model_format": "gguf",
-      "download_bytes": 11000000000,
+      "download_bytes": 10947100928,
       "arena_bytes": 10200000000,
-      "beside_vram_bytes": 3221225472,
+      "beside_vram_bytes": 3900000000,
       "ram_overhead_bytes": 4294967296,
       "min_vram_bytes": 8589934592,
-      "mac_min_unified_bytes": 25769803776,
-      "disk_multiplier": 1.15,
+      "mac_resident_bytes": 17000000000,
       "platforms": {
         "Windows": ["cuda"],
         "Linux": ["cuda"],
@@ -283,7 +286,8 @@
       "gguf_sources": {
         "huggingface_repo": "unsloth/LFM2.5-24B-A2B-GGUF",
         "modelscope_repo": "unsloth/LFM2.5-24B-A2B-GGUF",
-        "filename": "LFM2.5-24B-A2B-UD-Q3_K_XL.gguf"
+        "filename": "LFM2.5-24B-A2B-UD-Q3_K_XL.gguf",
+        "sha256": "d54834c785c7e265f1cb7375e47aa6f55a0b7cfab75816254c4d2e0c82fd5efc"
       },
       "quality_rank": 66
     }
