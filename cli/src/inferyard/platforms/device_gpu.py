@@ -382,9 +382,15 @@ def detect_gpus(system: str) -> dict:
             "devices": [*nv["devices"], *amd["devices"]],
         }
     if nv_ok:
-        return nv
+        out = dict(nv)
+        if amd.get("reason"):
+            out["vendor_reasons"] = {"amd": amd["reason"]}
+        return out
     if amd_ok:
-        return amd
+        out = dict(amd)
+        if nv.get("reason"):
+            out["vendor_reasons"] = {"nvidia": nv["reason"]}
+        return out
     vendor_reasons = {}
     if nv.get("reason"):
         vendor_reasons["nvidia"] = nv["reason"]

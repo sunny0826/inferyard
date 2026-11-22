@@ -329,16 +329,23 @@ def test_unreadable_drm_and_windows_swap_runtime_error_preserve_report(monkeypat
     monkeypatch.setattr(device_gpu, "nvidia_snapshot", lambda: nv_ok)
 
     real_is_dir = Path.is_dir
+    denied_hits = 0
 
     def denied_is_dir(self):
-        if str(self).endswith("class/drm"):
+        nonlocal denied_hits
+        if self.parts[-2:] == ("class", "drm"):
+            denied_hits += 1
             raise PermissionError("permission denied")
         return real_is_dir(self)
 
     monkeypatch.setattr(Path, "is_dir", denied_is_dir)
     amd = device_gpu.amd_linux_snapshot(sysfs_root=tmp_path)
     assert amd == {"status": "unavailable", "reason": "drm_sysfs_unreadable", "devices": []}
-    assert device_gpu.detect_gpus("Linux") == nv_ok
+    detected = device_gpu.detect_gpus("Linux")
+    assert detected["status"] == "observed"
+    assert detected["devices"] == nv_ok["devices"]
+    assert detected["vendor_reasons"] == {"amd": "drm_sysfs_unreadable"}
+    assert denied_hits >= 2
 
     # Windows swap_memory raising RuntimeError must not crash _windows().
     class FakeKey:
@@ -398,17 +405,23 @@ def test_cli_device_check_survives_drm_permission_error_and_windows_swap_error(
     monkeypatch.setattr(device_preflight, "host_snapshot", lambda _s: {"memory_total_bytes": 32 * 1024**3, "mem_available_bytes": 24 * 1024**3, "sources": {}, "missing": {}})
     monkeypatch.setattr(device_gpu, "nvidia_snapshot", lambda: nv_ok)
     real_is_dir = Path.is_dir
+    cli_drm_hits = 0
 
     def denied_drm(self):
-        if str(self) == "/sys/class/drm":
+        nonlocal cli_drm_hits
+        if self.parts[-2:] == ("class", "drm"):
+            cli_drm_hits += 1
             raise PermissionError("denied")
         return real_is_dir(self)
 
     monkeypatch.setattr(Path, "is_dir", denied_drm)
     rc = main(["device-check", "--json"])
     assert rc == 0
+    assert cli_drm_hits >= 1
     doc = json.loads(capsys.readouterr().out)
     assert doc["details"]["hardware"]["gpu"]["devices"][0]["name"] == "RTX 4070"
+    assert doc["details"]["hardware"]["gpu"]["vendor_reasons"] == {"amd": "drm_sysfs_unreadable"}
+    assert doc["details"]["hardware"]["missing"]["gpu.amd"] == "drm_sysfs_unreadable"
 
     # Windows CLI path: swap_memory RuntimeError preserves report and records reason
     class FakeKey:
@@ -576,6 +589,22 @@ def test_missing_reasons_for_null_amd_and_non_windows_page_file(tmp_path, monkey
     assert hw_win["missing"]["gpu"] == "nvidia_smi_not_found"
     assert hw_win["missing"]["gpu.amd"] == "probe_timeout"
 
+    # NVIDIA succeeds while Windows AMD times out: keep observed GPU AND record missing["gpu.amd"]
+    monkeypatch.setattr(
+        device_gpu,
+        "nvidia_snapshot",
+        lambda: {
+            "status": "observed",
+            "source": "nvidia-smi",
+            "devices": [{"index": 0, "vendor": "nvidia", "name": "RTX 4080"}],
+        },
+    )
+    hw_win_partial = device_preflight.hardware_snapshot(tmp_path, environment={})
+    assert hw_win_partial["gpu"]["status"] == "observed"
+    assert hw_win_partial["gpu"]["vendor_reasons"] == {"amd": "probe_timeout"}
+    assert "gpu" not in hw_win_partial["missing"]
+    assert hw_win_partial["missing"]["gpu.amd"] == "probe_timeout"
+
     # Non-Windows marks page_file_total_bytes as not_applicable_non_windows
     monkeypatch.setattr(device_preflight.platform, "system", lambda: "Darwin")
     hw_mac = device_preflight.hardware_snapshot(tmp_path, environment={})
@@ -594,8 +623,10 @@ def test_models_disk_follows_explicit_model_selected_root_and_multi_volume(tmp_p
 
     fake_usage = {
         str(root_a.resolve()): 101 * device_preflight.GIB,
-        str(root_b.resolve()): 7 * device_preflight.GIB,
+        str(root_b.resolve()): 101 * device_preflight.GIB,
+        str(model_b.resolve()): 7 * device_preflight.GIB,
     }
+
     def fake_disk_usage(p):
         free = fake_usage.get(str(Path(p).resolve()), 50 * device_preflight.GIB)
         return types.SimpleNamespace(free=free)
@@ -615,16 +646,16 @@ def test_models_disk_follows_explicit_model_selected_root_and_multi_volume(tmp_p
         },
     )
 
-    # 1) Explicit --model measures model_b's parent volume, not default artifacts
+    # 1) Explicit --model measures the model file itself (supports single-file bind mounts)
     rep_explicit = device_preflight.inspect_device([root_a], model_path=model_b, disk_path=tmp_path)
-    assert rep_explicit["hardware"]["models_disk_path"] == str(root_b.resolve())
+    assert rep_explicit["hardware"]["models_disk_path"] == str(model_b.resolve())
     assert rep_explicit["hardware"]["models_disk_free_bytes"] == 7 * device_preflight.GIB
-    # 2) Multiple --models-root with model in root_b picks model_b's volume
+    # 2) Multiple --models-root with model in root_b measures the selected model path
     rep_multi_sel = device_preflight.inspect_device([root_a, root_b], disk_path=tmp_path)
-    assert rep_multi_sel["hardware"]["models_disk_path"] == str(root_b.resolve())
+    assert rep_multi_sel["hardware"]["models_disk_path"] == str(model_b.resolve())
     assert rep_multi_sel["hardware"]["models_disk_free_bytes"] == 7 * device_preflight.GIB
 
-    # 3) Multiple --models-root on distinct devices with no models leaves models_disk_free_bytes null
+    # 3) Multiple --models-root on distinct devices with no models leaves path & bytes null + missing
     empty_a = tmp_path / "empty_a"
     empty_b = tmp_path / "empty_b"
     empty_a.mkdir()
@@ -641,7 +672,11 @@ def test_models_disk_follows_explicit_model_selected_root_and_multi_volume(tmp_p
 
     monkeypatch.setattr(Path, "stat", distinct_stat)
     rep_unselected = device_preflight.inspect_device([empty_a, empty_b], disk_path=tmp_path)
+    assert rep_unselected["hardware"]["models_disk_path"] is None
     assert rep_unselected["hardware"]["models_disk_free_bytes"] is None
+    assert rep_unselected["hardware"]["missing"]["models_disk_path"] == (
+        "multiple_models_roots_unselected"
+    )
     assert rep_unselected["hardware"]["missing"]["models_disk_free_bytes"] == (
         "multiple_models_roots_unselected"
     )
@@ -660,10 +695,11 @@ def test_windows_cpu_features_gates_on_build_19041(monkeypatch):
 
     # Supported build >= 19041 queries IsProcessorFeaturePresent
     monkeypatch.setattr(device_gpu, "_windows_build_number", lambda: 19045)
-    fake_kernel32 = types.SimpleNamespace(IsProcessorFeaturePresent=lambda code: 1 if code == 40 else 0)
+    fake_kernel32 = types.SimpleNamespace(
+        IsProcessorFeaturePresent=lambda code: 1 if code == 40 else 0
+    )
     fake_ctypes = types.SimpleNamespace(windll=types.SimpleNamespace(kernel32=fake_kernel32))
     monkeypatch.setitem(__import__("sys").modules, "ctypes", fake_ctypes)
     feats, _src, missing = device_gpu._windows_cpu_features()
     assert feats == {"avx2": True, "avx512": False}
     assert missing == {}
-

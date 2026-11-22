@@ -119,9 +119,12 @@ def hardware_snapshot(disk_path, environment=None, *, gpu_observation=None):
     sources["gpu"] = result["gpu"].get("source")
     if result["gpu"]["status"] == "unavailable":
         missing["gpu"] = result["gpu"].get("reason", "not_reported")
-        for vendor, reason in result["gpu"].get("vendor_reasons", {}).items():
-            if vendor != "nvidia" and reason not in ("no_amd_devices", "unsupported_platform"):
-                missing[f"gpu.{vendor}"] = reason
+    _benign_secondary = ("no_amd_devices", "nvidia_smi_not_found", "unsupported_platform")
+    for vendor, reason in result["gpu"].get("vendor_reasons", {}).items():
+        if result["gpu"]["status"] == "unavailable" and vendor == "nvidia":
+            continue
+        if reason not in _benign_secondary:
+            missing[f"gpu.{vendor}"] = reason
     return {**result, "sources": sources, "missing": missing}
 
 
@@ -281,14 +284,6 @@ def _disk_free(path):
         return None, "disk_usage_unavailable"
 
 
-def _disk_target(path):
-    target = existing_ancestor(path)
-    try:
-        return target.parent if target.is_file() else target
-    except OSError:
-        return target
-
-
 def _attach_models_disk(hardware, roots, *, model_path=None, selected_model_path=None):
     if "models_disk_free_bytes" in hardware:
         return
@@ -297,10 +292,11 @@ def _attach_models_disk(hardware, roots, *, model_path=None, selected_model_path
     sources["models_disk_free_bytes"] = "shutil.disk_usage"
 
     if model_path is not None:
-        target = _disk_target(model_path)
+        target = existing_ancestor(model_path)
         free, err = _disk_free(target)
         hardware["models_disk_path"] = str(target)
         hardware["models_disk_free_bytes"] = free
+        missing.pop("models_disk_path", None)
         if err is None:
             missing.pop("models_disk_free_bytes", None)
         else:
@@ -308,10 +304,11 @@ def _attach_models_disk(hardware, roots, *, model_path=None, selected_model_path
         return
 
     if selected_model_path is not None:
-        target = _disk_target(selected_model_path)
+        target = existing_ancestor(selected_model_path)
         free, err = _disk_free(target)
         hardware["models_disk_path"] = str(target)
         hardware["models_disk_free_bytes"] = free
+        missing.pop("models_disk_path", None)
         if err is None:
             missing.pop("models_disk_free_bytes", None)
         else:
@@ -321,7 +318,7 @@ def _attach_models_disk(hardware, roots, *, model_path=None, selected_model_path
     if not roots:
         return
 
-    targets = [_disk_target(root) for root in roots]
+    targets = [existing_ancestor(root) for root in roots]
     root_entries = []
     devs = set()
     for target in targets:
@@ -339,6 +336,7 @@ def _attach_models_disk(hardware, roots, *, model_path=None, selected_model_path
         first = root_entries[0]
         hardware["models_disk_path"] = first["path"]
         hardware["models_disk_free_bytes"] = first["disk_free_bytes"]
+        missing.pop("models_disk_path", None)
         if "missing" in first:
             missing["models_disk_free_bytes"] = first["missing"]
         else:
@@ -347,6 +345,7 @@ def _attach_models_disk(hardware, roots, *, model_path=None, selected_model_path
         hardware["models_disk_path"] = None
         hardware["models_disk_free_bytes"] = None
         hardware["models_disk_roots"] = root_entries
+        missing["models_disk_path"] = "multiple_models_roots_unselected"
         missing["models_disk_free_bytes"] = "multiple_models_roots_unselected"
 
 
