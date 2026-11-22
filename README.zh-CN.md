@@ -26,7 +26,13 @@
 
 ## 开始使用
 
-- **桌面测评**　从 [Releases](https://github.com/sunny0826/inferyard/releases/latest) 下载对应平台的 Studio。启动后在任务页选择「准备环境」，再按 [Studio 首次使用说明](studio/README.md#pages-and-first-launch) 选择模型、引擎和题包。
+- **桌面测评**　从 [Releases](https://github.com/sunny0826/inferyard/releases/latest) 下载对应平台的 Studio。在 macOS 上打开 `.dmg` 并将 `InferYard Studio.app` 拖入 `Applications` 后，由于当前安装包未签名，首次启动前需在终端执行以下命令清除隔离属性：
+
+  ```sh
+  xattr -dr com.apple.quarantine /Applications/InferYard\ Studio.app
+  ```
+
+  启动后在任务页选择「准备环境」，再按 [Studio 首次使用说明](studio/README.md#pages-and-first-launch) 选择模型、引擎和题包。
 - **终端测评**　从[安装与候选准备](cli/docs/installation.md)开始。按候选参数启动服务，绑定实际 PID 和端点，分别运行题包并生成汇总报告。
 
 ## 现有题包
