@@ -417,12 +417,24 @@ func TestModelPresetStatusRequiresMatchingSourceURL(t *testing.T) {
 		Kind:      "model",
 		State:     "downloading",
 		SourceUrl: qwen.URL,
+		OutDir:    "/models/Qwen3-0.6B-Q8_0",
 	})
 	if !s.isModelEntryDownloading(qwen) {
 		t.Fatal("exact SourceUrl downloading task did not match")
 	}
 	s.downloads[1].State = "done"
+	// Asset at an unrelated OutDir must not mark exact-qwen as downloaded.
+	s.registry.Models = []core.ModelAsset{{Name: "Qwen3-0.6B-Q8_0.gguf", Path: "/models/other/Qwen3-0.6B-Q8_0.gguf", Available: true}}
+	if s.isModelEntryDownloaded(qwen) || s.isModelEntryDownloading(qwen) {
+		t.Fatal("unrelated asset path falsely marked exact done task as downloaded")
+	}
+	// Matching OutDir asset marks downloaded, and removing the asset clears it despite historical done task.
+	s.registry.Models = []core.ModelAsset{{Name: "Qwen3-0.6B-Q8_0.gguf", Path: "/models/Qwen3-0.6B-Q8_0/Qwen3-0.6B-Q8_0.gguf", Available: true}}
 	if !s.isModelEntryDownloaded(qwen) || s.isModelEntryDownloading(qwen) {
-		t.Fatal("exact SourceUrl done task did not match downloaded state")
+		t.Fatal("exact SourceUrl done task with live asset did not match downloaded state")
+	}
+	s.registry.Models = nil
+	if s.isModelEntryDownloaded(qwen) {
+		t.Fatal("downloaded badge persisted after removing asset from registry")
 	}
 }

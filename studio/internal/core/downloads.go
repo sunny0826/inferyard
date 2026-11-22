@@ -70,6 +70,10 @@ func validDirectorySource(source string) bool {
 }
 
 func (s *Service) CreateModelDownload(req CreateDownloadRequest, tokenEnv string) (DownloadTask, *ApiError) {
+	return s.createModelDownload(req, "", tokenEnv)
+}
+
+func (s *Service) createModelDownload(req CreateDownloadRequest, requestedSource, tokenEnv string) (DownloadTask, *ApiError) {
 	if (req.OutName != "" && !ValidDownloadName(req.OutName)) || (!validSource(req.SourceUrl) && !validDirectorySource(req.SourceUrl)) || (tokenEnv != "" && !envName.MatchString(tokenEnv)) {
 		return DownloadTask{}, Err("invalid_request")
 	}
@@ -94,15 +98,16 @@ func (s *Service) CreateModelDownload(req CreateDownloadRequest, tokenEnv string
 	}
 	ctx, cancel := context.WithCancel(s.ctx)
 	d := &downloadEntry{Task: DownloadTask{
-		Kind:        "model",
-		DisplayName: ResolveDownloadDisplayName("model", req.SourceUrl),
-		TaskId:      uuid(),
-		State:       "downloading",
-		SourceUrl:   req.SourceUrl,
-		OutName:     name,
-		OutDir:      dir,
-		TotalBytes:  catalogTotalBytes(req.SourceUrl),
-		StartedAt:   now(),
+		Kind:               "model",
+		DisplayName:        ResolveDownloadDisplayName("model", req.SourceUrl),
+		TaskId:             uuid(),
+		State:              "downloading",
+		SourceUrl:          req.SourceUrl,
+		RequestedSourceUrl: requestedSource,
+		OutName:            name,
+		OutDir:             dir,
+		TotalBytes:         catalogTotalBytes(req.SourceUrl),
+		StartedAt:          now(),
 	}, cancel: cancel, tokenEnv: tokenEnv}
 	s.downloads = append(s.downloads, d)
 	s.Bus.Publish("download.state", map[string]any{"task": d.Task})

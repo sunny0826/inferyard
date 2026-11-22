@@ -1,6 +1,11 @@
 package core
 
 import (
+	"archive/tar"
+	"compress/gzip"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -229,14 +234,65 @@ func TestReleasesForPlatformAndStableFilter(t *testing.T) {
 				continue
 			}
 			checkedSGLangSnap = true
-			if !strings.Contains(build.InstallCommand, "tar -xzf e262b44eef1f2bf83e34345276e2bb91a086587e.tar.gz") {
-				t.Fatalf("sglang snapshot InstallCommand must extract downloaded archive: %q", build.InstallCommand)
+			wantArchive := "sglang-e262b44eef1f2bf83e34345276e2bb91a086587e.tar.gz"
+			if len(build.Artifacts) != 1 || build.Artifacts[0].Filename != wantArchive {
+				t.Fatalf("sglang snapshot artifact Filename = %+v, want %q", build.Artifacts, wantArchive)
+			}
+			if !strings.HasPrefix(build.InstallCommand, "tar -xzf "+wantArchive+" && ") {
+				t.Fatalf("sglang snapshot InstallCommand must extract %q: %q", wantArchive, build.InstallCommand)
 			}
 			if !strings.Contains(build.InstallCommand, "./sglang-e262b44eef1f2bf83e34345276e2bb91a086587e/python") {
 				t.Fatalf("sglang snapshot InstallCommand must point to python/ subdir: %q", build.InstallCommand)
 			}
 			if _, afterPip, ok := strings.Cut(build.InstallCommand, "uv pip install"); !ok || strings.Contains(afterPip, ".tar.gz") {
 				t.Fatalf("sglang snapshot uv pip install must not pass .tar.gz directly: %q", build.InstallCommand)
+			}
+
+			// Verify the first tar step extracts the actual GitHub archive filename into python/.
+			firstStep, _, _ := strings.Cut(build.InstallCommand, "&&")
+			fields := strings.Fields(firstStep)
+			if len(fields) < 3 {
+				t.Fatalf("unexpected tar step in InstallCommand: %q", firstStep)
+			}
+			if _, err := exec.LookPath(fields[0]); err == nil {
+				tmpDir := t.TempDir()
+				archivePath := filepath.Join(tmpDir, build.Artifacts[0].Filename)
+				f, err := os.Create(archivePath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				gz := gzip.NewWriter(f)
+				tw := tar.NewWriter(gz)
+				content := []byte("[project]\nname = \"sglang\"\n")
+				if err := tw.WriteHeader(&tar.Header{
+					Name: "sglang-e262b44eef1f2bf83e34345276e2bb91a086587e/python/pyproject.toml",
+					Mode: 0o644,
+					Size: int64(len(content)),
+				}); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := tw.Write(content); err != nil {
+					t.Fatal(err)
+				}
+				if err := tw.Close(); err != nil {
+					t.Fatal(err)
+				}
+				if err := gz.Close(); err != nil {
+					t.Fatal(err)
+				}
+				if err := f.Close(); err != nil {
+					t.Fatal(err)
+				}
+
+				cmd := exec.Command(fields[0], fields[1:]...)
+				cmd.Dir = tmpDir
+				if out, err := cmd.CombinedOutput(); err != nil {
+					t.Fatalf("tar extract step %q failed: %v\n%s", firstStep, err, out)
+				}
+				extracted := filepath.Join(tmpDir, "sglang-e262b44eef1f2bf83e34345276e2bb91a086587e", "python", "pyproject.toml")
+				if _, err := os.Stat(extracted); err != nil {
+					t.Fatalf("expected extracted file %q: %v", extracted, err)
+				}
 			}
 		}
 	}

@@ -180,3 +180,79 @@ func TestResolveAndCreateOrResolveModelDownload(t *testing.T) {
 		t.Fatalf("acquire did not receive pinned URL: %v", calls[2])
 	}
 }
+
+func TestCreateOrResolvePreservesRequestedSourceAcrossRetry(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	qwen, ok := CatalogEntryByID("model-qwen3-0.6b-q8")
+	if !ok {
+		t.Fatal("missing model-qwen3-0.6b-q8")
+	}
+	pinnedURL := "https://modelscope.cn/Qwen/Qwen3-0.6B-GGUF/blob/" + qwen.Revision + "/Qwen3-0.6B-Q8_0.gguf"
+
+	var mu sync.Mutex
+	var acquireAttempt int
+	s := testService(t, func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
+		if v, ok := version(args); ok {
+			return v, nil
+		}
+		if len(args) >= 2 && args[0] == "model" && args[1] == "resolve" {
+			payload, _ := json.Marshal(map[string]any{
+				"command":      "model resolve",
+				"status":       "resolved",
+				"completeness": "complete",
+				"run_id":       nil,
+				"evidence_dir": nil,
+				"limitations":  []string{},
+				"details": map[string]any{
+					"definition":          "model-resolve.v1",
+					"platform":            "modelscope",
+					"repository":          "Qwen/Qwen3-0.6B-GGUF",
+					"revision":            qwen.Revision,
+					"path":                "Qwen3-0.6B-Q8_0.gguf",
+					"pinned_url":          pinnedURL,
+					"download_url":        "https://modelscope.cn/api/v1/models/Qwen/Qwen3-0.6B-GGUF/repo?Revision=" + qwen.Revision + "&FilePath=Qwen3-0.6B-Q8_0.gguf",
+					"filename":            "Qwen3-0.6B-Q8_0.gguf",
+					"bytes":               qwen.Bytes,
+					"already_pinned":      false,
+					"model_requests_sent": 0,
+				},
+			})
+			return inferyard.Execution{ExitCode: inferyard.ExitComplete, Stdout: payload}, nil
+		}
+		if len(args) >= 2 && args[0] == "model" && args[1] == "acquire" {
+			mu.Lock()
+			acquireAttempt++
+			attempt := acquireAttempt
+			mu.Unlock()
+			if attempt == 1 {
+				return result(inferyard.ExitBlocked), nil
+			}
+			payload := `{"command":"model acquire","status":"prepared","completeness":"complete","details":{"bytes":639446688,"sha256":"` + qwen.SHA256 + `"}}`
+			return inferyard.Execution{ExitCode: inferyard.ExitComplete, Stdout: []byte(payload)}, nil
+		}
+		return result(inferyard.ExitBlocked), nil
+	})
+	models := t.TempDir()
+	s.settings.ModelsRoot = &models
+
+	task, apiErr := s.CreateOrResolveModelDownload(context.Background(), CreateDownloadRequest{SourceUrl: qwen.MirrorURL}, "")
+	if apiErr != nil {
+		t.Fatalf("CreateOrResolveModelDownload failed: %+v", apiErr)
+	}
+	if task.SourceUrl != pinnedURL || task.RequestedSourceUrl != qwen.MirrorURL {
+		t.Fatalf("unexpected task URLs: source=%q requested=%q", task.SourceUrl, task.RequestedSourceUrl)
+	}
+	wait(t, func() bool { return s.Downloads()[0].State == "failed" })
+
+	retried, apiErr := s.RetryDownload(task.TaskId)
+	if apiErr != nil {
+		t.Fatalf("RetryDownload failed: %+v", apiErr)
+	}
+	if retried.SourceUrl != pinnedURL || retried.RequestedSourceUrl != qwen.MirrorURL {
+		t.Fatalf("retry dropped requested source: source=%q requested=%q", retried.SourceUrl, retried.RequestedSourceUrl)
+	}
+	wait(t, func() bool { return s.Downloads()[0].State == "done" })
+	if got := s.Downloads()[0].RequestedSourceUrl; got != qwen.MirrorURL {
+		t.Fatalf("completed retry RequestedSourceUrl = %q, want %q", got, qwen.MirrorURL)
+	}
+}

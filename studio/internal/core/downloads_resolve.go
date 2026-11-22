@@ -198,5 +198,5 @@ func (s *Service) CreateOrResolveModelDownload(ctx context.Context, req CreateDo
 	}
 	pinnedReq := req
 	pinnedReq.SourceUrl = resolved.PinnedURL
-	return s.CreateModelDownload(pinnedReq, tokenEnv)
+	return s.createModelDownload(pinnedReq, req.SourceUrl, tokenEnv)
 }

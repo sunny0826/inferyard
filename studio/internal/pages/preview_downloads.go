@@ -92,8 +92,20 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 		s.adoptDownloadedEngine()
 	} else {
 		name := task.OutName + " · " + emptyText(task.FileName)
+		assetPath := filepath.Join(task.OutDir, emptyText(task.FileName))
+		format := "gguf"
+		if strings.Contains(task.SourceUrl, "/tree/") {
+			assetPath = task.OutDir
+			format = "directory"
+		}
 		task.Result = &core.DownloadResult{Bytes: task.DownloadedBytes, Sha256: strings.Repeat("0", 64)}
-		s.registry.Models = append(s.registry.Models, core.ModelAsset{Name: name, Available: true, SizeBytes: previewValue(task.DownloadedBytes)})
+		s.registry.Models = append(s.registry.Models, core.ModelAsset{
+			Name:      name,
+			Format:    format,
+			Path:      assetPath,
+			Available: true,
+			SizeBytes: previewValue(task.DownloadedBytes),
+		})
 		s.adoptOnlyModel()
 	}
 }

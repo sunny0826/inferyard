@@ -143,17 +143,20 @@ func sglangProvider() EngineCatalogProvider {
 					Recommended:  true,
 					ReleaseURL:   "https://github.com/sgl-project/sglang/tree/" + snapshot.Revision,
 					Builds: []EnginePlatformBuild{
-						{
-							ID:          "engine-sglang-snapshot-any",
-							Platform:    "any",
-							Variant:     "源码包",
-							AcquireMode: EngineAcquireManualArchive,
-							Artifacts: []EngineArtifact{
-								artifactFromCatalog("engine-sglang", "source", "SGLang 源码包", "e262b44"),
-							},
-							InstallCommand: "tar -xzf " + urlFilename(snapshot.URL) + " && uv venv ~/.venvs/sglang --python 3.12 && uv pip install --python ~/.venvs/sglang/bin/python ./sglang-" + snapshot.Revision + "/python",
-							Note:           "下载并解压源码归档后，按目标硬件从解压目录的 python/ 子目录在独立虚拟环境中安装，再注册本地引擎。",
-						},
+						func() EnginePlatformBuild {
+							archiveName := "sglang-" + snapshot.Revision + ".tar.gz"
+							sourceArtifact := artifactFromCatalog("engine-sglang", "source", "SGLang 源码包", "e262b44")
+							sourceArtifact.Filename = archiveName
+							return EnginePlatformBuild{
+								ID:             "engine-sglang-snapshot-any",
+								Platform:       "any",
+								Variant:        "源码包",
+								AcquireMode:    EngineAcquireManualArchive,
+								Artifacts:      []EngineArtifact{sourceArtifact},
+								InstallCommand: "tar -xzf " + archiveName + " && uv venv ~/.venvs/sglang --python 3.12 && uv pip install --python ~/.venvs/sglang/bin/python ./sglang-" + snapshot.Revision + "/python",
+								Note:           "下载并解压源码归档后，按目标硬件从解压目录的 python/ 子目录在独立虚拟环境中安装，再注册本地引擎。",
+							}
+						}(),
 					},
 				},
 			},

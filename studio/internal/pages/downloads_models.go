@@ -3,6 +3,7 @@ package pages
 import (
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -286,16 +287,42 @@ func (s *viewState) downloadsModelDrawer(c *ui.Context) {
 }
 
 func modelTaskMatchesEntry(task core.DownloadTask, entry core.CatalogEntry) bool {
-	if task.Kind != "model" || task.SourceUrl == "" {
+	if task.Kind != "model" {
 		return false
 	}
-	return task.SourceUrl == entry.URL || (entry.MirrorURL != "" && task.SourceUrl == entry.MirrorURL)
+	for _, src := range []string{task.SourceUrl, task.RequestedSourceUrl} {
+		if src == "" {
+			continue
+		}
+		if src == entry.URL || (entry.MirrorURL != "" && src == entry.MirrorURL) {
+			return true
+		}
+	}
+	return false
+}
+
+func modelAssetMatchesOutDir(assetPath, outDir string) bool {
+	asset := filepath.Clean(strings.TrimSpace(assetPath))
+	dir := filepath.Clean(strings.TrimSpace(outDir))
+	if asset == "" || dir == "" || asset == "." || dir == "." {
+		return false
+	}
+	rel, err := filepath.Rel(dir, asset)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel))
 }
 
 func (s *viewState) isModelEntryDownloaded(entry core.CatalogEntry) bool {
 	for _, task := range s.downloads {
-		if task.State == "done" && modelTaskMatchesEntry(task, entry) {
-			return true
+		if task.State != "done" || !modelTaskMatchesEntry(task, entry) {
+			continue
+		}
+		for _, m := range s.registry.Models {
+			if m.Available && modelAssetMatchesOutDir(m.Path, task.OutDir) {
+				return true
+			}
 		}
 	}
 	return false

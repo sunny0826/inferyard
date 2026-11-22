@@ -194,6 +194,7 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	}
 	kind := orig.Task.Kind
 	sourceURL := orig.Task.SourceUrl
+	requestedSourceURL := orig.Task.RequestedSourceUrl
 	tokenEnv := orig.tokenEnv
 	prevOutName := orig.Task.OutName
 	prevOutDir := orig.Task.OutDir
@@ -254,12 +255,13 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	}
 	ctx, cancel := context.WithCancel(s.ctx)
 	task := DownloadTask{
-		Kind:            kind,
-		DisplayName:     displayName,
-		TaskId:          uuid(),
-		State:           "downloading",
-		SourceUrl:       sourceURL,
-		OutName:         outName,
+		Kind:               kind,
+		DisplayName:        displayName,
+		TaskId:             uuid(),
+		State:              "downloading",
+		SourceUrl:          sourceURL,
+		RequestedSourceUrl: requestedSourceURL,
+		OutName:            outName,
 		OutDir:          outDir,
 		DownloadedBytes: partBytes,
 		TotalBytes:      totalBytes,

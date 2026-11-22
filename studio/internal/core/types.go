@@ -235,10 +235,11 @@ type DownloadTask struct {
 	DisplayName     string          `json:"display_name,omitempty"`
 	ProgressReason  *string         `json:"progress_reason"`
 	EnginePath      *string         `json:"engine_path"`
-	TaskId          string          `json:"task_id"`
-	State           string          `json:"state"`
-	SourceUrl       string          `json:"source_url"`
-	OutName         string          `json:"out_name"`
+	TaskId             string          `json:"task_id"`
+	State              string          `json:"state"`
+	SourceUrl          string          `json:"source_url"`
+	RequestedSourceUrl string          `json:"requested_source_url,omitempty"`
+	OutName            string          `json:"out_name"`
 	OutDir          string          `json:"out_dir"`
 	FileName        *string         `json:"file_name"`
 	DownloadedBytes int64           `json:"downloaded_bytes"`
