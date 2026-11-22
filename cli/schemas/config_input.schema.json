@@ -885,6 +885,10 @@
               "type": "string",
               "minLength": 1
             },
+            "polystrata_config_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
             "tuning": {
               "type": "object",
               "properties": {

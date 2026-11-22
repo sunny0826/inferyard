@@ -122,10 +122,16 @@ def validate_frozen_identity(config, local_identity, *, files):
         _require(hashlib.sha256(content).hexdigest() == expected)
         _require(inventory.get(path) == (expected, len(content)))
     _require(inventory.get(model["template_path"], (None,))[0] == model["template_sha256"])
+    if engine["family"] == "polystrata":
+        _require(
+            inventory.get(engine["polystrata_config_path"], (None,))[0]
+            == engine["polystrata_config_sha256"]
+        )
     names = [entry["path"] for entry in manifest["files"]]
     _require(names == sorted(set(names)))
     base = parse_absolute_path(model["local_path"])
     _require(base is not None)
+    multi_shard = model["kind"] == "gguf" and len(names) > 1
     for entry in manifest["files"]:
         relative = PurePosixPath(entry["path"])
         _require(
@@ -133,8 +139,13 @@ def validate_frozen_identity(config, local_identity, *, files):
             and all(p not in ("", ".", "..") for p in entry["path"].split("/"))
             and "\\" not in entry["path"]
         )
-        path = str(base / relative) if model["kind"] == "directory" else str(base)
+        if model["kind"] == "directory":
+            path = str(base / relative)
+        elif multi_shard:
+            path = str(base.parent / relative)
+        else:
+            path = str(base)
         _require(inventory.get(path) == (entry["sha256"], entry["size"]))
     if model["kind"] == "gguf":
-        _require(names == [base.name])
+        _require(base.name in names if multi_shard else names == [base.name])
     return service

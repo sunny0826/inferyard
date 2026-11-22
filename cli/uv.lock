@@ -108,7 +108,7 @@ source = { editable = "." }
 dependencies = [
     { name = "httpx" },
     { name = "jsonschema" },
-    { name = "psutil", marker = "sys_platform == 'darwin' or sys_platform == 'win32'" },
+    { name = "psutil" },
 ]
 
 [package.dev-dependencies]
@@ -124,8 +124,7 @@ dev = [
 requires-dist = [
     { name = "httpx", specifier = ">=0.28,<0.29" },
     { name = "jsonschema", specifier = ">=4.25,<5" },
-    { name = "psutil", marker = "sys_platform == 'darwin'", specifier = ">=7.2,<8" },
-    { name = "psutil", marker = "sys_platform == 'win32'", specifier = ">=7.2,<8" },
+    { name = "psutil", specifier = ">=7.2,<8" },
 ]
 
 [package.metadata.requires-dev]

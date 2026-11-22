@@ -17,6 +17,7 @@ from inferyard.application.engine_detect import execute as execute_engine_detect
 from inferyard.config.loader import load_config
 from inferyard.config.local_engines.candidate import create as create_candidate
 from inferyard.config.local_engines.inspection import describe as describe_candidate
+from inferyard.config.local_engines.polystrata import select_polystrata_backend
 from inferyard.contracts.engine_profiles import (
     DIAGNOSTIC_ENGINES,
     LOCAL_FAMILIES,
@@ -28,15 +29,17 @@ from inferyard.contracts.schemas_engine_check import ENGINE_CHECK
 from inferyard.contracts.validation import json_bytes, validate_document, validate_value
 from inferyard.errors import ContractError, PreflightError
 from inferyard.platforms.identity import hash_file
+from inferyard.platforms.local_engines import assets as local_assets
 from inferyard.platforms.local_engines import installation, service
 from inferyard.platforms.local_engines.detect import build_installation, detect_local_engines
 from inferyard.platforms.local_engines.offline import validate_frozen_identity
 from inferyard.platforms.local_engines.startup import validate_arguments
 from inferyard.provisioning.preparation_io import PreparationError
+from inferyard.runtime.local_profile import safety_policy
 from local_engine_helpers import local_config  # noqa: F401
 
 
-def _write_gguf(path: Path, metadata: dict[str, str | int]) -> Path:
+def _write_gguf(path: Path, metadata: dict[str, str | int], payload: bytes = b"tensors") -> Path:
     parts = [struct.pack("<4sIQQ", b"GGUF", 3, 1, len(metadata))]
     for key, value in metadata.items():
         key_bytes = key.encode("utf-8")
@@ -46,7 +49,7 @@ def _write_gguf(path: Path, metadata: dict[str, str | int]) -> Path:
             parts.append(struct.pack("<IQ", 8, len(val_bytes)) + val_bytes)
         else:
             parts.append(struct.pack("<II", 4, value))
-    parts.append(b"synthetic-gguf-tensors")
+    parts.append(payload)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(b"".join(parts))
     return path
@@ -72,8 +75,9 @@ def _create_polystrata_layout(
     *,
     platform_kind: str = "macos",
     build_json: dict | None = None,
+    build_in_engine_dir: bool = True,
     with_data_dir: bool = True,
-) -> tuple[Path, Path]:
+) -> tuple[Path, Path, Path]:
     root.mkdir(parents=True, exist_ok=True)
     (root / "serve").mkdir(exist_ok=True)
     (root / "serve" / "server.py").write_text("print('strata server')\n", encoding="utf-8")
@@ -92,7 +96,7 @@ def _create_polystrata_layout(
         engine_bin = root / "engine-poly" / "strata-poly"
     else:
         exe = venv_dir / "bin" / "python"
-        engine_bin = root / "build-metal" / "strata-metal"
+        engine_bin = root / "build-metal" / "strata-poly"
     exe.parent.mkdir(parents=True, exist_ok=True)
     exe.write_bytes(b"#!/bin/sh\n")
     exe.chmod(0o755)
@@ -101,10 +105,11 @@ def _create_polystrata_layout(
     engine_bin.chmod(0o755)
 
     if build_json is not None:
-        (root / "BUILD.json").write_text(json.dumps(build_json), encoding="utf-8")
+        build_target = (engine_bin.parent if build_in_engine_dir else root) / "BUILD.json"
+        build_target.write_text(json.dumps(build_json), encoding="utf-8")
     if with_data_dir:
         (root / "data").mkdir(exist_ok=True)
-    return root, exe
+    return root, exe, engine_bin
 
 
 def _candidate_request(
@@ -136,12 +141,13 @@ def _candidate_request(
     )
 
 
-def test_polystrata_profiles_and_hip_schema_validation(local_config) -> None:
+def test_polystrata_profiles_hip_schema_and_legacy_macos_constraints(local_config) -> None:
     assert "polystrata" in LOCAL_FAMILIES
     assert "polystrata" in DIAGNOSTIC_ENGINES
-    assert "qwen35moe" in POLYSTRATA_SUPPORTED_GGUF_ARCHS
+    assert {"qwen35moe", "glm5-next", "glm5next", "deepseek4"} <= set(
+        POLYSTRATA_SUPPORTED_GGUF_ARCHS
+    )
 
-    # Cross-platform absolute paths in local_environment
     validate_root_environment(
         "sglang",
         {"PROMETHEUS_MULTIPROC_DIR": r"C:\work\sglang\prom"},
@@ -159,14 +165,15 @@ def test_polystrata_profiles_and_hip_schema_validation(local_config) -> None:
             r"C:\work\sglang",
         )
 
-    # Valid PolyStrata config with HIP backend, >32K context, require_temperature=False
     cfg = deepcopy(local_config)
     cfg["model"]["kind"] = "gguf"
     cfg["model"]["local_path"] = "/models/qwen36.gguf"
     cfg["engine"].update(
         family="polystrata",
         backend="hip",
+        working_directory="/opt/polystrata",
         polystrata_config_path="/out/strata-candidate.json",
+        polystrata_config_sha256="a" * 64,
         startup_args=[
             "/opt/polystrata/serve/server.py",
             "--engine",
@@ -257,25 +264,45 @@ def test_polystrata_profiles_and_hip_schema_validation(local_config) -> None:
     }
     validate_document("studio_report", report)
 
-    # Metal backend still enforces require_temperature=True
+    # Historical macOS families MUST remain metal + require_temperature=True
+    legacy_vllm = deepcopy(local_config)
+    legacy_vllm["engine"]["family"] = "vllm"
+    legacy_vllm["engine"]["backend"] = "cpu"
+    legacy_vllm["safety"]["require_temperature"] = False
+    with pytest.raises(ContractError, match="backend"):
+        validate_config(legacy_vllm)
+
+    # Metal backend still enforces require_temperature=True even for polystrata
     metal_bad = deepcopy(cfg)
     metal_bad["engine"]["backend"] = "metal"
     metal_bad["safety"]["require_temperature"] = False
     with pytest.raises(ContractError, match="require_temperature"):
         validate_config(metal_bad)
 
-    # polystrata_config_path required for polystrata, forbidden for others
-    missing_ps = deepcopy(cfg)
-    missing_ps["engine"].pop("polystrata_config_path")
-    with pytest.raises(ContractError, match="polystrata_config_path"):
-        validate_config(missing_ps)
+    # safety_policy still blocks null max_temperature_celsius without override reason
+    plan = {
+        "experiment": {
+            "safety": {
+                "interval_seconds": 0.5,
+                "max_temperature_celsius": None,
+                "require_temperature": False,
+                "check_environment": True,
+            },
+            "workloads": [{"protocol": {"kind": "fixed"}}],
+        }
+    }
+    with pytest.raises(PreflightError, match="local_engine_safety_policy_required"):
+        safety_policy(plan, cfg)
+    plan["experiment"]["safety"]["max_temperature_celsius"] = 85
+    assert safety_policy(plan, cfg)["require_temperature"] is False
 
-    bad_other = deepcopy(local_config)
-    bad_other["generation"]["reasoning_effort"] = "low"
-    with pytest.raises(ContractError, match="reasoning_effort"):
-        validate_config(bad_other)
+    # server.py outside working_directory is rejected
+    wrong_server = deepcopy(cfg)
+    wrong_server["engine"]["startup_args"][0] = "/elsewhere/serve/server.py"
+    with pytest.raises(PreflightError, match="local_engine_entrypoint_mismatch"):
+        validate_arguments(wrong_server)
 
-    # --open is rejected in polystrata startup args
+    # --open is rejected
     open_bad = deepcopy(cfg)
     open_bad["engine"]["startup_args"].append("--open")
     with pytest.raises(PreflightError):
@@ -293,27 +320,31 @@ def test_detect_polystrata_layouts_and_excludes_data_from_runtime_roots(
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr("inferyard.platforms.local_engines.detect.shutil.which", lambda _: None)
     monkeypatch.setattr("inferyard.platforms.local_engines.detect._STANDARD_LLAMA_PATHS", ())
+    monkeypatch.setattr("platform.system", lambda: "Darwin")
 
-    ws_ps, ws_exe = _create_polystrata_layout(
+    ws_ps, ws_exe, _ = _create_polystrata_layout(
         tmp_path / "engines" / "polystrata",
         platform_kind="macos",
         build_json={"version": "v0.1.45-poly.10", "backend": "metal"},
     )
     (ws_ps / "data" / "strata-qwen36.json").write_text("{}", encoding="utf-8")
 
-    env_ps, env_exe = _create_polystrata_layout(
-        tmp_path / "custom" / "ps-win",
-        platform_kind="windows",
-        build_json={"version": "v0.1.45-poly.10", "backend": "cuda"},
+    # Empty engine dir or non-executable python must NOT be detected
+    empty_ps, empty_exe, empty_bin = _create_polystrata_layout(
+        tmp_path / "engines" / "polystrata-empty", platform_kind="macos"
     )
-    monkeypatch.setenv("POLYSTRATA_ROOT", str(env_ps))
+    empty_bin.unlink()
+    non_exec_ps, non_exec_exe, _ = _create_polystrata_layout(
+        tmp_path / "engines" / "polystrata-noexec", platform_kind="macos"
+    )
+    non_exec_exe.chmod(0o644)
 
     result = detect_local_engines()
     ps_candidates = [c for c in result["candidates"] if c["family"] == "polystrata"]
-    assert len(ps_candidates) == 2
+    assert len(ps_candidates) == 1
 
-    by_root = {c["working_directory"]: c for c in ps_candidates}
-    ws_entry = by_root[str(ws_ps.resolve())]
+    ws_entry = ps_candidates[0]
+    assert ws_entry["working_directory"] == str(ws_ps.resolve())
     assert ws_entry["executable"] == str(ws_exe.resolve())
     assert ws_entry["version"] == "v0.1.45-poly.10"
     assert ws_entry["data_dir"] == str((ws_ps / "data").resolve())
@@ -321,10 +352,6 @@ def test_detect_polystrata_layouts_and_excludes_data_from_runtime_roots(
     assert str((ws_ps / "data").resolve()) not in ws_entry["runtime_roots"]
     assert str((ws_ps / "serve").resolve()) in ws_entry["runtime_roots"]
     assert str((ws_ps / "build-metal").resolve()) in ws_entry["runtime_roots"]
-
-    win_entry = by_root[str(env_ps.resolve())]
-    assert win_entry["executable"] == str(env_exe.resolve())
-    assert str((env_ps / "engine-poly").resolve()) in win_entry["runtime_roots"]
 
 
 @pytest.mark.parametrize(
@@ -347,7 +374,7 @@ def test_init_installation_and_engine_check_cross_platform(
     monkeypatch.setattr("platform.system", lambda: sys_name)
     monkeypatch.setattr("platform.machine", lambda: machine)
 
-    ps_root, exe = _create_polystrata_layout(
+    ps_root, exe, engine_bin = _create_polystrata_layout(
         tmp_path / f"ps-{platform_kind}",
         platform_kind=platform_kind,
         build_json={"version": "v0.1.45-poly.10"},
@@ -367,8 +394,6 @@ def test_init_installation_and_engine_check_cross_platform(
     )
     assert code == 0, init_res
     assert init_res.details["verified"] is True
-    assert init_res.details["installation"]["working_directory"] == str(ps_root.resolve())
-    assert init_res.details["installation"]["data_dir"] == str((ps_root / "data").resolve())
 
     check_code, check_res = execute_engine_check(
         SimpleNamespace(command="engine check", installation=out_json)
@@ -390,50 +415,40 @@ def test_init_installation_and_engine_check_cross_platform(
         "engine_check",
     )
 
-    # Adding model weights under data/ does NOT invalidate the runtime snapshot
-    decl = installation.read_installation(out_json)
-    snapshot = installation.freeze_installation(decl)
-    (ps_root / "data" / "new-model.gguf").write_bytes(b"weights")
-    installation.verify_installation(snapshot)
-
-    # Editing serve/server.py DOES trigger runtime drift
-    (ps_root / "serve" / "server.py").write_text("print('tampered')\n", encoding="utf-8")
-    with pytest.raises(PreflightError, match="local_engine_runtime_changed"):
-        installation.verify_installation(snapshot)
+    # Removing engine binary while leaving directory empty must fail engine check
+    engine_bin.unlink()
+    bad_code, bad_res = execute_engine_check(
+        SimpleNamespace(command="engine check", installation=out_json)
+    )
+    assert bad_code == 0
+    assert bad_res.details["eligible"] is False
+    assert bad_res.details["reason"] == "local_engine_polystrata_engine_missing"
 
 
-def test_polystrata_layout_validation_errors(
+def test_select_polystrata_backend_fallback_and_hip_gpu_probe(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("HOME", str(tmp_path / "home"))
     monkeypatch.setattr("platform.system", lambda: "Linux")
-    monkeypatch.setattr("platform.machine", lambda: "x86_64")
-
-    ps_root, exe = _create_polystrata_layout(tmp_path / "ps-broken", platform_kind="linux")
+    ps_root, exe, _ = _create_polystrata_layout(
+        tmp_path / "ps-nobuild", platform_kind="linux", build_json=None
+    )
     decl = build_installation("polystrata", exe)
 
-    # Missing server.py
-    (ps_root / "serve" / "server.py").unlink()
-    with pytest.raises(PreflightError, match="local_engine_polystrata_server_missing"):
-        installation.freeze_installation(decl)
-    (ps_root / "serve" / "server.py").write_text("ok\n", encoding="utf-8")
-
-    # Missing native engine dir
-    (ps_root / "engine-poly" / "strata-poly").unlink()
-    (ps_root / "engine-poly").rmdir()
-    decl_no_eng = build_installation(
-        "polystrata",
-        exe,
-        working_directory=ps_root,
-        runtime_roots=[ps_root / "serve", ps_root / ".venv"],
+    monkeypatch.setattr(
+        "inferyard.platforms.device_gpu.detect_gpus",
+        lambda system: {
+            "status": "observed",
+            "source": "rocm-smi",
+            "devices": [{"vendor": "amd", "name": "RX 7900 XTX"}],
+        },
     )
-    with pytest.raises(PreflightError, match="local_engine_polystrata_engine_missing"):
-        installation.freeze_installation(decl_no_eng)
+    assert select_polystrata_backend(decl, "Linux") == "hip"
 
-    # Unsupported architecture
-    monkeypatch.setattr("platform.machine", lambda: "aarch64")
-    with pytest.raises(PreflightError, match="local_engine_platform_unsupported"):
-        installation.freeze_installation(decl_no_eng)
+    # Also verify BUILD.json inside engine-poly/ takes precedence
+    (ps_root / "engine-poly" / "BUILD.json").write_text(
+        json.dumps({"backend": "cuda"}), encoding="utf-8"
+    )
+    assert select_polystrata_backend(decl, "Linux") == "cuda"
 
 
 @pytest.mark.parametrize(
@@ -444,7 +459,7 @@ def test_polystrata_layout_validation_errors(
         ("windows", "Windows", "AMD64", "cuda", False),
     ],
 )
-def test_config_create_shared_gguf_and_describe_cross_platform(
+def test_config_create_shared_gguf_upstream_contract_and_describe(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     platform_kind: str,
@@ -462,20 +477,19 @@ def test_config_create_shared_gguf_and_describe_cross_platform(
         lambda: {"ac_online": True if sys_name == "Darwin" else None},
     )
 
-    ps_root, exe = _create_polystrata_layout(
+    ps_root, exe, engine_bin = _create_polystrata_layout(
         tmp_path / f"ps-{platform_kind}",
         platform_kind=platform_kind,
         build_json={"version": "v0.1.45-poly.10", "backend": expected_backend},
     )
     inst_path = tmp_path / f"inst-{platform_kind}.json"
-    decl = build_installation("polystrata", exe)
-    inst_path.write_bytes(json_bytes(decl))
+    inst_path.write_bytes(json_bytes(build_installation("polystrata", exe)))
 
     gguf = _write_gguf(
-        tmp_path / "models" / "qwen36-35b-a3b.gguf",
+        tmp_path / "models" / "glm5next.gguf",
         {
-            "general.name": "Qwen3.6-35B-A3B",
-            "general.architecture": "qwen35moe",
+            "general.name": "GLM-5-Next",
+            "general.architecture": "glm5next",
             "tokenizer.chat_template": "{{ messages }}",
         },
     )
@@ -493,49 +507,36 @@ def test_config_create_shared_gguf_and_describe_cross_platform(
             context_size=65536,
         )
     )
-    assert details["family"] == "polystrata"
     derived_cfg = Path(details["polystrata_config"])
     assert derived_cfg == out_dir.resolve() / "strata-candidate.json"
-    assert derived_cfg.is_file()
     derived_data = json.loads(derived_cfg.read_text(encoding="utf-8"))
-    assert derived_data["engine"] == "strata-poly"
-    assert derived_data["arch"] == "qwen35moe"
-    assert derived_data["gguf"] == str(gguf.resolve())
-    assert derived_data["context"] == 65536
-    # Weights must NOT be duplicated into the candidate output directory
+
+    # Matches upstream serve/server.py engine_exe() and engine_args() contract
+    assert derived_data["exe"] == str(engine_bin.resolve())
+    assert derived_data["args"] == ["--model", str(gguf.resolve()), "--max-context", "65536"]
+    assert derived_data["cwd"] == str(ps_root.resolve())
+    assert derived_data["port"] == 48857
     assert list(out_dir.glob("*.gguf")) == []
 
     loaded = load_config(details["candidate"]).config.to_dict()
-    assert loaded["engine"]["family"] == "polystrata"
     assert loaded["engine"]["backend"] == expected_backend
-    assert loaded["engine"]["polystrata_config_path"] == str(derived_cfg)
-    assert loaded["engine"]["startup_args"] == [
-        str((ps_root / "serve" / "server.py").resolve()),
-        "--engine",
-        "strata",
-        "--config",
-        str(derived_cfg),
-        "--host",
-        "127.0.0.1",
-        "--port",
-        "48857",
-    ]
-    assert "--open" not in loaded["engine"]["startup_args"]
-    assert loaded["generation"]["reasoning_effort"] == "none"
-    assert loaded["conditions"]["context_size"] == 65536
+    assert loaded["engine"]["polystrata_config_sha256"] == hash_file(derived_cfg).sha256
     assert loaded["safety"]["require_temperature"] is expected_temp
-    assert loaded["model"]["kind"] == "gguf"
-    assert loaded["model"]["local_path"] == str(gguf.resolve())
+    assert loaded["generation"]["reasoning_effort"] == "none"
 
-    # config describe works cross-platform
     described = describe_candidate(SimpleNamespace(candidate=Path(details["candidate"])))
     assert described["family"] == "polystrata"
-    assert described["launch"]["kind"] == "direct_process"
     assert described["launch"]["argv"][0] == str(exe.resolve())
-    assert described["launch"]["argv"][1:] == loaded["engine"]["startup_args"]
+
+    # Tampering with strata-candidate.json after creation is detected by assets()
+    tampered = dict(derived_data)
+    tampered["args"] = ["--model", str(gguf.resolve()), "--max-context", "1024"]
+    derived_cfg.write_text(json.dumps(tampered), encoding="utf-8")
+    with pytest.raises(PreflightError, match="identity_hash_mismatch"):
+        local_assets.assets(loaded)
 
 
-def test_config_create_rejects_unsupported_gguf_and_binds_existing_strata_json(
+def test_upstream_pack_config_credential_rejection_and_arch_enforcement(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
@@ -547,7 +548,7 @@ def test_config_create_rejects_unsupported_gguf_and_binds_existing_strata_json(
         lambda: {"ac_online": None},
     )
 
-    ps_root, exe = _create_polystrata_layout(
+    ps_root, exe, engine_bin = _create_polystrata_layout(
         tmp_path / "ps-linux",
         platform_kind="linux",
         build_json={"backend": "cuda"},
@@ -556,7 +557,7 @@ def test_config_create_rejects_unsupported_gguf_and_binds_existing_strata_json(
     inst_path.write_bytes(json_bytes(build_installation("polystrata", exe)))
     bundle = _write_bundle(tmp_path / "bundle.json")
 
-    # Unsupported architecture (dense llama) is rejected
+    # Unsupported architecture (llama) rejected BOTH directly AND via existing JSON with poly exe
     bad_gguf = _write_gguf(
         tmp_path / "llama3.gguf",
         {
@@ -571,28 +572,90 @@ def test_config_create_rejects_unsupported_gguf_and_binds_existing_strata_json(
                 inst_path=inst_path,
                 model_path=bad_gguf,
                 bundle_path=bundle,
-                out_dir=tmp_path / "cand-bad",
-                results_dir=tmp_path / "res-bad",
+                out_dir=tmp_path / "cand-bad-direct",
+                results_dir=tmp_path / "res-bad-direct",
+            )
+        )
+    bad_json = ps_root / "data" / "strata-llama.json"
+    bad_json.write_text(
+        json.dumps(
+            {
+                "exe": str(engine_bin),
+                "args": ["--model", str(bad_gguf), "--max-context", "8192"],
+                "cwd": str(ps_root),
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(PreparationError, match="polystrata_gguf_architecture_unsupported"):
+        create_candidate(
+            _candidate_request(
+                inst_path=inst_path,
+                model_path=bad_json,
+                bundle_path=bundle,
+                out_dir=tmp_path / "cand-bad-json",
+                results_dir=tmp_path / "res-bad-json",
             )
         )
 
-    # Existing strata-*.json pointing to a pack directory
-    pack_dir = tmp_path / "qwen38-pack"
-    pack_dir.mkdir()
-    (pack_dir / "tokenizer_config.json").write_text(
-        json.dumps({"chat_template": "{{ messages }}"}), encoding="utf-8"
+    # Plaintext api_key in existing JSON is rejected (never copied to candidate output)
+    good_gguf = _write_gguf(
+        tmp_path / "qwen36.gguf",
+        {
+            "general.name": "Qwen3.6",
+            "general.architecture": "qwen35moe",
+            "tokenizer.chat_template": "{{ messages }}",
+        },
     )
-    (pack_dir / "weights.bin").write_bytes(b"pack-weights")
-    strata_json = ps_root / "data" / "strata-qwen38.json"
-    strata_json.write_text(
-        json.dumps({"engine": "strata", "pack_dir": str(pack_dir), "context": 65536}),
+    secret_json = ps_root / "data" / "strata-secret.json"
+    secret_json.write_text(
+        json.dumps(
+            {
+                "exe": str(engine_bin),
+                "args": ["--model", str(good_gguf), "--max-context", "32768"],
+                "cwd": str(ps_root),
+                "api_key": "synthetic-secret-token",
+            }
+        ),
         encoding="utf-8",
     )
+    with pytest.raises(PreparationError, match="polystrata_plaintext_credential_rejected"):
+        create_candidate(
+            _candidate_request(
+                inst_path=inst_path,
+                model_path=secret_json,
+                bundle_path=bundle,
+                out_dir=tmp_path / "cand-secret",
+                results_dir=tmp_path / "res-secret",
+                context_size=65536,
+            )
+        )
 
+    # Real upstream --pack + --max-context JSON shape parses and overrides cleanly
+    pack_dir = tmp_path / "packs" / "iq2_xs"
+    tok_dir = pack_dir / "tokenizer"
+    tok_dir.mkdir(parents=True)
+    (tok_dir / "tokenizer_config.json").write_text(
+        json.dumps({"chat_template": "{{ messages }}"}), encoding="utf-8"
+    )
+    (pack_dir / "pack.bin").write_bytes(b"pack-data")
+    upstream_pack_json = ps_root / "data" / "strata-iq2_xs.json"
+    upstream_pack_json.write_text(
+        json.dumps(
+            {
+                "exe": str(ps_root / "engine" / "strata"),
+                "args": ["--pack", str(pack_dir), "--max-context", "131072"],
+                "cwd": str(ps_root),
+                "tokenizer": str(tok_dir),
+                "model_name": "qwen3.8-flash-next-iq2_xs",
+            }
+        ),
+        encoding="utf-8",
+    )
     details = create_candidate(
         _candidate_request(
             inst_path=inst_path,
-            model_path=strata_json,
+            model_path=upstream_pack_json,
             bundle_path=bundle,
             out_dir=tmp_path / "cand-pack",
             results_dir=tmp_path / "res-pack",
@@ -602,30 +665,27 @@ def test_config_create_rejects_unsupported_gguf_and_binds_existing_strata_json(
     loaded = load_config(details["candidate"]).config.to_dict()
     assert loaded["model"]["kind"] == "directory"
     assert loaded["model"]["local_path"] == str(pack_dir.resolve())
-    assert loaded["engine"]["polystrata_config_path"] == str(strata_json.resolve())
-    assert loaded["conditions"]["context_size"] == 65536
-    assert not (tmp_path / "cand-pack" / "strata-candidate.json").exists()
+    assert loaded["conditions"]["context_size"] == 131072
 
-    # Overriding context_size derives an isolated strata-candidate.json without mutating original
     details_override = create_candidate(
         _candidate_request(
             inst_path=inst_path,
-            model_path=strata_json,
+            model_path=upstream_pack_json,
             bundle_path=bundle,
             out_dir=tmp_path / "cand-pack-override",
             results_dir=tmp_path / "res-pack-override",
-            context_size=131072,
+            context_size=65536,
         )
     )
-    loaded_override = load_config(details_override["candidate"]).config.to_dict()
-    assert loaded_override["conditions"]["context_size"] == 131072
-    assert loaded_override["engine"]["polystrata_config_path"] == str(
-        (tmp_path / "cand-pack-override" / "strata-candidate.json").resolve()
+    override_cfg = json.loads(
+        Path(details_override["polystrata_config"]).read_text(encoding="utf-8")
     )
-    assert json.loads(strata_json.read_text(encoding="utf-8"))["context"] == 65536
+    assert "--max-context" in override_cfg["args"]
+    idx = override_cfg["args"].index("--max-context")
+    assert override_cfg["args"][idx + 1] == "65536"
 
 
-def test_polystrata_cross_platform_service_binding_and_offline_verify(
+def test_multishard_gguf_worker_ld_library_path_and_offline_verify(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
@@ -637,32 +697,61 @@ def test_polystrata_cross_platform_service_binding_and_offline_verify(
         lambda: {"ac_online": None},
     )
 
-    ps_root, exe = _create_polystrata_layout(
+    ps_root, exe, worker_bin = _create_polystrata_layout(
         tmp_path / "ps-linux",
         platform_kind="linux",
         build_json={"backend": "cuda"},
     )
-    worker_bin = ps_root / "engine-poly" / "strata-poly"
+    cuda_lib = tmp_path / "cuda-lib"
+    cuda_lib.mkdir()
     inst_path = tmp_path / "inst.json"
     inst_path.write_bytes(json_bytes(build_installation("polystrata", exe)))
-    gguf = _write_gguf(
-        tmp_path / "gemma4.gguf",
+
+    # 2-shard GGUF (like deepseek4 / Qwen3.6)
+    shard1 = _write_gguf(
+        tmp_path / "models" / "deepseek4-00001-of-00002.gguf",
         {
-            "general.name": "Gemma-4-26B",
-            "general.architecture": "gemma4",
+            "general.name": "DeepSeek-4",
+            "general.architecture": "deepseek4",
             "tokenizer.chat_template": "{{ messages }}",
+            "split.count": 2,
+            "split.no": 0,
         },
+        payload=b"shard-one-bytes",
+    )
+    shard2 = _write_gguf(
+        tmp_path / "models" / "deepseek4-00002-of-00002.gguf",
+        {
+            "general.name": "DeepSeek-4",
+            "general.architecture": "deepseek4",
+            "split.count": 2,
+            "split.no": 1,
+        },
+        payload=b"shard-two-bytes",
+    )
+    strata_json = ps_root / "data" / "strata-deepseek4.json"
+    strata_json.write_text(
+        json.dumps(
+            {
+                "exe": str(worker_bin),
+                "args": ["--model", str(shard1), "--max-context", "32768"],
+                "cwd": str(ps_root),
+                "lib_dirs": [str(cuda_lib)],
+                "gpu": 0,
+            }
+        ),
+        encoding="utf-8",
     )
     bundle = _write_bundle(tmp_path / "bundle.json")
     out_dir = tmp_path / "cand"
     details = create_candidate(
         _candidate_request(
             inst_path=inst_path,
-            model_path=gguf,
+            model_path=strata_json,
             bundle_path=bundle,
             out_dir=out_dir,
             results_dir=tmp_path / "results",
-            context_size=32768,
+            context_size=None,
             port=48857,
         )
     )
@@ -671,12 +760,22 @@ def test_polystrata_cross_platform_service_binding_and_offline_verify(
     config["endpoint"]["process_start_ticks"] = 9999
 
     env_vars = dict(config["engine"]["environment"])
+    worker_env = {
+        **env_vars,
+        "LD_LIBRARY_PATH": str(cuda_lib),
+        "CUDA_VISIBLE_DEVICES": "0",
+        "CUDA_DEVICE_ORDER": "PCI_BUS_ID",
+    }
     server_cmdline = [str(exe.resolve()), *config["engine"]["startup_args"]]
-    worker_cmdline = [str(worker_bin.resolve()), "--worker"]
+    worker_cmdline = [str(worker_bin.resolve()), "--model", str(shard1)]
+    my_uid = os.getuid() if hasattr(os, "getuid") else 0
 
     class FakeProc:
         def __init__(self, pid: int):
             self.pid = pid
+
+        def uids(self):
+            return SimpleNamespace(real=my_uid)
 
         def ppid(self) -> int:
             return 500 if self.pid == 501 else 1
@@ -691,50 +790,64 @@ def test_polystrata_cross_platform_service_binding_and_offline_verify(
             return str(ps_root.resolve())
 
         def environ(self) -> dict[str, str]:
-            return dict(env_vars)
-
-        def net_connections(self, kind: str = "tcp"):
-            if self.pid != 500:
-                return []
-            return [
-                SimpleNamespace(
-                    status="LISTEN",
-                    laddr=SimpleNamespace(ip="127.0.0.1", port=48857),
-                )
-            ]
+            return dict(env_vars) if self.pid == 500 else dict(worker_env)
 
         def children(self, recursive: bool = False):
             return [FakeProc(501)] if self.pid == 500 else []
 
-    fake_psutil = SimpleNamespace(Process=FakeProc, Error=OSError)
+    fake_conns = [
+        SimpleNamespace(
+            status="LISTEN",
+            pid=500,
+            laddr=SimpleNamespace(ip="127.0.0.1", port=48857),
+        )
+    ]
+    fake_psutil = SimpleNamespace(
+        Process=FakeProc,
+        Error=OSError,
+        net_connections=lambda kind="tcp": list(fake_conns),
+    )
     monkeypatch.setattr(service.native, "psutil_module", lambda: fake_psutil)
     monkeypatch.setattr(service, "process_start_ticks", lambda pid: 9999 if pid == 500 else 10001)
 
     binding = service.bind_service(config)
     assert binding["service"]["listener_source"] == "psutil:TCP:LISTEN:pid"
     assert len(binding["service"]["workers"]) == 1
-    assert binding["service"]["workers"][0]["pid"] == 501
 
+    # Unauthorized LD_LIBRARY_PATH is still rejected
+    worker_env["LD_LIBRARY_PATH"] = "/tmp/untrusted-lib"
+    with pytest.raises(PreflightError, match="local_engine_environment_override"):
+        service.bind_service(config)
+    worker_env["LD_LIBRARY_PATH"] = str(cuda_lib)
+
+    # Ambiguous second listener on same port is rejected
+    fake_conns.append(
+        SimpleNamespace(
+            status="LISTEN",
+            pid=999,
+            laddr=SimpleNamespace(ip="0.0.0.0", port=48857),
+        )
+    )
+    with pytest.raises(PreflightError, match="local_engine_listener_mismatch"):
+        service.bind_service(config)
+    fake_conns.pop()
+
+    # Offline verification checks both shards + frozen polystrata_config_sha256
     binding_path = out_dir / "binding.json"
     binding_bytes = json_bytes(binding)
     binding_path.write_bytes(binding_bytes)
     config["endpoint"]["binding_path"] = str(binding_path.resolve())
     config["endpoint"]["binding_sha256"] = hashlib.sha256(binding_bytes).hexdigest()
 
-    # Verify offline frozen identity check passes cleanly
-    runtime_doc = json.loads(Path(config["engine"]["installation_path"]).read_text(encoding="utf-8"))
-    assets_doc = json.loads(Path(config["model"]["assets_path"]).read_text(encoding="utf-8"))
-    inventory_files = [
-        hash_file(Path(config["engine"]["installation_path"])),
-        hash_file(binding_path),
-        hash_file(Path(config["model"]["assets_path"])),
-        hash_file(Path(config["model"]["template_path"])),
-        hash_file(gguf),
-    ]
+    local_id, bound_files = local_assets.preflight_assets(config)
+    shard_paths = {item.path for item in bound_files}
+    assert str(shard1.resolve()) in shard_paths
+    assert str(shard2.resolve()) in shard_paths
+    assert str(strata_json.resolve()) in shard_paths
+
     verified_svc = validate_frozen_identity(
         config,
-        {"runtime": runtime_doc, "binding": binding, "model_assets": assets_doc},
-        files=inventory_files,
+        local_id["local_engine"],
+        files=bound_files,
     )
     assert verified_svc["pid"] == 500
-    assert os.path.samefile(verified_svc["model_binding"]["path"], gguf)

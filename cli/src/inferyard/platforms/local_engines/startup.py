@@ -61,10 +61,13 @@ _PREFIXES = (
 )
 
 
-def check_environment(actual, expected):
+def check_environment(actual, expected, *, allowed_extras=None):
     if not isinstance(actual, dict) or any(actual.get(k) != v for k, v in expected.items()):
         raise PreflightError("local_engine_environment_mismatch")
-    if any(key.startswith(_PREFIXES) and key not in expected for key in actual):
+    extras = allowed_extras or ()
+    if any(
+        key.startswith(_PREFIXES) and key not in expected and key not in extras for key in actual
+    ):
         raise PreflightError("local_engine_environment_override")
 
 
@@ -113,11 +116,25 @@ def validate_startup(config, declaration, arguments, executable, cwd):
         engine["working_directory"] != declaration["working_directory"]
         or engine["environment"] != declaration["environment"]
         or str(cwd) != str(Path(engine["working_directory"]).resolve())
-        or arguments != [declaration["executable"], *engine["startup_args"]]
     ):
         raise PreflightError("local_engine_startup_mismatch")
-    if executable != Path(declaration["executable"]).resolve():
+    allowed_executables = {Path(declaration["executable"]).resolve()}
+    allowed_argv0 = {declaration["executable"]}
+    if engine["family"] == "polystrata":
+        from inferyard.platforms.local_engines.detect_polystrata import venv_base_python
+
+        base_py = venv_base_python(Path(declaration["executable"]))
+        if base_py is not None:
+            allowed_executables.add(base_py)
+            allowed_argv0.add(str(base_py))
+    if executable not in allowed_executables:
         raise PreflightError("local_engine_executable_mismatch")
+    if (
+        not arguments
+        or arguments[0] not in allowed_argv0
+        or arguments[1:] != engine["startup_args"]
+    ):
+        raise PreflightError("local_engine_startup_mismatch")
     validate_arguments(config)
 
 
@@ -130,7 +147,13 @@ def validate_arguments(config, *, bootstrap_path=None):
         if len(args) < 3:
             raise PreflightError("local_engine_entrypoint_mismatch")
         server_path = parse_absolute_path(args[0])
-        if server_path is None or server_path.parts[-2:] != ("serve", "server.py"):
+        cwd_path = parse_absolute_path(engine.get("working_directory", ""))
+        if (
+            server_path is None
+            or cwd_path is None
+            or type(server_path) is not type(cwd_path)
+            or server_path != cwd_path / "serve" / "server.py"
+        ):
             raise PreflightError("local_engine_entrypoint_mismatch")
         rest = args[1:]
         config_arg = _options(rest, _POLYSTRATA_VALUES, set(), {"--config"})

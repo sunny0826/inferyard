@@ -1,10 +1,13 @@
-"""Read-only PolyStrata installation detection across macOS, Linux, and Windows."""
+"""Read-only PolyStrata installation detection and layout verification across platforms."""
 
 from __future__ import annotations
 
 import json
 import os
+import platform
 from pathlib import Path
+
+from inferyard.errors import PreflightError
 
 POLYSTRATA_ENGINE_DIRS = ("engine", "engine-poly", "build-metal")
 _MAX_BUILD_JSON_BYTES = 64 * 1024
@@ -17,28 +20,129 @@ def _safe_resolve(path: Path) -> Path | None:
         return None
 
 
-def pick_venv_python(venv_dir: Path, preferred: Path | None = None) -> Path | None:
-    """Locate the Python executable inside a POSIX (bin/) or Windows (Scripts/) venv."""
-    candidates: list[Path] = []
+def _is_usable_binary(path: Path, system: str) -> bool:
+    if not path.is_file():
+        return False
+    if system == "Windows":
+        return True
+    return os.access(path, os.X_OK)
+
+
+def pick_venv_python(
+    venv_dir: Path,
+    preferred: Path | None = None,
+    *,
+    platform_system: str | None = None,
+) -> Path | None:
+    """Locate an executable Python inside a POSIX (bin/) or Windows (Scripts/) venv."""
+    system = platform_system or platform.system()
     bin_dir = venv_dir / "bin"
     scripts_dir = venv_dir / "Scripts"
-    if preferred is not None and preferred.parent in (bin_dir, scripts_dir):
+    if system == "Windows":
+        search = ((scripts_dir, ("python.exe", "python")),)
+    else:
+        search = ((bin_dir, ("python", "python3")),)
+    allowed_parents = {directory for directory, _ in search}
+    candidates: list[Path] = []
+    if preferred is not None and preferred.parent in allowed_parents:
         candidates.append(preferred)
-    for directory, names in (
-        (bin_dir, ("python", "python3")),
-        (scripts_dir, ("python.exe", "python")),
-    ):
+    for directory, names in search:
         for name in names:
             candidate = directory / name
             if candidate not in candidates:
                 candidates.append(candidate)
-    existing = [p for p in candidates if p.is_file()]
-    if not existing:
+    for path in candidates:
+        if _is_usable_binary(path, system):
+            return path
+    return None
+
+
+def find_polystrata_engine_binaries(
+    root: Path, *, platform_system: str | None = None
+) -> dict[str, Path]:
+    """Return discovered native PolyStrata engine executables keyed by 'poly' / 'strata'."""
+    system = platform_system or platform.system()
+    found: dict[str, Path] = {}
+    if system == "Windows":
+        poly_candidates = (
+            root / "engine-poly" / "strata-poly.exe",
+            root / "build-metal" / "strata-poly.exe",
+        )
+        strata_candidates = (
+            root / "engine" / "strata.exe",
+            root / "build-metal" / "strata.exe",
+        )
+    else:
+        poly_candidates = (
+            root / "engine-poly" / "strata-poly",
+            root / "build-metal" / "strata-poly",
+            root / "build-metal" / "strata-metal",
+            root / "build-metal" / "strata",
+        )
+        strata_candidates = (
+            root / "engine" / "strata",
+            root / "build-metal" / "strata",
+            root / "build-metal" / "strata-metal",
+        )
+    for role, candidates in (("poly", poly_candidates), ("strata", strata_candidates)):
+        for candidate in candidates:
+            if candidate.parent.is_symlink():
+                continue
+            if _is_usable_binary(candidate, system):
+                resolved = _safe_resolve(candidate)
+                if resolved is not None:
+                    found[role] = resolved
+                    break
+    return found
+
+
+def venv_base_python(executable: Path, *, platform_system: str | None = None) -> Path | None:
+    """Resolve the base CPython interpreter referenced by pyvenv.cfg (needed for Windows venvs)."""
+    system = platform_system or platform.system()
+    cfg_path = executable.parent.parent / "pyvenv.cfg"
+    try:
+        if not cfg_path.is_file():
+            return None
+        home_value = None
+        for line in cfg_path.read_text(encoding="utf-8").splitlines():
+            key, sep, value = line.partition("=")
+            if sep and key.strip().lower() == "home":
+                home_value = value.strip()
+                break
+        if not home_value:
+            return None
+        home_dir = Path(home_value)
+        if not home_dir.is_dir():
+            return None
+        names = ("python.exe", "python") if system == "Windows" else ("python3", "python")
+        for name in names:
+            candidate = home_dir / name
+            if candidate.is_file():
+                resolved = _safe_resolve(candidate)
+                if resolved is not None:
+                    return resolved
+    except (OSError, UnicodeError):
         return None
-    for p in existing:
-        if os.access(p, os.X_OK):
-            return p
-    return existing[0]
+    return None
+
+
+def validate_polystrata_layout(
+    root: Path, executable: Path, *, platform_system: str | None = None
+) -> dict[str, Path]:
+    """Validate PolyStrata root, venv Python, and at least one usable engine binary."""
+    system = platform_system or platform.system()
+    if not (root / "serve" / "server.py").is_file():
+        raise PreflightError("local_engine_polystrata_server_missing")
+    if not ((root / "setup.py").is_file() or (root / "polystrata.py").is_file()):
+        raise PreflightError("local_engine_polystrata_layout_invalid")
+    if not (executable.parent.parent / "pyvenv.cfg").is_file():
+        raise PreflightError("local_engine_python_venv_required")
+    if not _is_usable_binary(executable, system):
+        raise PreflightError("local_engine_executable_invalid")
+    binaries = find_polystrata_engine_binaries(root, platform_system=system)
+    if not binaries:
+        raise PreflightError("local_engine_polystrata_engine_missing")
+    return binaries
 
 
 def polystrata_runtime_roots(root: Path, executable: Path | None = None) -> list[str]:
@@ -63,19 +167,27 @@ def polystrata_runtime_roots(root: Path, executable: Path | None = None) -> list
     return sorted(resolved)
 
 
-def _read_build_json(root: Path) -> dict | None:
-    build_path = root / "BUILD.json"
-    try:
-        if not build_path.is_file() or build_path.stat().st_size > _MAX_BUILD_JSON_BYTES:
-            return None
-        data = json.loads(build_path.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else None
-    except (OSError, ValueError, UnicodeError):
-        return None
+def _read_build_json(root: Path, *, engine_dir: Path | None = None) -> dict | None:
+    candidates: list[Path] = []
+    if engine_dir is not None:
+        candidates.append(engine_dir / "BUILD.json")
+    for name in ("engine-poly", "engine", "build-metal"):
+        candidates.append(root / name / "BUILD.json")
+    candidates.append(root / "BUILD.json")
+    for build_path in candidates:
+        try:
+            if not build_path.is_file() or build_path.stat().st_size > _MAX_BUILD_JSON_BYTES:
+                continue
+            data = json.loads(build_path.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return data
+        except (OSError, ValueError, UnicodeError):
+            continue
+    return None
 
 
-def read_build_version(root: Path) -> str | None:
-    data = _read_build_json(root)
+def read_build_version(root: Path, *, engine_dir: Path | None = None) -> str | None:
+    data = _read_build_json(root, engine_dir=engine_dir)
     if not data:
         return None
     for key in ("version", "release", "tag", "commit"):
@@ -85,8 +197,8 @@ def read_build_version(root: Path) -> str | None:
     return None
 
 
-def read_build_backend(root: Path) -> str | None:
-    data = _read_build_json(root)
+def read_build_backend(root: Path, *, engine_dir: Path | None = None) -> str | None:
+    data = _read_build_json(root, engine_dir=engine_dir)
     if not data:
         return None
     value = data.get("backend")
@@ -175,10 +287,9 @@ def probe_polystrata_root(
     python_exec = pick_venv_python(venv_dir, preferred=preferred_python)
     if python_exec is None:
         return False
-    if not any(
-        (resolved / name).is_dir() and not (resolved / name).is_symlink()
-        for name in POLYSTRATA_ENGINE_DIRS
-    ):
+    try:
+        validate_polystrata_layout(resolved, python_exec)
+    except PreflightError:
         return False
     dedupe_key = ("polystrata", str(resolved))
     if dedupe_key in seen:

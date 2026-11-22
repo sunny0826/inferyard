@@ -78,18 +78,34 @@ def create(request):
     runtime = freeze_installation(installation)
     verify_installation(runtime)
 
+    port = 48857 if request.port is None else request.port
+    if type(port) is not int or not 1 <= port <= 65535:
+        raise PreparationError("invalid_input")
+
     polystrata_config_path = None
+    polystrata_config_sha256 = None
     derived_polystrata_config = None
     fallback_tokenizer = None
     if family == "polystrata":
+        backend = select_polystrata_backend(installation, system)
         (
             model,
             polystrata_config_path,
             derived_polystrata_config,
             context,
             fallback_tokenizer,
-        ) = resolve_polystrata_model(installation, model_input, out, request.context_size)
-        backend = select_polystrata_backend(installation, system)
+        ) = resolve_polystrata_model(
+            installation,
+            model_input,
+            out,
+            request.context_size,
+            backend=backend,
+            port=port,
+        )
+        if derived_polystrata_config is not None:
+            polystrata_config_sha256 = sha256(json_bytes(derived_polystrata_config))
+        else:
+            polystrata_config_sha256 = sha256(polystrata_config_path.read_bytes())
     else:
         model = model_input
         context = request.context_size or 8192
@@ -106,9 +122,6 @@ def create(request):
     elif environment.get("ac_online") is False:
         raise PreparationError("ac_power_required")
     served = request.served_model or "inferyard-local-model"
-    port = 48857 if request.port is None else request.port
-    if type(port) is not int or not 1 <= port <= 65535:
-        raise PreparationError("invalid_input")
     args, cwd = startup(
         installation,
         model,
@@ -131,6 +144,7 @@ def create(request):
     }
     if polystrata_config_path is not None:
         engine_section["polystrata_config_path"] = str(polystrata_config_path)
+        engine_section["polystrata_config_sha256"] = polystrata_config_sha256
     generation_section = {
         "temperature": 0,
         "max_tokens": request.max_tokens

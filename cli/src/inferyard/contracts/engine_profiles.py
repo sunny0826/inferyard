@@ -20,6 +20,7 @@ POLYSTRATA_SUPPORTED_GGUF_ARCHS = (
     "lfm2moe",
     "flint",
     "glm5-next",
+    "glm5next",
     "deepseek4",
     "kolibri1",
     "clover_moe",

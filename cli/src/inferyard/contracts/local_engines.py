@@ -34,6 +34,11 @@ def validate_config(config):
         "config.engine.polystrata_config_path",
         "polystrata_config_path is required for polystrata only",
     )
+    require(
+        (family == "polystrata") == ("polystrata_config_sha256" in engine),
+        "config.engine.polystrata_config_sha256",
+        "polystrata_config_sha256 is required for polystrata only",
+    )
     if "polystrata_config_path" in engine:
         require(
             is_absolute_path(engine["polystrata_config_path"]),
@@ -41,9 +46,9 @@ def validate_config(config):
             "absolute path required",
         )
     require(
-        family != "mlx-lm" or engine["backend"] == "metal",
+        family == "polystrata" or engine["backend"] == "metal",
         "config.engine.backend",
-        "mlx-lm requires metal backend",
+        "non-polystrata local profiles require metal backend",
     )
     require(
         "reasoning_effort" not in config["generation"] or family == "polystrata",

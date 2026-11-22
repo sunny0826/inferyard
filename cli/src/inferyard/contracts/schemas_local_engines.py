@@ -87,6 +87,7 @@ LOCAL_CONFIG_SCHEMA["properties"]["engine"] = obj(
     }
 )
 LOCAL_CONFIG_SCHEMA["properties"]["engine"]["properties"]["polystrata_config_path"] = LABEL
+LOCAL_CONFIG_SCHEMA["properties"]["engine"]["properties"]["polystrata_config_sha256"] = HASH
 LOCAL_CONFIG_SCHEMA["properties"]["engine"]["properties"]["tuning"] = obj(
     {**{key: LABEL for key in TUNING_KEYS}, "prompt_cache": enum(*PROMPT_CACHE)}, required=[]
 )

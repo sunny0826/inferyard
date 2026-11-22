@@ -469,9 +469,9 @@ def static_preflight(
             raise PreflightError("cuda_device_unavailable")
         environment["gpu"] = {"backend": "cuda", "source": "nvidia-smi", "devices": gpu["devices"]}
     elif backend == "hip":
-        from inferyard.platforms.device_gpu import amd_snapshot
+        from inferyard.platforms.device_gpu import amd_linux_snapshot, amd_windows_snapshot
 
-        gpu = amd_snapshot()
+        gpu = amd_windows_snapshot() if system == "Windows" else amd_linux_snapshot()
         if gpu["status"] != "observed":
             raise PreflightError("hip_device_unavailable")
         environment["gpu"] = {

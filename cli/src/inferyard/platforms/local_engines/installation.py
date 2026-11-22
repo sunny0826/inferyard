@@ -185,19 +185,12 @@ def description(value):
 
 
 def _verify_polystrata_layout(declaration: dict) -> None:
-    root = Path(declaration["working_directory"])
-    if not (root / "serve" / "server.py").is_file():
-        raise PreflightError("local_engine_polystrata_server_missing")
-    if not ((root / "setup.py").is_file() or (root / "polystrata.py").is_file()):
-        raise PreflightError("local_engine_polystrata_layout_invalid")
-    if not any(
-        (root / name).is_dir() and not (root / name).is_symlink()
-        for name in _POLYSTRATA_ENGINE_DIRS
-    ):
-        raise PreflightError("local_engine_polystrata_engine_missing")
-    executable = Path(declaration["executable"])
-    if not (executable.parent.parent / "pyvenv.cfg").is_file():
-        raise PreflightError("local_engine_python_venv_required")
+    from inferyard.platforms.local_engines.detect_polystrata import validate_polystrata_layout
+
+    validate_polystrata_layout(
+        Path(declaration["working_directory"]),
+        Path(declaration["executable"]),
+    )
 
 
 def read_installation(path):
@@ -324,15 +317,26 @@ def _roots(declaration, python_roots):
             Path(str(files("inferyard").joinpath("data/engine_fit/mlx_server.py"))),
         ]
     if declaration["family"] == "polystrata":
+        from inferyard.platforms.local_engines.detect_polystrata import venv_base_python
+
         root = Path(declaration["working_directory"])
         paths.append(root / "serve" / "server.py")
         for name in _POLYSTRATA_TOP_FILES:
             candidate = root / name
             if candidate.is_file():
                 paths.append(candidate)
-        pyvenv_cfg = Path(declaration["executable"]).parent.parent / "pyvenv.cfg"
+        for engine_dir in _POLYSTRATA_ENGINE_DIRS:
+            build_json = root / engine_dir / "BUILD.json"
+            if build_json.is_file():
+                paths.append(build_json)
+        exe_path = Path(declaration["executable"])
+        pyvenv_cfg = exe_path.parent.parent / "pyvenv.cfg"
         if pyvenv_cfg.is_file():
             paths.append(pyvenv_cfg)
+        if platform.system() == "Windows":
+            base_py = venv_base_python(exe_path)
+            if base_py is not None and base_py.is_file():
+                paths.append(base_py)
     selected = []
     for path in sorted(set(paths), key=lambda p: (len(p.parts), str(p))):
         if not any(parent.is_dir() and path.is_relative_to(parent) for parent in selected):
