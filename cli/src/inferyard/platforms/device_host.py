@@ -73,6 +73,14 @@ def _windows():
     except OSError, psutil.Error:
         missing.update(memory_total_bytes="query_failed", memory_available_bytes="query_failed")
     try:
+        swap = psutil.swap_memory()
+        values["page_file_total_bytes"] = swap.total if swap.total >= 0 else None
+        if values["page_file_total_bytes"] is None:
+            missing["page_file_total_bytes"] = "invalid_output"
+    except OSError, RuntimeError, psutil.Error:
+        values["page_file_total_bytes"] = None
+        missing["page_file_total_bytes"] = "query_failed"
+    try:
         battery = psutil.sensors_battery()
         values["ac_online"] = battery.power_plugged if battery else None
     except OSError, psutil.Error:
@@ -84,6 +92,7 @@ def _windows():
             "logical_cpus": "os.cpu_count",
             "memory_total_bytes": "psutil.virtual_memory",
             "memory_available_bytes": "psutil.virtual_memory",
+            "page_file_total_bytes": "psutil.swap_memory",
             "ac_online": "psutil.sensors_battery",
         },
         "missing": missing,
