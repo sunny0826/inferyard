@@ -22,6 +22,13 @@ REASONS = {
     "evidence_error": "产物完整性或存储错误",
     "cancelled": "检测已取消",
     "preflight_blocked": "预检阻断",
+    "polystrata_hardware_fit": "显卡、内存与磁盘满足 PolyStrata 运行条件",
+    "fallback_llama_cpp_no_compatible_polystrata_gpu": "当前显卡/系统不满足 PolyStrata 条件，自动回退至 llama.cpp",
+    "fallback_llama_cpp_insufficient_ram_for_polystrata": "系统内存不足以运行 PolyStrata 模型，自动回退至 llama.cpp",
+    "fallback_llama_cpp_insufficient_disk_for_polystrata": "可用磁盘空间不足以安装 PolyStrata 模型，自动回退至 llama.cpp",
+    "fallback_llama_cpp_insufficient_vram_for_polystrata": "显存不足以运行 PolyStrata 模型，自动回退至 llama.cpp",
+    "disk_space_unavailable": "可用磁盘空间缺测，无法生成默认推荐",
+    "insufficient_disk_space": "可用磁盘空间不足",
 }
 
 
@@ -102,6 +109,26 @@ def _human(result):
             lines.append("下一步：准备配置、绑定外部服务，再执行 probe；容量建议需实时预检确认")
     else:
         lines.append("模型建议：" + _reason(recommendation.get("reason")))
+    starter = report.get("starter_recommendation")
+    if isinstance(starter, dict):
+        if starter.get("status") == "recommended":
+            engine_name = {
+                "polystrata": "PolyStrata",
+                "llama-cpp": "llama.cpp",
+            }.get(starter.get("engine"), starter.get("engine") or "未知引擎")
+            backend_name = {
+                "cuda": "CUDA",
+                "hip": "HIP",
+                "metal": "Metal",
+                "cpu": "CPU",
+            }.get(starter.get("backend"), starter.get("backend") or "未知后端")
+            lines.append(
+                f"默认推荐：{engine_name}（{backend_name}）· {starter.get('model_title') or '未知模型'}；"
+                f"预计下载 {_capacity(starter.get('estimated_download_bytes'))}；"
+                f"{_reason(starter.get('reason'))}"
+            )
+        elif starter.get("status") == "blocked":
+            lines.append("默认推荐：阻断 — " + _reason(starter.get("reason")))
     capabilities = report.get("platform_capabilities", {})
     if not capabilities.get("live_single_run", False):
         lines.append(f"平台限制：{system} 实时测评未支持；可使用离线报告流程")
