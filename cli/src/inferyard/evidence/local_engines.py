@@ -134,7 +134,10 @@ def _snapshot(data, config, binding):
             prom = data["signals"].get("/metrics/prometheus")
             if (
                 not isinstance(prom, dict)
-                or prom.get("available") is True
+                or prom.get("available") is not None
+                or prom.get("body") is not None
+                or not isinstance(prom.get("missing_reason"), str)
+                or not prom["missing_reason"].strip()
                 or snapshot["raw_metrics"] is not None
             ):
                 raise EvidenceError("local_engine_queue_source_mismatch")

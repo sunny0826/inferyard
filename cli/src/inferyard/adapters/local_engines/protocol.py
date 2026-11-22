@@ -110,12 +110,20 @@ def _polystrata_service(payload, config, health):
 
 
 def sanitize_polystrata_status(raw_body: str) -> dict:
-    """Keep only queue-admission fields from PolyStrata /status (never persist tail text)."""
+    """Validate and keep only typed queue-admission fields from PolyStrata /status."""
     payload = parse_json_body(raw_body)
-    sanitized = {}
-    for key in ("busy", "queued", "loaded"):
-        if key in payload:
-            sanitized[key] = payload[key]
+    busy = payload.get("busy")
+    if type(busy) is not bool or "queued" not in payload:
+        raise FitTransportError("polystrata_status_invalid")
+    queued = payload["queued"]
+    if type(queued) is not int or queued < 0:
+        raise FitTransportError("polystrata_status_invalid")
+    sanitized: dict[str, bool | int] = {"busy": busy, "queued": queued}
+    if "loaded" in payload:
+        loaded = payload["loaded"]
+        if type(loaded) is not bool:
+            raise FitTransportError("polystrata_status_invalid")
+        sanitized["loaded"] = loaded
     return sanitized
 
 
