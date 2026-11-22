@@ -12,6 +12,10 @@ from pathlib import Path
 import release_common as common
 
 LICENSE_SOURCE = Path(__file__).resolve().parents[2] / "LICENSE"
+RESOURCES_DIR = Path(__file__).resolve().parents[1] / "resources"
+ICON_PNG_SOURCE = RESOURCES_DIR / "icon.png"
+ICON_ICNS_SOURCE = RESOURCES_DIR / "icon.icns"
+ICON_ICO_SOURCE = RESOURCES_DIR / "icon.ico"
 
 
 def build_info(executable: Path) -> dict[str, common.JsonData]:
@@ -53,19 +57,30 @@ def assemble_distribution(directory: Path, version: str, target: str, binary: Pa
     shutil.copy2(LICENSE_SOURCE, directory / "LICENSE")
     instructions = f"InferYard Studio {version} ({target})\n\n"
     if target.startswith("darwin"):
+        if not ICON_ICNS_SOURCE.is_file():
+            raise ValueError("icon_icns_missing")
         bundle = directory / "InferYard Studio.app" / "Contents"
         (bundle / "MacOS").mkdir(parents=True)
+        (bundle / "Resources").mkdir(parents=True)
         shutil.copy2(directory / executable, bundle / "MacOS" / executable)
+        shutil.copy2(ICON_ICNS_SOURCE, bundle / "Resources" / "AppIcon.icns")
         with (bundle / "Info.plist").open("wb") as output:
             plistlib.dump(dict(CFBundleExecutable=executable, CFBundleIdentifier="com.inferyard.studio",
                                CFBundleName="InferYard Studio", CFBundleDisplayName="InferYard Studio",
+                               CFBundleIconFile="AppIcon",
                                CFBundlePackageType="APPL", CFBundleVersion=version,
                                CFBundleShortVersionString=version, LSMinimumSystemVersion="12.0",
                                NSHighResolutionCapable=True, NSPrincipalClass="NSApplication"), output)
         instructions += 'Run: open "InferYard Studio.app" (macOS 12+).\nNative UI uses Metal. Desktop notifications require the .app and notification permission.\n'
     elif target.startswith("linux"):
+        if not ICON_PNG_SOURCE.is_file():
+            raise ValueError("icon_png_missing")
+        shutil.copy2(ICON_PNG_SOURCE, directory / "icon.png")
         instructions += "Run: ./inferyard-studio\nNative UI: GTK 3 with OpenGL rendering. Desktop notifications need a notification service.\n"
     else:
+        if not ICON_ICO_SOURCE.is_file():
+            raise ValueError("icon_ico_missing")
+        shutil.copy2(ICON_ICO_SOURCE, directory / "icon.ico")
         instructions += "Run: inferyard-studio.exe\nRequires Windows 10/11; native UI uses Direct3D 11.\n"
     instructions += (
         "\nConfigure the separately installed inferyard CLI and data directories in Settings.\n"
@@ -110,8 +125,9 @@ OutputDir={inno_path(archive.parent)}
 OutputBaseFilename={archive.stem}
 LicenseFile={inno_path(distribution / "LICENSE")}
 InfoBeforeFile={inno_path(distribution / "README.txt")}
+SetupIconFile={inno_path(distribution / "icon.ico")}
 UninstallDisplayName=InferYard Studio
-UninstallDisplayIcon={{app}}\\inferyard-studio.exe
+UninstallDisplayIcon={{app}}\\icon.ico
 VersionInfoVersion={version}.0
 VersionInfoCompany=Xudong Guo
 VersionInfoDescription=InferYard Studio Installer
@@ -126,9 +142,10 @@ SolidCompression=yes
 Source: "{inno_path(distribution / executable)}"; DestDir: "{{app}}"; Flags: ignoreversion
 Source: "{inno_path(distribution / "LICENSE")}"; DestDir: "{{app}}"; Flags: ignoreversion
 Source: "{inno_path(distribution / "README.txt")}"; DestDir: "{{app}}"; Flags: ignoreversion
+Source: "{inno_path(distribution / "icon.ico")}"; DestDir: "{{app}}"; Flags: ignoreversion
 
 [Icons]
-Name: "{{group}}\\InferYard Studio"; Filename: "{{app}}\\inferyard-studio.exe"
+Name: "{{group}}\\InferYard Studio"; Filename: "{{app}}\\inferyard-studio.exe"; IconFilename: "{{app}}\\icon.ico"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{{app}}"

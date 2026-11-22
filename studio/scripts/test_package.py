@@ -92,11 +92,15 @@ class SingleTargetPackageTests(unittest.TestCase):
             self.assertTrue((dist / "LICENSE").is_file())
             self.assertTrue((dist / "inferyard-studio").is_file())
             self.assertTrue((dist / "InferYard Studio.app").is_dir())
+            self.assertTrue(
+                (dist / "InferYard Studio.app/Contents/Resources/AppIcon.icns").is_file()
+            )
             import plistlib
             plist = plistlib.loads(
                 (dist / "InferYard Studio.app/Contents/Info.plist").read_bytes()
             )
             self.assertEqual(plist["NSPrincipalClass"], "NSApplication")
+            self.assertEqual(plist["CFBundleIconFile"], "AppIcon")
             archive = out / common.archive_name(version, "darwin-arm64")
             self.assertEqual(archive.name, f"inferyard-studio-v{version}-darwin-arm64.dmg")
             self.assertEqual(receipt["kind"], "studio-package.v1")
@@ -154,9 +158,20 @@ class SingleTargetPackageTests(unittest.TestCase):
             self.assertIn("{autopf}", script)
             output_dir = str(out.resolve()).replace("/", "\\")
             distribution = out / common.distribution_name(common.studio_version(), "windows-amd64")
+            self.assertTrue((distribution / "icon.ico").is_file())
             license_path = str((distribution / "LICENSE").resolve()).replace("/", "\\")
+            icon_path = str((distribution / "icon.ico").resolve()).replace("/", "\\")
             self.assertIn(f"OutputDir={output_dir}", script)
             self.assertIn(f"LicenseFile={license_path}", script)
+            self.assertIn(f"SetupIconFile={icon_path}", script)
+            self.assertIn("UninstallDisplayIcon={app}\\icon.ico", script)
+            self.assertIn('IconFilename: "{app}\\icon.ico"', script)
+
+    def test_linux_package_includes_icon_png(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            _, out, _ = self.make_build(directory, "linux-amd64")
+            name = common.distribution_name(common.studio_version(), "linux-amd64")
+            self.assertTrue((out / name / "icon.png").is_file())
 
     def test_rejects_non_release_dirty_or_mismatched_build(self) -> None:
         for info in [dict(tags="ui_debug"), dict(modified="true"), dict(revision=OTHER_SHA)]:
@@ -167,6 +182,7 @@ class SingleTargetPackageTests(unittest.TestCase):
 _TEST_METHODS = (
     SingleTargetPackageTests.test_darwin_package_receipt_and_archive,
     SingleTargetPackageTests.test_windows_uses_inno_setup_with_user_install,
+    SingleTargetPackageTests.test_linux_package_includes_icon_png,
     SingleTargetPackageTests.test_rejects_non_release_dirty_or_mismatched_build,
 )
 

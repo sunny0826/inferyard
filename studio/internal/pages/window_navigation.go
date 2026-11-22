@@ -56,8 +56,7 @@ func (s *viewState) leftNav(c *ui.Context) {
 	t := tokens(c)
 	ui.Column(c).FillWidth().MinWidth(0).Padding(sidebar.HeaderHeight(c), 0, 0, 0).Children(func() {
 		components.Sidebar(c).Children(func() {
-			components.Text(c, "InferYard Studio").Bold().FontSize(t.Type.Body).
-				Padding(t.Density.Row, t.Density.Row, t.Density.Tight, t.Density.Row).SingleLine()
+			brandHeader(c)
 			if s.service != nil {
 				if paths := s.service.BoundPaths(); paths != nil {
 					components.Text(c, "开发环境").Bold().FontSize(t.Type.ShellLabel).
