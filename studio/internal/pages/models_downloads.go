@@ -202,21 +202,8 @@ func engineTaskStatus(task core.DownloadTask) string {
 	return "引擎归档状态未知。"
 }
 
-func downloadTaskSameSource(a, b core.DownloadTask) bool {
-	if a.Kind != b.Kind {
-		return false
-	}
-	for _, left := range []string{a.SourceUrl, a.RequestedSourceUrl} {
-		if left == "" {
-			continue
-		}
-		for _, right := range []string{b.SourceUrl, b.RequestedSourceUrl} {
-			if right != "" && left == right {
-				return true
-			}
-		}
-	}
-	return false
+func downloadTaskSamePinnedSource(a, b core.DownloadTask) bool {
+	return a.Kind == b.Kind && a.SourceUrl != "" && a.SourceUrl == b.SourceUrl
 }
 
 func (s *viewState) downloadRetryActive(task core.DownloadTask) bool {
@@ -224,7 +211,7 @@ func (s *viewState) downloadRetryActive(task core.DownloadTask) bool {
 		if other.TaskId == task.TaskId || other.State != "downloading" {
 			continue
 		}
-		if downloadTaskSameSource(task, other) {
+		if downloadTaskSamePinnedSource(task, other) {
 			return true
 		}
 	}

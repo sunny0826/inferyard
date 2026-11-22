@@ -2,6 +2,7 @@ package pages
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -219,4 +220,133 @@ func TestRetryCardsDisableAndDeduplicateWhileActive(t *testing.T) {
 			t.Fatalf("expected cancelled-card retry done, got %+v", s.downloads[0])
 		}
 	})
+}
+
+func TestRetryCardRemainsEnabledWhenMirrorResolvesToNewRevision(t *testing.T) {
+	qwen, ok := core.CatalogEntryByID("model-qwen3-0.6b-q8")
+	if !ok {
+		t.Fatal("missing model-qwen3-0.6b-q8")
+	}
+	shaA := qwen.Revision
+	shaB := strings.Repeat("b", 40)
+	pinnedA := "https://modelscope.cn/Qwen/Qwen3-0.6B-GGUF/blob/" + shaA + "/Qwen3-0.6B-Q8_0.gguf"
+	pinnedB := "https://modelscope.cn/Qwen/Qwen3-0.6B-GGUF/blob/" + shaB + "/Qwen3-0.6B-Q8_0.gguf"
+	donePayload := `{"command":"model acquire","status":"prepared","completeness":"complete","details":{"bytes":639446688,"sha256":"` + qwen.SHA256 + `"}}`
+
+	bStarted := make(chan struct{}, 2)
+	retryAStarted := make(chan struct{}, 2)
+	gateB := make(chan struct{})
+	gateRetryA := make(chan struct{})
+
+	var mu sync.Mutex
+	var resolveCalls int
+	var acquireCalls int
+	svc := testDownloadService(
+		t,
+		func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
+			if len(args) > 0 && args[0] == "--version" {
+				return inferyard.Execution{ExitCode: 0, Stdout: []byte("inferyard 1.0 source=release\n")}, nil
+			}
+			if len(args) >= 2 && args[0] == "assets" && args[1] == "scan" {
+				return inferyard.Execution{ExitCode: 0, Stdout: emptyAssetsScanPayload()}, nil
+			}
+			if len(args) >= 2 && args[0] == "model" && args[1] == "resolve" {
+				mu.Lock()
+				resolveCalls++
+				n := resolveCalls
+				mu.Unlock()
+				if n == 1 {
+					return inferyard.Execution{ExitCode: inferyard.ExitComplete, Stdout: modelResolvePayload(qwen.MirrorURL, shaA)}, nil
+				}
+				return inferyard.Execution{ExitCode: inferyard.ExitComplete, Stdout: modelResolvePayload(qwen.MirrorURL, shaB)}, nil
+			}
+			return inferyard.Execution{ExitCode: inferyard.ExitComplete}, nil
+		},
+		func(ctx context.Context, _ func(string), _ string, args ...string) (inferyard.Execution, error) {
+			if len(args) >= 2 && args[0] == "model" && args[1] == "acquire" {
+				src := ""
+				for i := 0; i+1 < len(args); i++ {
+					if args[i] == "--source" {
+						src = args[i+1]
+						break
+					}
+				}
+				mu.Lock()
+				acquireCalls++
+				cur := acquireCalls
+				mu.Unlock()
+				if cur == 1 {
+					return inferyard.Execution{ExitCode: inferyard.ExitBlocked}, nil
+				}
+				if src == pinnedB {
+					bStarted <- struct{}{}
+					select {
+					case <-gateB:
+					case <-ctx.Done():
+						return inferyard.Execution{ExitCode: inferyard.ExitCancelled}, nil
+					}
+					return inferyard.Execution{ExitCode: inferyard.ExitComplete, Stdout: []byte(donePayload)}, nil
+				}
+				retryAStarted <- struct{}{}
+				select {
+				case <-gateRetryA:
+				case <-ctx.Done():
+					return inferyard.Execution{ExitCode: inferyard.ExitCancelled}, nil
+				}
+				return inferyard.Execution{ExitCode: inferyard.ExitComplete, Stdout: []byte(donePayload)}, nil
+			}
+			return inferyard.Execution{ExitCode: inferyard.ExitBlocked}, nil
+		},
+	)
+
+	updates := make(chan func(), 32)
+	s := testState()
+	s.ctx = context.Background()
+	s.service = svc
+	s.updateWindow = func(fn func()) { updates <- fn }
+	s.ensureDownloadsUI().hostPlatform = "darwin/arm64"
+	tt := ui.NewTester(s.downloadsPageView, 1120, 2600)
+
+	clickDownloadsTab(t, tt, "模型")
+	click(t, tt, "ModelScope")
+	click(t, tt, "下载模型 · model-qwen3-0.6b-q8")
+	waitForWorkAndDownloads(t, svc, &s, updates, 1)
+
+	origA := s.downloads[0]
+	if origA.State != "failed" || origA.SourceUrl != pinnedA {
+		t.Fatalf("expected failed task A pinned to %s, got %+v", pinnedA, origA)
+	}
+	tt.Frame()
+
+	click(t, tt, "下载模型 · model-qwen3-0.6b-q8")
+	waitForLifecycleSignal(t, bStarted, "revision B start")
+	waitUntilBusyClears(t, &s, updates)
+	tt.Frame()
+
+	if len(s.downloads) != 2 || s.downloads[0].SourceUrl != pinnedB || s.downloadRetryActive(origA) {
+		t.Fatalf("new mirror revision B blocked retry of revision A: downloads=%+v", s.downloads)
+	}
+
+	click(t, tt, "重新创建下载任务")
+	waitForLifecycleSignal(t, retryAStarted, "revision A retry start")
+	waitUntilBusyClears(t, &s, updates)
+	tt.Frame()
+
+	got := svc.Downloads()
+	if len(got) != 3 || got[0].SourceUrl != pinnedA || !s.downloadRetryActive(origA) {
+		t.Fatalf("expected active retry for revision A alongside B, got %+v", got)
+	}
+
+	click(t, tt, "重新创建下载任务")
+	drainWorkUpdates(updates)
+	mu.Lock()
+	calls := acquireCalls
+	mu.Unlock()
+	if len(svc.Downloads()) != 3 || calls != 3 {
+		t.Fatalf("duplicate retry queued while revision A retry was active: len=%d calls=%d", len(svc.Downloads()), calls)
+	}
+
+	close(gateB)
+	close(gateRetryA)
+	waitForWorkAndDownloads(t, svc, &s, updates, 3)
 }

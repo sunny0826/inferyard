@@ -165,4 +165,19 @@ func TestPreviewRetryDownloadDeduplicatesActiveRetry(t *testing.T) {
 	if len(p.state.downloads) != 4 {
 		t.Fatalf("expected single active retry for cancelled preview task, got %+v", p.state.downloads)
 	}
+
+	mirror := "https://modelscope.cn/Qwen/Qwen3-0.6B-GGUF/resolve/master/Qwen3-0.6B-Q8_0.gguf"
+	pinnedA := "https://modelscope.cn/Qwen/Qwen3-0.6B-GGUF/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/Qwen3-0.6B-Q8_0.gguf"
+	pinnedB := "https://modelscope.cn/Qwen/Qwen3-0.6B-GGUF/blob/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/Qwen3-0.6B-Q8_0.gguf"
+	revA := core.DownloadTask{TaskId: "dl-rev-a", Kind: "model", State: "failed", SourceUrl: pinnedA, RequestedSourceUrl: mirror, OutName: "rev-a"}
+	revB := core.DownloadTask{TaskId: "dl-rev-b", Kind: "model", State: "downloading", SourceUrl: pinnedB, RequestedSourceUrl: mirror, OutName: "rev-b"}
+	p.state.downloads = append(p.state.downloads, revB, revA)
+	if p.state.downloadRetryActive(revA) {
+		t.Fatal("different pinned revision sharing RequestedSourceUrl blocked retry card")
+	}
+	p.dispatch(previewRetryDownload{id: "dl-rev-a"})
+	p.dispatch(previewRetryDownload{id: "dl-rev-a"})
+	if len(p.state.downloads) != 7 || p.state.downloads[0].SourceUrl != pinnedA {
+		t.Fatalf("expected single retry for pinnedA alongside active pinnedB, got %+v", p.state.downloads)
+	}
 }

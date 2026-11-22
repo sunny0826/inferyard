@@ -87,7 +87,7 @@ func (s *Service) activeDownloadLocked(kind, sourceURL, requestedSource string) 
 	return DownloadTask{}, false
 }
 
-func (s *Service) activeRetryOrDownloadLocked(retryOf, kind, sourceURL, requestedSource string) (DownloadTask, bool) {
+func (s *Service) activeRetryOrDownloadLocked(retryOf, kind, sourceURL string) (DownloadTask, bool) {
 	if retryOf != "" {
 		for _, d := range s.downloads {
 			if d.Task.State == "downloading" && d.retryOf == retryOf {
@@ -95,7 +95,14 @@ func (s *Service) activeRetryOrDownloadLocked(retryOf, kind, sourceURL, requeste
 			}
 		}
 	}
-	return s.activeDownloadLocked(kind, sourceURL, requestedSource)
+	if sourceURL != "" {
+		for _, d := range s.downloads {
+			if d.Task.Kind == kind && d.Task.State == "downloading" && d.Task.SourceUrl == sourceURL {
+				return clone(d.Task), true
+			}
+		}
+	}
+	return DownloadTask{}, false
 }
 
 func (s *Service) CreateModelDownload(req CreateDownloadRequest, tokenEnv string) (DownloadTask, *ApiError) {

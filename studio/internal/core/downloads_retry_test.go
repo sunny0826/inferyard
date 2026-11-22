@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"inferyard/studio/internal/inferyard"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 )
 
-func retryTestResolvePayload(rawURL, pinnedURL string, qwen CatalogEntry) inferyard.Execution {
+func retryTestResolvePayload(revision, pinnedURL string, sizeBytes int64) inferyard.Execution {
 	payload, _ := json.Marshal(map[string]any{
 		"command":      "model resolve",
 		"status":       "resolved",
@@ -21,12 +22,12 @@ func retryTestResolvePayload(rawURL, pinnedURL string, qwen CatalogEntry) infery
 			"definition":          "model-resolve.v1",
 			"platform":            "modelscope",
 			"repository":          "Qwen/Qwen3-0.6B-GGUF",
-			"revision":            qwen.Revision,
+			"revision":            revision,
 			"path":                "Qwen3-0.6B-Q8_0.gguf",
 			"pinned_url":          pinnedURL,
-			"download_url":        "https://modelscope.cn/api/v1/models/Qwen/Qwen3-0.6B-GGUF/repo?Revision=" + qwen.Revision + "&FilePath=Qwen3-0.6B-Q8_0.gguf",
+			"download_url":        "https://modelscope.cn/api/v1/models/Qwen/Qwen3-0.6B-GGUF/repo?Revision=" + revision + "&FilePath=Qwen3-0.6B-Q8_0.gguf",
 			"filename":            "Qwen3-0.6B-Q8_0.gguf",
-			"bytes":               qwen.Bytes,
+			"bytes":               sizeBytes,
 			"already_pinned":      false,
 			"model_requests_sent": 0,
 		},
@@ -64,7 +65,7 @@ func TestRetryDownloadDeduplicatesActiveRetry(t *testing.T) {
 				return v, nil
 			}
 			if len(args) >= 2 && args[0] == "model" && args[1] == "resolve" {
-				return retryTestResolvePayload(qwen.MirrorURL, pinnedMS, qwen), nil
+				return retryTestResolvePayload(qwen.Revision, pinnedMS, qwen.Bytes), nil
 			}
 			if len(args) >= 2 && args[0] == "model" && args[1] == "acquire" {
 				mu.Lock()
@@ -158,7 +159,7 @@ func TestRetryDownloadDeduplicatesActiveRetry(t *testing.T) {
 				return v, nil
 			}
 			if len(args) >= 2 && args[0] == "model" && args[1] == "resolve" {
-				return retryTestResolvePayload(qwen.MirrorURL, pinnedMS, qwen), nil
+				return retryTestResolvePayload(qwen.Revision, pinnedMS, qwen.Bytes), nil
 			}
 			if len(args) >= 2 && args[0] == "model" && args[1] == "acquire" {
 				mu.Lock()
@@ -231,5 +232,111 @@ func TestRetryDownloadDeduplicatesActiveRetry(t *testing.T) {
 		if got := s.Downloads()[0].RequestedSourceUrl; got != qwen.MirrorURL {
 			t.Fatalf("retried cancelled task RequestedSourceUrl = %q, want %q", got, qwen.MirrorURL)
 		}
+	})
+
+	t.Run("different pinned revision from same mirror", func(t *testing.T) {
+		t.Setenv("HOME", t.TempDir())
+		shaA := qwen.Revision
+		shaB := strings.Repeat("b", 40)
+		pinnedA := "https://modelscope.cn/Qwen/Qwen3-0.6B-GGUF/blob/" + shaA + "/Qwen3-0.6B-Q8_0.gguf"
+		pinnedB := "https://modelscope.cn/Qwen/Qwen3-0.6B-GGUF/blob/" + shaB + "/Qwen3-0.6B-Q8_0.gguf"
+
+		bStarted := make(chan struct{}, 2)
+		retryAStarted := make(chan struct{}, 2)
+		gateB := make(chan struct{})
+		gateRetryA := make(chan struct{})
+
+		var mu sync.Mutex
+		var resolveCount int
+		var acquireCount int
+		s := testService(t, func(ctx context.Context, _ string, args ...string) (inferyard.Execution, error) {
+			if v, ok := version(args); ok {
+				return v, nil
+			}
+			if len(args) >= 2 && args[0] == "model" && args[1] == "resolve" {
+				mu.Lock()
+				resolveCount++
+				n := resolveCount
+				mu.Unlock()
+				if n == 1 {
+					return retryTestResolvePayload(shaA, pinnedA, qwen.Bytes), nil
+				}
+				return retryTestResolvePayload(shaB, pinnedB, qwen.Bytes), nil
+			}
+			if len(args) >= 2 && args[0] == "model" && args[1] == "acquire" {
+				src := ""
+				for i := 0; i+1 < len(args); i++ {
+					if args[i] == "--source" {
+						src = args[i+1]
+						break
+					}
+				}
+				mu.Lock()
+				acquireCount++
+				cur := acquireCount
+				mu.Unlock()
+				if cur == 1 {
+					return result(inferyard.ExitBlocked), nil
+				}
+				if src == pinnedB {
+					bStarted <- struct{}{}
+					select {
+					case <-gateB:
+					case <-ctx.Done():
+						return result(inferyard.ExitCancelled), nil
+					}
+					return inferyard.Execution{ExitCode: inferyard.ExitComplete, Stdout: []byte(donePayload)}, nil
+				}
+				retryAStarted <- struct{}{}
+				select {
+				case <-gateRetryA:
+				case <-ctx.Done():
+					return result(inferyard.ExitCancelled), nil
+				}
+				return inferyard.Execution{ExitCode: inferyard.ExitComplete, Stdout: []byte(donePayload)}, nil
+			}
+			return result(inferyard.ExitBlocked), nil
+		})
+		models := t.TempDir()
+		s.settings.ModelsRoot = &models
+
+		taskA, apiErr := s.CreateOrResolveModelDownload(context.Background(), CreateDownloadRequest{SourceUrl: qwen.MirrorURL}, "")
+		if apiErr != nil {
+			t.Fatalf("CreateOrResolveModelDownload A failed: %+v", apiErr)
+		}
+		wait(t, func() bool { return s.Downloads()[0].State == "failed" })
+
+		taskB, apiErr := s.CreateOrResolveModelDownload(context.Background(), CreateDownloadRequest{SourceUrl: qwen.MirrorURL}, "")
+		if apiErr != nil {
+			t.Fatalf("CreateOrResolveModelDownload B failed: %+v", apiErr)
+		}
+		waitForSignal(t, bStarted, "revision B acquire")
+
+		retryA, retryErr := s.RetryDownload(taskA.TaskId)
+		if retryErr != nil {
+			t.Fatalf("RetryDownload(taskA) while B downloading failed: %+v", retryErr)
+		}
+		if retryA.TaskId == taskA.TaskId || retryA.TaskId == taskB.TaskId {
+			t.Fatalf("RetryDownload(taskA) returned %+v instead of fresh retry of revision A", retryA)
+		}
+		if retryA.SourceUrl != pinnedA || retryA.RequestedSourceUrl != qwen.MirrorURL {
+			t.Fatalf("retryA URLs = (%q, %q), want (%q, %q)", retryA.SourceUrl, retryA.RequestedSourceUrl, pinnedA, qwen.MirrorURL)
+		}
+		waitForSignal(t, retryAStarted, "revision A retry acquire")
+
+		dupRetryA, dupErr := s.RetryDownload(taskA.TaskId)
+		if dupErr != nil || dupRetryA.TaskId != retryA.TaskId {
+			t.Fatalf("second RetryDownload(taskA) = %+v, %+v, want reuse %q", dupRetryA, dupErr, retryA.TaskId)
+		}
+		if got := s.Downloads(); len(got) != 3 {
+			t.Fatalf("expected 3 tasks (retryA + B + failed A), got %+v", got)
+		}
+
+		close(gateB)
+		close(gateRetryA)
+		wait(t, func() bool {
+			got := s.Downloads()
+			return len(got) == 3 && got[0].State == "done" && got[1].State == "done"
+		})
 	})
 }

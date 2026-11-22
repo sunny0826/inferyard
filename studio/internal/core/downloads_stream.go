@@ -199,7 +199,7 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	kind := orig.Task.Kind
 	sourceURL := orig.Task.SourceUrl
 	requestedSourceURL := orig.Task.RequestedSourceUrl
-	if existing, found := s.activeRetryOrDownloadLocked(taskID, kind, sourceURL, requestedSourceURL); found {
+	if existing, found := s.activeRetryOrDownloadLocked(taskID, kind, sourceURL); found {
 		s.mu.Unlock()
 		return existing, nil
 	}
@@ -225,7 +225,7 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	if s.closing {
 		return DownloadTask{}, Err("service_closing")
 	}
-	if existing, found := s.activeRetryOrDownloadLocked(taskID, kind, sourceURL, requestedSourceURL); found {
+	if existing, found := s.activeRetryOrDownloadLocked(taskID, kind, sourceURL); found {
 		return existing, nil
 	}
 	resolvedPrev, resolveErr := Resolve(root, prevOutDir)
