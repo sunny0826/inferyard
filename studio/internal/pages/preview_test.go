@@ -220,4 +220,18 @@ func TestPreviewPolystrataStarterAndManagedSetup(t *testing.T) {
 	if p.state.unresolvedDownloadFailures() != 0 {
 		t.Fatalf("expected retry to resolve failed polystrata count, got %d", p.state.unresolvedDownloadFailures())
 	}
+
+	// Retry of a failed preview-created setup preserves exact Backend, Context, and ModelSource
+	p.cancelDownload(p.state.downloads[0].TaskId)
+	origReq := core.PolystrataSetupRequest{Family: "coder", Model: "IQ1_M", Context: 65536, Backend: "hip", ModelSource: "huggingface"}
+	p.failNext = true
+	p.dispatch(previewPolystrataSetup{req: origReq})
+	failedID := p.state.downloads[0].TaskId
+	p.advance(2 * time.Second)
+	p.state.ensureDownloadsUI().polystrataModelSource = "modelscope"
+	p.dispatch(previewRetryDownload{id: failedID})
+	retryID := p.state.downloads[0].TaskId
+	if got := p.polystrataReqs[retryID]; got != origReq {
+		t.Fatalf("preview retry lost original request fields: got %+v want %+v", got, origReq)
+	}
 }

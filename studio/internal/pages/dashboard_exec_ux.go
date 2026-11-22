@@ -86,24 +86,16 @@ func prismBackendLabel(w *viewState) string {
 
 func polystrataBackendLabel(w *viewState) string {
 	if w != nil {
-		if rec, ok := core.ParseStarterRecommendation(w.device.Snapshot); ok && rec.Engine == "polystrata" && rec.Backend != "" {
-			return "PolyStrata（" + deviceLabel(rec.Backend) + "）"
-		}
-		if snapshot, err := parseDeviceSnapshot(w.device.Snapshot); err == nil && snapshot != nil {
-			devices := snapshot.object("hardware").object("gpu").list("devices")
-			for _, item := range devices {
-				v := deviceItem(item)
-				switch v.value("vendor") {
-				case "amd":
-					return "PolyStrata（HIP (ROCm) 加速）"
-				case "nvidia":
-					return "PolyStrata（CUDA 加速）"
-				case "apple":
-					return "PolyStrata（Metal 加速）"
-				}
-				if v.flag("metal_supported") {
-					return "PolyStrata（Metal 加速）"
-				}
+		if el, ok := w.checks.Engines[w.engine]; ok {
+			switch el.Mode {
+			case "hip":
+				return "PolyStrata（HIP (ROCm) 加速）"
+			case "cuda":
+				return "PolyStrata（CUDA 加速）"
+			case "metal":
+				return "PolyStrata（Metal 加速）"
+			case "cpu":
+				return "PolyStrata（CPU）"
 			}
 		}
 	}

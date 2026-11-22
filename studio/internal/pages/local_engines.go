@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -70,8 +69,7 @@ func (s *viewState) compatibleModel(model core.ModelAsset) bool {
 		if model.Format != "gguf" {
 			return false
 		}
-		arch := strings.ToLower(strings.TrimSpace(model.Architecture))
-		return arch == "" || slices.Contains(polystrataSupportedGGUFArchs, arch)
+		return model.Architecture == "" || slices.Contains(polystrataSupportedGGUFArchs, model.Architecture)
 	case "mlx-lm", "vllm", "sglang":
 		return model.Format == "directory"
 	}

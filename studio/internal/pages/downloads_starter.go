@@ -182,6 +182,35 @@ func starterLlamaCppEngineURL(hostPlatform, backend string) string {
 	return ""
 }
 
+func starterLlamaCppDrawerTarget(reg *core.EngineCatalogRegistry, hostPlatform, backend string) (string, string) {
+	if reg == nil {
+		return "", ""
+	}
+	fam, ok := reg.FamilyByID("llama-cpp")
+	if !ok {
+		return "", ""
+	}
+	releases := fam.ReleasesForPlatform(hostPlatform, false)
+	if len(releases) == 0 {
+		return "", ""
+	}
+	wantBackend := strings.ToLower(strings.TrimSpace(backend))
+	if wantBackend != "" {
+		for _, rel := range releases {
+			for _, b := range rel.BuildsForPlatform(hostPlatform) {
+				if strings.Contains(strings.ToLower(b.Variant), wantBackend) {
+					return rel.ID, b.ID
+				}
+			}
+		}
+	}
+	firstBuilds := releases[0].BuildsForPlatform(hostPlatform)
+	if len(firstBuilds) > 0 {
+		return releases[0].ID, firstBuilds[0].ID
+	}
+	return releases[0].ID, ""
+}
+
 func starterModelURLForOption(opt starterOption, modelSource string) string {
 	if entry, ok := core.CatalogEntryByID(opt.ModelID); ok {
 		if modelSource == "modelscope" && entry.MirrorURL != "" {
@@ -267,7 +296,8 @@ func (s *viewState) downloadsStarterCard(c *ui.Context) {
 				default:
 					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 						button(c, "查看引擎获取方式").OnClick(func() {
-							st.openEngineDrawer("llama-cpp", "", hostPlatform, "")
+							relID, buildID := starterLlamaCppDrawerTarget(s.engineCatalogRegistry(), hostPlatform, chosen.Backend)
+							st.openEngineDrawer("llama-cpp", relID, hostPlatform, buildID)
 						})
 						if modelURL != "" {
 							outlineButton(c, "下载推荐模型").Disabled(s.busy).OnClick(func() {

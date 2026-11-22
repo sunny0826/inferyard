@@ -158,22 +158,46 @@ func TestPolystrataRound1ReviewRegressions(t *testing.T) {
 		t.Fatalf("expected empty direct URL for linux/amd64, got %q", got)
 	}
 	sLinux := testState()
-	sLinux.ensureDownloadsUI().hostPlatform = "linux/amd64"
+	sLinux.device.Snapshot = json.RawMessage(`{
+		"starter_recommendation": {
+			"definition": "starter-recommendation.v1",
+			"status": "recommended",
+			"engine": "llama-cpp",
+			"backend": "cuda",
+			"model_id": "model-qwen3-0.6b-q8",
+			"model_title": "Qwen3-0.6B-Q8_0 (GGUF)",
+			"recommended_context": 8192
+		}
+	}`)
+	stLinux := sLinux.ensureDownloadsUI()
+	stLinux.hostPlatform = "linux/amd64"
+	stLinux.selectedRelease["llama-cpp"] = "llama-cpp-prism-b10743"
+	stLinux.selectedBuild["llama-cpp"] = "engine-linux-x64"
 	ttLinux := ui.NewTester(sLinux.downloadsPageView, 1120, 2400)
 	if !ttLinux.HasText("查看引擎获取方式") || !ttLinux.HasText("下载推荐模型") {
 		t.Fatalf("expected Linux llama.cpp fallback actions in starter card: %v", ttLinux.Texts())
 	}
+	click(t, ttLinux, "查看引擎获取方式")
+	if stLinux.selectedRelease["llama-cpp"] != "llama-cpp-upstream-v1.0.0" || stLinux.selectedBuild["llama-cpp"] != "llama-upstream-v1.0.0-linux-x64" {
+		t.Fatalf("Linux CUDA starter link did not override prior CPU drawer selection: rel=%q build=%q",
+			stLinux.selectedRelease["llama-cpp"], stLinux.selectedBuild["llama-cpp"])
+	}
 
-	// 3. PolyStrata launch summary omits hardcoded 8192 and renders HIP label on AMD GPU
+	// 3. PolyStrata launch summary omits hardcoded 8192, never guesses backend from GPU vendor, and shows resolved check Mode
 	sAMD := testState()
 	sAMD.registry.Engines = []core.EngineAsset{{Name: "polystrata · local", Family: "polystrata", Kind: "local_installation"}}
 	sAMD.registry.Models = []core.ModelAsset{{Name: "strata-q2.json", Format: "strata_pack", Available: true}}
 	sAMD.engine = "polystrata · local"
 	sAMD.model = "strata-q2.json"
 	sAMD.device.Snapshot = json.RawMessage(`{"hardware":{"gpu":{"devices":[{"name":"RX 9070 XT","vendor":"amd"}]}}}`)
-	summary := launchSummaryLine(&sAMD)
-	if summary == "" || !containsAll(summary, "PolyStrata（HIP (ROCm) 加速）") || containsAll(summary, "上下文 8192") {
-		t.Fatalf("unexpected PolyStrata launch summary: %q", summary)
+	if summary := launchSummaryLine(&sAMD); containsAll(summary, "HIP") || containsAll(summary, "上下文 8192") {
+		t.Fatalf("unresolved PolyStrata backend must not guess HIP or hardcode 8192: %q", summary)
+	}
+	sAMD.checks.Engines = map[string]core.EngineEligibility{
+		"polystrata · local": {State: core.EngineCheckEligible, Family: "polystrata", Mode: "hip"},
+	}
+	if summary := launchSummaryLine(&sAMD); !containsAll(summary, "PolyStrata（HIP (ROCm) 加速）") || containsAll(summary, "上下文 8192") {
+		t.Fatalf("resolved HIP PolyStrata launch summary mismatch: %q", summary)
 	}
 }
 
@@ -309,11 +333,12 @@ func TestPolystrataModelCompatibilityWizardAndHIPBackendLabel(t *testing.T) {
 	gguf := core.ModelAsset{Name: "qwen35.gguf", Format: "gguf", Architecture: "qwen35moe", Available: true}
 	ggufUnknown := core.ModelAsset{Name: "unknown.gguf", Format: "gguf", Available: true}
 	ggufLlama := core.ModelAsset{Name: "llama3.gguf", Format: "gguf", Architecture: "llama", Available: true}
+	ggufUpper := core.ModelAsset{Name: "gemma4-upper.gguf", Format: "gguf", Architecture: "GEMMA4", Available: true}
 	pack := core.ModelAsset{Name: "strata-qwen.json", Format: "strata_pack", Available: true}
 	dir := core.ModelAsset{Name: "mlx-dir", Format: "directory", Available: true}
 
 	s.engine = "polystrata · local"
-	if !s.compatibleModel(gguf) || !s.compatibleModel(ggufUnknown) || s.compatibleModel(ggufLlama) || !s.compatibleModel(pack) || s.compatibleModel(dir) {
+	if !s.compatibleModel(gguf) || !s.compatibleModel(ggufUnknown) || s.compatibleModel(ggufLlama) || s.compatibleModel(ggufUpper) || !s.compatibleModel(pack) || s.compatibleModel(dir) {
 		t.Fatal("polystrata compatibility mismatch")
 	}
 	if got := s.incompatibleModelSuffix(ggufLlama); got != "（PolyStrata 暂不支持此架构）" {

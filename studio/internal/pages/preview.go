@@ -36,6 +36,7 @@ type previewSession struct {
 	speedFailure       *core.ApiError
 	speedMissingTiming bool
 	local              *previewLocalTask
+	polystrataReqs     map[string]core.PolystrataSetupRequest
 }
 
 func NewPreview(ctx context.Context) {

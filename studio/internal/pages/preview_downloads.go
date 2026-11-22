@@ -87,6 +87,10 @@ func (p *previewSession) startPolystrataSetup(req core.PolystrataSetupRequest) {
 		StartedAt:   p.timestamp(),
 	}
 	s.downloads = append([]core.DownloadTask{task}, s.downloads...)
+	if p.polystrataReqs == nil {
+		p.polystrataReqs = map[string]core.PolystrataSetupRequest{}
+	}
+	p.polystrataReqs[id] = req
 	p.tickPolystrataSetup(id, p.takeFailure(), 0)
 	p.notice = "模拟 PolyStrata 引导安装已开始。"
 }

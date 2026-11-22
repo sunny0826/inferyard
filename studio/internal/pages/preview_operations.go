@@ -63,6 +63,10 @@ func (p *previewSession) retryDownload(id string) {
 				return
 			}
 			if task.Kind == "polystrata" {
+				if saved, ok := p.polystrataReqs[task.TaskId]; ok {
+					p.startPolystrataSetup(saved)
+					return
+				}
 				p.startPolystrataSetup(previewPolystrataRequestFromTask(task, p.state.defaultPolystrataSetupRequest()))
 				return
 			}
