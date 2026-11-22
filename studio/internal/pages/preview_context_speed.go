@@ -104,15 +104,6 @@ func previewSpeedSample(context, index int) speedSample {
 		prefill: previewValue(float64(prompt) / seconds), decode: previewValue(42.0)}
 }
 
-func previewSpeedHistory(s *viewState) {
-	r := &speedTask{id: "preview-speed-history", model: s.model, engine: s.engine,
-		context: inferyard.ContextSpeed128K, stage: speedDone}
-	r.selectionModel, r.selectionEngine = s.model, s.engine
-	applySpeedResult(r, previewSpeedResult(r, 5, false))
-	s.speed.history = []*speedTask{r}
-	s.selected = "reports"
-}
-
 func (p *previewSession) finishSpeed(r *speedTask) {
 	p.state.busy = false
 	p.state.speed.history = append(p.state.speed.history, r)

@@ -158,10 +158,6 @@ func (p *previewSession) left(c *ui.Context) {
 }
 
 func (p *previewSession) content(c *ui.Context) {
-	if p.state.selected == "design_system" {
-		ui.Column(c.Key(p.generation)).Fill().Children(func() { p.designSystemView(c) })
-		return
-	}
 	if p.state.selected == "downloads_prototype" {
 		ui.Column(c.Key(p.generation)).Fill().Children(func() { p.downloadsPrototypeView(c) })
 		return

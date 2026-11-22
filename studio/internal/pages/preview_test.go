@@ -4,6 +4,7 @@ package pages
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -34,7 +35,7 @@ func previewSceneIndex(t *testing.T, label string) int {
 
 func TestPreviewResetReturnsReportsToDefaultTab(t *testing.T) {
 	p := newPreviewSession(context.Background())
-	p.loadScene(previewSceneIndex(t, "模型 · 可用组合"))
+	p.loadScene(previewSceneIndex(t, "任务 · 已完成"))
 	p.state.selected = "reports"
 	tt := previewTester(p, 1120, 1400)
 	tt.Frame()
@@ -56,7 +57,7 @@ func TestPreviewResetReturnsReportsToDefaultTab(t *testing.T) {
 
 func TestPreviewOutOfBandActionsStayInMemory(t *testing.T) {
 	p := newPreviewSession(context.Background())
-	p.loadScene(previewSceneIndex(t, "模型 · 可用组合"))
+	p.loadScene(previewSceneIndex(t, "任务 · 待运行"))
 	s := p.state
 	s.work(func() (string, *core.ApiError) { t.Fatal("preview executed closure"); return "", nil })
 	s.startEngine()
@@ -96,18 +97,29 @@ func TestPreviewPrepareAndContextSpeedSmoke(t *testing.T) {
 	}
 }
 
-func TestPreviewDesignSystemShowcaseLightAndDark(t *testing.T) {
-	p := newPreviewSession(context.Background())
-	p.loadScene(previewSceneIndex(t, "设计系统 · Token 与材质"))
-	p.themeMode = 1
-	tt := previewTester(p, 1120, 2200)
-	tt.Frame()
-	if !tt.HasText("InferYard Studio 设计系统") || !tt.HasText("浅色模式") {
-		t.Fatalf("light design system showcase did not render: %v", tt.Texts())
+func TestPreviewScenesAllLoadAndSaveSettingsPreservesProxy(t *testing.T) {
+	if len(previewScenes) == 0 || previewScenes[0].label != "任务 · 准备" {
+		t.Fatalf("previewScenes[0] must be 任务 · 准备, got %+v", previewScenes)
 	}
-	p.themeMode = 2
-	tt.Frame()
-	if !tt.HasText("柔和深灰模式") || !tt.HasText("7 种 Surface 材质对比") {
-		t.Fatalf("dark design system showcase did not render: %v", tt.Texts())
+
+	p := newPreviewSession(context.Background())
+	tt := previewTester(p, 1120, 2200)
+	for i, scene := range previewScenes {
+		p.loadScene(i)
+		if scene.label != "下载 · 进行中与失败" && len(p.state.downloads) != 0 {
+			t.Fatalf("scene %q unexpectedly seeded %d downloads", scene.label, len(p.state.downloads))
+		}
+		p.themeMode = 1
+		tt.Frame()
+		p.themeMode = 2
+		tt.Frame()
+	}
+
+	p.loadScene(0)
+	p.dispatch(previewSettings{patch: map[string]json.RawMessage{
+		"download_proxy": json.RawMessage(`"http://127.0.0.1:7890"`),
+	}})
+	if got := emptyText(p.state.settings.Effective.DownloadProxy); got != "http://127.0.0.1:7890" {
+		t.Fatalf("Effective.DownloadProxy = %q, want http://127.0.0.1:7890", got)
 	}
 }
