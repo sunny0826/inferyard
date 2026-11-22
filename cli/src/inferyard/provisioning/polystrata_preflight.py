@@ -266,26 +266,54 @@ def _default_linux_venv_check(python_executable: str) -> bool:
         return False
 
 
-def _default_linux_build_tools_check(*, need_nvcc: bool) -> list[str]:
+_NVCC_VER_RE = re.compile(r"release\s+(\d+)\.(\d+)", re.IGNORECASE)
+
+
+def _find_nvcc() -> Path | None:
+    found = shutil.which("nvcc")
+    if found:
+        return Path(found)
+    for base in (Path("/usr/local"), Path("/opt")):
+        if base.is_dir():
+            try:
+                for child in sorted(base.iterdir(), reverse=True):
+                    cand = child / "bin" / "nvcc"
+                    if child.name.startswith("cuda") and cand.is_file():
+                        return cand
+            except OSError:
+                pass
+    return None
+
+
+def _nvcc_version(nvcc_path: Path) -> tuple[int, int] | None:
+    try:
+        res = subprocess.run(
+            [str(nvcc_path), "--version"], capture_output=True, text=True, timeout=10, check=False
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if res.returncode != 0:
+        return None
+    match = _NVCC_VER_RE.search(res.stdout + "\n" + res.stderr)
+    if match is None:
+        return None
+    return int(match.group(1)), int(match.group(2))
+
+
+def _default_linux_build_tools_check(
+    *, need_nvcc: bool, min_cuda: tuple[int, int] = (12, 0)
+) -> list[str]:
     missing: list[str] = []
     if shutil.which("g++") is None:
         missing.append("g++")
     if need_nvcc:
-        has_nvcc = shutil.which("nvcc") is not None
-        if not has_nvcc:
-            for base in (Path("/usr/local"), Path("/opt")):
-                if base.is_dir():
-                    try:
-                        for child in base.iterdir():
-                            if child.name.startswith("cuda") and (child / "bin" / "nvcc").is_file():
-                                has_nvcc = True
-                                break
-                    except OSError:
-                        pass
-                if has_nvcc:
-                    break
-        if not has_nvcc:
+        nvcc_path = _find_nvcc()
+        if nvcc_path is None:
             missing.append("nvcc")
+        else:
+            ver = _nvcc_version(nvcc_path)
+            if ver is None or ver < min_cuda:
+                missing.append(f"nvcc>={min_cuda[0]}.{min_cuda[1]}")
     return missing
 
 
@@ -442,13 +470,13 @@ def _check_resume_saved_data_dir(out: Path, data_dir: Path) -> list[dict]:
         prev_raw = saved.get("data_dir") if isinstance(saved, dict) else None
         if isinstance(prev_raw, str) and prev_raw.strip():
             prev_path = Path(prev_raw).expanduser().resolve(strict=False)
-            if prev_path != dest_norm and prev_path.is_dir() and _has_polystrata_data(prev_path):
+            if prev_path != dest_norm:
                 return [
                     {
                         "code": "polystrata_data_dir_mismatch",
                         "message": (
-                            "Cannot change --data-dir when resuming an existing installation with "
-                            "model data in its previous data directory."
+                            "Cannot change --data-dir when resuming an existing PolyStrata "
+                            "installation; reuse the original --data-dir."
                         ),
                         "fix_command": None,
                     }
@@ -605,10 +633,14 @@ def _check_gpu_and_build_tools(
     if system == "Linux":
         fam_lower = (family or "").strip().lower()
         old_cuda = False
+        has_sm120 = False
         for dev in nvidia_devices:
             cc = _parse_version(str(dev.get("compute_capability") or ""))
             if cc and cc < (7, 5):
                 old_cuda = True
+            if cc and cc >= (12, 0):
+                has_sm120 = True
+        min_cuda = (12, 8) if has_sm120 else (12, 0)
         needs_hip_build = using_hip
         needs_cuda_build = using_cuda and (
             fam_lower in _LINUX_SOURCE_BUILD_FAMILIES or old_cuda
@@ -617,7 +649,11 @@ def _check_gpu_and_build_tools(
             checker = (
                 build_tools_check
                 if build_tools_check is not None
-                else (lambda need_nvcc: _default_linux_build_tools_check(need_nvcc=need_nvcc))
+                else (
+                    lambda need_nvcc: _default_linux_build_tools_check(
+                        need_nvcc=need_nvcc, min_cuda=min_cuda
+                    )
+                )
             )
             missing_tools = checker(needs_cuda_build)
             if missing_tools:

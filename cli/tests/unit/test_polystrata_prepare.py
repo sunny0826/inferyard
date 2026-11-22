@@ -108,7 +108,7 @@ class _FakeClient:
 
 
 _HAPPY_SETUP_PY = """\
-import json, os, stat, sys
+import json, os, stat, struct, sys
 from pathlib import Path
 
 root = Path(__file__).resolve().parent
@@ -144,7 +144,15 @@ data_dir = Path(argv[argv.index("--data-dir") + 1])
 model_dir = data_dir / "models" / "qwen36-UD-Q4_K_M"
 model_dir.mkdir(parents=True, exist_ok=True)
 model_file = model_dir / "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf"
-model_file.write_bytes(b"GGUF\\x03\\x00\\x00\\x00")
+key_b = b"general.architecture"
+val_b = b"qwen35moe"
+gguf_bytes = (
+    struct.pack("<4sIQQ", b"GGUF", 3, 1, 1)
+    + struct.pack("<Q", len(key_b)) + key_b
+    + struct.pack("<IQ", 8, len(val_b)) + val_b
+    + b"tensors"
+)
+model_file.write_bytes(gguf_bytes)
 (root / "strata-qwen36.json").write_text(
     json.dumps(
         {
@@ -335,11 +343,24 @@ def test_happy_path_local_tar_progress_log_sanitization_and_installation(tmp_pat
     assert Path(details["model_config_path"]).name == "strata-qwen36.json"
     assert details["resumed"] is False
 
-    # Verify installation.json validates cleanly via read_installation and detect_local_engines
+    # Verify installation.json validates cleanly via read_installation, detect_local_engines,
+    # and downstream resolve_polystrata_model()
     loaded = read_installation(details["installation_path"])
     assert loaded["family"] == "polystrata"
     assert loaded["working_directory"] == str(out.resolve())
     assert loaded["data_dir"] == str(data.resolve())
+    from inferyard.config.local_engines.polystrata import resolve_polystrata_model
+
+    resolved_cfg = resolve_polystrata_model(
+        loaded,
+        Path(details["model_config_path"]),
+        tmp_path / "cand-out",
+        None,
+        served_model=None,
+        system="Darwin",
+        port=8080,
+    )
+    assert resolved_cfg[0].name == "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf"
     detected = detect_local_engines(extra_paths=[out])
     assert any(
         c["family"] == "polystrata" and c["working_directory"] == str(out.resolve())
