@@ -89,11 +89,12 @@ class ProgressEmitter:
         self._stream = stream
         self.min_interval_seconds = max(0.0, float(min_interval_seconds))
         self._last_stage: str | None = None
+        self._last_step: int | None = None
         self._last_emit_at: float | None = None
         self._window: list[tuple[float, int]] = []
 
     def _compute_rate(self, stage: str, downloaded: int, now: float, transition: bool) -> float | None:
-        if stage != "downloading":
+        if stage not in ("downloading", "downloading_runtime", "downloading_model"):
             self._window.clear()
             return None
         if transition or not self._window or downloaded < self._window[-1][1]:
@@ -119,29 +120,47 @@ class ProgressEmitter:
         total_bytes: int | None = None,
         *,
         force: bool = False,
+        step: int | None = None,
+        step_total: int | None = None,
+        percent: float | None = None,
+        detail: str | None = None,
     ) -> None:
         """Emit a progress line on stage transition, interval elapsed, or forced final update."""
         if not self.enabled:
             return
         now = time.monotonic()
-        transition = stage != self._last_stage
+        stage_changed = stage != self._last_stage
+        step_changed = step is not None and step != self._last_step
+        transition = stage_changed or step_changed
         if not force and not transition and self._last_emit_at is not None:
             if (now - self._last_emit_at) < self.min_interval_seconds:
                 return
         downloaded = max(0, int(downloaded_bytes))
         total = int(total_bytes) if total_bytes is not None and total_bytes > 0 else None
-        rate = self._compute_rate(stage, downloaded, now, transition)
-        payload = {
+        rate = self._compute_rate(stage, downloaded, now, stage_changed)
+        payload: dict[str, object] = {
             "event": "transfer.progress",
             "stage": stage,
             "downloaded_bytes": downloaded,
             "total_bytes": total,
             "bytes_per_second": rate,
         }
+        if step is not None:
+            payload["step"] = max(0, int(step))
+        if step_total is not None and int(step_total) > 0:
+            payload["step_total"] = int(step_total)
+        if percent is not None and math.isfinite(float(percent)):
+            payload["percent"] = round(max(0.0, min(100.0, float(percent))), 2)
+        if detail is not None:
+            clean_detail = " ".join(str(detail).replace("\r", " ").replace("\n", " ").split())
+            if clean_detail:
+                payload["detail"] = clean_detail[:200]
         target = self._stream if self._stream is not None else sys.stderr
         target.write(json.dumps(payload, separators=(",", ":"), allow_nan=False) + "\n")
         target.flush()
         self._last_stage = stage
+        if step is not None:
+            self._last_step = max(0, int(step))
         self._last_emit_at = now
 
 
@@ -327,6 +346,8 @@ def download_resumable_part(
     emitter: ProgressEmitter | None = None,
     base_offset: int = 0,
     combined_total: int | None = None,
+    download_stage: str = "downloading",
+    verify_stage: str = "verifying",
 ) -> tuple[int, str]:
     """Stream one file into part_name with optional HTTP Range resume and full SHA-256."""
     offset = output.part_size(part_name) if (resume and isinstance(output, ResumeDirectory)) else 0
@@ -335,7 +356,7 @@ def download_resumable_part(
         if existing_digest == expected_sha256:
             reported_total = combined_total if combined_total is not None else existing_size
             if emitter is not None:
-                emitter.update("verifying", base_offset + existing_size, reported_total)
+                emitter.update(verify_stage, base_offset + existing_size, reported_total)
             return existing_size, existing_digest
 
     req_headers = dict(headers or {"Accept-Encoding": "identity"})
@@ -397,30 +418,30 @@ def download_resumable_part(
         if not skip_body:
             downloaded = offset
             if emitter is not None:
-                emitter.update("downloading", base_offset + downloaded, reported_total)
+                emitter.update(download_stage, base_offset + downloaded, reported_total)
             with _open_part_stream(output, part_name, append=resuming_append) as stream:
                 try:
                     for chunk in opened.iter_raw():
                         stream.write(chunk)
                         downloaded += len(chunk)
                         if emitter is not None:
-                            emitter.update("downloading", base_offset + downloaded, reported_total)
+                            emitter.update(download_stage, base_offset + downloaded, reported_total)
                 except Exception:
                     if emitter is not None and downloaded > offset:
                         emitter.update(
-                            "downloading",
+                            download_stage,
                             base_offset + downloaded,
                             reported_total,
                             force=True,
                         )
                     raise
             if emitter is not None:
-                emitter.update("downloading", base_offset + downloaded, reported_total, force=True)
+                emitter.update(download_stage, base_offset + downloaded, reported_total, force=True)
 
     reported_total = combined_total if combined_total is not None else file_total
     if emitter is not None:
         final_bytes = base_offset + (offset if skip_body else downloaded)
-        emitter.update("verifying", final_bytes, reported_total or final_bytes)
+        emitter.update(verify_stage, final_bytes, reported_total or final_bytes)
 
     size, actual = hash_part_file(output, part_name)
     if expected_sha256 is not None and actual != expected_sha256:

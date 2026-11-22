@@ -40,6 +40,10 @@ def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
         from inferyard.application.engine_prepare import execute
 
         return execute(request)
+    if request.command == "engine prepare-polystrata":
+        from inferyard.application.polystrata_prepare import execute
+
+        return execute(request)
     if request.command == "assets scan":
         from inferyard.application.asset_scan import execute
 

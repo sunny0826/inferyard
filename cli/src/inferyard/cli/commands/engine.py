@@ -73,6 +73,53 @@ def add_commands(commands):
         dest="proxy_origin",
         help="explicit http(s) proxy origin (scheme://host[:port])",
     )
+    prepare_ps = actions.add_parser(
+        "prepare-polystrata",
+        help="run managed PolyStrata setup with preflight, streaming progress, and installation.json",
+    )
+    prepare_ps.set_defaults(command="engine prepare-polystrata")
+    prepare_ps.add_argument("--out", type=Path, required=True)
+    prepare_ps.add_argument("--data-dir", dest="data_dir", type=Path)
+    prepare_ps.add_argument("--family")
+    prepare_ps.add_argument("--model", dest="polystrata_model")
+    prepare_ps.add_argument("--context", dest="context_size", type=int)
+    prepare_ps.add_argument(
+        "--backend",
+        dest="polystrata_backend",
+        choices=("auto", "cuda", "hip", "metal"),
+    )
+    prepare_ps.add_argument(
+        "--model-source",
+        dest="polystrata_model_source",
+        choices=("auto", "huggingface", "modelscope"),
+    )
+    prepare_ps.add_argument("--gguf-path", dest="gguf_path", type=Path)
+    prepare_ps.add_argument("--source", dest="engine_source_url")
+    prepare_ps.add_argument("--expected-sha256")
+    prepare_ps.add_argument(
+        "--proxy-origin",
+        dest="proxy_origin",
+        help="explicit http(s) proxy origin (scheme://host[:port])",
+    )
+    prepare_ps.add_argument(
+        "--resume",
+        dest="resume_transfer",
+        action="store_true",
+        help="resume an incomplete PolyStrata setup or runtime download when present",
+    )
+    prepare_ps.add_argument(
+        "--progress-stream",
+        dest="progress_stream",
+        action="store_true",
+        help="emit single-line JSON transfer progress events on stderr",
+    )
+    prepare_ps.add_argument(
+        "--timeout-seconds",
+        dest="engine_timeout_seconds",
+        type=float,
+        default=3600,
+        help="positive finite timeout in seconds for network and setup operations (default: 3600)",
+    )
     check = actions.add_parser(
         "check",
         help="macOS/Windows: read-only engine verification; runs --version (30s); no writes",

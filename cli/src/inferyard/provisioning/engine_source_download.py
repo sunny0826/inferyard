@@ -72,6 +72,8 @@ def download_to_stream(
     emitter=None,
     base_offset=0,
     combined_total=None,
+    download_stage="downloading",
+    verify_stage="verifying",
 ):
     expected = validate_sha256(expected_sha256)
     digest, size = hashlib.sha256(), 0
@@ -89,17 +91,17 @@ def download_to_stream(
         file_total = parse_content_length(opened.headers)
         reported_total = combined_total if combined_total is not None else file_total
         if emitter is not None:
-            emitter.update("downloading", base_offset, reported_total)
+            emitter.update(download_stage, base_offset, reported_total)
         for chunk in opened.iter_raw():
             stream.write(chunk)
             digest.update(chunk)
             size += len(chunk)
             if emitter is not None:
-                emitter.update("downloading", base_offset + size, reported_total)
+                emitter.update(download_stage, base_offset + size, reported_total)
         if emitter is not None:
-            emitter.update("downloading", base_offset + size, reported_total, force=True)
+            emitter.update(download_stage, base_offset + size, reported_total, force=True)
     if emitter is not None:
-        emitter.update("verifying", base_offset + size, reported_total or (base_offset + size))
+        emitter.update(verify_stage, base_offset + size, reported_total or (base_offset + size))
     actual = digest.hexdigest()
     if expected is not None and actual != expected:
         raise PreparationError(
