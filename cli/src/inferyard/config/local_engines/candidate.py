@@ -1,6 +1,7 @@
 """Freeze local installations, model bytes and declared formal conditions."""
 
 from copy import deepcopy
+from pathlib import Path
 
 from inferyard.config.bundle import require_review
 from inferyard.config.community_assets import model_template
@@ -27,7 +28,7 @@ from inferyard.platforms.local_engines import (
 )
 
 from .launch import startup
-from .polystrata import resolve_polystrata_model, select_polystrata_backend
+from .polystrata import resolve_polystrata_model
 
 _DEVICE_IDS = {
     "Darwin": "LAB-MACOS-001",
@@ -36,24 +37,45 @@ _DEVICE_IDS = {
 }
 
 
+def _read_dir_template(directory: Path) -> bytes | None:
+    cfg = directory / "tokenizer_config.json"
+    if cfg.is_file():
+        tokenizer = read_json(cfg)
+        value = tokenizer.get("chat_template")
+        if isinstance(value, str) and value.strip():
+            return value.encode("utf-8")
+    jinja = directory / "chat_template.jinja"
+    if jinja.is_file():
+        raw = jinja.read_bytes()
+        if raw.strip():
+            return raw
+    return None
+
+
 def template(model, *, fallback_tokenizer=None):
     if model.is_file():
         metadata, raw = model_template(model)
         return metadata.get("general.name") or model.stem, raw
-    tokenizer_path = model / "tokenizer_config.json"
-    if not tokenizer_path.is_file() and fallback_tokenizer is not None:
-        tokenizer_path = (
-            fallback_tokenizer
-            if fallback_tokenizer.is_file()
-            else fallback_tokenizer / "tokenizer_config.json"
-        )
-    if not tokenizer_path.is_file():
-        raise PreparationError("local_engine_chat_template_unavailable")
-    tokenizer = read_json(tokenizer_path)
-    value = tokenizer.get("chat_template")
-    if not isinstance(value, str) or not value.strip():
-        raise PreparationError("local_engine_chat_template_unavailable")
-    return model.name, value.encode("utf-8")
+    search_dirs: list[Path] = [model, model / "tokenizer"]
+    if fallback_tokenizer is not None:
+        if fallback_tokenizer.is_file():
+            if fallback_tokenizer.suffix == ".json":
+                tokenizer = read_json(fallback_tokenizer)
+                value = tokenizer.get("chat_template")
+                if isinstance(value, str) and value.strip():
+                    return model.name, value.encode("utf-8")
+            else:
+                raw = fallback_tokenizer.read_bytes()
+                if raw.strip():
+                    return model.name, raw
+        else:
+            search_dirs.append(fallback_tokenizer)
+    for directory in search_dirs:
+        if directory.is_dir():
+            found = _read_dir_template(directory)
+            if found is not None:
+                return model.name, found
+    raise PreparationError("local_engine_chat_template_unavailable")
 
 
 def create(request):
@@ -87,19 +109,21 @@ def create(request):
     derived_polystrata_config = None
     fallback_tokenizer = None
     if family == "polystrata":
-        backend = select_polystrata_backend(installation, system)
         (
             model,
             polystrata_config_path,
             derived_polystrata_config,
             context,
             fallback_tokenizer,
+            served,
+            backend,
         ) = resolve_polystrata_model(
             installation,
             model_input,
             out,
             request.context_size,
-            backend=backend,
+            system=system,
+            served_model=request.served_model,
             port=port,
         )
         if derived_polystrata_config is not None:
@@ -110,6 +134,7 @@ def create(request):
         model = model_input
         context = request.context_size or 8192
         backend = "metal"
+        served = request.served_model or "inferyard-local-model"
 
     assets = model_asset_manifest(model)
     display_name, raw_template = template(model, fallback_tokenizer=fallback_tokenizer)
@@ -121,7 +146,6 @@ def create(request):
             raise PreparationError("ac_power_required")
     elif environment.get("ac_online") is False:
         raise PreparationError("ac_power_required")
-    served = request.served_model or "inferyard-local-model"
     args, cwd = startup(
         installation,
         model,

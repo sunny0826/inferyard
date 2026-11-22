@@ -321,6 +321,9 @@ def _roots(declaration, python_roots):
 
         root = Path(declaration["working_directory"])
         paths.append(root / "serve" / "server.py")
+        tokenizer_tool = root / "tools" / "strata_tokenizer.py"
+        if tokenizer_tool.is_file():
+            paths.append(tokenizer_tool)
         for name in _POLYSTRATA_TOP_FILES:
             candidate = root / name
             if candidate.is_file():

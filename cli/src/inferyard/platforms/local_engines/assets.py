@@ -36,7 +36,10 @@ def bound_json(path: str | Path, digest: str | None = None) -> tuple[JsonObject,
 
 
 def _verify_polystrata_config(config: JsonObject, declaration: JsonObject) -> FileIdentity:
-    from inferyard.config.local_engines.polystrata import inspect_polystrata_payload
+    from inferyard.config.local_engines.polystrata import (
+        UPSTREAM_DEFAULT_CONTEXT,
+        inspect_polystrata_payload,
+    )
     from inferyard.provisioning.preparation_io import PreparationError
 
     engine = config["engine"]
@@ -51,26 +54,27 @@ def _verify_polystrata_config(config: JsonObject, declaration: JsonObject) -> Fi
     payload = _parse(raw)
     if not isinstance(payload, dict):
         raise PreflightError("local_engine_json_unreadable")
-    bases: list[Path] = [ps_path.parent]
+    bases: list[Path] = [Path(declaration["working_directory"]), ps_path.parent]
     if declaration.get("data_dir"):
         bases.append(Path(declaration["data_dir"]))
-    bases.append(Path(declaration["working_directory"]))
     try:
         asset_path, ctx, _, _ = inspect_polystrata_payload(payload, ps_path, tuple(bases))
     except PreparationError as exc:
         raise PreflightError(exc.reason) from exc
     expected_model = Path(config["model"]["local_path"]).resolve(strict=True)
     if asset_path is None:
-        if (ps_path.parent / "tokenizer_config.json").is_file():
+        if (ps_path.parent / "tokenizer_config.json").is_file() or (
+            ps_path.parent / "chat_template.jinja"
+        ).is_file():
             asset_path = ps_path.parent.resolve(strict=True)
     if asset_path is None or asset_path != expected_model:
         raise PreflightError("local_engine_model_argument_mismatch")
     conditions = config.get("conditions")
+    effective_ctx = ctx if ctx is not None else UPSTREAM_DEFAULT_CONTEXT
     if (
         isinstance(conditions, dict)
         and "context_size" in conditions
-        and ctx is not None
-        and ctx != conditions["context_size"]
+        and effective_ctx != conditions["context_size"]
     ):
         raise PreflightError("local_engine_context_argument_mismatch")
     return ps_file

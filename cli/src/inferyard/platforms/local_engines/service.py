@@ -209,49 +209,38 @@ def _psutil_listener_identity(
     if callable(system_getter):
         try:
             all_conns = system_getter(kind="tcp")
-        except (OSError, PermissionError, psutil.Error):
-            all_conns = None
-        if all_conns is not None:
-            matches = [
-                conn
-                for conn in all_conns
-                if getattr(conn, "status", None) == "LISTEN"
-                and conn.laddr
-                and conn.laddr.port == port
-                and conn.laddr.ip in wildcards
-            ]
-            if len(matches) != 1 or getattr(matches[0], "pid", None) != pid:
-                raise PreflightError("local_engine_listener_mismatch")
-            return f"tcp://{address}:{port}/pid:{pid}"
-    getter = getattr(proc, "net_connections", None) or proc.connections
-    connections = getter(kind="tcp")
-    matches = [
-        conn
-        for conn in connections
-        if getattr(conn, "status", None) == "LISTEN"
-        and conn.laddr
-        and conn.laddr.ip == address
-        and conn.laddr.port == port
-    ]
-    if not matches:
-        raise PreflightError("local_engine_listener_mismatch")
-    return f"tcp://{address}:{port}/pid:{pid}"
+        except (OSError, PermissionError, psutil.Error) as exc:
+            raise PreflightError("local_engine_listener_unverifiable") from exc
+        matches = [
+            conn
+            for conn in all_conns
+            if getattr(conn, "status", None) == "LISTEN"
+            and conn.laddr
+            and conn.laddr.port == port
+            and conn.laddr.ip in wildcards
+        ]
+        if len(matches) != 1 or getattr(matches[0], "pid", None) != pid:
+            raise PreflightError("local_engine_listener_mismatch")
+        return f"tcp://{address}:{port}/pid:{pid}"
+    raise PreflightError("local_engine_listener_unverifiable")
 
 
-def _polystrata_worker_env_policy(config: JsonObject) -> tuple[frozenset[str], list[str]]:
+def _polystrata_worker_env_policy(
+    config: JsonObject,
+) -> tuple[frozenset[str], list[str], dict[str, str]]:
     if config["engine"].get("family") != "polystrata":
-        return frozenset(), []
+        return frozenset(), [], {}
     cfg_path = config["engine"].get("polystrata_config_path")
     if not cfg_path:
-        return frozenset(), []
+        return frozenset(), [], {}
     try:
         from inferyard.contracts.validation import strict_json_loads
 
         payload = strict_json_loads(Path(cfg_path).read_text(encoding="utf-8"))
     except (OSError, ValueError, UnicodeError):
-        return frozenset(), []
+        return frozenset(), [], {}
     if not isinstance(payload, dict):
-        return frozenset(), []
+        return frozenset(), [], {}
     allowed: set[str] = set()
     lib_dirs = [
         str(Path(d))
@@ -264,9 +253,13 @@ def _polystrata_worker_env_policy(config: JsonObject) -> tuple[frozenset[str], l
         allowed.add("HIP_VISIBLE_DEVICES")
     if payload.get("gpu") is not None or config["engine"].get("backend") == "cuda":
         allowed.update({"CUDA_VISIBLE_DEVICES", "CUDA_DEVICE_ORDER"})
+    expected_env: dict[str, str] = {}
     if isinstance(payload.get("env"), dict):
-        allowed.update(str(k) for k in payload["env"].keys())
-    return frozenset(allowed), lib_dirs
+        for k, v in payload["env"].items():
+            key_s = str(k)
+            allowed.add(key_s)
+            expected_env[key_s] = str(v)
+    return frozenset(allowed), lib_dirs, expected_env
 
 
 def _direct_cross_platform(
@@ -323,7 +316,7 @@ def _observe_workers_cross_platform(
 ) -> list[JsonObject]:
     root = psutil.Process(pid)
     children = root.children(recursive=True)
-    allowed_extras, expected_lib_dirs = _polystrata_worker_env_policy(config)
+    allowed_extras, expected_lib_dirs, expected_cfg_env = _polystrata_worker_env_policy(config)
     seen_pids: set[int] = set()
     rows: list[JsonObject] = []
     for child_proc in children:
@@ -336,9 +329,12 @@ def _observe_workers_cross_platform(
         start, _, raw, executable, cwd = _psutil_process_state(child, psutil)
         observed_env = child_proc.environ()
         check_environment(observed_env, environment, allowed_extras=allowed_extras)
-        if expected_lib_dirs and "LD_LIBRARY_PATH" in observed_env:
-            actual_parts = observed_env["LD_LIBRARY_PATH"].split(os.pathsep)
+        if expected_lib_dirs and platform.system() != "Windows":
+            actual_parts = observed_env.get("LD_LIBRARY_PATH", "").split(os.pathsep)
             if actual_parts[: len(expected_lib_dirs)] != expected_lib_dirs:
+                raise PreflightError("local_engine_environment_override")
+        for key, expected_val in expected_cfg_env.items():
+            if observed_env.get(key) != expected_val:
                 raise PreflightError("local_engine_environment_override")
         identity = hash_file(executable)
         if not any(

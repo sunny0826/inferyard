@@ -482,6 +482,12 @@ def test_config_create_shared_gguf_upstream_contract_and_describe(
         platform_kind=platform_kind,
         build_json={"version": "v0.1.45-poly.10", "backend": expected_backend},
     )
+    tok_dir = ps_root / "data" / "packs" / "glm5" / "tokenizer"
+    tok_dir.mkdir(parents=True)
+    (tok_dir / "vocab.json").write_text("{}", encoding="utf-8")
+    (ps_root / "tools").mkdir(exist_ok=True)
+    (ps_root / "tools" / "strata_tokenizer.py").write_text("# tokenizer\n", encoding="utf-8")
+
     inst_path = tmp_path / f"inst-{platform_kind}.json"
     inst_path.write_bytes(json_bytes(build_installation("polystrata", exe)))
 
@@ -511,12 +517,21 @@ def test_config_create_shared_gguf_upstream_contract_and_describe(
     assert derived_cfg == out_dir.resolve() / "strata-candidate.json"
     derived_data = json.loads(derived_cfg.read_text(encoding="utf-8"))
 
-    # Matches upstream serve/server.py engine_exe() and engine_args() contract
+    # Matches upstream serve/server.py engine_exe(), engine_args(), tokenizer, and model_name
     assert derived_data["exe"] == str(engine_bin.resolve())
     assert derived_data["args"] == ["--model", str(gguf.resolve()), "--max-context", "65536"]
     assert derived_data["cwd"] == str(ps_root.resolve())
+    assert derived_data["tokenizer"] == str(tok_dir.resolve())
+    assert derived_data["model_name"] == "qwen36-local"
     assert derived_data["port"] == 48857
     assert list(out_dir.glob("*.gguf")) == []
+
+    # tools/strata_tokenizer.py is frozen inside the runtime snapshot
+    runtime_snap = json.loads(
+        Path(details["installation"]).read_text(encoding="utf-8")
+    )
+    frozen_root_paths = {r["path"] for r in runtime_snap["roots"]}
+    assert str((ps_root / "tools" / "strata_tokenizer.py").resolve()) in frozen_root_paths
 
     loaded = load_config(details["candidate"]).config.to_dict()
     assert loaded["engine"]["backend"] == expected_backend
@@ -631,20 +646,20 @@ def test_upstream_pack_config_credential_rejection_and_arch_enforcement(
             )
         )
 
-    # Real upstream --pack + --max-context JSON shape parses and overrides cleanly
+    # Real upstream --pack + chat_template.jinja + experts.bin/dense.bin + default ctx 4096
     pack_dir = tmp_path / "packs" / "iq2_xs"
     tok_dir = pack_dir / "tokenizer"
     tok_dir.mkdir(parents=True)
-    (tok_dir / "tokenizer_config.json").write_text(
-        json.dumps({"chat_template": "{{ messages }}"}), encoding="utf-8"
-    )
-    (pack_dir / "pack.bin").write_bytes(b"pack-data")
+    (tok_dir / "vocab.json").write_text("{}", encoding="utf-8")
+    (tok_dir / "chat_template.jinja").write_text("{{ messages }}", encoding="utf-8")
+    (pack_dir / "experts.bin").write_bytes(b"experts-weights")
+    (pack_dir / "dense.bin").write_bytes(b"dense-weights")
     upstream_pack_json = ps_root / "data" / "strata-iq2_xs.json"
     upstream_pack_json.write_text(
         json.dumps(
             {
                 "exe": str(ps_root / "engine" / "strata"),
-                "args": ["--pack", str(pack_dir), "--max-context", "131072"],
+                "args": ["--pack", str(pack_dir)],
                 "cwd": str(ps_root),
                 "tokenizer": str(tok_dir),
                 "model_name": "qwen3.8-flash-next-iq2_xs",
@@ -665,7 +680,82 @@ def test_upstream_pack_config_credential_rejection_and_arch_enforcement(
     loaded = load_config(details["candidate"]).config.to_dict()
     assert loaded["model"]["kind"] == "directory"
     assert loaded["model"]["local_path"] == str(pack_dir.resolve())
-    assert loaded["conditions"]["context_size"] == 131072
+    assert loaded["conditions"]["context_size"] == 4096
+    manifest_files = {
+        row["path"]
+        for row in json.loads(Path(loaded["model"]["assets_path"]).read_text(encoding="utf-8"))[
+            "files"
+        ]
+    }
+    assert {"experts.bin", "dense.bin"} <= manifest_files
+
+    # mcp_servers credential in existing JSON is rejected
+    mcp_secret_json = ps_root / "data" / "strata-mcp-secret.json"
+    mcp_secret_json.write_text(
+        json.dumps(
+            {
+                "exe": str(engine_bin),
+                "args": ["--model", str(good_gguf), "--max-context", "32768"],
+                "cwd": str(ps_root),
+                "mcp_servers": {"remote": {"headers": {"Authorization": "Bearer secret"}}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(PreparationError, match="polystrata_plaintext_credential_rejected"):
+        create_candidate(
+            _candidate_request(
+                inst_path=inst_path,
+                model_path=mcp_secret_json,
+                bundle_path=bundle,
+                out_dir=tmp_path / "cand-mcp-secret",
+                results_dir=tmp_path / "res-mcp-secret",
+                context_size=65536,
+            )
+        )
+
+    # Relative path inside existing JSON resolves against cwd BEFORE config_file.parent
+    cwd_gguf = _write_gguf(
+        ps_root / "shared.gguf",
+        {
+            "general.name": "CwdModel",
+            "general.architecture": "qwen35moe",
+            "tokenizer.chat_template": "{{ messages }}",
+        },
+        payload=b"cwd-copy",
+    )
+    _write_gguf(
+        ps_root / "data" / "shared.gguf",
+        {
+            "general.name": "DataModel",
+            "general.architecture": "qwen35moe",
+            "tokenizer.chat_template": "{{ messages }}",
+        },
+        payload=b"data-copy",
+    )
+    rel_json = ps_root / "data" / "strata-rel.json"
+    rel_json.write_text(
+        json.dumps(
+            {
+                "exe": str(engine_bin),
+                "args": ["--model", "shared.gguf", "--max-context", "16384"],
+                "cwd": str(ps_root),
+                "model_name": "qwen36-local",
+            }
+        ),
+        encoding="utf-8",
+    )
+    rel_details = create_candidate(
+        _candidate_request(
+            inst_path=inst_path,
+            model_path=rel_json,
+            bundle_path=bundle,
+            out_dir=tmp_path / "cand-rel",
+            results_dir=tmp_path / "res-rel",
+            context_size=None,
+        )
+    )
+    assert Path(rel_details["model"]) == cwd_gguf.resolve()
 
     details_override = create_candidate(
         _candidate_request(

@@ -119,21 +119,15 @@ def validate_startup(config, declaration, arguments, executable, cwd):
     ):
         raise PreflightError("local_engine_startup_mismatch")
     allowed_executables = {Path(declaration["executable"]).resolve()}
-    allowed_argv0 = {declaration["executable"]}
     if engine["family"] == "polystrata":
         from inferyard.platforms.local_engines.detect_polystrata import venv_base_python
 
         base_py = venv_base_python(Path(declaration["executable"]))
         if base_py is not None:
             allowed_executables.add(base_py)
-            allowed_argv0.add(str(base_py))
     if executable not in allowed_executables:
         raise PreflightError("local_engine_executable_mismatch")
-    if (
-        not arguments
-        or arguments[0] not in allowed_argv0
-        or arguments[1:] != engine["startup_args"]
-    ):
+    if arguments != [declaration["executable"], *engine["startup_args"]]:
         raise PreflightError("local_engine_startup_mismatch")
     validate_arguments(config)
 

@@ -22,7 +22,28 @@ _LEGACY_MODEL_PATH_KEYS = (
     "weights_dir",
 )
 _TOKENIZER_PATH_KEYS = ("tokenizer", "tokenizer_path", "tokenizer_dir")
-_SECRET_ENV_SUBSTRINGS = ("API_KEY", "TOKEN", "PASSWORD", "SECRET")
+_SECRET_ENV_SUBSTRINGS = ("API_KEY", "TOKEN", "PASSWORD", "SECRET", "AUTH")
+_SAFE_DERIVED_KEYS = (
+    "exe",
+    "args",
+    "cwd",
+    "tokenizer",
+    "model_name",
+    "display_name",
+    "port",
+    "backend",
+    "gpu",
+    "gpus_asked",
+    "hip_ordinal",
+    "layer_split",
+    "split_skip_if_fits",
+    "lib_dirs",
+    "cuda",
+    "tool_call_recovery",
+    "vision",
+    "env",
+)
+UPSTREAM_DEFAULT_CONTEXT = 4096
 
 
 def _resolve_ref(raw: str, bases: tuple[Path, ...]) -> Path | None:
@@ -51,6 +72,14 @@ def _check_gguf_arch(gguf_path: Path) -> dict:
     return metadata
 
 
+def _has_secret_mapping(mapping: dict) -> bool:
+    for key, val in mapping.items():
+        upper = str(key).upper()
+        if any(part in upper for part in _SECRET_ENV_SUBSTRINGS) and str(val).strip():
+            return True
+    return False
+
+
 def check_no_plaintext_credentials(payload: dict) -> None:
     """Reject plaintext credentials in PolyStrata JSON configs (use env vars instead)."""
     api_key = payload.get("api_key")
@@ -69,11 +98,17 @@ def check_no_plaintext_credentials(payload: dict) -> None:
             ):
                 raise PreparationError("polystrata_plaintext_credential_rejected")
     env = payload.get("env")
-    if isinstance(env, dict):
-        for key, val in env.items():
-            upper = str(key).upper()
-            if any(part in upper for part in _SECRET_ENV_SUBSTRINGS) and str(val).strip():
-                raise PreparationError("polystrata_plaintext_credential_rejected")
+    if isinstance(env, dict) and _has_secret_mapping(env):
+        raise PreparationError("polystrata_plaintext_credential_rejected")
+    mcp = payload.get("mcp_servers")
+    if isinstance(mcp, dict):
+        for entry in mcp.values():
+            if not isinstance(entry, dict):
+                continue
+            for subkey in ("headers", "env"):
+                sub = entry.get(subkey)
+                if isinstance(sub, dict) and _has_secret_mapping(sub):
+                    raise PreparationError("polystrata_plaintext_credential_rejected")
 
 
 def _extract_arg_value(args: list, flag: str) -> tuple[int | None, str | None]:
@@ -106,9 +141,45 @@ def _is_poly_config(payload: dict) -> bool:
     exe = payload.get("exe")
     if isinstance(exe, str) and exe.strip():
         exe_path = Path(exe.strip())
-        if "poly" in exe_path.stem.lower() or "engine-poly" in (p.lower() for p in exe_path.parts):
+        stem = exe_path.stem.lower()
+        if stem in ("strata-poly", "strata-glm") or "engine-poly" in (
+            p.lower() for p in exe_path.parts
+        ):
             return True
     return False
+
+
+def _discover_tokenizer_dir(installation: dict, model_input: Path) -> Path | None:
+    """Find an upstream PolyStrata tokenizer directory (containing vocab.json)."""
+    root = Path(installation["working_directory"])
+    direct_candidates = [
+        model_input.parent / "tokenizer",
+        root / "pack" / "full" / "tokenizer",
+    ]
+    for candidate in direct_candidates:
+        if (candidate / "vocab.json").is_file():
+            return candidate.resolve(strict=True)
+    packs_roots: list[Path] = []
+    if installation.get("data_dir"):
+        packs_roots.append(Path(installation["data_dir"]) / "packs")
+    packs_roots.append(root / "data" / "packs")
+    found: list[Path] = []
+    for packs_dir in packs_roots:
+        if not packs_dir.is_dir():
+            continue
+        for child in sorted(packs_dir.iterdir()):
+            tok = child / "tokenizer"
+            if (tok / "vocab.json").is_file():
+                resolved = tok.resolve(strict=True)
+                if resolved not in found:
+                    found.append(resolved)
+    if len(found) == 1:
+        return found[0]
+    stem_lower = model_input.stem.lower()
+    for tok in found:
+        if tok.parent.name.lower() in stem_lower:
+            return tok
+    return found[0] if found else None
 
 
 def inspect_polystrata_payload(
@@ -118,13 +189,16 @@ def inspect_polystrata_payload(
 ) -> tuple[Path | None, int | None, str | None, Path | None]:
     """Parse a PolyStrata JSON payload -> (model_asset, context, model_flag, fallback_tokenizer)."""
     check_no_plaintext_credentials(payload)
-    extra_bases = list(bases)
+    ordered_bases: list[Path] = []
     cwd_val = payload.get("cwd")
     if isinstance(cwd_val, str) and cwd_val.strip():
         cwd_path = Path(cwd_val.strip())
-        if cwd_path.is_dir() and cwd_path not in extra_bases:
-            extra_bases.insert(0, cwd_path)
-    base_tuple = tuple(extra_bases)
+        if cwd_path.is_dir():
+            ordered_bases.append(cwd_path)
+    for item in bases:
+        if item not in ordered_bases:
+            ordered_bases.append(item)
+    base_tuple = tuple(ordered_bases)
 
     args = payload.get("args") if isinstance(payload.get("args"), list) else []
     model_asset: Path | None = None
@@ -179,15 +253,15 @@ def _resolve_existing_json(
     out_dir: Path,
     context_size: int | None,
     *,
+    served_model: str | None,
     default_asset_dir: Path | None = None,
-) -> tuple[Path, Path, dict | None, int, Path | None]:
+) -> tuple[Path, Path, dict | None, int, Path | None, str, Path | None, str | None]:
     payload = read_json(config_file, "polystrata_config_invalid")
     if not isinstance(payload, dict):
         raise PreparationError("polystrata_config_invalid")
-    bases: list[Path] = [config_file.parent]
+    bases: list[Path] = [Path(installation["working_directory"]), config_file.parent]
     if installation.get("data_dir"):
         bases.append(Path(installation["data_dir"]))
-    bases.append(Path(installation["working_directory"]))
     base_tuple = tuple(bases)
 
     model_asset, existing_ctx, model_flag, fallback_tokenizer = inspect_polystrata_payload(
@@ -196,7 +270,9 @@ def _resolve_existing_json(
     if model_asset is None:
         if default_asset_dir is not None:
             model_asset = default_asset_dir
-        elif (config_file.parent / "tokenizer_config.json").is_file():
+        elif (config_file.parent / "tokenizer_config.json").is_file() or (
+            config_file.parent / "chat_template.jinja"
+        ).is_file():
             model_asset = config_file.parent.resolve(strict=True)
         else:
             raise PreparationError("polystrata_config_model_missing")
@@ -204,28 +280,59 @@ def _resolve_existing_json(
     if model_asset.is_file() and model_asset.suffix.lower() == ".gguf" and _is_poly_config(payload):
         _check_gguf_arch(model_asset)
 
-    resolved_context = context_size or existing_ctx or 8192
+    resolved_exe_dir: Path | None = None
+    if isinstance(payload.get("exe"), str) and payload["exe"].strip():
+        resolved_exe = _resolve_ref(payload["exe"].strip(), base_tuple)
+        if resolved_exe is not None:
+            resolved_exe_dir = resolved_exe.parent
+    explicit_backend = (
+        payload["backend"].strip().lower()
+        if isinstance(payload.get("backend"), str) and payload["backend"].strip()
+        else None
+    )
 
+    effective_existing_ctx = existing_ctx if existing_ctx is not None else UPSTREAM_DEFAULT_CONTEXT
+    resolved_context = context_size if context_size is not None else effective_existing_ctx
+    json_model_name = (
+        payload["model_name"].strip()
+        if isinstance(payload.get("model_name"), str) and payload["model_name"].strip()
+        else None
+    )
+    resolved_served = served_model or json_model_name or "inferyard-local-model"
+
+    needs_derive = (context_size is not None and existing_ctx != context_size) or (
+        served_model is not None and json_model_name is not None and served_model != json_model_name
+    )
     derived_payload: dict | None = None
     config_path = config_file
-    if context_size is not None and existing_ctx != context_size:
-        derived_payload = {k: v for k, v in payload.items() if k != "api_key"}
+    if needs_derive:
+        derived_payload = {k: payload[k] for k in _SAFE_DERIVED_KEYS if k in payload}
+        derived_payload["model_name"] = resolved_served
         if isinstance(derived_payload.get("args"), list):
             new_args = [str(x) for x in derived_payload["args"]]
             if model_flag and model_flag.startswith("--"):
                 new_args = _set_arg_value(new_args, model_flag, str(model_asset))
-            new_args = _set_arg_value(new_args, "--max-context", str(context_size))
+            new_args = _set_arg_value(new_args, "--max-context", str(resolved_context))
             derived_payload["args"] = new_args
             if isinstance(derived_payload.get("exe"), str):
                 resolved_exe = _resolve_ref(derived_payload["exe"], base_tuple)
                 if resolved_exe is not None:
                     derived_payload["exe"] = str(resolved_exe)
         else:
-            derived_payload["context"] = context_size
+            derived_payload["context"] = resolved_context
             if model_flag and model_flag.startswith("key:"):
                 derived_payload[model_flag[4:]] = str(model_asset)
         config_path = out_dir / "strata-candidate.json"
-    return model_asset, config_path, derived_payload, resolved_context, fallback_tokenizer
+    return (
+        model_asset,
+        config_path,
+        derived_payload,
+        resolved_context,
+        fallback_tokenizer,
+        resolved_served,
+        resolved_exe_dir,
+        explicit_backend,
+    )
 
 
 def resolve_polystrata_model(
@@ -234,28 +341,34 @@ def resolve_polystrata_model(
     out_dir: Path,
     context_size: int | None,
     *,
-    backend: str,
+    system: str,
+    served_model: str | None,
     port: int,
-) -> tuple[Path, Path, dict | None, int, Path | None]:
-    """Resolve a GGUF, strata-*.json, or pack dir into (asset, config_path, derived, ctx, tok)."""
+) -> tuple[Path, Path, dict | None, int, Path | None, str, str]:
+    """Resolve GGUF, strata-*.json, or pack dir -> (asset, cfg, derived, ctx, tok, served, backend)."""
     if model_input.is_file():
         suffix = model_input.suffix.lower()
         if suffix == ".gguf":
             metadata = _check_gguf_arch(model_input)
             root = Path(installation["working_directory"])
-            binaries = find_polystrata_engine_binaries(root)
-            poly_exe = binaries.get("poly") or binaries.get("strata")
+            binaries = find_polystrata_engine_binaries(root, platform_system=system)
+            poly_exe = binaries.get("poly")
             if poly_exe is None:
                 raise PreparationError("local_engine_polystrata_engine_missing")
+            backend = select_polystrata_backend(installation, system, engine_dir=poly_exe.parent)
             resolved_context = context_size or 8192
             display_name = metadata.get("general.name") or model_input.stem
+            resolved_served = served_model or display_name
             derived: dict = {
                 "exe": str(poly_exe),
                 "args": ["--model", str(model_input), "--max-context", str(resolved_context)],
                 "cwd": str(root),
-                "model_name": display_name,
+                "model_name": resolved_served,
                 "port": port,
             }
+            tok_dir = _discover_tokenizer_dir(installation, model_input)
+            if tok_dir is not None:
+                derived["tokenizer"] = str(tok_dir)
             if backend == "hip":
                 derived["backend"] = "hip"
             return (
@@ -263,10 +376,30 @@ def resolve_polystrata_model(
                 out_dir / "strata-candidate.json",
                 derived,
                 resolved_context,
-                None,
+                tok_dir,
+                resolved_served,
+                backend,
             )
         if suffix == ".json":
-            return _resolve_existing_json(installation, model_input, out_dir, context_size)
+            (
+                asset,
+                cfg_path,
+                derived,
+                ctx,
+                tok,
+                resolved_served,
+                exe_dir,
+                explicit_backend,
+            ) = _resolve_existing_json(
+                installation, model_input, out_dir, context_size, served_model=served_model
+            )
+            backend = select_polystrata_backend(
+                installation,
+                system,
+                engine_dir=exe_dir,
+                explicit_backend=explicit_backend,
+            )
+            return asset, cfg_path, derived, ctx, tok, resolved_served, backend
         raise PreparationError("polystrata_model_unsupported")
 
     if model_input.is_dir():
@@ -277,31 +410,57 @@ def resolve_polystrata_model(
         )
         if len(matches) != 1:
             raise PreparationError("polystrata_config_required")
-        return _resolve_existing_json(
+        (
+            asset,
+            cfg_path,
+            derived,
+            ctx,
+            tok,
+            resolved_served,
+            exe_dir,
+            explicit_backend,
+        ) = _resolve_existing_json(
             installation,
             matches[0].resolve(strict=True),
             out_dir,
             context_size,
+            served_model=served_model,
             default_asset_dir=model_input,
         )
+        backend = select_polystrata_backend(
+            installation,
+            system,
+            engine_dir=exe_dir,
+            explicit_backend=explicit_backend,
+        )
+        return asset, cfg_path, derived, ctx, tok, resolved_served, backend
 
     raise PreparationError("polystrata_model_unsupported")
 
 
-def select_polystrata_backend(installation: dict, system: str) -> str:
+def select_polystrata_backend(
+    installation: dict,
+    system: str,
+    *,
+    engine_dir: Path | None = None,
+    explicit_backend: str | None = None,
+) -> str:
     """Pick the backend for a PolyStrata candidate from platform, BUILD.json, or host GPUs."""
     if system == "Darwin":
         return "metal"
+    if explicit_backend in ("cuda", "hip", "cpu"):
+        return explicit_backend
     root = Path(installation["working_directory"])
-    binaries = find_polystrata_engine_binaries(root, platform_system=system)
-    preferred_dir = (
-        binaries["poly"].parent
-        if "poly" in binaries
-        else binaries["strata"].parent
-        if "strata" in binaries
-        else None
-    )
-    declared = read_build_backend(root, engine_dir=preferred_dir)
+    if engine_dir is None:
+        binaries = find_polystrata_engine_binaries(root, platform_system=system)
+        engine_dir = (
+            binaries["poly"].parent
+            if "poly" in binaries
+            else binaries["strata"].parent
+            if "strata" in binaries
+            else None
+        )
+    declared = read_build_backend(root, engine_dir=engine_dir)
     if declared in ("cuda", "hip", "cpu"):
         return declared
     from inferyard.platforms.device_gpu import detect_gpus

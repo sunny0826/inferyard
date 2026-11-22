@@ -17,7 +17,10 @@ def is_asset(path):
         or name
         in {"config.json", "generation_config.json", "special_tokens_map.json", "added_tokens.json"}
         or name.startswith(("tokenizer", "vocab", "merges", "spiece", "chat_template"))
-        or (name.endswith(".bin") and name.startswith(("model", "pytorch_model", "weights")))
+        or (
+            name.endswith(".bin")
+            and name.startswith(("model", "pytorch_model", "weights", "experts", "dense"))
+        )
         or path.suffix.lower() in {".jinja", ".jinja2", ".tiktoken"}
     )
 
