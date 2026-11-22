@@ -64,8 +64,14 @@ func TestDefaultEngineCatalogIntegrity(t *testing.T) {
 	if !hasPrism || !hasUpstreamV1 || !hasUpstreamSnap {
 		t.Fatalf("llama-cpp must include PrismML stable, upstream v1.0.0 stable, and b11146 snapshot: %+v", llama.Releases)
 	}
-	if !(prismIdx < v1Idx && v1Idx < snapIdx) {
-		t.Fatalf("expected llama-cpp releases sorted prism -> v1.0.0 -> b11146, got indices %d, %d, %d", prismIdx, v1Idx, snapIdx)
+	if !(v1Idx < prismIdx && prismIdx < snapIdx) {
+		t.Fatalf("expected llama-cpp releases sorted v1.0.0 -> prism -> b11146, got indices %d, %d, %d", v1Idx, prismIdx, snapIdx)
+	}
+	if llama.Releases[0].ID != "llama-cpp-upstream-v1.0.0" || llama.Releases[0].Channel != ReleaseStable || !llama.Releases[0].Recommended {
+		t.Fatalf("expected llama-cpp recommended stable release v1.0.0 first, got %+v", llama.Releases[0])
+	}
+	if llama.ReleasesURL != "https://github.com/ggml-org/llama.cpp/releases" {
+		t.Fatalf("llama-cpp ReleasesURL = %q, want upstream releases URL", llama.ReleasesURL)
 	}
 	if !hasWinCUDA {
 		t.Fatal("windows cuda build must bundle engine and runtime artifacts")
@@ -174,8 +180,12 @@ func TestReleasesForPlatformAndStableFilter(t *testing.T) {
 	}
 
 	llama, _ := reg.FamilyByID("llama-cpp")
-	prism := llama.Releases[0]
-	platforms := prism.Platforms()
+	v1 := llama.Releases[0]
+	prism := llama.Releases[1]
+	if v1.ID != "llama-cpp-upstream-v1.0.0" || prism.ID != "llama-cpp-prism-b10743" {
+		t.Fatalf("unexpected release order in llama-cpp: %+v", llama.Releases)
+	}
+	platforms := v1.Platforms()
 	wantPlatforms := []string{"darwin/arm64", "darwin/amd64", "windows/amd64", "linux/amd64", "linux/arm64"}
 	if len(platforms) != len(wantPlatforms) {
 		t.Fatalf("Platforms() = %v, want %v", platforms, wantPlatforms)

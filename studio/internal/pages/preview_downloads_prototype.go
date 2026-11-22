@@ -79,6 +79,7 @@ func (p *previewSession) downloadsPrototypeView(c *ui.Context) {
 		})
 	})
 	p.downloadsPrototypeDetailDrawer(c)
+	p.downloadsPrototypeModelDrawer(c)
 	s.studioNotifications(c)
 	studioToasts(c)
 }
@@ -94,10 +95,9 @@ func (p *previewSession) downloadsPrototypeHeader(c *ui.Context) {
 
 func (p *previewSession) downloadsPrototypeStarterCard(c *ui.Context) {
 	s := p.state
+	st := p.ensurePrototypeState()
 	assets := s.availableTaskAssets()
-	engineURL := core.DefaultEngineURL()
-	modelURL := core.DefaultModelURL()
-	if assets.engine || assets.model || s.downloadActive("engine") || s.downloadActive("model") || engineURL == "" || modelURL == "" {
+	if assets.engine || assets.model || p.isProtoFamilyInstalling("llama-cpp") || p.isProtoModelDownloading("model-qwen3-0.6b-q8") {
 		return
 	}
 	t := tokens(c)
@@ -105,14 +105,27 @@ func (p *previewSession) downloadsPrototypeStarterCard(c *ui.Context) {
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
 				heading(c, "推荐组合", 3)
-				ui.Text(c, "llama-server (prism-b10743-adfffbe) · Qwen3-0.6B-Q8_0 (GGUF)").
+				ui.Text(c, "llama.cpp (v1.0.0) · Qwen3-0.6B-Q8_0 (GGUF)").
 					FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			})
 			if primaryButton(c, "下载推荐组合").Disabled(s.busy).Clicked() {
-				s.acquireStarterBundle(engineURL, modelURL)
+				p.startPrototypeStarterBundle(st)
 			}
 		})
 	})
+}
+
+func (p *previewSession) startPrototypeStarterBundle(st *downloadsProtoState) {
+	reg := previewPrototypeCatalog(p.protoIncludeCustomEngine)
+	if llama, ok := reg.FamilyByID("llama-cpp"); ok && len(llama.Releases) > 0 {
+		rel := llama.Releases[0]
+		build := protoPickBuildForPlatform(st, llama.ID, rel, st.effectiveHostPlatform())
+		p.startPrototypeInstall(llama, rel, build)
+	}
+	if modelEntry, ok := core.CatalogEntryByID("model-qwen3-0.6b-q8"); ok {
+		activeURL, _ := protoModelSource(modelEntry, st.modelSource)
+		p.startPrototypeModelDownload(modelEntry, activeURL)
+	}
 }
 
 func (p *previewSession) downloadsPrototypeTabs(c *ui.Context) {
@@ -121,9 +134,7 @@ func (p *previewSession) downloadsPrototypeTabs(c *ui.Context) {
 	ui.Column(c.Key("proto-downloads-tabs")).FillWidth().Gap(t.Density.Row).Children(func() {
 		components.Tabs(c, &st.activeTab, components.TabsUnderline, "引擎", "模型")
 		if st.activeTab == 1 {
-			applyMaterial(c, ui.Column(c).MinWidth(0).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
-				p.state.modelAssetsView(c)
-			})
+			p.downloadsPrototypeModelsTab(c, st)
 			return
 		}
 		p.downloadsPrototypeEnginesTab(c, st)

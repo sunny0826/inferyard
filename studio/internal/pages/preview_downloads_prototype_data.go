@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
 )
 
 type downloadsProtoState struct {
@@ -18,6 +19,15 @@ type downloadsProtoState struct {
 	drawerOpen       bool
 	drawerFamilyID   string
 	customEngineURL  string
+
+	modelSource      string
+	modelDrawerOpen  bool
+	modelDrawerID    string
+	customModelURL   string
+	customTokenEnv   string
+	customResolveURL string
+	customResolved   *inferyard.ModelResolve
+	customResolveErr string
 }
 
 func newDownloadsProtoState() *downloadsProtoState {
@@ -26,6 +36,7 @@ func newDownloadsProtoState() *downloadsProtoState {
 		selectedRelease:  map[string]string{},
 		selectedPlatform: map[string]string{},
 		selectedBuild:    map[string]string{},
+		modelSource:      "huggingface",
 	}
 }
 
@@ -37,6 +48,7 @@ func (st *downloadsProtoState) effectiveHostPlatform() string {
 }
 
 func (st *downloadsProtoState) openDrawer(familyID, releaseID, platform, buildID string) {
+	st.modelDrawerOpen = false
 	st.drawerOpen = true
 	st.drawerFamilyID = familyID
 	if releaseID != "" {
@@ -50,10 +62,16 @@ func (st *downloadsProtoState) openDrawer(familyID, releaseID, platform, buildID
 	}
 }
 
+func (st *downloadsProtoState) openModelDrawer(entryID string) {
+	st.drawerOpen = false
+	st.modelDrawerOpen = true
+	st.modelDrawerID = entryID
+}
+
 func seedPrototypeAssets(s *viewState) {
 	const (
-		engineName = "prism-b10743-adfffbe · llama-server"
-		modelName  = "Preview-Model-Q4.gguf"
+		engineName = "v1.0.0 · llama.cpp"
+		modelName  = "Qwen3-0.6B-Q8_0.gguf"
 	)
 	s.registry.Engines = []core.EngineAsset{{
 		Name:   engineName,
@@ -62,13 +80,13 @@ func seedPrototypeAssets(s *viewState) {
 	}}
 	s.registry.DefaultEngine = engineName
 	s.registry.Models = []core.ModelAsset{
-		{Name: modelName, Format: "gguf", Available: true, Architecture: "llama", SizeBytes: previewValue(int64(4 << 30))},
+		{Name: modelName, Format: "gguf", Available: true, Architecture: "qwen3", SizeBytes: previewValue(int64(639446688))},
 		{Name: "Preview-Small.gguf", Format: "gguf", Available: true},
 	}
 	s.checks = core.EngineCheckOverview{
 		Supported: true,
 		Engines: map[string]core.EngineEligibility{
-			engineName: {State: core.EngineCheckEligible, Family: "llama-cpp", Version: "prism-b10743-adfffbe"},
+			engineName: {State: core.EngineCheckEligible, Family: "llama-cpp", Version: "v1.0.0"},
 		},
 	}
 	s.engine = engineName

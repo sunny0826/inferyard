@@ -7,8 +7,8 @@ import (
 
 func DefaultEngineCatalog() *EngineCatalogRegistry {
 	return NewEngineCatalogRegistry(
-		prismLlamaCppProvider(),
 		upstreamLlamaCppProvider(),
+		prismLlamaCppProvider(),
 		mlxLMProvider(),
 		vllmProvider(),
 		sglangProvider(),
@@ -70,7 +70,7 @@ func prismLlamaCppProvider() EngineCatalogProvider {
 					Revision:     "prism-b10743-adfffbe",
 					Distribution: "PrismML",
 					Channel:      ReleaseStable,
-					Recommended:  true,
+					Recommended:  false,
 					ReleaseURL:   "https://github.com/PrismML-Eng/llama.cpp/releases/tag/prism-b10743-adfffbe",
 					Builds: []EnginePlatformBuild{
 						{
@@ -167,7 +167,7 @@ func upstreamLlamaCppProvider() EngineCatalogProvider {
 					Revision:     "v1.0.0",
 					Distribution: "ggml-org",
 					Channel:      ReleaseStable,
-					Recommended:  false,
+					Recommended:  true,
 					ReleaseURL:   v100URL,
 					Builds: []EnginePlatformBuild{
 						{
