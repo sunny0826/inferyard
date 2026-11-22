@@ -11,6 +11,8 @@ const (
 	ContextSpeedBundleVersion = "2026.10.1"
 	ContextSpeedAdapter       = "prism_llama_server_v1"
 	ContextSpeedSamples       = 5
+	LocalEngineAdapter        = "local_openai_v1"
+	PolystrataFamily          = "polystrata"
 )
 
 const (

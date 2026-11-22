@@ -1,0 +1,279 @@
+package core
+
+import (
+	"context"
+	"encoding/json"
+	"inferyard/studio/internal/inferyard"
+	"os"
+	"path/filepath"
+	"slices"
+	"strconv"
+	"strings"
+	"sync/atomic"
+)
+
+const polystrataDefaultSourceURL = "https://github.com/simplexai-labs/PolyStrata/archive/refs/tags/v0.1.45-poly.10.tar.gz"
+
+type PolystrataSetupRequest struct {
+	Family      string `json:"family,omitempty"`
+	Model       string `json:"model,omitempty"`
+	Context     int    `json:"context,omitempty"`
+	Backend     string `json:"backend,omitempty"`
+	ModelSource string `json:"model_source,omitempty"`
+	GGUFPath    string `json:"gguf_path,omitempty"`
+	Source      string `json:"source,omitempty"`
+	OutName     string `json:"out_name,omitempty"`
+	DataDir     string `json:"data_dir,omitempty"`
+}
+
+func validatePolystrataSetupRequest(req PolystrataSetupRequest) *ApiError {
+	if req.OutName != "" && !ValidDownloadName(req.OutName) {
+		return Err("invalid_request")
+	}
+	if req.Context != 0 && (req.Context < 1 || req.Context > 524288) {
+		return Err("invalid_request")
+	}
+	if req.Backend != "" && !slices.Contains([]string{"auto", "cuda", "hip", "metal"}, req.Backend) {
+		return Err("invalid_request")
+	}
+	if req.ModelSource != "" && !slices.Contains([]string{"auto", "huggingface", "modelscope"}, req.ModelSource) {
+		return Err("invalid_request")
+	}
+	for _, value := range []string{req.Family, req.Model, req.Source} {
+		if strings.ContainsAny(value, "\x00\r\n") {
+			return Err("invalid_request")
+		}
+	}
+	if req.GGUFPath != "" {
+		if !filepath.IsAbs(req.GGUFPath) || strings.ContainsAny(req.GGUFPath, "\x00\r\n") {
+			return Err("invalid_request")
+		}
+	}
+	if req.DataDir != "" {
+		if !filepath.IsAbs(req.DataDir) || strings.ContainsAny(req.DataDir, "\x00\r\n") {
+			return Err("invalid_request")
+		}
+	}
+	if req.Source != "" && strings.Contains(req.Source, "://") && !validEngineSource(req.Source) {
+		return Err("invalid_request")
+	}
+	return nil
+}
+
+func polystrataDisplayName(req PolystrataSetupRequest) string {
+	parts := []string{"PolyStrata"}
+	if strings.TrimSpace(req.Family) != "" {
+		parts = append(parts, strings.TrimSpace(req.Family))
+	}
+	if strings.TrimSpace(req.Model) != "" {
+		parts = append(parts, strings.TrimSpace(req.Model))
+	}
+	return strings.Join(parts, " · ")
+}
+
+func (s *Service) activePolystrataSetupLocked() (DownloadTask, bool) {
+	for _, d := range s.downloads {
+		if d.Task.Kind == "polystrata" && d.Task.State == "downloading" {
+			return clone(d.Task), true
+		}
+	}
+	return DownloadTask{}, false
+}
+
+func (s *Service) CreatePolystrataSetup(req PolystrataSetupRequest) (DownloadTask, *ApiError) {
+	if failure := validatePolystrataSetupRequest(req); failure != nil {
+		return DownloadTask{}, failure
+	}
+	u := downloadNameDefaults(s.userSettings())
+	root, apiErr := s.downloadRoot("engine", u)
+	if apiErr != nil {
+		return DownloadTask{}, apiErr
+	}
+	p := s.probe(u)
+	if p.Status != "ok" {
+		return DownloadTask{}, Err("cli_unavailable")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closing {
+		return DownloadTask{}, Err("service_closing")
+	}
+	if existing, found := s.activePolystrataSetupLocked(); found {
+		return existing, nil
+	}
+	outName, outDir, failure := s.downloadOutputLocked(root, req.OutName, "polystrata")
+	if failure != nil {
+		return DownloadTask{}, failure
+	}
+	dataDir := strings.TrimSpace(req.DataDir)
+	if dataDir == "" {
+		if u.ModelsRoot != nil && strings.TrimSpace(*u.ModelsRoot) != "" {
+			dataDir = filepath.Join(*u.ModelsRoot, "polystrata-data")
+		} else {
+			dataDir = filepath.Join(filepath.Dir(outDir), "PolyStrata-data")
+		}
+	}
+	sourceURL := strings.TrimSpace(req.Source)
+	if sourceURL == "" {
+		sourceURL = polystrataDefaultSourceURL
+	}
+	reqCopy := req
+	ctx, cancel := context.WithCancel(s.ctx)
+	d := &downloadEntry{
+		Task: DownloadTask{
+			Kind:        "polystrata",
+			DisplayName: polystrataDisplayName(req),
+			TaskId:      uuid(),
+			State:       "downloading",
+			Stage:       "preflight",
+			SourceUrl:   sourceURL,
+			OutName:     outName,
+			OutDir:      outDir,
+			StartedAt:   now(),
+		},
+		cancel:     cancel,
+		polystrata: &reqCopy,
+		dataDir:    dataDir,
+	}
+	s.downloads = append(s.downloads, d)
+	s.Bus.Publish("download.state", map[string]any{"task": clone(d.Task)})
+	go s.runPolystrataSetup(ctx, *p.Path, d)
+	return clone(d.Task), nil
+}
+
+func polystrataPrepareArgs(outDir, dataDir string, req *PolystrataSetupRequest, resume bool, proxy string) []string {
+	args := []string{
+		"engine", "prepare-polystrata",
+		"--out", outDir,
+		"--data-dir", dataDir,
+		"--progress-stream",
+	}
+	if req != nil {
+		if v := strings.TrimSpace(req.Family); v != "" {
+			args = append(args, "--family", v)
+		}
+		if v := strings.TrimSpace(req.Model); v != "" {
+			args = append(args, "--model", v)
+		}
+		if req.Context > 0 {
+			args = append(args, "--context", strconv.Itoa(req.Context))
+		}
+		if v := strings.TrimSpace(req.Backend); v != "" {
+			args = append(args, "--backend", v)
+		}
+		if v := strings.TrimSpace(req.ModelSource); v != "" {
+			args = append(args, "--model-source", v)
+		}
+		if v := strings.TrimSpace(req.GGUFPath); v != "" {
+			args = append(args, "--gguf-path", v)
+		}
+		if v := strings.TrimSpace(req.Source); v != "" {
+			args = append(args, "--source", v)
+		}
+	}
+	if resume {
+		args = append(args, "--resume")
+	}
+	if proxy != "" {
+		args = append(args, "--proxy-origin", proxy)
+	}
+	return args
+}
+
+func (s *Service) runPolystrataSetup(ctx context.Context, binary string, d *downloadEntry) {
+	defer d.cancel()
+	var streamSeen atomic.Bool
+	args := polystrataPrepareArgs(d.Task.OutDir, d.dataDir, d.polystrata, d.resume, s.downloadProxy())
+	out, execErr := s.execStream(ctx, s.newStderrProgressHandler(d, &streamSeen), binary, args...)
+
+	if out.ExitCode == inferyard.ExitComplete && execErr == nil {
+		cr, parseErr := inferyard.Parse(out.Stdout)
+		var details struct {
+			InstallationPath string `json:"installation_path"`
+			ModelConfigPath  string `json:"model_config_path"`
+			LogPath          string `json:"log_path"`
+		}
+		if parseErr == nil && json.Unmarshal(cr.Details, &details) == nil && details.InstallationPath != "" {
+			_, regErr := s.RegisterEngineInstallation(s.ctx, details.InstallationPath)
+			s.mu.Lock()
+			d.Task.FinishedAt = ptr(now())
+			if details.LogPath != "" {
+				d.Task.LogPath = ptr(details.LogPath)
+			}
+			d.Task.InstallationPath = ptr(details.InstallationPath)
+			if details.ModelConfigPath != "" {
+				d.Task.ModelConfigPath = ptr(details.ModelConfigPath)
+			}
+			if regErr != nil {
+				d.Task.State = "failed"
+				d.Task.Error = regErr
+			} else {
+				d.Task.State = "done"
+				d.Task.Stage = ""
+				d.Task.Percent = ptr(100.0)
+				d.Task.EnginePath = ptr(details.InstallationPath)
+			}
+			doneOK := d.Task.State == "done"
+			s.Bus.Publish("download.state", map[string]any{"task": clone(d.Task)})
+			s.mu.Unlock()
+			if doneOK {
+				go s.VerifyEngines()
+				go func() { _ = s.RefreshAssets() }()
+			}
+			return
+		}
+	}
+
+	s.mu.Lock()
+	var parsedBlockers []map[string]any
+	if cr, err := inferyard.Parse(out.Stdout); err == nil {
+		var errDetails struct {
+			LogPath  string `json:"log_path"`
+			Blockers []struct {
+				Code          string  `json:"code"`
+				Message       string  `json:"message"`
+				FixCommand    *string `json:"fix_command"`
+				RequiredBytes *int64  `json:"required_bytes"`
+				FreeBytes     *int64  `json:"free_bytes"`
+			} `json:"blockers"`
+		}
+		if json.Unmarshal(cr.Details, &errDetails) == nil {
+			if errDetails.LogPath != "" {
+				d.Task.LogPath = ptr(errDetails.LogPath)
+			}
+			for _, b := range errDetails.Blockers {
+				if strings.TrimSpace(b.Code) == "" {
+					continue
+				}
+				entry := map[string]any{"code": b.Code, "message": b.Message}
+				if b.FixCommand != nil && strings.TrimSpace(*b.FixCommand) != "" {
+					entry["fix_command"] = *b.FixCommand
+				}
+				if b.RequiredBytes != nil {
+					entry["required_bytes"] = *b.RequiredBytes
+				}
+				if b.FreeBytes != nil {
+					entry["free_bytes"] = *b.FreeBytes
+				}
+				parsedBlockers = append(parsedBlockers, entry)
+			}
+		}
+	}
+	if d.Task.LogPath == nil {
+		candidateLog := filepath.Join(d.Task.OutDir, ".inferyard-setup.log")
+		if info, err := os.Stat(candidateLog); err == nil && info.Mode().IsRegular() {
+			d.Task.LogPath = ptr(candidateLog)
+		}
+	}
+	s.finishDownloadLocked(ctx, d, out, execErr, func(inferyard.CommandResult, error) bool {
+		return false
+	})
+	if len(parsedBlockers) > 0 && d.Task.Error != nil {
+		if d.Task.Error.Details == nil {
+			d.Task.Error.Details = map[string]any{}
+		}
+		d.Task.Error.Details["blockers"] = parsedBlockers
+		s.Bus.Publish("download.state", map[string]any{"task": clone(d.Task)})
+	}
+	s.mu.Unlock()
+}

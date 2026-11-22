@@ -343,7 +343,7 @@ func (s *Service) registry() registryData {
 				engines[path] = len(data.engines)
 				data.engines = append(data.engines, entry)
 			}
-		} else {
+		} else if task.Kind == "model" {
 			if u.ModelsRoot == nil {
 				continue
 			}

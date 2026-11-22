@@ -7,6 +7,7 @@ import (
 
 func DefaultEngineCatalog() *EngineCatalogRegistry {
 	return NewEngineCatalogRegistry(
+		polystrataProvider(),
 		upstreamLlamaCppProvider(),
 		prismLlamaCppProvider(),
 		mlxLMProvider(),

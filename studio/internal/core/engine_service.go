@@ -2,7 +2,9 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -17,6 +19,7 @@ import (
 type EngineState struct {
 	StartTicks int64     `json:"start_ticks"`
 	Local      bool      `json:"local"`
+	Family     string    `json:"family,omitempty"`
 	State      string    `json:"state"`
 	Pid        int64     `json:"pid"`
 	Endpoint   string    `json:"endpoint"`
@@ -28,6 +31,7 @@ type EngineState struct {
 type engineEntry struct {
 	ownerPath string
 	owner     engineOwner
+	family    string
 	cmd       *exec.Cmd
 	logFile   *os.File
 	state     EngineState
@@ -111,7 +115,7 @@ func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
 		_ = logFile.Close()
 		return EngineState{}, &ApiError{Code: "engine_start_failed", Message: "引擎进程启动失败，请检查文件权限与运行环境。"}
 	}
-	entry := &engineEntry{cmd: cmd, logFile: logFile, stop: make(chan struct{}), done: make(chan struct{}), state: EngineState{State: "starting", Local: startup.Local, Pid: int64(cmd.Process.Pid), Endpoint: endpoint, LogPath: logPath, Candidate: candidate}}
+	entry := &engineEntry{family: startup.Family, cmd: cmd, logFile: logFile, stop: make(chan struct{}), done: make(chan struct{}), state: EngineState{State: "starting", Local: startup.Local, Family: startup.Family, Pid: int64(cmd.Process.Pid), Endpoint: endpoint, LogPath: logPath, Candidate: candidate}}
 	if failure := s.persistEngineOwner(entry, *w); failure != nil {
 		if entry.state.Local {
 			if cleanupErr := s.terminateOwnedTree(&entry.owner, ""); cleanupErr != nil {
@@ -212,11 +216,7 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 			if !starting {
 				continue
 			}
-			healthy := false
-			if resp, err := health.Get(endpoint + engineHealthPath(e.state.Local)); err == nil {
-				_ = resp.Body.Close()
-				healthy = resp.StatusCode >= 200 && resp.StatusCode < 300
-			}
+			healthy := checkEngineHealth(health, endpoint, e.state.Local, e.family)
 			s.mu.Lock()
 			if e.state.State != "starting" {
 				s.mu.Unlock()
@@ -243,6 +243,9 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 }
 
 func (s *Service) terminateEngine(e *engineEntry, waitCh <-chan error) {
+	if e.family == "polystrata" && e.state.Endpoint != "" {
+		unloadPolystrata(e.state.Endpoint)
+	}
 	if e.state.Local {
 		if s.terminateOwnedTree(&e.owner, e.ownerPath) == nil {
 			<-waitCh
@@ -258,6 +261,48 @@ func (s *Service) terminateEngine(e *engineEntry, waitCh <-chan error) {
 		signalEngine(e, os.Kill)
 		<-waitCh
 	}
+}
+
+func checkEngineHealth(client *http.Client, endpoint string, local bool, family string) bool {
+	if family == "polystrata" {
+		resp, err := client.Get(endpoint + "/health")
+		if err != nil {
+			return false
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return false
+		}
+		raw, err := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+		if err != nil {
+			return false
+		}
+		var payload struct {
+			Service string `json:"service"`
+			Loaded  *bool  `json:"loaded"`
+		}
+		return json.Unmarshal(raw, &payload) == nil && payload.Service == "strata" && payload.Loaded != nil && *payload.Loaded
+	}
+	resp, err := client.Get(endpoint + engineHealthPath(local))
+	if err != nil {
+		return false
+	}
+	_ = resp.Body.Close()
+	return resp.StatusCode >= 200 && resp.StatusCode < 300
+}
+
+func unloadPolystrata(endpoint string) {
+	client := &http.Client{Timeout: 2 * time.Second}
+	req, err := http.NewRequest(http.MethodPost, endpoint+"/unload", nil)
+	if err != nil {
+		return
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+	_ = resp.Body.Close()
 }
 
 func signalEngine(e *engineEntry, sig os.Signal) {
