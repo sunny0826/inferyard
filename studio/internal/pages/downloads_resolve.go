@@ -7,15 +7,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
 )
-
-type mirrorSourceState struct {
-	choice string
-}
 
 type modelResolveOutcome struct {
 	source   string
@@ -50,18 +44,6 @@ func customModelURLError(value string) string {
 	return ""
 }
 
-func (s *viewState) starterDownloadAction(c *ui.Context) {
-	assets := s.availableTaskAssets()
-	engineURL := core.DefaultEngineURL()
-	modelURL := core.DefaultModelURL()
-	if assets.engine || assets.model || s.downloadActive("engine") || s.downloadActive("model") || engineURL == "" || modelURL == "" {
-		return
-	}
-	if button(c, "一键下载推荐引擎与模型").AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
-		s.acquireStarterBundle(engineURL, modelURL)
-	}
-}
-
 func (s *viewState) acquireStarterBundle(engineURL, modelURL string) {
 	if s.preview != nil {
 		s.simulate(previewDownload{kind: "engine", source: engineURL})
@@ -76,93 +58,6 @@ func (s *viewState) acquireStarterBundle(engineURL, modelURL string) {
 			return "", e
 		}
 		return "已将推荐引擎与模型加入下载队列", nil
-	})
-}
-
-func (s *viewState) modelMirrorSelector(c *ui.Context) {
-	trimmed := strings.TrimSpace(s.modelURL)
-	entry, ok := core.CatalogEntryByURL(trimmed)
-	if !ok || entry.Kind != core.CatalogModel || entry.MirrorURL == "" {
-		return
-	}
-	label := entry.MirrorLabel
-	if label == "" {
-		label = "镜像源"
-	}
-	host := ui.Column(c.Key("model-mirror-" + entry.ID)).FillWidth().Gap(tokens(c).Density.Tight)
-	st := ui.Local(host, "mirror-source", func() mirrorSourceState {
-		return mirrorSourceState{choice: "primary"}
-	})
-	if trimmed == entry.MirrorURL {
-		st.choice = "mirror"
-	} else {
-		st.choice = "primary"
-	}
-	host.Children(func() {
-		before := st.choice
-		options := []components.NativeSelectOption[string]{
-			{Label: "HuggingFace", Value: "primary"},
-			{Label: label, Value: "mirror"},
-		}
-		segmentedField(c, "下载源", "国内网络可切换为 "+label+" 镜像，下载前自动解析为固定版本。", &st.choice, options)
-		if st.choice != before {
-			if st.choice == "mirror" {
-				s.modelURL = entry.MirrorURL
-			} else {
-				s.modelURL = entry.URL
-			}
-		}
-	})
-}
-
-func (s *viewState) modelResolvePanel(c *ui.Context) {
-	trimmed := strings.TrimSpace(s.modelURL)
-	t := tokens(c)
-	host := ui.Column(c.Key("model-resolve-panel")).FillWidth().Gap(t.Density.Tight)
-	st := ui.Local(host, "model-resolve", func() modelResolveState {
-		return modelResolveState{mailbox: &modelResolveMailbox{}}
-	})
-	st.mailbox.mu.Lock()
-	pending := st.mailbox.pending
-	st.mailbox.pending = nil
-	st.mailbox.mu.Unlock()
-	if pending != nil && pending.source == trimmed {
-		st.resolving = false
-		st.resolved = pending.resolved
-		st.errText = pending.errText
-	}
-	if st.source != trimmed {
-		st.source = trimmed
-		st.resolving = false
-		st.resolved = nil
-		st.errText = ""
-	}
-	canResolve := !s.busy && !st.resolving && trimmed != "" && core.IsResolvableModelURL(trimmed) && tokenNameError(s.tokenEnv) == ""
-	host.Children(func() {
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			if s.downloadAction(c, "model", "下载模型").Disabled(s.busy || trimmed == "").Clicked() {
-				s.acquireModel()
-			}
-			if button(c, "解析地址").Disabled(!canResolve).Clicked() {
-				s.triggerModelResolve(st, trimmed)
-			}
-		})
-		switch {
-		case st.resolving:
-			ui.Text(c, "正在解析远端模型版本…").FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
-		case st.errText != "":
-			ui.Text(c, st.errText).FontSize(t.Type.Caption).TextColor(stateColor(c, stateDanger))
-		case st.resolved != nil:
-			sizeText := "大小未知"
-			if st.resolved.Bytes != nil && *st.resolved.Bytes > 0 {
-				sizeText = catalogSize(*st.resolved.Bytes)
-			}
-			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Hairline).Padding(t.Density.Inset, t.Density.Stack), materialInset).Children(func() {
-				ui.Text(c, "已解析版本："+st.resolved.Revision).Selectable().FontSize(t.Type.Caption)
-				ui.Text(c, "文件："+st.resolved.Filename+" · "+sizeText).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
-				ui.Text(c, "固定地址："+st.resolved.PinnedURL).Selectable().FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
-			})
-		}
 	})
 }
 

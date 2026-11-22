@@ -5,8 +5,87 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 )
+
+type downloadsUIState struct {
+	activeTab            int
+	hostPlatform         string
+	selectedRelease      map[string]string
+	selectedPlatform     map[string]string
+	selectedBuild        map[string]string
+	drawerStableOnly     bool
+	engineDrawerOpen     bool
+	engineDrawerFamilyID string
+	modelSource          string
+	modelDrawerOpen      bool
+	modelDrawerID        string
+	customEngineURL      string
+	customModelURL       string
+	customModelResolve   *modelResolveState
+}
+
+func (s *viewState) ensureDownloadsUI() *downloadsUIState {
+	if s.downloadsUI == nil {
+		s.downloadsUI = &downloadsUIState{modelSource: "huggingface"}
+	}
+	st := s.downloadsUI
+	if st.selectedRelease == nil {
+		st.selectedRelease = map[string]string{}
+	}
+	if st.selectedPlatform == nil {
+		st.selectedPlatform = map[string]string{}
+	}
+	if st.selectedBuild == nil {
+		st.selectedBuild = map[string]string{}
+	}
+	if st.modelSource != "modelscope" {
+		st.modelSource = "huggingface"
+	}
+	if st.customModelResolve == nil {
+		st.customModelResolve = &modelResolveState{mailbox: &modelResolveMailbox{}}
+	} else if st.customModelResolve.mailbox == nil {
+		st.customModelResolve.mailbox = &modelResolveMailbox{}
+	}
+	return st
+}
+
+func (s *viewState) downloadsHostPlatform() string {
+	st := s.ensureDownloadsUI()
+	if strings.TrimSpace(st.hostPlatform) != "" {
+		return st.hostPlatform
+	}
+	return core.CurrentPlatform()
+}
+
+func (s *viewState) engineCatalogRegistry() *core.EngineCatalogRegistry {
+	if s.engineCatalog != nil {
+		return s.engineCatalog
+	}
+	return core.DefaultEngineCatalog()
+}
+
+func (st *downloadsUIState) openEngineDrawer(familyID, releaseID, platform, buildID string) {
+	st.modelDrawerOpen = false
+	st.engineDrawerOpen = true
+	st.engineDrawerFamilyID = familyID
+	if releaseID != "" {
+		st.selectedRelease[familyID] = releaseID
+	}
+	if platform != "" {
+		st.selectedPlatform[familyID] = platform
+	}
+	if buildID != "" {
+		st.selectedBuild[familyID] = buildID
+	}
+}
+
+func (st *downloadsUIState) openModelDrawer(entryID string) {
+	st.engineDrawerOpen = false
+	st.modelDrawerOpen = true
+	st.modelDrawerID = entryID
+}
 
 func (s *viewState) downloadsPageView(c *ui.Context) {
 	if !s.assetsPreset {
@@ -18,22 +97,55 @@ func (s *viewState) downloadsPageView(c *ui.Context) {
 			s.engineURL = core.DefaultEngineURL()
 		}
 	}
-	s.header(c, "下载")
+	st := s.ensureDownloadsUI()
+	t := tokens(c)
+
+	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		ui.Row(c).Grow(1).MinWidth(0).Children(func() { s.header(c, "下载") })
+		button(c, "下载设置").OnClick(func() { s.selected = "settings" })
+	})
 	s.downloadTaskGuide(c)
+	s.downloadsStarterCard(c)
 	if len(s.downloads) > 0 {
 		card(c, "下载任务", func() { s.downloadsView(c) })
 	}
-	s.newDownloadsView(c)
-	s.catalogView(c)
+	ui.Column(c.Key("downloads-tabs")).FillWidth().Gap(t.Density.Row).Children(func() {
+		components.Tabs(c, &st.activeTab, components.TabsUnderline, "引擎", "模型")
+		if st.activeTab == 1 {
+			s.downloadsModelsTab(c)
+		} else {
+			s.downloadsEnginesTab(c)
+		}
+	})
+	s.downloadsEngineDrawer(c)
+	s.downloadsModelDrawer(c)
 }
 
-func (s *viewState) newDownloadsView(c *ui.Context) {
-	card(c, "新建下载任务", func() {
-		ui.Text(c, "推荐资源 · "+core.PlatformLabel(core.CurrentPlatform())).TextColor(c.Theme().TextMuted)
-		s.starterDownloadAction(c)
-		s.engineDownloadView(c)
-		s.modelAssetsView(c)
-		button(c, "设置下载目录名").AlignSelf(ui.Start).OnClick(func() { s.selected = "settings" })
+func (s *viewState) downloadsStarterCard(c *ui.Context) {
+	st := s.ensureDownloadsUI()
+	assets := s.availableTaskAssets()
+	engineURL := core.DefaultEngineURL()
+	modelURL := core.DefaultModelURL()
+	if assets.engine || assets.model || s.downloadActive("engine") || s.downloadActive("model") || engineURL == "" || modelURL == "" {
+		return
+	}
+	if st.modelSource == "modelscope" {
+		if entry, ok := core.CatalogEntryByURL(modelURL); ok && entry.MirrorURL != "" {
+			modelURL = entry.MirrorURL
+		}
+	}
+	t := tokens(c)
+	applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Row).Padding(t.Card.Padding), materialCard).Children(func() {
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
+				heading(c, "推荐组合", 3)
+				ui.Text(c, "llama-server (prism-b10743-adfffbe) · Qwen3-0.6B-Q8_0 (GGUF)").
+					FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			})
+			if button(c, "下载推荐组合").Disabled(s.busy).Clicked() {
+				s.acquireStarterBundle(engineURL, modelURL)
+			}
+		})
 	})
 }
 
@@ -64,48 +176,20 @@ func (s *viewState) downloadAction(c *ui.Context, kind, label string) ui.Element
 	return button(c, label)
 }
 
-func (s *viewState) modelAssetsView(c *ui.Context) {
-	heading(c, "模型", 3)
-	s.catalogChoices(c, core.CatalogModel, core.CurrentPlatform(), "自定义模型地址", func() {
-		field(c, "模型 URL（支持 HF / ModelScope /resolve 或 /blob）", &s.modelURL).Description("支持 HuggingFace 或 ModelScope 的 /resolve、/blob 或 /file/view 地址，未固定 revision 时将自动解析。").Error(customModelURLError(s.modelURL))
-	})
-	s.modelDownloadForm(c)
-}
-
-func (s *viewState) modelDownloadForm(c *ui.Context) {
-	s.modelMirrorSelector(c)
-	catalogDetails(c, s.modelURL)
-	componentFold(c, "需要凭据时", func() {
-		field(c, "凭据环境变量名（可选）", &s.tokenEnv).Description("仅填写变量名称，不填写凭据值。").Error(tokenNameError(s.tokenEnv))
-	})
-	s.modelResolvePanel(c)
-}
-
-func (s *viewState) acquireModel() {
-	source, env := strings.TrimSpace(s.modelURL), s.tokenEnv
-	if source == "" || customModelURLError(source) != "" {
+func (s *viewState) acquireModelSource(source, tokenEnv string) {
+	trimmed := strings.TrimSpace(source)
+	if trimmed == "" || customModelURLError(trimmed) != "" {
 		return
 	}
-	if env != "" && !environmentName.MatchString(env) {
+	if tokenEnv != "" && !environmentName.MatchString(tokenEnv) {
 		return
 	}
-	if s.simulate(previewDownload{kind: "model", source: source}) {
+	if s.simulate(previewDownload{kind: "model", source: trimmed}) {
 		return
 	}
 	s.work(func() (string, *core.ApiError) {
-		_, e := s.service.CreateOrResolveModelDownload(s.ctx, core.CreateDownloadRequest{SourceUrl: source}, env)
+		_, e := s.service.CreateOrResolveModelDownload(s.ctx, core.CreateDownloadRequest{SourceUrl: trimmed}, tokenEnv)
 		return "已加入下载队列", e
-	})
-}
-
-func (s *viewState) engineDownloadView(c *ui.Context) {
-	heading(c, "引擎", 3)
-	s.catalogChoices(c, core.CatalogEngine, core.CurrentPlatform(), "自定义引擎地址", func() {
-		field(c, "引擎 URL", &s.engineURL).Description("必填；引擎归档下载地址。").Error(downloadURLError(s.engineURL))
-	})
-	catalogDetails(c, s.engineURL)
-	s.downloadAction(c, "engine", "下载引擎").AlignSelf(ui.Start).Disabled(s.busy || strings.TrimSpace(s.engineURL) == "").OnClick(func() {
-		s.acquireEngine(strings.TrimSpace(s.engineURL), "")
 	})
 }
 
@@ -119,6 +203,40 @@ func (s *viewState) acquireEngine(source, name string) {
 	s.work(func() (string, *core.ApiError) {
 		_, e := s.service.CreateEngineDownload(source, name)
 		return "已加入下载队列", e
+	})
+}
+
+func (s *viewState) copyDownloadText(c *ui.Context, label, value string) {
+	if value == "" {
+		return
+	}
+	if s.preview != nil {
+		s.enqueueStatusToast("已复制 " + label + "（模拟）")
+		return
+	}
+	c.WriteClipboardThen(value, func(err error) {
+		if err != nil {
+			s.enqueueStatusToast("复制" + label + "失败")
+			return
+		}
+		s.enqueueStatusToast("已复制 " + label)
+	})
+}
+
+func (s *viewState) openDownloadURL(c *ui.Context, label, rawURL string) {
+	if !strings.HasPrefix(rawURL, "https://") {
+		return
+	}
+	if s.preview != nil {
+		s.enqueueStatusToast("已在浏览器打开 " + label + "（模拟）")
+		return
+	}
+	c.OpenURLThen(rawURL, func(err error) {
+		if err != nil {
+			s.enqueueStatusToast("无法打开链接")
+			return
+		}
+		s.enqueueStatusToast("已在浏览器打开 " + label)
 	})
 }
 

@@ -24,6 +24,32 @@ func (p *resolvePreviewStub) resetTask(string, string)                          
 func (p *resolvePreviewStub) report(string) (*core.ReportIndex, *core.ApiError) { return nil, nil }
 func (p *resolvePreviewStub) detail(string) *core.RunTaskDetail                 { return nil }
 
+func clickDownloadsTab(t *testing.T, tt *ui.Tester, label string) {
+	t.Helper()
+	info, ok := tt.AccessByRole(ui.RoleTab, label)
+	if !ok || info.Bounds.W <= 0 || info.Bounds.H <= 0 {
+		t.Fatalf("tab %q not found or has no visible bounds: ok=%v bounds=%+v", label, ok, info.Bounds)
+	}
+	tt.ClickAt(info.Bounds.X+info.Bounds.W/2, info.Bounds.Y+info.Bounds.H/2)
+	tt.Frame()
+}
+
+func clickLastSegmented(t *testing.T, tt *ui.Tester, label string) {
+	t.Helper()
+	var match *ui.AccessInfo
+	for _, info := range tt.AccessAll() {
+		if info.Name == label && info.Bounds.W > 0 && info.Bounds.H > 0 {
+			copyInfo := info
+			match = &copyInfo
+		}
+	}
+	if match == nil {
+		t.Fatalf("element %q not found or has no visible bounds", label)
+	}
+	tt.ClickAt(match.Bounds.X+match.Bounds.W/2, match.Bounds.Y+match.Bounds.H/2)
+	tt.Frame()
+}
+
 func TestStarterDownloadButtonVisibilityAndSecondaryStyle(t *testing.T) {
 	s := testState()
 	s.progress.NextAction = "prepare_candidate"
@@ -34,7 +60,10 @@ func TestStarterDownloadButtonVisibilityAndSecondaryStyle(t *testing.T) {
 	}, 1120, 2400)
 
 	if core.DefaultEngineURL() != "" && core.DefaultModelURL() != "" {
-		filled, found := buttonFill(tt, "一键下载推荐引擎与模型", accent)
+		if !tt.HasText("推荐组合") {
+			t.Fatalf("starter heading missing: %v", tt.Texts())
+		}
+		filled, found := buttonFill(tt, "下载推荐组合", accent)
 		if !found {
 			t.Fatalf("starter button missing when both assets missing: %v", tt.Texts())
 		}
@@ -43,7 +72,7 @@ func TestStarterDownloadButtonVisibilityAndSecondaryStyle(t *testing.T) {
 		}
 		stub := &resolvePreviewStub{}
 		s.preview = stub
-		click(t, tt, "一键下载推荐引擎与模型")
+		click(t, tt, "下载推荐组合")
 		if len(stub.intents) != 2 {
 			t.Fatalf("expected 2 preview downloads, got %d", len(stub.intents))
 		}
@@ -57,49 +86,73 @@ func TestStarterDownloadButtonVisibilityAndSecondaryStyle(t *testing.T) {
 
 	s.registry.Engines = []core.EngineAsset{{Name: "llama"}}
 	tt.Frame()
-	if tt.HasText("一键下载推荐引擎与模型") {
+	if tt.HasText("下载推荐组合") {
 		t.Fatal("starter button must hide once engine is present")
 	}
 
 	s.registry.Engines = nil
 	s.downloads = []core.DownloadTask{{TaskId: "m", Kind: "model", State: "downloading"}}
 	tt.Frame()
-	if tt.HasText("一键下载推荐引擎与模型") {
+	if tt.HasText("下载推荐组合") {
 		t.Fatal("starter button must hide while model is downloading")
 	}
 }
 
 func TestCatalogMirrorSelectorSwitchesBetweenHFAndModelScope(t *testing.T) {
 	s := testState()
+	st := s.ensureDownloadsUI()
+	st.hostPlatform = "darwin/arm64"
 	tt := ui.NewTester(s.downloadsPageView, 1120, 2600)
 
-	qwen, ok := core.CatalogEntryByID("model-qwen3-0.6b-q8")
+	clickDownloadsTab(t, tt, "模型")
+	qwen4b, ok := core.CatalogEntryByID("model-qwen3-4b-q4km")
 	if !ok {
-		t.Fatal("missing model-qwen3-0.6b-q8")
+		t.Fatal("missing model-qwen3-4b-q4km")
 	}
-	if s.modelURL != qwen.URL {
-		t.Fatalf("default modelURL = %q, want %q", s.modelURL, qwen.URL)
-	}
-	if !tt.HasText("下载源") || !tt.HasText("HuggingFace") || !tt.HasText("ModelScope") {
-		t.Fatalf("mirror selector missing: %v", tt.Texts())
+	if !tt.HasText("HuggingFace") || !tt.HasText("ModelScope") || !tt.HasText("Qwen3-4B-Q4_K_M") {
+		t.Fatalf("models tab controls missing: %v", tt.Texts())
 	}
 
 	click(t, tt, "ModelScope")
-	if s.modelURL != qwen.MirrorURL {
-		t.Fatalf("modelURL after ModelScope click = %q, want %q", s.modelURL, qwen.MirrorURL)
-	}
-	if tt.HasText("模型 URL（支持 HF / ModelScope /resolve 或 /blob）") {
-		t.Fatal("switching to mirror URL unexpectedly jumped to custom input")
+	if st.modelSource != "modelscope" {
+		t.Fatalf("modelSource after ModelScope click = %q, want modelscope", st.modelSource)
 	}
 
-	click(t, tt, "HuggingFace")
-	if s.modelURL != qwen.URL {
-		t.Fatalf("modelURL after HuggingFace click = %q, want %q", s.modelURL, qwen.URL)
+	click(t, tt, "模型详情 · model-qwen3-4b-q4km")
+	if !st.modelDrawerOpen || !tt.HasText("自动解析") || !tt.HasText(qwen4b.MirrorURL) {
+		t.Fatalf("model drawer did not reflect ModelScope source: %v", tt.Texts())
+	}
+	if tt.HasText("SHA-256：") {
+		t.Fatalf("unpinned ModelScope mirror URL must omit SHA-256: %v", tt.Texts())
 	}
 
-	click(t, tt, "自定义模型地址")
-	if tt.HasText("下载源") {
-		t.Fatal("mirror selector should hide on custom option")
+	clickLastSegmented(t, tt, "HuggingFace")
+	if st.modelSource != "huggingface" || !tt.HasText(qwen4b.Revision) || !tt.HasText("SHA-256：") {
+		t.Fatalf("drawer switch back to HuggingFace failed: source=%q texts=%v", st.modelSource, tt.Texts())
+	}
+	click(t, tt, "复制模型地址 · model-qwen3-4b-q4km")
+	if got := tt.Clipboard(); got != qwen4b.URL {
+		t.Fatalf("clipboard = %q, want %q", got, qwen4b.URL)
+	}
+	click(t, tt, "打开模型链接 · model-qwen3-4b-q4km")
+	opened := tt.OpenedURLs()
+	if len(opened) == 0 || opened[len(opened)-1] != qwen4b.URL {
+		t.Fatalf("opened URLs = %v, want %q", opened, qwen4b.URL)
+	}
+	click(t, tt, "关闭Qwen3-4B-Q4_K_M")
+
+	// Platform-specific mlx directory model collapses when switching to Windows.
+	st.hostPlatform = "windows/amd64"
+	tt.Frame()
+	if !tt.HasText("其他平台模型（1）") {
+		t.Fatalf("expected collapsed 其他平台模型（1） on windows/amd64: %v", tt.Texts())
+	}
+	click(t, tt, "其他平台模型（1）")
+	if _, ok := tt.Find("模型详情 · model-qwen3-0.6b-mlx"); !ok {
+		t.Fatal("expected 模型详情 · model-qwen3-0.6b-mlx inside 其他平台模型")
+	}
+	if _, ok := tt.Find("下载模型 · model-qwen3-0.6b-mlx"); ok {
+		t.Fatal("other-platform model must not expose local 下载 button")
 	}
 }
 
@@ -109,8 +162,12 @@ func TestModelResolveButtonPreviewAndLiveAsyncResolution(t *testing.T) {
 	stub := &resolvePreviewStub{}
 	sPreview.preview = stub
 	qwen, _ := core.CatalogEntryByID("model-qwen3-0.6b-q8")
-	sPreview.modelURL = qwen.MirrorURL
+	sPreview.ensureDownloadsUI().customModelURL = qwen.MirrorURL
 	ttPreview := ui.NewTester(sPreview.downloadsPageView, 1120, 2600)
+	clickDownloadsTab(t, ttPreview, "模型")
+	click(t, ttPreview, "自定义模型地址")
+	ttPreview.Advance(500 * time.Millisecond)
+	ttPreview.Frame()
 	click(t, ttPreview, "解析地址")
 	if stub.notices != 0 {
 		t.Fatalf("preview resolve showed unsupported notice: %d", stub.notices)
@@ -119,7 +176,7 @@ func TestModelResolveButtonPreviewAndLiveAsyncResolution(t *testing.T) {
 		t.Fatalf("preview resolved info missing: %v", ttPreview.Texts())
 	}
 
-	// Live service mode: async resolve populates ui.Local state and clears on URL change.
+	// Live service mode: async resolve populates resolve state and clears on URL change.
 	root := t.TempDir()
 	ws := filepath.Join(root, "ws")
 	models := filepath.Join(root, "models")
@@ -181,8 +238,12 @@ func TestModelResolveButtonPreviewAndLiveAsyncResolution(t *testing.T) {
 	sLive.service = svc
 	sLive.assetsPreset = true
 	sLive.engineURL = core.DefaultEngineURL()
-	sLive.modelURL = rawURL
+	sLive.ensureDownloadsUI().customModelURL = rawURL
 	ttLive := ui.NewTester(sLive.downloadsPageView, 1120, 2600)
+	clickDownloadsTab(t, ttLive, "模型")
+	click(t, ttLive, "自定义模型地址")
+	ttLive.Advance(500 * time.Millisecond)
+	ttLive.Frame()
 
 	click(t, ttLive, "解析地址")
 	deadline := time.Now().Add(3 * time.Second)
@@ -197,7 +258,7 @@ func TestModelResolveButtonPreviewAndLiveAsyncResolution(t *testing.T) {
 		t.Fatalf("live resolved info missing: %v", ttLive.Texts())
 	}
 
-	sLive.modelURL = "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/other/Qwen3-0.6B-Q8_0.gguf"
+	sLive.ensureDownloadsUI().customModelURL = "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/other/Qwen3-0.6B-Q8_0.gguf"
 	ttLive.Frame()
 	if ttLive.HasText("已解析版本：" + sha) {
 		t.Fatal("stale resolved info remained after URL change")

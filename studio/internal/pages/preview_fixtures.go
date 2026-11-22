@@ -53,7 +53,6 @@ var previewScenes = []struct {
 	{"报告 · 长表与缺测", func(s *viewState) { s.openReport("long-report") }},
 	{"报告 · 读取失败", func(s *viewState) { s.openReport("broken-report") }},
 	{"下载 · 进行中与失败", previewDownloadsActiveAndFailed},
-	{"下载 · 引擎目录原型", previewDownloadsPrototype},
 }
 
 func previewDownloadsActiveAndFailed(s *viewState) {

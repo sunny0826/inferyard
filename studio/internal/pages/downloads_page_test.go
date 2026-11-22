@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -20,9 +21,9 @@ func downloadsOrder(t *testing.T, tt *ui.Tester) (tasks, create float32) {
 	if !ok {
 		t.Fatalf("download task section missing: %v", tt.Texts())
 	}
-	createBox, ok := tt.Find("新建下载任务")
+	createBox, ok := tt.Find("关联已有引擎")
 	if !ok {
-		t.Fatalf("new download section missing: %v", tt.Texts())
+		t.Fatalf("engine catalog section missing: %v", tt.Texts())
 	}
 	return taskBox.Y, createBox.Y
 }
@@ -236,80 +237,124 @@ func buttonFill(tt *ui.Tester, label string, accent ui.Color) (bool, bool) {
 	return false, true
 }
 
-func TestNewDownloadCardKeepsOnePrimaryAction(t *testing.T) {
-	cases := []struct {
-		name          string
-		engines       []core.EngineAsset
-		models        []core.ModelAsset
-		downloads     []core.DownloadTask
-		primaryEngine bool
-		primaryModel  bool
-	}{
-		{name: "missing both", primaryEngine: true},
-		{name: "missing model", engines: []core.EngineAsset{{Name: "llama"}}, primaryModel: true},
-		{name: "missing engine", models: []core.ModelAsset{{Name: "model", Available: true}}, primaryEngine: true},
-		{
-			name: "both ready", engines: []core.EngineAsset{{Name: "llama"}},
-			models: []core.ModelAsset{{Name: "model", Available: true}},
-		},
-		{
-			name: "engine downloading", downloads: []core.DownloadTask{
-				{TaskId: "engine", Kind: "engine", State: "downloading"},
-				{TaskId: "model", Kind: "model", State: "downloading"},
-			},
-		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			s := testState()
-			s.progress.NextAction = "prepare_candidate"
-			s.registry.Engines, s.registry.Models, s.downloads = tc.engines, tc.models, tc.downloads
-			var accent ui.Color
-			tt := ui.NewTester(func(c *ui.Context) {
-				accent = c.Theme().Accent
-				s.downloadsPageView(c)
-			}, 1120, 2400)
+func TestDownloadsEngineTabStructureExtensionAndWizard(t *testing.T) {
+	s := testState()
+	st := s.ensureDownloadsUI()
+	st.hostPlatform = "darwin/arm64"
 
-			for _, probe := range []struct {
-				label string
-				want  bool
-			}{
-				{"返回任务", false},
-				{"下载引擎", tc.primaryEngine},
-				{"下载模型", tc.primaryModel},
-			} {
-				filled, found := buttonFill(tt, probe.label, accent)
-				if !found {
-					t.Fatalf("%s button missing: %v", probe.label, tt.Texts())
-				}
-				if filled != probe.want {
-					t.Fatalf("%s filled = %v, want %v", probe.label, filled, probe.want)
-				}
-			}
-			if tc.primaryEngine && tc.primaryModel {
-				t.Fatal("fixture asks for two primary download actions")
-			}
-		})
+	reg := core.DefaultEngineCatalog()
+	reg.Register(core.StaticEngineProvider{
+		Family: core.EngineFamilyCatalog{
+			ID: "koboldcpp", Name: "KoboldCpp", ModelFormat: "gguf",
+			Releases: []core.EngineRelease{{
+				ID: "kobold-v1.91", Version: "v1.91", Distribution: "GitHub", Channel: core.ReleaseStable, Recommended: true,
+				Builds: []core.EnginePlatformBuild{{
+					ID: "k-v191", Platform: "any", Variant: "发布页", AcquireMode: core.EngineAcquireExternalPage,
+					Artifacts: []core.EngineArtifact{{Role: "release_page", Label: "KoboldCpp v1.91", URL: "https://github.com/LostRuins/koboldcpp/releases/tag/v1.91"}},
+				}},
+			}},
+		},
+	})
+	s.engineCatalog = reg
+
+	tt := ui.NewTester(s.downloadsPageView, 1120, 2600)
+	for _, want := range []string{"引擎", "外部应用", "关联已有引擎", "自定义引擎地址", "下载设置", "llama.cpp", "SGLang", "LM Studio", "KoboldCpp"} {
+		if !tt.HasText(want) {
+			t.Fatalf("missing %q in engine downloads tab: %v", want, tt.Texts())
+		}
+	}
+	if got := st.selectedRelease["llama-cpp"]; got != "llama-cpp-upstream-v1.0.0" {
+		t.Fatalf("llama-cpp default release = %q, want llama-cpp-upstream-v1.0.0", got)
+	}
+
+	// Cross-platform engines collapse cleanly on Windows hosts.
+	st.hostPlatform = "windows/amd64"
+	tt.Frame()
+	if !tt.HasText("其他平台引擎（2）") {
+		t.Fatalf("expected collapsed 其他平台引擎（2） on windows/amd64: %v", tt.Texts())
+	}
+	click(t, tt, "其他平台引擎（2）")
+	if _, ok := tt.Find("版本与地址 · mlx-lm"); !ok {
+		t.Fatal("expected 版本与地址 · mlx-lm inside 其他平台引擎")
+	}
+	if _, ok := tt.Find("安装 · mlx-lm"); ok {
+		t.Fatal("other-platform engine row must not expose local 安装 button")
+	}
+
+	// LM Studio wizard handoff.
+	click(t, tt, "关联 · lmstudio")
+	if s.selected != "models" || !s.wizardOpenRequested || s.wizardPresetFamily != "lmstudio" {
+		t.Fatalf("expected LM Studio wizard handoff, got selected=%q open=%v family=%q",
+			s.selected, s.wizardOpenRequested, s.wizardPresetFamily)
 	}
 }
 
-func TestCatalogChoicesUseRadioGroupWithCustomOption(t *testing.T) {
+func TestDownloadsEngineDetailDrawerAndOSActions(t *testing.T) {
 	s := testState()
-	tt := ui.NewTester(s.downloadsPageView, 1120, 2400)
-	qwen := "Qwen3-0.6B-Q8_0（GGUF）"
-	if !tt.HasText(qwen) || !tt.HasText("自定义模型地址") {
-		t.Fatalf("catalog radios missing: %v", tt.Texts())
+	s.progress.NextAction = "prepare_candidate"
+	st := s.ensureDownloadsUI()
+	st.hostPlatform = "darwin/arm64"
+	tt := ui.NewTester(s.downloadsPageView, 1120, 2600)
+
+	click(t, tt, "版本与地址 · llama-cpp")
+	if !st.engineDrawerOpen || !tt.HasText("引擎详情") {
+		t.Fatalf("expected engine drawer open: %v", tt.Texts())
 	}
-	click(t, tt, qwen)
-	entry, ok := core.CatalogEntryByURL(s.modelURL)
-	if !ok || entry.Title != qwen {
-		t.Fatalf("modelURL = %q, want %s", s.modelURL, qwen)
+	if !tt.HasText("下载地址") || tt.HasText("SHA-256：") {
+		t.Fatalf("default v1.0.0 release_page should omit SHA-256: %v", tt.Texts())
 	}
-	click(t, tt, "自定义模型地址")
-	if s.modelURL != "" {
-		t.Fatalf("custom radio kept preset URL: %q", s.modelURL)
+
+	// Toggle 仅正式版 filters out snapshot b11146.
+	click(t, tt, "切换版本")
+	if !tt.HasText("b11146 · ggml-org · 快照版") {
+		t.Fatalf("expected snapshot option before filtering: %v", tt.Texts())
 	}
-	if !tt.HasText("模型 URL（支持 HF / ModelScope /resolve 或 /blob）") {
-		t.Fatalf("custom URL field did not appear: %v", tt.Texts())
+	click(t, tt, "b11146 · ggml-org · 快照版")
+	click(t, tt, "仅正式版")
+	if !st.drawerStableOnly || st.selectedRelease["llama-cpp"] != "llama-cpp-upstream-v1.0.0" {
+		t.Fatalf("expected stable filter fallback to v1.0.0, got stableOnly=%v rel=%q", st.drawerStableOnly, st.selectedRelease["llama-cpp"])
+	}
+
+	// Switch to PrismML Windows CUDA build to test multi-artifact SHA-256 + clipboard/URL actions.
+	click(t, tt, "切换版本")
+	click(t, tt, "prism-b10743-adfffbe · PrismML · 正式版")
+	click(t, tt, "选择平台")
+	click(t, tt, "Windows x64")
+	if !tt.HasText("与本机") {
+		t.Fatalf("expected non-host platform warning when picking Windows on macOS: %v", tt.Texts())
+	}
+	click(t, tt, "CUDA 12.4")
+	for _, want := range []string{"llama-server (CUDA 12.4)", "CUDA 12.4 (cudart)", "SHA-256："} {
+		if !tt.HasText(want) {
+			t.Fatalf("missing Windows CUDA artifact detail %q: %v", want, tt.Texts())
+		}
+	}
+
+	winCUDA, _ := core.CatalogEntryByID("engine-windows-cuda-x64")
+	click(t, tt, "复制地址 · engine-windows-cuda-x64 · 0")
+	if got := tt.Clipboard(); got != winCUDA.URL {
+		t.Fatalf("clipboard = %q, want %q", got, winCUDA.URL)
+	}
+	click(t, tt, "打开链接 · engine-windows-cuda-x64 · 0")
+	opened := tt.OpenedURLs()
+	if len(opened) == 0 || opened[len(opened)-1] != winCUDA.URL {
+		t.Fatalf("opened URLs = %v, want %q", opened, winCUDA.URL)
+	}
+
+	// Switch back to host platform (macOS arm64) and dispatch 安装此版本 when platform matches.
+	if core.CurrentPlatform() == "darwin/arm64" {
+		click(t, tt, "选择平台")
+		click(t, tt, "macOS arm64")
+		stub := &resolvePreviewStub{}
+		s.preview = stub
+		click(t, tt, "安装此版本 · llama-cpp")
+		macEntry, _ := core.CatalogEntryByID("engine-macos-arm64")
+		if len(stub.intents) != 1 {
+			t.Fatalf("expected 1 preview install intent, got %#v", stub.intents)
+		}
+		dl, ok := stub.intents[0].(previewDownload)
+		if !ok || dl.kind != "engine" || !strings.EqualFold(dl.source, macEntry.URL) {
+			t.Fatalf("unexpected direct install intent: %#v", stub.intents)
+		}
 	}
 }

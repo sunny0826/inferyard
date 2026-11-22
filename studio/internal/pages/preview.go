@@ -16,30 +16,26 @@ import (
 const previewNotice = "此操作尚未接入模拟流程，未执行实际操作。"
 
 type previewSession struct {
-	ctx                      context.Context
-	state                    *viewState
-	win                      *mygo.Window
-	scene                    int
-	themeMode                int
-	appliedThemeMode         int
-	generation               int
-	notice                   string
-	failNext                 bool
-	serial                   int
-	clock                    time.Duration
-	lastTick                 time.Time
-	jobs                     []previewEvent
-	details                  map[string]*core.RunTaskDetail
-	indexes                  map[string]*core.ReportIndex
-	reportReadFailed         bool
-	speedFailureStage        string
-	speedFailure             *core.ApiError
-	speedMissingTiming       bool
-	local                    *previewLocalTask
-	protoState               *downloadsProtoState
-	protoIncludeCustomEngine bool
-	protoNoAssets            bool
-	protoNoAssetsApplied     bool
+	ctx                context.Context
+	state              *viewState
+	win                *mygo.Window
+	scene              int
+	themeMode          int
+	appliedThemeMode   int
+	generation         int
+	notice             string
+	failNext           bool
+	serial             int
+	clock              time.Duration
+	lastTick           time.Time
+	jobs               []previewEvent
+	details            map[string]*core.RunTaskDetail
+	indexes            map[string]*core.ReportIndex
+	reportReadFailed   bool
+	speedFailureStage  string
+	speedFailure       *core.ApiError
+	speedMissingTiming bool
+	local              *previewLocalTask
 }
 
 func NewPreview(ctx context.Context) {
@@ -103,10 +99,6 @@ func (p *previewSession) loadScene(index int) {
 	p.speedFailureStage, p.speedFailure = "", nil
 	p.details, p.indexes = map[string]*core.RunTaskDetail{}, map[string]*core.ReportIndex{}
 	p.local = nil
-	p.protoState = nil
-	p.protoIncludeCustomEngine = false
-	p.protoNoAssets = false
-	p.protoNoAssetsApplied = false
 	s := previewBase(p.ctx)
 	s.preview, s.win = p, p.win
 	p.state = s
@@ -144,10 +136,6 @@ func (p *previewSession) left(c *ui.Context) {
 				if p.state.speed != nil && (p.state.speed.selected || p.state.speed.current != nil) {
 					components.Checkbox(c, &p.speedMissingTiming, "下次专项模拟缺测")
 				}
-				if p.state.selected == "downloads_prototype" {
-					components.Checkbox(c, &p.protoIncludeCustomEngine, "模拟新增引擎")
-					components.Checkbox(c, &p.protoNoAssets, "模拟无本地资源")
-				}
 				ui.Text(c, "全部为模拟数据；操作仅改变本窗口，不运行模型或写入文件。").TextColor(c.Theme().TextMuted)
 				if p.notice != "" {
 					ui.Text(c, p.notice).Role(ui.RoleStatus).TextColor(stateColor(c, stateWarning))
@@ -158,10 +146,6 @@ func (p *previewSession) left(c *ui.Context) {
 }
 
 func (p *previewSession) content(c *ui.Context) {
-	if p.state.selected == "downloads_prototype" {
-		ui.Column(c.Key(p.generation)).Fill().Children(func() { p.downloadsPrototypeView(c) })
-		return
-	}
 	ui.Column(c.Key(p.generation)).Fill().Children(func() { p.state.contentView(c) })
 }
 func (p *previewSession) showNotice() {

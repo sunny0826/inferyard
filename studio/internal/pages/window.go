@@ -169,6 +169,8 @@ type viewState struct {
 	localPendingPIDs                                                                    map[string]int64
 	modelURL, modelName, tokenEnv, engineURL, engineName, downloadProxy                 string
 	historyTable                                                                        pageTableState
+	downloadsUI                                                                         *downloadsUIState
+	engineCatalog                                                                       *core.EngineCatalogRegistry
 	reportChoices                                                                       ui.Selection[any]
 	scrolls                                                                             map[string]*ui.ScrollState
 	casesTable, samplesTable                                                            pageTableState

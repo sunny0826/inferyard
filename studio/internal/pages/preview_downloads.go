@@ -82,7 +82,7 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 				return
 			}
 		}
-		s.registry.Engines = append(s.registry.Engines, core.EngineAsset{Name: name, Source: "模拟下载"})
+		s.registry.Engines = append(s.registry.Engines, core.EngineAsset{Name: name, Family: "llama-cpp", Source: "模拟下载"})
 		s.registry.DefaultEngine = name
 		if s.checks.Engines == nil {
 			s.checks.Engines = map[string]core.EngineEligibility{}
