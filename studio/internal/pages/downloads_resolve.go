@@ -73,7 +73,7 @@ func (s *viewState) acquireStarterBundle(engineURL, modelURL string) {
 		s.simulate(previewDownload{kind: "model", source: modelURL})
 		return
 	}
-	s.work(func() (string, *core.ApiError) {
+	s.workDownload(func() (string, *core.ApiError) {
 		if _, e := s.service.CreateEngineDownload(engineURL, ""); e != nil {
 			return "", e
 		}

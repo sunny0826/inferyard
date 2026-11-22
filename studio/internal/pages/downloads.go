@@ -167,6 +167,42 @@ func (s *viewState) downloadAction(c *ui.Context, kind, label string) ui.Element
 	return button(c, label)
 }
 
+func (s *viewState) workDownload(fn func() (string, *core.ApiError)) {
+	if s.previewAction() || s.busy {
+		return
+	}
+	s.busy = true
+	s.busyAction = ""
+	s.failure = nil
+	s.pendingToast = ""
+	go func() {
+		message, e := fn()
+		if s.ctx != nil && s.ctx.Err() != nil {
+			return
+		}
+		var downloads []core.DownloadTask
+		if s.service != nil {
+			downloads = s.service.Downloads()
+		}
+		apply := func() {
+			if downloads != nil {
+				s.downloads = downloads
+			}
+			s.finishWork(message, e)
+		}
+		if s.updateWindow != nil {
+			s.updateWindow(apply)
+		} else if s.win != nil {
+			s.win.Update(apply)
+		} else {
+			return
+		}
+		if s.win != nil {
+			s.refresh(true)
+		}
+	}()
+}
+
 func (s *viewState) acquireModelSource(source, tokenEnv string) {
 	trimmed := strings.TrimSpace(source)
 	if trimmed == "" || !core.IsSupportedModelURL(trimmed) {
@@ -178,7 +214,7 @@ func (s *viewState) acquireModelSource(source, tokenEnv string) {
 	if s.simulate(previewDownload{kind: "model", source: trimmed}) {
 		return
 	}
-	s.work(func() (string, *core.ApiError) {
+	s.workDownload(func() (string, *core.ApiError) {
 		_, e := s.service.CreateOrResolveModelDownload(s.ctx, core.CreateDownloadRequest{SourceUrl: trimmed}, tokenEnv)
 		return "已加入下载队列", e
 	})
@@ -191,7 +227,7 @@ func (s *viewState) acquireEngine(source, name string) {
 	if s.simulate(previewDownload{kind: "engine", source: source, name: name}) {
 		return
 	}
-	s.work(func() (string, *core.ApiError) {
+	s.workDownload(func() (string, *core.ApiError) {
 		_, e := s.service.CreateEngineDownload(source, name)
 		return "已加入下载队列", e
 	})

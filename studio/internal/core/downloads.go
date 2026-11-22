@@ -69,6 +69,23 @@ func validDirectorySource(source string) bool {
 	return ok && len(p) >= 4 && p[2] == "tree" && (len(p) == 4 || !strings.HasSuffix(p[len(p)-1], ".gguf"))
 }
 
+func (s *Service) activeDownloadLocked(kind, sourceURL, requestedSource string) (DownloadTask, bool) {
+	for _, d := range s.downloads {
+		if d.Task.Kind != kind || d.Task.State != "downloading" {
+			continue
+		}
+		for _, want := range []string{sourceURL, requestedSource} {
+			if want == "" {
+				continue
+			}
+			if d.Task.SourceUrl == want || (d.Task.RequestedSourceUrl != "" && d.Task.RequestedSourceUrl == want) {
+				return clone(d.Task), true
+			}
+		}
+	}
+	return DownloadTask{}, false
+}
+
 func (s *Service) CreateModelDownload(req CreateDownloadRequest, tokenEnv string) (DownloadTask, *ApiError) {
 	return s.createModelDownload(req, "", tokenEnv)
 }
@@ -90,6 +107,11 @@ func (s *Service) createModelDownload(req CreateDownloadRequest, requestedSource
 	defer s.mu.Unlock()
 	if s.closing {
 		return DownloadTask{}, Err("service_closing")
+	}
+	if req.OutName == "" {
+		if existing, found := s.activeDownloadLocked("model", req.SourceUrl, requestedSource); found {
+			return existing, nil
+		}
 	}
 	base := resolveAutoDownloadName("model", u.ModelDownloadName, req.SourceUrl)
 	name, dir, failure := s.downloadOutputLocked(root, req.OutName, base)
@@ -293,6 +315,11 @@ func (s *Service) CreateEngineDownload(source, outName string) (DownloadTask, *A
 	defer s.mu.Unlock()
 	if s.closing {
 		return DownloadTask{}, Err("service_closing")
+	}
+	if outName == "" {
+		if existing, found := s.activeDownloadLocked("engine", source, ""); found {
+			return existing, nil
+		}
 	}
 	base := resolveAutoDownloadName("engine", u.EngineDownloadName, source)
 	outName, dir, failure := s.downloadOutputLocked(root, outName, base)

@@ -142,22 +142,46 @@ func sglangProvider() EngineCatalogProvider {
 					Channel:      ReleaseSnapshot,
 					Recommended:  true,
 					ReleaseURL:   "https://github.com/sgl-project/sglang/tree/" + snapshot.Revision,
-					Builds: []EnginePlatformBuild{
-						func() EnginePlatformBuild {
-							archiveName := "sglang-" + snapshot.Revision + ".tar.gz"
-							sourceArtifact := artifactFromCatalog("engine-sglang", "source", "SGLang 源码包", "e262b44")
-							sourceArtifact.Filename = archiveName
-							return EnginePlatformBuild{
-								ID:             "engine-sglang-snapshot-any",
-								Platform:       "any",
-								Variant:        "源码包",
+					Builds: func() []EnginePlatformBuild {
+						archiveName := "sglang-" + snapshot.Revision + ".tar.gz"
+						sourceArtifact := artifactFromCatalog("engine-sglang", "source", "SGLang 源码包", "e262b44")
+						sourceArtifact.Filename = archiveName
+						linuxCmd := "tar -xzf " + archiveName + " && uv venv ~/.venvs/sglang --python 3.12 && uv pip install --python ~/.venvs/sglang/bin/python --prerelease=allow ./sglang-" + snapshot.Revision + "/python"
+						appleMetalDoc := EngineArtifact{
+							Role:    "release_page",
+							Label:   "Apple Silicon 安装说明",
+							Version: "e262b44",
+							URL:     "https://github.com/sgl-project/sglang/blob/" + snapshot.Revision + "/docs/docs/hardware-platforms/apple_metal.mdx",
+						}
+						return []EnginePlatformBuild{
+							{
+								ID:             "engine-sglang-snapshot-linux-x64",
+								Platform:       "linux/amd64",
+								Variant:        "源码包 (CUDA 13)",
 								AcquireMode:    EngineAcquireManualArchive,
 								Artifacts:      []EngineArtifact{sourceArtifact},
-								InstallCommand: "tar -xzf " + archiveName + " && uv venv ~/.venvs/sglang --python 3.12 && uv pip install --python ~/.venvs/sglang/bin/python ./sglang-" + snapshot.Revision + "/python",
-								Note:           "下载并解压源码归档后，按目标硬件从解压目录的 python/ 子目录在独立虚拟环境中安装，再注册本地引擎。",
-							}
-						}(),
-					},
+								InstallCommand: linuxCmd,
+								Note:           "下载并解压源码归档后，在 Linux CUDA 13 环境的独立虚拟环境中从 python/ 目录安装，再注册本地引擎。",
+							},
+							{
+								ID:             "engine-sglang-snapshot-linux-arm64",
+								Platform:       "linux/arm64",
+								Variant:        "源码包 (CUDA 13)",
+								AcquireMode:    EngineAcquireManualArchive,
+								Artifacts:      []EngineArtifact{sourceArtifact},
+								InstallCommand: linuxCmd,
+								Note:           "下载并解压源码归档后，在 Linux CUDA 13 环境的独立虚拟环境中从 python/ 目录安装，再注册本地引擎。",
+							},
+							{
+								ID:          "engine-sglang-snapshot-macos-arm64",
+								Platform:    "darwin/arm64",
+								Variant:     "源码包 (Apple Silicon / MLX)",
+								AcquireMode: EngineAcquireManualArchive,
+								Artifacts:   []EngineArtifact{sourceArtifact, appleMetalDoc},
+								Note:        "Apple Silicon 请解压源码归档后按上游 Apple Silicon (Metal / MLX) 安装说明使用 pyproject_other.toml 在独立虚拟环境中安装，再注册本地引擎。",
+							},
+						}
+					}(),
 				},
 			},
 		},

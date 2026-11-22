@@ -110,11 +110,10 @@ func TestModelScopeActivePresetBlocksDuplicateQueueAndRetryPreservesState(t *tes
 		t.Fatalf("timed out waiting for acquire #1 (failure=%+v)", s.failure)
 	}
 	waitUntilBusyClears(t, &s, updates)
-	s.downloads = svc.Downloads()
 	tt.Frame()
 
 	if len(s.downloads) != 1 {
-		t.Fatalf("expected 1 active ModelScope download, got %+v", s.downloads)
+		t.Fatalf("workDownload did not immediately sync s.downloads: %+v", s.downloads)
 	}
 	if s.downloads[0].RequestedSourceUrl != qwen.MirrorURL || s.downloads[0].SourceUrl != pinnedMS {
 		t.Fatalf("unexpected task URLs: %+v", s.downloads[0])
@@ -122,6 +121,17 @@ func TestModelScopeActivePresetBlocksDuplicateQueueAndRetryPreservesState(t *tes
 	if !s.isModelEntryDownloading(qwen) {
 		t.Fatal("ModelScope preset was not marked downloading after URL pinning")
 	}
+
+	// Simulate pre-refresh UI lag: even if s.downloads is stale/empty, 5 repeated submits must not queue duplicates.
+	s.downloads = nil
+	for range 5 {
+		s.acquireModelSource(qwen.MirrorURL, "")
+		waitUntilBusyClears(t, &s, updates)
+	}
+	if len(svc.Downloads()) != 1 {
+		t.Fatalf("duplicate ModelScope download created during stale UI window: %+v", svc.Downloads())
+	}
+	tt.Frame()
 
 	// Clicking the disabled row/drawer download controls must not queue a duplicate task.
 	click(t, tt, "下载模型 · model-qwen3-0.6b-q8")
@@ -149,7 +159,6 @@ func TestModelScopeActivePresetBlocksDuplicateQueueAndRetryPreservesState(t *tes
 		t.Fatalf("timed out waiting for acquire #2 (failure=%+v)", s.failure)
 	}
 	waitUntilBusyClears(t, &s, updates)
-	s.downloads = svc.Downloads()
 	tt.Frame()
 
 	if len(s.downloads) != 2 || s.downloads[0].State != "downloading" {

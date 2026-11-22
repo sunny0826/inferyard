@@ -224,79 +224,101 @@ func TestReleasesForPlatformAndStableFilter(t *testing.T) {
 		}
 	}
 
-	var checkedSGLangSnap bool
+	var checkedLinuxX64, checkedLinuxArm64, checkedMacOSArm64 bool
+	wantArchive := "sglang-e262b44eef1f2bf83e34345276e2bb91a086587e.tar.gz"
+	wantAppleDoc := "https://github.com/sgl-project/sglang/blob/e262b44eef1f2bf83e34345276e2bb91a086587e/docs/docs/hardware-platforms/apple_metal.mdx"
 	for _, rel := range sglang.Releases {
 		if rel.ID != "sglang-e262b44" {
 			continue
 		}
 		for _, build := range rel.Builds {
-			if build.ID != "engine-sglang-snapshot-any" {
-				continue
+			if build.Platform == "any" {
+				t.Fatalf("sglang-e262b44 must not publish a platform-any Linux CUDA command: %+v", build)
 			}
-			checkedSGLangSnap = true
-			wantArchive := "sglang-e262b44eef1f2bf83e34345276e2bb91a086587e.tar.gz"
-			if len(build.Artifacts) != 1 || build.Artifacts[0].Filename != wantArchive {
-				t.Fatalf("sglang snapshot artifact Filename = %+v, want %q", build.Artifacts, wantArchive)
+			if len(build.Artifacts) == 0 || build.Artifacts[0].Filename != wantArchive {
+				t.Fatalf("sglang snapshot %s artifact Filename = %+v, want %q", build.ID, build.Artifacts, wantArchive)
 			}
-			if !strings.HasPrefix(build.InstallCommand, "tar -xzf "+wantArchive+" && ") {
-				t.Fatalf("sglang snapshot InstallCommand must extract %q: %q", wantArchive, build.InstallCommand)
-			}
-			if !strings.Contains(build.InstallCommand, "./sglang-e262b44eef1f2bf83e34345276e2bb91a086587e/python") {
-				t.Fatalf("sglang snapshot InstallCommand must point to python/ subdir: %q", build.InstallCommand)
-			}
-			if _, afterPip, ok := strings.Cut(build.InstallCommand, "uv pip install"); !ok || strings.Contains(afterPip, ".tar.gz") {
-				t.Fatalf("sglang snapshot uv pip install must not pass .tar.gz directly: %q", build.InstallCommand)
-			}
-
-			// Verify the first tar step extracts the actual GitHub archive filename into python/.
-			firstStep, _, _ := strings.Cut(build.InstallCommand, "&&")
-			fields := strings.Fields(firstStep)
-			if len(fields) < 3 {
-				t.Fatalf("unexpected tar step in InstallCommand: %q", firstStep)
-			}
-			if _, err := exec.LookPath(fields[0]); err == nil {
-				tmpDir := t.TempDir()
-				archivePath := filepath.Join(tmpDir, build.Artifacts[0].Filename)
-				f, err := os.Create(archivePath)
-				if err != nil {
-					t.Fatal(err)
+			switch build.ID {
+			case "engine-sglang-snapshot-macos-arm64":
+				checkedMacOSArm64 = true
+				if build.Platform != "darwin/arm64" {
+					t.Fatalf("unexpected platform for %s: %q", build.ID, build.Platform)
 				}
-				gz := gzip.NewWriter(f)
-				tw := tar.NewWriter(gz)
-				content := []byte("[project]\nname = \"sglang\"\n")
-				if err := tw.WriteHeader(&tar.Header{
-					Name: "sglang-e262b44eef1f2bf83e34345276e2bb91a086587e/python/pyproject.toml",
-					Mode: 0o644,
-					Size: int64(len(content)),
-				}); err != nil {
-					t.Fatal(err)
+				if build.InstallCommand != "" {
+					t.Fatalf("Apple Silicon sglang-e262b44 must not expose Linux CUDA InstallCommand: %q", build.InstallCommand)
 				}
-				if _, err := tw.Write(content); err != nil {
-					t.Fatal(err)
+				if len(build.Artifacts) < 2 || build.Artifacts[1].URL != wantAppleDoc {
+					t.Fatalf("Apple Silicon sglang-e262b44 missing upstream apple_metal.mdx guide: %+v", build.Artifacts)
 				}
-				if err := tw.Close(); err != nil {
-					t.Fatal(err)
+			case "engine-sglang-snapshot-linux-x64", "engine-sglang-snapshot-linux-arm64":
+				if build.ID == "engine-sglang-snapshot-linux-x64" {
+					checkedLinuxX64 = true
+				} else {
+					checkedLinuxArm64 = true
 				}
-				if err := gz.Close(); err != nil {
-					t.Fatal(err)
+				if !strings.HasPrefix(build.InstallCommand, "tar -xzf "+wantArchive+" && ") {
+					t.Fatalf("sglang snapshot %s InstallCommand must extract %q: %q", build.ID, wantArchive, build.InstallCommand)
 				}
-				if err := f.Close(); err != nil {
-					t.Fatal(err)
+				if !strings.Contains(build.InstallCommand, "--prerelease=allow") || !strings.Contains(build.InstallCommand, "./sglang-e262b44eef1f2bf83e34345276e2bb91a086587e/python") {
+					t.Fatalf("sglang snapshot %s InstallCommand missing --prerelease=allow or python/ subdir: %q", build.ID, build.InstallCommand)
+				}
+				if _, afterPip, ok := strings.Cut(build.InstallCommand, "uv pip install"); !ok || strings.Contains(afterPip, ".tar.gz") {
+					t.Fatalf("sglang snapshot %s uv pip install must not pass .tar.gz directly: %q", build.ID, build.InstallCommand)
 				}
 
-				cmd := exec.Command(fields[0], fields[1:]...)
-				cmd.Dir = tmpDir
-				if out, err := cmd.CombinedOutput(); err != nil {
-					t.Fatalf("tar extract step %q failed: %v\n%s", firstStep, err, out)
+				if build.ID == "engine-sglang-snapshot-linux-x64" {
+					firstStep, _, _ := strings.Cut(build.InstallCommand, "&&")
+					fields := strings.Fields(firstStep)
+					if len(fields) < 3 {
+						t.Fatalf("unexpected tar step in InstallCommand: %q", firstStep)
+					}
+					if _, err := exec.LookPath(fields[0]); err == nil {
+						tmpDir := t.TempDir()
+						archivePath := filepath.Join(tmpDir, build.Artifacts[0].Filename)
+						f, err := os.Create(archivePath)
+						if err != nil {
+							t.Fatal(err)
+						}
+						gz := gzip.NewWriter(f)
+						tw := tar.NewWriter(gz)
+						content := []byte("[project]\nname = \"sglang\"\n")
+						if err := tw.WriteHeader(&tar.Header{
+							Name: "sglang-e262b44eef1f2bf83e34345276e2bb91a086587e/python/pyproject.toml",
+							Mode: 0o644,
+							Size: int64(len(content)),
+						}); err != nil {
+							t.Fatal(err)
+						}
+						if _, err := tw.Write(content); err != nil {
+							t.Fatal(err)
+						}
+						if err := tw.Close(); err != nil {
+							t.Fatal(err)
+						}
+						if err := gz.Close(); err != nil {
+							t.Fatal(err)
+						}
+						if err := f.Close(); err != nil {
+							t.Fatal(err)
+						}
+
+						cmd := exec.Command(fields[0], fields[1:]...)
+						cmd.Dir = tmpDir
+						if out, err := cmd.CombinedOutput(); err != nil {
+							t.Fatalf("tar extract step %q failed: %v\n%s", firstStep, err, out)
+						}
+						extracted := filepath.Join(tmpDir, "sglang-e262b44eef1f2bf83e34345276e2bb91a086587e", "python", "pyproject.toml")
+						if _, err := os.Stat(extracted); err != nil {
+							t.Fatalf("expected extracted file %q: %v", extracted, err)
+						}
+					}
 				}
-				extracted := filepath.Join(tmpDir, "sglang-e262b44eef1f2bf83e34345276e2bb91a086587e", "python", "pyproject.toml")
-				if _, err := os.Stat(extracted); err != nil {
-					t.Fatalf("expected extracted file %q: %v", extracted, err)
-				}
+			default:
+				t.Fatalf("unexpected sglang-e262b44 build %+v", build)
 			}
 		}
 	}
-	if !checkedSGLangSnap {
-		t.Fatal("missing sglang-e262b44 snapshot build")
+	if !checkedLinuxX64 || !checkedLinuxArm64 || !checkedMacOSArm64 {
+		t.Fatalf("missing sglang-e262b44 platform builds: x64=%v arm64=%v mac=%v", checkedLinuxX64, checkedLinuxArm64, checkedMacOSArm64)
 	}
 }

@@ -192,6 +192,14 @@ func (s *Service) CreateOrResolveModelDownload(ctx context.Context, req CreateDo
 	if _, apiErr := s.downloadRoot("model", u); apiErr != nil {
 		return DownloadTask{}, apiErr
 	}
+	if req.OutName == "" {
+		s.mu.Lock()
+		existing, found := s.activeDownloadLocked("model", req.SourceUrl, "")
+		s.mu.Unlock()
+		if found {
+			return existing, nil
+		}
+	}
 	resolved, apiErr := s.ResolveModelURL(ctx, req.SourceUrl, tokenEnv)
 	if apiErr != nil {
 		return DownloadTask{}, apiErr

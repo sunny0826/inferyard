@@ -213,7 +213,7 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 			if s.simulate(previewCancelDownload{id: task.TaskId}) {
 				return
 			}
-			s.work(func() (string, *core.ApiError) {
+			s.workDownload(func() (string, *core.ApiError) {
 				_, e := s.service.CancelDownload(task.TaskId)
 				return "已请求取消下载", e
 			})
@@ -224,7 +224,7 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 			if s.simulate(previewRetryDownload{id: task.TaskId}) {
 				return
 			}
-			s.work(func() (string, *core.ApiError) {
+			s.workDownload(func() (string, *core.ApiError) {
 				_, e := s.service.RetryDownload(task.TaskId)
 				return "已继续下载任务", e
 			})
@@ -238,7 +238,7 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 		if s.simulate(previewRetryDownload{id: task.TaskId}) {
 			return
 		}
-		s.work(func() (string, *core.ApiError) {
+		s.workDownload(func() (string, *core.ApiError) {
 			_, e := s.service.RetryDownload(task.TaskId)
 			return "已重新创建下载任务", e
 		})
