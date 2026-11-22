@@ -138,6 +138,9 @@ func (s *Service) RegisterEngineInstallation(ctx context.Context, path string) (
 	}
 	s.settingsMu.Lock()
 	defer s.settingsMu.Unlock()
+	if ctx.Err() != nil {
+		return SettingsResponse{}, Err("cancelled")
+	}
 	if installationKey(path) != key {
 		return SettingsResponse{}, Err("local_engine_installation_changed")
 	}

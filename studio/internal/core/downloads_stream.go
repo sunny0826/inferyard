@@ -74,6 +74,22 @@ func (s *Service) newStderrProgressHandler(d *downloadEntry, streamSeen *atomic.
 
 func (s *Service) applyTransferProgress(d *downloadEntry, ev transferProgressLine) {
 	s.mu.Lock()
+	stageChanged := ev.Stage != "" && ev.Stage != d.Task.Stage
+	stepChanged := ev.Step != nil && (d.Task.Step == nil || *ev.Step != *d.Task.Step)
+	if stageChanged || stepChanged {
+		if ev.Percent == nil {
+			d.Task.Percent = nil
+		}
+		if ev.TotalBytes == nil {
+			d.Task.TotalBytes = nil
+		}
+		if ev.Detail == nil {
+			d.Task.Detail = nil
+		}
+		if ev.BytesPerSecond == nil {
+			d.Task.BytesPerSecond = nil
+		}
+	}
 	if ev.Stage != "" {
 		d.Task.Stage = ev.Stage
 	}
@@ -281,8 +297,11 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 		return existing, nil
 	}
 	if kind == "polystrata" {
-		if existing, found := s.activePolystrataSetupLocked(); found {
-			return existing, nil
+		if active, found := s.activePolystrataSetupLocked(); found {
+			if active.retryOf == taskID || samePolystrataRequest(active.polystrata, polystrataCopy) {
+				return clone(active.Task), nil
+			}
+			return DownloadTask{}, Conflict("polystrata_setup_active")
 		}
 	}
 	resolvedPrev, resolveErr := Resolve(root, prevOutDir)

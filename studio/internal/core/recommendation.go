@@ -24,12 +24,13 @@ type StarterAlternative struct {
 }
 
 type StarterRecommendationGPU struct {
-	Name       string `json:"name"`
-	Vendor     string `json:"vendor"`
-	Arch       string `json:"arch,omitempty"`
-	VRAMBytes  *int64 `json:"vram_bytes,omitempty"`
-	Driver     string `json:"driver_version,omitempty"`
-	ComputeCap string `json:"compute_capability,omitempty"`
+	Name               string `json:"name"`
+	Vendor             string `json:"vendor"`
+	ArchFamily         string `json:"arch_family,omitempty"`
+	VRAMBytes          *int64 `json:"vram_bytes,omitempty"`
+	UnifiedMemoryBytes *int64 `json:"unified_memory_bytes,omitempty"`
+	Driver             string `json:"driver_version,omitempty"`
+	ComputeCap         string `json:"compute_capability,omitempty"`
 }
 
 type StarterRecommendation struct {

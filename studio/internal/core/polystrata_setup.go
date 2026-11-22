@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"time"
 )
 
 const polystrataDefaultSourceURL = "https://github.com/simplexai-labs/PolyStrata/archive/refs/tags/v0.1.45-poly.10.tar.gz"
@@ -71,13 +72,28 @@ func polystrataDisplayName(req PolystrataSetupRequest) string {
 	return strings.Join(parts, " · ")
 }
 
-func (s *Service) activePolystrataSetupLocked() (DownloadTask, bool) {
+func samePolystrataRequest(a, b *PolystrataSetupRequest) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return strings.TrimSpace(a.Family) == strings.TrimSpace(b.Family) &&
+		strings.TrimSpace(a.Model) == strings.TrimSpace(b.Model) &&
+		a.Context == b.Context &&
+		strings.TrimSpace(a.Backend) == strings.TrimSpace(b.Backend) &&
+		strings.TrimSpace(a.ModelSource) == strings.TrimSpace(b.ModelSource) &&
+		strings.TrimSpace(a.GGUFPath) == strings.TrimSpace(b.GGUFPath) &&
+		strings.TrimSpace(a.Source) == strings.TrimSpace(b.Source) &&
+		strings.TrimSpace(a.OutName) == strings.TrimSpace(b.OutName) &&
+		strings.TrimSpace(a.DataDir) == strings.TrimSpace(b.DataDir)
+}
+
+func (s *Service) activePolystrataSetupLocked() (*downloadEntry, bool) {
 	for _, d := range s.downloads {
 		if d.Task.Kind == "polystrata" && d.Task.State == "downloading" {
-			return clone(d.Task), true
+			return d, true
 		}
 	}
-	return DownloadTask{}, false
+	return nil, false
 }
 
 func (s *Service) CreatePolystrataSetup(req PolystrataSetupRequest) (DownloadTask, *ApiError) {
@@ -98,8 +114,11 @@ func (s *Service) CreatePolystrataSetup(req PolystrataSetupRequest) (DownloadTas
 	if s.closing {
 		return DownloadTask{}, Err("service_closing")
 	}
-	if existing, found := s.activePolystrataSetupLocked(); found {
-		return existing, nil
+	if active, found := s.activePolystrataSetupLocked(); found {
+		if samePolystrataRequest(active.polystrata, &req) {
+			return clone(active.Task), nil
+		}
+		return DownloadTask{}, Conflict("polystrata_setup_active")
 	}
 	outName, outDir, failure := s.downloadOutputLocked(root, req.OutName, "polystrata")
 	if failure != nil {
@@ -184,9 +203,10 @@ func (s *Service) runPolystrataSetup(ctx context.Context, binary string, d *down
 	defer d.cancel()
 	var streamSeen atomic.Bool
 	args := polystrataPrepareArgs(d.Task.OutDir, d.dataDir, d.polystrata, d.resume, s.downloadProxy())
-	out, execErr := s.execStream(ctx, s.newStderrProgressHandler(d, &streamSeen), binary, args...)
+	execCtx := inferyard.WithDrainGrace(ctx, 8*time.Second)
+	out, execErr := s.execStream(execCtx, s.newStderrProgressHandler(d, &streamSeen), binary, args...)
 
-	if out.ExitCode == inferyard.ExitComplete && execErr == nil {
+	if out.ExitCode == inferyard.ExitComplete && execErr == nil && ctx.Err() == nil {
 		cr, parseErr := inferyard.Parse(out.Stdout)
 		var details struct {
 			InstallationPath string `json:"installation_path"`
@@ -194,7 +214,7 @@ func (s *Service) runPolystrataSetup(ctx context.Context, binary string, d *down
 			LogPath          string `json:"log_path"`
 		}
 		if parseErr == nil && json.Unmarshal(cr.Details, &details) == nil && details.InstallationPath != "" {
-			_, regErr := s.RegisterEngineInstallation(s.ctx, details.InstallationPath)
+			_, regErr := s.RegisterEngineInstallation(ctx, details.InstallationPath)
 			s.mu.Lock()
 			d.Task.FinishedAt = ptr(now())
 			if details.LogPath != "" {
@@ -204,10 +224,13 @@ func (s *Service) runPolystrataSetup(ctx context.Context, binary string, d *down
 			if details.ModelConfigPath != "" {
 				d.Task.ModelConfigPath = ptr(details.ModelConfigPath)
 			}
-			if regErr != nil {
+			switch {
+			case ctx.Err() != nil:
+				d.Task.State = "cancelled"
+			case regErr != nil:
 				d.Task.State = "failed"
 				d.Task.Error = regErr
-			} else {
+			default:
 				d.Task.State = "done"
 				d.Task.Stage = ""
 				d.Task.Percent = ptr(100.0)

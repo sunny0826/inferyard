@@ -116,6 +116,15 @@ func TestParseCandidateDescriptionPolystrataAndLegacyIsolation(t *testing.T) {
 		t.Fatalf("unexpected parsed polystrata description: %+v", desc)
 	}
 
+	// Optional safety.temperature_stop_override_reason is accepted
+	var overrideDoc map[string]any
+	_ = json.Unmarshal(buildDesc("polystrata", 32768, true, "none"), &overrideDoc)
+	overrideDoc["details"].(map[string]any)["safety"].(map[string]any)["temperature_stop_override_reason"] = "external thermal monitor"
+	overrideRaw, _ := json.Marshal(overrideDoc)
+	if _, err := ParseCandidateDescription(overrideRaw, 0); err != nil {
+		t.Fatalf("expected temperature_stop_override_reason to be accepted: %v", err)
+	}
+
 	// Legacy llama-cpp still rejects require_temperature=false, context > 32768, and reasoning_effort
 	if _, err := ParseCandidateDescription(buildDesc("llama-cpp", 8192, false, ""), 0); err == nil {
 		t.Fatal("llama-cpp must still require require_temperature=true")

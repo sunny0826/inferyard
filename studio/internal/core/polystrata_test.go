@@ -53,7 +53,7 @@ func TestRecommendedStarterFallbackAndSnapshots(t *testing.T) {
 			"estimated_ram_bytes": 28700000000,
 			"disk_free_bytes": 150000000000,
 			"reason": "polystrata_hardware_fit",
-			"gpu": {"name": "Apple M3 Max", "vendor": "apple"},
+			"gpu": {"name": "Apple M3 Max", "vendor": "apple", "unified_memory_bytes": 68719476736},
 			"notes": [],
 			"alternatives": [{
 				"engine": "llama-cpp", "backend": "metal",
@@ -70,6 +70,7 @@ func TestRecommendedStarterFallbackAndSnapshots(t *testing.T) {
 	psRec := s.RecommendedStarter()
 	if !psRec.FromSnapshot || psRec.Status != "recommended" || psRec.Engine != "polystrata" || psRec.Backend != "metal" ||
 		psRec.Family == nil || *psRec.Family != "qwen36" || psRec.GPU == nil || psRec.GPU.Name != "Apple M3 Max" ||
+		psRec.GPU.UnifiedMemoryBytes == nil || *psRec.GPU.UnifiedMemoryBytes != 68719476736 ||
 		len(psRec.Alternatives) != 1 {
 		t.Fatalf("unexpected PolyStrata recommendation: %+v", psRec)
 	}
@@ -337,6 +338,10 @@ func TestPolystrataHealthCheckAndGracefulUnload(t *testing.T) {
 				"loaded":  loaded.Load(),
 			})
 		case r.Method == http.MethodPost && r.URL.Path == "/unload":
+			if !strings.HasPrefix(strings.ToLower(r.Header.Get("Content-Type")), "application/json") {
+				w.WriteHeader(http.StatusUnsupportedMediaType)
+				return
+			}
 			unloadCalled.Store(true)
 			w.WriteHeader(http.StatusOK)
 		default:
@@ -362,9 +367,177 @@ func TestPolystrataHealthCheckAndGracefulUnload(t *testing.T) {
 		t.Fatal("expected polystrata health=true once service==strata and loaded==true")
 	}
 
-	// Graceful unload sends POST /unload
-	unloadPolystrata(srv.URL)
-	if !unloadCalled.Load() {
-		t.Fatal("expected POST /unload to be sent before stopping polystrata")
+	// Graceful unload sends POST /unload with Content-Type: application/json
+	if !unloadPolystrata(srv.URL) || !unloadCalled.Load() {
+		t.Fatal("expected POST /unload with application/json to succeed before stopping polystrata")
 	}
+}
+
+func TestPolystrataRound1Regressions(t *testing.T) {
+	// 1. Stage transition clears stale percent and total_bytes
+	ws := t.TempDir()
+	s := engineService(t, ws)
+	entry := &downloadEntry{Task: DownloadTask{TaskId: "t-stage", Kind: "polystrata", State: "downloading", Stage: "downloading_runtime"}}
+	ev1, ok := parseTransferProgress(`{"event":"transfer.progress","stage":"downloading_runtime","downloaded_bytes":1134,"total_bytes":1134,"bytes_per_second":500,"step":2,"step_total":4,"percent":100.0,"detail":"extracting"}`)
+	if !ok {
+		t.Fatal("failed to parse downloading_runtime progress")
+	}
+	s.applyTransferProgress(entry, ev1)
+	if entry.Task.Percent == nil || *entry.Task.Percent != 100.0 || entry.Task.TotalBytes == nil {
+		t.Fatalf("expected 100%% and total bytes on stage 2: %+v", entry.Task)
+	}
+	ev2, ok := parseTransferProgress(`{"event":"transfer.progress","stage":"setup_engine","downloaded_bytes":0,"total_bytes":null,"bytes_per_second":null,"step":3,"step_total":7,"detail":"Python packages"}`)
+	if !ok {
+		t.Fatal("failed to parse setup_engine progress")
+	}
+	s.applyTransferProgress(entry, ev2)
+	if entry.Task.Percent != nil || entry.Task.TotalBytes != nil || entry.Task.BytesPerSecond != nil {
+		t.Fatalf("expected stale percent/total/rate cleared on stage transition, got %+v", entry.Task)
+	}
+
+	// 2. Different PolyStrata setup request during active setup returns conflict instead of coalescing
+	started := make(chan struct{})
+	release := make(chan struct{})
+	settingsPath := filepath.Join(t.TempDir(), "settings.json")
+	rawSettings, _ := json.Marshal(map[string]any{"workspace_root": ws, "results_root": filepath.Join(ws, "results")})
+	_ = os.WriteFile(settingsPath, rawSettings, 0o600)
+	s2, err := New(t.Context(), Options{
+		SettingsPath: settingsPath,
+		Execute: func(ctx context.Context, path string, args ...string) (inferyard.Execution, error) {
+			if out, ok := version(args); ok {
+				return out, nil
+			}
+			return inferyard.Execution{}, nil
+		},
+		ExecStream: func(ctx context.Context, onLine func(string), path string, args ...string) (inferyard.Execution, error) {
+			close(started)
+			select {
+			case <-ctx.Done():
+				return inferyard.Execution{ExitCode: inferyard.ExitCancelled}, nil
+			case <-release:
+				return inferyard.Execution{ExitCode: 2}, nil
+			}
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s2.settings.InferyardPath = ptr(os.Args[0])
+	t.Cleanup(func() {
+		close(release)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_ = s2.Shutdown(ctx)
+	})
+	t1, apiErr := s2.CreatePolystrataSetup(PolystrataSetupRequest{Family: "qwen36", Model: "UD-Q4_K_M"})
+	if apiErr != nil {
+		t.Fatalf("first setup failed: %+v", apiErr)
+	}
+	<-started
+	// Identical request returns same task
+	tDup, apiErr := s2.CreatePolystrataSetup(PolystrataSetupRequest{Family: "qwen36", Model: "UD-Q4_K_M"})
+	if apiErr != nil || tDup.TaskId != t1.TaskId {
+		t.Fatalf("identical request should coalesce: err=%+v id=%s want=%s", apiErr, tDup.TaskId, t1.TaskId)
+	}
+	// Different request returns conflict
+	if _, conflictErr := s2.CreatePolystrataSetup(PolystrataSetupRequest{Family: "lfm25", Model: "UD-Q3_K_XL"}); conflictErr == nil || conflictErr.Code != "conflict" || conflictErr.Details["reason"] != "polystrata_setup_active" {
+		t.Fatalf("expected polystrata_setup_active conflict for different request, got %+v", conflictErr)
+	}
+
+	// 3. Registered polystrata installation exposes its strata-*.json configs in Registry().Models
+	psDir := filepath.Join(ws, "engines", "polystrata-pack")
+	if err := os.MkdirAll(psDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cfgPath := filepath.Join(psDir, "strata-qwen38-q2-0.json")
+	if err := os.WriteFile(cfgPath, []byte(`{"exe":"/opt/ps/build-metal/strata","args":["--pack","/opt/data/packs/q2"],"model_name":"qwen38-q2-0"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	instPath := filepath.Join(psDir, "installation.json")
+	instPayload, _ := json.Marshal(map[string]any{
+		"schema_version": 3, "definition": "local-engine-installation.v1",
+		"family": "polystrata", "working_directory": psDir,
+	})
+	if err := os.WriteFile(instPath, instPayload, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s.mu.Lock()
+	s.settings.EngineInstallations = []string{instPath}
+	s.mu.Unlock()
+	reg := s.Registry()
+	foundPack := false
+	for _, m := range reg.Models {
+		if m.Format == "strata_pack" && strings.Contains(m.Path, "strata-qwen38-q2-0.json") && m.Available {
+			foundPack = true
+			break
+		}
+	}
+	if !foundPack {
+		t.Fatalf("expected strata-qwen38-q2-0.json in Registry().Models, got %+v", reg.Models)
+	}
+
+	// 4. Cancelling during RegisterEngineInstallation cancels cleanly without persisting settings
+	regStarted := make(chan struct{})
+	s3Settings := filepath.Join(t.TempDir(), "settings3.json")
+	_ = os.WriteFile(s3Settings, rawSettings, 0o600)
+	s3, err := New(t.Context(), Options{
+		SettingsPath: s3Settings,
+		Execute: func(ctx context.Context, path string, args ...string) (inferyard.Execution, error) {
+			if out, ok := version(args); ok {
+				return out, nil
+			}
+			if len(args) >= 2 && args[0] == "engine" && args[1] == "check" {
+				close(regStarted)
+				<-ctx.Done()
+				return inferyard.Execution{ExitCode: inferyard.ExitCancelled}, ctx.Err()
+			}
+			return inferyard.Execution{}, nil
+		},
+		ExecStream: func(ctx context.Context, onLine func(string), path string, args ...string) (inferyard.Execution, error) {
+			outIdx := slices.Index(args, "--out")
+			outDir := args[outIdx+1]
+			_ = os.MkdirAll(outDir, 0o755)
+			ip := filepath.Join(outDir, "installation.json")
+			_ = os.WriteFile(ip, []byte(`{"schema_version":3,"definition":"local-engine-installation.v1","family":"polystrata"}`), 0o600)
+			okPayload, _ := json.Marshal(map[string]any{
+				"command": "engine prepare-polystrata", "status": "prepared", "completeness": "complete",
+				"run_id": nil, "evidence_dir": nil, "limitations": []string{},
+				"details": map[string]any{"out": outDir, "installation_path": ip},
+			})
+			return inferyard.Execution{ExitCode: 0, Stdout: okPayload}, nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s3.settings.InferyardPath = ptr(os.Args[0])
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_ = s3.Shutdown(ctx)
+	})
+	task3, apiErr := s3.CreatePolystrataSetup(PolystrataSetupRequest{Family: "qwen36"})
+	if apiErr != nil {
+		t.Fatalf("setup s3 failed: %+v", apiErr)
+	}
+	<-regStarted
+	if _, apiErr := s3.CancelDownload(task3.TaskId); apiErr != nil {
+		t.Fatalf("cancel during registration failed: %+v", apiErr)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		for _, cur := range s3.Downloads() {
+			if cur.TaskId == task3.TaskId && cur.State != "downloading" {
+				if cur.State != "cancelled" {
+					t.Fatalf("expected cancelled state when cancelled during registration, got %+v", cur)
+				}
+				if len(s3.Settings().Settings.EngineInstallations) != 0 {
+					t.Fatalf("cancelled registration must not persist settings: %v", s3.Settings().Settings.EngineInstallations)
+				}
+				return
+			}
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatal("s3 task did not finish after cancel during registration")
 }

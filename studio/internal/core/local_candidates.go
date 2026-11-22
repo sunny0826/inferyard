@@ -137,7 +137,9 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 		if failure != nil {
 			return nil, failure
 		}
-		if description.Family != family || description.Assets.Model.Path != model || description.Assets.Installation == nil {
+		modelMatches := description.Assets.Model.Path == model ||
+			(family == "polystrata" && strings.HasSuffix(strings.ToLower(model), ".json") && filepath.IsAbs(description.Assets.Model.Path))
+		if description.Family != family || !modelMatches || description.Assets.Installation == nil {
 			return nil, Err("candidate_mismatch")
 		}
 		if family != "sglang" && description.Assets.Installation.DeclarationSHA256 != *check.DeclarationSHA256 {

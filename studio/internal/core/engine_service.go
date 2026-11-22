@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -29,14 +30,15 @@ type EngineState struct {
 }
 
 type engineEntry struct {
-	ownerPath string
-	owner     engineOwner
-	family    string
-	cmd       *exec.Cmd
-	logFile   *os.File
-	state     EngineState
-	stop      chan struct{}
-	done      chan struct{}
+	ownerPath  string
+	owner      engineOwner
+	family     string
+	wasHealthy bool
+	cmd        *exec.Cmd
+	logFile    *os.File
+	state      EngineState
+	stop       chan struct{}
+	done       chan struct{}
 }
 
 func (s *Service) Engine() EngineState {
@@ -223,6 +225,7 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 				continue
 			}
 			if healthy {
+				e.wasHealthy = true
 				e.state.State = "running"
 				s.publishEngineLocked(e)
 				s.mu.Unlock()
@@ -243,8 +246,12 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 }
 
 func (s *Service) terminateEngine(e *engineEntry, waitCh <-chan error) {
-	if e.family == "polystrata" && e.state.Endpoint != "" {
-		unloadPolystrata(e.state.Endpoint)
+	s.mu.Lock()
+	canUnload := e.family == "polystrata" && e.wasHealthy && e.state.Endpoint != ""
+	endpoint := e.state.Endpoint
+	s.mu.Unlock()
+	if canUnload {
+		_ = unloadPolystrata(endpoint)
 	}
 	if e.state.Local {
 		if s.terminateOwnedTree(&e.owner, e.ownerPath) == nil {
@@ -291,18 +298,25 @@ func checkEngineHealth(client *http.Client, endpoint string, local bool, family 
 	return resp.StatusCode >= 200 && resp.StatusCode < 300
 }
 
-func unloadPolystrata(endpoint string) {
-	client := &http.Client{Timeout: 2 * time.Second}
-	req, err := http.NewRequest(http.MethodPost, endpoint+"/unload", nil)
-	if err != nil {
-		return
+func unloadPolystrata(endpoint string) bool {
+	client := &http.Client{
+		Timeout: 2 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
+	req, err := http.NewRequest(http.MethodPost, endpoint+"/unload", strings.NewReader("{}"))
+	if err != nil {
+		return false
+	}
+	req.Header.Set("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
-		return
+		return false
 	}
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 	_ = resp.Body.Close()
+	return resp.StatusCode >= 200 && resp.StatusCode < 300
 }
 
 func signalEngine(e *engineEntry, sig os.Signal) {

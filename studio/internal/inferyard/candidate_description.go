@@ -360,19 +360,30 @@ func validCandidateEnvironment(environment map[string]string) bool {
 }
 
 func validCandidateSafety(raw []byte, family string) bool {
-	if !discoveryFields(raw, "interval_seconds", "max_temperature_celsius", "require_temperature", "check_environment") {
+	fields, ok := candidateObject(
+		raw,
+		[]string{"interval_seconds", "max_temperature_celsius", "require_temperature", "check_environment"},
+		[]string{"temperature_stop_override_reason"},
+	)
+	if !ok {
 		return false
 	}
 	var value struct {
-		Interval    *float64 `json:"interval_seconds"`
-		Maximum     *float64 `json:"max_temperature_celsius"`
-		Temperature *bool    `json:"require_temperature"`
-		Environment *bool    `json:"check_environment"`
+		Interval       *float64 `json:"interval_seconds"`
+		Maximum        *float64 `json:"max_temperature_celsius"`
+		Temperature    *bool    `json:"require_temperature"`
+		Environment    *bool    `json:"check_environment"`
+		OverrideReason *string  `json:"temperature_stop_override_reason"`
 	}
 	if json.Unmarshal(raw, &value) != nil || value.Interval == nil || *value.Interval < 0.1 || *value.Interval > 5 ||
 		value.Maximum == nil || *value.Maximum < 1 || *value.Maximum > 85 ||
 		value.Temperature == nil || value.Environment == nil || !*value.Environment {
 		return false
+	}
+	if _, hasOverride := fields["temperature_stop_override_reason"]; hasOverride {
+		if value.OverrideReason == nil || !candidateText(*value.OverrideReason) {
+			return false
+		}
 	}
 	if family != PolystrataFamily && !*value.Temperature {
 		return false
