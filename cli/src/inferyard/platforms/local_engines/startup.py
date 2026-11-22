@@ -1,9 +1,10 @@
 """Explicit formal startup syntax and frozen environment checks."""
 
 from importlib.resources import files
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 from inferyard.contracts.engine_profiles import DIRECTORY_FAMILIES
+from inferyard.contracts.local_environment import parse_absolute_path
 from inferyard.errors import PreflightError
 from inferyard.platforms.engine_fit_entrypoints import (
     _LLAMA_FLAGS,
@@ -60,10 +61,13 @@ _PREFIXES = (
 )
 
 
-def check_environment(actual, expected):
+def check_environment(actual, expected, *, allowed_extras=None):
     if not isinstance(actual, dict) or any(actual.get(k) != v for k, v in expected.items()):
         raise PreflightError("local_engine_environment_mismatch")
-    if any(key.startswith(_PREFIXES) and key not in expected for key in actual):
+    extras = allowed_extras or ()
+    if any(
+        key.startswith(_PREFIXES) and key not in expected and key not in extras for key in actual
+    ):
         raise PreflightError("local_engine_environment_override")
 
 
@@ -78,8 +82,13 @@ def _value(arguments, names):
     return found[0]
 
 
+_POLYSTRATA_VALUES = {"--engine", "--config", "--host", "--port"}
+
+
 def validate_parameters(config, arguments):
     family = config["engine"]["family"]
+    if family == "polystrata":
+        return
     context_flags = {
         "llama-cpp": {"-c", "--ctx-size"},
         "mlx-lm": {"--max-model-len"},
@@ -107,11 +116,19 @@ def validate_startup(config, declaration, arguments, executable, cwd):
         engine["working_directory"] != declaration["working_directory"]
         or engine["environment"] != declaration["environment"]
         or str(cwd) != str(Path(engine["working_directory"]).resolve())
-        or arguments != [declaration["executable"], *engine["startup_args"]]
     ):
         raise PreflightError("local_engine_startup_mismatch")
-    if executable != Path(declaration["executable"]).resolve():
+    allowed_executables = {Path(declaration["executable"]).resolve()}
+    if engine["family"] == "polystrata":
+        from inferyard.platforms.local_engines.detect_polystrata import venv_base_python
+
+        base_py = venv_base_python(Path(declaration["executable"]))
+        if base_py is not None:
+            allowed_executables.add(base_py)
+    if executable not in allowed_executables:
         raise PreflightError("local_engine_executable_mismatch")
+    if arguments != [declaration["executable"], *engine["startup_args"]]:
+        raise PreflightError("local_engine_startup_mismatch")
     validate_arguments(config)
 
 
@@ -120,6 +137,32 @@ def validate_arguments(config, *, bootstrap_path=None):
     engine = config["engine"]
     family = engine["family"]
     args = engine["startup_args"]
+    if family == "polystrata":
+        if len(args) < 3:
+            raise PreflightError("local_engine_entrypoint_mismatch")
+        server_path = parse_absolute_path(args[0])
+        cwd_path = parse_absolute_path(engine.get("working_directory", ""))
+        if (
+            server_path is None
+            or cwd_path is None
+            or type(server_path) is not type(cwd_path)
+            or server_path != cwd_path / "serve" / "server.py"
+        ):
+            raise PreflightError("local_engine_entrypoint_mismatch")
+        rest = args[1:]
+        config_arg = _options(rest, _POLYSTRATA_VALUES, set(), {"--config"})
+        if _value(rest, {"--engine"}) != "strata":
+            raise PreflightError("local_engine_entrypoint_mismatch")
+        parsed_config = parse_absolute_path(config_arg)
+        expected_config = parse_absolute_path(engine.get("polystrata_config_path", ""))
+        if (
+            parsed_config is None
+            or expected_config is None
+            or type(parsed_config) is not type(expected_config)
+            or parsed_config != expected_config
+        ):
+            raise PreflightError("local_engine_model_argument_mismatch")
+        return
     if family in DIRECTORY_FAMILIES:
         if args[:3] != ["-I", "-S", "-B"]:
             raise PreflightError("local_engine_python_isolation_required")
@@ -137,8 +180,13 @@ def validate_arguments(config, *, bootstrap_path=None):
         model = _options(args, _LLAMA_VALUES - {"--api-key"}, _LLAMA_FLAGS, {"-m", "--model"})
     else:
         raise PreflightError("local_engine_direct_family_invalid")
-    if not PurePosixPath(model).is_absolute() or PurePosixPath(model) != PurePosixPath(
-        config["model"]["local_path"]
+    parsed_model = parse_absolute_path(model)
+    expected_model = parse_absolute_path(config["model"]["local_path"])
+    if (
+        parsed_model is None
+        or expected_model is None
+        or type(parsed_model) is not type(expected_model)
+        or parsed_model != expected_model
     ):
         raise PreflightError("local_engine_model_argument_mismatch")
     validate_parameters(config, args)

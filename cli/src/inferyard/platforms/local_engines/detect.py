@@ -12,6 +12,12 @@ from pathlib import Path
 from inferyard import SCHEMA_VERSION
 from inferyard.contracts.engine_profiles import DIRECTORY_FAMILIES, LOCAL_FAMILIES
 from inferyard.errors import PreflightError
+from inferyard.platforms.local_engines.detect_polystrata import (
+    collect_polystrata_targets,
+    infer_polystrata_root,
+    polystrata_runtime_roots,
+    probe_polystrata_root,
+)
 from inferyard.platforms.local_engines.installation import description
 
 DETECT_DEFINITION = "local-engine-detect.v1"
@@ -327,6 +333,10 @@ def detect_local_engines(extra_paths=()) -> dict:
     for venv_dir, preferred in venv_targets:
         _probe_python_venv(venv_dir, seen_venvs, candidates, preferred_python=preferred)
 
+    seen_polystrata: set[tuple[str, str]] = set()
+    for ps_root, preferred in collect_polystrata_targets(tuple(extra_paths or ()), home, cwd):
+        probe_polystrata_root(ps_root, seen_polystrata, candidates, preferred_python=preferred)
+
     candidates.sort(key=lambda item: (item["family"], item["executable"]))
     return {
         "definition": DETECT_DEFINITION,
@@ -351,6 +361,7 @@ def build_installation(
     working_directory: str | Path | None = None,
     runtime_roots: list[str | Path] | tuple[str | Path, ...] | None = None,
     models_root: str | Path | None = None,
+    data_dir: str | Path | None = None,
 ) -> dict:
     """Build and validate a local-engine-installation.v1 declaration dict."""
     if family not in LOCAL_FAMILIES:
@@ -361,7 +372,7 @@ def build_installation(
     if not exe_path.is_file():
         raise PreflightError("local_engine_executable_invalid")
 
-    if family in DIRECTORY_FAMILIES:
+    if family in DIRECTORY_FAMILIES or family == "polystrata":
         parent_resolved = _safe_resolve(exe_path.parent)
         if parent_resolved is None:
             raise PreflightError("local_engine_locator_missing")
@@ -370,7 +381,8 @@ def build_installation(
         declared_executable = os.path.normpath(str(exe_path))
 
     if working_directory is None:
-        cwd_resolved = _safe_resolve(exe_path.parent)
+        inferred = infer_polystrata_root(exe_path) if family == "polystrata" else None
+        cwd_resolved = inferred if inferred is not None else _safe_resolve(exe_path.parent)
         if cwd_resolved is None or not cwd_resolved.is_dir():
             raise PreflightError("local_engine_cwd_invalid")
         declared_cwd = str(cwd_resolved)
@@ -385,13 +397,15 @@ def build_installation(
             venv_candidate = (
                 exe_path.parent.parent
                 if (exe_path.parent.parent / "pyvenv.cfg").is_file()
-                or exe_path.parent.name == "bin"
+                or exe_path.parent.name in ("bin", "Scripts")
                 else exe_path.parent
             )
             root_resolved = _safe_resolve(venv_candidate)
             if root_resolved is None or not root_resolved.is_dir():
                 raise PreflightError("local_engine_runtime_root_invalid")
             declared_roots = [str(root_resolved)]
+        elif family == "polystrata":
+            declared_roots = polystrata_runtime_roots(Path(declared_cwd), exe_path)
         else:
             resolved_exe = _safe_resolve(exe_path)
             if resolved_exe is None:
@@ -402,8 +416,15 @@ def build_installation(
 
     if (family == "lmstudio") != (models_root is not None):
         raise PreflightError("local_engine_models_root_required_for_lmstudio_only")
+    if data_dir is not None and family != "polystrata":
+        raise PreflightError("local_engine_data_dir_polystrata_only")
 
-    environment = dict(_PYTHON_ENVIRONMENTS) if family in DIRECTORY_FAMILIES else {}
+    if family in DIRECTORY_FAMILIES:
+        environment = dict(_PYTHON_ENVIRONMENTS)
+    elif family == "polystrata":
+        environment = {"PYTHONDONTWRITEBYTECODE": "1"}
+    else:
+        environment = {}
     payload: dict = {
         "schema_version": SCHEMA_VERSION,
         "definition": "local-engine-installation.v1",
@@ -418,6 +439,11 @@ def build_installation(
         if not models_path.is_dir():
             raise PreflightError("local_engine_runtime_root_invalid")
         payload["models_root"] = os.path.normpath(str(models_path))
+    if data_dir is not None:
+        data_path = _require_existing_path(data_dir, "local_engine_locator_missing")
+        if not data_path.is_dir():
+            raise PreflightError("local_engine_data_dir_invalid")
+        payload["data_dir"] = os.path.normpath(str(data_path))
     return description(payload)
 
 

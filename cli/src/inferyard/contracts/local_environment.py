@@ -1,6 +1,6 @@
 """Pure rules for declared root and subprocess environments, live and offline."""
 
-from pathlib import PurePosixPath
+from pathlib import PurePosixPath, PureWindowsPath
 
 from inferyard.contracts.engine_profiles import DIRECTORY_FAMILIES
 from inferyard.errors import ContractError
@@ -26,9 +26,27 @@ def _require(condition):
         raise ContractError("installation.environment", "invalid declared process environment")
 
 
+def parse_absolute_path(value: str) -> PurePosixPath | PureWindowsPath | None:
+    if not isinstance(value, str) or not value:
+        return None
+    if value.startswith("/"):
+        path = PurePosixPath(value)
+        if path.is_absolute() and str(path) == value and ".." not in path.parts:
+            return path
+        return None
+    win = PureWindowsPath(value)
+    if win.is_absolute() and bool(win.drive) and ".." not in win.parts:
+        return win
+    return None
+
+
+def is_absolute_path(value: str) -> bool:
+    return parse_absolute_path(value) is not None
+
+
 def _absolute(value):
-    path = PurePosixPath(value)
-    _require(path.is_absolute() and str(path) == value and ".." not in path.parts)
+    path = parse_absolute_path(value)
+    _require(path is not None)
     return path
 
 
@@ -37,7 +55,7 @@ def validate_root_environment(family, environment, working_directory):
     if "PROMETHEUS_MULTIPROC_DIR" in environment:
         path = _absolute(environment["PROMETHEUS_MULTIPROC_DIR"])
         cwd = _absolute(working_directory)
-        _require(path != cwd and path.is_relative_to(cwd))
+        _require(type(path) is type(cwd) and path != cwd and path.is_relative_to(cwd))
 
 
 def validate_installation_environment(declaration):

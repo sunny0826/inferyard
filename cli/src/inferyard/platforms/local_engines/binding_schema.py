@@ -3,13 +3,14 @@
 import ipaddress
 from urllib.parse import urlsplit
 
+from inferyard.contracts.engine_profiles import LOCAL_FAMILIES
 from inferyard.contracts.schemas_common import HASH, LABEL, NAT, POS, VERSION, array, enum, obj
 from inferyard.contracts.validation import validate_value
 from inferyard.errors import PreflightError
 
 MODEL = obj(
     {
-        "engine": enum("llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio"),
+        "engine": enum(*LOCAL_FAMILIES),
         "path": LABEL,
         "device": NAT,
         "inode": POS,
@@ -35,7 +36,7 @@ SERVICE = obj(
         "cwd_sha256": HASH,
         "listener_inode": {"type": "null"},
         "listener_identity": LABEL,
-        "listener_source": enum("lsof:TCP:LISTEN:pid"),
+        "listener_source": enum("lsof:TCP:LISTEN:pid", "psutil:TCP:LISTEN:pid"),
         "model_binding": MODEL,
         "workers": array(
             obj(

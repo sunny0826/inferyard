@@ -1,14 +1,35 @@
 """Concrete family launch descriptions, with observed LM Studio daemon identity."""
 
 from importlib.resources import files
+from pathlib import Path
 
 from inferyard.provisioning.preparation_io import PreparationError
 
 
-def startup(installation, model, served_model, context, port, service_pid=None):
+def startup(
+    installation,
+    model,
+    served_model,
+    context,
+    port,
+    service_pid=None,
+    *,
+    polystrata_config=None,
+):
     family = installation["family"]
     network = ["--host", "127.0.0.1", "--port", str(port)]
     cwd = installation["working_directory"]
+    if family == "polystrata":
+        if polystrata_config is None:
+            raise PreparationError("polystrata_config_required")
+        return [
+            str(Path(cwd) / "serve" / "server.py"),
+            "--engine",
+            "strata",
+            "--config",
+            str(polystrata_config),
+            *network,
+        ], cwd
     if family == "lmstudio":
         if service_pid is None:
             raise PreparationError("local_engine_lmstudio_background_pid_required")

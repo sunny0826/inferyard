@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import platform
 import sys
 from pathlib import Path
 
@@ -25,7 +24,10 @@ def _detect(request) -> tuple[int, CommandResult]:
 
 def _init_installation(request) -> tuple[int, CommandResult]:
     from inferyard.platforms.local_engines.detect import build_installation, write_installation
-    from inferyard.platforms.local_engines.installation import freeze_installation
+    from inferyard.platforms.local_engines.installation import (
+        check_family_platform,
+        freeze_installation,
+    )
 
     family = getattr(request, "family", None)
     executable = getattr(request, "executable", None)
@@ -41,9 +43,16 @@ def _init_installation(request) -> tuple[int, CommandResult]:
             working_directory=getattr(request, "working_directory", None),
             runtime_roots=getattr(request, "runtime_roots", None),
             models_root=getattr(request, "models_root", None),
+            data_dir=getattr(request, "data_dir", None),
         )
         verified = False
-        if platform.system() == "Darwin" and platform.machine() == "arm64":
+        try:
+            check_family_platform(family)
+        except PreflightError:
+            supported = False
+        else:
+            supported = True
+        if supported:
             freeze_installation(declaration)
             verified = True
         written = write_installation(out, declaration)

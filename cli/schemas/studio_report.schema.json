@@ -99,7 +99,8 @@
                     "enum": [
                       "cpu",
                       "cuda",
-                      "metal"
+                      "metal",
+                      "hip"
                     ]
                   }
                 },

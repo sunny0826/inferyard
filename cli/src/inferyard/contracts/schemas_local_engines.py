@@ -7,9 +7,10 @@ from inferyard.contracts.engine_profiles import (
     LOCAL_CONFIG,
     LOCAL_FAMILIES,
     PROMPT_CACHE,
+    REASONING_EFFORT_LEVELS,
     TUNING_KEYS,
 )
-from inferyard.contracts.schemas_common import HASH, LABEL, TEXT, VERSION, array, enum, obj
+from inferyard.contracts.schemas_common import BOOL, HASH, LABEL, TEXT, VERSION, array, enum, obj
 from inferyard.contracts.schemas_config import CONFIG, CONFIG_DEFAULTS
 
 ENVIRONMENT = obj(
@@ -51,6 +52,7 @@ INSTALLATION = obj(
     }
 )
 INSTALLATION["properties"]["models_root"] = LABEL
+INSTALLATION["properties"]["data_dir"] = LABEL
 INSTALLATION["properties"]["worker_environment"] = WORKER_ENVIRONMENT
 
 LOCAL_CONFIG_SCHEMA = deepcopy(CONFIG)
@@ -75,7 +77,7 @@ LOCAL_CONFIG_SCHEMA["properties"]["engine"] = obj(
     {
         "adapter": enum(LOCAL_ADAPTER),
         "family": enum(*LOCAL_FAMILIES),
-        "backend": enum("metal"),
+        "backend": enum("metal", "cuda", "hip", "cpu"),
         "installation_path": LABEL,
         "installation_sha256": HASH,
         "startup_args": array(TEXT),
@@ -84,6 +86,8 @@ LOCAL_CONFIG_SCHEMA["properties"]["engine"] = obj(
         "served_model": LABEL,
     }
 )
+LOCAL_CONFIG_SCHEMA["properties"]["engine"]["properties"]["polystrata_config_path"] = LABEL
+LOCAL_CONFIG_SCHEMA["properties"]["engine"]["properties"]["polystrata_config_sha256"] = HASH
 LOCAL_CONFIG_SCHEMA["properties"]["engine"]["properties"]["tuning"] = obj(
     {**{key: LABEL for key in TUNING_KEYS}, "prompt_cache": enum(*PROMPT_CACHE)}, required=[]
 )
@@ -91,7 +95,9 @@ LOCAL_CONFIG_SCHEMA["properties"]["generation"] = obj(
     {
         "temperature": {"type": "number", "const": 0},
         "max_tokens": {"type": "integer", "minimum": 1, "maximum": 8192},
-    }
+        "reasoning_effort": enum(*REASONING_EFFORT_LEVELS),
+    },
+    required=["temperature", "max_tokens"],
 )
 endpoint = LOCAL_CONFIG_SCHEMA["properties"]["endpoint"]["properties"]
 endpoint.update(binding_path=LABEL, binding_sha256=HASH)
@@ -104,7 +110,7 @@ LOCAL_CONFIG_SCHEMA["properties"]["safety"] = obj(
     {
         "interval_seconds": {"type": "number", "minimum": 0.1, "maximum": 5},
         "max_temperature_celsius": {"type": "number", "minimum": 1, "maximum": 85},
-        "require_temperature": {"type": "boolean", "const": True},
+        "require_temperature": BOOL,
         "check_environment": {"type": "boolean", "const": True},
         "temperature_stop_override_reason": {"type": "string", "minLength": 1, "maxLength": 1024},
     },
@@ -124,7 +130,7 @@ LOCAL_CONFIG_SCHEMA["properties"]["execution"]["properties"]["idle_wait_seconds"
 LOCAL_CONFIG_SCHEMA["properties"]["conditions"]["properties"]["context_size"] = {
     "type": "integer",
     "minimum": 1,
-    "maximum": 32768,
+    "maximum": 524288,
 }
 
 LOCAL_CONFIG_INPUT = deepcopy(LOCAL_CONFIG_SCHEMA)

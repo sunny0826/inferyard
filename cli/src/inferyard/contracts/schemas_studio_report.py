@@ -20,7 +20,7 @@ type JsonObject = dict[str, JsonNode]
 KIND = "studio-report.v1"
 CATEGORY = enum("instruction", "extraction", "qa", "math", "classification", "structured")
 REQUEST_QUALITY = enum("pass", "fail", "unscorable", "not_applicable", "not_scored")
-BACKEND = enum("cpu", "cuda", "metal")
+BACKEND = enum("cpu", "cuda", "metal", "hip")
 NONNEGATIVE = {"type": "number", "minimum": 0}
 
 SOURCE = obj({"run_id": IDENTIFIER, "path": LABEL})

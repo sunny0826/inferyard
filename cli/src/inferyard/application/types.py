@@ -67,6 +67,7 @@ class CommandRequest:
     working_directory: Path | None = None
     runtime_roots: list[Path] | None = None
     models_root: Path | None = None
+    data_dir: Path | None = None
     model_path: Path | None = None
     fit_engines: list[str] | None = None
     fit_engine: str | None = None

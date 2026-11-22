@@ -411,7 +411,9 @@ def static_preflight(
     system, backend = platform.system(), config["engine"].get("backend", "cpu")
     if system not in ("Linux", "Windows", "Darwin"):
         raise PreflightError("unsupported_platform")
-    if (backend == "metal" and system != "Darwin") or (backend == "cuda" and system == "Darwin"):
+    if (backend == "metal" and system != "Darwin") or (
+        backend in ("cuda", "hip") and system == "Darwin"
+    ):
         raise PreflightError("unsupported_backend_platform")
     origin, address, port = service_origin(config["endpoint"]["url"])
     local_identity = {}
@@ -466,6 +468,17 @@ def static_preflight(
         if gpu["status"] != "observed":
             raise PreflightError("cuda_device_unavailable")
         environment["gpu"] = {"backend": "cuda", "source": "nvidia-smi", "devices": gpu["devices"]}
+    elif backend == "hip":
+        from inferyard.platforms.device_gpu import amd_linux_snapshot, amd_windows_snapshot
+
+        gpu = amd_windows_snapshot() if system == "Windows" else amd_linux_snapshot()
+        if gpu["status"] != "observed":
+            raise PreflightError("hip_device_unavailable")
+        environment["gpu"] = {
+            "backend": "hip",
+            "source": gpu.get("source") or "rocm",
+            "devices": gpu["devices"],
+        }
     root = Path(config["output"]["root"])
     ancestor = root
     while not ancestor.exists():

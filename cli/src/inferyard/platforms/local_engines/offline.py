@@ -5,7 +5,11 @@ import os
 from pathlib import PurePosixPath
 
 from inferyard.contracts.engine_profiles import DIRECTORY_FAMILIES
-from inferyard.contracts.local_environment import validate_installation_environment
+from inferyard.contracts.local_environment import (
+    is_absolute_path,
+    parse_absolute_path,
+    validate_installation_environment,
+)
 from inferyard.contracts.schemas_common import HASH, LABEL, NAT, array, obj
 from inferyard.contracts.validation import validate_value, json_bytes
 from inferyard.errors import ContractError, PreflightError
@@ -79,7 +83,7 @@ def validate_frozen_identity(config, local_identity, *, files):
     runtime_digests = set()
     root_names = set()
     for root in runtime["roots"]:
-        _require(PurePosixPath(root["path"]).is_absolute() and root["path"] not in root_names)
+        _require(is_absolute_path(root["path"]) and root["path"] not in root_names)
         root_names.add(root["path"])
         entry_names = [row["path"] for row in root["entries"]]
         _require(entry_names == sorted(set(entry_names)))
@@ -118,9 +122,16 @@ def validate_frozen_identity(config, local_identity, *, files):
         _require(hashlib.sha256(content).hexdigest() == expected)
         _require(inventory.get(path) == (expected, len(content)))
     _require(inventory.get(model["template_path"], (None,))[0] == model["template_sha256"])
+    if engine["family"] == "polystrata":
+        _require(
+            inventory.get(engine["polystrata_config_path"], (None,))[0]
+            == engine["polystrata_config_sha256"]
+        )
     names = [entry["path"] for entry in manifest["files"]]
     _require(names == sorted(set(names)))
-    base = PurePosixPath(model["local_path"])
+    base = parse_absolute_path(model["local_path"])
+    _require(base is not None)
+    multi_shard = model["kind"] == "gguf" and len(names) > 1
     for entry in manifest["files"]:
         relative = PurePosixPath(entry["path"])
         _require(
@@ -128,8 +139,13 @@ def validate_frozen_identity(config, local_identity, *, files):
             and all(p not in ("", ".", "..") for p in entry["path"].split("/"))
             and "\\" not in entry["path"]
         )
-        path = str(base / relative) if model["kind"] == "directory" else str(base)
+        if model["kind"] == "directory":
+            path = str(base / relative)
+        elif multi_shard:
+            path = str(base.parent / relative)
+        else:
+            path = str(base)
         _require(inventory.get(path) == (entry["sha256"], entry["size"]))
     if model["kind"] == "gguf":
-        _require(names == [base.name])
+        _require(base.name in names if multi_shard else names == [base.name])
     return service

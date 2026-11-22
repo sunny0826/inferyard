@@ -35,3 +35,4 @@ def add_detect_subcommands(actions):
         type=Path,
     )
     init.add_argument("--models-root", type=Path)
+    init.add_argument("--data-dir", type=Path)

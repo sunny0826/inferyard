@@ -1,9 +1,9 @@
-"""Semantic rules for explicitly selected macOS native formal profiles."""
+"""Semantic rules for explicitly selected local-engine formal profiles."""
 
 from pathlib import Path
 
 from inferyard.contracts.engine_profiles import DIRECTORY_FAMILIES, LOCAL_ADAPTER, LOCAL_CONFIG
-from inferyard.contracts.local_environment import validate_root_environment
+from inferyard.contracts.local_environment import is_absolute_path, validate_root_environment
 from inferyard.errors import ContractError
 
 
@@ -14,14 +14,51 @@ def require(condition, field, reason):
 
 def validate_config(config):
     engine, model = config["engine"], config["model"]
+    family = engine["family"]
     require(config.get("definition") == LOCAL_CONFIG, "config.definition", "unsupported definition")
     require(engine["adapter"] == LOCAL_ADAPTER, "config.engine.adapter", "profile mismatch")
-    expected = "directory" if engine["family"] in DIRECTORY_FAMILIES else "gguf"
-    require(model["kind"] == expected, "config.model.kind", "engine/model kind mismatch")
+    if family in DIRECTORY_FAMILIES:
+        allowed_kinds = ("directory",)
+    elif family == "polystrata":
+        allowed_kinds = ("gguf", "directory")
+    else:
+        allowed_kinds = ("gguf",)
+    require(model["kind"] in allowed_kinds, "config.model.kind", "engine/model kind mismatch")
     require(
         model["kind"] != "gguf" or Path(model["local_path"]).suffix.lower() == ".gguf",
         "config.model.local_path",
         "single GGUF required",
+    )
+    require(
+        (family == "polystrata") == ("polystrata_config_path" in engine),
+        "config.engine.polystrata_config_path",
+        "polystrata_config_path is required for polystrata only",
+    )
+    require(
+        (family == "polystrata") == ("polystrata_config_sha256" in engine),
+        "config.engine.polystrata_config_sha256",
+        "polystrata_config_sha256 is required for polystrata only",
+    )
+    if "polystrata_config_path" in engine:
+        require(
+            is_absolute_path(engine["polystrata_config_path"]),
+            "config.engine.polystrata_config_path",
+            "absolute path required",
+        )
+    require(
+        family == "polystrata" or engine["backend"] == "metal",
+        "config.engine.backend",
+        "non-polystrata local profiles require metal backend",
+    )
+    require(
+        "reasoning_effort" not in config["generation"] or family == "polystrata",
+        "config.generation.reasoning_effort",
+        "reasoning_effort is supported for polystrata only",
+    )
+    require(
+        engine["backend"] != "metal" or config["safety"]["require_temperature"] is True,
+        "config.safety.require_temperature",
+        "macOS Metal profiles require temperature telemetry",
     )
     require(
         ("binding_path" in config["endpoint"]) == ("binding_sha256" in config["endpoint"]),
@@ -38,13 +75,13 @@ def validate_config(config):
         "override reason must not be blank",
     )
     environment = engine["environment"]
-    validate_root_environment(engine["family"], environment, engine["working_directory"])
+    validate_root_environment(family, environment, engine["working_directory"])
     require(
-        environment.get("SGLANG_USE_MLX") == ("1" if engine["family"] == "sglang" else None),
+        environment.get("SGLANG_USE_MLX") == ("1" if family == "sglang" else None),
         "config.engine.environment",
         "SGLang MLX selection must be explicit and engine-specific",
     )
-    if engine["family"] in DIRECTORY_FAMILIES:
+    if family in DIRECTORY_FAMILIES:
         require(
             all(
                 environment.get(key) == "1"

@@ -18,7 +18,7 @@ def safety_policy(plan, config):
         policy is None
         or not _temperature_admitted(policy, required)
         or policy["interval_seconds"] > required["interval_seconds"]
-        or policy["require_temperature"] is not True
+        or (required["require_temperature"] and policy["require_temperature"] is not True)
         or policy["check_environment"] is not True
     ):
         raise PreflightError("local_engine_safety_policy_required")

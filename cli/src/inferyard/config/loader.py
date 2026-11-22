@@ -36,6 +36,7 @@ def path_fields(config):
             ("model", "assets_path"),
             ("engine", "installation_path"),
             ("engine", "working_directory"),
+            ("engine", "polystrata_config_path"),
             ("endpoint", "binding_path"),
             ("bundle", "path"),
             ("output", "root"),
