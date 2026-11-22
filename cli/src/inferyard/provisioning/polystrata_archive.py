@@ -227,15 +227,6 @@ def _extract_polystrata_zip(archive_path: Path, out: Path) -> NewDirectory:
     return output
 
 
-def _sha256_file(path: Path) -> tuple[int, str]:
-    digest, size = hashlib.sha256(), 0
-    with path.open("rb") as stream:
-        while chunk := stream.read(1024 * 1024):
-            digest.update(chunk)
-            size += len(chunk)
-    return size, digest.hexdigest()
-
-
 def _is_regular_non_symlink(path: Path) -> bool:
     try:
         info = path.lstat()
@@ -269,18 +260,35 @@ def _read_runtime_receipt(out: Path) -> dict | None:
     return data
 
 
-def _extract_and_write_receipt(
+def _copy_and_sha256(src: Path, dst: Path) -> tuple[int, str]:
+    digest, size = hashlib.sha256(), 0
+    with src.open("rb") as inp, dst.open("wb") as outp:
+        while chunk := inp.read(1024 * 1024):
+            outp.write(chunk)
+            digest.update(chunk)
+            size += len(chunk)
+        outp.flush()
+        os.fsync(outp.fileno())
+    return size, digest.hexdigest()
+
+
+def _extract_and_publish(
     archive_path: Path,
     out: Path,
     *,
     kind: str,
     source_id: str,
     archive_sha256: str,
+    staging_dir: Path,
 ) -> None:
+    """Extract into staging_dir/extracted, write receipt, then atomically publish to `out`."""
+    if os.path.lexists(out):
+        raise PreparationError("output_exists")
+    extracted = staging_dir / "extracted"
     output = (
-        _extract_polystrata_tar(archive_path, out)
+        _extract_polystrata_tar(archive_path, extracted)
         if kind == "tar_gz"
-        else _extract_polystrata_zip(archive_path, out)
+        else _extract_polystrata_zip(archive_path, extracted)
     )
     output.json(
         RUNTIME_RECEIPT_NAME,
@@ -291,6 +299,11 @@ def _extract_and_write_receipt(
         },
     )
     sync_directory(output.path)
+    try:
+        os.rename(output.path, out)
+    except OSError:
+        raise PreparationError("output_exists") from None
+    sync_directory(out.parent)
 
 
 def acquire_runtime_tree(
@@ -308,15 +321,64 @@ def acquire_runtime_tree(
 ) -> bool:
     """Ensure PolyStrata source files exist in `out`; return True if reused on resume."""
     source_id = _source_key(remote_source, local_archive)
-    local_size: int | None = None
-    local_digest: str | None = None
     if local_archive is not None:
-        local_size, local_digest = _sha256_file(local_archive)
-        if expected_sha256 is not None and local_digest != expected_sha256:
-            raise PreparationError(
-                "engine_checksum_mismatch",
-                details=failure_details("verify", "engine_checksum_mismatch"),
+        staging = Path(tempfile.mkdtemp(prefix=".polystrata-prepare-", dir=out.parent))
+        try:
+            staged_archive = staging / local_archive.name
+            local_size, local_digest = _copy_and_sha256(local_archive, staged_archive)
+            if expected_sha256 is not None and local_digest != expected_sha256:
+                raise PreparationError(
+                    "engine_checksum_mismatch",
+                    details=failure_details("verify", "engine_checksum_mismatch"),
+                )
+            if resume and os.path.lexists(out):
+                if linked(out) or not out.is_dir():
+                    raise PreparationError("output_exists")
+                receipt = _read_runtime_receipt(out)
+                if receipt is None or not (
+                    _is_regular_non_symlink(out / "setup.py")
+                    and _is_regular_non_symlink(out / "serve" / "server.py")
+                ):
+                    raise PreparationError("output_exists")
+                if receipt["archive_sha256"] != local_digest:
+                    raise PreparationError(
+                        "engine_checksum_mismatch",
+                        details=failure_details("verify", "engine_checksum_mismatch"),
+                    )
+                if receipt["source"] != source_id:
+                    raise PreparationError("output_exists")
+                emitter.update(
+                    "downloading_runtime",
+                    0,
+                    None,
+                    step=2,
+                    step_total=4,
+                    percent=100.0,
+                    detail="reusing extracted runtime",
+                    force=True,
+                )
+                return True
+            emitter.update(
+                "downloading_runtime",
+                local_size,
+                local_size,
+                step=2,
+                step_total=4,
+                percent=100.0,
+                detail="extracting local archive",
+                force=True,
             )
+            _extract_and_publish(
+                staged_archive,
+                out,
+                kind=kind,
+                source_id=source_id,
+                archive_sha256=local_digest,
+                staging_dir=staging,
+            )
+            return False
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
 
     if resume and os.path.lexists(out):
         if linked(out) or not out.is_dir():
@@ -329,11 +391,6 @@ def acquire_runtime_tree(
             ):
                 raise PreparationError("output_exists")
             if expected_sha256 is not None and receipt["archive_sha256"] != expected_sha256:
-                raise PreparationError(
-                    "engine_checksum_mismatch",
-                    details=failure_details("verify", "engine_checksum_mismatch"),
-                )
-            if local_digest is not None and receipt["archive_sha256"] != local_digest:
                 raise PreparationError(
                     "engine_checksum_mismatch",
                     details=failure_details("verify", "engine_checksum_mismatch"),
@@ -351,27 +408,6 @@ def acquire_runtime_tree(
                 force=True,
             )
             return True
-
-    if local_archive is not None:
-        assert local_size is not None and local_digest is not None
-        emitter.update(
-            "downloading_runtime",
-            local_size,
-            local_size,
-            step=2,
-            step_total=4,
-            percent=100.0,
-            detail="extracting local archive",
-            force=True,
-        )
-        _extract_and_write_receipt(
-            local_archive,
-            out,
-            kind=kind,
-            source_id=source_id,
-            archive_sha256=local_digest,
-        )
-        return False
 
     assert remote_source is not None
 
@@ -432,12 +468,13 @@ def acquire_runtime_tree(
                 detail="extracting PolyStrata runtime",
                 force=True,
             )
-            _extract_and_write_receipt(
+            _extract_and_publish(
                 archive_path,
                 out,
                 kind=kind,
                 source_id=source_id,
                 archive_sha256=archive_digest,
+                staging_dir=staging,
             )
         finally:
             shutil.rmtree(staging, ignore_errors=True)

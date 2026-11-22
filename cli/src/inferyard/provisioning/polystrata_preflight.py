@@ -32,7 +32,20 @@ _SUPPORTED_PLATFORMS = frozenset({("Darwin", "arm64"), ("Linux", "x64"), ("Windo
 _VALID_BACKENDS = frozenset({"auto", "cuda", "hip", "metal"})
 _VALID_MODEL_SOURCES = frozenset({"auto", "huggingface", "modelscope"})
 _LINUX_SOURCE_BUILD_FAMILIES = frozenset(
-    {"glm", "qwen36", "flint", "gemma4", "lfm25", "ornith", "tiel", "minicpmv", "clover", "ornith122"}
+    {
+        "glm",
+        "qwen36",
+        "flint",
+        "gemma4",
+        "lfm25",
+        "ornith",
+        "tiel",
+        "minicpmv",
+        "clover",
+        "ornith122",
+        "deepseek",
+        "kolibri",
+    }
 )
 _URL_ENV_VARS = (
     "STRATA_ROCM_INDEX",
@@ -146,27 +159,48 @@ def _disk_free_bytes(path: Path, disk_usage_fn=shutil.disk_usage) -> tuple[int |
     return free, dev
 
 
-def _existing_resume_model_bytes(data_dir: Path) -> int:
-    """Sum already-downloaded .part/.gguf bytes under data_dir/models for resume disk credit."""
+def _existing_resume_model_bytes(
+    data_dir: Path,
+    family: str | None,
+    model: str | None,
+    entry: dict | None,
+) -> int:
+    """Sum already-downloaded .part/.gguf bytes matching the target model only."""
+    if not family or not model:
+        return 0
     models_root = data_dir / "models"
     if not models_root.is_dir() or linked(models_root):
         return 0
+    expected_file = (
+        str((entry.get("gguf_sources") or {}).get("filename") or "").lower()
+        if entry is not None
+        else ""
+    )
+    fam_token = family.strip().lower()
+    size_token = model.strip().lower()
     total = 0
     stack = [models_root]
     while stack:
         current = stack.pop()
         try:
             with os.scandir(current) as entries:
-                for entry in entries:
-                    if entry.is_symlink():
+                for item in entries:
+                    if item.is_symlink():
                         continue
-                    if entry.is_dir(follow_symlinks=False):
-                        stack.append(Path(entry.path))
-                    elif entry.is_file(follow_symlinks=False):
-                        lower = entry.name.lower()
-                        if lower.endswith((".part", ".gguf")):
+                    if item.is_dir(follow_symlinks=False):
+                        stack.append(Path(item.path))
+                    elif item.is_file(follow_symlinks=False):
+                        lower = item.name.lower()
+                        if not lower.endswith((".part", ".gguf")):
+                            continue
+                        base_name = lower[:-5] if lower.endswith(".part") else lower
+                        rel_dir = str(current.relative_to(models_root)).lower()
+                        matched = (
+                            bool(expected_file) and base_name == expected_file
+                        ) or (fam_token in rel_dir and size_token in rel_dir)
+                        if matched:
                             try:
-                                total += entry.stat(follow_symlinks=False).st_size
+                                total += item.stat(follow_symlinks=False).st_size
                             except OSError:
                                 pass
         except OSError:
@@ -186,10 +220,14 @@ def _required_model_disk_bytes(
     matches = _matching_catalog_models(family, model)
     if not matches:
         base = _GGUF_WORK_DISK_BYTES if gguf_path is not None else _DEFAULT_MODEL_DISK_BYTES
-    else:
-        base = min(_entry_disk_bytes(entry, system=system, gguf_path=gguf_path) for entry in matches)
+        return base
+    best_entry = min(matches, key=lambda e: _entry_disk_bytes(e, system=system, gguf_path=gguf_path))
+    base = _entry_disk_bytes(best_entry, system=system, gguf_path=gguf_path)
     if resume and gguf_path is None:
-        already = _existing_resume_model_bytes(data_dir)
+        download_cap = int(best_entry.get("download_bytes") or 0)
+        already = min(
+            download_cap, _existing_resume_model_bytes(data_dir, family, model, best_entry)
+        )
         return max(_GGUF_WORK_DISK_BYTES, base - already)
     return base
 
@@ -230,7 +268,7 @@ def _default_linux_venv_check(python_executable: str) -> bool:
 
 def _default_linux_build_tools_check(*, need_nvcc: bool) -> list[str]:
     missing: list[str] = []
-    if shutil.which("g++") is None and shutil.which("c++") is None:
+    if shutil.which("g++") is None:
         missing.append("g++")
     if need_nvcc:
         has_nvcc = shutil.which("nvcc") is not None
@@ -289,6 +327,24 @@ def _resolve_macos_gguf_choice(
                         "fix_command": None,
                     }
                 ]
+            if not expected_name and gguf_path.is_file():
+                other_known = {
+                    str((item.get("gguf_sources") or {}).get("filename") or "").lower()
+                    for item in catalog_models
+                    if (item.get("gguf_sources") or {}).get("filename")
+                }
+                fname_lower = gguf_path.name.lower()
+                if fname_lower in other_known or model.strip().lower() not in fname_lower:
+                    return family, model, [
+                        {
+                            "code": "polystrata_gguf_unmatched_model",
+                            "message": (
+                                f"File '{gguf_path.name}' does not match {family}/{model} "
+                                "expected shards."
+                            ),
+                            "fix_command": None,
+                        }
+                    ]
         return family, model, []
 
     inferred: list[dict] = []
@@ -369,8 +425,42 @@ def _has_polystrata_data(folder: Path) -> bool:
     return False
 
 
+def _check_resume_saved_data_dir(out: Path, data_dir: Path) -> list[dict]:
+    """Block --resume if isolated PolyStrata settings.json points to a different existing data_dir."""
+    dest_norm = data_dir.resolve(strict=False)
+    for rel in (
+        Path(".inferyard-config") / "polystrata" / "settings.json",
+        Path(".inferyard-config") / "PolyStrata" / "settings.json",
+    ):
+        settings_file = out / rel
+        if not settings_file.is_file() or linked(settings_file):
+            continue
+        try:
+            saved = strict_json_loads(settings_file.read_text(encoding="utf-8"))
+        except (OSError, ValueError, UnicodeError):
+            continue
+        prev_raw = saved.get("data_dir") if isinstance(saved, dict) else None
+        if isinstance(prev_raw, str) and prev_raw.strip():
+            prev_path = Path(prev_raw).expanduser().resolve(strict=False)
+            if prev_path != dest_norm and prev_path.is_dir() and _has_polystrata_data(prev_path):
+                return [
+                    {
+                        "code": "polystrata_data_dir_mismatch",
+                        "message": (
+                            "Cannot change --data-dir when resuming an existing installation with "
+                            "model data in its previous data directory."
+                        ),
+                        "fix_command": None,
+                    }
+                ]
+    return []
+
+
 def _detect_sibling_migration_risk(out: Path, data_dir: Path) -> list[dict]:
     """Mirror upstream other_installs() scan and block before setup.py can move sibling data."""
+    saved_blockers = _check_resume_saved_data_dir(out, data_dir)
+    if saved_blockers:
+        return saved_blockers
     dest_ancestor = _existing_ancestor(data_dir)
     if dest_ancestor is None:
         return []

@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 
+from inferyard.config.local_engines.polystrata import inspect_polystrata_payload
 from inferyard.contracts.validation import strict_json_loads
 from inferyard.errors import PreflightError
 from inferyard.platforms.local_engines.detect import build_installation, write_installation
@@ -130,6 +131,9 @@ def _valid_model_configs(out: Path, data_dir: Path, *, system: str) -> list[str]
         if not exe_path.is_absolute():
             exe_path = base_dir / exe_path
         if not _is_usable_exe(exe_path, system):
+            continue
+        model_asset, _, _, _ = inspect_polystrata_payload(data, path, (out, path.parent, data_dir))
+        if model_asset is None:
             continue
         try:
             mtime = path.stat().st_mtime

@@ -140,11 +140,16 @@ if os.name != "nt":
 (engine_dir / "BUILD.json").write_text(
     json.dumps({"version": "v0.1.45-poly.10", "backend": "metal"}), encoding="utf-8"
 )
+data_dir = Path(argv[argv.index("--data-dir") + 1])
+model_dir = data_dir / "models" / "qwen36-UD-Q4_K_M"
+model_dir.mkdir(parents=True, exist_ok=True)
+model_file = model_dir / "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf"
+model_file.write_bytes(b"GGUF\\x03\\x00\\x00\\x00")
 (root / "strata-qwen36.json").write_text(
     json.dumps(
         {
             "exe": str(binary),
-            "args": ["--model", "model.gguf", "--max-context", "32768"],
+            "args": ["--model", str(model_file), "--max-context", "32768"],
             "cwd": str(root),
             "model_name": "qwen36-ud-q4-k-m",
             "port": 8080,
@@ -467,7 +472,15 @@ binary.write_text("#!/bin/sh\\n", encoding="utf-8")
 if os.name != "nt":
     os.chmod(binary, 0o755)
 (root / "strata-resumed.json").write_text(
-    json.dumps({"exe": str(binary), "args": [], "cwd": str(root), "model_name": "m", "port": 8080}),
+    json.dumps(
+        {
+            "exe": str(binary),
+            "args": ["--model", str(part)],
+            "cwd": str(root),
+            "model_name": "m",
+            "port": 8080,
+        }
+    ),
     encoding="utf-8",
 )
 """
@@ -1031,5 +1044,147 @@ if os.name != "nt":
     assert st == "setup_engine"
     parsed_events = [json.loads(line) for line in buf.getvalue().splitlines()]
     assert all(ev["stage"] == "setup_engine" for ev in parsed_events)
+
+
+def test_round2_regressions_resume_datadir_gguf_mismatch_broken_pipe_and_scoped_credit(tmp_path: Path):
+    # 1. Changing --data-dir on --resume when isolated settings.json points to previous data with models
+    prev_out = tmp_path / "run-a" / "out"
+    prev_data = tmp_path / "run-a" / "old-data"
+    (prev_data / "models").mkdir(parents=True)
+    (prev_data / "models" / "old.gguf").write_bytes(b"weights")
+    cfg_dir = prev_out / ".inferyard-config" / "polystrata"
+    cfg_dir.mkdir(parents=True)
+    (cfg_dir / "settings.json").write_text(json.dumps({"data_dir": str(prev_data)}), encoding="utf-8")
+    with pytest.raises(PreparationError) as exc_dd:
+        run_polystrata_preflight(
+            prev_out,
+            tmp_path / "run-a" / "new-data",
+            resume=True,
+            platform_info=("Darwin", "arm64"),
+            macos_version="15.4",
+            xcode_clt_check=lambda: True,
+            disk_usage_fn=_disk_usage(200 * GIB),
+        )
+    assert exc_dd.value.reason == "polystrata_data_dir_mismatch"
+
+    # 2. macOS explicit --family qwen --model Q2_0 with Qwen3.6 file must be rejected
+    gguf_dir = tmp_path / "ggufs"
+    gguf_dir.mkdir()
+    q36_file = gguf_dir / "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf"
+    q36_file.write_bytes(b"GGUF")
+    with pytest.raises(PreparationError) as exc_mm:
+        run_polystrata_preflight(
+            tmp_path / "run-b" / "out",
+            tmp_path / "run-b" / "data",
+            family="qwen",
+            model="Q2_0",
+            gguf_path=q36_file,
+            platform_info=("Darwin", "arm64"),
+            macos_version="15.4",
+            xcode_clt_check=lambda: True,
+            disk_usage_fn=_disk_usage(200 * GIB),
+        )
+    assert exc_mm.value.reason == "polystrata_gguf_unmatched_model"
+
+    # 3. Unrelated 100 GiB file in another model folder must NOT reduce Qwen3.6 disk budget
+    shared_data = tmp_path / "run-c" / "data"
+    other_dir = shared_data / "models" / "other-model"
+    other_dir.mkdir(parents=True)
+    with (other_dir / "huge-other.gguf").open("wb") as stream:
+        stream.truncate(100 * GIB)
+    with pytest.raises(PreparationError) as exc_disk:
+        run_polystrata_preflight(
+            tmp_path / "run-c" / "out",
+            shared_data,
+            family="qwen36",
+            model="UD-Q4_K_M",
+            resume=True,
+            platform_info=("Darwin", "arm64"),
+            macos_version="15.4",
+            xcode_clt_check=lambda: True,
+            disk_usage_fn=_disk_usage(3 * GIB),
+        )
+    assert exc_disk.value.reason == "polystrata_disk_insufficient"
+
+    # 4. Linux deepseek/kolibri source-build families require build tools in preflight
+    for fam in ("deepseek", "kolibri"):
+        with pytest.raises(PreparationError) as exc_fam:
+            run_polystrata_preflight(
+                tmp_path / f"run-{fam}" / "out",
+                tmp_path / f"run-{fam}" / "data",
+                family=fam,
+                backend="cuda",
+                platform_info=("Linux", "x64"),
+                linux_venv_check=lambda _py: True,
+                gpu_probe=lambda _sys: {
+                    "status": "available",
+                    "devices": [{"vendor": "nvidia", "driver_version": "580.65"}],
+                },
+                build_tools_check=lambda _nvcc: ["g++"],
+                disk_usage_fn=_disk_usage(200 * GIB),
+            )
+        assert exc_fam.value.reason == "polystrata_build_tools_missing"
+
+    # 5. BrokenPipeError from progress stream still cleans up the setup process group
+    if os.name != "nt":
+        pid_file = tmp_path / "broken_pipe_child.pid"
+        bp_setup = f"""\
+import os, sys, time
+from pathlib import Path
+Path({str(pid_file)!r}).write_text(str(os.getpid()), encoding="utf-8")
+print("=== Step 3: Python packages ===", flush=True)
+print("=== Step 4: building engine ===", flush=True)
+time.sleep(60)
+"""
+        bp_out = tmp_path / "run-bp" / "out"
+        bp_data = tmp_path / "run-bp" / "data"
+        bp_out.mkdir(parents=True)
+        bp_data.mkdir(parents=True)
+        (bp_out / "setup.py").write_text(bp_setup, encoding="utf-8")
+        venv_py = _make_fake_venv(bp_out)
+
+        class _BrokenStream:
+            def __init__(self):
+                self.count = 0
+
+            def write(self, _data):
+                self.count += 1
+                if self.count >= 2:
+                    raise BrokenPipeError("consumer closed")
+                return len(_data)
+
+            def flush(self):
+                pass
+
+        from inferyard.provisioning.polystrata_runner import run_setup_process
+
+        with pytest.raises(BrokenPipeError):
+            run_setup_process(
+                bp_out,
+                venv_py,
+                bp_data,
+                system="Darwin",
+                family=None,
+                model=None,
+                context=None,
+                backend=None,
+                model_source=None,
+                gguf_path=None,
+                proxy_origin=None,
+                timeout_seconds=30,
+                emitter=ProgressEmitter(enabled=True, stream=_BrokenStream(), min_interval_seconds=0.0),
+            )
+        child_pid = int(pid_file.read_text(encoding="utf-8").strip())
+        reap_deadline = time.monotonic() + 3.0
+        alive = True
+        while time.monotonic() < reap_deadline:
+            try:
+                os.kill(child_pid, 0)
+            except ProcessLookupError:
+                alive = False
+                break
+            time.sleep(0.05)
+        assert not alive, f"setup pid {child_pid} survived BrokenPipeError"
+
 
 

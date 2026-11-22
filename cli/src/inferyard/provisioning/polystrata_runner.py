@@ -423,6 +423,10 @@ def run_setup_process(
             details={**failure_details(current_stage, "cancelled"), "log_path": str(log_path)},
         ) from None
     finally:
+        if proc is not None and (
+            proc.poll() is None or (pgid is not None and _pgid_alive(pgid))
+        ):
+            terminate_process_group(proc, pgid)
         if install_sigterm and previous_sigterm is not None:
             signal.signal(signal.SIGTERM, previous_sigterm)
         if proc is not None and proc.stdout is not None:
