@@ -156,7 +156,8 @@ final class PreviewUITests: XCTestCase {
         click("重置场景")
         click("下载")
         // An empty downloads page omits the task card and shows the catalog.
-        expectText("关联已有引擎")
+        expectText("llama.cpp")
+        expectExists(app.buttons["关联已有引擎"], timeout: 5)
         XCTAssertFalse(text("下载任务").exists, "Empty downloads page omits the task card")
         XCTAssertFalse(taskCard("model").exists)
         XCTAssertFalse(taskCard("model-2").exists)
