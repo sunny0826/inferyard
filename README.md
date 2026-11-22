@@ -45,7 +45,13 @@ Results stay on your machine. Frozen rules score the quality tasks.
 
 ## Getting started
 
-- **Desktop** — Download Studio for your platform from [Releases](https://github.com/sunny0826/inferyard/releases/latest). Open Tasks, choose **准备环境** (Prepare environment), then select a model, engine and task sets. See the [first-launch guide](studio/README.md#pages-and-first-launch).
+- **Desktop** — Download Studio for your platform from [Releases](https://github.com/sunny0826/inferyard/releases/latest). On macOS, open the `.dmg`, drag `InferYard Studio.app` into `Applications`, and clear the quarantine attribute before first launch (the release build is unsigned):
+
+  ```sh
+  xattr -dr com.apple.quarantine /Applications/InferYard\ Studio.app
+  ```
+
+  Open Tasks, choose **准备环境** (Prepare environment), then select a model, engine and task sets. See the [first-launch guide](studio/README.md#pages-and-first-launch).
 - **Terminal** — Follow [installation and candidate preparation](cli/docs/installation.md). Start the service with the candidate's arguments, bind its PID and endpoint, run each bundle, and generate a combined report.
 
 ## Available task sets

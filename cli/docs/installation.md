@@ -59,6 +59,12 @@ Windows 另提供 `inferyard memory-check [--protect-pid PID] --out NEW_DIR` 只
 
 ### macOS arm64
 
+如从 GitHub Releases 下载 `.dmg` 安装 InferYard Studio，拖入 `Applications` 后首次启动前需清除隔离属性（当前安装包未签名）：
+
+```bash
+xattr -dr com.apple.quarantine /Applications/InferYard\ Studio.app
+```
+
 使用本地 Prism `llama-server`（同目录保留 `libggml-metal.dylib` 等动态库）：
 
 ```bash
