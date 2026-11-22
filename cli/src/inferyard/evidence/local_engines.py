@@ -58,8 +58,8 @@ def _bound(reads, config):
     ):
         raise EvidenceError("local_engine_capability_binding_mismatch")
     endpoints = capability["endpoints"]
-    models(endpoints["/v1/models"]["body"], config["engine"]["served_model"])
     family = config["engine"]["family"]
+    models(endpoints["/v1/models"]["body"], config["engine"]["served_model"], family=family)
     props = reads.observation("service_properties")
     if family == "lmstudio":
         queue(family, config["engine"]["served_model"], None, parse_json_body(endpoints["lms:ps"]["body"]))
@@ -68,11 +68,13 @@ def _bound(reads, config):
         if family == "lmstudio"
         else parse_json_body(endpoints[VERSION_PATHS[family]]["body"])
     )
+    health = parse_json_body(endpoints["/health"]["body"]) if family == "polystrata" else None
     verified = service(
         family,
         payload,
         config,
         sources=_sources(local["runtime"]) if family == "mlx-lm" else None,
+        health=health,
     )
     if not values_equal(props, {"service": verified, "observation": capability}):
         raise EvidenceError("local_engine_service_evidence_mismatch")
@@ -88,13 +90,20 @@ def _snapshot(data, config, binding):
         raise EvidenceError("native_evidence_cannot_prove_engine_drain")
     snapshot = data["signals"]["queue_snapshot"]
     family = config["engine"]["family"]
+    allowed_sources = (
+        ("lms:ps",)
+        if family == "lmstudio"
+        else ("/metrics/prometheus", "/status")
+        if family == "polystrata"
+        else ("/metrics",)
+    )
     if (
         set(snapshot) != _KEYS
         or snapshot["definition"] != "local-engine-queue.v1"
         or snapshot["family"] != family
         or snapshot["served_model"] != config["engine"]["served_model"]
         or not values_equal(snapshot["binding"], binding)
-        or snapshot["source"] != ("lms:ps" if family == "lmstudio" else "/metrics")
+        or snapshot["source"] not in allowed_sources
         or type(snapshot["client_uncertain"]) is not bool
     ):
         raise EvidenceError("local_engine_queue_binding_mismatch")
@@ -108,18 +117,38 @@ def _snapshot(data, config, binding):
         return False, True
     if snapshot["missing_reason"] is not None:
         raise EvidenceError("local_engine_queue_missing_reason")
-    parsed = queue(family, snapshot["served_model"], snapshot["raw_metrics"], observed)
-    if not values_equal(parsed, observed):
-        raise EvidenceError("local_engine_queue_reconstruction_mismatch")
-    if family != "lmstudio":
-        endpoint = data["signals"]["/metrics"]
+    source = snapshot["source"]
+    if family == "polystrata":
+        endpoint = data["signals"][source]
         if (
             endpoint["available"] is not True
             or endpoint["status_code"] != 200
             or endpoint["missing_reason"] is not None
-            or endpoint["body"] != snapshot["raw_metrics"]
         ):
             raise EvidenceError("local_engine_queue_source_mismatch")
+        if source == "/metrics/prometheus":
+            if endpoint["body"] != snapshot["raw_metrics"]:
+                raise EvidenceError("local_engine_queue_source_mismatch")
+            parsed = queue(family, snapshot["served_model"], snapshot["raw_metrics"], None)
+        else:
+            if snapshot["raw_metrics"] is not None:
+                raise EvidenceError("local_engine_queue_source_mismatch")
+            parsed = queue(
+                family, snapshot["served_model"], None, parse_json_body(endpoint["body"])
+            )
+    else:
+        parsed = queue(family, snapshot["served_model"], snapshot["raw_metrics"], observed)
+        if family != "lmstudio":
+            endpoint = data["signals"]["/metrics"]
+            if (
+                endpoint["available"] is not True
+                or endpoint["status_code"] != 200
+                or endpoint["missing_reason"] is not None
+                or endpoint["body"] != snapshot["raw_metrics"]
+            ):
+                raise EvidenceError("local_engine_queue_source_mismatch")
+    if not values_equal(parsed, observed):
+        raise EvidenceError("local_engine_queue_reconstruction_mismatch")
     uncertain = snapshot["client_uncertain"]
     return parsed["idle"] and not uncertain, uncertain
 

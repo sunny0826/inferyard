@@ -31,18 +31,30 @@ def mlx_sources():
     }
 
 
-def models(raw, served_model):
+def models(raw, served_model, *, family=None):
     listing = parse_json_body(raw).get("data")
-    if (
-        not isinstance(listing, list)
-        or len(listing) != 1
-        or not isinstance(listing[0], dict)
-        or listing[0].get("id") != served_model
-    ):
+    if not isinstance(listing, list) or not listing or any(not isinstance(item, dict) for item in listing):
+        raise FitTransportError("served_model_unverified")
+    if family == "polystrata":
+        primary = [item for item in listing if "alias_of" not in item]
+        aliases = [item for item in listing if "alias_of" in item]
+        if (
+            len(primary) != 1
+            or primary[0].get("id") != served_model
+            or any(
+                not isinstance(item.get("id"), str)
+                or not item["id"].strip()
+                or item.get("alias_of") != served_model
+                for item in aliases
+            )
+        ):
+            raise FitTransportError("served_model_unverified")
+        return
+    if len(listing) != 1 or listing[0].get("id") != served_model:
         raise FitTransportError("served_model_unverified")
 
 
-def _polystrata_context(payload, health):
+def _polystrata_context(payload):
     for candidate in (
         payload.get("max_context"),
         payload.get("cache_max_tokens"),
@@ -52,7 +64,6 @@ def _polystrata_context(payload, health):
         (payload.get("context") or {}).get("native")
         if isinstance(payload.get("context"), dict)
         else None,
-        health.get("max_context") if isinstance(health, dict) else None,
     ):
         if type(candidate) is int and candidate > 0:
             return candidate
@@ -81,7 +92,7 @@ def _polystrata_service(payload, config, health):
         raise FitTransportError("polystrata_model_not_loaded")
     if payload.get("model") != served:
         raise FitTransportError("served_model_unverified")
-    reported_ctx = _polystrata_context(payload, health)
+    reported_ctx = _polystrata_context(payload)
     if reported_ctx is None or reported_ctx != expected_ctx:
         raise FitTransportError("polystrata_context_mismatch")
     version = payload.get("engine")
@@ -96,6 +107,16 @@ def _polystrata_service(payload, config, health):
         "max_context": reported_ctx,
         "version_source": VERSION_PATHS["polystrata"],
     }
+
+
+def sanitize_polystrata_status(raw_body: str) -> dict:
+    """Keep only queue-admission fields from PolyStrata /status (never persist tail text)."""
+    payload = parse_json_body(raw_body)
+    sanitized = {}
+    for key in ("busy", "queued", "loaded"):
+        if key in payload:
+            sanitized[key] = payload[key]
+    return sanitized
 
 
 def service(family, payload, config, *, sources=None, health=None):
@@ -156,7 +177,9 @@ def queue(family, served_model, raw_metrics, observation=None):
             raise FitTransportError("polystrata_status_invalid")
         if "loaded" in observation and observation["loaded"] is not True:
             raise FitTransportError("polystrata_model_not_loaded")
-        queued = observation.get("queued", 0)
+        if "queued" not in observation:
+            raise FitTransportError("polystrata_status_invalid")
+        queued = observation["queued"]
         if type(queued) is not int or queued < 0:
             raise FitTransportError("polystrata_status_invalid")
         busy = observation["busy"]
