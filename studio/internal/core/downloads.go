@@ -14,11 +14,13 @@ import (
 )
 
 type downloadEntry struct {
-	Task     DownloadTask
-	cancel   context.CancelFunc
-	tokenEnv string
-	resume   bool
-	retryOf  string
+	Task       DownloadTask
+	cancel     context.CancelFunc
+	tokenEnv   string
+	resume     bool
+	retryOf    string
+	polystrata *PolystrataSetupRequest
+	dataDir    string
 }
 
 var outputName = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)

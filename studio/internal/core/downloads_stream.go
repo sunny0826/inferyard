@@ -16,6 +16,10 @@ type transferProgressLine struct {
 	DownloadedBytes *int64   `json:"downloaded_bytes"`
 	TotalBytes      *int64   `json:"total_bytes"`
 	BytesPerSecond  *float64 `json:"bytes_per_second"`
+	Step            *int     `json:"step,omitempty"`
+	StepTotal       *int     `json:"step_total,omitempty"`
+	Percent         *float64 `json:"percent,omitempty"`
+	Detail          *string  `json:"detail,omitempty"`
 }
 
 func parseTransferProgress(line string) (transferProgressLine, bool) {
@@ -39,6 +43,21 @@ func parseTransferProgress(line string) (transferProgressLine, bool) {
 	if ev.BytesPerSecond != nil && (math.IsNaN(*ev.BytesPerSecond) || math.IsInf(*ev.BytesPerSecond, 0) || *ev.BytesPerSecond < 0) {
 		ev.BytesPerSecond = nil
 	}
+	if ev.Step != nil && *ev.Step < 0 {
+		ev.Step = nil
+	}
+	if ev.StepTotal != nil && *ev.StepTotal <= 0 {
+		ev.StepTotal = nil
+	}
+	if ev.Percent != nil {
+		if math.IsNaN(*ev.Percent) || math.IsInf(*ev.Percent, 0) {
+			ev.Percent = nil
+		} else if *ev.Percent < 0 {
+			ev.Percent = ptr(0.0)
+		} else if *ev.Percent > 100 {
+			ev.Percent = ptr(100.0)
+		}
+	}
 	return ev, true
 }
 
@@ -55,6 +74,22 @@ func (s *Service) newStderrProgressHandler(d *downloadEntry, streamSeen *atomic.
 
 func (s *Service) applyTransferProgress(d *downloadEntry, ev transferProgressLine) {
 	s.mu.Lock()
+	stageChanged := ev.Stage != "" && ev.Stage != d.Task.Stage
+	stepChanged := ev.Step != nil && (d.Task.Step == nil || *ev.Step != *d.Task.Step)
+	if d.Task.Kind == "polystrata" && (stageChanged || stepChanged) {
+		if ev.Percent == nil {
+			d.Task.Percent = nil
+		}
+		if ev.TotalBytes == nil {
+			d.Task.TotalBytes = nil
+		}
+		if ev.Detail == nil {
+			d.Task.Detail = nil
+		}
+		if ev.BytesPerSecond == nil {
+			d.Task.BytesPerSecond = nil
+		}
+	}
 	if ev.Stage != "" {
 		d.Task.Stage = ev.Stage
 	}
@@ -66,10 +101,25 @@ func (s *Service) applyTransferProgress(d *downloadEntry, ev transferProgressLin
 	}
 	if ev.BytesPerSecond != nil {
 		d.Task.BytesPerSecond = ptr(*ev.BytesPerSecond)
-	} else if ev.Stage != "" && ev.Stage != "downloading" {
+	} else if ev.Stage != "" && ev.Stage != "downloading" && ev.Stage != "downloading_runtime" && ev.Stage != "downloading_model" {
 		d.Task.BytesPerSecond = nil
 	}
-	if ev.DownloadedBytes != nil || ev.TotalBytes != nil || ev.BytesPerSecond != nil {
+	if ev.Step != nil {
+		d.Task.Step = ptr(*ev.Step)
+	}
+	if ev.StepTotal != nil {
+		d.Task.StepTotal = ptr(*ev.StepTotal)
+	}
+	if ev.Percent != nil {
+		d.Task.Percent = ptr(*ev.Percent)
+	}
+	if ev.Detail != nil {
+		detail := strings.TrimSpace(*ev.Detail)
+		if detail != "" {
+			d.Task.Detail = ptr(detail)
+		}
+	}
+	if ev.DownloadedBytes != nil || ev.TotalBytes != nil || ev.BytesPerSecond != nil || ev.Percent != nil {
 		d.Task.ProgressReason = nil
 	}
 	if d.Task.FileName == nil {
@@ -84,6 +134,18 @@ func (s *Service) applyTransferProgress(d *downloadEntry, ev transferProgressLin
 		"total_bytes":      d.Task.TotalBytes,
 		"bytes_per_second": d.Task.BytesPerSecond,
 		"utc":              now(),
+	}
+	if d.Task.Step != nil {
+		payload["step"] = *d.Task.Step
+	}
+	if d.Task.StepTotal != nil {
+		payload["step_total"] = *d.Task.StepTotal
+	}
+	if d.Task.Percent != nil {
+		payload["percent"] = *d.Task.Percent
+	}
+	if d.Task.Detail != nil {
+		payload["detail"] = *d.Task.Detail
 	}
 	s.Bus.Publish("download.progress", payload)
 	s.mu.Unlock()
@@ -146,7 +208,7 @@ func inspectResumeDirectory(dir string) (bool, int64) {
 }
 
 func (s *Service) downloadRoot(kind string, u UserSettings) (string, *ApiError) {
-	if kind == "engine" {
+	if kind == "engine" || kind == "polystrata" {
 		var root string
 		var err error
 		if s.paths != nil {
@@ -199,7 +261,22 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	kind := orig.Task.Kind
 	sourceURL := orig.Task.SourceUrl
 	requestedSourceURL := orig.Task.RequestedSourceUrl
-	if existing, found := s.activeRetryOrDownloadLocked(taskID, kind, sourceURL); found {
+	var polystrataCopy *PolystrataSetupRequest
+	if orig.polystrata != nil {
+		copied := *orig.polystrata
+		polystrataCopy = &copied
+	}
+	if kind == "polystrata" {
+		if active, found := s.activePolystrataSetupLocked(); found {
+			if active.retryOf == taskID || samePolystrataRequest(active.polystrata, polystrataCopy) {
+				cloned := clone(active.Task)
+				s.mu.Unlock()
+				return cloned, nil
+			}
+			s.mu.Unlock()
+			return DownloadTask{}, Conflict("polystrata_setup_active")
+		}
+	} else if existing, found := s.activeRetryOrDownloadLocked(taskID, kind, sourceURL); found {
 		s.mu.Unlock()
 		return existing, nil
 	}
@@ -208,6 +285,7 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	prevOutDir := orig.Task.OutDir
 	displayName := orig.Task.DisplayName
 	totalBytes := orig.Task.TotalBytes
+	prevDataDir := orig.dataDir
 	s.mu.Unlock()
 
 	u := downloadNameDefaults(s.userSettings())
@@ -225,7 +303,14 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	if s.closing {
 		return DownloadTask{}, Err("service_closing")
 	}
-	if existing, found := s.activeRetryOrDownloadLocked(taskID, kind, sourceURL); found {
+	if kind == "polystrata" {
+		if active, found := s.activePolystrataSetupLocked(); found {
+			if active.retryOf == taskID || samePolystrataRequest(active.polystrata, polystrataCopy) {
+				return clone(active.Task), nil
+			}
+			return DownloadTask{}, Conflict("polystrata_setup_active")
+		}
+	} else if existing, found := s.activeRetryOrDownloadLocked(taskID, kind, sourceURL); found {
 		return existing, nil
 	}
 	resolvedPrev, resolveErr := Resolve(root, prevOutDir)
@@ -238,7 +323,12 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	}
 	canReuse, partBytes := false, int64(0)
 	if resolveErr == nil && !inUse {
-		canReuse, partBytes = inspectResumeDirectory(resolvedPrev)
+		if kind == "polystrata" {
+			info, statErr := os.Lstat(resolvedPrev)
+			canReuse = os.IsNotExist(statErr) || (statErr == nil && info.Mode()&os.ModeSymlink == 0 && info.IsDir())
+		} else {
+			canReuse, partBytes = inspectResumeDirectory(resolvedPrev)
+		}
 	}
 	var outName, outDir string
 	var resume bool
@@ -249,7 +339,10 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 		if kind == "engine" {
 			configured = u.EngineDownloadName
 		}
-		base := resolveAutoDownloadName(kind, configured, sourceURL)
+		base := "polystrata"
+		if kind != "polystrata" {
+			base = resolveAutoDownloadName(kind, configured, sourceURL)
+		}
 		var failure *ApiError
 		outName, outDir, failure = s.downloadOutputLocked(root, "", base)
 		if failure != nil {
@@ -257,7 +350,11 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 		}
 	}
 	if displayName == "" {
-		displayName = ResolveDownloadDisplayName(kind, sourceURL)
+		if kind == "polystrata" && polystrataCopy != nil {
+			displayName = polystrataDisplayName(*polystrataCopy)
+		} else {
+			displayName = ResolveDownloadDisplayName(kind, sourceURL)
+		}
 	}
 	if totalBytes == nil {
 		totalBytes = catalogTotalBytes(sourceURL)
@@ -273,20 +370,34 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 		SourceUrl:          sourceURL,
 		RequestedSourceUrl: requestedSourceURL,
 		OutName:            outName,
-		OutDir:          outDir,
-		DownloadedBytes: partBytes,
-		TotalBytes:      totalBytes,
-		StartedAt:       now(),
+		OutDir:             outDir,
+		DownloadedBytes:    partBytes,
+		TotalBytes:         totalBytes,
+		StartedAt:          now(),
 	}
 	if kind == "engine" && partBytes == 0 {
 		task.ProgressReason = ptr("engine_transfer_progress_unavailable")
 	}
-	entry := &downloadEntry{Task: task, cancel: cancel, tokenEnv: tokenEnv, resume: resume, retryOf: taskID}
+	if kind == "polystrata" {
+		task.Stage = "preflight"
+	}
+	entry := &downloadEntry{
+		Task:       task,
+		cancel:     cancel,
+		tokenEnv:   tokenEnv,
+		resume:     resume,
+		retryOf:    taskID,
+		polystrata: polystrataCopy,
+		dataDir:    prevDataDir,
+	}
 	s.downloads = append(s.downloads, entry)
-	s.Bus.Publish("download.state", map[string]any{"task": entry.Task})
-	if kind == "engine" {
+	s.Bus.Publish("download.state", map[string]any{"task": clone(entry.Task)})
+	switch kind {
+	case "polystrata":
+		go s.runPolystrataSetup(ctx, *p.Path, entry)
+	case "engine":
 		go s.downloadEngine(ctx, *p.Path, entry)
-	} else {
+	default:
 		go s.download(ctx, *p.Path, entry)
 	}
 	return clone(entry.Task), nil

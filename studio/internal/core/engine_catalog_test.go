@@ -13,7 +13,7 @@ import (
 func TestDefaultEngineCatalogIntegrity(t *testing.T) {
 	reg := DefaultEngineCatalog()
 	families := reg.Families()
-	wantFamilies := []string{"llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio"}
+	wantFamilies := []string{"polystrata", "llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio"}
 	if len(families) != len(wantFamilies) {
 		t.Fatalf("family count = %d, want %d", len(families), len(wantFamilies))
 	}

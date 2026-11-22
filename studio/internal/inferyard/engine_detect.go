@@ -19,6 +19,9 @@ type DetectedEngine struct {
 	WorkingDirectory string   `json:"working_directory"`
 	RuntimeRoots     []string `json:"runtime_roots"`
 	ModelsRoot       *string  `json:"models_root"`
+	DataDir          *string  `json:"data_dir,omitempty"`
+	Version          *string  `json:"version,omitempty"`
+	ModelConfigs     []string `json:"model_configs,omitempty"`
 	Label            string   `json:"label"`
 }
 
@@ -112,8 +115,36 @@ func ParseEngineDetect(raw []byte) (EngineDetectResult, error) {
 
 func parseDetectedEngine(raw json.RawMessage) (DetectedEngine, error) {
 	invalid := errors.New("invalid detected engine")
-	if !discoveryFields(raw, "family", "executable", "working_directory", "runtime_roots", "models_root", "label") {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(raw, &fields) != nil || fields == nil {
 		return DetectedEngine{}, invalid
+	}
+	required := []string{"family", "executable", "working_directory", "runtime_roots", "models_root", "label"}
+	optional := []string{"data_dir", "version", "model_configs"}
+	for _, key := range required {
+		if _, ok := fields[key]; !ok {
+			return DetectedEngine{}, invalid
+		}
+	}
+	for key := range fields {
+		found := false
+		for _, allowed := range required {
+			if key == allowed {
+				found = true
+				break
+			}
+		}
+		if !found {
+			for _, allowed := range optional {
+				if key == allowed {
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			return DetectedEngine{}, invalid
+		}
 	}
 	var c DetectedEngine
 	if json.Unmarshal(raw, &c) != nil {
@@ -133,6 +164,26 @@ func parseDetectedEngine(raw json.RawMessage) (DetectedEngine, error) {
 	if c.ModelsRoot != nil {
 		if c.Family != "lmstudio" || !candidatePath(*c.ModelsRoot) {
 			return DetectedEngine{}, invalid
+		}
+	}
+	if c.DataDir != nil {
+		if c.Family != PolystrataFamily || !candidatePath(*c.DataDir) {
+			return DetectedEngine{}, invalid
+		}
+	}
+	if c.Version != nil {
+		if c.Family != PolystrataFamily || !candidateText(*c.Version) {
+			return DetectedEngine{}, invalid
+		}
+	}
+	if _, hasConfigs := fields["model_configs"]; hasConfigs {
+		if c.Family != PolystrataFamily {
+			return DetectedEngine{}, invalid
+		}
+		for _, cfg := range c.ModelConfigs {
+			if !candidatePath(cfg) {
+				return DetectedEngine{}, invalid
+			}
 		}
 	}
 	return c, nil

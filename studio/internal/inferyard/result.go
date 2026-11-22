@@ -34,11 +34,12 @@ func Parse(stdout []byte) (CommandResult, error) {
 }
 
 type DevicePreflight struct {
-	Kind                 string          `json:"kind"`
-	Hardware             json.RawMessage `json:"hardware"`
-	Models               json.RawMessage `json:"models"`
-	Recommendation       json.RawMessage `json:"recommendation"`
-	PlatformCapabilities json.RawMessage `json:"platform_capabilities"`
+	Kind                  string          `json:"kind"`
+	Hardware              json.RawMessage `json:"hardware"`
+	Models                json.RawMessage `json:"models"`
+	Recommendation        json.RawMessage `json:"recommendation"`
+	StarterRecommendation json.RawMessage `json:"starter_recommendation,omitempty"`
+	PlatformCapabilities  json.RawMessage `json:"platform_capabilities"`
 }
 
 func ParseDeviceCheck(result CommandResult) (DevicePreflight, error) {
@@ -60,6 +61,11 @@ func ParseDeviceCheck(result CommandResult) (DevicePreflight, error) {
 		}
 		if len(trimmed) == 0 || trimmed[0] != expected {
 			return device, fmt.Errorf("invalid device field %s", name)
+		}
+	}
+	if trimmed := bytes.TrimSpace(device.StarterRecommendation); len(trimmed) > 0 && !bytes.Equal(trimmed, []byte("null")) {
+		if trimmed[0] != '{' {
+			return device, errors.New("invalid device field starter_recommendation")
 		}
 	}
 	return device, nil

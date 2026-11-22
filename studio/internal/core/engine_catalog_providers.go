@@ -1,5 +1,59 @@
 package core
 
+func polystrataProvider() EngineCatalogProvider {
+	releaseURL := "https://github.com/simplexai-labs/PolyStrata/releases/tag/v0.1.45-poly.10"
+	sourceArtifact := artifactFromCatalog("engine-polystrata", "source", "PolyStrata v0.1.45-poly.10", "v0.1.45-poly.10")
+	return StaticEngineProvider{
+		Family: EngineFamilyCatalog{
+			ID:             "polystrata",
+			Name:           "PolyStrata",
+			ModelFormat:    "gguf",
+			Summary:        "高性能跨平台 MoE 推理引擎，支持 Apple Silicon (Metal)、NVIDIA (CUDA) 与 AMD (HIP)。",
+			HomepageURL:    "https://github.com/simplexai-labs/PolyStrata",
+			ReleasesURL:    "https://github.com/simplexai-labs/PolyStrata/releases",
+			SupportsWizard: true,
+			ExternalApp:    false,
+			Releases: []EngineRelease{
+				{
+					ID:           "polystrata-v0.1.45-poly.10",
+					Version:      "v0.1.45-poly.10",
+					Revision:     "v0.1.45-poly.10",
+					Distribution: "simplexai-labs",
+					Channel:      ReleaseStable,
+					Recommended:  true,
+					ReleaseURL:   releaseURL,
+					Builds: []EnginePlatformBuild{
+						{
+							ID:          "engine-polystrata-macos-arm64",
+							Platform:    "darwin/arm64",
+							Variant:     "Apple Silicon (Metal)",
+							AcquireMode: EngineAcquireManagedSetup,
+							Artifacts:   []EngineArtifact{sourceArtifact},
+							Note:        "需 macOS 15+ 与 Xcode Command Line Tools，应用内自动配置并注册。",
+						},
+						{
+							ID:          "engine-polystrata-win-x64",
+							Platform:    "windows/amd64",
+							Variant:     "NVIDIA CUDA / AMD HIP",
+							AcquireMode: EngineAcquireManagedSetup,
+							Artifacts:   []EngineArtifact{sourceArtifact},
+							Note:        "支持 NVIDIA (驱动 580+) 与 AMD Radeon (HIP)，应用内自动配置并注册。",
+						},
+						{
+							ID:          "engine-polystrata-linux-x64",
+							Platform:    "linux/amd64",
+							Variant:     "NVIDIA CUDA / AMD HIP",
+							AcquireMode: EngineAcquireManagedSetup,
+							Artifacts:   []EngineArtifact{sourceArtifact},
+							Note:        "需 python3-venv 与对应 GPU 驱动/工具链，应用内自动配置并注册。",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func mlxLMProvider() EngineCatalogProvider {
 	return StaticEngineProvider{
 		Family: EngineFamilyCatalog{

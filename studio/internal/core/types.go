@@ -231,25 +231,32 @@ type DownloadResult struct {
 }
 
 type DownloadTask struct {
-	Kind            string          `json:"kind"`
-	DisplayName     string          `json:"display_name,omitempty"`
-	ProgressReason  *string         `json:"progress_reason"`
-	EnginePath      *string         `json:"engine_path"`
+	Kind               string          `json:"kind"`
+	DisplayName        string          `json:"display_name,omitempty"`
+	ProgressReason     *string         `json:"progress_reason"`
+	EnginePath         *string         `json:"engine_path"`
 	TaskId             string          `json:"task_id"`
 	State              string          `json:"state"`
 	SourceUrl          string          `json:"source_url"`
 	RequestedSourceUrl string          `json:"requested_source_url,omitempty"`
 	OutName            string          `json:"out_name"`
-	OutDir          string          `json:"out_dir"`
-	FileName        *string         `json:"file_name"`
-	DownloadedBytes int64           `json:"downloaded_bytes"`
-	TotalBytes      *int64          `json:"total_bytes"`
-	BytesPerSecond  *float64        `json:"bytes_per_second"`
-	Stage           string          `json:"stage,omitempty"`
-	StartedAt       string          `json:"started_at"`
-	FinishedAt      *string         `json:"finished_at"`
-	Result          *DownloadResult `json:"result"`
-	Error           *ApiError       `json:"error"`
+	OutDir             string          `json:"out_dir"`
+	FileName           *string         `json:"file_name"`
+	DownloadedBytes    int64           `json:"downloaded_bytes"`
+	TotalBytes         *int64          `json:"total_bytes"`
+	BytesPerSecond     *float64        `json:"bytes_per_second"`
+	Stage              string          `json:"stage,omitempty"`
+	Step               *int            `json:"step,omitempty"`
+	StepTotal          *int            `json:"step_total,omitempty"`
+	Percent            *float64        `json:"percent,omitempty"`
+	Detail             *string         `json:"detail,omitempty"`
+	LogPath            *string         `json:"log_path,omitempty"`
+	InstallationPath   *string         `json:"installation_path,omitempty"`
+	ModelConfigPath    *string         `json:"model_config_path,omitempty"`
+	StartedAt          string          `json:"started_at"`
+	FinishedAt         *string         `json:"finished_at"`
+	Result             *DownloadResult `json:"result"`
+	Error              *ApiError       `json:"error"`
 }
 
 type CreateDownloadRequest struct {
@@ -261,7 +268,7 @@ func (t DownloadTask) MarshalJSON() ([]byte, error) {
 	type task DownloadTask
 	var downloaded *int64
 	var rate *float64
-	hasProgress := t.Kind != "engine" || t.DownloadedBytes > 0 || t.BytesPerSecond != nil || (t.TotalBytes != nil && t.ProgressReason == nil)
+	hasProgress := t.Kind != "engine" || t.DownloadedBytes > 0 || t.BytesPerSecond != nil || (t.TotalBytes != nil && t.ProgressReason == nil) || t.Percent != nil
 	if hasProgress {
 		downloaded = &t.DownloadedBytes
 		rate = t.BytesPerSecond

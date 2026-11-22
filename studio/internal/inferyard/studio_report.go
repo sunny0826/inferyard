@@ -121,7 +121,7 @@ type StudioRequest struct {
 
 var (
 	studioIdentifier  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$`)
-	studioBackends    = []string{"cpu", "cuda", "metal"}
+	studioBackends    = []string{"cpu", "cuda", "hip", "metal"}
 	studioCategoryIDs = []string{"instruction", "extraction", "qa", "math", "classification", "structured"}
 	studioStates      = []string{"completed", "failed", "cancelled", "invalid", "not_executed"}
 	studioQualities   = []string{"pass", "fail", "unscorable", "not_applicable", "not_scored"}

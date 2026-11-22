@@ -10,6 +10,7 @@ type EngineAcquireMode string
 
 const (
 	EngineAcquireDirect        EngineAcquireMode = "direct_download"
+	EngineAcquireManagedSetup  EngineAcquireMode = "managed_setup"
 	EngineAcquireManualArchive EngineAcquireMode = "manual_archive"
 	EngineAcquireExternalPage  EngineAcquireMode = "external_page"
 )
@@ -306,6 +307,8 @@ func AcquireModeLabel(mode EngineAcquireMode) string {
 	switch mode {
 	case EngineAcquireDirect:
 		return "应用内下载"
+	case EngineAcquireManagedSetup:
+		return "应用内引导安装"
 	case EngineAcquireManualArchive:
 		return "手动安装"
 	case EngineAcquireExternalPage:

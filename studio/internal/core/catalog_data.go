@@ -114,6 +114,12 @@ var catalogEntries = []CatalogEntry{
 		Reason:   "LM Studio 需自行安装并加载模型，再在设置页注册 installation.json 连接已有服务。",
 	},
 	{
+		ID: "engine-polystrata", Kind: CatalogEngine, Title: "PolyStrata v0.1.45-poly.10",
+		Family: "polystrata", URL: polystrataDefaultSourceURL,
+		Revision: "v0.1.45-poly.10", Platform: "any",
+		Reason: "通过 inferyard engine prepare-polystrata 托管安装。",
+	},
+	{
 		ID: "model-qwen3-0.6b-mlx", Kind: CatalogModel, Format: "directory", Title: "Qwen3-0.6B-4bit（目录模型）",
 		Family: "mlx-lm", URL: "https://huggingface.co/mlx-community/Qwen3-0.6B-4bit/tree/73e3e38d981303bc594367cd910ea6eb48349da8",
 		Revision: "73e3e38d981303bc594367cd910ea6eb48349da8", Platform: "darwin/arm64",

@@ -80,8 +80,9 @@ type CandidateConditions struct {
 }
 
 type CandidateGeneration struct {
-	MaxTokens   int64   `json:"max_tokens"`
-	Temperature float64 `json:"temperature"`
+	MaxTokens       int64   `json:"max_tokens"`
+	Temperature     float64 `json:"temperature"`
+	ReasoningEffort string  `json:"reasoning_effort,omitempty"`
 }
 
 var candidateDigest = regexp.MustCompile(`^[a-f0-9]{64}$`)
@@ -91,7 +92,7 @@ var candidateWindowsPath = regexp.MustCompile(`^(?:[A-Za-z]:[\\/]|\\\\[^\\/]+[\\
 
 func candidateHash(value string) bool { return candidateDigest.MatchString(value) }
 func localFamily(value string) bool {
-	return slices.Contains([]string{"llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio"}, value)
+	return slices.Contains([]string{"llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio", "polystrata"}, value)
 }
 func candidateText(value string) bool {
 	return strings.TrimSpace(value) != "" && !strings.ContainsAny(value, "\x00\r\n")
@@ -162,7 +163,7 @@ func ParseCandidateDescription(raw []byte, exitCode int) (CandidateDescription, 
 	if local {
 		if !localFamily(result.Family) || !bytes.Equal(fields["effective_parameters"], []byte("null")) || !bytes.Equal(fields["effective_template"], []byte("null")) ||
 			!bytes.Equal(fields["effective_unknown_reason"], []byte(`"requires_live_engine_observation"`)) ||
-			(!bytes.Equal(fields["bound"], []byte("true")) && !bytes.Equal(fields["bound"], []byte("false"))) || !validCandidateSafety(fields["safety"]) {
+			(!bytes.Equal(fields["bound"], []byte("true")) && !bytes.Equal(fields["bound"], []byte("false"))) || !validCandidateSafety(fields["safety"], result.Family) {
 			return CandidateDescription{}, invalid
 		}
 	} else if !slices.Contains([]string{ContextSpeedAdapter, "llama_cpp_b11146_v1", "kvmem", "ninfer"}, result.Adapter) {
@@ -170,7 +171,7 @@ func ParseCandidateDescription(raw []byte, exitCode int) (CandidateDescription, 
 	}
 	if !validCandidateLaunch(fields["launch"], result.Launch, local, result.Family) ||
 		!validCandidateAssets(fields["assets"], result.Assets, local) || !validCandidateEndpoint(fields["endpoint"], result.Endpoint, local, result.Bound) ||
-		!validCandidateParameters(fields, local) {
+		!validCandidateParameters(fields, local, result.Family) {
 		return CandidateDescription{}, invalid
 	}
 	if !local && result.Launch.Argv[0] != result.Assets.Engine.Path {
@@ -298,7 +299,7 @@ func validCandidateEndpoint(raw []byte, endpoint CandidateEndpoint, local, bound
 	return path == hash && (!local || bound == path) && (!path || (candidatePath(endpoint.BindingPath) && candidateHash(endpoint.BindingSHA256)))
 }
 
-func validCandidateParameters(fields map[string]json.RawMessage, local bool) bool {
+func validCandidateParameters(fields map[string]json.RawMessage, local bool, family string) bool {
 	var conditions, generation map[string]json.RawMessage
 	if json.Unmarshal(fields["conditions"], &conditions) != nil || conditions == nil || json.Unmarshal(fields["generation"], &generation) != nil || generation == nil {
 		return false
@@ -310,8 +311,28 @@ func validCandidateParameters(fields map[string]json.RawMessage, local bool) boo
 		json.Unmarshal(generation["temperature"], &temperature) != nil || temperature == nil || *temperature < 0 {
 		return false
 	}
-	if local && (!discoveryFields(fields["generation"], "temperature", "max_tokens") || *temperature != 0 || *maxTokens > 8192 || *contextSize > 32768) {
-		return false
+	if local {
+		maxCtx := int64(32768)
+		if family == PolystrataFamily {
+			maxCtx = 524288
+		}
+		if *temperature != 0 || *maxTokens > 8192 || *contextSize > maxCtx {
+			return false
+		}
+		if family == PolystrataFamily {
+			genFields, ok := candidateObject(fields["generation"], []string{"temperature", "max_tokens"}, []string{"reasoning_effort"})
+			if !ok {
+				return false
+			}
+			if rawEffort, has := genFields["reasoning_effort"]; has {
+				var effort string
+				if json.Unmarshal(rawEffort, &effort) != nil || !slices.Contains([]string{"none", "low", "medium", "high"}, effort) {
+					return false
+				}
+			}
+		} else if !discoveryFields(fields["generation"], "temperature", "max_tokens") {
+			return false
+		}
 	}
 	return true
 }
@@ -338,15 +359,34 @@ func validCandidateEnvironment(environment map[string]string) bool {
 	return true
 }
 
-func validCandidateSafety(raw []byte) bool {
-	if !discoveryFields(raw, "interval_seconds", "max_temperature_celsius", "require_temperature", "check_environment") {
+func validCandidateSafety(raw []byte, family string) bool {
+	fields, ok := candidateObject(
+		raw,
+		[]string{"interval_seconds", "max_temperature_celsius", "require_temperature", "check_environment"},
+		[]string{"temperature_stop_override_reason"},
+	)
+	if !ok {
 		return false
 	}
 	var value struct {
-		Interval    *float64 `json:"interval_seconds"`
-		Maximum     *float64 `json:"max_temperature_celsius"`
-		Temperature *bool    `json:"require_temperature"`
-		Environment *bool    `json:"check_environment"`
+		Interval       *float64 `json:"interval_seconds"`
+		Maximum        *float64 `json:"max_temperature_celsius"`
+		Temperature    *bool    `json:"require_temperature"`
+		Environment    *bool    `json:"check_environment"`
+		OverrideReason *string  `json:"temperature_stop_override_reason"`
 	}
-	return json.Unmarshal(raw, &value) == nil && value.Interval != nil && *value.Interval >= 0.1 && *value.Interval <= 5 && value.Maximum != nil && *value.Maximum >= 1 && *value.Maximum <= 85 && value.Temperature != nil && *value.Temperature && value.Environment != nil && *value.Environment
+	if json.Unmarshal(raw, &value) != nil || value.Interval == nil || *value.Interval < 0.1 || *value.Interval > 5 ||
+		value.Maximum == nil || *value.Maximum < 1 || *value.Maximum > 85 ||
+		value.Temperature == nil || value.Environment == nil || !*value.Environment {
+		return false
+	}
+	if _, hasOverride := fields["temperature_stop_override_reason"]; hasOverride {
+		if value.OverrideReason == nil || strings.TrimSpace(*value.OverrideReason) == "" || strings.ContainsRune(*value.OverrideReason, 0) {
+			return false
+		}
+	}
+	if family != PolystrataFamily && !*value.Temperature {
+		return false
+	}
+	return true
 }

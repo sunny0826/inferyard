@@ -22,10 +22,14 @@ const maxInstallationBytes = 1 << 20
 
 func localInstallationReason(reason string) string {
 	switch reason {
-	case "local_engine_requires_darwin_arm64", "local_engine_json_unreadable",
+	case "local_engine_requires_darwin_arm64", "local_engine_platform_unsupported",
+		"local_engine_json_unreadable",
 		"local_engine_absolute_path_required", "local_engine_locator_missing",
 		"local_engine_runtime_root_invalid", "local_engine_cwd_invalid",
 		"local_engine_executable_invalid", "local_engine_models_root_required_for_lmstudio_only",
+		"local_engine_data_dir_polystrata_only", "local_engine_data_dir_invalid",
+		"local_engine_polystrata_server_missing", "local_engine_polystrata_layout_invalid",
+		"local_engine_polystrata_engine_missing",
 		"local_engine_installation_unreadable", "local_engine_non_regular_asset",
 		"local_engine_directory_symlink", "local_engine_python_venv_required",
 		"local_engine_python_probe_failed", "local_engine_runtime_changed_during_hash",
@@ -87,7 +91,7 @@ func installationEntries(paths []string) []registryEntry {
 			Family string `json:"family"`
 		}
 		if raw, err := installationBytes(path); err == nil && json.Unmarshal(raw, &display) == nil &&
-			slices.Contains([]string{"llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio"}, display.Family) {
+			slices.Contains([]string{"llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio", "polystrata"}, display.Family) {
 			family = display.Family
 		}
 		entries = append(entries, registryEntry{path: path, installation: path, family: family, source: "本地安装声明"})
@@ -134,6 +138,9 @@ func (s *Service) RegisterEngineInstallation(ctx context.Context, path string) (
 	}
 	s.settingsMu.Lock()
 	defer s.settingsMu.Unlock()
+	if ctx.Err() != nil {
+		return SettingsResponse{}, Err("cancelled")
+	}
 	if installationKey(path) != key {
 		return SettingsResponse{}, Err("local_engine_installation_changed")
 	}
@@ -175,6 +182,7 @@ type InitLocalEngineRequest struct {
 	WorkingDirectory string   `json:"working_directory,omitempty"`
 	RuntimeRoots     []string `json:"runtime_roots,omitempty"`
 	ModelsRoot       string   `json:"models_root,omitempty"`
+	DataDir          string   `json:"data_dir,omitempty"`
 }
 
 func (s *Service) DetectLocalEngines(ctx context.Context) (inferyard.EngineDetectResult, *ApiError) {
@@ -281,7 +289,7 @@ func (s *Service) InitAndRegisterLocalEngine(ctx context.Context, req InitLocalE
 		ctx = context.Background()
 	}
 	family := strings.TrimSpace(req.Family)
-	if !slices.Contains([]string{"llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio"}, family) {
+	if !slices.Contains([]string{"llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio", "polystrata"}, family) {
 		return SettingsResponse{}, Err("invalid_request")
 	}
 	executable := strings.TrimSpace(req.Executable)
@@ -304,6 +312,18 @@ func (s *Service) InitAndRegisterLocalEngine(ctx context.Context, req InitLocalE
 		return SettingsResponse{}, &ApiError{
 			Code:    "local_engine_models_root_required_for_lmstudio_only",
 			Message: "仅 LM Studio 安装声明需要指定模型目录。",
+		}
+	}
+	dataDir := strings.TrimSpace(req.DataDir)
+	if dataDir != "" {
+		if family != "polystrata" {
+			return SettingsResponse{}, &ApiError{
+				Code:    "local_engine_data_dir_polystrata_only",
+				Message: "仅 PolyStrata 安装声明支持指定数据目录。",
+			}
+		}
+		if !filepath.IsAbs(dataDir) || strings.ContainsRune(dataDir, 0) {
+			return SettingsResponse{}, Err("invalid_request")
 		}
 	}
 	var runtimeRoots []string
@@ -342,6 +362,9 @@ func (s *Service) InitAndRegisterLocalEngine(ctx context.Context, req InitLocalE
 	}
 	if modelsRoot != "" {
 		args = append(args, "--models-root", modelsRoot)
+	}
+	if dataDir != "" {
+		args = append(args, "--data-dir", dataDir)
 	}
 	initCtx, cancel := context.WithTimeout(ctx, installationCheckTimeout)
 	defer cancel()

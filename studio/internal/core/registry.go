@@ -343,7 +343,7 @@ func (s *Service) registry() registryData {
 				engines[path] = len(data.engines)
 				data.engines = append(data.engines, entry)
 			}
-		} else {
+		} else if task.Kind == "model" {
 			if u.ModelsRoot == nil {
 				continue
 			}
@@ -372,6 +372,12 @@ func (s *Service) registry() registryData {
 				models[path] = len(data.models)
 				data.models = append(data.models, registryEntry{path: path, source: "模型下载", model: ModelAsset{Name: filepath.Base(path), Format: "gguf", SizeBytes: ptr(info.Size()), Available: true}})
 			}
+		}
+	}
+	for _, entry := range scanPolystrataModelConfigs(u.EngineInstallations) {
+		if _, found := models[entry.path]; !found {
+			models[entry.path] = len(data.models)
+			data.models = append(data.models, entry)
 		}
 	}
 	data.engines = append(data.engines, installationEntries(u.EngineInstallations)...)
@@ -457,7 +463,7 @@ func (s *Service) Registry() Registry {
 	for _, e := range data.models {
 		m := e.model
 		m.Path = e.path
-		m.Deletable = isModelDeletable(e.rawPath, e.path, data.modelRoots, data.resultsRoot)
+		m.Deletable = m.Format != "strata_pack" && isModelDeletable(e.rawPath, e.path, data.modelRoots, data.resultsRoot)
 		result.Models = append(result.Models, m)
 	}
 	for _, e := range data.engines {
@@ -470,6 +476,85 @@ func (s *Service) Registry() Registry {
 		result.DefaultEngine = result.Engines[0].Name
 	}
 	return result
+}
+
+func scanPolystrataModelConfigs(installPaths []string) []registryEntry {
+	entries := []registryEntry{}
+	seen := map[string]bool{}
+	for _, instPath := range installPaths {
+		raw, err := installationBytes(instPath)
+		if err != nil {
+			continue
+		}
+		var decl struct {
+			Family           string `json:"family"`
+			WorkingDirectory string `json:"working_directory"`
+			DataDir          string `json:"data_dir"`
+		}
+		if json.Unmarshal(raw, &decl) != nil || decl.Family != "polystrata" {
+			continue
+		}
+		dirs := []string{}
+		if decl.WorkingDirectory != "" {
+			dirs = append(dirs, decl.WorkingDirectory)
+		}
+		if decl.DataDir != "" {
+			modelsDir := filepath.Join(decl.DataDir, "models")
+			dirs = append(dirs, decl.DataDir, modelsDir)
+			if subEntries, err := os.ReadDir(modelsDir); err == nil {
+				for _, sub := range subEntries {
+					if sub.Type()&os.ModeSymlink == 0 && sub.IsDir() {
+						dirs = append(dirs, filepath.Join(modelsDir, sub.Name()))
+					}
+				}
+			}
+		}
+		for _, dir := range dirs {
+			dirEntries, err := os.ReadDir(dir)
+			if err != nil {
+				continue
+			}
+			for _, item := range dirEntries {
+				name := item.Name()
+				if item.IsDir() || !strings.HasPrefix(name, "strata-") || !strings.HasSuffix(name, ".json") {
+					continue
+				}
+				full := filepath.Join(dir, name)
+				info, err := os.Lstat(full)
+				if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() > maxInstallationBytes {
+					continue
+				}
+				cfgRaw, err := os.ReadFile(full)
+				if err != nil {
+					continue
+				}
+				var cfg struct {
+					Exe       string   `json:"exe"`
+					Args      []string `json:"args"`
+					ModelName string   `json:"model_name"`
+				}
+				if json.Unmarshal(cfgRaw, &cfg) != nil || strings.TrimSpace(cfg.Exe) == "" || cfg.Args == nil {
+					continue
+				}
+				resolved, err := canonical(full)
+				if err != nil || seen[resolved] {
+					continue
+				}
+				seen[resolved] = true
+				entries = append(entries, registryEntry{
+					path:    resolved,
+					rawPath: full,
+					source:  "PolyStrata 配置",
+					model: ModelAsset{
+						Name:      filepath.Base(resolved),
+						Format:    "strata_pack",
+						Available: true,
+					},
+				})
+			}
+		}
+	}
+	return entries
 }
 
 func (s *Service) resourcePath(name string, engine bool) (string, *ApiError) {
