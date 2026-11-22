@@ -147,7 +147,7 @@ def test_rtx_5090_32gb_120gb_and_avx512_q2_0_disk_budget():
     assert rec_5090["recommended_context"] == 131072
 
     # 12 GiB CUDA, 48 GiB RAM, AVX-512 CPU, 105 GB free disk:
-    # Q2_0 needs 66.4 GB + 8 GB MTP + 40 GB AVX-512 conversion (~116.5 GB) -> must NOT pick Q2_0!
+    # Q2_0 needs 66.4 GB + 8 GB MTP + 40 GB AVX-512 conversion (114.4 GB) -> must NOT pick Q2_0!
     hw_avx512 = _base_hw(
         ram_gib=48,
         avail_gib=40,
@@ -159,6 +159,35 @@ def test_rtx_5090_32gb_120gb_and_avx512_q2_0_disk_budget():
     assert rec_avx512["engine"] == "polystrata"
     assert rec_avx512["size"] != "Q2_0"
     assert rec_avx512["model_id"] == "polystrata-qwen38-coder-iq1-m"
+
+    # 12 GiB CUDA, 32 GiB RAM, 75 GB free disk:
+    # Coder IQ1_M enters low-RAM mode (58.4 + 8 + 24.4 = 90.8 GB > 75 GB) -> must NOT pick IQ1_M!
+    hw_low_ram_disk = _base_hw(
+        ram_gib=32,
+        avail_gib=26,
+        disk_bytes=75_000_000_000,
+        devices=[_nvidia_gpu("NVIDIA GeForce RTX 5070", vram_mib=12227, compute_cap="12.0")],
+    )
+    rec_low_ram_disk = recommend_starter(hw_low_ram_disk)
+    assert rec_low_ram_disk["engine"] == "polystrata"
+    assert rec_low_ram_disk["model_id"] != "polystrata-qwen38-coder-iq1-m"
+    assert rec_low_ram_disk["family"] == "qwen36"
+
+    # 16 GiB RAM + RTX 4070 Laptop 8188 MiB:
+    # Matches upstream poly_fits(): Qwen3.6 UD-Q3_K_M is rejected; Gemma 4 UD-Q3_K_M & Qwen3.6 UD-Q2_K_XL fit.
+    hw_16gb_4070 = _base_hw(
+        platform_name="Windows",
+        ram_gib=16,
+        avail_gib=12,
+        disk_bytes=100 * GIB,
+        devices=[_nvidia_gpu("NVIDIA GeForce RTX 4070 Laptop GPU", vram_mib=8188)],
+    )
+    rec_16gb_4070 = recommend_starter(hw_16gb_4070)
+    assert rec_16gb_4070["engine"] == "polystrata"
+    assert rec_16gb_4070["model_id"] == "polystrata-gemma4-ud-q3-k-m"
+    all_ids = [rec_16gb_4070["model_id"], *(alt["model_id"] for alt in rec_16gb_4070["alternatives"])]
+    assert "polystrata-qwen36-ud-q3-k-m" not in all_ids
+    assert "polystrata-qwen36-ud-q2-k-xl" in all_ids
 
 
 def test_outdated_nvidia_driver_and_old_compute_cap_fall_back_to_llama_cpp():
@@ -227,6 +256,20 @@ def test_amd_linux_windows_and_hybrid_nvidia_amd_backend_selection():
     assert rec_hybrid["engine"] == "polystrata"
     assert rec_hybrid["backend"] == "cuda"
     assert rec_hybrid["family"] == "lfm25"
+
+    # AMD Linux with only 10 GiB disk -> CPU llama-cpp fallback must report gpu=None
+    rec_amd_fallback = recommend_starter(
+        _base_hw(
+            platform_name="Linux",
+            ram_gib=64,
+            avail_gib=54,
+            disk_bytes=10 * GIB,
+            devices=[amd_dev],
+        )
+    )
+    assert rec_amd_fallback["engine"] == "llama-cpp"
+    assert rec_amd_fallback["backend"] == "cpu"
+    assert rec_amd_fallback["gpu"] is None
 
     amd_win = _base_hw(
         platform_name="Windows",
@@ -315,7 +358,7 @@ def test_apple_silicon_metal_working_set_budget_and_macos_14():
     assert rec_64["size"] == "Q2_0"
     assert rec_64["recommended_context"] == 32768
 
-    # 96 GiB Mac -> Metal budget 72.16 GB -> IQ3_S (62.8 GB) stays resident, context 65536
+    # 96 GiB Mac with 105 GB free -> 2-shard IQ3_S maps directly without repacking (~91.6 GB <= 105 GB)
     rec_96 = recommend_starter(
         _base_hw(
             platform_name="Darwin",
@@ -323,7 +366,7 @@ def test_apple_silicon_metal_working_set_budget_and_macos_14():
             apple_silicon=True,
             ram_gib=96,
             avail_gib=80,
-            disk_bytes=200 * GIB,
+            disk_bytes=105_000_000_000,
             devices=mac_gpu,
         )
     )

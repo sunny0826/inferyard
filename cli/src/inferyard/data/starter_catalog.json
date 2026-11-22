@@ -92,8 +92,7 @@
       "model_format": "gguf",
       "download_bytes": 22663387424,
       "arena_bytes": 20100000000,
-      "beside_vram_bytes": 4700000000,
-      "ram_overhead_bytes": 6442450944,
+      "vram_beside_gib": 4.7,
       "min_vram_bytes": 8589934592,
       "mac_resident_bytes": 28700000000,
       "platforms": {
@@ -118,8 +117,7 @@
       "model_format": "gguf",
       "download_bytes": 17104402720,
       "arena_bytes": 14600000000,
-      "beside_vram_bytes": 4800000000,
-      "ram_overhead_bytes": 5368709120,
+      "vram_beside_gib": 4.8,
       "min_vram_bytes": 8589934592,
       "mac_resident_bytes": 23100000000,
       "platforms": {
@@ -144,8 +142,7 @@
       "model_format": "gguf",
       "download_bytes": 25054688704,
       "arena_bytes": 23100000000,
-      "beside_vram_bytes": 4000000000,
-      "ram_overhead_bytes": 6442450944,
+      "vram_beside_gib": 4.0,
       "min_vram_bytes": 8589934592,
       "mac_resident_bytes": 31100000000,
       "platforms": {
@@ -169,8 +166,7 @@
       "model_format": "gguf",
       "download_bytes": 18494977472,
       "arena_bytes": 16500000000,
-      "beside_vram_bytes": 3800000000,
-      "ram_overhead_bytes": 5368709120,
+      "vram_beside_gib": 3.8,
       "min_vram_bytes": 8589934592,
       "mac_resident_bytes": 24500000000,
       "platforms": {
@@ -194,8 +190,7 @@
       "model_format": "gguf",
       "download_bytes": 13190264704,
       "arena_bytes": 10300000000,
-      "beside_vram_bytes": 5800000000,
-      "ram_overhead_bytes": 5368709120,
+      "vram_beside_gib": 5.8,
       "min_vram_bytes": 8589934592,
       "mac_resident_bytes": 19200000000,
       "platforms": {
@@ -222,8 +217,7 @@
       "model_format": "gguf",
       "download_bytes": 12574128416,
       "arena_bytes": 10800000000,
-      "beside_vram_bytes": 4200000000,
-      "ram_overhead_bytes": 4831838208,
+      "vram_beside_gib": 4.2,
       "min_vram_bytes": 8589934592,
       "mac_resident_bytes": 18600000000,
       "platforms": {
@@ -248,8 +242,7 @@
       "model_format": "gguf",
       "download_bytes": 14876901632,
       "arena_bytes": 14000000000,
-      "beside_vram_bytes": 4100000000,
-      "ram_overhead_bytes": 4831838208,
+      "vram_beside_gib": 4.1,
       "min_vram_bytes": 8589934592,
       "mac_resident_bytes": 20900000000,
       "platforms": {
@@ -274,8 +267,7 @@
       "model_format": "gguf",
       "download_bytes": 10947100928,
       "arena_bytes": 10200000000,
-      "beside_vram_bytes": 3900000000,
-      "ram_overhead_bytes": 4294967296,
+      "vram_beside_gib": 3.9,
       "min_vram_bytes": 8589934592,
       "mac_resident_bytes": 17000000000,
       "platforms": {

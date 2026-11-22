@@ -17,6 +17,10 @@ _PC_RAM_TOLERANCE = int(1.5 * GIB)
 # Real nvidia-smi reports slightly under nominal GiB (e.g. 8188 MiB on 8 GB, 12227 MiB on 12 GB).
 _VRAM_TIER_TOLERANCE = 512 * 1024**2
 _STRATA_MTP_DISK_BYTES = 8_000_000_000
+_LOW_RAM_HEADROOM_GB = 10.0
+_POLY_RAM_BESIDE_GB = 10.0
+_POLY_RAM_TOLERANCE_GB = 4.0
+_GIB_TO_GB = 1.073741824
 _MAC_GPU_SHARE = 0.75
 _MAC_RESIDENT_LEAVE_SHARE = 0.30
 _MAC_BIG_RAM_BYTES = 64 * GIB
@@ -168,19 +172,43 @@ def _collect_polystrata_accelerators(
     return [(backend, entry[1]) for backend, entry in ordered], []
 
 
-def _required_disk_bytes(model: dict, *, backend: str, avx512: bool | None) -> int:
+def _required_disk_bytes(
+    model: dict,
+    *,
+    backend: str,
+    avx512: bool | None,
+    ram_total: int,
+) -> int:
     if "min_disk_bytes" in model:
         return int(model["min_disk_bytes"])
     download = int(model["download_bytes"])
     if model.get("engine_core") == "strata":
         extra = _STRATA_MTP_DISK_BYTES
         if backend == "metal":
-            extra += int(model.get("mac_pack_bytes", 0))
-        elif avx512 is True and model.get("avx512_conversion_bytes"):
+            # Two-shard Qwen3.8 models are mapped directly on Metal without repacking.
+            if model.get("mac_needs_repack"):
+                extra += int(model.get("mac_pack_bytes", 0))
+            return download + extra
+        arena_gb = int(model["arena_bytes"]) / 1e9
+        ram_gib = ram_total / GIB
+        q2_avx = avx512 is True and bool(model.get("avx512_conversion_bytes"))
+        low_ram = ram_gib < arena_gb + _LOW_RAM_HEADROOM_GB
+        if q2_avx:
             extra += int(model["avx512_conversion_bytes"])
-        return download + extra + 2 * GIB
+        elif low_ram:
+            extra += int((arena_gb + 1.0) * 1e9)
+        return download + extra
     # strata-poly reads GGUF in place; allow modest headroom for partial writes and metadata.
     return int(download * 1.1) + 2 * GIB
+
+
+def _poly_ram_need_gb(model: dict, vram_bytes: int | None) -> float:
+    """Upstream setup.py poly_ram_need() in decimal GB using measured VRAM in GiB."""
+    vram_gib = (vram_bytes or 0) / GIB
+    beside_gib = float(model.get("vram_beside_gib", 12.0))
+    arena_gb = int(model["arena_bytes"]) / 1e9
+    held_gb = min(arena_gb, max(0.0, vram_gib - beside_gib) * _GIB_TO_GB)
+    return arena_gb - held_gb + _POLY_RAM_BESIDE_GB
 
 
 def _estimated_ram_bytes(model: dict, backend: str, vram_bytes: int | None) -> int:
@@ -188,11 +216,7 @@ def _estimated_ram_bytes(model: dict, backend: str, vram_bytes: int | None) -> i
         return int(model["mac_resident_bytes"])
     if model.get("engine_core") == "strata":
         return int(model["ram_needed_bytes"])
-    beside = int(model.get("beside_vram_bytes", 4 * GIB))
-    overhead = int(model.get("ram_overhead_bytes", 5 * GIB))
-    arena = int(model["arena_bytes"])
-    held = max(0, (vram_bytes or 0) - beside)
-    return max(overhead, arena - held + overhead)
+    return int(_poly_ram_need_gb(model, vram_bytes) * 1e9)
 
 
 def _recommended_context(backend: str, capacity_bytes: int | None) -> int:
@@ -266,15 +290,24 @@ def _evaluate_polystrata(
                 if vram is None or vram < max(0, min_vram - _VRAM_TIER_TOLERANCE):
                     rejection_reasons.append("insufficient_vram")
                     continue
+                if model.get("engine_core") == "strata-poly":
+                    beside_gib = float(model.get("vram_beside_gib", 12.0))
+                    if (vram / GIB) < beside_gib + 2.0:
+                        rejection_reasons.append("insufficient_vram")
+                        continue
             est_ram = _estimated_ram_bytes(model, backend, vram)
             if backend == "metal":
                 ram_ok = metal_budget is not None and est_ram <= metal_budget
+            elif model.get("engine_core") == "strata-poly":
+                ram_ok = (ram_total / GIB) >= _poly_ram_need_gb(model, vram) - _POLY_RAM_TOLERANCE_GB
             else:
                 ram_ok = ram_total >= max(0, est_ram - _PC_RAM_TOLERANCE)
             if not ram_ok:
                 rejection_reasons.append("insufficient_ram")
                 continue
-            need_disk = _required_disk_bytes(model, backend=backend, avx512=avx512)
+            need_disk = _required_disk_bytes(
+                model, backend=backend, avx512=avx512, ram_total=ram_total
+            )
             if disk_free < need_disk:
                 rejection_reasons.append("insufficient_disk")
                 continue
@@ -441,14 +474,13 @@ def recommend_starter(hardware: dict, *, catalog: dict | None = None) -> dict:
         else:
             reason = "fallback_llama_cpp_no_compatible_polystrata_gpu"
         alternatives = [_public_item(item) for item in fallback_fits[1:3]]
-        primary_gpu = fb_gpu if fb_gpu is not None else (accelerators[0][1] if accelerators else None)
         return {
             "definition": STARTER_DEFINITION,
             "status": "recommended",
             **_public_item(chosen),
             "disk_free_bytes": disk_free,
             "reason": reason,
-            "gpu": primary_gpu,
+            "gpu": fb_gpu,
             "notes": list(dict.fromkeys(notes)),
             "alternatives": alternatives,
         }
