@@ -235,3 +235,56 @@ func TestPreviewPolystrataStarterAndManagedSetup(t *testing.T) {
 		t.Fatalf("preview retry lost original request fields: got %+v want %+v", got, origReq)
 	}
 }
+
+func TestPreviewFirstUsePolystrataUnlocksAndRunsBenchmark(t *testing.T) {
+	p := newPreviewSession(context.Background())
+	p.loadScene(previewSceneIndex(t, "首次使用 · 无资源"))
+	tt := previewTester(p, 1120, 2600)
+	tt.Frame()
+
+	click(t, tt, "准备环境")
+	p.advance(1500 * time.Millisecond)
+	tt.Frame()
+	if !tt.HasText("准备模型与引擎") {
+		t.Fatalf("expected 准备模型与引擎 after 准备环境: %v", tt.Texts())
+	}
+
+	click(t, tt, "到下载页")
+	if !tt.HasText("推荐组合") || !tt.HasText("PolyStrata") || !tt.HasText("一键安装 PolyStrata") {
+		t.Fatalf("expected PolyStrata starter card on downloads page: %v", tt.Texts())
+	}
+	if tt.HasText("Windows x64") || tt.HasText("Linux x64") {
+		t.Fatalf("unexpected non-macOS platform labels on downloads page: %v", tt.Texts())
+	}
+
+	click(t, tt, "一键安装 PolyStrata")
+	click(t, tt, "返回任务")
+	p.advance(6 * time.Second)
+	tt.Frame()
+	p.advance(2 * time.Second)
+	tt.Frame()
+	if !tt.HasText("开始测评") || !p.state.preflightReady() {
+		t.Fatalf("expected 开始测评 unlocked after PolyStrata setup: ready=%v engine=%q model=%q texts=%v",
+			p.state.preflightReady(), p.state.engine, p.state.model, tt.Texts())
+	}
+
+	click(t, tt, "开始测评")
+	p.advance(2500 * time.Millisecond)
+	tt.Frame()
+	if !tt.HasText("zh-core · 运行中") || !tt.HasText("zh-svg-pelican · 排队中") {
+		t.Fatalf("expected running zh-core and queued zh-svg-pelican: %v", tt.Texts())
+	}
+	if p.state.engineState.State != "running" {
+		t.Fatalf("expected running engine state, got %+v", p.state.engineState)
+	}
+
+	p.advance(30 * time.Second)
+	tt.Frame()
+	if !tt.HasText("查看报告") {
+		t.Fatalf("expected 查看报告 after benchmark completion: %v", tt.Texts())
+	}
+	click(t, tt, "查看报告")
+	if !tt.HasText("各类任务表现") {
+		t.Fatalf("expected report categories after clicking 查看报告: %v", tt.Texts())
+	}
+}

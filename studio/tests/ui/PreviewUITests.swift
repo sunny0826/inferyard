@@ -267,10 +267,11 @@ final class PreviewUITests: XCTestCase {
         keepScreenshot("First use with no local assets")
         click("到下载页")
         expectText("推荐组合")
+        expectText("PolyStrata")
         XCTAssertFalse(text("Windows x64").exists)
         XCTAssertFalse(text("Linux x64").exists)
         keepScreenshot("Recommendations for this Mac")
-        click("下载推荐组合")
+        click("一键安装 PolyStrata")
         click("返回任务")
         wait("downloaded resources unlock benchmark", timeout: 15) {
             self.app.buttons["开始测评"].exists && self.app.buttons["开始测评"].isEnabled
