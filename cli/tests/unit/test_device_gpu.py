@@ -178,7 +178,14 @@ def test_detect_gpus_merges_nvidia_and_amd_and_preserves_fallback_reason(monkeyp
     amd_miss = {"status": "unavailable", "reason": "no_amd_devices", "devices": []}
     monkeypatch.setattr(device_gpu, "nvidia_snapshot", lambda: nv_miss)
     monkeypatch.setattr(device_gpu, "amd_linux_snapshot", lambda: amd_miss)
-    assert device_gpu.detect_gpus("Linux") == nv_miss
+    unavailable = device_gpu.detect_gpus("Linux")
+    assert unavailable["status"] == "unavailable"
+    assert unavailable["reason"] == "nvidia_smi_not_found"
+    assert unavailable["devices"] == []
+    assert unavailable["vendor_reasons"] == {
+        "nvidia": "nvidia_smi_not_found",
+        "amd": "no_amd_devices",
+    }
 
 
 def test_cpu_features_linux_and_macos(tmp_path, monkeypatch):
@@ -310,3 +317,353 @@ def test_inspect_device_attaches_models_disk_and_recommend_ignores_amd_for_cuda(
         ],
     )
     assert rec["selected"]["mode"] == "cpu"
+
+
+def test_unreadable_drm_and_windows_swap_runtime_error_preserve_report(monkeypatch, tmp_path):
+    # Unreadable DRM must not crash detect_gpus or discard NVIDIA observation.
+    nv_ok = {
+        "status": "observed",
+        "source": "nvidia-smi",
+        "devices": [{"index": 0, "vendor": "nvidia", "name": "RTX 4070"}],
+    }
+    monkeypatch.setattr(device_gpu, "nvidia_snapshot", lambda: nv_ok)
+
+    real_is_dir = Path.is_dir
+
+    def denied_is_dir(self):
+        if str(self).endswith("class/drm"):
+            raise PermissionError("permission denied")
+        return real_is_dir(self)
+
+    monkeypatch.setattr(Path, "is_dir", denied_is_dir)
+    amd = device_gpu.amd_linux_snapshot(sysfs_root=tmp_path)
+    assert amd == {"status": "unavailable", "reason": "drm_sysfs_unreadable", "devices": []}
+    assert device_gpu.detect_gpus("Linux") == nv_ok
+
+    # Windows swap_memory raising RuntimeError must not crash _windows().
+    class FakeKey:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    fake_winreg = types.SimpleNamespace(
+        HKEY_LOCAL_MACHINE=1,
+        OpenKey=lambda *_args: FakeKey(),
+        QueryValueEx=lambda *_args: ("Intel Core i9", 1),
+    )
+
+    def broken_swap():
+        raise RuntimeError("PdhAddEnglishCounterW failed")
+
+    fake_psutil = types.SimpleNamespace(
+        Error=OSError,
+        virtual_memory=lambda: types.SimpleNamespace(total=32 * 1024**3, available=20 * 1024**3),
+        swap_memory=broken_swap,
+        sensors_battery=lambda: types.SimpleNamespace(power_plugged=True),
+    )
+    monkeypatch.setitem(__import__("sys").modules, "winreg", fake_winreg)
+    monkeypatch.setitem(__import__("sys").modules, "psutil", fake_psutil)
+    snap = device_host._windows()
+    assert snap["memory_total_bytes"] == 32 * 1024**3
+    assert snap["page_file_total_bytes"] is None
+    assert snap["missing"]["page_file_total_bytes"] == "query_failed"
+
+
+def test_cli_device_check_survives_drm_permission_error_and_windows_swap_error(
+    monkeypatch, capsys
+):
+    from inferyard.cli import main
+
+    # Linux CLI path: DRM unreadable while NVIDIA succeeds
+    nv_ok = {
+        "status": "observed",
+        "source": "nvidia-smi",
+        "devices": [
+            {
+                "index": 0,
+                "vendor": "nvidia",
+                "name": "RTX 4070",
+                "driver_version": "580.42",
+                "compute_capability": "8.9",
+                "memory_kind": "dedicated",
+                "memory_total_bytes": 12 * 1024**3,
+                "memory_free_bytes": 11 * 1024**3,
+                "missing": {},
+            }
+        ],
+    }
+    monkeypatch.setattr(device_preflight.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(device_preflight, "host_snapshot", lambda _s: {"memory_total_bytes": 32 * 1024**3, "mem_available_bytes": 24 * 1024**3, "sources": {}, "missing": {}})
+    monkeypatch.setattr(device_gpu, "nvidia_snapshot", lambda: nv_ok)
+    real_is_dir = Path.is_dir
+
+    def denied_drm(self):
+        if str(self) == "/sys/class/drm":
+            raise PermissionError("denied")
+        return real_is_dir(self)
+
+    monkeypatch.setattr(Path, "is_dir", denied_drm)
+    rc = main(["device-check", "--json"])
+    assert rc == 0
+    doc = json.loads(capsys.readouterr().out)
+    assert doc["details"]["hardware"]["gpu"]["devices"][0]["name"] == "RTX 4070"
+
+    # Windows CLI path: swap_memory RuntimeError preserves report and records reason
+    class FakeKey:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(device_preflight.platform, "system", lambda: "Windows")
+    monkeypatch.setattr(device_preflight, "host_snapshot", device_host.snapshot)
+    monkeypatch.setattr(
+        device_gpu,
+        "nvidia_snapshot",
+        lambda: {"status": "unavailable", "reason": "nvidia_smi_not_found", "devices": []},
+    )
+    monkeypatch.setattr(
+        device_gpu,
+        "amd_windows_snapshot",
+        lambda: {"status": "unavailable", "reason": "no_amd_devices", "devices": []},
+    )
+    monkeypatch.setattr(device_gpu, "_windows_build_number", lambda: 18363)
+    fake_winreg = types.SimpleNamespace(
+        HKEY_LOCAL_MACHINE=1,
+        OpenKey=lambda *_args: FakeKey(),
+        QueryValueEx=lambda *_args: ("Intel Core i9", 1),
+    )
+    fake_psutil = types.SimpleNamespace(
+        Error=OSError,
+        virtual_memory=lambda: types.SimpleNamespace(total=32 * 1024**3, available=20 * 1024**3),
+        swap_memory=lambda: (_ for _ in ()).throw(RuntimeError("pdh failure")),
+        sensors_battery=lambda: types.SimpleNamespace(power_plugged=True),
+    )
+    monkeypatch.setitem(__import__("sys").modules, "winreg", fake_winreg)
+    monkeypatch.setitem(__import__("sys").modules, "psutil", fake_psutil)
+    rc2 = main(["device-check", "--json"])
+    assert rc2 == 0
+    doc2 = json.loads(capsys.readouterr().out)
+    hw2 = doc2["details"]["hardware"]
+    assert hw2["memory_total_bytes"] == 32 * 1024**3
+    assert hw2["page_file_total_bytes"] is None
+    assert hw2["missing"]["page_file_total_bytes"] == "query_failed"
+
+
+def test_macos_intel_dual_gpu_and_unknown_vendor():
+    payload = json.dumps(
+        {
+            "SPDisplaysDataType": [
+                {
+                    "sppci_model": "Intel UHD Graphics 630",
+                    "spdisplays_vendor": "sppci_vendor_Intel",
+                    "spdisplays_metal": "supported",
+                },
+                {
+                    "sppci_model": "AMD Radeon Pro 5500M",
+                    "spdisplays_vendor": "sppci_vendor_AMD",
+                    "spdisplays_metal": "supported",
+                },
+                {
+                    "sppci_model": "Generic Display Adapter",
+                    "spdisplays_metal": "not supported",
+                },
+            ]
+        }
+    )
+    snap = device_macos.displays(payload, unified_memory=False)
+    assert snap["status"] == "observed"
+    d_intel, d_amd, d_unk = snap["devices"]
+    assert d_intel["vendor"] == "intel" and "vendor" not in d_intel["missing"]
+    assert d_amd["vendor"] == "amd" and "vendor" not in d_amd["missing"]
+    assert d_unk["vendor"] is None and d_unk["missing"]["vendor"] == "not_reported"
+
+
+def test_rocm_smi_correlates_by_pci_bus_not_card_index(tmp_path, monkeypatch):
+    drm = tmp_path / "class" / "drm"
+    # card0 is Intel
+    c0 = drm / "card0" / "device"
+    c0.mkdir(parents=True)
+    (c0 / "vendor").write_text("0x8086\n", encoding="utf-8")
+
+    # card1 is RX 7900 XTX on bus 0000:03:00.0
+    c1 = drm / "card1" / "device"
+    c1.mkdir(parents=True)
+    (c1 / "vendor").write_text("0x1002\n", encoding="utf-8")
+    (c1 / "device").write_text("0x744c\n", encoding="utf-8")
+    (c1 / "uevent").write_text("PCI_SLOT_NAME=0000:03:00.0\n", encoding="utf-8")
+    (c1 / "mem_info_vram_total").write_text(str(24 * 1024**3), encoding="utf-8")
+
+    # card2 is Radeon 8060S on bus 0000:08:00.0
+    c2 = drm / "card2" / "device"
+    c2.mkdir(parents=True)
+    (c2 / "vendor").write_text("0x1002\n", encoding="utf-8")
+    (c2 / "device").write_text("0x1586\n", encoding="utf-8")
+    (c2 / "uevent").write_text("PCI_SLOT_NAME=0000:08:00.0\n", encoding="utf-8")
+
+    rocm_json = json.dumps(
+        {
+            "card0": {"PCI Bus": "0000:03:00.0", "Card Series": "Radeon RX 7900 XTX"},
+            "card1": {"PCI Bus": "0000:08:00.0", "Card Series": "Radeon 8060S"},
+        }
+    )
+    monkeypatch.setattr(device_gpu.shutil, "which", lambda name: "/opt/rocm/bin/rocm-smi")
+    monkeypatch.setattr(
+        device_gpu.subprocess,
+        "run",
+        lambda cmd, **_kw: subprocess.CompletedProcess(cmd, 0, stdout=rocm_json, stderr=""),
+    )
+    bus_map = device_gpu._rocm_smi_names_by_bus()
+    assert bus_map == {
+        "0000:03:00.0": "Radeon RX 7900 XTX",
+        "0000:08:00.0": "Radeon 8060S",
+    }
+
+    snap = device_gpu.amd_linux_snapshot(sysfs_root=tmp_path, rocm_names=bus_map)
+    assert snap["devices"][0]["index"] == 1
+    assert snap["devices"][0]["name"] == "Radeon RX 7900 XTX"
+    assert snap["devices"][0]["pci_device_id"] == "0x744c"
+    assert snap["devices"][0]["arch_family"] == "gfx1100"
+    assert snap["devices"][1]["index"] == 2
+    assert snap["devices"][1]["name"] == "Radeon 8060S"
+    assert snap["devices"][1]["pci_device_id"] == "0x1586"
+    assert snap["devices"][1]["arch_family"] == "gfx1151"
+
+
+def test_missing_reasons_for_null_amd_and_non_windows_page_file(tmp_path, monkeypatch):
+    # Linux AMD missing PCI ID
+    drm = tmp_path / "class" / "drm"
+    dev = drm / "card0" / "device"
+    dev.mkdir(parents=True)
+    (dev / "vendor").write_text("0x1002\n", encoding="utf-8")
+    linux_amd = device_gpu.amd_linux_snapshot(sysfs_root=tmp_path)["devices"][0]
+    assert linux_amd["pci_device_id"] is None
+    assert linux_amd["missing"]["pci_device_id"] == "not_reported"
+
+    # Windows AMD missing driver and PCI ID
+    win_amd = device_gpu._parse_windows_amd_adapters(json.dumps({"Name": "AMD Radeon Graphics"}))[0]
+    assert win_amd["driver_version"] is None
+    assert win_amd["pci_device_id"] is None
+    assert win_amd["missing"]["driver_version"] == "not_reported"
+    assert win_amd["missing"]["pci_device_id"] == "not_reported"
+
+    # Both NVIDIA missing and Windows AMD timeout preserve vendor_reasons + missing["gpu.amd"]
+    monkeypatch.setattr(device_preflight.platform, "system", lambda: "Windows")
+    monkeypatch.setattr(
+        device_gpu,
+        "nvidia_snapshot",
+        lambda: {"status": "unavailable", "reason": "nvidia_smi_not_found", "devices": []},
+    )
+    monkeypatch.setattr(
+        device_gpu,
+        "amd_windows_snapshot",
+        lambda: {"status": "unavailable", "reason": "probe_timeout", "devices": []},
+    )
+    monkeypatch.setattr(
+        device_preflight,
+        "cpu_features_snapshot",
+        lambda _sys: ({"avx2": None, "avx512": None}, "test", {"avx2": "unsupported_windows_build"}),
+    )
+    hw_win = device_preflight.hardware_snapshot(tmp_path, environment={})
+    assert hw_win["gpu"]["reason"] == "nvidia_smi_not_found"
+    assert hw_win["gpu"]["vendor_reasons"] == {
+        "nvidia": "nvidia_smi_not_found",
+        "amd": "probe_timeout",
+    }
+    assert hw_win["missing"]["gpu"] == "nvidia_smi_not_found"
+    assert hw_win["missing"]["gpu.amd"] == "probe_timeout"
+
+    # Non-Windows marks page_file_total_bytes as not_applicable_non_windows
+    monkeypatch.setattr(device_preflight.platform, "system", lambda: "Darwin")
+    hw_mac = device_preflight.hardware_snapshot(tmp_path, environment={})
+    assert hw_mac["page_file_total_bytes"] is None
+    assert hw_mac["missing"]["page_file_total_bytes"] == "not_applicable_non_windows"
+
+
+def test_models_disk_follows_explicit_model_selected_root_and_multi_volume(tmp_path, monkeypatch):
+    from tests.unit.test_device_preflight import gguf
+
+    root_a = tmp_path / "vol_a"
+    root_b = tmp_path / "vol_b"
+    root_a.mkdir()
+    root_b.mkdir()
+    model_b = gguf(root_b / "demo.gguf")
+
+    fake_usage = {
+        str(root_a.resolve()): 101 * device_preflight.GIB,
+        str(root_b.resolve()): 7 * device_preflight.GIB,
+    }
+    def fake_disk_usage(p):
+        free = fake_usage.get(str(Path(p).resolve()), 50 * device_preflight.GIB)
+        return types.SimpleNamespace(free=free)
+
+    monkeypatch.setattr(device_preflight.shutil, "disk_usage", fake_disk_usage)
+    monkeypatch.setattr(
+        device_preflight,
+        "hardware_snapshot",
+        lambda _p: {
+            "platform": "Linux",
+            "memory_available_bytes": 16 * device_preflight.GIB,
+            "logical_cpus": 8,
+            "disk_free_bytes": 50 * device_preflight.GIB,
+            "gpu": {"status": "unavailable", "reason": "nvidia_smi_not_found", "devices": []},
+            "sources": {},
+            "missing": {},
+        },
+    )
+
+    # 1) Explicit --model measures model_b's parent volume, not default artifacts
+    rep_explicit = device_preflight.inspect_device([root_a], model_path=model_b, disk_path=tmp_path)
+    assert rep_explicit["hardware"]["models_disk_path"] == str(root_b.resolve())
+    assert rep_explicit["hardware"]["models_disk_free_bytes"] == 7 * device_preflight.GIB
+    # 2) Multiple --models-root with model in root_b picks model_b's volume
+    rep_multi_sel = device_preflight.inspect_device([root_a, root_b], disk_path=tmp_path)
+    assert rep_multi_sel["hardware"]["models_disk_path"] == str(root_b.resolve())
+    assert rep_multi_sel["hardware"]["models_disk_free_bytes"] == 7 * device_preflight.GIB
+
+    # 3) Multiple --models-root on distinct devices with no models leaves models_disk_free_bytes null
+    empty_a = tmp_path / "empty_a"
+    empty_b = tmp_path / "empty_b"
+    empty_a.mkdir()
+    empty_b.mkdir()
+    real_stat = Path.stat
+
+    def distinct_stat(self, *args, **kwargs):
+        st = real_stat(self, *args, **kwargs)
+        if self.resolve() == empty_a.resolve():
+            return types.SimpleNamespace(st_dev=101)
+        if self.resolve() == empty_b.resolve():
+            return types.SimpleNamespace(st_dev=202)
+        return st
+
+    monkeypatch.setattr(Path, "stat", distinct_stat)
+    rep_unselected = device_preflight.inspect_device([empty_a, empty_b], disk_path=tmp_path)
+    assert rep_unselected["hardware"]["models_disk_free_bytes"] is None
+    assert rep_unselected["hardware"]["missing"]["models_disk_free_bytes"] == (
+        "multiple_models_roots_unselected"
+    )
+    assert len(rep_unselected["hardware"]["models_disk_roots"]) == 2
+
+
+def test_windows_cpu_features_gates_on_build_19041(monkeypatch):
+    # Pre-2004 build returns None + unsupported_windows_build
+    monkeypatch.setattr(device_gpu, "_windows_build_number", lambda: 18363)
+    feats, _src, missing = device_gpu._windows_cpu_features()
+    assert feats == {"avx2": None, "avx512": None}
+    assert missing == {
+        "avx2": "unsupported_windows_build",
+        "avx512": "unsupported_windows_build",
+    }
+
+    # Supported build >= 19041 queries IsProcessorFeaturePresent
+    monkeypatch.setattr(device_gpu, "_windows_build_number", lambda: 19045)
+    fake_kernel32 = types.SimpleNamespace(IsProcessorFeaturePresent=lambda code: 1 if code == 40 else 0)
+    fake_ctypes = types.SimpleNamespace(windll=types.SimpleNamespace(kernel32=fake_kernel32))
+    monkeypatch.setitem(__import__("sys").modules, "ctypes", fake_ctypes)
+    feats, _src, missing = device_gpu._windows_cpu_features()
+    assert feats == {"avx2": True, "avx512": False}
+    assert missing == {}
+

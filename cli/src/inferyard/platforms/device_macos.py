@@ -49,6 +49,21 @@ def available_memory(text):
     return sum(counts) * page_size
 
 
+def _display_vendor(row):
+    vendor_raw = str(row.get("spdisplays_vendor") or "").lower()
+    model_raw = str(row.get("sppci_model") or "").lower()
+    combined = f"{vendor_raw} {model_raw}"
+    if "apple" in combined:
+        return "apple"
+    if "amd" in combined or "radeon" in combined or "0x1002" in combined:
+        return "amd"
+    if "intel" in combined or "0x8086" in combined:
+        return "intel"
+    if "nvidia" in combined or "geforce" in combined or "0x10de" in combined:
+        return "nvidia"
+    return None
+
+
 def displays(text, *, unified_memory):
     try:
         data = strict_json_loads(text)
@@ -68,9 +83,10 @@ def displays(text, *, unified_memory):
                     r"spdisplays_metal(?:[1-9]\d*|_supported)", metal.lower()
                 ) or metal.lower().startswith("supported"):
                     supported = True
+            vendor = _display_vendor(row)
             devices.append(
                 {
-                    "vendor": "apple",
+                    "vendor": vendor,
                     "name": row["sppci_model"],
                     "cores": _number(row.get("sppci_cores")),
                     "metal_supported": supported,
@@ -78,6 +94,7 @@ def displays(text, *, unified_memory):
                     "memory_total_bytes": None,
                     "memory_free_bytes": None,
                     "missing": {
+                        **({"vendor": "not_reported"} if vendor is None else {}),
                         **(
                             {"cores": "not_reported"}
                             if _number(row.get("sppci_cores")) is None

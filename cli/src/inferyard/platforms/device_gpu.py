@@ -11,6 +11,7 @@ import platform
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 _NVIDIA_BASE_QUERY = (
@@ -18,6 +19,7 @@ _NVIDIA_BASE_QUERY = (
 )
 _NVIDIA_EXTENDED_QUERY = _NVIDIA_BASE_QUERY + ",compute_cap"
 _COMPUTE_CAP_RE = re.compile(r"^\d+\.\d+$")
+_WINDOWS_AVX_FEATURE_MIN_BUILD = 19041  # Windows 10 2004 (PF_AVX2 / PF_AVX512F)
 
 # Common discrete AMD PCI device IDs mapped to ROCm/HIP gfx architecture families.
 _AMD_PCI_ARCH = {
@@ -127,7 +129,6 @@ def nvidia_snapshot() -> dict:
         if result.returncode == 0:
             devices = _parse_nvidia_rows(result.stdout, expect_compute_cap=True)
             return {"status": "observed", "source": "nvidia-smi", "devices": devices}
-        # Fallback for older nvidia-smi builds that do not support compute_cap.
         fallback = subprocess.run(
             [executable, "--query-gpu=" + _NVIDIA_BASE_QUERY, "--format=csv,noheader,nounits"],
             capture_output=True,
@@ -165,13 +166,39 @@ def _nonnegative_int(raw: str | None) -> int | None:
     return value if value >= 0 else None
 
 
-def _rocm_smi_names() -> dict[int, str]:
+def _normalize_pci_bus(raw: str | None) -> str | None:
+    if not isinstance(raw, str):
+        return None
+    text = raw.strip().lower()
+    match = re.fullmatch(r"(?:([0-9a-f]{4}):)?([0-9a-f]{2}:[0-9a-f]{2}\.[0-9a-f])", text)
+    if not match:
+        return None
+    domain = match.group(1) or "0000"
+    return f"{domain}:{match.group(2)}"
+
+
+def _sysfs_pci_bus(dev: Path) -> str | None:
+    uevent = _read_text(dev / "uevent") or ""
+    for line in uevent.splitlines():
+        key, sep, value = line.partition("=")
+        if sep and key.strip() == "PCI_SLOT_NAME":
+            bus = _normalize_pci_bus(value)
+            if bus is not None:
+                return bus
+    try:
+        target = dev.resolve(strict=False)
+        return _normalize_pci_bus(target.name)
+    except OSError:
+        return None
+
+
+def _rocm_smi_names_by_bus() -> dict[str, str]:
     executable = shutil.which("rocm-smi")
     if executable is None:
         return {}
     try:
         result = subprocess.run(
-            [executable, "--showproductname", "--json"],
+            [executable, "--showbus", "--showproductname", "--json"],
             capture_output=True,
             text=True,
             timeout=5,
@@ -181,12 +208,12 @@ def _rocm_smi_names() -> dict[int, str]:
         data = json.loads(result.stdout)
         if not isinstance(data, dict):
             return {}
-        names: dict[int, str] = {}
-        for key, value in data.items():
+        names: dict[str, str] = {}
+        for value in data.values():
             if not isinstance(value, dict):
                 continue
-            match = re.search(r"(\d+)$", str(key))
-            if not match:
+            bus = _normalize_pci_bus(value.get("PCI Bus"))
+            if bus is None:
                 continue
             name = (
                 value.get("Card Series")
@@ -195,53 +222,62 @@ def _rocm_smi_names() -> dict[int, str]:
                 or ""
             )
             if isinstance(name, str) and name.strip():
-                names[int(match.group(1))] = name.strip()
+                names[bus] = name.strip()
         return names
     except (OSError, subprocess.TimeoutExpired, ValueError, TypeError):
         return {}
 
 
-def amd_linux_snapshot(sysfs_root: Path | None = None) -> dict:
+def amd_linux_snapshot(
+    sysfs_root: Path | None = None,
+    *,
+    rocm_names: dict[str, str] | None = None,
+) -> dict:
     root = Path(sysfs_root) if sysfs_root is not None else Path("/sys")
     drm_dir = root / "class" / "drm"
-    if not drm_dir.is_dir():
-        return {"status": "unavailable", "reason": "drm_sysfs_unavailable", "devices": []}
-    cards = sorted(
-        p
-        for p in drm_dir.iterdir()
-        if p.name.startswith("card") and p.name[4:].isdigit()
-    )
-    rocm_names: dict[int, str] | None = None
+    try:
+        if not drm_dir.is_dir():
+            return {"status": "unavailable", "reason": "drm_sysfs_unavailable", "devices": []}
+        cards = sorted(
+            p for p in drm_dir.iterdir() if p.name.startswith("card") and p.name[4:].isdigit()
+        )
+    except OSError:
+        return {"status": "unavailable", "reason": "drm_sysfs_unreadable", "devices": []}
+    resolved_rocm = rocm_names
     devices: list[dict] = []
     for card in cards:
         dev = card / "device"
         vendor = (_read_text(dev / "vendor") or "").lower()
         if vendor != "0x1002":
             continue
-        if rocm_names is None:
-            rocm_names = _rocm_smi_names() if sysfs_root is None else {}
+        if resolved_rocm is None:
+            resolved_rocm = _rocm_smi_names_by_bus() if sysfs_root is None else {}
         card_index = int(card.name[4:])
-        pci_id = (_read_text(dev / "device") or "").lower()
-        arch_family = _AMD_PCI_ARCH.get(pci_id)
+        pci_id = (_read_text(dev / "device") or "").lower() or None
+        pci_bus = _sysfs_pci_bus(dev)
+        arch_family = _AMD_PCI_ARCH.get(pci_id) if pci_id else None
         total = _positive_int(_read_text(dev / "mem_info_vram_total"))
         used = _nonnegative_int(_read_text(dev / "mem_info_vram_used"))
         free = total - used if total is not None and used is not None and used <= total else None
         missing: dict[str, str] = {}
+        if pci_id is None:
+            missing["pci_device_id"] = "not_reported"
         if total is None:
             missing["memory_total_bytes"] = "not_reported"
         if free is None:
             missing["memory_free_bytes"] = "not_reported"
         if arch_family is None:
             missing["arch_family"] = "not_reported"
-        name = rocm_names.get(card_index) or (
-            f"AMD Radeon ({pci_id})" if pci_id else "AMD Radeon GPU"
+        product_name = (resolved_rocm.get(pci_bus) if pci_bus else None) or _read_text(
+            dev / "product_name"
         )
+        name = product_name or (f"AMD Radeon ({pci_id})" if pci_id else "AMD Radeon GPU")
         devices.append(
             {
                 "index": card_index,
                 "vendor": "amd",
                 "name": name,
-                "pci_device_id": pci_id or None,
+                "pci_device_id": pci_id,
                 "arch_family": arch_family,
                 "memory_kind": "dedicated" if total is not None else "unmeasured",
                 "memory_total_bytes": total,
@@ -276,6 +312,10 @@ def _parse_windows_amd_adapters(stdout: str) -> list[dict]:
             "memory_total_bytes": "windows_wmi_32bit_cap",
             "memory_free_bytes": "not_measured",
         }
+        if driver is None:
+            missing["driver_version"] = "not_reported"
+        if pci_id is None:
+            missing["pci_device_id"] = "not_reported"
         if arch_family is None:
             missing["arch_family"] = "not_reported"
         devices.append(
@@ -345,7 +385,19 @@ def detect_gpus(system: str) -> dict:
         return nv
     if amd_ok:
         return amd
-    return nv
+    vendor_reasons = {}
+    if nv.get("reason"):
+        vendor_reasons["nvidia"] = nv["reason"]
+    if amd.get("reason"):
+        vendor_reasons["amd"] = amd["reason"]
+    result = {
+        "status": "unavailable",
+        "reason": nv.get("reason", "not_measured"),
+        "devices": [],
+    }
+    if vendor_reasons:
+        result["vendor_reasons"] = vendor_reasons
+    return result
 
 
 def _linux_cpu_features(cpuinfo_path: Path | None = None) -> tuple[dict, str, dict]:
@@ -392,7 +444,26 @@ def _macos_cpu_features() -> tuple[dict, str, dict]:
     return features, "sysctl:hw.optional", missing
 
 
+def _windows_build_number() -> int | None:
+    getter = getattr(sys, "getwindowsversion", None)
+    if getter is None:
+        return None
+    try:
+        build = getattr(getter(), "build", None)
+        return build if isinstance(build, int) and build > 0 else None
+    except OSError:
+        return None
+
+
 def _windows_cpu_features() -> tuple[dict, str, dict]:
+    build = _windows_build_number()
+    if build is None or build < _WINDOWS_AVX_FEATURE_MIN_BUILD:
+        reason = "unsupported_windows_build" if build is not None else "windows_build_unavailable"
+        return (
+            {"avx2": None, "avx512": None},
+            "kernel32:IsProcessorFeaturePresent",
+            {"avx2": reason, "avx512": reason},
+        )
     try:
         import ctypes
 

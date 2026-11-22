@@ -77,7 +77,7 @@ def _windows():
         values["page_file_total_bytes"] = swap.total if swap.total >= 0 else None
         if values["page_file_total_bytes"] is None:
             missing["page_file_total_bytes"] = "invalid_output"
-    except OSError, psutil.Error:
+    except OSError, RuntimeError, psutil.Error:
         values["page_file_total_bytes"] = None
         missing["page_file_total_bytes"] = "query_failed"
     try:

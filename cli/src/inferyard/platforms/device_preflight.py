@@ -112,10 +112,16 @@ def hardware_snapshot(disk_path, environment=None, *, gpu_observation=None):
             missing.setdefault("page_file_total_bytes", "not_reported")
         else:
             missing.pop("page_file_total_bytes", None)
+    else:
+        sources["page_file_total_bytes"] = "platform.system"
+        missing["page_file_total_bytes"] = "not_applicable_non_windows"
     sources["disk_free_bytes"] = "shutil.disk_usage"
     sources["gpu"] = result["gpu"].get("source")
     if result["gpu"]["status"] == "unavailable":
         missing["gpu"] = result["gpu"].get("reason", "not_reported")
+        for vendor, reason in result["gpu"].get("vendor_reasons", {}).items():
+            if vendor != "nvidia" and reason not in ("no_amd_devices", "unsupported_platform"):
+                missing[f"gpu.{vendor}"] = reason
     return {**result, "sources": sources, "missing": missing}
 
 
@@ -268,32 +274,98 @@ def _next_steps(report):
     ]
 
 
-def _attach_models_disk(hardware, roots):
-    if not roots or "models_disk_free_bytes" in hardware:
+def _disk_free(path):
+    try:
+        return shutil.disk_usage(path).free, None
+    except OSError:
+        return None, "disk_usage_unavailable"
+
+
+def _disk_target(path):
+    target = existing_ancestor(path)
+    try:
+        return target.parent if target.is_file() else target
+    except OSError:
+        return target
+
+
+def _attach_models_disk(hardware, roots, *, model_path=None, selected_model_path=None):
+    if "models_disk_free_bytes" in hardware:
         return
-    target = existing_ancestor(roots[0])
     sources = hardware.setdefault("sources", {})
     missing = hardware.setdefault("missing", {})
-    hardware["models_disk_path"] = str(target)
-    try:
-        hardware["models_disk_free_bytes"] = shutil.disk_usage(target).free
-        sources["models_disk_free_bytes"] = "shutil.disk_usage"
-        missing.pop("models_disk_free_bytes", None)
-    except OSError:
+    sources["models_disk_free_bytes"] = "shutil.disk_usage"
+
+    if model_path is not None:
+        target = _disk_target(model_path)
+        free, err = _disk_free(target)
+        hardware["models_disk_path"] = str(target)
+        hardware["models_disk_free_bytes"] = free
+        if err is None:
+            missing.pop("models_disk_free_bytes", None)
+        else:
+            missing["models_disk_free_bytes"] = err
+        return
+
+    if selected_model_path is not None:
+        target = _disk_target(selected_model_path)
+        free, err = _disk_free(target)
+        hardware["models_disk_path"] = str(target)
+        hardware["models_disk_free_bytes"] = free
+        if err is None:
+            missing.pop("models_disk_free_bytes", None)
+        else:
+            missing["models_disk_free_bytes"] = err
+        return
+
+    if not roots:
+        return
+
+    targets = [_disk_target(root) for root in roots]
+    root_entries = []
+    devs = set()
+    for target in targets:
+        free, err = _disk_free(target)
+        entry = {"path": str(target), "disk_free_bytes": free}
+        if err is not None:
+            entry["missing"] = err
+        root_entries.append(entry)
+        try:
+            devs.add(target.stat().st_dev)
+        except OSError:
+            devs.add(None)
+
+    if len(targets) == 1 or (len(devs) == 1 and None not in devs):
+        first = root_entries[0]
+        hardware["models_disk_path"] = first["path"]
+        hardware["models_disk_free_bytes"] = first["disk_free_bytes"]
+        if "missing" in first:
+            missing["models_disk_free_bytes"] = first["missing"]
+        else:
+            missing.pop("models_disk_free_bytes", None)
+    else:
+        hardware["models_disk_path"] = None
         hardware["models_disk_free_bytes"] = None
-        sources["models_disk_free_bytes"] = "shutil.disk_usage"
-        missing["models_disk_free_bytes"] = "disk_usage_unavailable"
+        hardware["models_disk_roots"] = root_entries
+        missing["models_disk_free_bytes"] = "multiple_models_roots_unselected"
 
 
 def inspect_device(roots, *, model_path=None, disk_path=None):
     hardware = hardware_snapshot(disk_path or Path.cwd())
-    _attach_models_disk(hardware, roots)
     models = discover_models(roots, model_path)
+    recommendation = recommend(hardware, models)
+    selected_path = (recommendation.get("selected") or {}).get("model_path")
+    _attach_models_disk(
+        hardware,
+        roots,
+        model_path=model_path,
+        selected_model_path=selected_path,
+    )
     report = {
         "kind": "device_preflight.v1",
         "hardware": hardware,
         "models": models,
-        "recommendation": recommend(hardware, models),
+        "recommendation": recommendation,
         "model_requests_sent": 0,
         "platform_capabilities": platform_capabilities(hardware.get("platform", platform.system())),
         "ready_to_run": False,
