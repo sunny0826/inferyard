@@ -29,6 +29,7 @@ func (p *testPreviewStub) resolveModelURL(string) inferyard.ModelResolve {
 	return inferyard.ModelResolve{}
 }
 func (p *testPreviewStub) detectedEngines() []inferyard.DetectedEngine { return nil }
+func (p *testPreviewStub) downloadLogTail(string) string               { return "" }
 
 func waitUntil(t *testing.T, fn func() bool) {
 	t.Helper()

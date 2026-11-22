@@ -204,4 +204,20 @@ func TestPreviewPolystrataStarterAndManagedSetup(t *testing.T) {
 	if p.state.downloads[0].State != "done" || len(p.state.registry.Engines) != 1 || p.state.registry.Engines[0].Family != "polystrata" {
 		t.Fatalf("expected simulated polystrata setup to finish and register engine: downloads=%+v engines=%+v", p.state.downloads, p.state.registry.Engines)
 	}
+
+	// Pre-seeded PolyStrata scene advances cleanly and retry preserves original family/model
+	p.loadScene(previewSceneIndex(t, "下载 · PolyStrata 引导安装"))
+	p.advance(5 * time.Second)
+	tt.Frame()
+	active := p.state.downloads[0]
+	if active.State != "done" || active.Stage != "" || active.InstallationPath == nil || *active.InstallationPath == "" {
+		t.Fatalf("pre-seeded polystrata task did not finish cleanly: %+v", active)
+	}
+	p.dispatch(previewRetryDownload{id: "preview-polystrata-blocked"})
+	if p.state.downloads[0].DisplayName != "PolyStrata · qwen · Q2_0" {
+		t.Fatalf("retry lost original polystrata family/model: %+v", p.state.downloads[0])
+	}
+	if p.state.unresolvedDownloadFailures() != 0 {
+		t.Fatalf("expected retry to resolve failed polystrata count, got %d", p.state.unresolvedDownloadFailures())
+	}
 }

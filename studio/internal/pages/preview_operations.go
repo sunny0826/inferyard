@@ -63,7 +63,7 @@ func (p *previewSession) retryDownload(id string) {
 				return
 			}
 			if task.Kind == "polystrata" {
-				p.startPolystrataSetup(p.state.defaultPolystrataSetupRequest())
+				p.startPolystrataSetup(previewPolystrataRequestFromTask(task, p.state.defaultPolystrataSetupRequest()))
 				return
 			}
 			p.startDownload(previewDownload{kind: task.Kind, source: task.SourceUrl})
@@ -338,7 +338,11 @@ func (p *previewSession) activateScene() {
 	}
 	for _, task := range s.downloads {
 		if task.State == "downloading" {
-			p.tickDownload(task.TaskId, false, 0)
+			if task.Kind == "polystrata" {
+				p.tickPolystrataSetup(task.TaskId, false, 1)
+			} else {
+				p.tickDownload(task.TaskId, false, 0)
+			}
 		}
 	}
 }

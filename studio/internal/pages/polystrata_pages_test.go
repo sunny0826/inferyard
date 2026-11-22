@@ -92,6 +92,107 @@ func TestDownloadsDynamicStarterCardSwitchAndPolystrataSetup(t *testing.T) {
 	if len(stub.intents) != 2 {
 		t.Fatalf("expected engine+model intents for llama.cpp fallback, got %#v", stub.intents)
 	}
+
+	// PolyStrata drawer exposes copyable CLI install command
+	click(t, tt, "版本与地址 · polystrata")
+	if !tt.HasText("复制命令") || !tt.HasText("inferyard engine prepare-polystrata") {
+		t.Fatalf("expected copyable PolyStrata CLI command in drawer: %v", tt.Texts())
+	}
+}
+
+func TestPolystrataRound1ReviewRegressions(t *testing.T) {
+	// 1. Engine row honors selected PolyStrata alternative instead of falling back to primary
+	s := testState()
+	s.device.Snapshot = json.RawMessage(`{
+		"starter_recommendation": {
+			"definition": "starter-recommendation.v1",
+			"status": "recommended",
+			"engine": "polystrata",
+			"backend": "metal",
+			"model_id": "polystrata-qwen38-iq3-s",
+			"model_title": "Qwen3.8-Flash-Next (IQ3_S)",
+			"family": "qwen",
+			"size": "IQ3_S",
+			"recommended_context": 32768,
+			"estimated_download_bytes": 83600000000,
+			"alternatives": [{
+				"engine": "polystrata",
+				"backend": "metal",
+				"model_id": "polystrata-qwen38-coder-iq1-m",
+				"model_title": "Qwen3.8-Flash-Next Coder (IQ1_M)",
+				"family": "coder",
+				"size": "IQ1_M",
+				"recommended_context": 32768,
+				"estimated_download_bytes": 58400000000
+			}]
+		}
+	}`)
+	stub := &resolvePreviewStub{}
+	s.preview = stub
+	st := s.ensureDownloadsUI()
+	st.hostPlatform = "darwin/arm64"
+	tt := ui.NewTester(s.downloadsPageView, 1120, 2600)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
+	tt.Frame()
+	click(t, tt, "切换备选方案（1）")
+	click(t, tt, "使用此方案 · polystrata-qwen38-coder-iq1-m")
+	click(t, tt, "安装 · polystrata")
+	if len(stub.intents) != 1 {
+		t.Fatalf("expected 1 setup intent, got %#v", stub.intents)
+	}
+	gotReq := stub.intents[0].(previewPolystrataSetup).req
+	if gotReq.Family != "coder" || gotReq.Model != "IQ1_M" {
+		t.Fatalf("engine row ignored selected PolyStrata alternative: %+v", gotReq)
+	}
+
+	// 2. llama.cpp fallback selects Windows CUDA build on windows/amd64 + cuda, and exposes Linux guidance
+	winCUDA, _ := core.CatalogEntryByID("engine-windows-cuda-x64")
+	if got := starterLlamaCppEngineURL("windows/amd64", "cuda"); got != winCUDA.URL {
+		t.Fatalf("starterLlamaCppEngineURL(windows/amd64, cuda) = %q, want %q", got, winCUDA.URL)
+	}
+	winCPU, _ := core.CatalogEntryByID("engine-windows-x64")
+	if got := starterLlamaCppEngineURL("windows/amd64", "cpu"); got != winCPU.URL {
+		t.Fatalf("starterLlamaCppEngineURL(windows/amd64, cpu) = %q, want %q", got, winCPU.URL)
+	}
+	if got := starterLlamaCppEngineURL("linux/amd64", "cuda"); got != "" {
+		t.Fatalf("expected empty direct URL for linux/amd64, got %q", got)
+	}
+	sLinux := testState()
+	sLinux.ensureDownloadsUI().hostPlatform = "linux/amd64"
+	ttLinux := ui.NewTester(sLinux.downloadsPageView, 1120, 2400)
+	if !ttLinux.HasText("查看引擎获取方式") || !ttLinux.HasText("下载推荐模型") {
+		t.Fatalf("expected Linux llama.cpp fallback actions in starter card: %v", ttLinux.Texts())
+	}
+
+	// 3. PolyStrata launch summary omits hardcoded 8192 and renders HIP label on AMD GPU
+	sAMD := testState()
+	sAMD.registry.Engines = []core.EngineAsset{{Name: "polystrata · local", Family: "polystrata", Kind: "local_installation"}}
+	sAMD.registry.Models = []core.ModelAsset{{Name: "strata-q2.json", Format: "strata_pack", Available: true}}
+	sAMD.engine = "polystrata · local"
+	sAMD.model = "strata-q2.json"
+	sAMD.device.Snapshot = json.RawMessage(`{"hardware":{"gpu":{"devices":[{"name":"RX 9070 XT","vendor":"amd"}]}}}`)
+	summary := launchSummaryLine(&sAMD)
+	if summary == "" || !containsAll(summary, "PolyStrata（HIP (ROCm) 加速）") || containsAll(summary, "上下文 8192") {
+		t.Fatalf("unexpected PolyStrata launch summary: %q", summary)
+	}
+}
+
+func containsAll(s string, subs ...string) bool {
+	for _, sub := range subs {
+		if len(sub) > 0 && !stringsContains(s, sub) {
+			return false
+		}
+	}
+	return true
+}
+
+func stringsContains(s, sub string) bool {
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			return true
+		}
+	}
+	return false
 }
 
 func TestPolystrataTaskCardProgressBlockersAndLogTail(t *testing.T) {
@@ -205,13 +306,18 @@ func TestPolystrataModelCompatibilityWizardAndHIPBackendLabel(t *testing.T) {
 		{Name: "polystrata · local", Family: "polystrata", Kind: "local_installation"},
 		{Name: "llama-cpp · local", Family: "llama-cpp", Kind: "local_installation"},
 	}
-	gguf := core.ModelAsset{Name: "qwen.gguf", Format: "gguf", Available: true}
+	gguf := core.ModelAsset{Name: "qwen35.gguf", Format: "gguf", Architecture: "qwen35moe", Available: true}
+	ggufUnknown := core.ModelAsset{Name: "unknown.gguf", Format: "gguf", Available: true}
+	ggufLlama := core.ModelAsset{Name: "llama3.gguf", Format: "gguf", Architecture: "llama", Available: true}
 	pack := core.ModelAsset{Name: "strata-qwen.json", Format: "strata_pack", Available: true}
 	dir := core.ModelAsset{Name: "mlx-dir", Format: "directory", Available: true}
 
 	s.engine = "polystrata · local"
-	if !s.compatibleModel(gguf) || !s.compatibleModel(pack) || s.compatibleModel(dir) {
+	if !s.compatibleModel(gguf) || !s.compatibleModel(ggufUnknown) || s.compatibleModel(ggufLlama) || !s.compatibleModel(pack) || s.compatibleModel(dir) {
 		t.Fatal("polystrata compatibility mismatch")
+	}
+	if got := s.incompatibleModelSuffix(ggufLlama); got != "（PolyStrata 暂不支持此架构）" {
+		t.Fatalf("incompatibleModelSuffix(llama3.gguf) = %q", got)
 	}
 	if modelLabel(pack) != "strata-qwen.json · PolyStrata" {
 		t.Fatalf("unexpected strata_pack label: %q", modelLabel(pack))

@@ -71,6 +71,10 @@ func starterOptions(rec core.StarterRecommendation) []starterOption {
 func (s *viewState) defaultPolystrataSetupRequest() core.PolystrataSetupRequest {
 	st := s.ensureDownloadsUI()
 	rec := s.starterRecommendation()
+	opts := starterOptions(rec)
+	if st.starterChoice >= 0 && st.starterChoice < len(opts) && opts[st.starterChoice].Engine == "polystrata" {
+		return polystrataRequestForOption(opts[st.starterChoice], st.polystrataModelSource)
+	}
 	req := core.PolystrataSetupRequest{
 		ModelSource: st.polystrataModelSource,
 	}
@@ -156,6 +160,28 @@ func starterSummaryMeta(rec core.StarterRecommendation, opt starterOption) strin
 	return joinParts(parts)
 }
 
+func starterLlamaCppEngineURL(hostPlatform, backend string) string {
+	var id string
+	switch hostPlatform {
+	case "windows/amd64":
+		if backend == "cuda" {
+			id = "engine-windows-cuda-x64"
+		} else {
+			id = "engine-windows-x64"
+		}
+	case "darwin/arm64":
+		id = "engine-macos-arm64"
+	case "darwin/amd64":
+		id = "engine-macos-x64"
+	default:
+		return ""
+	}
+	if entry, ok := core.CatalogEntryByID(id); ok && entry.Downloadable() {
+		return entry.URL
+	}
+	return ""
+}
+
 func starterModelURLForOption(opt starterOption, modelSource string) string {
 	if entry, ok := core.CatalogEntryByID(opt.ModelID); ok {
 		if modelSource == "modelscope" && entry.MirrorURL != "" {
@@ -230,12 +256,25 @@ func (s *viewState) downloadsStarterCard(c *ui.Context) {
 					s.acquirePolystrataSetup(polystrataRequestForOption(chosen, st.polystrataModelSource))
 				}
 			default:
-				engineURL := core.DefaultEngineURL()
+				hostPlatform := s.downloadsHostPlatform()
+				engineURL := starterLlamaCppEngineURL(hostPlatform, chosen.Backend)
 				modelURL := starterModelURLForOption(chosen, st.modelSource)
-				if engineURL != "" && modelURL != "" {
+				switch {
+				case engineURL != "" && modelURL != "":
 					if button(c, "下载推荐组合").Disabled(s.busy).Clicked() {
 						s.acquireStarterBundle(engineURL, modelURL)
 					}
+				default:
+					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+						button(c, "查看引擎获取方式").OnClick(func() {
+							st.openEngineDrawer("llama-cpp", "", hostPlatform, "")
+						})
+						if modelURL != "" {
+							outlineButton(c, "下载推荐模型").Disabled(s.busy).OnClick(func() {
+								s.acquireModelSource(modelURL, "")
+							})
+						}
+					})
 				}
 			}
 		})

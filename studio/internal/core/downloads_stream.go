@@ -380,6 +380,7 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	}
 	if kind == "polystrata" {
 		task.Stage = "preflight"
+		task.LogPath = ptr(filepath.Join(outDir, ".inferyard-setup.log"))
 	}
 	entry := &downloadEntry{
 		Task:       task,

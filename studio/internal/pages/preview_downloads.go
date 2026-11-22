@@ -222,6 +222,25 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 	}
 }
 
+func (p *previewSession) downloadLogTail(taskID string) string {
+	return "[preview] setup_engine: building strata runtime\n[preview] downloading_model: waiting for weights"
+}
+
+func previewPolystrataRequestFromTask(task core.DownloadTask, fallback core.PolystrataSetupRequest) core.PolystrataSetupRequest {
+	parts := strings.Split(task.DisplayName, " · ")
+	if len(parts) >= 2 && strings.TrimSpace(parts[0]) == "PolyStrata" {
+		req := core.PolystrataSetupRequest{
+			Family:      strings.TrimSpace(parts[1]),
+			ModelSource: fallback.ModelSource,
+		}
+		if len(parts) >= 3 {
+			req.Model = strings.TrimSpace(parts[2])
+		}
+		return req
+	}
+	return fallback
+}
+
 func (p *previewSession) cancelDownload(id string) {
 	for i := range p.state.downloads {
 		task := &p.state.downloads[i]

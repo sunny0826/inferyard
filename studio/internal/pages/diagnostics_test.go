@@ -31,6 +31,7 @@ func (p *stubPreviewMode) resolveModelURL(string) inferyard.ModelResolve {
 	return inferyard.ModelResolve{}
 }
 func (p *stubPreviewMode) detectedEngines() []inferyard.DetectedEngine { return nil }
+func (p *stubPreviewMode) downloadLogTail(string) string               { return "" }
 
 func TestHumanTranslatesDiagnosticAndLocalEngineCodes(t *testing.T) {
 	codes := []string{

@@ -26,6 +26,7 @@ func (p *resolvePreviewStub) resetTask(string, string)                          
 func (p *resolvePreviewStub) report(string) (*core.ReportIndex, *core.ApiError) { return nil, nil }
 func (p *resolvePreviewStub) detail(string) *core.RunTaskDetail                 { return nil }
 func (p *resolvePreviewStub) detectedEngines() []inferyard.DetectedEngine       { return nil }
+func (p *resolvePreviewStub) downloadLogTail(string) string                     { return "" }
 func (p *resolvePreviewStub) resolveModelURL(raw string) inferyard.ModelResolve {
 	u, _ := url.Parse(raw)
 	filename := "model.gguf"

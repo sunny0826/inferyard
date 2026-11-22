@@ -13,6 +13,7 @@ type previewMode interface {
 	detail(id string) *core.RunTaskDetail
 	resolveModelURL(raw string) inferyard.ModelResolve
 	detectedEngines() []inferyard.DetectedEngine
+	downloadLogTail(taskID string) string
 }
 
 func (s *viewState) simulate(intent previewIntent) bool {

@@ -30,6 +30,7 @@ func (p *wizardPreviewStub) detail(string) *core.RunTaskDetail { return nil }
 func (p *wizardPreviewStub) resolveModelURL(string) inferyard.ModelResolve {
 	return inferyard.ModelResolve{}
 }
+func (p *wizardPreviewStub) downloadLogTail(string) string { return "" }
 func (p *wizardPreviewStub) detectedEngines() []inferyard.DetectedEngine {
 	lmsModels := "/Users/demo/.lmstudio/models"
 	return []inferyard.DetectedEngine{

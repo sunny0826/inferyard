@@ -2,12 +2,26 @@ package pages
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 )
+
+var polystrataSupportedGGUFArchs = []string{
+	"qwen35moe",
+	"gemma4",
+	"lfm2moe",
+	"flint",
+	"glm5-next",
+	"glm5next",
+	"deepseek4",
+	"kolibri1",
+	"clover_moe",
+}
 
 func (s *viewState) localEngine() *core.EngineAsset {
 	for i := range s.registry.Engines {
@@ -50,7 +64,14 @@ func (s *viewState) compatibleModel(model core.ModelAsset) bool {
 	case "llama-cpp", "lmstudio":
 		return model.Format != "directory" && model.Format != "strata_pack"
 	case "polystrata":
-		return model.Format == "gguf" || model.Format == "strata_pack"
+		if model.Format == "strata_pack" {
+			return true
+		}
+		if model.Format != "gguf" {
+			return false
+		}
+		arch := strings.ToLower(strings.TrimSpace(model.Architecture))
+		return arch == "" || slices.Contains(polystrataSupportedGGUFArchs, arch)
 	case "mlx-lm", "vllm", "sglang":
 		return model.Format == "directory"
 	}

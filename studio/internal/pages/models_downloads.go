@@ -360,7 +360,7 @@ func (s *viewState) downloadDetails(c *ui.Context, task core.DownloadTask) {
 		componentFoldKeyed(c, "download-log-"+task.TaskId, "查看日志尾部", func() {
 			var snippet string
 			if s.preview != nil {
-				snippet = "[preview] setup_engine: building strata runtime\n[preview] downloading_model: waiting for weights"
+				snippet = s.preview.downloadLogTail(task.TaskId)
 			} else {
 				snippet = readLogTail(logPath, 4096)
 			}

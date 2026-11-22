@@ -37,10 +37,10 @@ inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight/dev
 在受支持的 macOS（Apple Silicon）、Linux x64 或 Windows x64 设备上，可直接通过一条命令自动完成预检、运行时构建、模型下载并生成 `installation.json`：
 
 ```bash
-inferyard engine prepare-polystrata --out bench-ops/engines/polystrata --data-dir bench-ops/polystrata-data --json
+inferyard engine prepare-polystrata --out bench-ops/engines/polystrata --data-dir bench-ops/polystrata-data
 ```
 
-常用选项：`--family` / `--model`（如 `--family qwen36 --model UD-Q4_K_M`）、`--context`、`--backend auto|cuda|hip|metal`、`--model-source auto|modelscope|huggingface`、`--gguf-path`（复用本地 GGUF）、`--resume`（断点续装）。安装完成后可使用 `inferyard engine check --installation bench-ops/engines/polystrata/installation.json --json` 核验。
+常用选项：`--family` / `--model`（如 `--family qwen36 --model UD-Q4_K_M`）、`--context`、`--backend auto|cuda|hip|metal`、`--model-source auto|modelscope|huggingface`、`--gguf-path`（复用本地 GGUF）、`--resume`（断点续装）。安装完成后可使用 `inferyard engine check --installation bench-ops/engines/polystrata/installation.json` 核验。
 
 ## 3. 准备候选
 
@@ -102,7 +102,7 @@ inferyard config create --workspace bench-ops --bundle zh-core --engine /path/to
 }
 ```
 
-可通过 `inferyard engine check --installation /abs/path/to/installation.json --json` 核验，或在 Studio「设置 → 已有本地引擎」中直接注册。
+可通过 `inferyard engine check --installation /abs/path/to/installation.json` 核验，或在 Studio「设置 → 已有本地引擎」中直接注册。
 
 ### Linux x64
 

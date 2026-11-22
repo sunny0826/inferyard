@@ -84,6 +84,32 @@ func prismBackendLabel(w *viewState) string {
 	return "CPU"
 }
 
+func polystrataBackendLabel(w *viewState) string {
+	if w != nil {
+		if rec, ok := core.ParseStarterRecommendation(w.device.Snapshot); ok && rec.Engine == "polystrata" && rec.Backend != "" {
+			return "PolyStrata（" + deviceLabel(rec.Backend) + "）"
+		}
+		if snapshot, err := parseDeviceSnapshot(w.device.Snapshot); err == nil && snapshot != nil {
+			devices := snapshot.object("hardware").object("gpu").list("devices")
+			for _, item := range devices {
+				v := deviceItem(item)
+				switch v.value("vendor") {
+				case "amd":
+					return "PolyStrata（HIP (ROCm) 加速）"
+				case "nvidia":
+					return "PolyStrata（CUDA 加速）"
+				case "apple":
+					return "PolyStrata（Metal 加速）"
+				}
+				if v.flag("metal_supported") {
+					return "PolyStrata（Metal 加速）"
+				}
+			}
+		}
+	}
+	return "PolyStrata"
+}
+
 func launchSummaryLine(w *viewState) string {
 	if w == nil || w.engine == "" || w.model == "" {
 		return ""
@@ -91,6 +117,9 @@ func launchSummaryLine(w *viewState) string {
 	if e := w.localEngine(); e != nil {
 		if e.Family == "lmstudio" {
 			return fmt.Sprintf("运行条件：%s · 上下文 8192 · 使用外部服务地址", localBackendLabel(e.Family))
+		}
+		if e.Family == "polystrata" {
+			return fmt.Sprintf("运行条件：%s · 端口自动（默认 %d）", polystrataBackendLabel(w), core.DefaultBenchmarkPort)
 		}
 		return fmt.Sprintf("运行条件：%s · 上下文 8192 · 端口自动（默认 %d）", localBackendLabel(e.Family), core.DefaultBenchmarkPort)
 	}
@@ -106,6 +135,9 @@ func (w *viewState) incompatibleModelSuffix(model core.ModelAsset) string {
 		case "mlx-lm", "vllm", "sglang":
 			return "（需目录模型）"
 		case "polystrata":
+			if model.Format == "gguf" && model.Architecture != "" {
+				return "（PolyStrata 暂不支持此架构）"
+			}
 			return "（需 GGUF 或 PolyStrata 配置）"
 		case "llama-cpp", "lmstudio":
 			return "（需 GGUF）"
