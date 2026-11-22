@@ -1,3 +1,7 @@
+<p align="left">
+  <img src="resources/icon.png" alt="InferYard Studio icon" width="76" height="76">
+</p>
+
 # InferYard Studio
 
 InferYard Studio is a native Go desktop app built on [onevra](https://github.com/oneo-me/onevra) and MyGo v0.7.4. Pages call `core.Service` in-process and invoke the [CLI subproject](../cli/README.md) (`inferyard`) for benchmark execution and `studio.json` report generation.

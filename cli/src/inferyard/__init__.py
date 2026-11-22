@@ -1,4 +1,4 @@
 """InferYard; no service lifecycle operations on import."""
 
-__version__ = "0.0.6"
+__version__ = "0.0.7"
 SCHEMA_VERSION = 3

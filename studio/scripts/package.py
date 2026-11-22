@@ -12,6 +12,10 @@ from pathlib import Path
 import release_common as common
 
 LICENSE_SOURCE = Path(__file__).resolve().parents[2] / "LICENSE"
+RESOURCES_DIR = Path(__file__).resolve().parents[1] / "resources"
+ICON_PNG_SOURCE = RESOURCES_DIR / "icon.png"
+ICON_ICNS_SOURCE = RESOURCES_DIR / "icon.icns"
+ICON_ICO_SOURCE = RESOURCES_DIR / "icon.ico"
 
 
 def build_info(executable: Path) -> dict[str, common.JsonData]:
@@ -44,28 +48,47 @@ def require_verified_build(executable: Path, source_commit: str, target: str) ->
     return info
 
 
+def packaged_binary_relpath(target: str) -> str:
+    executable = common.executable_name(target)
+    if target.startswith("darwin"):
+        return f"InferYard Studio.app/Contents/MacOS/{executable}"
+    return executable
+
+
 def assemble_distribution(directory: Path, version: str, target: str, binary: Path) -> None:
     executable = common.executable_name(target)
     if not LICENSE_SOURCE.is_file():
         raise ValueError("license_missing")
     directory.mkdir(parents=True)
-    shutil.copy2(binary, directory / executable)
-    shutil.copy2(LICENSE_SOURCE, directory / "LICENSE")
-    instructions = f"InferYard Studio {version} ({target})\n\n"
     if target.startswith("darwin"):
+        if not ICON_ICNS_SOURCE.is_file():
+            raise ValueError("icon_icns_missing")
         bundle = directory / "InferYard Studio.app" / "Contents"
         (bundle / "MacOS").mkdir(parents=True)
-        shutil.copy2(directory / executable, bundle / "MacOS" / executable)
+        (bundle / "Resources").mkdir(parents=True)
+        shutil.copy2(binary, bundle / "MacOS" / executable)
+        shutil.copy2(ICON_ICNS_SOURCE, bundle / "Resources" / "AppIcon.icns")
+        shutil.copy2(LICENSE_SOURCE, bundle / "Resources" / "LICENSE")
         with (bundle / "Info.plist").open("wb") as output:
             plistlib.dump(dict(CFBundleExecutable=executable, CFBundleIdentifier="com.inferyard.studio",
                                CFBundleName="InferYard Studio", CFBundleDisplayName="InferYard Studio",
+                               CFBundleIconFile="AppIcon",
                                CFBundlePackageType="APPL", CFBundleVersion=version,
                                CFBundleShortVersionString=version, LSMinimumSystemVersion="12.0",
                                NSHighResolutionCapable=True, NSPrincipalClass="NSApplication"), output)
-        instructions += 'Run: open "InferYard Studio.app" (macOS 12+).\nNative UI uses Metal. Desktop notifications require the .app and notification permission.\n'
-    elif target.startswith("linux"):
+        return
+    shutil.copy2(binary, directory / executable)
+    shutil.copy2(LICENSE_SOURCE, directory / "LICENSE")
+    instructions = f"InferYard Studio {version} ({target})\n\n"
+    if target.startswith("linux"):
+        if not ICON_PNG_SOURCE.is_file():
+            raise ValueError("icon_png_missing")
+        shutil.copy2(ICON_PNG_SOURCE, directory / "icon.png")
         instructions += "Run: ./inferyard-studio\nNative UI: GTK 3 with OpenGL rendering. Desktop notifications need a notification service.\n"
     else:
+        if not ICON_ICO_SOURCE.is_file():
+            raise ValueError("icon_ico_missing")
+        shutil.copy2(ICON_ICO_SOURCE, directory / "icon.ico")
         instructions += "Run: inferyard-studio.exe\nRequires Windows 10/11; native UI uses Direct3D 11.\n"
     instructions += (
         "\nConfigure the separately installed inferyard CLI and data directories in Settings.\n"
@@ -77,15 +100,17 @@ def assemble_distribution(directory: Path, version: str, target: str, binary: Pa
 
 
 def make_dmg(archive: Path, distribution: Path) -> None:
-    shortcut = distribution / "Applications"
-    shortcut.symlink_to("/Applications")
-    try:
+    app_source = distribution / "InferYard Studio.app"
+    if not app_source.is_dir():
+        raise ValueError("app_bundle_missing")
+    with tempfile.TemporaryDirectory() as staging_dir:
+        staging = Path(staging_dir)
+        shutil.copytree(app_source, staging / "InferYard Studio.app", symlinks=True)
+        (staging / "Applications").symlink_to("/Applications")
         subprocess.run([
             "hdiutil", "create", "-fs", "HFS+", "-format", "UDZO",
-            "-volname", "InferYard Studio", "-srcfolder", str(distribution), str(archive),
+            "-volname", "InferYard Studio", "-srcfolder", str(staging), str(archive),
         ], check=True)
-    finally:
-        shortcut.unlink()
 
 
 def inno_path(path: Path) -> str:
@@ -110,8 +135,9 @@ OutputDir={inno_path(archive.parent)}
 OutputBaseFilename={archive.stem}
 LicenseFile={inno_path(distribution / "LICENSE")}
 InfoBeforeFile={inno_path(distribution / "README.txt")}
+SetupIconFile={inno_path(distribution / "icon.ico")}
 UninstallDisplayName=InferYard Studio
-UninstallDisplayIcon={{app}}\\inferyard-studio.exe
+UninstallDisplayIcon={{app}}\\icon.ico
 VersionInfoVersion={version}.0
 VersionInfoCompany=Xudong Guo
 VersionInfoDescription=InferYard Studio Installer
@@ -126,9 +152,10 @@ SolidCompression=yes
 Source: "{inno_path(distribution / executable)}"; DestDir: "{{app}}"; Flags: ignoreversion
 Source: "{inno_path(distribution / "LICENSE")}"; DestDir: "{{app}}"; Flags: ignoreversion
 Source: "{inno_path(distribution / "README.txt")}"; DestDir: "{{app}}"; Flags: ignoreversion
+Source: "{inno_path(distribution / "icon.ico")}"; DestDir: "{{app}}"; Flags: ignoreversion
 
 [Icons]
-Name: "{{group}}\\InferYard Studio"; Filename: "{{app}}\\inferyard-studio.exe"
+Name: "{{group}}\\InferYard Studio"; Filename: "{{app}}\\inferyard-studio.exe"; IconFilename: "{{app}}\\icon.ico"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{{app}}"
@@ -189,7 +216,8 @@ def package_target(target: str, source_commit: str, out: Path, root: Path = comm
         archive = out / common.archive_name(version, target)
         make_archive(archive, out / distribution)
         archive_raw = archive.read_bytes()
-        binary_raw = (out / distribution / common.executable_name(target)).read_bytes()
+        binary_relpath = packaged_binary_relpath(target)
+        binary_raw = (out / distribution / binary_relpath).read_bytes()
         receipt = {
             "kind": common.PACKAGE_KIND,
             "version": version,
@@ -198,7 +226,7 @@ def package_target(target: str, source_commit: str, out: Path, root: Path = comm
             "target": target,
             "archive": common.file_record(archive.name, archive_raw),
             "binary": common.file_record(
-                f"{distribution}/{common.executable_name(target)}", binary_raw
+                f"{distribution}/{binary_relpath}", binary_raw
             ),
             "build_info": info,
         }

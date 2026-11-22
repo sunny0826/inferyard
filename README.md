@@ -1,3 +1,11 @@
+<p align="left">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-mark-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="assets/logo-mark-light.svg">
+    <img src="assets/logo-mark-light.svg" alt="InferYard logo" width="64" height="64">
+  </picture>
+</p>
+
 # InferYard
 
 [![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/apps/inferyard-studio)

@@ -21,6 +21,9 @@ import (
 //go:embed mygo.config.ts
 var desktopConfig string
 
+//go:embed resources/icon.png
+var appIconPNG []byte
+
 func main() {
 	os.Exit(runMain())
 }
@@ -80,7 +83,12 @@ func runMain() (exitCode int) {
 }
 
 func runApp(ctx context.Context, ready func()) {
-	mygo.App.WhenReady(ready)
+	mygo.App.WhenReady(func() {
+		if err := mygo.App.Dock.SetIcon(appIconPNG); err != nil {
+			log.Printf("Studio dock icon: %v", err)
+		}
+		ready()
+	})
 	go func() { <-ctx.Done(); mygo.App.Quit() }()
 	if err := mygo.App.Run(); err != nil {
 		log.Print(err)
