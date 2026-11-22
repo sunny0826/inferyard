@@ -171,6 +171,7 @@ def build_request(
         or args.command == "model acquire"
         or args.command == "engine acquire"
         or args.command == "engine prepare"
+        or args.command == "engine prepare-polystrata"
         or args.command == "engine check"
         or args.command == "engine detect"
         or args.command == "engine init-installation"
