@@ -15,7 +15,7 @@ func (s *viewState) resetWorkspace() {
 	s.deviceChecked = ""
 	s.model, s.registry = "", core.Registry{}
 	s.initDir, s.engine, s.process, s.bindEndpoint, s.candidate = "", "", "", "", ""
-	s.assetsPreset, s.bindingStale = false, false
+	s.bindingStale = false
 	s.engineState, s.startup, s.processes = core.EngineState{}, core.Startup{}, nil
 	s.cliInstallStatus, s.refreshFailure = "", ""
 	s.runProgress, s.progress, s.resumeSource, s.detail = nil, nil, nil, nil

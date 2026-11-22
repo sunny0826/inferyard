@@ -20,9 +20,9 @@ func downloadsOrder(t *testing.T, tt *ui.Tester) (tasks, create float32) {
 	if !ok {
 		t.Fatalf("download task section missing: %v", tt.Texts())
 	}
-	createBox, ok := tt.Find("新建下载任务")
+	createBox, ok := tt.Find("关联已有引擎")
 	if !ok {
-		t.Fatalf("new download section missing: %v", tt.Texts())
+		t.Fatalf("engine catalog section missing: %v", tt.Texts())
 	}
 	return taskBox.Y, createBox.Y
 }
@@ -234,82 +234,4 @@ func buttonFill(tt *ui.Tester, label string, accent ui.Color) (bool, bool) {
 		}
 	}
 	return false, true
-}
-
-func TestNewDownloadCardKeepsOnePrimaryAction(t *testing.T) {
-	cases := []struct {
-		name          string
-		engines       []core.EngineAsset
-		models        []core.ModelAsset
-		downloads     []core.DownloadTask
-		primaryEngine bool
-		primaryModel  bool
-	}{
-		{name: "missing both", primaryEngine: true},
-		{name: "missing model", engines: []core.EngineAsset{{Name: "llama"}}, primaryModel: true},
-		{name: "missing engine", models: []core.ModelAsset{{Name: "model", Available: true}}, primaryEngine: true},
-		{
-			name: "both ready", engines: []core.EngineAsset{{Name: "llama"}},
-			models: []core.ModelAsset{{Name: "model", Available: true}},
-		},
-		{
-			name: "engine downloading", downloads: []core.DownloadTask{
-				{TaskId: "engine", Kind: "engine", State: "downloading"},
-				{TaskId: "model", Kind: "model", State: "downloading"},
-			},
-		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			s := testState()
-			s.progress.NextAction = "prepare_candidate"
-			s.registry.Engines, s.registry.Models, s.downloads = tc.engines, tc.models, tc.downloads
-			var accent ui.Color
-			tt := ui.NewTester(func(c *ui.Context) {
-				accent = c.Theme().Accent
-				s.downloadsPageView(c)
-			}, 1120, 2400)
-
-			for _, probe := range []struct {
-				label string
-				want  bool
-			}{
-				{"返回任务", false},
-				{"下载引擎", tc.primaryEngine},
-				{"下载模型", tc.primaryModel},
-			} {
-				filled, found := buttonFill(tt, probe.label, accent)
-				if !found {
-					t.Fatalf("%s button missing: %v", probe.label, tt.Texts())
-				}
-				if filled != probe.want {
-					t.Fatalf("%s filled = %v, want %v", probe.label, filled, probe.want)
-				}
-			}
-			if tc.primaryEngine && tc.primaryModel {
-				t.Fatal("fixture asks for two primary download actions")
-			}
-		})
-	}
-}
-
-func TestCatalogChoicesUseRadioGroupWithCustomOption(t *testing.T) {
-	s := testState()
-	tt := ui.NewTester(s.downloadsPageView, 1120, 2400)
-	qwen := "Qwen3-0.6B-Q8_0（GGUF）"
-	if !tt.HasText(qwen) || !tt.HasText("自定义模型地址") {
-		t.Fatalf("catalog radios missing: %v", tt.Texts())
-	}
-	click(t, tt, qwen)
-	entry, ok := core.CatalogEntryByURL(s.modelURL)
-	if !ok || entry.Title != qwen {
-		t.Fatalf("modelURL = %q, want %s", s.modelURL, qwen)
-	}
-	click(t, tt, "自定义模型地址")
-	if s.modelURL != "" {
-		t.Fatalf("custom radio kept preset URL: %q", s.modelURL)
-	}
-	if !tt.HasText("模型 URL（支持 HF / ModelScope /resolve 或 /blob）") {
-		t.Fatalf("custom URL field did not appear: %v", tt.Texts())
-	}
 }

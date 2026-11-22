@@ -1,6 +1,9 @@
 package pages
 
-import "inferyard/studio/internal/core"
+import (
+	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
+)
 
 type previewMode interface {
 	showNotice()
@@ -8,6 +11,8 @@ type previewMode interface {
 	resetTask(model, engine string)
 	report(reference string) (*core.ReportIndex, *core.ApiError)
 	detail(id string) *core.RunTaskDetail
+	resolveModelURL(raw string) inferyard.ModelResolve
+	detectedEngines() []inferyard.DetectedEngine
 }
 
 func (s *viewState) simulate(intent previewIntent) bool {

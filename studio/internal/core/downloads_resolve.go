@@ -74,7 +74,7 @@ func IsResolvableModelURL(raw string) bool {
 		return false
 	}
 	parts := strings.Split(strings.TrimPrefix(u.EscapedPath(), "/"), "/")
-	if len(parts) < 5 {
+	if len(parts) < 4 {
 		return false
 	}
 	for i, part := range parts {
@@ -118,13 +118,14 @@ func IsResolvableModelURL(raw string) bool {
 }
 
 func extractResolvableParts(host string, parts []string) (owner, repo, mode, ref string, fileParts []string, ok bool) {
-	if host == "modelscope.cn" && len(parts) >= 5 && parts[0] == "models" {
-		if parts[3] == "blob" || parts[3] == "resolve" || parts[3] == "tree" {
+	if host == "modelscope.cn" && len(parts) > 0 && parts[0] == "models" {
+		if len(parts) >= 5 && (parts[3] == "blob" || parts[3] == "resolve" || parts[3] == "tree") {
 			return parts[1], parts[2], parts[3], parts[4], parts[5:], true
 		}
 		if len(parts) >= 7 && parts[3] == "file" && parts[4] == "view" {
 			return parts[1], parts[2], "blob", parts[5], parts[6:], true
 		}
+		return "", "", "", "", nil, false
 	}
 	if len(parts) >= 4 && parts[2] == "tree" {
 		return parts[0], parts[1], "tree", parts[3], parts[4:], true
@@ -133,6 +134,10 @@ func extractResolvableParts(host string, parts []string) (owner, repo, mode, ref
 		return "", "", "", "", nil, false
 	}
 	return parts[0], parts[1], parts[2], parts[3], parts[4:], true
+}
+
+func IsSupportedModelURL(raw string) bool {
+	return validSource(raw) || validDirectorySource(raw) || IsResolvableModelURL(raw)
 }
 
 func (s *Service) ResolveModelURL(ctx context.Context, rawURL, tokenEnv string) (inferyard.ModelResolve, *ApiError) {
@@ -187,11 +192,19 @@ func (s *Service) CreateOrResolveModelDownload(ctx context.Context, req CreateDo
 	if _, apiErr := s.downloadRoot("model", u); apiErr != nil {
 		return DownloadTask{}, apiErr
 	}
+	if req.OutName == "" {
+		s.mu.Lock()
+		existing, found := s.activeDownloadLocked("model", req.SourceUrl, "")
+		s.mu.Unlock()
+		if found {
+			return existing, nil
+		}
+	}
 	resolved, apiErr := s.ResolveModelURL(ctx, req.SourceUrl, tokenEnv)
 	if apiErr != nil {
 		return DownloadTask{}, apiErr
 	}
 	pinnedReq := req
 	pinnedReq.SourceUrl = resolved.PinnedURL
-	return s.CreateModelDownload(pinnedReq, tokenEnv)
+	return s.createModelDownload(pinnedReq, req.SourceUrl, tokenEnv)
 }

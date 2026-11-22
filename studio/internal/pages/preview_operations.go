@@ -5,6 +5,7 @@ package pages
 import (
 	"encoding/json"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"inferyard/studio/internal/core"
@@ -55,7 +56,10 @@ func (p *previewSession) dispatch(intent previewIntent) {
 
 func (p *previewSession) retryDownload(id string) {
 	for _, task := range p.state.downloads {
-		if task.TaskId == id && terminal(task.State) {
+		if task.TaskId == id && (task.State == "failed" || task.State == "cancelled") {
+			if p.state.downloadRetryActive(task) {
+				return
+			}
 			p.startDownload(previewDownload{kind: task.Kind, source: task.SourceUrl})
 			return
 		}
@@ -247,7 +251,14 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		return
 	}
 	s.settings.Settings = value
-	s.settings.Effective = core.EffectiveSettings{WorkspaceRoot: value.WorkspaceRoot, ResultsRoot: value.ResultsRoot, ModelsRoot: value.ModelsRoot, InferyardPath: value.InferyardPath}
+	s.settings.Effective = core.EffectiveSettings{
+		WorkspaceRoot:    value.WorkspaceRoot,
+		ResultsRoot:      value.ResultsRoot,
+		ModelsRoot:       value.ModelsRoot,
+		InferyardPath:    value.InferyardPath,
+		ExtraModelsRoots: slices.Clone(value.ExtraModelsRoots),
+		DownloadProxy:    value.DownloadProxy,
+	}
 	s.syncSavedGroups(patch, s.settingsDraft(), s.settings)
 	s.ready.Workspace.Path, s.ready.Results.Path, s.ready.Models.Path = value.WorkspaceRoot, value.ResultsRoot, value.ModelsRoot
 	if workspaceChanged {

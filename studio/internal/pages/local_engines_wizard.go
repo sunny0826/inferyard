@@ -40,6 +40,15 @@ func (s *viewState) localEngineWizardView(c *ui.Context) {
 	w := ui.Local(container, "wizard-state", func() localEngineWizardState {
 		return localEngineWizardState{family: "llama-cpp"}
 	})
+	if s.wizardPresetFamily != "" {
+		for _, opt := range localEngineFamilyOptions {
+			if opt.Value == s.wizardPresetFamily {
+				w.family = s.wizardPresetFamily
+				break
+			}
+		}
+		s.wizardPresetFamily = ""
+	}
 	if w.family == "" {
 		w.family = "llama-cpp"
 	}
@@ -155,7 +164,7 @@ func applyDetectedEngine(w *localEngineWizardState, cand inferyard.DetectedEngin
 
 func (s *viewState) detectWizardEngines(w *localEngineWizardState) {
 	if s.preview != nil {
-		w.candidates = previewDetectedEngines()
+		w.candidates = s.preview.detectedEngines()
 		w.detectedLoaded = true
 		w.detectError = nil
 		w.detecting = false
@@ -236,32 +245,4 @@ func (s *viewState) initAndRegisterWizardEngine(w *localEngineWizardState) {
 		_, err := s.service.InitAndRegisterLocalEngine(s.ctx, req)
 		return "已生成并注册本地引擎", err
 	})
-}
-
-func previewDetectedEngines() []inferyard.DetectedEngine {
-	lmsModels := "/Users/demo/.lmstudio/models"
-	return []inferyard.DetectedEngine{
-		{
-			Family:           "llama-cpp",
-			Executable:       "/opt/homebrew/bin/llama-server",
-			WorkingDirectory: "/opt/homebrew/bin",
-			RuntimeRoots:     []string{"/opt/homebrew/bin"},
-			Label:            "llama-cpp · /opt/homebrew/bin/llama-server",
-		},
-		{
-			Family:           "mlx-lm",
-			Executable:       "/Users/demo/.local/share/uv/tools/mlx-lm/bin/python",
-			WorkingDirectory: "/Users/demo/.local/share/uv/tools/mlx-lm",
-			RuntimeRoots:     []string{"/Users/demo/.local/share/uv/tools/mlx-lm"},
-			Label:            "mlx-lm · mlx-lm (uv tool)",
-		},
-		{
-			Family:           "lmstudio",
-			Executable:       "/Users/demo/.lmstudio/bin/lms",
-			WorkingDirectory: "/Users/demo/.lmstudio/bin",
-			RuntimeRoots:     []string{"/Users/demo/.lmstudio/bin"},
-			ModelsRoot:       &lmsModels,
-			Label:            "lmstudio · /Users/demo/.lmstudio/bin/lms",
-		},
-	}
 }

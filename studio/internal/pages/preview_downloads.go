@@ -11,10 +11,18 @@ import (
 	"time"
 
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
 )
 
 func (p *previewSession) startDownload(op previewDownload) {
 	s := p.state
+	if op.name == "" && op.source != "" {
+		for _, task := range s.downloads {
+			if task.Kind == op.kind && task.State == "downloading" && task.SourceUrl == op.source {
+				return
+			}
+		}
+	}
 	name := op.name
 	if name == "" {
 		name = defaultDownloadName(s.settings.Settings.ModelDownloadName, "model")
@@ -82,7 +90,7 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 				return
 			}
 		}
-		s.registry.Engines = append(s.registry.Engines, core.EngineAsset{Name: name, Source: "模拟下载"})
+		s.registry.Engines = append(s.registry.Engines, core.EngineAsset{Name: name, Family: "llama-cpp", Source: "模拟下载"})
 		s.registry.DefaultEngine = name
 		if s.checks.Engines == nil {
 			s.checks.Engines = map[string]core.EngineEligibility{}
@@ -91,8 +99,20 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 		s.adoptDownloadedEngine()
 	} else {
 		name := task.OutName + " · " + emptyText(task.FileName)
+		assetPath := filepath.Join(task.OutDir, emptyText(task.FileName))
+		format := "gguf"
+		if strings.Contains(task.SourceUrl, "/tree/") {
+			assetPath = task.OutDir
+			format = "directory"
+		}
 		task.Result = &core.DownloadResult{Bytes: task.DownloadedBytes, Sha256: strings.Repeat("0", 64)}
-		s.registry.Models = append(s.registry.Models, core.ModelAsset{Name: name, Available: true, SizeBytes: previewValue(task.DownloadedBytes)})
+		s.registry.Models = append(s.registry.Models, core.ModelAsset{
+			Name:      name,
+			Format:    format,
+			Path:      assetPath,
+			Available: true,
+			SizeBytes: previewValue(task.DownloadedBytes),
+		})
 		s.adoptOnlyModel()
 	}
 }
@@ -106,5 +126,76 @@ func (p *previewSession) cancelDownload(id string) {
 			p.notice = "模拟下载已取消。"
 			return
 		}
+	}
+}
+
+func (p *previewSession) resolveModelURL(raw string) inferyard.ModelResolve {
+	u, _ := url.Parse(raw)
+	platform := "huggingface"
+	host := "huggingface.co"
+	if u != nil && strings.ToLower(u.Host) == "modelscope.cn" {
+		platform = "modelscope"
+		host = "modelscope.cn"
+	}
+	filename := "model.gguf"
+	if u != nil && u.Path != "" {
+		if base := path.Base(u.Path); base != "" && base != "." && base != "/" {
+			filename = base
+		}
+	}
+	rev := "0123456789abcdef0123456789abcdef01234567"
+	var size *int64
+	alreadyPinned := false
+	repo := "preview/model"
+	if entry, ok := core.CatalogEntryByURL(raw); ok {
+		if entry.Revision != "" {
+			rev = entry.Revision
+		}
+		if entry.Bytes > 0 {
+			b := entry.Bytes
+			size = &b
+		}
+		alreadyPinned = raw == entry.URL
+	}
+	if u != nil {
+		parts := strings.Split(strings.TrimPrefix(u.Path, "/"), "/")
+		if host == "modelscope.cn" && len(parts) >= 4 && parts[0] == "models" {
+			repo = parts[1] + "/" + parts[2]
+		} else if len(parts) >= 2 {
+			repo = parts[0] + "/" + parts[1]
+		}
+	}
+	if strings.Contains(raw, "/tree/") {
+		repoName := path.Base(strings.TrimSuffix(repo, "/"))
+		pinned := "https://" + host + "/" + repo + "/tree/" + rev
+		return inferyard.ModelResolve{
+			Definition:    inferyard.ModelResolveDefinition,
+			Kind:          "directory",
+			Platform:      platform,
+			Repository:    repo,
+			Revision:      rev,
+			PinnedURL:     pinned,
+			DownloadURL:   pinned,
+			Filename:      repoName,
+			Bytes:         size,
+			AlreadyPinned: alreadyPinned,
+		}
+	}
+	pinned := "https://" + host + "/" + repo + "/blob/" + rev + "/" + filename
+	download := "https://" + host + "/" + repo + "/resolve/" + rev + "/" + filename
+	if platform == "modelscope" {
+		download = "https://modelscope.cn/api/v1/models/" + repo + "/repo?Revision=" + rev + "&FilePath=" + url.QueryEscape(filename)
+	}
+	return inferyard.ModelResolve{
+		Definition:    inferyard.ModelResolveDefinition,
+		Platform:      platform,
+		Repository:    repo,
+		Revision:      rev,
+		Path:          filename,
+		PinnedURL:     pinned,
+		DownloadURL:   download,
+		Filename:      filename,
+		Bytes:         size,
+		AlreadyPinned: alreadyPinned,
 	}
 }

@@ -23,33 +23,20 @@ var previewScenes = []struct {
 	apply func(*viewState)
 }{
 	{"任务 · 准备", previewPreparation},
+	{"任务 · 待运行", func(s *viewState) {
+		s.history, s.downloads, s.reports = core.RunHistoryResponse{}, nil, nil
+	}},
 	{"任务 · 运行中", previewRunning},
 	{"任务 · 已完成", previewCompleted},
 	{"任务 · 失败", func(s *viewState) {
 		s.task = benchmarkTask{stage: "bind", start: startChainResult{candidate: "/preview/candidate"}, failure: core.Err("engine_start_failed")}
 		s.engineState.State = "failed"
 	}},
-	{"运行 · 实时详情", func(s *viewState) { previewRunning(s); s.selectTask("preview-run") }},
-	{"报告 · 列表", func(s *viewState) { s.selected = "reports" }},
-	{"报告 · 详情", func(s *viewState) { s.openReport("preview-report") }},
-	{"报告 · 长表与缺测", func(s *viewState) { s.openReport("long-report") }},
-	{"报告 · 读取失败", func(s *viewState) { s.openReport("broken-report") }},
-	{"空数据", previewEmpty},
-	{"模型 · 可用组合", func(s *viewState) { s.selected = "models" }},
-	{"下载 · 进行中与失败", func(s *viewState) { s.selected = "downloads" }},
-	{"设备 · 含缺测", func(s *viewState) { s.selected = "device" }},
-	{"设置 · 路径与目录名", func(s *viewState) { s.selected = "settings" }},
-	{"专项 · 历史恢复示例", previewSpeedHistory},
 	{"首次使用 · 无资源", func(s *viewState) {
 		previewPreparation(s)
 		s.registry = core.Registry{}
 		s.model, s.engine = "", ""
 		s.checks = core.EngineCheckOverview{Supported: true}
-	}},
-	{"资源 · 密集采样与缺测", previewDenseResources},
-	{"资源 · CPU 与多路温度", previewMultiSensorResources},
-	{"任务 · 待运行", func(s *viewState) {
-		s.history, s.downloads, s.reports = core.RunHistoryResponse{}, nil, nil
 	}},
 	{"引擎 · 本地安装与目录模型", previewLocalEngines},
 	{"引擎 · LM Studio 手动绑定", func(s *viewState) {
@@ -61,7 +48,41 @@ var previewScenes = []struct {
 			{PID: 4001, ProcessName: "LM Studio", Endpoints: []inferyard.DiscoveredEndpoint{{URL: "http://127.0.0.1:48857", Models: []string{"local.gguf", "local-weights"}}}},
 		}}
 	}},
-	{"设计系统 · Token 与材质", func(s *viewState) { s.selected = "design_system" }},
+	{"资源 · 密集采样与缺测", previewDenseResources},
+	{"资源 · CPU 与多路温度", previewMultiSensorResources},
+	{"报告 · 长表与缺测", func(s *viewState) { s.openReport("long-report") }},
+	{"报告 · 读取失败", func(s *viewState) { s.openReport("broken-report") }},
+	{"下载 · 进行中与失败", previewDownloadsActiveAndFailed},
+}
+
+func previewDownloadsActiveAndFailed(s *viewState) {
+	s.selected = "downloads"
+	engineTotal := int64(11517506)
+	s.downloads = []core.DownloadTask{
+		{
+			TaskId:          "preview-engine",
+			Kind:            "engine",
+			DisplayName:     "llama.cpp · prism-b10743-adfffbe",
+			State:           "downloading",
+			Stage:           "downloading",
+			SourceUrl:       core.DefaultEngineURL(),
+			OutName:         "preview-engine",
+			OutDir:          "/preview/engines/preview-engine",
+			DownloadedBytes: engineTotal * 3 / 5,
+			TotalBytes:      previewValue(engineTotal),
+			BytesPerSecond:  previewValue(18.5 * 1024 * 1024),
+			StartedAt:       "2026-10-17T00:00:00Z",
+		},
+		{
+			TaskId:    "preview-model",
+			Kind:      "model",
+			State:     "failed",
+			OutName:   "preview-model",
+			OutDir:    "/preview/models/preview-model",
+			SourceUrl: "https://example.invalid/preview.gguf",
+			Error:     core.Err("download_failed"),
+		},
+	}
 }
 
 func previewDenseResources(s *viewState) {
@@ -105,8 +126,24 @@ func previewBase(ctx context.Context) *viewState {
 			WorkspaceRoot: settings.WorkspaceRoot, ResultsRoot: settings.ResultsRoot, ModelsRoot: settings.ModelsRoot,
 		}},
 		registry: core.Registry{
-			Models:  []core.ModelAsset{{Name: model, Available: true, Architecture: "llama", SizeBytes: previewValue(int64(4 << 30))}, {Name: "Preview-Small.gguf", Available: true}},
-			Engines: []core.EngineAsset{{Name: engine, Source: "模拟引擎目录"}}, DefaultEngine: engine,
+			Models: []core.ModelAsset{
+				{
+					Name: model, Format: "gguf", Available: true, Architecture: "llama",
+					SizeBytes: previewValue(int64(4 << 30)), Path: filepath.Join(root, "models", model), Deletable: true,
+				},
+				{
+					Name: "Preview-Small.gguf", Format: "gguf", Available: true,
+					Path: filepath.Join(root, "models", "Preview-Small.gguf"), Deletable: true,
+				},
+			},
+			Engines: []core.EngineAsset{{
+				Name: engine, Family: "llama-cpp", Source: "模拟引擎目录",
+				Path: filepath.Join(root, "engines", "llama-server"), Deletable: true,
+			}},
+			DefaultEngine:   engine,
+			TotalModelBytes: 4 << 30,
+			DiskFreeBytes:   previewValue(int64(100 << 30)),
+			ModelRoots:      []string{filepath.Join(root, "models")},
 		},
 		checks: core.EngineCheckOverview{Supported: true, Engines: map[string]core.EngineEligibility{engine: {State: core.EngineCheckEligible, Version: "preview"}}},
 		progress: &inferyard.WorkspaceProgress{Workspace: root, NextAction: "prepare_candidate",
@@ -121,10 +158,6 @@ func previewBase(ctx context.Context) *viewState {
 	seeded := core.RunSummary{RunId: "preview-run", Path: "/preview/results/preview-run", ModelName: previewValue(model), Bundle: previewValue(inferyard.DefaultBundleCore), Status: "complete", Sealed: true, Completeness: previewValue("complete")}
 	seeded.Score = &core.RunScore{Passed: 7, Valid: 13, Rate: previewValue(7.0 / 13)}
 	s.history.StandaloneRuns = []core.RunSummary{seeded}
-	s.downloads = []core.DownloadTask{
-		{TaskId: "preview-engine", Kind: "engine", State: "downloading", OutName: "preview-engine", OutDir: "/preview/engines/preview-engine"},
-		{TaskId: "preview-model", Kind: "model", State: "failed", OutName: "preview-model", OutDir: "/preview/models/preview-model", SourceUrl: "https://example.invalid/preview.gguf", Error: core.Err("download_failed")},
-	}
 	s.device.Snapshot = json.RawMessage(`{"hardware":{"cpu_model":"Preview CPU","logical_cpus":14,"architecture":"arm64","memory_total_bytes":25769803776,"memory_available_bytes":10737418240,"disk_free_bytes":107374182400,"ac_online":true,"gpu":{"devices":[{"name":"Preview GPU","cores":16,"metal_supported":true,"missing":{"memory_total_bytes":"shared_host_memory","memory_free_bytes":"not_measured"}}]},"missing":{"temperature":"unsupported"}}}`)
 	return s
 }
@@ -146,14 +179,6 @@ func previewCompleted(s *viewState) {
 	for i := range s.progress.Bundles {
 		s.progress.Bundles[i].Phase, s.progress.Bundles[i].NextAction = "run_complete", "none"
 	}
-}
-
-func previewEmpty(s *viewState) {
-	s.selected, s.progress = "reports", nil
-	s.history, s.registry = core.RunHistoryResponse{}, core.Registry{}
-	s.reports, s.downloads, s.device.Snapshot = nil, nil, nil
-	s.model, s.engine = "", ""
-	s.ready = core.Readiness{CLI: core.InferyardProbe{Status: "not_found"}}
 }
 
 func previewReportSummary(id string) core.ReportSummary {

@@ -70,16 +70,18 @@ final class PreviewUITests: XCTestCase {
         expectBundleLabels()
         keepScreenshot("Benchmark setup with single stage heading")
         click("下载")
-        click("下载模型")
+        selectTab("模型")
+        click("下载模型 · model-qwen3-0.6b-q8")
         expectText("已结束")
         click("模型")
         let downloadedModel = "model · Qwen3-0.6B-Q8_0.gguf"
-        expectText(downloadedModel)
+        let downloadedModelLabel = downloadedModel + " · GGUF"
+        expectText(downloadedModelLabel)
         XCTAssertFalse(app.popUpButtons["模型"].exists, "Models must not offer an inline pair selector")
         // The sidebar task entry switches to the current task without resetting
         // or confirming; the pair is chosen on the task page.
         click("任务")
-        chooseModel(downloadedModel)
+        chooseModel(downloadedModelLabel)
         XCTAssertFalse(app.buttons["确认开始新任务"].exists, "Task nav must not ask to confirm")
         click("开始测评")
         expectExists(app.buttons["查看实时详情"], timeout: 10)
@@ -134,8 +136,9 @@ final class PreviewUITests: XCTestCase {
 
     private func downloadFailureRetryAndReset() {
         click("下载")
+        selectTab("模型")
         app.checkBoxes["下次操作模拟失败"].click()
-        click("下载模型")
+        click("下载模型 · model-qwen3-0.6b-q8")
         expectText("下载失败，请检查网络后重试。")
         XCTAssertFalse(text("错误码：download_failed").exists, "Raw code stays folded")
         click("重新创建下载任务")
@@ -153,15 +156,16 @@ final class PreviewUITests: XCTestCase {
         expectText("实际目录名：model-2")
         click("重置场景")
         click("下载")
-        // An empty downloads page omits the task card and keeps only the
-        // new-download form (downloads.go).
-        expectText("新建下载任务")
+        // An empty downloads page omits the task card and shows the catalog.
+        expectText("llama.cpp")
+        expectExists(app.buttons["关联已有引擎"], timeout: 5)
         XCTAssertFalse(text("下载任务").exists, "Empty downloads page omits the task card")
         XCTAssertFalse(taskCard("model").exists)
         XCTAssertFalse(taskCard("model-2").exists)
         XCTAssertFalse(app.staticTexts["实际目录名：model-2"].exists)
         XCTAssertFalse(text("错误码：download_failed").exists)
-        click("下载模型")
+        selectTab("模型")
+        click("下载模型 · model-qwen3-0.6b-q8")
         expectText("已结束")
         toggleTaskDetails("model")
         expectText("实际目录名：model")
@@ -262,26 +266,11 @@ final class PreviewUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "尚未识别的原因码")).firstMatch.exists)
         keepScreenshot("First use with no local assets")
         click("到下载页")
-        #if arch(arm64)
-        expectText("推荐资源 · macOS arm64")
-        #else
-        expectText("推荐资源 · macOS x64")
-        #endif
+        expectText("推荐组合")
         XCTAssertFalse(text("Windows x64").exists)
         XCTAssertFalse(text("Linux x64").exists)
         keepScreenshot("Recommendations for this Mac")
-        let qwen = "Qwen3-0.6B-Q8_0（GGUF）"
-        let smol = "SmolLM2-135M-Instruct-Q4_K_M（GGUF）"
-        let qwenRadio = app.radioButtons[qwen]
-        revealInContent(qwenRadio)
-        qwenRadio.click()
-        XCTAssertEqual(String(describing: qwenRadio.value ?? ""), "1")
-        keepScreenshot("Model recommendations and selected Qwen")
-        let smolRadio = app.radioButtons[smol]
-        revealInContent(smolRadio)
-        smolRadio.click()
-        click("下载引擎")
-        click("下载模型")
+        click("下载推荐组合")
         click("返回任务")
         wait("downloaded resources unlock benchmark", timeout: 15) {
             self.app.buttons["开始测评"].exists && self.app.buttons["开始测评"].isEnabled

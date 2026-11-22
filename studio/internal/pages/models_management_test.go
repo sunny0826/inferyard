@@ -25,6 +25,10 @@ func (p *testPreviewStub) detail(string) *core.RunTaskDetail { return nil }
 func (p *testPreviewStub) report(string) (*core.ReportIndex, *core.ApiError) {
 	return nil, nil
 }
+func (p *testPreviewStub) resolveModelURL(string) inferyard.ModelResolve {
+	return inferyard.ModelResolve{}
+}
+func (p *testPreviewStub) detectedEngines() []inferyard.DetectedEngine { return nil }
 
 func waitUntil(t *testing.T, fn func() bool) {
 	t.Helper()
