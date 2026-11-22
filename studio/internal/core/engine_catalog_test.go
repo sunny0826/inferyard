@@ -207,4 +207,40 @@ func TestReleasesForPlatformAndStableFilter(t *testing.T) {
 	if anyBuilds := sglangLatest.BuildsForPlatform("darwin/arm64"); len(anyBuilds) != 1 {
 		t.Fatalf("expected BuildsForPlatform to include any-platform build, got %+v", anyBuilds)
 	}
+
+	for _, rel := range llama.Releases {
+		if rel.ID != "llama-cpp-upstream-b11146" {
+			continue
+		}
+		for _, build := range rel.Builds {
+			if (build.ID == "llama-upstream-b11146-macos-arm64" || build.ID == "llama-upstream-b11146-macos-x64") && build.InstallCommand != "" {
+				t.Fatalf("snapshot %s must not claim brew install (which installs stable 1.0.0): %q", build.ID, build.InstallCommand)
+			}
+		}
+	}
+
+	var checkedSGLangSnap bool
+	for _, rel := range sglang.Releases {
+		if rel.ID != "sglang-e262b44" {
+			continue
+		}
+		for _, build := range rel.Builds {
+			if build.ID != "engine-sglang-snapshot-any" {
+				continue
+			}
+			checkedSGLangSnap = true
+			if !strings.Contains(build.InstallCommand, "tar -xzf e262b44eef1f2bf83e34345276e2bb91a086587e.tar.gz") {
+				t.Fatalf("sglang snapshot InstallCommand must extract downloaded archive: %q", build.InstallCommand)
+			}
+			if !strings.Contains(build.InstallCommand, "./sglang-e262b44eef1f2bf83e34345276e2bb91a086587e/python") {
+				t.Fatalf("sglang snapshot InstallCommand must point to python/ subdir: %q", build.InstallCommand)
+			}
+			if _, afterPip, ok := strings.Cut(build.InstallCommand, "uv pip install"); !ok || strings.Contains(afterPip, ".tar.gz") {
+				t.Fatalf("sglang snapshot uv pip install must not pass .tar.gz directly: %q", build.InstallCommand)
+			}
+		}
+	}
+	if !checkedSGLangSnap {
+		t.Fatal("missing sglang-e262b44 snapshot build")
+	}
 }

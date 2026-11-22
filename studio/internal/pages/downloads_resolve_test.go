@@ -3,7 +3,9 @@ package pages
 import (
 	"context"
 	"encoding/json"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"testing"
 	"time"
@@ -23,6 +25,26 @@ func (p *resolvePreviewStub) dispatch(i previewIntent)                          
 func (p *resolvePreviewStub) resetTask(string, string)                          {}
 func (p *resolvePreviewStub) report(string) (*core.ReportIndex, *core.ApiError) { return nil, nil }
 func (p *resolvePreviewStub) detail(string) *core.RunTaskDetail                 { return nil }
+func (p *resolvePreviewStub) detectedEngines() []inferyard.DetectedEngine       { return nil }
+func (p *resolvePreviewStub) resolveModelURL(raw string) inferyard.ModelResolve {
+	u, _ := url.Parse(raw)
+	filename := "model.gguf"
+	if u != nil && u.Path != "" {
+		if base := path.Base(u.Path); base != "" && base != "." && base != "/" {
+			filename = base
+		}
+	}
+	rev := "0123456789abcdef0123456789abcdef01234567"
+	if entry, ok := core.CatalogEntryByURL(raw); ok && entry.Revision != "" {
+		rev = entry.Revision
+	}
+	return inferyard.ModelResolve{
+		Definition: inferyard.ModelResolveDefinition,
+		Revision:   rev,
+		Filename:   filename,
+		PinnedURL:  raw,
+	}
+}
 
 func clickDownloadsTab(t *testing.T, tt *ui.Tester, label string) {
 	t.Helper()
@@ -236,8 +258,6 @@ func TestModelResolveButtonPreviewAndLiveAsyncResolution(t *testing.T) {
 	sLive := testState()
 	sLive.ctx = context.Background()
 	sLive.service = svc
-	sLive.assetsPreset = true
-	sLive.engineURL = core.DefaultEngineURL()
 	sLive.ensureDownloadsUI().customModelURL = rawURL
 	ttLive := ui.NewTester(sLive.downloadsPageView, 1120, 2600)
 	clickDownloadsTab(t, ttLive, "模型")

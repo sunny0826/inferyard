@@ -27,7 +27,7 @@ func (s *viewState) downloadsEngineDrawer(c *ui.Context) {
 	hostPlatform := s.downloadsHostPlatform()
 	hasStable, hasNonStable := engineChannelMix(family.Releases)
 	releases := filterEngineReleases(family.Releases, st.drawerStableOnly && hasStable)
-	rel := pickEngineRelease(st, family.ID, releases)
+	rel := resolveEngineRelease(st.selectedRelease[family.ID], releases)
 	platforms := rel.Platforms()
 	activePlatform := resolveEnginePlatform(st.selectedPlatform[family.ID], hostPlatform, platforms)
 	builds := rel.BuildsForPlatform(activePlatform)
@@ -65,7 +65,16 @@ func (s *viewState) engineDrawerConfigSection(
 	t := tokens(c)
 	ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
 		if showStableToggle {
+			prev := st.drawerStableOnly
 			components.Checkbox(c, &st.drawerStableOnly, "仅正式版")
+			if st.drawerStableOnly != prev {
+				nextReleases := filterEngineReleases(family.Releases, st.drawerStableOnly)
+				nextRel := resolveEngineRelease(st.selectedRelease[family.ID], nextReleases)
+				if nextRel.ID != st.selectedRelease[family.ID] {
+					st.selectedRelease[family.ID] = nextRel.ID
+					st.selectedBuild[family.ID] = ""
+				}
+			}
 		}
 		if len(releases) > 1 {
 			ui.Box(c.Key("downloads-drawer-ver-" + family.ID)).Children(func() {
@@ -277,14 +286,12 @@ func filterEngineReleases(releases []core.EngineRelease, stableOnly bool) []core
 	return out
 }
 
-func pickEngineRelease(st *downloadsUIState, familyID string, releases []core.EngineRelease) core.EngineRelease {
-	want := st.selectedRelease[familyID]
+func resolveEngineRelease(wantID string, releases []core.EngineRelease) core.EngineRelease {
 	for _, rel := range releases {
-		if rel.ID == want {
+		if rel.ID == wantID {
 			return rel
 		}
 	}
-	st.selectedRelease[familyID] = releases[0].ID
 	return releases[0]
 }
 

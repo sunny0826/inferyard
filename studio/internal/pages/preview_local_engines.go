@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
 )
 
 type previewLocalTask struct {
@@ -263,4 +264,32 @@ func (p *previewSession) retryLocalBenchmark() {
 		}
 	}
 	p.beginLocalBenchmark(op, true)
+}
+
+func (p *previewSession) detectedEngines() []inferyard.DetectedEngine {
+	lmsModels := "/Users/demo/.lmstudio/models"
+	return []inferyard.DetectedEngine{
+		{
+			Family:           "llama-cpp",
+			Executable:       "/opt/homebrew/bin/llama-server",
+			WorkingDirectory: "/opt/homebrew/bin",
+			RuntimeRoots:     []string{"/opt/homebrew/bin"},
+			Label:            "llama-cpp · /opt/homebrew/bin/llama-server",
+		},
+		{
+			Family:           "mlx-lm",
+			Executable:       "/Users/demo/.local/share/uv/tools/mlx-lm/bin/python",
+			WorkingDirectory: "/Users/demo/.local/share/uv/tools/mlx-lm",
+			RuntimeRoots:     []string{"/Users/demo/.local/share/uv/tools/mlx-lm"},
+			Label:            "mlx-lm · mlx-lm (uv tool)",
+		},
+		{
+			Family:           "lmstudio",
+			Executable:       "/Users/demo/.lmstudio/bin/lms",
+			WorkingDirectory: "/Users/demo/.lmstudio/bin",
+			RuntimeRoots:     []string{"/Users/demo/.lmstudio/bin"},
+			ModelsRoot:       &lmsModels,
+			Label:            "lmstudio · /Users/demo/.lmstudio/bin/lms",
+		},
+	}
 }

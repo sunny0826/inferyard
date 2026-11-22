@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"cmp"
 	"fmt"
 	"math"
 	"slices"
@@ -8,6 +9,46 @@ import (
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 )
+
+func (s *viewState) downloadDisplayPriority(task core.DownloadTask, index int) int {
+	switch task.State {
+	case "downloading":
+		return 0
+	case "failed":
+		if !s.downloadResolved(task, index) {
+			return 1
+		}
+	}
+	return 2
+}
+
+func (s *viewState) orderedDownloads() []core.DownloadTask {
+	type rankedTask struct {
+		task     core.DownloadTask
+		priority int
+	}
+	ranked := make([]rankedTask, len(s.downloads))
+	for i, task := range s.downloads {
+		ranked[i] = rankedTask{task: task, priority: s.downloadDisplayPriority(task, i)}
+	}
+	slices.SortStableFunc(ranked, func(a, b rankedTask) int {
+		if a.priority != b.priority {
+			return cmp.Compare(a.priority, b.priority)
+		}
+		if a.task.Kind == "engine" && b.task.Kind != "engine" {
+			return -1
+		}
+		if a.task.Kind != "engine" && b.task.Kind == "engine" {
+			return 1
+		}
+		return 0
+	})
+	tasks := make([]core.DownloadTask, len(ranked))
+	for i, item := range ranked {
+		tasks[i] = item.task
+	}
+	return tasks
+}
 
 func (s *viewState) downloadsView(c *ui.Context) {
 	if len(s.downloads) == 0 {
@@ -18,17 +59,7 @@ func (s *viewState) downloadsView(c *ui.Context) {
 		ui.Text(c, "文件大小按 1 MiB = 1,048,576 bytes、1 GiB = 1,073,741,824 bytes 换算；速率按 bytes/s 记录。")
 		ui.Text(c, "总量未知时不显示百分比或剩余时间，活动指示只表示任务仍在进行。")
 	})
-	tasks := slices.Clone(s.downloads)
-	slices.SortStableFunc(tasks, func(a, b core.DownloadTask) int {
-		if a.Kind == "engine" && b.Kind != "engine" {
-			return -1
-		}
-		if a.Kind != "engine" && b.Kind == "engine" {
-			return 1
-		}
-		return 0
-	})
-	for _, task := range tasks {
+	for _, task := range s.orderedDownloads() {
 		s.downloadTaskCard(c, task)
 	}
 }

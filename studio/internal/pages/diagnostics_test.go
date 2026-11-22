@@ -11,6 +11,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
 )
 
 type stubPreviewMode struct {
@@ -26,6 +27,10 @@ func (p *stubPreviewMode) detail(string) *core.RunTaskDetail {
 func (p *stubPreviewMode) report(string) (*core.ReportIndex, *core.ApiError) {
 	return nil, nil
 }
+func (p *stubPreviewMode) resolveModelURL(string) inferyard.ModelResolve {
+	return inferyard.ModelResolve{}
+}
+func (p *stubPreviewMode) detectedEngines() []inferyard.DetectedEngine { return nil }
 
 func TestHumanTranslatesDiagnosticAndLocalEngineCodes(t *testing.T) {
 	codes := []string{

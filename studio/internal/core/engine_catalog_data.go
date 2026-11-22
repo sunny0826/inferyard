@@ -243,8 +243,7 @@ func upstreamLlamaCppProvider() EngineCatalogProvider {
 							Artifacts: []EngineArtifact{
 								{Role: "release_page", Label: "b11146 发布页", Version: "b11146", URL: b11146URL},
 							},
-							InstallCommand: "brew install llama.cpp",
-							Note:           "安装或从 GitHub Releases 下载后，注册本地引擎。",
+							Note: "从 GitHub Releases 下载 b11146 对应压缩包并解压后，注册本地引擎。",
 						},
 						{
 							ID:          "llama-upstream-b11146-macos-x64",
@@ -254,8 +253,7 @@ func upstreamLlamaCppProvider() EngineCatalogProvider {
 							Artifacts: []EngineArtifact{
 								{Role: "release_page", Label: "b11146 发布页", Version: "b11146", URL: b11146URL},
 							},
-							InstallCommand: "brew install llama.cpp",
-							Note:           "安装或从 GitHub Releases 下载后，注册本地引擎。",
+							Note: "从 GitHub Releases 下载 b11146 对应压缩包并解压后，注册本地引擎。",
 						},
 						{
 							ID:          "llama-upstream-b11146-win-x64",

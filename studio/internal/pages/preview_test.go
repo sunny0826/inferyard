@@ -123,3 +123,24 @@ func TestPreviewScenesAllLoadAndSaveSettingsPreservesProxy(t *testing.T) {
 		t.Fatalf("Effective.DownloadProxy = %q, want http://127.0.0.1:7890", got)
 	}
 }
+
+func TestPreviewResolveModelURLAndDetectedEngines(t *testing.T) {
+	p := newPreviewSession(context.Background())
+
+	qwen, _ := core.CatalogEntryByID("model-qwen3-0.6b-q8")
+	resGGUF := p.resolveModelURL(qwen.MirrorURL)
+	if resGGUF.Platform != "modelscope" || resGGUF.Revision != qwen.Revision || resGGUF.Filename != "Qwen3-0.6B-Q8_0.gguf" {
+		t.Fatalf("unexpected preview GGUF resolve: %+v", resGGUF)
+	}
+
+	mlx, _ := core.CatalogEntryByID("model-qwen3-0.6b-mlx")
+	resDir := p.resolveModelURL(mlx.URL)
+	if resDir.Kind != "directory" || resDir.Revision != mlx.Revision || resDir.PinnedURL != mlx.URL {
+		t.Fatalf("unexpected preview directory resolve: %+v", resDir)
+	}
+
+	detected := p.detectedEngines()
+	if len(detected) < 2 {
+		t.Fatalf("expected preview detected engines, got %+v", detected)
+	}
+}

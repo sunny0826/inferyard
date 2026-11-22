@@ -27,6 +27,36 @@ func (p *wizardPreviewStub) report(string) (*core.ReportIndex, *core.ApiError) {
 	return nil, nil
 }
 func (p *wizardPreviewStub) detail(string) *core.RunTaskDetail { return nil }
+func (p *wizardPreviewStub) resolveModelURL(string) inferyard.ModelResolve {
+	return inferyard.ModelResolve{}
+}
+func (p *wizardPreviewStub) detectedEngines() []inferyard.DetectedEngine {
+	lmsModels := "/Users/demo/.lmstudio/models"
+	return []inferyard.DetectedEngine{
+		{
+			Family:           "llama-cpp",
+			Executable:       "/opt/homebrew/bin/llama-server",
+			WorkingDirectory: "/opt/homebrew/bin",
+			RuntimeRoots:     []string{"/opt/homebrew/bin"},
+			Label:            "llama-cpp · /opt/homebrew/bin/llama-server",
+		},
+		{
+			Family:           "mlx-lm",
+			Executable:       "/Users/demo/.local/share/uv/tools/mlx-lm/bin/python",
+			WorkingDirectory: "/Users/demo/.local/share/uv/tools/mlx-lm",
+			RuntimeRoots:     []string{"/Users/demo/.local/share/uv/tools/mlx-lm"},
+			Label:            "mlx-lm · mlx-lm (uv tool)",
+		},
+		{
+			Family:           "lmstudio",
+			Executable:       "/Users/demo/.lmstudio/bin/lms",
+			WorkingDirectory: "/Users/demo/.lmstudio/bin",
+			RuntimeRoots:     []string{"/Users/demo/.lmstudio/bin"},
+			ModelsRoot:       &lmsModels,
+			Label:            "lmstudio · /Users/demo/.lmstudio/bin/lms",
+		},
+	}
+}
 
 func newWizardTestService(t *testing.T, execute core.Executor) (*core.Service, string) {
 	t.Helper()

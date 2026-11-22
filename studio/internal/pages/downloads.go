@@ -88,15 +88,6 @@ func (st *downloadsUIState) openModelDrawer(entryID string) {
 }
 
 func (s *viewState) downloadsPageView(c *ui.Context) {
-	if !s.assetsPreset {
-		s.assetsPreset = true
-		if s.modelURL == "" {
-			s.modelURL = core.DefaultModelURL()
-		}
-		if s.engineURL == "" {
-			s.engineURL = core.DefaultEngineURL()
-		}
-	}
 	st := s.ensureDownloadsUI()
 	t := tokens(c)
 
@@ -178,7 +169,7 @@ func (s *viewState) downloadAction(c *ui.Context, kind, label string) ui.Element
 
 func (s *viewState) acquireModelSource(source, tokenEnv string) {
 	trimmed := strings.TrimSpace(source)
-	if trimmed == "" || customModelURLError(trimmed) != "" {
+	if trimmed == "" || !core.IsSupportedModelURL(trimmed) {
 		return
 	}
 	if tokenEnv != "" && !environmentName.MatchString(tokenEnv) {

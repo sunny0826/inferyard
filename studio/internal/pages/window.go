@@ -109,7 +109,6 @@ type viewState struct {
 	runTasks                                                                            func() []core.RunTask
 	updateWindow                                                                        func(func())
 	browseFailures                                                                      map[string]string
-	assetsPreset                                                                        bool
 	engineState                                                                         core.EngineState
 	startup                                                                             core.Startup
 	processes                                                                           []core.ProcessCandidate
@@ -167,7 +166,7 @@ type viewState struct {
 	engineFailureCleared                                                                string
 	localUsedPIDs                                                                       map[int64]bool
 	localPendingPIDs                                                                    map[string]int64
-	modelURL, modelName, tokenEnv, engineURL, engineName, downloadProxy                 string
+	modelName, tokenEnv, engineName, downloadProxy                                      string
 	historyTable                                                                        pageTableState
 	downloadsUI                                                                         *downloadsUIState
 	engineCatalog                                                                       *core.EngineCatalogRegistry
@@ -350,11 +349,19 @@ func (s *viewState) workAs(action string, fn func() (string, *core.ApiError)) {
 	s.pendingToast = ""
 	go func() {
 		message, e := fn()
-		if s.ctx.Err() != nil {
+		if s.ctx != nil && s.ctx.Err() != nil {
 			return
 		}
-		s.win.Update(func() { s.finishWork(message, e) })
-		s.refresh(true)
+		if s.updateWindow != nil {
+			s.updateWindow(func() { s.finishWork(message, e) })
+		} else if s.win != nil {
+			s.win.Update(func() { s.finishWork(message, e) })
+		} else {
+			return
+		}
+		if s.win != nil {
+			s.refresh(true)
+		}
 	}()
 }
 

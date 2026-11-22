@@ -151,8 +151,8 @@ func sglangProvider() EngineCatalogProvider {
 							Artifacts: []EngineArtifact{
 								artifactFromCatalog("engine-sglang", "source", "SGLang 源码包", "e262b44"),
 							},
-							InstallCommand: "uv venv ~/.venvs/sglang --python 3.12 && uv pip install --python ~/.venvs/sglang/bin/python ./sglang-" + snapshot.Revision + ".tar.gz",
-							Note:           "在独立 Python 虚拟环境中从源码构建后，注册本地引擎。",
+							InstallCommand: "tar -xzf " + urlFilename(snapshot.URL) + " && uv venv ~/.venvs/sglang --python 3.12 && uv pip install --python ~/.venvs/sglang/bin/python ./sglang-" + snapshot.Revision + "/python",
+							Note:           "下载并解压源码归档后，按目标硬件从解压目录的 python/ 子目录在独立虚拟环境中安装，再注册本地引擎。",
 						},
 					},
 				},

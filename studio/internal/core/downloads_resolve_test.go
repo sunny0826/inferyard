@@ -62,9 +62,15 @@ func TestValidateDownloadProxyAndResolvableURL(t *testing.T) {
 		"https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf?download=true",
 		"https://modelscope.cn/Qwen/Qwen3-0.6B-GGUF/resolve/master/Qwen3-0.6B-Q8_0.gguf",
 		"https://modelscope.cn/models/Qwen/Qwen3-0.6B-GGUF/file/view/master/sub/m.gguf?download=1",
+		"https://huggingface.co/mlx-community/Qwen3-0.6B-4bit/tree/73e3e38d981303bc594367cd910ea6eb48349da8",
+		"https://huggingface.co/mlx-community/Qwen3-0.6B-4bit/tree/main",
+		"https://modelscope.cn/models/Qwen/Qwen3-0.6B-4bit/tree/master",
 	} {
 		if !IsResolvableModelURL(valid) {
 			t.Fatalf("expected resolvable url: %q", valid)
+		}
+		if !IsSupportedModelURL(valid) {
+			t.Fatalf("expected supported url: %q", valid)
 		}
 	}
 	for _, invalid := range []string{
@@ -73,9 +79,26 @@ func TestValidateDownloadProxyAndResolvableURL(t *testing.T) {
 		"https://huggingface.co/a/b/resolve/main/m.gguf?token=1",
 		"https://huggingface.co/a/b/resolve/main/../m.gguf",
 		"https://huggingface.co/a/b/resolve/main/.gguf",
+		"https://modelscope.cn/models/Qwen/tree/master",
+		"https://huggingface.co/mlx-community/Qwen3-0.6B-4bit/tree/main/file.gguf",
 	} {
 		if IsResolvableModelURL(invalid) {
 			t.Fatalf("expected non-resolvable url: %q", invalid)
+		}
+		if IsSupportedModelURL(invalid) {
+			t.Fatalf("expected unsupported url: %q", invalid)
+		}
+	}
+
+	for _, entry := range Catalog() {
+		if entry.Kind != CatalogModel || !entry.Downloadable() {
+			continue
+		}
+		if !IsResolvableModelURL(entry.URL) || !IsSupportedModelURL(entry.URL) {
+			t.Fatalf("catalog model %s URL rejected by validator: %q", entry.ID, entry.URL)
+		}
+		if entry.MirrorURL != "" && (!IsResolvableModelURL(entry.MirrorURL) || !IsSupportedModelURL(entry.MirrorURL)) {
+			t.Fatalf("catalog model %s MirrorURL rejected by validator: %q", entry.ID, entry.MirrorURL)
 		}
 	}
 }

@@ -56,15 +56,6 @@ func (s *viewState) applyDashboard(v dashboardSnapshot, e *core.ApiError) {
 	if s.initDir == "" {
 		s.initDir = suggestInitDir(emptyText(s.ready.Workspace.Path), s.ready.Workspace.Exists, s.ready.Workspace.Initialized)
 	}
-	if !s.assetsPreset {
-		s.assetsPreset = true
-		if s.modelURL == "" {
-			s.modelURL = core.DefaultModelURL()
-		}
-		if s.engineURL == "" {
-			s.engineURL = core.DefaultEngineURL()
-		}
-	}
 	if v.candidate != s.candidate {
 		s.process = ""
 		s.candidate = v.candidate

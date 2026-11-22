@@ -3,7 +3,6 @@ package pages
 import (
 	"fmt"
 	"net/url"
-	"path"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -95,7 +94,7 @@ func (s *viewState) modelCatalogRow(c *ui.Context, st *downloadsUIState, entry c
 				button(c, "下载中…").Label("下载模型 · " + entry.ID).Disabled(true)
 			} else {
 				s.downloadAction(c, "model", "下载").Label("下载模型 · " + entry.ID).Disabled(s.busy).OnClick(func() {
-					s.acquireModelSource(activeURL, s.tokenEnv)
+					s.acquireModelSource(activeURL, "")
 				})
 			}
 		})
@@ -124,20 +123,18 @@ func (s *viewState) customModelURLFold(c *ui.Context, st *downloadsUIState) {
 
 	componentFoldKeyed(c, "downloads-custom-model-url", "自定义模型地址", func() {
 		trimmed := strings.TrimSpace(st.customModelURL)
+		tokenEnv := s.tokenEnv
+		if resState.source != trimmed || resState.tokenEnv != tokenEnv {
+			resState.invalidate(trimmed, tokenEnv)
+		}
 		resState.mailbox.mu.Lock()
 		pending := resState.mailbox.pending
 		resState.mailbox.pending = nil
 		resState.mailbox.mu.Unlock()
-		if pending != nil && pending.source == trimmed {
+		if pending != nil && pending.reqID == resState.reqID && pending.source == trimmed && pending.tokenEnv == tokenEnv {
 			resState.resolving = false
 			resState.resolved = pending.resolved
 			resState.errText = pending.errText
-		}
-		if resState.source != trimmed {
-			resState.source = trimmed
-			resState.resolving = false
-			resState.resolved = nil
-			resState.errText = ""
 		}
 
 		ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
@@ -155,7 +152,7 @@ func (s *viewState) customModelURLFold(c *ui.Context, st *downloadsUIState) {
 			canResolve := !s.busy && !resState.resolving && trimmed != "" && core.IsResolvableModelURL(trimmed) && tokenOK
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				outlineButton(c, "解析地址").Disabled(!canResolve).OnClick(func() {
-					s.triggerModelResolve(resState, trimmed)
+					s.triggerModelResolve(resState, trimmed, tokenEnv)
 				})
 				primaryButton(c, "下载模型").Label("下载自定义模型").Disabled(s.busy || !urlValid).OnClick(func() {
 					source := trimmed
@@ -274,7 +271,7 @@ func (s *viewState) downloadsModelDrawer(c *ui.Context) {
 						button(c, "下载中…").Label("下载此模型 · " + entry.ID).Disabled(true)
 					} else {
 						primaryButton(c, "下载此模型").Label("下载此模型 · " + entry.ID).Disabled(s.busy).OnClick(func() {
-							s.acquireModelSource(activeURL, s.tokenEnv)
+							s.acquireModelSource(activeURL, "")
 						})
 					}
 					if repoURL := modelCatalogRepoURL(activeURL); repoURL != "" && repoURL != activeURL {
@@ -288,14 +285,16 @@ func (s *viewState) downloadsModelDrawer(c *ui.Context) {
 	})
 }
 
+func modelTaskMatchesEntry(task core.DownloadTask, entry core.CatalogEntry) bool {
+	if task.Kind != "model" || task.SourceUrl == "" {
+		return false
+	}
+	return task.SourceUrl == entry.URL || (entry.MirrorURL != "" && task.SourceUrl == entry.MirrorURL)
+}
+
 func (s *viewState) isModelEntryDownloaded(entry core.CatalogEntry) bool {
-	targetName := modelCatalogAssetName(entry)
-	targetTitle := modelCatalogTitle(entry)
-	for _, m := range s.registry.Models {
-		if !m.Available {
-			continue
-		}
-		if m.Name == targetName || m.Name == targetTitle || strings.HasSuffix(m.Name, " · "+targetName) {
+	for _, task := range s.downloads {
+		if task.State == "done" && modelTaskMatchesEntry(task, entry) {
 			return true
 		}
 	}
@@ -303,18 +302,8 @@ func (s *viewState) isModelEntryDownloaded(entry core.CatalogEntry) bool {
 }
 
 func (s *viewState) isModelEntryDownloading(entry core.CatalogEntry) bool {
-	targetName := modelCatalogAssetName(entry)
 	for _, task := range s.downloads {
-		if task.Kind != "model" || task.State != "downloading" {
-			continue
-		}
-		if task.SourceUrl == entry.URL || (entry.MirrorURL != "" && task.SourceUrl == entry.MirrorURL) {
-			return true
-		}
-		if task.DisplayName != "" && task.DisplayName == entry.DisplayName() {
-			return true
-		}
-		if targetName != "" && strings.HasSuffix(task.SourceUrl, "/"+targetName) {
+		if task.State == "downloading" && modelTaskMatchesEntry(task, entry) {
 			return true
 		}
 	}
@@ -357,18 +346,6 @@ func modelCatalogEngineLabel(entry core.CatalogEntry) string {
 	default:
 		return entry.Family
 	}
-}
-
-func modelCatalogAssetName(entry core.CatalogEntry) string {
-	if entry.Format == "directory" {
-		return modelCatalogTitle(entry)
-	}
-	if u, err := url.Parse(entry.URL); err == nil && u.Path != "" {
-		if base := path.Base(u.Path); base != "" && base != "." && base != "/" {
-			return base
-		}
-	}
-	return modelCatalogTitle(entry)
 }
 
 func modelCatalogRepoURL(rawURL string) string {

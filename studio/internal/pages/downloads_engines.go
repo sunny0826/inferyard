@@ -41,7 +41,7 @@ func (s *viewState) downloadsEnginesTab(c *ui.Context) {
 					ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
 				}
 				hostReleases := fam.ReleasesForPlatform(hostPlatform, false)
-				rel := pickEngineRelease(st, fam.ID, hostReleases)
+				rel := resolveEngineRelease(st.selectedRelease[fam.ID], hostReleases)
 				build := pickEngineBuildForPlatform(st, fam.ID, rel, hostPlatform)
 				s.engineFamilyRow(c, fam, rel, build, hostPlatform)
 			}
@@ -54,7 +54,7 @@ func (s *viewState) downloadsEnginesTab(c *ui.Context) {
 						ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
 					}
 					hostReleases := fam.ReleasesForPlatform(hostPlatform, false)
-					rel := pickEngineRelease(st, fam.ID, hostReleases)
+					rel := resolveEngineRelease(st.selectedRelease[fam.ID], hostReleases)
 					build := pickEngineBuildForPlatform(st, fam.ID, rel, hostPlatform)
 					s.externalEngineAppRow(c, fam, rel, build)
 				}
@@ -171,7 +171,7 @@ func (s *viewState) externalEngineAppRow(c *ui.Context, fam core.EngineFamilyCat
 func (s *viewState) otherPlatformEngineRow(c *ui.Context, fam core.EngineFamilyCatalog) {
 	st := s.ensureDownloadsUI()
 	t := tokens(c)
-	rel := pickEngineRelease(st, fam.ID, fam.Releases)
+	rel := resolveEngineRelease(st.selectedRelease[fam.ID], fam.Releases)
 	platforms := rel.Platforms()
 	firstPlatform := "any"
 	if len(platforms) > 0 {
