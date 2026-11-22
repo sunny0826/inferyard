@@ -68,8 +68,8 @@ def build_request(
             context = values.get("context_size")
             tokens = values.get("max_tokens")
             timeout = values.get("timeout_seconds")
-            if context is not None and not 1 <= context <= 32768:
-                raise ArgumentError("--context-size must be in 1..32768")
+            if context is not None and not 1 <= context <= 524288:
+                raise ArgumentError("--context-size must be in 1..524288")
             if tokens is not None and not 1 <= tokens <= 8192:
                 raise ArgumentError("--max-tokens must be in 1..8192")
             if timeout is not None and (not math.isfinite(timeout) or timeout <= 0):

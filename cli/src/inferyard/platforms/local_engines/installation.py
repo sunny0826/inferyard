@@ -115,9 +115,32 @@ def _lookup_disk_cache(entries: dict, path: Path, stamps: tuple) -> FileIdentity
         return None
 
 
+_POLYSTRATA_ENGINE_DIRS = ("engine", "engine-poly", "build-metal")
+_POLYSTRATA_TOP_FILES = ("BUILD.json", "polystrata.py", "setup.py")
+
+
 def darwin():
     if platform.system() != "Darwin" or platform.machine() != "arm64":
         raise PreflightError("local_engine_requires_darwin_arm64")
+
+
+def _normalized_platform() -> tuple[str, str]:
+    system = platform.system()
+    machine = platform.machine().lower()
+    arch = {"amd64": "x64", "x86_64": "x64", "arm64": "arm64", "aarch64": "arm64"}.get(
+        machine, machine
+    )
+    return system, arch
+
+
+def check_family_platform(family: str | None) -> tuple[str, str]:
+    if family == "polystrata":
+        current = _normalized_platform()
+        if current not in (("Darwin", "arm64"), ("Linux", "x64"), ("Windows", "x64")):
+            raise PreflightError("local_engine_platform_unsupported")
+        return current
+    darwin()
+    return _normalized_platform()
 
 
 def read_json(path):
@@ -130,18 +153,18 @@ def read_json(path):
 def description(value):
     validate_value(value, INSTALLATION, "installation")
     result = dict(value)
-    for key in ("executable", "working_directory", "models_root"):
+    for key in ("executable", "working_directory", "models_root", "data_dir"):
         if key in result:
             path = Path(result[key])
             if not path.is_absolute():
                 raise PreflightError("local_engine_absolute_path_required")
+            if not path.exists():
+                raise PreflightError("local_engine_locator_missing")
             result[key] = (
                 os.path.normpath(str(path))
                 if key == "executable"
                 else str(path.resolve(strict=True))
             )
-            if not path.exists():
-                raise PreflightError("local_engine_locator_missing")
     roots = [Path(value) for value in result["runtime_roots"]]
     if any(not p.is_absolute() or not p.is_dir() or p.is_symlink() for p in roots):
         raise PreflightError("local_engine_runtime_root_invalid")
@@ -152,8 +175,29 @@ def description(value):
         raise PreflightError("local_engine_executable_invalid")
     if (result["family"] == "lmstudio") != ("models_root" in result):
         raise PreflightError("local_engine_models_root_required_for_lmstudio_only")
+    if "data_dir" in result:
+        if result["family"] != "polystrata":
+            raise PreflightError("local_engine_data_dir_polystrata_only")
+        if not Path(result["data_dir"]).is_dir():
+            raise PreflightError("local_engine_data_dir_invalid")
     validate_installation_environment(result)
     return result
+
+
+def _verify_polystrata_layout(declaration: dict) -> None:
+    root = Path(declaration["working_directory"])
+    if not (root / "serve" / "server.py").is_file():
+        raise PreflightError("local_engine_polystrata_server_missing")
+    if not ((root / "setup.py").is_file() or (root / "polystrata.py").is_file()):
+        raise PreflightError("local_engine_polystrata_layout_invalid")
+    if not any(
+        (root / name).is_dir() and not (root / name).is_symlink()
+        for name in _POLYSTRATA_ENGINE_DIRS
+    ):
+        raise PreflightError("local_engine_polystrata_engine_missing")
+    executable = Path(declaration["executable"])
+    if not (executable.parent.parent / "pyvenv.cfg").is_file():
+        raise PreflightError("local_engine_python_venv_required")
 
 
 def read_installation(path):
@@ -279,6 +323,16 @@ def _roots(declaration, python_roots):
             Path(str(files("inferyard").joinpath("data/local_engine/mlx_server.py"))),
             Path(str(files("inferyard").joinpath("data/engine_fit/mlx_server.py"))),
         ]
+    if declaration["family"] == "polystrata":
+        root = Path(declaration["working_directory"])
+        paths.append(root / "serve" / "server.py")
+        for name in _POLYSTRATA_TOP_FILES:
+            candidate = root / name
+            if candidate.is_file():
+                paths.append(candidate)
+        pyvenv_cfg = Path(declaration["executable"]).parent.parent / "pyvenv.cfg"
+        if pyvenv_cfg.is_file():
+            paths.append(pyvenv_cfg)
     selected = []
     for path in sorted(set(paths), key=lambda p: (len(p.parts), str(p))):
         if not any(parent.is_dir() and path.is_relative_to(parent) for parent in selected):
@@ -347,9 +401,12 @@ def _snapshot(roots, *, allowed_roots=None):
 
 
 def _freeze(value):
-    darwin()
+    family = value.get("family") if isinstance(value, dict) else None
+    check_family_platform(family)
     try:
         declaration = description(value)
+        if declaration["family"] == "polystrata":
+            _verify_polystrata_layout(declaration)
         python, paths = (None, [])
         if declaration["family"] in DIRECTORY_FAMILIES:
             python, paths = _python(declaration)
@@ -363,11 +420,14 @@ def _freeze(value):
         if python is not None:
             allowed_roots.extend([Path(python["base_prefix"]), Path(python["prefix"])])
         snapshots, identities = _snapshot(roots, allowed_roots=allowed_roots)
-        from inferyard.platforms.local_engines.closure import verify_libraries
+        if platform.system() == "Darwin":
+            from inferyard.platforms.local_engines.closure import verify_libraries
 
-        unresolved = verify_libraries(
-            [Path(item.path) for item in identities], Path(declaration["executable"])
-        )
+            unresolved = verify_libraries(
+                [Path(item.path) for item in identities], Path(declaration["executable"])
+            )
+        else:
+            unresolved = []
         return {
             "schema_version": 3,
             "definition": RUNTIME,
@@ -385,7 +445,12 @@ def freeze_installation(value):
 
 
 def verify_installation(snapshot):
-    darwin()
+    family = (
+        snapshot.get("installation", {}).get("family")
+        if isinstance(snapshot, dict) and isinstance(snapshot.get("installation"), dict)
+        else None
+    )
+    check_family_platform(family)
     if (
         not isinstance(snapshot, dict)
         or set(snapshot)

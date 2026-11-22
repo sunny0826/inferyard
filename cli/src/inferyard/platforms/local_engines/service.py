@@ -2,15 +2,21 @@
 
 import hashlib
 import os
+import platform
 from collections.abc import Sequence
 from pathlib import Path
 from types import ModuleType
 
 from inferyard.errors import PreflightError
 from inferyard.platforms import engine_fit_macos as native
-from inferyard.platforms.identity import FileIdentity, hash_file, service_origin
+from inferyard.platforms.identity import (
+    FileIdentity,
+    hash_file,
+    process_start_ticks,
+    service_origin,
+)
 from inferyard.platforms.local_engines.assets import JsonObject, assets, bound_json
-from inferyard.platforms.local_engines.installation import darwin
+from inferyard.platforms.local_engines.installation import check_family_platform, darwin
 from inferyard.platforms.local_engines.startup import check_environment, validate_startup
 from inferyard.platforms.local_engines.workers import mapped_closure, observe_workers
 from inferyard.platforms.macos_identity import _listener_identity
@@ -158,12 +164,126 @@ def _direct(
     }
 
 
+def _require_family_platform(family: str) -> None:
+    if family == "polystrata":
+        check_family_platform(family)
+    else:
+        darwin()
+
+
+def _psutil_process_state(pid: int, psutil: ModuleType) -> tuple[int, list[str], bytes, Path, Path]:
+    proc = psutil.Process(pid)
+    start = process_start_ticks(pid)
+    arguments = list(proc.cmdline())
+    raw = b"\0".join(os.fsencode(arg) for arg in arguments) + b"\0"
+    executable = Path(proc.exe()).resolve(strict=True)
+    cwd = Path(proc.cwd()).resolve(strict=True)
+    return start, arguments, raw, executable, cwd
+
+
+def _psutil_listener_identity(proc, pid: int, address: str, port: int) -> str:
+    getter = getattr(proc, "net_connections", None) or proc.connections
+    connections = getter(kind="tcp")
+    matches = [
+        conn
+        for conn in connections
+        if getattr(conn, "status", None) == "LISTEN"
+        and conn.laddr
+        and conn.laddr.ip == address
+        and conn.laddr.port == port
+    ]
+    if not matches:
+        raise PreflightError("local_engine_listener_mismatch")
+    return f"tcp://{address}:{port}/pid:{pid}"
+
+
+def _direct_cross_platform(
+    config: JsonObject,
+    declaration: JsonObject,
+    runtime_files: list[FileIdentity],
+    psutil: ModuleType,
+) -> JsonObject:
+    endpoint = config["endpoint"]
+    pid = endpoint["server_pid"]
+    proc = psutil.Process(pid)
+    state = _psutil_process_state(pid, psutil)
+    start, arguments, raw, executable, cwd = state
+    if start != endpoint["process_start_ticks"]:
+        raise PreflightError("local_engine_pid_reused")
+    validate_startup(config, declaration, arguments, executable, cwd)
+    environment = proc.environ()
+    check_environment(environment, config["engine"]["environment"])
+    identity = hash_file(executable)
+    if not any(
+        item.path == identity.path and item.sha256 == identity.sha256 for item in runtime_files
+    ):
+        raise PreflightError("local_engine_executable_outside_runtime")
+    origin, address, port = service_origin(endpoint["url"])
+    listener = _psutil_listener_identity(proc, pid, address, port)
+    model = Path(config["model"]["local_path"]).resolve(strict=True)
+    info = model.stat()
+    if _psutil_process_state(pid, psutil) != state or proc.environ() != environment:
+        raise PreflightError("local_engine_service_changed")
+    return {
+        "pid": pid,
+        "start_ticks": start,
+        "origin": origin,
+        "address": address,
+        "port": port,
+        "executable_sha256": identity.sha256,
+        "argv_sha256": hashlib.sha256(raw).hexdigest(),
+        "cwd_sha256": hashlib.sha256(os.fsencode(cwd)).hexdigest(),
+        "listener_inode": None,
+        "listener_identity": listener,
+        "listener_source": "psutil:TCP:LISTEN:pid",
+        "model_binding": _binding_model(config["engine"]["family"], model, info),
+    }
+
+
+def _observe_workers_cross_platform(
+    pid: int,
+    psutil: ModuleType,
+    runtime_files: list[FileIdentity],
+    environment: dict,
+) -> list[JsonObject]:
+    root = psutil.Process(pid)
+    children = root.children(recursive=True)
+    seen_pids: set[int] = set()
+    rows: list[JsonObject] = []
+    for child_proc in children:
+        child = child_proc.pid
+        if child in seen_pids or child == pid:
+            raise PreflightError("local_engine_worker_tree_changed")
+        seen_pids.add(child)
+        parent = child_proc.ppid()
+        start, _, raw, executable, cwd = _psutil_process_state(child, psutil)
+        check_environment(child_proc.environ(), environment)
+        identity = hash_file(executable)
+        if not any(
+            item.path == identity.path and item.sha256 == identity.sha256
+            for item in runtime_files
+        ):
+            raise PreflightError("local_engine_worker_executable_outside_runtime")
+        rows.append(
+            {
+                "pid": child,
+                "parent_pid": parent,
+                "start_ticks": start,
+                "executable_sha256": identity.sha256,
+                "argv_sha256": hashlib.sha256(raw).hexdigest(),
+                "cwd_sha256": hashlib.sha256(os.fsencode(cwd)).hexdigest(),
+            }
+        )
+    return sorted(rows, key=lambda row: row["pid"])
+
+
 def _bind(
     config: JsonObject, runtime: JsonObject, runtime_files: list[FileIdentity]
 ) -> JsonObject:
     declaration, engine, endpoint = runtime["installation"], config["engine"], config["endpoint"]
     worker_environment = declaration.get("worker_environment", engine["environment"])
     psutil = native.psutil_module()
+    use_darwin_probe = platform.system() == "Darwin" or engine["family"] != "polystrata"
     try:
         if engine["family"] == "lmstudio":
             service = native.bind_service(
@@ -189,11 +309,18 @@ def _bind(
                 state[3],
                 pid=endpoint["server_pid"],
             )
-        else:
+        elif use_darwin_probe:
             service = _direct(config, declaration, runtime_files, psutil)
-        service["workers"] = observe_workers(
-            endpoint["server_pid"], psutil, runtime_files, worker_environment
-        )
+        else:
+            service = _direct_cross_platform(config, declaration, runtime_files, psutil)
+        if use_darwin_probe:
+            service["workers"] = observe_workers(
+                endpoint["server_pid"], psutil, runtime_files, worker_environment
+            )
+        else:
+            service["workers"] = _observe_workers_cross_platform(
+                endpoint["server_pid"], psutil, runtime_files, worker_environment
+            )
         result = {
             "schema_version": 3,
             "definition": DEFINITION,
@@ -207,7 +334,7 @@ def _bind(
 
 
 def bind_service(config: JsonObject) -> JsonObject:
-    darwin()
+    _require_family_platform(config["engine"]["family"])
     runtime, runtime_files, asset_files = assets(config)
     result = _bind(config, runtime, runtime_files)
     _remember(config, runtime, runtime_files, asset_files)
@@ -225,7 +352,7 @@ def verify_bound_service(
     if bound_files is None:
         current = bind_service(config)
     else:
-        darwin()
+        _require_family_platform(config["engine"]["family"])
         cached = _cached(config)
         if cached is None:
             runtime, runtime_files, asset_files = assets(config)

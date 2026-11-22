@@ -148,7 +148,8 @@
               "enum": [
                 "cpu",
                 "cuda",
-                "metal"
+                "metal",
+                "hip"
               ]
             },
             "slots_debug": {
@@ -805,13 +806,17 @@
                 "mlx-lm",
                 "vllm",
                 "sglang",
-                "lmstudio"
+                "lmstudio",
+                "polystrata"
               ]
             },
             "backend": {
               "type": "string",
               "enum": [
-                "metal"
+                "metal",
+                "cuda",
+                "hip",
+                "cpu"
               ]
             },
             "installation_path": {
@@ -873,6 +878,10 @@
               "additionalProperties": false
             },
             "served_model": {
+              "type": "string",
+              "minLength": 1
+            },
+            "polystrata_config_path": {
               "type": "string",
               "minLength": 1
             },
@@ -997,6 +1006,15 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 8192
+            },
+            "reasoning_effort": {
+              "type": "string",
+              "enum": [
+                "none",
+                "low",
+                "medium",
+                "high"
+              ]
             }
           },
           "required": [
@@ -1099,7 +1117,7 @@
             "context_size": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 32768
+              "maximum": 524288
             },
             "cache_policy": {
               "type": "string",
@@ -1327,8 +1345,7 @@
               "maximum": 85
             },
             "require_temperature": {
-              "type": "boolean",
-              "const": true
+              "type": "boolean"
             },
             "check_environment": {
               "type": "boolean",

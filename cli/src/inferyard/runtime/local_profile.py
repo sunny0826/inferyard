@@ -5,6 +5,8 @@ from inferyard.errors import PreflightError
 def _temperature_admitted(policy, required):
     if "temperature_stop_override_reason" in required:
         return policy["max_temperature_celsius"] is None
+    if not required["require_temperature"] and policy["max_temperature_celsius"] is None:
+        return True
     return (
         policy["max_temperature_celsius"] is not None
         and policy["max_temperature_celsius"] <= required["max_temperature_celsius"]
@@ -18,7 +20,7 @@ def safety_policy(plan, config):
         policy is None
         or not _temperature_admitted(policy, required)
         or policy["interval_seconds"] > required["interval_seconds"]
-        or policy["require_temperature"] is not True
+        or (required["require_temperature"] and policy["require_temperature"] is not True)
         or policy["check_environment"] is not True
     ):
         raise PreflightError("local_engine_safety_policy_required")

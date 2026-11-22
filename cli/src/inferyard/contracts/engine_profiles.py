@@ -1,12 +1,30 @@
 """Explicit formal profiles; diagnostic support does not imply execution support."""
 
 LEGACY_DIAGNOSTIC_ENGINES = ("vllm", "sglang")
-DIAGNOSTIC_ENGINES = (*LEGACY_DIAGNOSTIC_ENGINES, "llama-cpp", "mlx-lm", "lmstudio", "ollama")
+DIAGNOSTIC_ENGINES = (
+    *LEGACY_DIAGNOSTIC_ENGINES,
+    "llama-cpp",
+    "mlx-lm",
+    "lmstudio",
+    "ollama",
+    "polystrata",
+)
 LOCAL_ADAPTER = "local_openai_v1"
 LOCAL_CONFIG = "local-engine-config.v1"
 LOCAL_OBSERVATION = "local-engine-observation.v1"
-LOCAL_FAMILIES = ("llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio")
+LOCAL_FAMILIES = ("llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio", "polystrata")
 DIRECTORY_FAMILIES = ("mlx-lm", "vllm", "sglang")
+POLYSTRATA_SUPPORTED_GGUF_ARCHS = (
+    "qwen35moe",
+    "gemma4",
+    "lfm2moe",
+    "flint",
+    "glm5-next",
+    "deepseek4",
+    "kolibri1",
+    "clover_moe",
+)
+REASONING_EFFORT_LEVELS = ("none", "low", "medium", "high")
 TUNING_KEYS = (
     "flash_attention",
     "batch_size",

@@ -262,7 +262,8 @@
                         "mlx-lm",
                         "vllm",
                         "sglang",
-                        "lmstudio"
+                        "lmstudio",
+                        "polystrata"
                       ]
                     },
                     {
@@ -328,7 +329,8 @@
                           "mlx-lm",
                           "vllm",
                           "sglang",
-                          "lmstudio"
+                          "lmstudio",
+                          "polystrata"
                         ]
                       },
                       "declaration_sha256": {
@@ -595,7 +597,8 @@
                           "mlx-lm",
                           "vllm",
                           "sglang",
-                          "lmstudio"
+                          "lmstudio",
+                          "polystrata"
                         ]
                       },
                       {
@@ -661,7 +664,8 @@
                             "mlx-lm",
                             "vllm",
                             "sglang",
-                            "lmstudio"
+                            "lmstudio",
+                            "polystrata"
                           ]
                         },
                         "declaration_sha256": {

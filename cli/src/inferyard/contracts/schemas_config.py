@@ -42,7 +42,7 @@ CONFIG = obj(
                 "binary_sha256": HASH,
                 "runtime_library_manifest": LABEL,
                 "startup_args": array(TEXT),
-                "backend": enum("cpu", "cuda", "metal"),
+                "backend": enum("cpu", "cuda", "metal", "hip"),
             }
         ),
         "endpoint": obj(
