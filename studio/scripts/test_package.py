@@ -40,9 +40,22 @@ class SingleTargetPackageTests(unittest.TestCase):
         self, command: list[str], target: str, out: Path
     ) -> subprocess.CompletedProcess[str]:
         if command[0] == "hdiutil":
-            distribution = Path(command[command.index("-srcfolder") + 1])
-            self.assertTrue((distribution / "Applications").is_symlink())
-            self.assertEqual((distribution / "Applications").readlink(), Path("/Applications"))
+            staging = Path(command[command.index("-srcfolder") + 1])
+            self.assertEqual(
+                sorted(p.name for p in staging.iterdir()),
+                ["Applications", "InferYard Studio.app"],
+            )
+            self.assertTrue((staging / "Applications").is_symlink())
+            self.assertEqual((staging / "Applications").readlink(), Path("/Applications"))
+            self.assertTrue(
+                (staging / "InferYard Studio.app/Contents/MacOS/inferyard-studio").is_file()
+            )
+            self.assertTrue(
+                (staging / "InferYard Studio.app/Contents/Resources/AppIcon.icns").is_file()
+            )
+            self.assertTrue(
+                (staging / "InferYard Studio.app/Contents/Resources/LICENSE").is_file()
+            )
             Path(command[-1]).write_bytes(b"test-dmg")
         elif command[0].endswith("ISCC.exe"):
             archive = out / common.archive_name(common.studio_version(), target)
@@ -89,11 +102,15 @@ class SingleTargetPackageTests(unittest.TestCase):
             version = common.studio_version()
             name = common.distribution_name(version, "darwin-arm64")
             dist = out / name
-            self.assertTrue((dist / "LICENSE").is_file())
-            self.assertTrue((dist / "inferyard-studio").is_file())
-            self.assertTrue((dist / "InferYard Studio.app").is_dir())
+            self.assertEqual(
+                sorted(p.name for p in dist.iterdir()),
+                ["InferYard Studio.app"],
+            )
             self.assertTrue(
                 (dist / "InferYard Studio.app/Contents/Resources/AppIcon.icns").is_file()
+            )
+            self.assertTrue(
+                (dist / "InferYard Studio.app/Contents/Resources/LICENSE").is_file()
             )
             import plistlib
             plist = plistlib.loads(
@@ -112,7 +129,7 @@ class SingleTargetPackageTests(unittest.TestCase):
             self.assertEqual(receipt["archive"]["path"], archive.name)
             self.assertEqual(receipt["archive"]["bytes"], len(archive_raw))
             self.assertEqual(receipt["archive"]["sha256"], common.sha(archive_raw))
-            binary_rel = f"{name}/inferyard-studio"
+            binary_rel = f"{name}/InferYard Studio.app/Contents/MacOS/inferyard-studio"
             binary_raw = (out / binary_rel).read_bytes()
             self.assertEqual(receipt["binary"]["path"], binary_rel)
             self.assertEqual(receipt["binary"]["bytes"], len(binary_raw))
