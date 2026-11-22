@@ -40,6 +40,7 @@ _SAFE_DERIVED_KEYS = (
     "lib_dirs",
     "cuda",
     "tool_call_recovery",
+    "sampling",
     "vision",
     "env",
 )
@@ -100,15 +101,16 @@ def check_no_plaintext_credentials(payload: dict) -> None:
     env = payload.get("env")
     if isinstance(env, dict) and _has_secret_mapping(env):
         raise PreparationError("polystrata_plaintext_credential_rejected")
-    mcp = payload.get("mcp_servers")
-    if isinstance(mcp, dict):
-        for entry in mcp.values():
-            if not isinstance(entry, dict):
-                continue
-            for subkey in ("headers", "env"):
-                sub = entry.get(subkey)
-                if isinstance(sub, dict) and _has_secret_mapping(sub):
-                    raise PreparationError("polystrata_plaintext_credential_rejected")
+    for mcp_key in ("mcp_servers", "mcpServers"):
+        mcp = payload.get(mcp_key)
+        if isinstance(mcp, dict):
+            for entry in mcp.values():
+                if not isinstance(entry, dict):
+                    continue
+                for subkey in ("headers", "env"):
+                    sub = entry.get(subkey)
+                    if isinstance(sub, dict) and _has_secret_mapping(sub):
+                        raise PreparationError("polystrata_plaintext_credential_rejected")
 
 
 def _extract_arg_value(args: list, flag: str) -> tuple[int | None, str | None]:
@@ -150,36 +152,24 @@ def _is_poly_config(payload: dict) -> bool:
 
 
 def _discover_tokenizer_dir(installation: dict, model_input: Path) -> Path | None:
-    """Find an upstream PolyStrata tokenizer directory (containing vocab.json)."""
+    """Find a model-matched upstream PolyStrata tokenizer directory (containing vocab.json)."""
+    sibling = model_input.parent / "tokenizer"
+    if (sibling / "vocab.json").is_file():
+        return sibling.resolve(strict=True)
     root = Path(installation["working_directory"])
-    direct_candidates = [
-        model_input.parent / "tokenizer",
-        root / "pack" / "full" / "tokenizer",
-    ]
-    for candidate in direct_candidates:
-        if (candidate / "vocab.json").is_file():
-            return candidate.resolve(strict=True)
     packs_roots: list[Path] = []
     if installation.get("data_dir"):
         packs_roots.append(Path(installation["data_dir"]) / "packs")
     packs_roots.append(root / "data" / "packs")
-    found: list[Path] = []
+    stem_lower = model_input.stem.lower()
     for packs_dir in packs_roots:
         if not packs_dir.is_dir():
             continue
         for child in sorted(packs_dir.iterdir()):
             tok = child / "tokenizer"
-            if (tok / "vocab.json").is_file():
-                resolved = tok.resolve(strict=True)
-                if resolved not in found:
-                    found.append(resolved)
-    if len(found) == 1:
-        return found[0]
-    stem_lower = model_input.stem.lower()
-    for tok in found:
-        if tok.parent.name.lower() in stem_lower:
-            return tok
-    return found[0] if found else None
+            if (tok / "vocab.json").is_file() and child.name.lower() in stem_lower:
+                return tok.resolve(strict=True)
+    return None
 
 
 def inspect_polystrata_payload(
@@ -301,7 +291,7 @@ def _resolve_existing_json(
     resolved_served = served_model or json_model_name or "inferyard-local-model"
 
     needs_derive = (context_size is not None and existing_ctx != context_size) or (
-        served_model is not None and json_model_name is not None and served_model != json_model_name
+        served_model is not None and served_model != json_model_name
     )
     derived_payload: dict | None = None
     config_path = config_file

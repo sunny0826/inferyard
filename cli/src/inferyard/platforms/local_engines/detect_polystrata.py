@@ -76,8 +76,6 @@ def find_polystrata_engine_binaries(
         poly_candidates = (
             root / "engine-poly" / "strata-poly",
             root / "build-metal" / "strata-poly",
-            root / "build-metal" / "strata-metal",
-            root / "build-metal" / "strata",
         )
         strata_candidates = (
             root / "engine" / "strata",

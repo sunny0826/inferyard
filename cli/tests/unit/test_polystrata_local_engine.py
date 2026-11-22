@@ -646,14 +646,13 @@ def test_upstream_pack_config_credential_rejection_and_arch_enforcement(
             )
         )
 
-    # Real upstream --pack + chat_template.jinja + experts.bin/dense.bin + default ctx 4096
+    # Real upstream --pack + chat_template.jinja + default ctx 4096
     pack_dir = tmp_path / "packs" / "iq2_xs"
     tok_dir = pack_dir / "tokenizer"
     tok_dir.mkdir(parents=True)
     (tok_dir / "vocab.json").write_text("{}", encoding="utf-8")
     (tok_dir / "chat_template.jinja").write_text("{{ messages }}", encoding="utf-8")
-    (pack_dir / "experts.bin").write_bytes(b"experts-weights")
-    (pack_dir / "dense.bin").write_bytes(b"dense-weights")
+    (pack_dir / "weights.bin").write_bytes(b"pack-weights")
     upstream_pack_json = ps_root / "data" / "strata-iq2_xs.json"
     upstream_pack_json.write_text(
         json.dumps(
@@ -687,7 +686,7 @@ def test_upstream_pack_config_credential_rejection_and_arch_enforcement(
             "files"
         ]
     }
-    assert {"experts.bin", "dense.bin"} <= manifest_files
+    assert "weights.bin" in manifest_files
 
     # mcp_servers credential in existing JSON is rejected
     mcp_secret_json = ps_root / "data" / "strata-mcp-secret.json"
@@ -933,7 +932,13 @@ def test_multishard_gguf_worker_ld_library_path_and_offline_verify(
     shard_paths = {item.path for item in bound_files}
     assert str(shard1.resolve()) in shard_paths
     assert str(shard2.resolve()) in shard_paths
-    assert str(strata_json.resolve()) in shard_paths
+    assert config["engine"]["polystrata_config_path"] in shard_paths
+    assert (
+        json.loads(Path(config["engine"]["polystrata_config_path"]).read_text(encoding="utf-8"))[
+            "model_name"
+        ]
+        == "qwen36-local"
+    )
 
     verified_svc = validate_frozen_identity(
         config,

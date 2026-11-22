@@ -333,7 +333,13 @@ def _observe_workers_cross_platform(
             actual_parts = observed_env.get("LD_LIBRARY_PATH", "").split(os.pathsep)
             if actual_parts[: len(expected_lib_dirs)] != expected_lib_dirs:
                 raise PreflightError("local_engine_environment_override")
+            if "LD_LIBRARY_PATH" in expected_cfg_env:
+                suffix = expected_cfg_env["LD_LIBRARY_PATH"].split(os.pathsep)
+                if actual_parts[len(expected_lib_dirs) : len(expected_lib_dirs) + len(suffix)] != suffix:
+                    raise PreflightError("local_engine_environment_override")
         for key, expected_val in expected_cfg_env.items():
+            if key == "LD_LIBRARY_PATH" and expected_lib_dirs and platform.system() != "Windows":
+                continue
             if observed_env.get(key) != expected_val:
                 raise PreflightError("local_engine_environment_override")
         identity = hash_file(executable)
