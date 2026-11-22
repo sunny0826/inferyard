@@ -1,91 +1,35 @@
 """Read local hardware and GGUF candidates, then recommend an explicit execution mode."""
 
-import csv
-import io
-import math
 import os
 import platform
 import shutil
-import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
+from inferyard.platforms.device_gpu import (
+    _NVIDIA_BASE_QUERY as GPU_QUERY,
+    cpu_features_snapshot,
+    detect_gpus,
+    nvidia_snapshot,
+)
 from inferyard.platforms.device_host import snapshot as host_snapshot
 from inferyard.platforms.gguf_metadata import read_metadata
 
 GIB = 1024**3
 GPU_RESERVE = GIB
-GPU_QUERY = (
-    "index,name,driver_version,memory.total,memory.free,utilization.gpu,temperature.gpu,power.draw"
-)
 
-
-def nvidia_snapshot():
-    executable = shutil.which("nvidia-smi")
-    if executable is None:
-        return {"status": "unavailable", "reason": "nvidia_smi_not_found", "devices": []}
-    try:
-        result = subprocess.run(
-            [executable, "--query-gpu=" + GPU_QUERY, "--format=csv,noheader,nounits"],
-            capture_output=True,
-            text=True,
-            timeout=8,
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-        )
-        if result.returncode:
-            raise ValueError("nvidia_driver_query_failed")
-        devices = []
-        for row in csv.reader(io.StringIO(result.stdout)):
-            if len(row) != 8:
-                raise ValueError("invalid_nvidia_query")
-            values = [cell.strip() for cell in row]
-
-            missing = {}
-
-            def number(cell, field, *, required=False, missing=missing):
-                try:
-                    value = float(cell)
-                    if not math.isfinite(value) or (value < 0 and field != "temperature_c"):
-                        raise ValueError
-                    if field == "utilization_percent" and value > 100:
-                        raise ValueError
-                    return value
-                except ValueError:
-                    if required:
-                        raise ValueError("invalid_nvidia_query") from None
-                    missing[field] = (
-                        "not_reported"
-                        if "N/A" in cell or "Not Supported" in cell
-                        else "invalid_output"
-                    )
-                    return None
-
-            total = int(number(values[3], "memory_total_bytes", required=True) * 1024**2)
-            free = int(number(values[4], "memory_free_bytes", required=True) * 1024**2)
-            index = int(values[0])
-            if index < 0 or not values[1] or total <= 0 or free > total:
-                raise ValueError("invalid_nvidia_query")
-
-            devices.append(
-                {
-                    "index": index,
-                    "name": values[1],
-                    "driver_version": values[2],
-                    "memory_total_bytes": total,
-                    "memory_free_bytes": free,
-                    "utilization_percent": number(values[5], "utilization_percent"),
-                    "temperature_c": number(values[6], "temperature_c"),
-                    "power_w": number(values[7], "power_w"),
-                    "missing": missing,
-                }
-            )
-        if not devices:
-            raise ValueError("no_nvidia_devices")
-        return {"status": "observed", "source": "nvidia-smi", "devices": devices}
-    except subprocess.TimeoutExpired:
-        return {"status": "unavailable", "reason": "probe_timeout", "devices": []}
-    except OSError, UnicodeError, ValueError, OverflowError:
-        return {"status": "unavailable", "reason": "nvidia_driver_query_failed", "devices": []}
+__all__ = [
+    "GIB",
+    "GPU_QUERY",
+    "GPU_RESERVE",
+    "discover_models",
+    "existing_ancestor",
+    "hardware_snapshot",
+    "inspect_device",
+    "nvidia_snapshot",
+    "platform_capabilities",
+    "recommend",
+]
 
 
 def hardware_snapshot(disk_path, environment=None, *, gpu_observation=None):
@@ -99,16 +43,29 @@ def hardware_snapshot(disk_path, environment=None, *, gpu_observation=None):
     except OSError:
         disk_free = None
         missing["disk_free_bytes"] = "disk_usage_unavailable"
+    if "cpu_features" in env:
+        cpu_features = env["cpu_features"]
+        feat_source = sources.get("cpu_features", "runtime_environment")
+        feat_missing = {}
+    else:
+        cpu_features, feat_source, feat_missing = cpu_features_snapshot(system)
+    os_version = env.get("os_version")
+    if os_version is None and system != "Darwin":
+        os_version = platform.release() or None
+        sources.setdefault("os_version", "platform.release")
     result = {
         "observed_at": datetime.now(UTC).isoformat(),
         "platform": system,
+        "os_version": os_version,
         "architecture": platform.machine(),
         "cpu_model": env.get("cpu_model"),
+        "cpu_features": cpu_features,
         "logical_cpus": env.get("logical_cpus") or os.cpu_count(),
         "physical_cpus": env.get("physical_cpus"),
         "memory_total_bytes": env.get("memory_total_bytes"),
         "memory_available_bytes": env.get("mem_available_bytes"),
         "memory_available_is_estimate": env.get("memory_available_is_estimate", False),
+        "page_file_total_bytes": env.get("page_file_total_bytes") if system == "Windows" else None,
         "ac_online": env.get("ac_online"),
         "disk_free_bytes": disk_free,
         "disk_path": str(disk_path),
@@ -116,7 +73,7 @@ def hardware_snapshot(disk_path, environment=None, *, gpu_observation=None):
         if system == "Darwin"
         else gpu_observation
         if gpu_observation is not None
-        else nvidia_snapshot(),
+        else detect_gpus(system),
     }
     if result["gpu"] is None:
         result["gpu"] = {"status": "unavailable", "reason": "not_measured", "devices": []}
@@ -139,6 +96,22 @@ def hardware_snapshot(disk_path, environment=None, *, gpu_observation=None):
             missing.setdefault(field, "not_reported")
         else:
             missing.pop(field, None)
+    sources["cpu_features"] = feat_source
+    for feat_name, reason in feat_missing.items():
+        missing[f"cpu_features.{feat_name}"] = reason
+    if result["os_version"] is None:
+        missing.setdefault("os_version", "not_reported")
+    else:
+        missing.pop("os_version", None)
+    if system == "Windows":
+        sources.setdefault(
+            "page_file_total_bytes",
+            "runtime_environment" if environment is not None else "not_measured",
+        )
+        if result["page_file_total_bytes"] is None:
+            missing.setdefault("page_file_total_bytes", "not_reported")
+        else:
+            missing.pop("page_file_total_bytes", None)
     sources["disk_free_bytes"] = "shutil.disk_usage"
     sources["gpu"] = result["gpu"].get("source")
     if result["gpu"]["status"] == "unavailable":
@@ -161,7 +134,8 @@ def recommend(hardware, models, *, model_loaded=False):
     gpus = [
         g
         for g in hardware.get("gpu", {}).get("devices", [])
-        if isinstance(g.get("memory_free_bytes"), int)
+        if g.get("vendor") in (None, "nvidia")
+        and isinstance(g.get("memory_free_bytes"), int)
         and isinstance(g.get("memory_total_bytes"), int)
         and "index" in g
     ]
@@ -294,8 +268,26 @@ def _next_steps(report):
     ]
 
 
+def _attach_models_disk(hardware, roots):
+    if not roots or "models_disk_free_bytes" in hardware:
+        return
+    target = existing_ancestor(roots[0])
+    sources = hardware.setdefault("sources", {})
+    missing = hardware.setdefault("missing", {})
+    hardware["models_disk_path"] = str(target)
+    try:
+        hardware["models_disk_free_bytes"] = shutil.disk_usage(target).free
+        sources["models_disk_free_bytes"] = "shutil.disk_usage"
+        missing.pop("models_disk_free_bytes", None)
+    except OSError:
+        hardware["models_disk_free_bytes"] = None
+        sources["models_disk_free_bytes"] = "shutil.disk_usage"
+        missing["models_disk_free_bytes"] = "disk_usage_unavailable"
+
+
 def inspect_device(roots, *, model_path=None, disk_path=None):
     hardware = hardware_snapshot(disk_path or Path.cwd())
+    _attach_models_disk(hardware, roots)
     models = discover_models(roots, model_path)
     report = {
         "kind": "device_preflight.v1",

@@ -70,6 +70,7 @@ def displays(text, *, unified_memory):
                     supported = True
             devices.append(
                 {
+                    "vendor": "apple",
                     "name": row["sppci_model"],
                     "cores": _number(row.get("sppci_cores")),
                     "metal_supported": supported,
@@ -115,6 +116,11 @@ def snapshot():
         sources[field] = "sysctl:" + key
         if values[field] is None:
             missing[field] = reason or "invalid_output"
+    text, reason = query(["/usr/bin/sw_vers", "-productVersion"])
+    values["os_version"] = text or None
+    sources["os_version"] = "sw_vers:productVersion"
+    if values["os_version"] is None:
+        missing["os_version"] = reason or "not_reported"
     text, reason = query(["/usr/bin/vm_stat"])
     available = available_memory(text)
     total = values["memory_total_bytes"]
