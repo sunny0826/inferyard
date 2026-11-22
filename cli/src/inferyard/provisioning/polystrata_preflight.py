@@ -11,6 +11,7 @@ from pathlib import Path
 import platform
 import re
 import shutil
+import stat
 import subprocess
 import sys
 
@@ -30,10 +31,20 @@ _GGUF_WORK_DISK_BYTES = 512 * MIB
 _SUPPORTED_PLATFORMS = frozenset({("Darwin", "arm64"), ("Linux", "x64"), ("Windows", "x64")})
 _VALID_BACKENDS = frozenset({"auto", "cuda", "hip", "metal"})
 _VALID_MODEL_SOURCES = frozenset({"auto", "huggingface", "modelscope"})
+_LINUX_SOURCE_BUILD_FAMILIES = frozenset(
+    {"glm", "qwen36", "flint", "gemma4", "lfm25", "ornith", "tiel", "minicpmv", "clover", "ornith122"}
+)
+_URL_ENV_VARS = (
+    "STRATA_ROCM_INDEX",
+    "STRATA_PREBUILT_URL",
+    "HF_ENDPOINT",
+    "STRATA_MODELSCOPE_ENDPOINT",
+)
+_DATA_ITEMS = ("models", "packs", "mtp")
 
 _VERSION_PART_RE = re.compile(r"\d+")
 _ANSI_RE = re.compile(r"\x1b(?:\[[0-9;?]*[ -/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\))")
-_URL_CRED_RE = re.compile(r"(https?://)([^/\s:@]+:[^/\s@]*@)", re.IGNORECASE)
+_URL_CRED_RE = re.compile(r"(https?://)([^/\s@]+@)", re.IGNORECASE)
 _AUTH_HEADER_RE = re.compile(r"\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{6,}", re.IGNORECASE)
 _TOKEN_PREFIX_RE = re.compile(r"\b(?:hf_|gh[pousr]_|github_pat_|sk-)[A-Za-z0-9_-]{8,}")
 _API_KEY_FLAG_RE = re.compile(r"(--api-key(?:\s+|=))([^\s\"']+)", re.IGNORECASE)
@@ -63,8 +74,7 @@ def _load_starter_catalog() -> dict:
 def _matching_catalog_models(family: str | None, model: str | None) -> list[dict]:
     if not family and not model:
         return []
-    catalog = _load_starter_catalog()
-    models = catalog.get("polystrata_models") or []
+    models = _load_starter_catalog().get("polystrata_models") or []
     fam_norm = family.strip().lower() if isinstance(family, str) and family.strip() else None
     size_norm = model.strip().lower() if isinstance(model, str) and model.strip() else None
     matches: list[dict] = []
@@ -126,8 +136,7 @@ def _disk_free_bytes(path: Path, disk_usage_fn=shutil.disk_usage) -> tuple[int |
     if ancestor is None:
         return None, None
     try:
-        usage = disk_usage_fn(ancestor)
-        free = int(usage.free)
+        free = int(disk_usage_fn(ancestor).free)
     except OSError:
         return None, None
     try:
@@ -137,34 +146,63 @@ def _disk_free_bytes(path: Path, disk_usage_fn=shutil.disk_usage) -> tuple[int |
     return free, dev
 
 
+def _existing_resume_model_bytes(data_dir: Path) -> int:
+    """Sum already-downloaded .part/.gguf bytes under data_dir/models for resume disk credit."""
+    models_root = data_dir / "models"
+    if not models_root.is_dir() or linked(models_root):
+        return 0
+    total = 0
+    stack = [models_root]
+    while stack:
+        current = stack.pop()
+        try:
+            with os.scandir(current) as entries:
+                for entry in entries:
+                    if entry.is_symlink():
+                        continue
+                    if entry.is_dir(follow_symlinks=False):
+                        stack.append(Path(entry.path))
+                    elif entry.is_file(follow_symlinks=False):
+                        lower = entry.name.lower()
+                        if lower.endswith((".part", ".gguf")):
+                            try:
+                                total += entry.stat(follow_symlinks=False).st_size
+                            except OSError:
+                                pass
+        except OSError:
+            continue
+    return total
+
+
 def _required_model_disk_bytes(
     *,
     system: str,
     family: str | None,
     model: str | None,
     gguf_path: Path | None,
+    resume: bool,
+    data_dir: Path,
 ) -> int:
     matches = _matching_catalog_models(family, model)
     if not matches:
-        return _GGUF_WORK_DISK_BYTES if gguf_path is not None else _DEFAULT_MODEL_DISK_BYTES
-    return min(_entry_disk_bytes(entry, system=system, gguf_path=gguf_path) for entry in matches)
+        base = _GGUF_WORK_DISK_BYTES if gguf_path is not None else _DEFAULT_MODEL_DISK_BYTES
+    else:
+        base = min(_entry_disk_bytes(entry, system=system, gguf_path=gguf_path) for entry in matches)
+    if resume and gguf_path is None:
+        already = _existing_resume_model_bytes(data_dir)
+        return max(_GGUF_WORK_DISK_BYTES, base - already)
+    return base
 
 
 def _default_xcode_clt_check() -> bool:
     try:
         result = subprocess.run(
-            ["xcode-select", "-p"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
+            ["xcode-select", "-p"], capture_output=True, text=True, timeout=10, check=False
         )
     except (OSError, subprocess.SubprocessError):
         return False
-    if result.returncode != 0:
-        return False
     clt_path = result.stdout.strip()
-    return bool(clt_path) and Path(clt_path).is_dir()
+    return result.returncode == 0 and bool(clt_path) and Path(clt_path).is_dir()
 
 
 def _default_linux_venv_check(python_executable: str) -> bool:
@@ -188,6 +226,94 @@ def _default_linux_venv_check(python_executable: str) -> bool:
         return ensure_res.returncode == 0
     except (OSError, subprocess.SubprocessError):
         return False
+
+
+def _default_linux_build_tools_check(*, need_nvcc: bool) -> list[str]:
+    missing: list[str] = []
+    if shutil.which("g++") is None and shutil.which("c++") is None:
+        missing.append("g++")
+    if need_nvcc:
+        has_nvcc = shutil.which("nvcc") is not None
+        if not has_nvcc:
+            for base in (Path("/usr/local"), Path("/opt")):
+                if base.is_dir():
+                    try:
+                        for child in base.iterdir():
+                            if child.name.startswith("cuda") and (child / "bin" / "nvcc").is_file():
+                                has_nvcc = True
+                                break
+                    except OSError:
+                        pass
+                if has_nvcc:
+                    break
+        if not has_nvcc:
+            missing.append("nvcc")
+    return missing
+
+
+def _resolve_macos_gguf_choice(
+    gguf_path: Path,
+    family: str | None,
+    model: str | None,
+) -> tuple[str | None, str | None, list[dict]]:
+    """Resolve explicit family/model for macOS --gguf-path so setup_mac.py never picks another model."""
+    gguf_files = (
+        [gguf_path]
+        if gguf_path.is_file()
+        else sorted(p for p in gguf_path.iterdir() if p.is_file() and p.suffix.lower() == ".gguf")
+    )
+    file_names = {p.name.lower() for p in gguf_files}
+    catalog_models = _load_starter_catalog().get("polystrata_models") or []
+
+    if family and model:
+        matches = _matching_catalog_models(family, model)
+        if matches:
+            entry = matches[0]
+            if "Darwin" not in (entry.get("platforms") or {}):
+                return family, model, [
+                    {
+                        "code": "polystrata_gguf_unmatched_model",
+                        "message": f"Model {family}/{model} is not supported on macOS Metal.",
+                        "fix_command": None,
+                    }
+                ]
+            expected_name = (entry.get("gguf_sources") or {}).get("filename")
+            if expected_name and expected_name.lower() not in file_names:
+                return family, model, [
+                    {
+                        "code": "polystrata_gguf_unmatched_model",
+                        "message": (
+                            f"Expected GGUF '{expected_name}' for {family}/{model} was not found "
+                            "at --gguf-path."
+                        ),
+                        "fix_command": None,
+                    }
+                ]
+        return family, model, []
+
+    inferred: list[dict] = []
+    for entry in catalog_models:
+        if "Darwin" not in (entry.get("platforms") or {}):
+            continue
+        expected_name = (entry.get("gguf_sources") or {}).get("filename")
+        if expected_name and expected_name.lower() in file_names:
+            if family and str(entry.get("family", "")).lower() != family.lower():
+                continue
+            if model and str(entry.get("size", "")).lower() != model.lower():
+                continue
+            inferred.append(entry)
+    if len(inferred) == 1:
+        return str(inferred[0]["family"]), str(inferred[0]["size"]), []
+    return family, model, [
+        {
+            "code": "polystrata_gguf_unmatched_model",
+            "message": (
+                "Could not uniquely match --gguf-path to a macOS PolyStrata model; "
+                "specify --family and --model matching the GGUF file."
+            ),
+            "fix_command": None,
+        }
+    ]
 
 
 def _validate_gguf_path(gguf_path: Path) -> list[dict]:
@@ -232,47 +358,149 @@ def _validate_gguf_path(gguf_path: Path) -> list[dict]:
     ]
 
 
-def _check_gpu_drivers(
+def _has_polystrata_data(folder: Path) -> bool:
+    for item in _DATA_ITEMS:
+        sub = folder / item
+        try:
+            if sub.is_dir() and not linked(sub) and any(sub.iterdir()):
+                return True
+        except OSError:
+            continue
+    return False
+
+
+def _detect_sibling_migration_risk(out: Path, data_dir: Path) -> list[dict]:
+    """Mirror upstream other_installs() scan and block before setup.py can move sibling data."""
+    dest_ancestor = _existing_ancestor(data_dir)
+    if dest_ancestor is None:
+        return []
+    try:
+        dest_dev = dest_ancestor.stat().st_dev
+    except OSError:
+        return []
+    out_norm = out.resolve(strict=False)
+    dest_norm = data_dir.resolve(strict=False)
+    candidates: list[Path] = []
+    for base in dict.fromkeys((out.parent, out.parent.parent)):
+        if not base.is_dir():
+            continue
+        try:
+            for child in base.iterdir():
+                if child.is_dir() and child.name.lower().startswith("polystrata"):
+                    candidates.append(child)
+                    try:
+                        for sub in child.iterdir():
+                            if sub.is_dir() and sub.name.lower().startswith("polystrata"):
+                                candidates.append(sub)
+                    except OSError:
+                        pass
+        except OSError:
+            continue
+    seen: set[Path] = set()
+    for cand in candidates:
+        try:
+            resolved = cand.resolve(strict=True)
+        except OSError:
+            continue
+        if resolved == out_norm or resolved in seen or not (resolved / "setup.py").is_file():
+            continue
+        seen.add(resolved)
+        for check_dir in (resolved, resolved / "PolyStrata-data"):
+            if check_dir.resolve(strict=False) == dest_norm:
+                continue
+            try:
+                if check_dir.is_dir() and check_dir.stat().st_dev == dest_dev and _has_polystrata_data(check_dir):
+                    return [
+                        {
+                            "code": "polystrata_sibling_migration_risk",
+                            "message": (
+                                "Another PolyStrata installation with local model data exists in "
+                                "an adjacent directory; upstream setup.py would migrate its files. "
+                                "Place --out under a dedicated parent directory."
+                            ),
+                            "fix_command": None,
+                        }
+                    ]
+            except OSError:
+                continue
+    return []
+
+
+def _check_credentialed_env_urls(env: dict[str, str]) -> list[dict]:
+    for key in _URL_ENV_VARS:
+        val = env.get(key)
+        if isinstance(val, str) and "://" in val and "@" in val.split("/", 3)[2]:
+            return [
+                {
+                    "code": "polystrata_credentialed_env_url",
+                    "message": (
+                        f"Environment variable {key} contains embedded URL credentials, "
+                        "which upstream setup.py could log or persist to disk."
+                    ),
+                    "fix_command": None,
+                }
+            ]
+    return []
+
+
+def _check_gpu_and_build_tools(
     system: str,
     backend: str | None,
+    family: str | None,
     gpu_probe: Callable[[str], dict] | None,
+    build_tools_check: Callable[[bool], list[str]] | None,
 ) -> list[dict]:
     if system not in ("Linux", "Windows"):
         return []
     probe = gpu_probe if gpu_probe is not None else detect_gpus
     gpu_info = probe(system) or {}
     devices = gpu_info.get("devices") or []
-    nvidia_devices = [
-        dev for dev in devices if str(dev.get("vendor", "")).lower() == "nvidia"
-    ]
+    nvidia_devices = [dev for dev in devices if str(dev.get("vendor", "")).lower() == "nvidia"]
     amd_devices = [dev for dev in devices if str(dev.get("vendor", "")).lower() == "amd"]
 
     blockers: list[dict] = []
     if backend == "cuda" and not nvidia_devices:
-        blockers.append(
+        return [
             {
                 "code": "polystrata_nvidia_gpu_missing",
                 "message": "CUDA backend requested, but no NVIDIA GPU was detected.",
                 "fix_command": None,
             }
-        )
-        return blockers
+        ]
     if backend == "hip" and not amd_devices:
-        blockers.append(
+        return [
             {
                 "code": "polystrata_amd_gpu_missing",
                 "message": "HIP backend requested, but no supported AMD GPU was detected.",
                 "fix_command": None,
             }
-        )
-        return blockers
-    if backend != "hip" and nvidia_devices:
+        ]
+    if backend in (None, "auto") and not nvidia_devices and not amd_devices:
+        return [
+            {
+                "code": "polystrata_gpu_missing",
+                "message": "No supported NVIDIA or AMD GPU was detected for PolyStrata.",
+                "fix_command": None,
+            }
+        ]
+
+    using_cuda = backend == "cuda" or (backend != "hip" and bool(nvidia_devices))
+    using_hip = backend == "hip" or (backend != "cuda" and not nvidia_devices and bool(amd_devices))
+    if using_cuda:
         parsed_majors = []
         for dev in nvidia_devices:
             ver = _parse_version(dev.get("driver_version"))
             if ver:
                 parsed_majors.append(ver[0])
-        if parsed_majors and max(parsed_majors) < _MIN_NVIDIA_DRIVER_MAJOR:
+        if not parsed_majors:
+            blockers.append(
+                {
+                    "code": "polystrata_nvidia_driver_unverified",
+                    "message": "NVIDIA GPU driver version could not be verified.",
+                    "fix_command": None,
+                }
+            )
+        elif max(parsed_majors) < _MIN_NVIDIA_DRIVER_MAJOR:
             blockers.append(
                 {
                     "code": "polystrata_nvidia_driver_too_old",
@@ -283,6 +511,41 @@ def _check_gpu_drivers(
                     "fix_command": None,
                 }
             )
+
+    if system == "Linux":
+        fam_lower = (family or "").strip().lower()
+        old_cuda = False
+        for dev in nvidia_devices:
+            cc = _parse_version(str(dev.get("compute_capability") or ""))
+            if cc and cc < (7, 5):
+                old_cuda = True
+        needs_hip_build = using_hip
+        needs_cuda_build = using_cuda and (
+            fam_lower in _LINUX_SOURCE_BUILD_FAMILIES or old_cuda
+        )
+        if needs_hip_build or needs_cuda_build:
+            checker = (
+                build_tools_check
+                if build_tools_check is not None
+                else (lambda need_nvcc: _default_linux_build_tools_check(need_nvcc=need_nvcc))
+            )
+            missing_tools = checker(needs_cuda_build)
+            if missing_tools:
+                fix = (
+                    "sudo apt install build-essential"
+                    if "g++" in missing_tools
+                    else None
+                )
+                blockers.append(
+                    {
+                        "code": "polystrata_build_tools_missing",
+                        "message": (
+                            "Missing Linux build tools required to compile PolyStrata without "
+                            f"interactive sudo: {', '.join(missing_tools)}."
+                        ),
+                        "fix_command": fix,
+                    }
+                )
     return blockers
 
 
@@ -304,8 +567,10 @@ def run_polystrata_preflight(
     xcode_clt_check: Callable[[], bool] | None = None,
     linux_venv_check: Callable[[str], bool] | None = None,
     gpu_probe: Callable[[str], dict] | None = None,
+    build_tools_check: Callable[[bool], list[str]] | None = None,
     disk_usage_fn=shutil.disk_usage,
     venv_python: str | None = None,
+    env: dict[str, str] | None = None,
 ) -> dict:
     """Validate prerequisites read-only; raise PreparationError with structured blockers on failure."""
     validate_proxy_origin(proxy_origin)
@@ -326,6 +591,8 @@ def run_polystrata_preflight(
 
     system, arch = platform_info if platform_info is not None else native_platform()
     blockers: list[dict] = []
+    resolved_family = family
+    resolved_model = model
 
     if (system, arch) not in _SUPPORTED_PLATFORMS:
         blockers.append(
@@ -353,8 +620,17 @@ def run_polystrata_preflight(
                 }
             )
 
+    blockers.extend(_check_credentialed_env_urls(dict(os.environ) if env is None else env))
+    blockers.extend(_detect_sibling_migration_risk(out, data_dir))
+
     if gguf_path is not None:
-        blockers.extend(_validate_gguf_path(gguf_path))
+        gguf_blockers = _validate_gguf_path(gguf_path)
+        blockers.extend(gguf_blockers)
+        if not gguf_blockers and system == "Darwin":
+            resolved_family, resolved_model, match_blockers = _resolve_macos_gguf_choice(
+                gguf_path, family, model
+            )
+            blockers.extend(match_blockers)
 
     if system == "Darwin" and arch == "arm64":
         raw_ver = macos_version if macos_version is not None else platform.mac_ver()[0]
@@ -389,14 +665,24 @@ def run_polystrata_preflight(
                 }
             )
 
-    blockers.extend(_check_gpu_drivers(system, backend, gpu_probe))
+    blockers.extend(
+        _check_gpu_and_build_tools(system, backend, resolved_family, gpu_probe, build_tools_check)
+    )
 
     runtime_already_extracted = (
-        resume and (out / "setup.py").is_file() and (out / "serve" / "server.py").is_file()
+        resume
+        and (out / ".inferyard-runtime.json").is_file()
+        and (out / "setup.py").is_file()
+        and (out / "serve" / "server.py").is_file()
     )
     runtime_needed = _RESUME_RUNTIME_DISK_BYTES if runtime_already_extracted else _DEFAULT_RUNTIME_DISK_BYTES
     model_needed = _required_model_disk_bytes(
-        system=system, family=family, model=model, gguf_path=gguf_path
+        system=system,
+        family=resolved_family,
+        model=resolved_model,
+        gguf_path=gguf_path,
+        resume=resume,
+        data_dir=data_dir,
     )
     out_free, out_dev = _disk_free_bytes(out, disk_usage_fn=disk_usage_fn)
     data_free, data_dev = _disk_free_bytes(data_dir, disk_usage_fn=disk_usage_fn)
@@ -460,6 +746,8 @@ def run_polystrata_preflight(
     return {
         "platform": system,
         "architecture": arch,
+        "resolved_family": resolved_family,
+        "resolved_model": resolved_model,
         "out_free_bytes": out_free,
         "data_free_bytes": data_free,
         "runtime_required_bytes": runtime_needed,

@@ -14,7 +14,7 @@ import time
 
 from inferyard.provisioning.acquire_errors import failure_details
 from inferyard.provisioning.http_client import validate_proxy_origin
-from inferyard.provisioning.polystrata_archive import SETUP_LOG_NAME
+from inferyard.provisioning.polystrata_archive import CONFIG_DIR_NAME, SETUP_LOG_NAME
 from inferyard.provisioning.polystrata_preflight import sanitize_log_line
 from inferyard.provisioning.preparation_io import PreparationError, linked
 from inferyard.provisioning.transfer_progress import ProgressEmitter
@@ -42,50 +42,81 @@ class _SetupCancelled(BaseException):
     """Internal signal bridge raised when SIGTERM arrives during setup.py."""
 
 
-def terminate_process_group(proc: subprocess.Popen) -> None:
-    if proc.poll() is not None:
-        return
+def _pgid_alive(pgid: int) -> bool:
+    try:
+        os.killpg(pgid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+
+
+def terminate_process_group(proc: subprocess.Popen, pgid: int | None = None) -> None:
     if os.name == "nt":
-        try:
-            subprocess.run(
-                ["taskkill", "/T", "/F", "/PID", str(proc.pid)],
-                stdin=subprocess.DEVNULL,
-                capture_output=True,
-                timeout=5,
-                check=False,
-            )
-        except (OSError, subprocess.SubprocessError):
-            pass
-        try:
-            proc.kill()
-        except OSError:
-            pass
-    else:
-        try:
-            pgid = os.getpgid(proc.pid)
-        except OSError:
-            pgid = None
-        if pgid is not None:
+        if proc.poll() is None:
             try:
-                os.killpg(pgid, signal.SIGTERM)
+                subprocess.run(
+                    ["taskkill", "/T", "/F", "/PID", str(proc.pid)],
+                    stdin=subprocess.DEVNULL,
+                    capture_output=True,
+                    timeout=5,
+                    check=False,
+                )
+            except (OSError, subprocess.SubprocessError):
+                pass
+            try:
+                proc.kill()
             except OSError:
                 pass
-        else:
+        try:
+            proc.wait(timeout=3.0)
+        except subprocess.TimeoutExpired:
+            pass
+        return
+
+    group_id = pgid
+    if group_id is None:
+        try:
+            group_id = os.getpgid(proc.pid)
+        except OSError:
+            group_id = None
+
+    if group_id is not None:
+        try:
+            os.killpg(group_id, signal.SIGTERM)
+        except OSError:
+            pass
+        deadline = time.monotonic() + 3.0
+        while time.monotonic() < deadline:
+            proc.poll()
+            if proc.returncode is not None and not _pgid_alive(group_id):
+                break
+            time.sleep(0.05)
+        if _pgid_alive(group_id) or proc.poll() is None:
             try:
-                proc.terminate()
+                os.killpg(group_id, signal.SIGKILL)
             except OSError:
                 pass
+            kill_deadline = time.monotonic() + 3.0
+            while time.monotonic() < kill_deadline:
+                proc.poll()
+                if proc.returncode is not None and not _pgid_alive(group_id):
+                    break
+                time.sleep(0.05)
+    elif proc.poll() is None:
+        try:
+            proc.terminate()
+        except OSError:
+            pass
         deadline = time.monotonic() + 3.0
         while time.monotonic() < deadline:
             if proc.poll() is not None:
-                return
+                break
             time.sleep(0.05)
-        if pgid is not None:
-            try:
-                os.killpg(pgid, signal.SIGKILL)
-            except OSError:
-                pass
-        else:
+        if proc.poll() is None:
             try:
                 proc.kill()
             except OSError:
@@ -125,16 +156,21 @@ def parse_setup_line(
         mult = _UNIT_MULTIPLIERS[dl_match.group(4).lower()]
         have_bytes = int(float(dl_match.group(2)) * mult)
         total_bytes = max(1, int(float(dl_match.group(3)) * mult))
+        dl_stage = (
+            "downloading_model"
+            if current_stage == "downloading_model" or current_step == 5
+            else current_stage
+        )
         emitter.update(
-            "downloading_model",
+            dl_stage,
             have_bytes,
             total_bytes,
-            step=current_step or 5,
+            step=current_step or (5 if dl_stage == "downloading_model" else 4),
             step_total=7,
             percent=float(dl_match.group(5)),
             detail=label,
         )
-        return "downloading_model", current_step or 5
+        return dl_stage, current_step or (5 if dl_stage == "downloading_model" else 4)
 
     cmake_match = _CMAKE_PCT_RE.match(stripped)
     if cmake_match is not None:
@@ -202,7 +238,7 @@ def build_setup_command(
     if gguf_path is not None:
         if system == "Darwin":
             gguf_dir = gguf_path if gguf_path.is_dir() else gguf_path.parent
-            cmd.extend(["--gguf-dir", str(gguf_dir)])
+            cmd.extend(["--gguf-dir", str(gguf_dir), "--no-download-models"])
         else:
             cmd.extend(["--custom-gguf", str(gguf_path)])
     return cmd
@@ -236,9 +272,19 @@ def run_setup_process(
         model_source=model_source,
         gguf_path=gguf_path,
     )
+    config_dir = out / CONFIG_DIR_NAME
+    if os.path.lexists(config_dir) and (linked(config_dir) or not config_dir.is_dir()):
+        raise PreparationError("output_exists")
+    config_dir.mkdir(parents=True, exist_ok=True)
+
     env = dict(os.environ)
     env["PYTHONUNBUFFERED"] = "1"
     env["PYTHONUTF8"] = "1"
+    # Isolate PolyStrata's settings.json so setup.py never reads/mutates user-global install lists.
+    if os.name == "nt":
+        env["APPDATA"] = str(config_dir)
+    else:
+        env["XDG_CONFIG_HOME"] = str(config_dir)
     if model_source:
         env["STRATA_SOURCE"] = model_source
     if proxy_origin:
@@ -279,6 +325,7 @@ def run_setup_process(
         previous_sigterm = signal.signal(signal.SIGTERM, _handle_sigterm)
 
     proc: subprocess.Popen | None = None
+    pgid: int | None = None
     current_stage = "setup_engine"
     current_step: int | None = None
     log_bytes = 0
@@ -286,6 +333,8 @@ def run_setup_process(
 
     try:
         proc = subprocess.Popen(cmd, **popen_kwargs)
+        if os.name != "nt":
+            pgid = proc.pid
         assert proc.stdout is not None
         stdout_fd = proc.stdout.fileno()
         chunks: queue.Queue[bytes | None] = queue.Queue()
@@ -330,7 +379,7 @@ def run_setup_process(
             eof = False
             while not eof:
                 if time.monotonic() > deadline:
-                    terminate_process_group(proc)
+                    terminate_process_group(proc, pgid)
                     raise PreparationError(
                         "polystrata_setup_timeout",
                         code=2,
@@ -367,7 +416,7 @@ def run_setup_process(
         rc = proc.wait(timeout=5.0)
     except (KeyboardInterrupt, _SetupCancelled):
         if proc is not None:
-            terminate_process_group(proc)
+            terminate_process_group(proc, pgid)
         raise PreparationError(
             "polystrata_setup_cancelled",
             code=130,

@@ -184,10 +184,14 @@ def test_progress_emitter_backward_compat_and_optional_fields():
 
 
 def test_sanitize_log_line_redacts_secrets_and_ansi():
-    raw = "\x1b[32mOK\x1b[0m https://alice:s3cret@host/x Bearer tok123456 hf_1234567890ab --api-key mykey"
+    raw = (
+        "\x1b[32mOK\x1b[0m https://alice:s3cret@host/x https://opaque_token_xyz@rocm.internal/whl "
+        "Bearer tok123456 hf_1234567890ab --api-key mykey"
+    )
     cleaned = sanitize_log_line(raw)
     assert "\x1b" not in cleaned
     assert "s3cret" not in cleaned
+    assert "opaque_token_xyz" not in cleaned
     assert "tok123456" not in cleaned
     assert "hf_1234567890ab" not in cleaned
     assert "mykey" not in cleaned
@@ -403,7 +407,7 @@ def test_gguf_path_passthrough_linux_and_macos(tmp_path: Path):
     assert argv_linux[idx + 1] == str(gguf_file.resolve())
     assert "--backend" in argv_linux and argv_linux[argv_linux.index("--backend") + 1] == "cuda"
 
-    # macOS -> --gguf-dir <parent_dir> (matches upstream metal/setup_mac.py)
+    # macOS -> --gguf-dir <parent_dir> --no-download-models plus resolved --family/--model
     out_mac = tmp_path / "ps-mac"
     polystrata_prepare.prepare_polystrata(
         out_mac,
@@ -420,7 +424,25 @@ def test_gguf_path_passthrough_linux_and_macos(tmp_path: Path):
     argv_mac = json.loads((out_mac / "received_argv.json").read_text(encoding="utf-8"))
     idx_mac = argv_mac.index("--gguf-dir")
     assert argv_mac[idx_mac + 1] == str(gguf_dir.resolve())
+    assert "--no-download-models" in argv_mac
+    assert argv_mac[argv_mac.index("--family") + 1] == "qwen36"
+    assert argv_mac[argv_mac.index("--model") + 1] == "UD-Q4_K_M"
     assert "--backend" not in argv_mac
+
+    # Unmatched GGUF on macOS without explicit family/model fails closed in preflight
+    unknown_gguf = gguf_dir / "unknown-custom.gguf"
+    unknown_gguf.write_bytes(b"GGUF")
+    with pytest.raises(PreparationError) as exc_unmatched:
+        run_polystrata_preflight(
+            tmp_path / "ps-mac-unknown",
+            tmp_path / "data-mac-unknown",
+            gguf_path=unknown_gguf,
+            platform_info=("Darwin", "arm64"),
+            macos_version="15.4",
+            xcode_clt_check=lambda: True,
+            disk_usage_fn=_disk_usage(20 * GIB),
+        )
+    assert exc_unmatched.value.reason == "polystrata_gguf_unmatched_model"
 
 
 def test_resume_after_setup_failure_and_remote_range_resume(tmp_path: Path):
@@ -584,16 +606,23 @@ def test_archive_rejects_unsafe_entries_and_invalid_sources(tmp_path: Path):
 
 @pytest.mark.skipif(os.name == "nt", reason="POSIX SIGTERM process-group cancellation test")
 def test_cancellation_cleans_up_process_tree_and_preserves_partial_downloads(tmp_path: Path):
-    """Spawn a real CLI subprocess running fake setup.py with a grandchild; SIGTERM must kill both."""
+    """SIGTERM must kill even a grandchild that ignores SIGTERM after the leader exits."""
     child_pid_file = tmp_path / "grandchild.pid"
     slow_setup = f"""\
-import subprocess, sys, time
+import signal, subprocess, sys, time
 from pathlib import Path
 
 data_dir = Path(sys.argv[sys.argv.index("--data-dir") + 1])
 (data_dir / "partial.gguf.part").write_bytes(b"keep-for-resume")
-child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+child = subprocess.Popen(
+    [
+        sys.executable,
+        "-c",
+        "import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)",
+    ]
+)
 Path({str(child_pid_file)!r}).write_text(str(child.pid), encoding="utf-8")
+signal.signal(signal.SIGTERM, lambda _s, _f: sys.exit(0))
 print("=== Step 5: downloading model ===", flush=True)
 print("READY_FOR_CANCEL", flush=True)
 time.sleep(60)
@@ -606,14 +635,24 @@ time.sleep(60)
             ("file", "serve/server.py", b"# server\n"),
         ],
     )
+    archive_sha = hashlib.sha256(archive.read_bytes()).hexdigest()
     out = tmp_path / "ps-cancel"
     data = tmp_path / "data-cancel"
-    # Pre-seed extracted tree with lightweight venv so the subprocess starts setup.py immediately
-    # without waiting on full ensurepip venv creation.
+    # Pre-seed extracted tree with valid runtime receipt & lightweight venv so setup.py runs immediately
     out.mkdir()
     (out / "setup.py").write_text(slow_setup, encoding="utf-8")
     (out / "serve").mkdir()
     (out / "serve" / "server.py").write_text("# server\n", encoding="utf-8")
+    (out / ".inferyard-runtime.json").write_text(
+        json.dumps(
+            {
+                "definition": "polystrata-runtime.v1",
+                "source": f"local:{archive.resolve()}",
+                "archive_sha256": archive_sha,
+            }
+        ),
+        encoding="utf-8",
+    )
     _make_fake_venv(out)
 
     # Run via python -c invoking execute_polystrata_prepare with mocked preflight so the test
@@ -806,4 +845,191 @@ def test_preflight_family_without_model_uses_smallest_size_in_family(tmp_path: P
         disk_usage_fn=_disk_usage(20 * GIB),
     )
     assert report["blockers"] == []
+
+
+def test_round1_regressions_sibling_checksum_resume_gpu_build_and_config(tmp_path: Path):
+    # 1. Sibling PolyStrata installation with local models/ triggers preflight blocker
+    sibling = tmp_path / "PolyStrata-old"
+    (sibling / "models").mkdir(parents=True)
+    (sibling / "setup.py").write_text("# old\n", encoding="utf-8")
+    (sibling / "models" / "weights.gguf").write_bytes(b"data")
+    with pytest.raises(PreparationError) as exc_sib:
+        run_polystrata_preflight(
+            tmp_path / "PolyStrata-new",
+            tmp_path / "data-new",
+            platform_info=("Darwin", "arm64"),
+            macos_version="15.4",
+            xcode_clt_check=lambda: True,
+            disk_usage_fn=_disk_usage(200 * GIB),
+        )
+    assert exc_sib.value.reason == "polystrata_sibling_migration_risk"
+
+    # 2. Local archive with wrong --expected-sha256 fails closed BEFORE running setup.py
+    isolated = tmp_path / "nested" / "level" / "isolated"
+    isolated.mkdir(parents=True)
+    zip_arch = _zip_file(
+        isolated / "ps.zip",
+        {
+            "setup.py": _HAPPY_SETUP_PY.encode("utf-8"),
+            "serve/server.py": b"# server\n",
+        },
+    )
+    with pytest.raises(PreparationError) as exc_sha:
+        polystrata_prepare.prepare_polystrata(
+            isolated / "out-bad-sha",
+            data_dir=isolated / "data-bad-sha",
+            source=str(zip_arch),
+            expected_sha256="0" * 64,
+            platform_info=("Darwin", "arm64"),
+            macos_version="15.4",
+            xcode_clt_check=lambda: True,
+            disk_usage_fn=_disk_usage(200 * GIB),
+            venv_creator=_make_fake_venv,
+        )
+    assert exc_sha.value.reason == "engine_checksum_mismatch"
+    assert not (isolated / "out-bad-sha").exists()
+
+    # 3. --resume refuses directory lacking .inferyard-runtime.json receipt
+    unverified_dir = isolated / "out-unverified"
+    (unverified_dir / "serve").mkdir(parents=True)
+    (unverified_dir / "setup.py").write_text(_HAPPY_SETUP_PY, encoding="utf-8")
+    (unverified_dir / "serve" / "server.py").write_text("# server\n", encoding="utf-8")
+    with pytest.raises(PreparationError) as exc_unv:
+        polystrata_prepare.prepare_polystrata(
+            unverified_dir,
+            data_dir=isolated / "data-unv",
+            source=str(zip_arch),
+            resume=True,
+            platform_info=("Darwin", "arm64"),
+            macos_version="15.4",
+            xcode_clt_check=lambda: True,
+            disk_usage_fn=_disk_usage(200 * GIB),
+            venv_creator=_make_fake_venv,
+        )
+    assert exc_unv.value.reason == "output_exists"
+
+    # 4. Resume disk credit subtracts existing .part bytes in data_dir/models
+    resume_data = isolated / "data-part-credit"
+    part_dir = resume_data / "models" / "qwen36-UD-Q4_K_M"
+    part_dir.mkdir(parents=True)
+    part_file = part_dir / "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf.part"
+    with part_file.open("wb") as stream:
+        stream.truncate(20 * GIB)
+    credit_report = run_polystrata_preflight(
+        isolated / "out-part-credit",
+        resume_data,
+        family="qwen36",
+        model="UD-Q4_K_M",
+        resume=True,
+        platform_info=("Darwin", "arm64"),
+        macos_version="15.4",
+        xcode_clt_check=lambda: True,
+        disk_usage_fn=_disk_usage(10 * GIB),
+    )
+    assert credit_report["blockers"] == []
+
+    # 5. Credentialed STRATA_ROCM_INDEX blocked in preflight
+    with pytest.raises(PreparationError) as exc_env:
+        run_polystrata_preflight(
+            isolated / "out-cred",
+            isolated / "data-cred",
+            platform_info=("Linux", "x64"),
+            linux_venv_check=lambda _py: True,
+            gpu_probe=lambda _sys: {"status": "available", "devices": [{"vendor": "amd"}]},
+            build_tools_check=lambda _nvcc: [],
+            disk_usage_fn=_disk_usage(200 * GIB),
+            env={"STRATA_ROCM_INDEX": "https://secret_tok@rocm.internal/simple"},
+        )
+    assert exc_env.value.reason == "polystrata_credentialed_env_url"
+
+    # 6. GPU preflight blocks backend=auto with no GPU, cuda with N/A driver, and missing Linux build tools
+    with pytest.raises(PreparationError) as exc_nogpu:
+        run_polystrata_preflight(
+            isolated / "out-nogpu",
+            isolated / "data-nogpu",
+            backend="auto",
+            platform_info=("Linux", "x64"),
+            linux_venv_check=lambda _py: True,
+            gpu_probe=lambda _sys: {"status": "unavailable", "devices": []},
+            disk_usage_fn=_disk_usage(200 * GIB),
+        )
+    assert exc_nogpu.value.reason == "polystrata_gpu_missing"
+
+    with pytest.raises(PreparationError) as exc_na:
+        run_polystrata_preflight(
+            isolated / "out-na",
+            isolated / "data-na",
+            backend="cuda",
+            platform_info=("Linux", "x64"),
+            linux_venv_check=lambda _py: True,
+            gpu_probe=lambda _sys: {
+                "status": "available",
+                "devices": [{"vendor": "nvidia", "driver_version": "N/A"}],
+            },
+            disk_usage_fn=_disk_usage(200 * GIB),
+        )
+    assert exc_na.value.reason == "polystrata_nvidia_driver_unverified"
+
+    with pytest.raises(PreparationError) as exc_bt:
+        run_polystrata_preflight(
+            isolated / "out-bt",
+            isolated / "data-bt",
+            family="qwen36",
+            backend="cuda",
+            platform_info=("Linux", "x64"),
+            linux_venv_check=lambda _py: True,
+            gpu_probe=lambda _sys: {
+                "status": "available",
+                "devices": [{"vendor": "nvidia", "driver_version": "580.65"}],
+            },
+            build_tools_check=lambda need_nvcc: ["g++", "nvcc"] if need_nvcc else ["g++"],
+            disk_usage_fn=_disk_usage(200 * GIB),
+        )
+    assert exc_bt.value.reason == "polystrata_build_tools_missing"
+
+    # 7. Stage 4 rejects port-only config missing valid exe & list args
+    bad_cfg_setup = """\
+import json, os
+from pathlib import Path
+root = Path(__file__).resolve().parent
+d = root / "engine-poly"
+d.mkdir(exist_ok=True)
+b = d / ("strata-poly.exe" if os.name == "nt" else "strata-poly")
+b.write_text("#!/bin/sh\\n", encoding="utf-8")
+if os.name != "nt":
+    os.chmod(b, 0o755)
+(root / "strata-bad.json").write_text(json.dumps({"port": 8080}), encoding="utf-8")
+"""
+    bad_cfg_arch = _tar_gz_file(
+        isolated / "bad-cfg.tar.gz",
+        [
+            ("file", "setup.py", bad_cfg_setup.encode("utf-8")),
+            ("dir", "serve"),
+            ("file", "serve/server.py", b"# server\n"),
+        ],
+    )
+    with pytest.raises(PreparationError) as exc_badcfg:
+        polystrata_prepare.prepare_polystrata(
+            isolated / "out-badcfg",
+            data_dir=isolated / "data-badcfg",
+            source=str(bad_cfg_arch),
+            platform_info=("Darwin", "arm64"),
+            macos_version="15.4",
+            xcode_clt_check=lambda: True,
+            disk_usage_fn=_disk_usage(200 * GIB),
+            venv_creator=_make_fake_venv,
+        )
+    assert exc_badcfg.value.reason == "polystrata_config_missing"
+
+    # 8. Step 4 download line keeps stage=setup_engine instead of flipping to downloading_model
+    from inferyard.provisioning.polystrata_runner import parse_setup_line
+
+    buf = io.StringIO()
+    em = ProgressEmitter(enabled=True, stream=buf, min_interval_seconds=0.0)
+    st, step = parse_setup_line("=== Step 4: the PolyStrata engine ===", "setup_engine", None, em)
+    st, step = parse_setup_line("  llama.cpp.zip: 10.0 / 20.0 MB (50%)", st, step, em)
+    assert st == "setup_engine"
+    parsed_events = [json.loads(line) for line in buf.getvalue().splitlines()]
+    assert all(ev["stage"] == "setup_engine" for ev in parsed_events)
+
 

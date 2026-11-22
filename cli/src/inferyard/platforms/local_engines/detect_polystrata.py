@@ -81,6 +81,7 @@ def find_polystrata_engine_binaries(
             root / "engine" / "strata",
             root / "build-metal" / "strata",
             root / "build-metal" / "strata-metal",
+            root / "build-metal" / "strata-q36",
         )
     for role, candidates in (("poly", poly_candidates), ("strata", strata_candidates)):
         for candidate in candidates:

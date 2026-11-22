@@ -94,7 +94,15 @@ def _ensure_polystrata_venv(
     return created
 
 
-def _valid_model_configs(out: Path, data_dir: Path) -> list[str]:
+def _is_usable_exe(path: Path, system: str) -> bool:
+    if not path.is_file():
+        return False
+    if system == "Windows":
+        return True
+    return os.access(path, os.X_OK)
+
+
+def _valid_model_configs(out: Path, data_dir: Path, *, system: str) -> list[str]:
     candidates = polystrata_model_configs(out, data_dir)
     valid: list[tuple[float, str]] = []
     for raw_path in candidates:
@@ -103,9 +111,25 @@ def _valid_model_configs(out: Path, data_dir: Path) -> list[str]:
             data = strict_json_loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError, UnicodeError):
             continue
-        if not isinstance(data, dict) or not any(
-            key in data for key in ("exe", "args", "model_name", "port")
+        if not isinstance(data, dict):
+            continue
+        exe_raw = data.get("exe")
+        args_raw = data.get("args")
+        if (
+            not isinstance(exe_raw, str)
+            or not exe_raw.strip()
+            or not isinstance(args_raw, list)
+            or not all(isinstance(item, str) for item in args_raw)
         ):
+            continue
+        cwd_raw = data.get("cwd")
+        base_dir = Path(cwd_raw) if isinstance(cwd_raw, str) and cwd_raw.strip() else out
+        if not base_dir.is_absolute():
+            base_dir = out / base_dir
+        exe_path = Path(exe_raw)
+        if not exe_path.is_absolute():
+            exe_path = base_dir / exe_path
+        if not _is_usable_exe(exe_path, system):
             continue
         try:
             mtime = path.stat().st_mtime
@@ -168,9 +192,11 @@ def prepare_polystrata(
     xcode_clt_check: Callable[[], bool] | None = None,
     linux_venv_check: Callable[[str], bool] | None = None,
     gpu_probe: Callable[[str], dict] | None = None,
+    build_tools_check: Callable[[bool], list[str]] | None = None,
     disk_usage_fn=shutil.disk_usage,
     venv_creator: Callable[[Path], Path] | None = None,
     venv_python: str | None = None,
+    env: dict[str, str] | None = None,
 ) -> dict:
     """Run managed 4-stage PolyStrata setup: preflight -> runtime -> setup.py -> verify."""
     expected_sha256 = validate_sha256(expected_sha256)
@@ -222,10 +248,14 @@ def prepare_polystrata(
         xcode_clt_check=xcode_clt_check,
         linux_venv_check=linux_venv_check,
         gpu_probe=gpu_probe,
+        build_tools_check=build_tools_check,
         disk_usage_fn=disk_usage_fn,
         venv_python=venv_python,
+        env=env,
     )
     system = preflight["platform"]
+    effective_family = preflight.get("resolved_family", family)
+    effective_model = preflight.get("resolved_model", model)
 
     # Stage 2: acquire runtime archive into --out
     reused_runtime = acquire_runtime_tree(
@@ -255,8 +285,8 @@ def prepare_polystrata(
         venv_py,
         data_path,
         system=system,
-        family=family,
-        model=model,
+        family=effective_family,
+        model=effective_model,
         context=context,
         backend=backend,
         model_source=model_source,
@@ -296,7 +326,7 @@ def prepare_polystrata(
             details={**failure_details("verifying", reason), "log_path": str(log_path)},
         ) from None
 
-    model_configs = _valid_model_configs(out_path, data_path)
+    model_configs = _valid_model_configs(out_path, data_path, system=system)
     if not model_configs:
         raise PreparationError(
             "polystrata_config_missing",
