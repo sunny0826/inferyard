@@ -144,3 +144,25 @@ func TestPreviewResolveModelURLAndDetectedEngines(t *testing.T) {
 		t.Fatalf("expected preview detected engines, got %+v", detected)
 	}
 }
+
+func TestPreviewRetryDownloadDeduplicatesActiveRetry(t *testing.T) {
+	p := newPreviewSession(context.Background())
+	p.loadScene(0)
+	src := core.DefaultModelURL()
+	p.state.downloads = []core.DownloadTask{
+		{TaskId: "dl-failed", Kind: "model", State: "failed", SourceUrl: src, OutName: "model"},
+		{TaskId: "dl-cancelled", Kind: "model", State: "cancelled", SourceUrl: "https://example.invalid/cancelled.gguf", OutName: "cancelled"},
+	}
+
+	p.dispatch(previewRetryDownload{id: "dl-failed"})
+	p.dispatch(previewRetryDownload{id: "dl-failed"})
+	if len(p.state.downloads) != 3 {
+		t.Fatalf("expected single active retry for failed preview task, got %+v", p.state.downloads)
+	}
+
+	p.dispatch(previewRetryDownload{id: "dl-cancelled"})
+	p.dispatch(previewRetryDownload{id: "dl-cancelled"})
+	if len(p.state.downloads) != 4 {
+		t.Fatalf("expected single active retry for cancelled preview task, got %+v", p.state.downloads)
+	}
+}

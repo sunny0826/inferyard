@@ -56,7 +56,10 @@ func (p *previewSession) dispatch(intent previewIntent) {
 
 func (p *previewSession) retryDownload(id string) {
 	for _, task := range p.state.downloads {
-		if task.TaskId == id && terminal(task.State) {
+		if task.TaskId == id && (task.State == "failed" || task.State == "cancelled") {
+			if p.state.downloadRetryActive(task) {
+				return
+			}
 			p.startDownload(previewDownload{kind: task.Kind, source: task.SourceUrl})
 			return
 		}

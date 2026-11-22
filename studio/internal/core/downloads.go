@@ -18,6 +18,7 @@ type downloadEntry struct {
 	cancel   context.CancelFunc
 	tokenEnv string
 	resume   bool
+	retryOf  string
 }
 
 var outputName = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
@@ -84,6 +85,17 @@ func (s *Service) activeDownloadLocked(kind, sourceURL, requestedSource string) 
 		}
 	}
 	return DownloadTask{}, false
+}
+
+func (s *Service) activeRetryOrDownloadLocked(retryOf, kind, sourceURL, requestedSource string) (DownloadTask, bool) {
+	if retryOf != "" {
+		for _, d := range s.downloads {
+			if d.Task.State == "downloading" && d.retryOf == retryOf {
+				return clone(d.Task), true
+			}
+		}
+	}
+	return s.activeDownloadLocked(kind, sourceURL, requestedSource)
 }
 
 func (s *Service) CreateModelDownload(req CreateDownloadRequest, tokenEnv string) (DownloadTask, *ApiError) {

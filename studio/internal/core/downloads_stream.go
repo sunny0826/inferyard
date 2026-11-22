@@ -192,9 +192,17 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 		s.mu.Unlock()
 		return DownloadTask{}, Conflict("invalid_state")
 	}
+	if s.closing {
+		s.mu.Unlock()
+		return DownloadTask{}, Err("service_closing")
+	}
 	kind := orig.Task.Kind
 	sourceURL := orig.Task.SourceUrl
 	requestedSourceURL := orig.Task.RequestedSourceUrl
+	if existing, found := s.activeRetryOrDownloadLocked(taskID, kind, sourceURL, requestedSourceURL); found {
+		s.mu.Unlock()
+		return existing, nil
+	}
 	tokenEnv := orig.tokenEnv
 	prevOutName := orig.Task.OutName
 	prevOutDir := orig.Task.OutDir
@@ -216,6 +224,9 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	defer s.mu.Unlock()
 	if s.closing {
 		return DownloadTask{}, Err("service_closing")
+	}
+	if existing, found := s.activeRetryOrDownloadLocked(taskID, kind, sourceURL, requestedSourceURL); found {
+		return existing, nil
 	}
 	resolvedPrev, resolveErr := Resolve(root, prevOutDir)
 	inUse := false
@@ -270,7 +281,7 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	if kind == "engine" && partBytes == 0 {
 		task.ProgressReason = ptr("engine_transfer_progress_unavailable")
 	}
-	entry := &downloadEntry{Task: task, cancel: cancel, tokenEnv: tokenEnv, resume: resume}
+	entry := &downloadEntry{Task: task, cancel: cancel, tokenEnv: tokenEnv, resume: resume, retryOf: taskID}
 	s.downloads = append(s.downloads, entry)
 	s.Bus.Publish("download.state", map[string]any{"task": entry.Task})
 	if kind == "engine" {

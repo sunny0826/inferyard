@@ -16,6 +16,13 @@ import (
 
 func (p *previewSession) startDownload(op previewDownload) {
 	s := p.state
+	if op.name == "" && op.source != "" {
+		for _, task := range s.downloads {
+			if task.Kind == op.kind && task.State == "downloading" && (task.SourceUrl == op.source || task.RequestedSourceUrl == op.source) {
+				return
+			}
+		}
+	}
 	name := op.name
 	if name == "" {
 		name = defaultDownloadName(s.settings.Settings.ModelDownloadName, "model")

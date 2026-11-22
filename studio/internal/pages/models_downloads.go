@@ -202,6 +202,35 @@ func engineTaskStatus(task core.DownloadTask) string {
 	return "引擎归档状态未知。"
 }
 
+func downloadTaskSameSource(a, b core.DownloadTask) bool {
+	if a.Kind != b.Kind {
+		return false
+	}
+	for _, left := range []string{a.SourceUrl, a.RequestedSourceUrl} {
+		if left == "" {
+			continue
+		}
+		for _, right := range []string{b.SourceUrl, b.RequestedSourceUrl} {
+			if right != "" && left == right {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (s *viewState) downloadRetryActive(task core.DownloadTask) bool {
+	for _, other := range s.downloads {
+		if other.TaskId == task.TaskId || other.State != "downloading" {
+			continue
+		}
+		if downloadTaskSameSource(task, other) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 	pendingHere := s.pendingDestructive.kind == string(destructiveCancelDownload) && s.pendingDestructive.id == task.TaskId
 	if task.State == "downloading" || pendingHere {
@@ -219,8 +248,9 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 			})
 		}
 	}
+	retryDisabled := s.busy || s.downloadRetryActive(task)
 	if task.State == "cancelled" {
-		button(c, "继续下载").Disabled(s.busy).OnClick(func() {
+		button(c, "继续下载").Disabled(retryDisabled).OnClick(func() {
 			if s.simulate(previewRetryDownload{id: task.TaskId}) {
 				return
 			}
@@ -234,7 +264,7 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 	if task.State != "failed" {
 		return
 	}
-	button(c, "重新创建下载任务").Disabled(s.busy).OnClick(func() {
+	button(c, "重新创建下载任务").Disabled(retryDisabled).OnClick(func() {
 		if s.simulate(previewRetryDownload{id: task.TaskId}) {
 			return
 		}

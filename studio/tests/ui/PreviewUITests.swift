@@ -75,12 +75,13 @@ final class PreviewUITests: XCTestCase {
         expectText("已结束")
         click("模型")
         let downloadedModel = "model · Qwen3-0.6B-Q8_0.gguf"
-        expectText(downloadedModel)
+        let downloadedModelLabel = downloadedModel + " · GGUF"
+        expectText(downloadedModelLabel)
         XCTAssertFalse(app.popUpButtons["模型"].exists, "Models must not offer an inline pair selector")
         // The sidebar task entry switches to the current task without resetting
         // or confirming; the pair is chosen on the task page.
         click("任务")
-        chooseModel(downloadedModel)
+        chooseModel(downloadedModelLabel)
         XCTAssertFalse(app.buttons["确认开始新任务"].exists, "Task nav must not ask to confirm")
         click("开始测评")
         expectExists(app.buttons["查看实时详情"], timeout: 10)
