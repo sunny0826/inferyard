@@ -32,7 +32,7 @@ class LocalEngineAdapter(LabAdapter):
 
     @staticmethod
     def request_body(config, prompt, *, stream=True):
-        return {
+        body = {
             "model": config["engine"]["served_model"],
             "messages": [{"role": "user", "content": prompt}],
             "temperature": config["generation"]["temperature"],
@@ -41,6 +41,14 @@ class LocalEngineAdapter(LabAdapter):
             **({"stream_options": {"include_usage": True}} if stream else {}),
             **({"cache_prompt": False} if prompt_cache_disabled(config) else {}),
         }
+        if config["engine"]["family"] == "polystrata":
+            generation = config["generation"]
+            effort = generation.get("reasoning_effort")
+            if effort is None:
+                mode = generation.get("reasoning_mode")
+                effort = "none" if mode in (None, "off") else "medium"
+            body["reasoning_effort"] = effort
+        return body
 
     async def _bound(self, deadline):
         async with asyncio.timeout_at(deadline):
@@ -73,12 +81,24 @@ class LocalEngineAdapter(LabAdapter):
             if family == "lmstudio":
                 async with asyncio.timeout_at(deadline):
                     payload = await self._observer.inspect()
+                properties = service(family, payload, config)
+            elif family == "polystrata":
+                health = parse_json_body(await self._endpoint("/health", deadline, matrix))
+                payload = parse_json_body(
+                    await self._endpoint(VERSION_PATHS[family], deadline, matrix)
+                )
+                properties = service(family, payload, config, health=health)
             else:
                 payload = parse_json_body(
                     await self._endpoint(VERSION_PATHS[family], deadline, matrix)
                 )
-            properties = service(family, payload, config)
-            if family != "lmstudio":
+                properties = service(family, payload, config)
+            if family == "polystrata":
+                prom = await self.inspect_endpoint("/metrics/prometheus", deadline=deadline)
+                matrix["/metrics/prometheus"] = prom
+                if prom["available"] is not True:
+                    await self._endpoint("/status", deadline, matrix)
+            elif family != "lmstudio":
                 await self._endpoint("/metrics", deadline, matrix)
             else:
                 async with asyncio.timeout_at(deadline):
@@ -171,6 +191,18 @@ class LocalEngineAdapter(LabAdapter):
                 if family == "lmstudio":
                     async with asyncio.timeout_at(deadline):
                         observed = await self._observer.idle()
+                elif family == "polystrata":
+                    prom = await self.inspect_endpoint("/metrics/prometheus", deadline=deadline)
+                    signals["/metrics/prometheus"] = prom
+                    if prom["available"] is True:
+                        snapshot["source"] = "/metrics/prometheus"
+                        snapshot["raw_metrics"] = prom["body"]
+                        observed = None
+                    else:
+                        snapshot["source"] = "/status"
+                        observed = parse_json_body(
+                            await self._endpoint("/status", deadline, signals)
+                        )
                 else:
                     snapshot["raw_metrics"] = await self._endpoint("/metrics", deadline, signals)
                     observed = None
