@@ -131,7 +131,12 @@ def _snapshot(data, config, binding):
                 raise EvidenceError("local_engine_queue_source_mismatch")
             parsed = queue(family, snapshot["served_model"], snapshot["raw_metrics"], None)
         else:
-            if snapshot["raw_metrics"] is not None:
+            prom = data["signals"].get("/metrics/prometheus")
+            if (
+                not isinstance(prom, dict)
+                or prom.get("available") is True
+                or snapshot["raw_metrics"] is not None
+            ):
                 raise EvidenceError("local_engine_queue_source_mismatch")
             parsed = queue(
                 family, snapshot["served_model"], None, parse_json_body(endpoint["body"])

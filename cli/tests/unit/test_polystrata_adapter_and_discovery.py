@@ -19,7 +19,7 @@ from inferyard.application import service_discovery as discovery_app
 from inferyard.contracts.schemas import export_schema
 from inferyard.contracts.schemas_observation import OBSERVATION
 from inferyard.contracts.validation import json_bytes, validate_value
-from inferyard.errors import PreflightError
+from inferyard.errors import EvidenceError, PreflightError
 from inferyard.evidence.local_engines import verify_queue_events
 from inferyard.evidence.storage import EvidenceStore, verify_manifest
 from inferyard.platforms.identity import hash_file
@@ -614,6 +614,76 @@ def test_polystrata_evidence_seal_and_offline_queue_verify(
         {"event_type": "run_stopped", "request_id": None, "data": {"reason": "plan_finished"}},
     ]
     verify_queue_events(store.path, cfg, events, reads=reads)
+
+    if queue_mode == "status":
+        # Contradictory available Prometheus signal on a /status fallback event must fail replay
+        contradicted = deepcopy(events)
+        contradicted[0]["data"]["signals"]["/metrics/prometheus"] = {
+            "available": True,
+            "status_code": 200,
+            "missing_reason": None,
+            "body": _prom_text(processing=1, deferred=0, loaded=1),
+        }
+        with pytest.raises(EvidenceError, match="local_engine_queue_source_mismatch"):
+            verify_queue_events(store.path, cfg, contradicted, reads=reads)
+
+        # Truncated /status response containing tail must NOT persist tail into signals
+        status_poll_count = 0
+
+        def truncated_handler(request: httpx.Request) -> httpx.Response:
+            nonlocal status_poll_count
+            if request.url.path == "/status":
+                status_poll_count += 1
+                if status_poll_count >= 2:
+                    return httpx.Response(200, text='{"busy": false, "tail": "LEAKED_SECRET_TAIL')
+            return handler(request)
+
+        async def run_truncated_and_binding_fail():
+            adapter = LocalEngineAdapter(
+                "http://127.0.0.1:48857",
+                transport=httpx.MockTransport(truncated_handler),
+                binding_verifier=lambda _c: deepcopy(binding_doc["service"]),
+            )
+            await adapter.discover(cfg)
+            trunc_events: list[dict] = []
+            ready = await adapter.wait_ready(
+                seconds=0.5, observe=lambda _s, ev: trunc_events.append(ev)
+            )
+            assert ready is False
+            assert "LEAKED_SECRET_TAIL" not in json.dumps(trunc_events)
+            await adapter.close()
+
+            # Binding failure before queue probe still produces replayable uncertain snapshot
+            fail_calls = 0
+
+            def failing_binding(_c):
+                nonlocal fail_calls
+                fail_calls += 1
+                if fail_calls >= 3:
+                    raise PreflightError("local_engine_bound_service_changed")
+                return deepcopy(binding_doc["service"])
+
+            adapter2 = LocalEngineAdapter(
+                "http://127.0.0.1:48857",
+                transport=httpx.MockTransport(handler),
+                binding_verifier=failing_binding,
+            )
+            await adapter2.discover(cfg)
+            err_events: list[dict] = []
+            ready2 = await adapter2.wait_ready(
+                seconds=0.5, observe=lambda _s, ev: err_events.append(ev)
+            )
+            assert ready2 is False
+            await adapter2.close()
+            return err_events
+
+        err_events = asyncio.run(run_truncated_and_binding_fail())
+        verify_queue_events(
+            store.path,
+            cfg,
+            [{"event_type": "native_observed", "request_id": None, "data": err_events[0]}],
+            reads=reads,
+        )
 
 
 def test_request_body_reasoning_effort_mapping(local_config) -> None:
