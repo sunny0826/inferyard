@@ -1081,6 +1081,168 @@
                   ],
                   "additionalProperties": false
                 },
+                "/v1/status": {
+                  "type": "object",
+                  "properties": {
+                    "available": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ],
+                      "enum": [
+                        true,
+                        null
+                      ]
+                    },
+                    "missing_reason": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "status_code": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "body": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "available",
+                    "missing_reason",
+                    "status_code",
+                    "body"
+                  ],
+                  "additionalProperties": false
+                },
+                "/metrics/prometheus": {
+                  "type": "object",
+                  "properties": {
+                    "available": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ],
+                      "enum": [
+                        true,
+                        null
+                      ]
+                    },
+                    "missing_reason": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "status_code": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "body": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "available",
+                    "missing_reason",
+                    "status_code",
+                    "body"
+                  ],
+                  "additionalProperties": false
+                },
+                "/status": {
+                  "type": "object",
+                  "properties": {
+                    "available": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ],
+                      "enum": [
+                        true,
+                        null
+                      ]
+                    },
+                    "missing_reason": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "status_code": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "body": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "available",
+                    "missing_reason",
+                    "status_code",
+                    "body"
+                  ],
+                  "additionalProperties": false
+                },
                 "lms:ps": {
                   "type": "object",
                   "properties": {

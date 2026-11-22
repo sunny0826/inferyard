@@ -18,6 +18,9 @@ type DiscoveredEndpoint struct {
 	Models            []string `json:"models"`
 	Reason            *string  `json:"reason"`
 	AmbiguousListener bool     `json:"ambiguous_listener"`
+	EngineFamily      *string  `json:"engine_family,omitempty"`
+	Loaded            *bool    `json:"loaded,omitempty"`
+	MaxContext        *int64   `json:"max_context,omitempty"`
 }
 
 type DiscoveredService struct {
@@ -118,7 +121,7 @@ func ParseServiceDiscovery(raw []byte, exitCode int) (ServiceDiscovery, error) {
 		}
 		_ = json.Unmarshal(rawService, &wire)
 		for i, endpoint := range service.Endpoints {
-			if !discoveryFields(wire.Endpoints[i], "url", "health", "models", "reason", "ambiguous_listener") || !validDiscoveryEndpoint(endpoint) {
+			if !discoveryEndpointFields(wire.Endpoints[i]) || !validDiscoveryEndpoint(endpoint) {
 				return ServiceDiscovery{}, invalid
 			}
 			var fields map[string]json.RawMessage
@@ -130,6 +133,30 @@ func ParseServiceDiscovery(raw []byte, exitCode int) (ServiceDiscovery, error) {
 		result.Services = append(result.Services, service)
 	}
 	return result, nil
+}
+
+var discoveryEngineFamilies = []string{
+	"llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio", "polystrata",
+}
+
+func discoveryEndpointFields(raw []byte) bool {
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(raw, &obj) != nil {
+		return false
+	}
+	required := []string{"url", "health", "models", "reason", "ambiguous_listener"}
+	allowed := []string{"url", "health", "models", "reason", "ambiguous_listener", "engine_family", "loaded", "max_context"}
+	for _, name := range required {
+		if _, ok := obj[name]; !ok {
+			return false
+		}
+	}
+	for name := range obj {
+		if !slices.Contains(allowed, name) {
+			return false
+		}
+	}
+	return true
 }
 
 func discoveryFields(raw []byte, names ...string) bool {
@@ -155,6 +182,12 @@ func validDiscoveryEndpoint(e DiscoveredEndpoint) bool {
 		return false
 	}
 	if e.Reason != nil && !slices.Contains(discoveryReasons, *e.Reason) {
+		return false
+	}
+	if e.EngineFamily != nil && !slices.Contains(discoveryEngineFamilies, *e.EngineFamily) {
+		return false
+	}
+	if e.MaxContext != nil && *e.MaxContext <= 0 {
 		return false
 	}
 	if e.Models == nil {

@@ -48,7 +48,18 @@ LOCAL_ENGINE_OBSERVATION["properties"].update(
     mode=enum("native"),
     engine=enum(LOCAL_ADAPTER),
     endpoints=obj(
-        {path: ENDPOINT for path in (*PATHS, "/version", "/get_server_info", "lms:ps")},
+        {
+            path: ENDPOINT
+            for path in (
+                *PATHS,
+                "/version",
+                "/get_server_info",
+                "/v1/status",
+                "/metrics/prometheus",
+                "/status",
+                "lms:ps",
+            )
+        },
         [],
     ),
 )

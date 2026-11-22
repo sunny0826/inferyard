@@ -1,5 +1,6 @@
 """Service discovery CommandResult contract; independent of live collectors."""
 
+from inferyard.contracts.engine_profiles import LOCAL_FAMILIES
 from inferyard.contracts.schemas_common import BOOL, LABEL, POS, array, enum, nullable, obj
 
 PROBE_REASONS = (
@@ -31,7 +32,11 @@ ENDPOINT = obj(
         "models": nullable(array(LABEL, minimum=1)),
         "reason": nullable(enum(*PROBE_REASONS)),
         "ambiguous_listener": BOOL,
-    }
+        "engine_family": nullable(enum(*LOCAL_FAMILIES)),
+        "loaded": nullable(BOOL),
+        "max_context": nullable(POS),
+    },
+    required=["url", "health", "models", "reason", "ambiguous_listener"],
 )
 ENDPOINT["allOf"] = [
     {

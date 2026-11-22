@@ -8,7 +8,13 @@ from copy import deepcopy
 
 from inferyard.adapters.engine_fit import FitTransportError, parse_json_body
 from inferyard.adapters.lab_adapter import LabAdapter
-from inferyard.adapters.local_engines.protocol import VERSION_PATHS, models, queue, service
+from inferyard.adapters.local_engines.protocol import (
+    VERSION_PATHS,
+    models,
+    queue,
+    sanitize_polystrata_status,
+    service,
+)
 from inferyard.contracts.engine_tuning import prompt_cache_disabled
 from inferyard.errors import PreflightError
 from inferyard.platforms.engine_fit_lmstudio import LMStudioObserver
@@ -32,7 +38,7 @@ class LocalEngineAdapter(LabAdapter):
 
     @staticmethod
     def request_body(config, prompt, *, stream=True):
-        return {
+        body = {
             "model": config["engine"]["served_model"],
             "messages": [{"role": "user", "content": prompt}],
             "temperature": config["generation"]["temperature"],
@@ -41,6 +47,9 @@ class LocalEngineAdapter(LabAdapter):
             **({"stream_options": {"include_usage": True}} if stream else {}),
             **({"cache_prompt": False} if prompt_cache_disabled(config) else {}),
         }
+        if config["engine"]["family"] == "polystrata":
+            body["reasoning_effort"] = config["generation"].get("reasoning_effort", "none")
+        return body
 
     async def _bound(self, deadline):
         async with asyncio.timeout_at(deadline):
@@ -57,6 +66,24 @@ class LocalEngineAdapter(LabAdapter):
             raise PreflightError("local_engine_observation_unavailable")
         return record["body"]
 
+    async def _polystrata_status(self, deadline, store):
+        record = await self.inspect_endpoint("/status", deadline=deadline)
+        if record["available"] is not True:
+            store["/status"] = {**record, "body": None}
+            raise PreflightError("local_engine_observation_unavailable")
+        try:
+            observed = sanitize_polystrata_status(record["body"])
+        except FitTransportError:
+            store["/status"] = {
+                **record,
+                "available": None,
+                "missing_reason": "polystrata_status_invalid",
+                "body": None,
+            }
+            raise
+        store["/status"] = {**record, "body": json.dumps(observed, sort_keys=True)}
+        return observed
+
     async def discover(self, config):
         self._config = deepcopy(config)
         family = config["engine"]["family"]
@@ -69,16 +96,30 @@ class LocalEngineAdapter(LabAdapter):
             models(
                 await self._endpoint("/v1/models", deadline, matrix),
                 config["engine"]["served_model"],
+                family=family,
             )
             if family == "lmstudio":
                 async with asyncio.timeout_at(deadline):
                     payload = await self._observer.inspect()
+                properties = service(family, payload, config)
+            elif family == "polystrata":
+                health = parse_json_body(await self._endpoint("/health", deadline, matrix))
+                payload = parse_json_body(
+                    await self._endpoint(VERSION_PATHS[family], deadline, matrix)
+                )
+                properties = service(family, payload, config, health=health)
             else:
                 payload = parse_json_body(
                     await self._endpoint(VERSION_PATHS[family], deadline, matrix)
                 )
-            properties = service(family, payload, config)
-            if family != "lmstudio":
+                properties = service(family, payload, config)
+            if family == "polystrata":
+                prom = await self.inspect_endpoint("/metrics/prometheus", deadline=deadline)
+                matrix["/metrics/prometheus"] = prom
+                if prom["available"] is not True:
+                    sanitized = await self._polystrata_status(deadline, matrix)
+                    queue(family, config["engine"]["served_model"], None, sanitized)
+            elif family != "lmstudio":
                 await self._endpoint("/metrics", deadline, matrix)
             else:
                 async with asyncio.timeout_at(deadline):
@@ -160,7 +201,13 @@ class LocalEngineAdapter(LabAdapter):
                 "family": family,
                 "served_model": self._config["engine"]["served_model"],
                 "binding": deepcopy(self._service_binding),
-                "source": "lms:ps" if family == "lmstudio" else "/metrics",
+                "source": (
+                    "lms:ps"
+                    if family == "lmstudio"
+                    else "/metrics/prometheus"
+                    if family == "polystrata"
+                    else "/metrics"
+                ),
                 "raw_metrics": None,
                 "observation": None,
                 "client_uncertain": self.native_uncertain,
@@ -171,6 +218,16 @@ class LocalEngineAdapter(LabAdapter):
                 if family == "lmstudio":
                     async with asyncio.timeout_at(deadline):
                         observed = await self._observer.idle()
+                elif family == "polystrata":
+                    prom = await self.inspect_endpoint("/metrics/prometheus", deadline=deadline)
+                    signals["/metrics/prometheus"] = prom
+                    if prom["available"] is True:
+                        snapshot["source"] = "/metrics/prometheus"
+                        snapshot["raw_metrics"] = prom["body"]
+                        observed = None
+                    else:
+                        snapshot["source"] = "/status"
+                        observed = await self._polystrata_status(deadline, signals)
                 else:
                     snapshot["raw_metrics"] = await self._endpoint("/metrics", deadline, signals)
                     observed = None

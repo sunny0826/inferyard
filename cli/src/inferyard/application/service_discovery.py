@@ -8,13 +8,46 @@ from inferyard.errors import ContractError
 from inferyard.platforms.service_discovery import DiscoveryError, collect_listeners
 
 
+_HEALTH_MAX_BYTES = 64 * 1024
+
+
+def _polystrata_health_metadata(payload: bytes) -> dict | None:
+    try:
+        value = strict_json_loads(payload.decode("utf-8"))
+    except ContractError, ValueError, UnicodeError:
+        return None
+    if not isinstance(value, dict) or value.get("service") != "strata":
+        return None
+    loaded = value["loaded"] if type(value.get("loaded")) is bool else None
+    max_ctx = (
+        value["max_context"]
+        if type(value.get("max_context")) is int and value["max_context"] > 0
+        else None
+    )
+    return {
+        "engine_family": "polystrata",
+        "loaded": loaded,
+        "max_context": max_ctx,
+    }
+
+
 def _get(client, url, *, models=False):
     try:
         client.cookies.clear()
         with client.stream("GET", url) as response:
             category = f"{response.status_code // 100}xx"
             if not models:
-                return category, None, None
+                if category != "2xx":
+                    return category, None, None
+                payload = bytearray()
+                oversized = False
+                for chunk in response.iter_bytes():
+                    payload.extend(chunk)
+                    if len(payload) > _HEALTH_MAX_BYTES:
+                        oversized = True
+                        break
+                meta = None if oversized else _polystrata_health_metadata(bytes(payload))
+                return category, meta, None
             if category != "2xx":
                 return category, None, f"models_http_{category}"
             payload = bytearray()
@@ -62,15 +95,18 @@ def execute(request):
                         address = f"[{host}]" if ":" in host else host
                         url = f"http://{address}:{port}"
                         if url not in probes:
-                            health, _, health_reason = _get(client, url + "/health")
+                            health, health_meta, health_reason = _get(client, url + "/health")
                             _, models, reason = _get(client, url + "/v1/models", models=True)
-                            probes[url] = {
+                            entry = {
                                 "url": url,
                                 "health": health,
                                 "models": models,
                                 "reason": reason or health_reason,
                                 "ambiguous_listener": len(owners[port]) > 1,
                             }
+                            if health_meta is not None:
+                                entry.update(health_meta)
+                            probes[url] = entry
                         endpoints.append(dict(probes[url]))
                     details["services"].append(
                         {key: value for key, value in process.items() if key != "listeners"}
