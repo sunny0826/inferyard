@@ -63,6 +63,7 @@ type EngineFamilyCatalog struct {
 	HomepageURL    string
 	ReleasesURL    string
 	SupportsWizard bool
+	ExternalApp    bool
 	Releases       []EngineRelease
 }
 
@@ -135,6 +136,7 @@ func (r *EngineCatalogRegistry) Register(provider EngineCatalogProvider) {
 		existing.ReleasesURL = incoming.ReleasesURL
 	}
 	existing.SupportsWizard = existing.SupportsWizard || incoming.SupportsWizard
+	existing.ExternalApp = existing.ExternalApp || incoming.ExternalApp
 	for _, rel := range incoming.Releases {
 		replaced := false
 		for i := range existing.Releases {
@@ -232,6 +234,29 @@ func (f EngineFamilyCatalog) ReleasesForPlatform(platform string, stableOnly boo
 	return SortEngineReleases(filtered)
 }
 
+func (r EngineRelease) Platforms() []string {
+	var platforms []string
+	seen := make(map[string]bool, len(r.Builds))
+	for _, build := range r.Builds {
+		if build.Platform == "" || seen[build.Platform] {
+			continue
+		}
+		seen[build.Platform] = true
+		platforms = append(platforms, build.Platform)
+	}
+	return platforms
+}
+
+func (r EngineRelease) BuildsForPlatform(platform string) []EnginePlatformBuild {
+	var builds []EnginePlatformBuild
+	for _, build := range r.Builds {
+		if platform == "" || platform == "all" || build.Platform == platform || build.Platform == "any" {
+			builds = append(builds, cloneEnginePlatformBuild(build))
+		}
+	}
+	return builds
+}
+
 func (b EnginePlatformBuild) PrimaryURL() string {
 	if len(b.Artifacts) == 0 {
 		return ""
@@ -267,11 +292,11 @@ func ChannelLabel(ch ReleaseChannel) string {
 	case ReleaseStable:
 		return "正式版"
 	case ReleaseLatest:
-		return "官方正式版"
+		return "最新版"
 	case ReleasePreRelease:
 		return "预发布"
 	case ReleaseSnapshot:
-		return "源码快照"
+		return "快照版"
 	default:
 		return string(ch)
 	}
@@ -284,7 +309,7 @@ func AcquireModeLabel(mode EngineAcquireMode) string {
 	case EngineAcquireManualArchive:
 		return "手动安装"
 	case EngineAcquireExternalPage:
-		return "官网安装"
+		return "官网下载"
 	default:
 		return string(mode)
 	}

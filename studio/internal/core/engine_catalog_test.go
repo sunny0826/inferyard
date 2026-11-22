@@ -41,13 +41,19 @@ func TestDefaultEngineCatalogIntegrity(t *testing.T) {
 	}
 
 	llama, _ := reg.FamilyByID("llama-cpp")
-	var hasPrism, hasUpstream, hasWinCUDA bool
-	for _, rel := range llama.Releases {
-		if strings.Contains(rel.ID, "prism") {
-			hasPrism = true
-		}
-		if strings.Contains(rel.ID, "upstream") {
-			hasUpstream = true
+	var hasPrism, hasUpstreamV1, hasUpstreamSnap, hasWinCUDA bool
+	var prismIdx, v1Idx, snapIdx = -1, -1, -1
+	for i, rel := range llama.Releases {
+		switch rel.ID {
+		case "llama-cpp-prism-b10743":
+			hasPrism = rel.Channel == ReleaseStable
+			prismIdx = i
+		case "llama-cpp-upstream-v1.0.0":
+			hasUpstreamV1 = rel.Channel == ReleaseStable
+			v1Idx = i
+		case "llama-cpp-upstream-b11146":
+			hasUpstreamSnap = rel.Channel == ReleaseSnapshot
+			snapIdx = i
 		}
 		for _, b := range rel.Builds {
 			if b.ID == "engine-windows-cuda-x64" {
@@ -55,11 +61,21 @@ func TestDefaultEngineCatalogIntegrity(t *testing.T) {
 			}
 		}
 	}
-	if !hasPrism || !hasUpstream {
-		t.Fatalf("llama-cpp must include both PrismML and upstream releases: %+v", llama.Releases)
+	if !hasPrism || !hasUpstreamV1 || !hasUpstreamSnap {
+		t.Fatalf("llama-cpp must include PrismML stable, upstream v1.0.0 stable, and b11146 snapshot: %+v", llama.Releases)
+	}
+	if !(prismIdx < v1Idx && v1Idx < snapIdx) {
+		t.Fatalf("expected llama-cpp releases sorted prism -> v1.0.0 -> b11146, got indices %d, %d, %d", prismIdx, v1Idx, snapIdx)
 	}
 	if !hasWinCUDA {
 		t.Fatal("windows cuda build must bundle engine and runtime artifacts")
+	}
+
+	for _, fam := range families {
+		wantExternal := fam.ID == "lmstudio"
+		if fam.ExternalApp != wantExternal {
+			t.Fatalf("family %s ExternalApp = %v, want %v", fam.ID, fam.ExternalApp, wantExternal)
+		}
 	}
 }
 
@@ -155,5 +171,30 @@ func TestReleasesForPlatformAndStableFilter(t *testing.T) {
 	}
 	if mac := mlx.ReleasesForPlatform("darwin/arm64", false); len(mac) != 1 || len(mac[0].Builds) != 1 {
 		t.Fatalf("unexpected mlx-lm darwin/arm64 builds: %+v", mac)
+	}
+
+	llama, _ := reg.FamilyByID("llama-cpp")
+	prism := llama.Releases[0]
+	platforms := prism.Platforms()
+	wantPlatforms := []string{"darwin/arm64", "darwin/amd64", "windows/amd64", "linux/amd64", "linux/arm64"}
+	if len(platforms) != len(wantPlatforms) {
+		t.Fatalf("Platforms() = %v, want %v", platforms, wantPlatforms)
+	}
+	for i, want := range wantPlatforms {
+		if platforms[i] != want {
+			t.Fatalf("Platforms()[%d] = %q, want %q", i, platforms[i], want)
+		}
+	}
+	winBuilds := prism.BuildsForPlatform("windows/amd64")
+	if len(winBuilds) != 2 || winBuilds[0].ID != "engine-windows-x64" || winBuilds[1].ID != "engine-windows-cuda-x64" {
+		t.Fatalf("unexpected BuildsForPlatform(windows/amd64): %+v", winBuilds)
+	}
+
+	sglangLatest := sglang.Releases[0]
+	if plats := sglangLatest.Platforms(); len(plats) != 1 || plats[0] != "any" {
+		t.Fatalf("expected [any] platform for sglang latest, got %v", plats)
+	}
+	if anyBuilds := sglangLatest.BuildsForPlatform("darwin/arm64"); len(anyBuilds) != 1 {
+		t.Fatalf("expected BuildsForPlatform to include any-platform build, got %+v", anyBuilds)
 	}
 }

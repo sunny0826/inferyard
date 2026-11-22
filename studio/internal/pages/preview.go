@@ -145,8 +145,8 @@ func (p *previewSession) left(c *ui.Context) {
 					components.Checkbox(c, &p.speedMissingTiming, "下次专项模拟缺测")
 				}
 				if p.state.selected == "downloads_prototype" {
-					components.Checkbox(c, &p.protoIncludeCustomEngine, "模拟扩展接入新引擎")
-					components.Checkbox(c, &p.protoNoAssets, "模拟首次无资源")
+					components.Checkbox(c, &p.protoIncludeCustomEngine, "模拟新增引擎")
+					components.Checkbox(c, &p.protoNoAssets, "模拟无本地资源")
 				}
 				ui.Text(c, "全部为模拟数据；操作仅改变本窗口，不运行模型或写入文件。").TextColor(c.Theme().TextMuted)
 				if p.notice != "" {

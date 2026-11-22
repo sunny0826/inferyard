@@ -8,7 +8,6 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 	"inferyard/studio/internal/core"
 )
@@ -19,6 +18,12 @@ func (p *previewSession) ensurePrototypeState() *downloadsProtoState {
 	}
 	if p.protoState.selectedRelease == nil {
 		p.protoState.selectedRelease = map[string]string{}
+	}
+	if p.protoState.selectedPlatform == nil {
+		p.protoState.selectedPlatform = map[string]string{}
+	}
+	if p.protoState.selectedBuild == nil {
+		p.protoState.selectedBuild = map[string]string{}
 	}
 	return p.protoState
 }
@@ -81,16 +86,9 @@ func (p *previewSession) downloadsPrototypeView(c *ui.Context) {
 func (p *previewSession) downloadsPrototypeHeader(c *ui.Context) {
 	s := p.state
 	t := tokens(c)
-	ui.Column(c).FillWidth().Gap(t.Density.Tight).Children(func() {
-		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			ui.Row(c).Grow(1).MinWidth(0).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				s.header(c, "下载")
-				badge(c, "交互原型", stateInfo, badgeOptions{Style: badgeSoft, Size: sizeSM})
-			})
-			button(c, "设置下载目录与代理").OnClick(func() { s.selected = "settings" })
-		})
-		ui.Text(c, "集中查看所有引擎的正式版本、适用平台与下载地址；模型可切换镜像源并自动解析固定版本。").
-			FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		ui.Row(c).Grow(1).MinWidth(0).Children(func() { s.header(c, "下载") })
+		button(c, "下载设置").OnClick(func() { s.selected = "settings" })
 	})
 }
 
@@ -106,11 +104,11 @@ func (p *previewSession) downloadsPrototypeStarterCard(c *ui.Context) {
 	applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Row).Padding(t.Card.Padding), materialCard).Children(func() {
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
-				heading(c, "快速开始 · 一键获取推荐组合", 3)
-				ui.Text(c, "当前缺少可用引擎与模型，可一键下载本机推荐 llama-server（prism-b10743-adfffbe）与 Qwen3-0.6B-Q8_0（GGUF）。").
+				heading(c, "推荐组合", 3)
+				ui.Text(c, "llama-server (prism-b10743-adfffbe) · Qwen3-0.6B-Q8_0 (GGUF)").
 					FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			})
-			if button(c, "一键下载推荐引擎与模型").Disabled(s.busy).Clicked() {
+			if primaryButton(c, "下载推荐组合").Disabled(s.busy).Clicked() {
 				s.acquireStarterBundle(engineURL, modelURL)
 			}
 		})
@@ -121,263 +119,201 @@ func (p *previewSession) downloadsPrototypeTabs(c *ui.Context) {
 	st := p.ensurePrototypeState()
 	t := tokens(c)
 	ui.Column(c.Key("proto-downloads-tabs")).FillWidth().Gap(t.Density.Row).Children(func() {
-		components.Tabs(c, &st.activeTab, components.TabsUnderline, "推理引擎", "模型资源")
+		components.Tabs(c, &st.activeTab, components.TabsUnderline, "引擎", "模型")
 		if st.activeTab == 1 {
-			card(c, "获取模型", func() { p.state.modelAssetsView(c) })
+			applyMaterial(c, ui.Column(c).MinWidth(0).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
+				p.state.modelAssetsView(c)
+			})
 			return
 		}
-		p.downloadsPrototypeEnginesTab(c)
+		p.downloadsPrototypeEnginesTab(c, st)
 	})
 }
 
-func (p *previewSession) downloadsPrototypeEnginesTab(c *ui.Context) {
+func (p *previewSession) downloadsPrototypeEnginesTab(c *ui.Context, st *downloadsProtoState) {
 	s := p.state
-	st := p.ensurePrototypeState()
 	t := tokens(c)
+	hostPlatform := st.effectiveHostPlatform()
+	families := previewPrototypeCatalog(p.protoIncludeCustomEngine).Families()
 
-	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		ui.Box(c.Key("proto-platform-filter")).Children(func() {
-			p.protoPlatformSelect(c, st)
-		})
-		segmentedControl(c, "筛选格式", &st.formatFilter, []components.NativeSelectOption[string]{
-			{Value: "all", Label: "全部格式"},
-			{Value: "gguf", Label: "GGUF"},
-			{Value: "directory", Label: "目录模型"},
-		})
-		components.Checkbox(c, &st.stableOnly, "仅显示正式版")
-		outlineButton(c, "注册本地引擎").OnClick(func() {
-			s.openLocalEngineWizard("llama-cpp")
-		})
-	})
-
-	targetPlatform := protoTargetPlatform(st.platform)
-	if st.platform != "current" && st.platform != "all" && st.platform != core.CurrentPlatform() {
-		noticeBanner(c, noticeBannerOptions{
-			Kind:    stateInfo,
-			Size:    bannerCompact,
-			Message: "当前正在查看 " + core.PlatformLabel(st.platform) + " 引擎构建；可复制或打开地址，不直接安装到本机。",
-		})
-	}
-
-	reg := previewPrototypeCatalog(p.protoIncludeCustomEngine)
-	primaryClaimed := false
-	matched := 0
-	for _, family := range reg.Families() {
-		if st.formatFilter != "all" && family.ModelFormat != st.formatFilter {
-			continue
-		}
-		releases := family.ReleasesForPlatform(targetPlatform, st.stableOnly)
-		if len(releases) == 0 {
-			continue
-		}
-		matched++
-		active := protoPickRelease(st, family.ID, releases)
-		p.protoFamilyCard(c, family, releases, active, &primaryClaimed)
-	}
-
-	if matched == 0 {
-		emptyGuideCard(c, emptyGuideOptions{
-			Icon:        lucide.FileSearch,
-			Title:       "未找到符合条件的引擎",
-			Description: "请调整平台、模型格式或版本筛选条件。",
-			Surface:     emptySunken,
-			Action: func() {
-				ghostButton(c, "清空筛选").OnClick(func() {
-					st.platform = "current"
-					st.formatFilter = "all"
-					st.stableOnly = false
-				})
-			},
-		})
-	}
-
-	card(c, "更多选项", func() {
-		componentFoldKeyed(c, "proto-custom-engine", "自定义引擎归档地址", func() {
-			field(c, "自定义引擎 URL", &st.customEngineURL).
-				Placeholder("https://github.com/.../llama-...tar.gz").
-				Description("输入受信任的 https 引擎归档地址直接下载并准备。").
-				Error(downloadURLError(st.customEngineURL))
-			trimmed := strings.TrimSpace(st.customEngineURL)
-			button(c, "下载自定义引擎").
-				Disabled(s.busy || trimmed == "" || downloadURLError(trimmed) != "").
-				OnClick(func() { s.acquireEngine(trimmed, "") })
-		})
-	})
-}
-
-func (p *previewSession) protoPlatformSelect(c *ui.Context, st *downloadsProtoState) {
-	options := []struct{ value, label string }{
-		{"current", "当前平台 (" + core.PlatformLabel(core.CurrentPlatform()) + ")"},
-		{"all", "全部平台"},
-	}
-	for _, plat := range core.CatalogPlatforms() {
-		options = append(options, struct{ value, label string }{plat, core.PlatformLabel(plat)})
-	}
-	currentLabel := options[0].label
-	for _, opt := range options {
-		if opt.value == st.platform {
-			currentLabel = opt.label
-			break
+	var managed, externalApps, otherPlatform []core.EngineFamilyCatalog
+	for _, fam := range families {
+		hostReleases := fam.ReleasesForPlatform(hostPlatform, false)
+		switch {
+		case len(hostReleases) == 0:
+			otherPlatform = append(otherPlatform, fam)
+		case fam.ExternalApp:
+			externalApps = append(externalApps, fam)
+		default:
+			managed = append(managed, fam)
 		}
 	}
-	sel := components.Select(c, &st.platform)
-	sel.Trigger.Label("筛选平台").Value(currentLabel).Children(func() {
-		ui.Text(c, currentLabel).SingleLine()
-	})
-	sel.Popup(func(ui.Element) {
-		components.ScrollView(c, components.ScrollViewOptions{}).Label("平台列表").MaxHeight(240).Children(func() {
-			for _, opt := range options {
-				sel.Item(opt.value).Label(opt.label).Children(func() {
-					ui.Text(c, opt.label).SingleLine()
-				})
+
+	ui.Column(c.Key("proto-engines-tab")).FillWidth().Gap(t.Density.Section).Children(func() {
+		applyMaterial(c, ui.Column(c).MinWidth(0).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
+			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				ui.Row(c).Grow(1).MinWidth(0).Children(func() { heading(c, "引擎", 2) })
+				outlineButton(c, "关联已有引擎").OnClick(func() { s.openLocalEngineWizard("") })
+			})
+			if len(managed) == 0 {
+				ui.Text(c, "当前平台暂无可用引擎。").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			}
+			for i, fam := range managed {
+				if i > 0 {
+					ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+				}
+				hostReleases := fam.ReleasesForPlatform(hostPlatform, false)
+				rel := protoPickRelease(st, fam.ID, hostReleases)
+				build := protoPickBuildForPlatform(st, fam.ID, rel, hostPlatform)
+				p.protoEngineRow(c, st, fam, rel, build)
 			}
 		})
-	})
-}
 
-func (p *previewSession) protoFamilyCard(c *ui.Context, family core.EngineFamilyCatalog, releases []core.EngineRelease, active core.EngineRelease, primaryClaimed *bool) {
-	t := tokens(c)
-	st := p.ensurePrototypeState()
-	ui.Column(c.Key("proto-family-" + family.ID)).FillWidth().Children(func() {
-		applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
-			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				ui.Row(c).Grow(1).MinWidth(0).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-					heading(c, family.Name, 2)
-					badge(c, core.ModelFormatLabel(family.ModelFormat), stateNeutral, badgeOptions{Style: badgeSoft, Size: sizeSM})
-					if p.isProtoFamilyInstalled(family.ID) {
-						badge(c, "已安装", stateSuccess, badgeOptions{Style: badgeDot, Size: sizeSM})
+		if len(externalApps) > 0 {
+			card(c, "外部应用", func() {
+				for i, fam := range externalApps {
+					if i > 0 {
+						ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
 					}
-					if len(releases) > 1 {
-						ui.Text(c, fmt.Sprintf("%d 个可选版本", len(releases))).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-					}
-				})
-				if len(releases) > 1 {
-					ui.Box(c.Key("proto-ver-" + family.ID)).Children(func() {
-						chosenID := active.ID
-						sel := components.Select(c, &chosenID)
-						sel.Trigger.Label("选择版本 · " + family.ID).Value(active.Version + " · " + active.Distribution).Children(func() {
-							ui.Text(c, active.Version+" · "+active.Distribution).SingleLine()
-						})
-						sel.Popup(func(ui.Element) {
-							components.ScrollView(c, components.ScrollViewOptions{}).Label(family.Name + " 版本列表").MaxHeight(220).Children(func() {
-								for _, rel := range releases {
-									itemLabel := protoReleaseOptionLabel(rel)
-									sel.Item(rel.ID).Label(itemLabel).Children(func() {
-										ui.Text(c, itemLabel).SingleLine()
-									})
-								}
-							})
-						})
-						if sel.Trigger.Changed() {
-							st.selectedRelease[family.ID] = chosenID
-						}
-					})
-				} else {
-					badge(c, active.Version, stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
+					hostReleases := fam.ReleasesForPlatform(hostPlatform, false)
+					rel := protoPickRelease(st, fam.ID, hostReleases)
+					build := protoPickBuildForPlatform(st, fam.ID, rel, hostPlatform)
+					p.protoExternalAppRow(c, fam, rel, build)
 				}
 			})
+		}
 
-			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				ui.Text(c, family.Summary).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).Grow(1).MinWidth(0)
-				ghostButton(c, "官方发布页").Label("官方发布页 · " + family.ID).OnClick(func() {
-					p.openProtoURL(family.Name+" 官方发布页", protoReleaseLink(family, active))
-				})
+		if len(otherPlatform) > 0 {
+			componentFoldKeyed(c, "proto-other-platform", fmt.Sprintf("其他平台引擎（%d）", len(otherPlatform)), func() {
+				for i, fam := range otherPlatform {
+					if i > 0 {
+						ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+					}
+					p.protoOtherPlatformRow(c, st, fam)
+				}
 			})
+		}
 
+		componentFoldKeyed(c, "proto-custom-engine-url", "自定义引擎地址", func() {
 			ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
-				for _, build := range active.Builds {
-					p.protoBuildRow(c, family, active, build, primaryClaimed)
-				}
+				field(c, "引擎归档 URL", &st.customEngineURL)
+				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+					trimmed := strings.TrimSpace(st.customEngineURL)
+					button(c, "下载并验证").Disabled(s.busy || trimmed == "").OnClick(func() {
+						s.acquireEngine(trimmed, "")
+					})
+				})
 			})
 		})
 	})
 }
 
-func (p *previewSession) protoBuildRow(c *ui.Context, family core.EngineFamilyCatalog, rel core.EngineRelease, build core.EnginePlatformBuild, primaryClaimed *bool) {
-	s := p.state
-	st := p.ensurePrototypeState()
+func (p *previewSession) protoEngineRow(c *ui.Context, st *downloadsProtoState, fam core.EngineFamilyCatalog, rel core.EngineRelease, build core.EnginePlatformBuild) {
 	t := tokens(c)
-	primaryURL := build.PrimaryURL()
+	installed := p.isProtoFamilyInstalled(fam.ID)
+	installing := p.isProtoFamilyInstalling(fam.ID)
 
-	ui.Column(c.Key("proto-build-" + rel.ID + "-" + build.ID)).FillWidth().Children(func() {
-		applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Stack), materialInset).Children(func() {
-			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				ui.Text(c, core.PlatformLabel(build.Platform)+" · "+build.Variant).Bold()
-				badge(c, core.ChannelLabel(rel.Channel), protoChannelState(rel.Channel), badgeOptions{Style: badgeSoft, Size: sizeSM})
-				if rel.Recommended {
-					badge(c, "推荐", stateInfo, badgeOptions{Style: badgeSoft, Size: sizeSM})
-				}
-				if build.CanDirectDownloadOn(core.CurrentPlatform()) {
-					badge(c, "应用内下载", stateActive, badgeOptions{Style: badgeSoft, Size: sizeSM})
-				} else if build.AcquireMode == core.EngineAcquireDirect {
-					badge(c, "仅限 "+core.PlatformLabel(build.Platform), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
-				} else {
-					badge(c, core.AcquireModeLabel(build.AcquireMode), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
+	ui.Row(c.Key("proto-engine-" + fam.ID)).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+				ui.Text(c, fam.Name).Bold()
+				badge(c, core.ModelFormatLabel(fam.ModelFormat), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
+				if installed {
+					badge(c, "已安装", stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
+				} else if installing {
+					badge(c, "安装中", stateActive, badgeOptions{Style: badgeSoft, Size: sizeSM})
 				}
 			})
-
-			ui.Text(c, protoBuildMeta(rel, build)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-			if build.Note != "" {
-				ui.Text(c, build.Note).FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary)
-			}
-
-			if primaryURL != "" {
-				urlLabel := primaryURL
-				if len(build.Artifacts) > 1 {
-					urlLabel = "主包：" + primaryURL
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+				metaParts := []string{rel.Distribution, rel.Version}
+				if build.Variant != "" {
+					metaParts = append(metaParts, build.Variant)
 				}
-				urlText := ui.Text(c, urlLabel).Selectable().FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-				components.Tooltip(c, urlText, primaryURL)
-			}
-			if len(build.Artifacts) > 1 {
-				ui.Text(c, fmt.Sprintf("含 %d 个配套文件，点击「全部地址与校验」查看全部下载地址与 SHA-256。", len(build.Artifacts))).
-					FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary)
-			}
-
-			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				if build.CanDirectDownloadOn(core.CurrentPlatform()) {
-					isPrimary := !*primaryClaimed && s.downloadPrimaryKind() == "engine" && rel.Recommended
-					if isPrimary {
-						*primaryClaimed = true
-					}
-					if p.isProtoSourceDownloading(primaryURL) {
-						button(c, "下载中…").Label("下载中 · " + build.ID).Disabled(true)
-					} else if isPrimary {
-						primaryButton(c, "下载引擎").Label("下载引擎 · " + build.ID).Disabled(s.busy).OnClick(func() {
-							s.acquireEngine(primaryURL, "")
-						})
-					} else {
-						button(c, "下载引擎").Label("下载引擎 · " + build.ID).Disabled(s.busy).OnClick(func() {
-							s.acquireEngine(primaryURL, "")
-						})
-					}
-				} else if primaryURL != "" {
-					openLabel := "打开官网下载"
-					if build.AcquireMode == core.EngineAcquireManualArchive {
-						openLabel = "浏览器打开"
-					}
-					button(c, openLabel).Label(openLabel + " · " + build.ID).OnClick(func() {
-						p.openProtoURL(family.Name, primaryURL)
-					})
+				if total := build.TotalBytes(); total > 0 {
+					metaParts = append(metaParts, catalogHumanSize(total))
 				}
-				if primaryURL != "" {
-					outlineButton(c, "复制地址").Label("复制地址 · " + build.ID).OnClick(func() {
-						p.copyProtoText("下载地址", primaryURL)
-					})
-				}
-				detailLabel := "详情与校验"
-				if len(build.Artifacts) > 1 {
-					detailLabel = "全部地址与校验"
-				}
-				outlineButton(c, detailLabel).Label(detailLabel + " · " + build.ID).OnClick(func() {
-					st.openDrawer(family.ID, rel.ID, build.ID)
+				ui.Text(c, joinParts(metaParts)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				badge(c, core.ChannelLabel(rel.Channel), protoChannelState(rel.Channel), badgeOptions{Style: badgeSoft, Size: sizeSM})
+			})
+		})
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+			outlineButton(c, "版本与地址").Label("版本与地址 · " + fam.ID).OnClick(func() {
+				st.openDrawer(fam.ID, rel.ID, build.Platform, build.ID)
+			})
+			if installing {
+				button(c, "安装中…").Label("安装 · " + fam.ID).Disabled(true)
+			} else {
+				button(c, "安装").Label("安装 · " + fam.ID).Disabled(p.state.busy).OnClick(func() {
+					p.startPrototypeInstall(fam, rel, build)
 				})
-				if !build.CanDirectDownloadOn(core.CurrentPlatform()) && family.SupportsWizard {
-					outlineButton(c, "去注册").Label("去注册 · " + build.ID).OnClick(func() {
-						s.openLocalEngineWizard(family.ID)
-					})
+			}
+		})
+	})
+}
+
+func (p *previewSession) protoExternalAppRow(c *ui.Context, fam core.EngineFamilyCatalog, rel core.EngineRelease, build core.EnginePlatformBuild) {
+	t := tokens(c)
+	installed := p.isProtoFamilyInstalled(fam.ID)
+
+	ui.Row(c.Key("proto-ext-" + fam.ID)).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+				ui.Text(c, fam.Name).Bold()
+				badge(c, core.ModelFormatLabel(fam.ModelFormat), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
+				if installed {
+					badge(c, "已关联", stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
 				}
+			})
+			metaParts := []string{rel.Distribution, rel.Version}
+			if build.Variant != "" {
+				metaParts = append(metaParts, build.Variant)
+			}
+			ui.Text(c, joinParts(metaParts)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		})
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+			outlineButton(c, "打开官网").Label("打开官网 · " + fam.ID).OnClick(func() {
+				p.openProtoURL(fam.Name, build.PrimaryURL())
+			})
+			button(c, "关联").Label("关联 · " + fam.ID).OnClick(func() {
+				p.state.openLocalEngineWizard(fam.ID)
 			})
 		})
 	})
+}
+
+func (p *previewSession) protoOtherPlatformRow(c *ui.Context, st *downloadsProtoState, fam core.EngineFamilyCatalog) {
+	t := tokens(c)
+	rel := protoPickRelease(st, fam.ID, fam.Releases)
+	platforms := rel.Platforms()
+	firstPlatform := "any"
+	if len(platforms) > 0 {
+		firstPlatform = platforms[0]
+	}
+	builds := rel.BuildsForPlatform(firstPlatform)
+	firstBuild := rel.Builds[0]
+	if len(builds) > 0 {
+		firstBuild = builds[0]
+	}
+
+	ui.Row(c.Key("proto-other-" + fam.ID)).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+				ui.Text(c, fam.Name).Bold()
+				badge(c, core.ModelFormatLabel(fam.ModelFormat), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
+			})
+			ui.Text(c, "支持平台："+protoPlatformSummary(rel)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		})
+		outlineButton(c, "版本与地址").Label("版本与地址 · " + fam.ID).OnClick(func() {
+			st.openDrawer(fam.ID, rel.ID, firstPlatform, firstBuild.ID)
+		})
+	})
+}
+
+func protoPlatformSummary(rel core.EngineRelease) string {
+	platforms := rel.Platforms()
+	labels := make([]string, 0, len(platforms))
+	for _, plat := range platforms {
+		labels = append(labels, core.PlatformLabel(plat))
+	}
+	return strings.Join(labels, "、")
 }
