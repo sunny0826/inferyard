@@ -14,6 +14,7 @@ from inferyard.platforms.device_gpu import (
 )
 from inferyard.platforms.device_host import snapshot as host_snapshot
 from inferyard.platforms.gguf_metadata import read_metadata
+from inferyard.platforms.hardware_recommendation import recommend_starter
 
 GIB = 1024**3
 GPU_RESERVE = GIB
@@ -365,6 +366,7 @@ def inspect_device(roots, *, model_path=None, disk_path=None):
         "hardware": hardware,
         "models": models,
         "recommendation": recommendation,
+        "starter_recommendation": recommend_starter(hardware),
         "model_requests_sent": 0,
         "platform_capabilities": platform_capabilities(hardware.get("platform", platform.system())),
         "ready_to_run": False,
