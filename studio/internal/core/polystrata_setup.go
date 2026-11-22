@@ -225,16 +225,16 @@ func (s *Service) runPolystrataSetup(ctx context.Context, binary string, d *down
 				d.Task.ModelConfigPath = ptr(details.ModelConfigPath)
 			}
 			switch {
-			case ctx.Err() != nil:
-				d.Task.State = "cancelled"
-			case regErr != nil:
-				d.Task.State = "failed"
-				d.Task.Error = regErr
-			default:
+			case regErr == nil:
 				d.Task.State = "done"
 				d.Task.Stage = ""
 				d.Task.Percent = ptr(100.0)
 				d.Task.EnginePath = ptr(details.InstallationPath)
+			case ctx.Err() != nil:
+				d.Task.State = "cancelled"
+			default:
+				d.Task.State = "failed"
+				d.Task.Error = regErr
 			}
 			doneOK := d.Task.State == "done"
 			s.Bus.Publish("download.state", map[string]any{"task": clone(d.Task)})

@@ -76,7 +76,7 @@ func (s *Service) applyTransferProgress(d *downloadEntry, ev transferProgressLin
 	s.mu.Lock()
 	stageChanged := ev.Stage != "" && ev.Stage != d.Task.Stage
 	stepChanged := ev.Step != nil && (d.Task.Step == nil || *ev.Step != *d.Task.Step)
-	if stageChanged || stepChanged {
+	if d.Task.Kind == "polystrata" && (stageChanged || stepChanged) {
 		if ev.Percent == nil {
 			d.Task.Percent = nil
 		}
@@ -261,7 +261,22 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	kind := orig.Task.Kind
 	sourceURL := orig.Task.SourceUrl
 	requestedSourceURL := orig.Task.RequestedSourceUrl
-	if existing, found := s.activeRetryOrDownloadLocked(taskID, kind, sourceURL); found {
+	var polystrataCopy *PolystrataSetupRequest
+	if orig.polystrata != nil {
+		copied := *orig.polystrata
+		polystrataCopy = &copied
+	}
+	if kind == "polystrata" {
+		if active, found := s.activePolystrataSetupLocked(); found {
+			if active.retryOf == taskID || samePolystrataRequest(active.polystrata, polystrataCopy) {
+				cloned := clone(active.Task)
+				s.mu.Unlock()
+				return cloned, nil
+			}
+			s.mu.Unlock()
+			return DownloadTask{}, Conflict("polystrata_setup_active")
+		}
+	} else if existing, found := s.activeRetryOrDownloadLocked(taskID, kind, sourceURL); found {
 		s.mu.Unlock()
 		return existing, nil
 	}
@@ -270,11 +285,6 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	prevOutDir := orig.Task.OutDir
 	displayName := orig.Task.DisplayName
 	totalBytes := orig.Task.TotalBytes
-	var polystrataCopy *PolystrataSetupRequest
-	if orig.polystrata != nil {
-		copied := *orig.polystrata
-		polystrataCopy = &copied
-	}
 	prevDataDir := orig.dataDir
 	s.mu.Unlock()
 
@@ -293,9 +303,6 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	if s.closing {
 		return DownloadTask{}, Err("service_closing")
 	}
-	if existing, found := s.activeRetryOrDownloadLocked(taskID, kind, sourceURL); found {
-		return existing, nil
-	}
 	if kind == "polystrata" {
 		if active, found := s.activePolystrataSetupLocked(); found {
 			if active.retryOf == taskID || samePolystrataRequest(active.polystrata, polystrataCopy) {
@@ -303,6 +310,8 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 			}
 			return DownloadTask{}, Conflict("polystrata_setup_active")
 		}
+	} else if existing, found := s.activeRetryOrDownloadLocked(taskID, kind, sourceURL); found {
+		return existing, nil
 	}
 	resolvedPrev, resolveErr := Resolve(root, prevOutDir)
 	inUse := false

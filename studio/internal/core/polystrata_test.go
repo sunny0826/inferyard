@@ -443,37 +443,92 @@ func TestPolystrataRound1Regressions(t *testing.T) {
 	if _, conflictErr := s2.CreatePolystrataSetup(PolystrataSetupRequest{Family: "lfm25", Model: "UD-Q3_K_XL"}); conflictErr == nil || conflictErr.Code != "conflict" || conflictErr.Details["reason"] != "polystrata_setup_active" {
 		t.Fatalf("expected polystrata_setup_active conflict for different request, got %+v", conflictErr)
 	}
+	// Retrying a failed different PolyStrata setup while another is active must conflict (not return active task)
+	s2.mu.Lock()
+	failedOtherID := uuid()
+	s2.downloads = append(s2.downloads, &downloadEntry{
+		Task: DownloadTask{
+			Kind:      "polystrata",
+			TaskId:    failedOtherID,
+			State:     "failed",
+			SourceUrl: polystrataDefaultSourceURL,
+			OutName:   "polystrata-other",
+			OutDir:    filepath.Join(ws, "engines", "polystrata-other"),
+		},
+		polystrata: &PolystrataSetupRequest{Family: "lfm25", Model: "UD-Q3_K_XL"},
+	})
+	s2.mu.Unlock()
+	if _, retryConflict := s2.RetryDownload(failedOtherID); retryConflict == nil || retryConflict.Code != "conflict" || retryConflict.Details["reason"] != "polystrata_setup_active" {
+		t.Fatalf("expected polystrata_setup_active conflict when retrying different setup, got %+v", retryConflict)
+	}
 
-	// 3. Registered polystrata installation exposes its strata-*.json configs in Registry().Models
+	// Normal model download keeps catalog TotalBytes when first downloading event omits total_bytes
+	modelEntry := &downloadEntry{
+		Task: DownloadTask{
+			Kind:       "model",
+			TaskId:     uuid(),
+			State:      "downloading",
+			Stage:      "starting",
+			TotalBytes: ptr(int64(4096)),
+		},
+	}
+	s.applyTransferProgress(modelEntry, transferProgressLine{
+		Event:           "transfer.progress",
+		Stage:           "downloading",
+		DownloadedBytes: ptr(int64(512)),
+	})
+	if modelEntry.Task.TotalBytes == nil || *modelEntry.Task.TotalBytes != 4096 {
+		t.Fatalf("normal model download lost catalog TotalBytes on stage transition: %+v", modelEntry.Task.TotalBytes)
+	}
+
+	// 3. Registered polystrata installation exposes both top-level and nested data_dir/models/<subDir>/strata-*.json with Deletable=false
+	modelsRoot := filepath.Join(ws, "models")
 	psDir := filepath.Join(ws, "engines", "polystrata-pack")
+	nestedModelsDir := filepath.Join(modelsRoot, "polystrata-data", "models", "q2_pack")
 	if err := os.MkdirAll(psDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(nestedModelsDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	cfgPath := filepath.Join(psDir, "strata-qwen38-q2-0.json")
 	if err := os.WriteFile(cfgPath, []byte(`{"exe":"/opt/ps/build-metal/strata","args":["--pack","/opt/data/packs/q2"],"model_name":"qwen38-q2-0"}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	nestedCfgPath := filepath.Join(nestedModelsDir, "strata-q2-nested.json")
+	if err := os.WriteFile(nestedCfgPath, []byte(`{"exe":"/opt/ps/build-metal/strata","args":["--pack","/opt/data/packs/q2"],"model_name":"q2-nested"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	instPath := filepath.Join(psDir, "installation.json")
 	instPayload, _ := json.Marshal(map[string]any{
 		"schema_version": 3, "definition": "local-engine-installation.v1",
 		"family": "polystrata", "working_directory": psDir,
+		"data_dir": filepath.Join(modelsRoot, "polystrata-data"),
 	})
 	if err := os.WriteFile(instPath, instPayload, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	s.mu.Lock()
+	s.settings.ModelsRoot = ptr(modelsRoot)
 	s.settings.EngineInstallations = []string{instPath}
 	s.mu.Unlock()
 	reg := s.Registry()
-	foundPack := false
+	foundTop, foundNested := false, false
 	for _, m := range reg.Models {
-		if m.Format == "strata_pack" && strings.Contains(m.Path, "strata-qwen38-q2-0.json") && m.Available {
-			foundPack = true
-			break
+		if m.Format == "strata_pack" {
+			if m.Deletable {
+				t.Fatalf("strata_pack config %s must not be Deletable", m.Path)
+			}
+			if strings.Contains(m.Path, "strata-qwen38-q2-0.json") && m.Available {
+				foundTop = true
+			}
+			if strings.Contains(m.Path, "strata-q2-nested.json") && m.Available {
+				foundNested = true
+			}
 		}
 	}
-	if !foundPack {
-		t.Fatalf("expected strata-qwen38-q2-0.json in Registry().Models, got %+v", reg.Models)
+	if !foundTop || !foundNested {
+		t.Fatalf("expected both top-level and nested strata-*.json in Registry().Models (top=%v nested=%v), got %+v", foundTop, foundNested, reg.Models)
 	}
 
 	// 4. Cancelling during RegisterEngineInstallation cancels cleanly without persisting settings

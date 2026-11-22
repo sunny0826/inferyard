@@ -381,7 +381,7 @@ func validCandidateSafety(raw []byte, family string) bool {
 		return false
 	}
 	if _, hasOverride := fields["temperature_stop_override_reason"]; hasOverride {
-		if value.OverrideReason == nil || !candidateText(*value.OverrideReason) {
+		if value.OverrideReason == nil || strings.TrimSpace(*value.OverrideReason) == "" || strings.ContainsRune(*value.OverrideReason, 0) {
 			return false
 		}
 	}

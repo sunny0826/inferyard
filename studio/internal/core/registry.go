@@ -463,7 +463,7 @@ func (s *Service) Registry() Registry {
 	for _, e := range data.models {
 		m := e.model
 		m.Path = e.path
-		m.Deletable = isModelDeletable(e.rawPath, e.path, data.modelRoots, data.resultsRoot)
+		m.Deletable = m.Format != "strata_pack" && isModelDeletable(e.rawPath, e.path, data.modelRoots, data.resultsRoot)
 		result.Models = append(result.Models, m)
 	}
 	for _, e := range data.engines {
@@ -499,7 +499,15 @@ func scanPolystrataModelConfigs(installPaths []string) []registryEntry {
 			dirs = append(dirs, decl.WorkingDirectory)
 		}
 		if decl.DataDir != "" {
-			dirs = append(dirs, decl.DataDir, filepath.Join(decl.DataDir, "models"))
+			modelsDir := filepath.Join(decl.DataDir, "models")
+			dirs = append(dirs, decl.DataDir, modelsDir)
+			if subEntries, err := os.ReadDir(modelsDir); err == nil {
+				for _, sub := range subEntries {
+					if sub.Type()&os.ModeSymlink == 0 && sub.IsDir() {
+						dirs = append(dirs, filepath.Join(modelsDir, sub.Name()))
+					}
+				}
+			}
 		}
 		for _, dir := range dirs {
 			dirEntries, err := os.ReadDir(dir)
