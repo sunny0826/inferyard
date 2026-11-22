@@ -8,6 +8,8 @@ import (
 
 func localBackendLabel(family string) string {
 	switch family {
+	case "polystrata":
+		return "PolyStrata"
 	case "llama-cpp":
 		return "llama.cpp（Metal 加速）"
 	case "mlx-lm":
@@ -50,6 +52,8 @@ func prismBackendLabel(w *viewState) string {
 			return "Metal 加速"
 		case "cuda":
 			return "CUDA 加速"
+		case "hip":
+			return "HIP (ROCm) 加速"
 		case "cpu":
 			return "CPU"
 		}
@@ -101,6 +105,8 @@ func (w *viewState) incompatibleModelSuffix(model core.ModelAsset) string {
 		switch e.Family {
 		case "mlx-lm", "vllm", "sglang":
 			return "（需目录模型）"
+		case "polystrata":
+			return "（需 GGUF 或 PolyStrata 配置）"
 		case "llama-cpp", "lmstudio":
 			return "（需 GGUF）"
 		default:

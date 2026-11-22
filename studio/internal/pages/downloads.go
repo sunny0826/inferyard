@@ -10,25 +10,27 @@ import (
 )
 
 type downloadsUIState struct {
-	activeTab            int
-	hostPlatform         string
-	selectedRelease      map[string]string
-	selectedPlatform     map[string]string
-	selectedBuild        map[string]string
-	drawerStableOnly     bool
-	engineDrawerOpen     bool
-	engineDrawerFamilyID string
-	modelSource          string
-	modelDrawerOpen      bool
-	modelDrawerID        string
-	customEngineURL      string
-	customModelURL       string
-	customModelResolve   *modelResolveState
+	activeTab             int
+	hostPlatform          string
+	selectedRelease       map[string]string
+	selectedPlatform      map[string]string
+	selectedBuild         map[string]string
+	drawerStableOnly      bool
+	engineDrawerOpen      bool
+	engineDrawerFamilyID  string
+	modelSource           string
+	polystrataModelSource string
+	starterChoice         int
+	modelDrawerOpen       bool
+	modelDrawerID         string
+	customEngineURL       string
+	customModelURL        string
+	customModelResolve    *modelResolveState
 }
 
 func (s *viewState) ensureDownloadsUI() *downloadsUIState {
 	if s.downloadsUI == nil {
-		s.downloadsUI = &downloadsUIState{modelSource: "huggingface"}
+		s.downloadsUI = &downloadsUIState{modelSource: "huggingface", polystrataModelSource: "auto"}
 	}
 	st := s.downloadsUI
 	if st.selectedRelease == nil {
@@ -42,6 +44,9 @@ func (s *viewState) ensureDownloadsUI() *downloadsUIState {
 	}
 	if st.modelSource != "modelscope" {
 		st.modelSource = "huggingface"
+	}
+	if st.polystrataModelSource != "modelscope" && st.polystrataModelSource != "huggingface" {
+		st.polystrataModelSource = "auto"
 	}
 	if st.customModelResolve == nil {
 		st.customModelResolve = &modelResolveState{mailbox: &modelResolveMailbox{}}
@@ -112,40 +117,12 @@ func (s *viewState) downloadsPageView(c *ui.Context) {
 	s.downloadsModelDrawer(c)
 }
 
-func (s *viewState) downloadsStarterCard(c *ui.Context) {
-	st := s.ensureDownloadsUI()
-	assets := s.availableTaskAssets()
-	engineURL := core.DefaultEngineURL()
-	modelURL := core.DefaultModelURL()
-	if assets.engine || assets.model || s.downloadActive("engine") || s.downloadActive("model") || engineURL == "" || modelURL == "" {
-		return
-	}
-	if st.modelSource == "modelscope" {
-		if entry, ok := core.CatalogEntryByURL(modelURL); ok && entry.MirrorURL != "" {
-			modelURL = entry.MirrorURL
-		}
-	}
-	t := tokens(c)
-	applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Row).Padding(t.Card.Padding), materialCard).Children(func() {
-		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
-				heading(c, "推荐组合", 3)
-				ui.Text(c, "llama-server (prism-b10743-adfffbe) · Qwen3-0.6B-Q8_0 (GGUF)").
-					FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-			})
-			if button(c, "下载推荐组合").Disabled(s.busy).Clicked() {
-				s.acquireStarterBundle(engineURL, modelURL)
-			}
-		})
-	})
-}
-
 func (s *viewState) downloadPrimaryKind() string {
 	assets := s.availableTaskAssets()
-	if !assets.engine && !s.downloadActive("engine") {
+	if !assets.engine && !s.downloadActive("engine") && !s.downloadActive("polystrata") {
 		return "engine"
 	}
-	if !assets.model && !s.downloadActive("model") {
+	if !assets.model && !s.downloadActive("model") && !s.downloadActive("polystrata") {
 		return "model"
 	}
 	return ""

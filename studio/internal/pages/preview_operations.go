@@ -28,6 +28,8 @@ func (p *previewSession) dispatch(intent previewIntent) {
 		p.beginBenchmark(op)
 	case previewDownload:
 		p.startDownload(op)
+	case previewPolystrataSetup:
+		p.startPolystrataSetup(op.req)
 	case previewCancelDownload:
 		p.cancelDownload(op.id)
 	case previewRetryDownload:
@@ -58,6 +60,10 @@ func (p *previewSession) retryDownload(id string) {
 	for _, task := range p.state.downloads {
 		if task.TaskId == id && (task.State == "failed" || task.State == "cancelled") {
 			if p.state.downloadRetryActive(task) {
+				return
+			}
+			if task.Kind == "polystrata" {
+				p.startPolystrataSetup(p.state.defaultPolystrataSetupRequest())
 				return
 			}
 			p.startDownload(previewDownload{kind: task.Kind, source: task.SourceUrl})

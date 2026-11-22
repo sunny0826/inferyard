@@ -106,7 +106,7 @@ func TestPreviewScenesAllLoadAndSaveSettingsPreservesProxy(t *testing.T) {
 	tt := previewTester(p, 1120, 2200)
 	for i, scene := range previewScenes {
 		p.loadScene(i)
-		if scene.label != "下载 · 进行中与失败" && len(p.state.downloads) != 0 {
+		if scene.label != "下载 · 进行中与失败" && scene.label != "下载 · PolyStrata 引导安装" && len(p.state.downloads) != 0 {
 			t.Fatalf("scene %q unexpectedly seeded %d downloads", scene.label, len(p.state.downloads))
 		}
 		p.themeMode = 1
@@ -179,5 +179,29 @@ func TestPreviewRetryDownloadDeduplicatesActiveRetry(t *testing.T) {
 	p.dispatch(previewRetryDownload{id: "dl-rev-a"})
 	if len(p.state.downloads) != 7 || p.state.downloads[0].SourceUrl != pinnedA {
 		t.Fatalf("expected single retry for pinnedA alongside active pinnedB, got %+v", p.state.downloads)
+	}
+}
+
+func TestPreviewPolystrataStarterAndManagedSetup(t *testing.T) {
+	p := newPreviewSession(context.Background())
+	p.loadScene(previewSceneIndex(t, "首次使用 · 无资源"))
+	p.state.selected = "downloads"
+	tt := previewTester(p, 1120, 2600)
+	tt.Frame()
+
+	if !tt.HasText("一键安装 PolyStrata") {
+		t.Fatalf("expected PolyStrata starter button in preview first-use downloads: %v", tt.Texts())
+	}
+	click(t, tt, "一键安装 PolyStrata")
+	if len(p.state.downloads) != 1 || p.state.downloads[0].Kind != "polystrata" || p.state.downloads[0].State != "downloading" {
+		t.Fatalf("expected in-memory polystrata setup task: %+v", p.state.downloads)
+	}
+	if p.state.service != nil {
+		t.Fatal("preview must never initialize real service")
+	}
+	p.advance(5 * time.Second)
+	tt.Frame()
+	if p.state.downloads[0].State != "done" || len(p.state.registry.Engines) != 1 || p.state.registry.Engines[0].Family != "polystrata" {
+		t.Fatalf("expected simulated polystrata setup to finish and register engine: downloads=%+v engines=%+v", p.state.downloads, p.state.registry.Engines)
 	}
 }

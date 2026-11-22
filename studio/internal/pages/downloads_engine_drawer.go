@@ -232,6 +232,14 @@ func (s *viewState) engineDrawerInstallSection(
 
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 		switch {
+		case build.AcquireMode == core.EngineAcquireManagedSetup && (build.Platform == hostPlatform || build.Platform == "any"):
+			if s.downloadActive("polystrata") {
+				button(c, "安装中…").Label("安装此版本 · " + family.ID).Disabled(true)
+			} else {
+				primaryButton(c, "应用内引导安装").Label("安装此版本 · " + family.ID).Disabled(s.busy).OnClick(func() {
+					s.acquirePolystrataSetup(s.defaultPolystrataSetupRequest())
+				})
+			}
 		case build.CanDirectDownloadOn(hostPlatform):
 			if s.isEngineSourceDownloading(build.PrimaryURL()) {
 				button(c, "安装中…").Label("安装此版本 · " + family.ID).Disabled(true)

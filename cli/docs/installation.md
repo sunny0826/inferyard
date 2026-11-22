@@ -30,6 +30,17 @@ inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight/dev
 - 省略 `--bundle` 时导出默认双题包 `zh-core` 与 `zh-svg-pelican`；显式传入 `--bundle` 可选 `zh-smoke`、`zh-core`、`zh-svg-pelican` 或 `zh-context-speed`。
 - 所有准备与报告命令的 `--out` 均须指向不存在的新目录（不覆盖历史产物）。
 - 单文件 GGUF 模型或引擎归档可通过 `inferyard model acquire` / `inferyard engine acquire` 下载；工作区当前阶段可随时用 `inferyard progress --workspace bench-ops` 查询。
+- `inferyard device-check --json` 同时输出硬件感知首装推荐（`starter_recommendation`）：在满足条件的 Apple Silicon、NVIDIA CUDA 或 AMD ROCm（`hip`）设备上优先推荐 **PolyStrata**，其余环境平滑回退至 `llama.cpp`。
+
+### 托管安装 PolyStrata（推荐）
+
+在受支持的 macOS（Apple Silicon）、Linux x64 或 Windows x64 设备上，可直接通过一条命令自动完成预检、运行时构建、模型下载并生成 `installation.json`：
+
+```bash
+inferyard engine prepare-polystrata --out bench-ops/engines/polystrata --data-dir bench-ops/polystrata-data --json
+```
+
+常用选项：`--family` / `--model`（如 `--family qwen36 --model UD-Q4_K_M`）、`--context`、`--backend auto|cuda|hip|metal`、`--model-source auto|modelscope|huggingface`、`--gguf-path`（复用本地 GGUF）、`--resume`（断点续装）。安装完成后可使用 `inferyard engine check --installation bench-ops/engines/polystrata/installation.json --json` 核验。
 
 ## 3. 准备候选
 
@@ -73,7 +84,7 @@ inferyard config create --workspace bench-ops --bundle zh-core --engine /path/to
 
 ### macOS 本地安装声明（installation.json）
 
-接入独立安装的 `llama-cpp`、`mlx-lm`、`vllm`、`sglang` 或 `lmstudio` 时，准备绝对路径声明 `installation.json`（完整结构见 `inferyard schema --kind local_engine_installation`）：
+接入独立安装的 `polystrata`、`llama-cpp`、`mlx-lm`、`vllm`、`sglang` 或 `lmstudio` 时，准备绝对路径声明 `installation.json`（完整结构见 `inferyard schema --kind local_engine_installation`）：
 
 ```json
 {

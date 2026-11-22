@@ -25,11 +25,15 @@ type previewLocalTask struct {
 
 func previewLocalEngines(s *viewState) {
 	s.selected, s.task.stage = "dashboard", "prepare_candidate"
-	s.registry.Models = []core.ModelAsset{{Name: "local.gguf", Format: "gguf", Available: true}, {Name: "local-weights", Format: "directory", Available: true}}
+	s.registry.Models = []core.ModelAsset{
+		{Name: "local.gguf", Format: "gguf", Available: true},
+		{Name: "strata-qwen36-ud-q4-k-m.json", Format: "strata_pack", Available: true},
+		{Name: "local-weights", Format: "directory", Available: true},
+	}
 	s.registry.Engines = nil
 	s.settings.Settings.EngineInstallations = nil
 	s.checks = core.EngineCheckOverview{Supported: true, Engines: map[string]core.EngineEligibility{}}
-	for _, family := range []string{"llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio"} {
+	for _, family := range []string{"polystrata", "llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio"} {
 		name := family + " · 模拟安装"
 		s.registry.Engines = append(s.registry.Engines, core.EngineAsset{Name: name, Family: family, Kind: "local_installation", Source: "模拟安装声明"})
 		s.checks.Engines[name] = core.EngineEligibility{State: core.EngineCheckEligible, Family: family, VerificationScope: "installation", Version: "preview"}
@@ -56,14 +60,14 @@ func (p *previewSession) installation(op previewInstallation) {
 			return
 		}
 		family := ""
-		for _, name := range []string{"llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio"} {
+		for _, name := range []string{"polystrata", "llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio"} {
 			if strings.Contains(filepath.Base(op.path), name) {
 				family = name
 				break
 			}
 		}
 		if family == "" {
-			s.failure = &core.ApiError{Code: "preview_installation_fixture_required", Message: "模拟注册请使用文件名含 llama-cpp、mlx-lm、vllm、sglang 或 lmstudio 的 JSON 路径。"}
+			s.failure = &core.ApiError{Code: "preview_installation_fixture_required", Message: "模拟注册请使用文件名含 polystrata、llama-cpp、mlx-lm、vllm、sglang 或 lmstudio 的 JSON 路径。"}
 			return
 		}
 		name := family + " · " + filepath.Base(op.path)
@@ -268,7 +272,18 @@ func (p *previewSession) retryLocalBenchmark() {
 
 func (p *previewSession) detectedEngines() []inferyard.DetectedEngine {
 	lmsModels := "/Users/demo/.lmstudio/models"
+	psDataDir := "/Users/demo/PolyStrata-data"
+	psVersion := "v0.1.45-poly.10"
 	return []inferyard.DetectedEngine{
+		{
+			Family:           "polystrata",
+			Executable:       "/Users/demo/PolyStrata/.venv/bin/python",
+			WorkingDirectory: "/Users/demo/PolyStrata",
+			RuntimeRoots:     []string{"/Users/demo/PolyStrata/.venv", "/Users/demo/PolyStrata/serve"},
+			DataDir:          &psDataDir,
+			Version:          &psVersion,
+			Label:            "polystrata · v0.1.45-poly.10 (/Users/demo/PolyStrata)",
+		},
 		{
 			Family:           "llama-cpp",
 			Executable:       "/opt/homebrew/bin/llama-server",

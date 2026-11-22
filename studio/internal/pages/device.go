@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/icons/lucide"
@@ -111,6 +112,9 @@ func (s *viewState) deviceView(c *ui.Context) {
 	snapshot, parseError := parseDeviceSnapshot(s.device.Snapshot)
 	if snapshot != nil && parseError == nil {
 		deviceHardware(c, snapshot.object("hardware"))
+		if rec, ok := core.ParseStarterRecommendation(s.device.Snapshot); ok {
+			s.deviceRecommendationCard(c, rec)
+		}
 	}
 	errorRecoveryBanner(c, s.device.LastError, func() {
 		s.deviceRefreshButton(c, "重试")
@@ -161,11 +165,17 @@ func deviceHardware(c *ui.Context, hw deviceObject) {
 		for i, item := range devices {
 			v := deviceItem(item)
 			name := v.value("name")
+			if arch := strings.TrimSpace(fmt.Sprint(v["arch_family"])); v["arch_family"] != nil && arch != "" {
+				name += " · " + arch
+			}
 			if v["cores"] != nil {
 				name += " · " + v.value("cores") + " 核"
 			}
 			if v.flag("metal_supported") {
 				name += " · 支持 Metal"
+			}
+			if drv := strings.TrimSpace(fmt.Sprint(v["driver_version"])); v["driver_version"] != nil && drv != "" {
+				name += " · 驱动 " + drv
 			}
 			label := "GPU"
 			if len(devices) > 1 {
@@ -181,6 +191,18 @@ func deviceHardware(c *ui.Context, hw deviceObject) {
 			}
 			deviceRow(c, "GPU", value)
 		}
+		if feats := hw.object("cpu_features"); len(feats) > 0 {
+			var flags []string
+			if feats.flag("avx2") {
+				flags = append(flags, "AVX2")
+			}
+			if feats.flag("avx512f") || feats.flag("avx512") {
+				flags = append(flags, "AVX-512")
+			}
+			if len(flags) > 0 {
+				deviceRow(c, "指令集", strings.Join(flags, " · "))
+			}
+		}
 		deviceRow(c, "磁盘可用", deviceMeasurement(hw, "disk_free_bytes", true))
 		power := deviceMeasurement(hw, "ac_online", false)
 		if online, ok := hw["ac_online"].(bool); ok {
@@ -195,5 +217,33 @@ func deviceHardware(c *ui.Context, hw deviceObject) {
 			architecture += "（Apple 芯片）"
 		}
 		deviceRow(c, "架构", architecture)
+	})
+}
+
+func (s *viewState) deviceRecommendationCard(c *ui.Context, rec core.StarterRecommendation) {
+	t := tokens(c)
+	card(c, "推荐配置", func() {
+		if rec.Status == "blocked" {
+			deviceRow(c, "状态", deviceLabel(rec.Reason))
+			return
+		}
+		engineText := starterEngineLabel(rec.Engine)
+		if rec.Backend != "" {
+			engineText += " · " + deviceLabel(rec.Backend)
+		}
+		deviceRow(c, "推荐引擎", engineText)
+		if rec.ModelTitle != "" {
+			modelText := rec.ModelTitle
+			if ctx := starterContextLabel(rec.RecommendedContext); ctx != "" {
+				modelText += " · " + ctx
+			}
+			deviceRow(c, "推荐模型", modelText)
+		}
+		if rec.EstimatedDownloadBytes > 0 {
+			deviceRow(c, "预计下载", formatDownloadBytes(rec.EstimatedDownloadBytes))
+		}
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			button(c, "前往下载").OnClick(func() { s.selected = "downloads" })
+		})
 	})
 }

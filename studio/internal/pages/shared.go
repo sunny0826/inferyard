@@ -50,6 +50,8 @@ func conflictReasonLabel(reason string) string {
 		return "输出目录已存在，请选择新目录。"
 	case "invalid_state":
 		return "当前状态不支持该操作，请刷新进度后重试。"
+	case "polystrata_setup_active":
+		return "已有 PolyStrata 安装任务正在进行，请等待完成或取消后重试。"
 	default:
 		return ""
 	}

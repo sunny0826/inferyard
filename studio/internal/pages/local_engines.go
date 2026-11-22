@@ -44,11 +44,13 @@ func (s *viewState) localCandidateRequest(bundles []string) *core.LocalCandidate
 func (s *viewState) compatibleModel(model core.ModelAsset) bool {
 	engine := s.localEngine()
 	if engine == nil {
-		return model.Format != "directory"
+		return model.Format != "directory" && model.Format != "strata_pack"
 	}
 	switch engine.Family {
 	case "llama-cpp", "lmstudio":
-		return model.Format != "directory"
+		return model.Format != "directory" && model.Format != "strata_pack"
+	case "polystrata":
+		return model.Format == "gguf" || model.Format == "strata_pack"
 	case "mlx-lm", "vllm", "sglang":
 		return model.Format == "directory"
 	}
@@ -56,11 +58,13 @@ func (s *viewState) compatibleModel(model core.ModelAsset) bool {
 }
 
 func modelLabel(model core.ModelAsset) string {
-	if model.Format == "directory" {
+	switch model.Format {
+	case "directory":
 		return model.Name + " · 目录模型"
-	}
-	if model.Format == "gguf" {
+	case "gguf":
 		return model.Name + " · GGUF"
+	case "strata_pack":
+		return model.Name + " · PolyStrata"
 	}
 	return model.Name
 }
@@ -219,7 +223,7 @@ func (s *viewState) localInstallationsView(c *ui.Context) {
 	card(c, "已有本地引擎", func() {
 		s.localEngineWizardView(c)
 		componentFold(c, "高级：直接导入已有 installation.json", func() {
-			ui.Text(c, "注册本地引擎安装声明（支持 llama.cpp、MLX、vLLM、SGLang、LM Studio）。")
+			ui.Text(c, "注册本地引擎安装声明（支持 PolyStrata、llama.cpp、MLX、vLLM、SGLang、LM Studio）。")
 			componentFold(c, "installation.json 字段说明", func() {
 				ui.Text(c, "声明 definition 为 local-engine-installation.v1，填写 family、executable、working_directory、runtime_roots 与 environment 绝对路径。")
 			})
