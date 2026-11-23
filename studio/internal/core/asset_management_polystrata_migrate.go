@@ -107,12 +107,18 @@ func snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir string, 
 		}
 		srcPath := filepath.Join(installDir, name)
 		info, err := os.Lstat(srcPath)
-		if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() > maxInstallationBytes {
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", name, err)
+		}
+		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
 			continue
+		}
+		if info.Size() > maxStrataConfigBytes {
+			return nil, fmt.Errorf("%s exceeds max config size", name)
 		}
 		raw, err := os.ReadFile(srcPath)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%s: %w", name, err)
 		}
 		var cfg struct {
 			Exe  string   `json:"exe"`
@@ -397,33 +403,143 @@ func writeFileAtomic(dir, destPath string, payload []byte, mode os.FileMode) err
 	return nil
 }
 
-type stagedDeleteTarget struct {
-	orig   string
-	staged string
-	isDir  bool
-}
-
-func stagePolystrataDeleteTargets(targets []stagedDeleteTarget) ([]stagedDeleteTarget, error) {
-	staged := make([]stagedDeleteTarget, 0, len(targets))
-	rollback := func() {
-		for i := len(staged) - 1; i >= 0; i-- {
-			_ = os.Rename(staged[i].staged, staged[i].orig)
+func expandSplitGGUFShardsLenient(canonPath string) []assetFileSize {
+	m := splitGGUFPattern.FindStringSubmatch(filepath.Base(canonPath))
+	if m != nil {
+		stem, idxStr, totalStr, ext := m[1], m[2], m[3], m[4]
+		index, err1 := strconv.Atoi(idxStr)
+		total, err2 := strconv.Atoi(totalStr)
+		if err1 == nil && err2 == nil && total >= 2 && total <= 256 && index >= 1 && index <= total {
+			dir := filepath.Dir(canonPath)
+			var shards []assetFileSize
+			for i := 1; i <= total; i++ {
+				shardPath := filepath.Join(dir, fmt.Sprintf("%s-%05d-of-%05d%s", stem, i, total, ext))
+				info, err := os.Lstat(shardPath)
+				if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+					continue
+				}
+				canonShard, cerr := canonical(shardPath)
+				if cerr != nil {
+					canonShard = shardPath
+				}
+				appendUniqueAssetFile(&shards, assetFileSize{path: canonShard, size: info.Size()})
+			}
+			return shards
 		}
 	}
-	for _, t := range targets {
-		stagedPath := filepath.Join(filepath.Dir(t.orig), ".inferyard-del-"+uuid()+"-"+filepath.Base(t.orig))
-		if err := os.Rename(t.orig, stagedPath); err != nil {
-			rollback()
-			return nil, err
+	info, err := os.Lstat(canonPath)
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return nil
+	}
+	return []assetFileSize{{path: canonPath, size: info.Size()}}
+}
+
+func collectBrokenSplitGGUFShards(ref string, bases []string) []assetFileSize {
+	baseName := filepath.Base(ref)
+	if !splitGGUFPattern.MatchString(baseName) {
+		return nil
+	}
+	var candidateDirs []string
+	if filepath.IsAbs(ref) {
+		candidateDirs = []string{filepath.Dir(ref)}
+	} else {
+		relDir := filepath.Dir(ref)
+		for _, b := range bases {
+			candidateDirs = append(candidateDirs, filepath.Join(b, relDir))
 		}
-		entry := stagedDeleteTarget{orig: t.orig, staged: stagedPath, isDir: t.isDir}
-		staged = append(staged, entry)
-		if t.isDir {
-			if err := checkDirTreeWritable(stagedPath); err != nil {
-				rollback()
-				return nil, err
+	}
+	var shards []assetFileSize
+	for _, dir := range candidateDirs {
+		info, err := os.Lstat(dir)
+		if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+			continue
+		}
+		canonDir, cerr := canonical(dir)
+		if cerr != nil {
+			continue
+		}
+		for _, sh := range expandSplitGGUFShardsLenient(filepath.Join(canonDir, baseName)) {
+			appendUniqueAssetFile(&shards, sh)
+		}
+	}
+	return shards
+}
+
+func parseAndResolvePolystrataRefs(cfgPath, declWorkDir, declDataDir string, includeNonRelCwd bool) ([]assetFileSize, []string, bool) {
+	raw, err := os.ReadFile(cfgPath)
+	if err != nil {
+		return nil, nil, false
+	}
+	var cfg struct {
+		Args []string `json:"args"`
+		Cwd  string   `json:"cwd"`
+	}
+	if json.Unmarshal(raw, &cfg) != nil {
+		return nil, nil, true
+	}
+	var rawMap map[string]any
+	_ = json.Unmarshal(raw, &rawMap)
+
+	cfgDir := filepath.Dir(cfgPath)
+	files, dirs := resolvePolystrataConfigRefsWithBases(cfg.Args, rawMap, cfgDir, polystrataConfigBases(cfg.Cwd, declWorkDir, cfgDir, declDataDir))
+	// CLI inspect_polystrata_payload ignores relative cwd; union non-cwd bases so CLI-resolved weights stay protected too.
+	if includeNonRelCwd {
+		if trimmedCwd := strings.TrimSpace(cfg.Cwd); trimmedCwd != "" && !filepath.IsAbs(trimmedCwd) {
+			cliFiles, cliDirs := resolvePolystrataConfigRefsWithBases(cfg.Args, rawMap, cfgDir, polystrataConfigBases("", declWorkDir, cfgDir, declDataDir))
+			for _, f := range cliFiles {
+				appendUniqueAssetFile(&files, f)
+			}
+			for _, d := range cliDirs {
+				if !slices.ContainsFunc(dirs, func(prev string) bool { return sameFileOrPath(prev, d) }) {
+					dirs = append(dirs, d)
+				}
 			}
 		}
 	}
-	return staged, nil
+	return files, dirs, true
+}
+
+func resolvePolystrataConfigRefsProtected(cfgPath, declWorkDir, declDataDir string) ([]assetFileSize, []string, bool) {
+	return parseAndResolvePolystrataRefs(cfgPath, declWorkDir, declDataDir, true)
+}
+
+func resolvePolystrataConfigRefsLenient(cfgPath, declWorkDir, declDataDir string) ([]assetFileSize, []string) {
+	files, dirs, _ := parseAndResolvePolystrataRefs(cfgPath, declWorkDir, declDataDir, false)
+	return files, dirs
+}
+
+func resolvePolystrataConfigRefsWithBases(args []string, rawMap map[string]any, cfgDir string, bases []string) ([]assetFileSize, []string) {
+	refs := extractPolystrataAssetRefs(args, rawMap)
+
+	var files []assetFileSize
+	var dirs []string
+	if len(refs) == 0 {
+		if hasPackFallbackMarker(cfgDir) {
+			if canonDir, cerr := canonical(cfgDir); cerr == nil {
+				dirs = append(dirs, canonDir)
+			}
+		}
+	} else {
+		for _, ref := range refs {
+			canonPath, isDir, ok := resolvePolystrataAssetRef(ref, bases)
+			if !ok {
+				for _, f := range collectBrokenSplitGGUFShards(ref, bases) {
+					appendUniqueAssetFile(&files, f)
+				}
+				continue
+			}
+			if isDir {
+				if !slices.ContainsFunc(dirs, func(prev string) bool { return sameFileOrPath(prev, canonPath) }) {
+					dirs = append(dirs, canonPath)
+				}
+				continue
+			}
+			for _, f := range expandSplitGGUFShardsLenient(canonPath) {
+				appendUniqueAssetFile(&files, f)
+			}
+		}
+	}
+	slices.SortFunc(files, func(a, b assetFileSize) int { return strings.Compare(a.path, b.path) })
+	slices.Sort(dirs)
+	return files, dirs
 }

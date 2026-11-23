@@ -254,115 +254,6 @@ func polystrataInstallKeepsExternalData(u UserSettings, wsEnginesRoot, canonInst
 	return false
 }
 
-func polystrataInstallHasExternalDependents(u UserSettings, wsEnginesRoot, canonInstPath, installDir string, engines []registryEntry) bool {
-	if otherEngineSharesInstallDir(installDir, canonInstPath, engines) {
-		return true
-	}
-	for _, rawInst := range u.EngineInstallations {
-		canonOther, err := canonical(rawInst)
-		if err != nil || sameDirectoryEntry(canonOther, canonInstPath) {
-			continue
-		}
-		if pathWithinDirSameFS(installDir, canonOther) {
-			return true
-		}
-		rawBytes, err := installationBytes(canonOther)
-		if err != nil {
-			continue
-		}
-		var decl struct {
-			Executable       string   `json:"executable"`
-			WorkingDirectory string   `json:"working_directory"`
-			ModelsRoot       string   `json:"models_root"`
-			DataDir          string   `json:"data_dir"`
-			RuntimeRoots     []string `json:"runtime_roots"`
-		}
-		if json.Unmarshal(rawBytes, &decl) != nil {
-			continue
-		}
-		refs := append([]string{decl.Executable, decl.WorkingDirectory, decl.ModelsRoot, decl.DataDir}, decl.RuntimeRoots...)
-		for _, rawRef := range refs {
-			trimmed := strings.TrimSpace(rawRef)
-			if trimmed == "" {
-				continue
-			}
-			resolved := filepath.Clean(trimmed)
-			if c, cerr := canonical(trimmed); cerr == nil {
-				resolved = c
-			}
-			if pathWithinDirSameFS(installDir, resolved) {
-				return true
-			}
-		}
-	}
-
-	var seenContexts []polystrataCfgContext
-	checkSurvivingDir := func(dir, declWorkDir, declDataDir string, checkExe bool) bool {
-		dirEntries, err := os.ReadDir(dir)
-		if err != nil {
-			return false
-		}
-		for _, item := range dirEntries {
-			name := item.Name()
-			if item.IsDir() || !strings.HasPrefix(name, "strata-") || !strings.HasSuffix(name, ".json") {
-				continue
-			}
-			full := filepath.Join(dir, name)
-			info, err := os.Stat(full)
-			if err != nil || !info.Mode().IsRegular() || info.Size() > maxInstallationBytes {
-				continue
-			}
-			resolved, err := canonical(full)
-			if err != nil || pathWithinDirSameFS(installDir, full) || pathWithinDirSameFS(installDir, resolved) {
-				continue
-			}
-			if seenCfgInContext(seenContexts, resolved, declWorkDir, declDataDir, checkExe) {
-				continue
-			}
-			seenContexts = append(seenContexts, polystrataCfgContext{
-				cfg:      resolved,
-				workDir:  filepath.Clean(strings.TrimSpace(declWorkDir)),
-				dataDir:  filepath.Clean(strings.TrimSpace(declDataDir)),
-				checkExe: checkExe,
-			})
-			if survivingPolystrataConfigDependsOnInstallDir(resolved, declWorkDir, declDataDir, installDir, checkExe) {
-				return true
-			}
-		}
-		return false
-	}
-
-	for _, rawInst := range u.EngineInstallations {
-		rawBytes, err := installationBytes(rawInst)
-		if err != nil {
-			continue
-		}
-		var decl struct {
-			Family           string `json:"family"`
-			WorkingDirectory string `json:"working_directory"`
-			DataDir          string `json:"data_dir"`
-		}
-		if json.Unmarshal(rawBytes, &decl) != nil || decl.Family != "polystrata" {
-			continue
-		}
-		canonRaw, cerr := canonical(rawInst)
-		isOtherEngine := cerr == nil && !sameDirectoryEntry(canonRaw, canonInstPath) && !pathWithinDirSameFS(installDir, canonRaw)
-		for _, dir := range polystrataConfigSearchDirs(decl.WorkingDirectory, decl.DataDir) {
-			if checkSurvivingDir(dir, decl.WorkingDirectory, decl.DataDir, isOtherEngine) {
-				return true
-			}
-		}
-	}
-	for _, dd := range defaultManagedPolystrataDataDirs(u, wsEnginesRoot) {
-		for _, dir := range polystrataConfigSearchDirs("", dd) {
-			if checkSurvivingDir(dir, "", dd, false) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func protectedPolystrataDataDirs(u UserSettings, wsEnginesRoot string) []string {
 	out := defaultManagedPolystrataDataDirs(u, wsEnginesRoot)
 	addDir := func(raw string) {
@@ -477,6 +368,9 @@ func (s *Service) inspectDeleteEngineAsset(u UserSettings, paths *BoundPaths, re
 				if apiErr, ok := polystrataCredentialApiError(migErr); ok {
 					return AssetDeleteInfo{}, apiErr
 				}
+				apiErr := Err("internal_error")
+				apiErr.Message = fmt.Sprintf("无法读取或校验待迁移配置：%v", migErr)
+				return AssetDeleteInfo{}, apiErr
 			}
 			return AssetDeleteInfo{
 				Kind:             "engine",

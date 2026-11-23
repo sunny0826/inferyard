@@ -209,7 +209,7 @@ func scanPolystrataModelConfigs(installPaths, extraDataDirs []string) ([]registr
 			}
 			full := filepath.Join(dir, name)
 			info, err := os.Lstat(full)
-			if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() > maxInstallationBytes {
+			if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() > maxStrataConfigBytes {
 				continue
 			}
 			cfgRaw, err := os.ReadFile(full)
