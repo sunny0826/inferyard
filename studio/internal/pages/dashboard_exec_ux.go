@@ -111,11 +111,11 @@ func launchSummaryLine(w *viewState) string {
 			return fmt.Sprintf("运行条件：%s · 上下文 8192 · 使用外部服务地址", localBackendLabel(e.Family))
 		}
 		if e.Family == "polystrata" {
-			return fmt.Sprintf("运行条件：%s · 端口自动（默认 %d）", polystrataBackendLabel(w), core.DefaultBenchmarkPort)
+			return fmt.Sprintf("运行条件：%s", polystrataBackendLabel(w))
 		}
-		return fmt.Sprintf("运行条件：%s · 上下文 8192 · 端口自动（默认 %d）", localBackendLabel(e.Family), core.DefaultBenchmarkPort)
+		return fmt.Sprintf("运行条件：%s · 上下文 8192", localBackendLabel(e.Family))
 	}
-	return fmt.Sprintf("运行条件：%s · 上下文 %d · 关闭思考模式 · 端口自动（默认 %d）", prismBackendLabel(w), prismContextSize(w.selectedModel()), core.DefaultBenchmarkPort)
+	return fmt.Sprintf("运行条件：%s · 上下文 %d · 关闭思考模式", prismBackendLabel(w), prismContextSize(w.selectedModel()))
 }
 
 func (w *viewState) incompatibleModelSuffix(model core.ModelAsset) string {
@@ -148,5 +148,5 @@ func lmStudioHandoffNotice(w *viewState) string {
 	if e == nil || e.Family != "lmstudio" || len(w.checkedBundles()) <= 1 {
 		return ""
 	}
-	return "提示：选择多个题集时，LM Studio 会在第一套题集完成后暂停，需重启一次后台服务并重新绑定 PID 后继续。"
+	return "选择多个题集时，LM Studio 会在第一套题集完成后暂停，需重启一次后台服务并重新绑定 PID 后继续。"
 }

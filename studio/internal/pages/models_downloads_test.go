@@ -22,7 +22,7 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 				}
 			}
 			if task.Kind == "engine" {
-				if !tt.HasText("正在下载引擎归档…") || tt.HasText("总量未知") || tt.HasText("缺测") {
+				if !tt.HasText("正在下载引擎归档…") || tt.HasText("缺测") {
 					t.Fatal(tt.Texts())
 				}
 				if tt.HasText("已下载 0 bytes") {
@@ -34,7 +34,7 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 				if got := exactTextCount(tt.Texts(), "下载任务活动"); got != 1 {
 					t.Fatalf("engine activity bars = %d: %v", got, tt.Texts())
 				}
-			} else if !tt.HasText("已观测") || !tt.HasText("速率") || !tt.HasText("总量") || !tt.HasText("总量未知") ||
+			} else if !tt.HasText("已下载") || !tt.HasText("速率") || !tt.HasText("总量") || !tt.HasText("—") ||
 				!tt.HasText("1.50 MiB") || !tt.HasText("2.0 KiB/s") {
 				t.Fatal(tt.Texts())
 			}
@@ -56,7 +56,7 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 						"failed":    "引擎归档下载失败。",
 						"cancelled": "引擎归档下载已取消。",
 					}[state]
-					if !tt.HasText(want) || tt.HasText("总量未知") {
+					if !tt.HasText(want) {
 						t.Fatal(want, tt.Texts())
 					}
 				}
@@ -69,7 +69,7 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 			}
 			s.downloads[0].State = task.State
 			tt.Frame()
-			click(t, tt, "观测依据与输出")
+			click(t, tt, "任务详情")
 			assertDownloadDetails(t, tt, task.Kind)
 		})
 	}
@@ -146,7 +146,7 @@ func exactTextCount(texts []string, s string) int {
 func assertDownloadDetails(t *testing.T, tt *ui.Tester, kind string) {
 	t.Helper()
 	if kind == "engine" {
-		if !tt.HasText("已下载 缺测 · 速率 缺测") || tt.HasText("已下载 0 bytes") {
+		if !tt.HasText("已下载 — · 速率 —") || tt.HasText("已下载 0 bytes") {
 			t.Fatal(tt.Texts())
 		}
 		return

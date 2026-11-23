@@ -172,7 +172,7 @@ func (s *viewState) customModelURLFold(c *ui.Context, st *downloadsUIState) {
 			case resState.resolved != nil:
 				sizeText := "大小未知"
 				if resState.resolved.Bytes != nil && *resState.resolved.Bytes > 0 {
-					sizeText = catalogSize(*resState.resolved.Bytes)
+					sizeText = catalogHumanSize(*resState.resolved.Bytes)
 				}
 				applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Inset), materialInset).Children(func() {
 					ui.Text(c, "已解析版本："+resState.resolved.Revision).Selectable().FontSize(t.Type.Caption)
@@ -228,7 +228,7 @@ func (s *viewState) downloadsModelDrawer(c *ui.Context) {
 					keyValueRow(c, "适用引擎", modelCatalogEngineLabel(entry), false)
 					keyValueRow(c, "支持平台", core.PlatformLabel(entry.Platform), false)
 					if entry.Bytes > 0 {
-						keyValueRow(c, "文件大小", catalogSize(entry.Bytes), true)
+						keyValueRow(c, "文件大小", catalogHumanSize(entry.Bytes), true)
 					}
 					keyValueRow(c, "版本", versionText, false)
 				})

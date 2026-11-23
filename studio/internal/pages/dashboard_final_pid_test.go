@@ -53,7 +53,14 @@ func TestAsyncHandoffRejectionRenderedOnce(t *testing.T) {
 	s.tasks = []core.RunTask{{TaskId: "second", Kind: "run", State: "failed", Bundle: ptr("zh-svg-pelican"), Error: e}}
 	s.task.failure, s.failure = e, e
 	tt := ui.NewTester(s.view, 1120, 2200)
-	if n := countText(tt, "cli_error"); n != 1 {
+	if tt.HasText("cli_error") {
+		t.Fatalf("raw code leaked before expanding error details: %v", tt.Texts())
+	}
+	if n := countText(tt, "inferyard 工具或证据错误"); n != 1 {
+		t.Fatalf("rejection banner rendered %d times: %v", n, tt.Texts())
+	}
+	click(t, tt, "错误详情")
+	if n := countText(tt, "错误码：cli_error"); n != 1 {
 		t.Fatalf("rejection rendered %d times: %v", n, tt.Texts())
 	}
 	if !tt.HasText("连接并核验服务失败") {
@@ -66,7 +73,14 @@ func TestTaskErrorStaysListedWithoutStepOwner(t *testing.T) {
 	e := core.Err("cli_error")
 	s.tasks = []core.RunTask{{TaskId: "second", Kind: "run", State: "failed", Bundle: ptr("zh-svg-pelican"), Error: e}}
 	tt := ui.NewTester(s.view, 1120, 2200)
-	if n := countText(tt, "cli_error"); n != 1 {
+	if tt.HasText("cli_error") {
+		t.Fatalf("raw code leaked before expanding error details: %v", tt.Texts())
+	}
+	if n := countText(tt, "错误详情"); n != 1 {
+		t.Fatalf("task error banner rendered %d times: %v", n, tt.Texts())
+	}
+	click(t, tt, "错误详情")
+	if n := countText(tt, "错误码：cli_error"); n != 1 {
 		t.Fatalf("cause rendered %d times: %v", n, tt.Texts())
 	}
 }

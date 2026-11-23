@@ -155,11 +155,8 @@ func (s *viewState) deviceView(c *ui.Context) {
 func deviceHardware(c *ui.Context, hw deviceObject) {
 	card(c, "硬件", func() {
 		deviceRow(c, "处理器", deviceMeasurement(hw, "cpu_model", false)+" · "+deviceMeasurement(hw, "logical_cpus", false)+" 核")
-		memory := deviceMeasurement(hw, "memory_total_bytes", true) + "（当前可用约 " + deviceMeasurement(hw, "memory_available_bytes", true)
-		if hw.flag("memory_available_is_estimate") {
-			memory += "，估算"
-		}
-		deviceRow(c, "内存", memory+"）")
+		memory := deviceMeasurement(hw, "memory_total_bytes", true) + "（可用约 " + deviceMeasurement(hw, "memory_available_bytes", true) + "）"
+		deviceRow(c, "内存", memory)
 		gpu := hw.object("gpu")
 		devices := gpu.list("devices")
 		for i, item := range devices {

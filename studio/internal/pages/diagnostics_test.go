@@ -75,10 +75,13 @@ func TestHumanTranslatesDiagnosticAndLocalEngineCodes(t *testing.T) {
 		"local_engine_mapping_unverified",
 		"local_engine_macho_unreadable",
 		"local_engine_mapped_library_closure_unverified",
+		"polystrata_preflight_blocked",
+		"polystrata_setup_failed",
+		"local_engine_data_dir_invalid",
 	}
 	for _, code := range codes {
 		got := human(code)
-		if got == "" || strings.HasPrefix(got, "尚未识别的原因码：") {
+		if got == "" || strings.HasPrefix(got, "操作失败（") {
 			t.Errorf("human(%q) returned fallback or empty: %q", code, got)
 		}
 	}
@@ -168,7 +171,7 @@ func TestServiceViewEngineLogPreviewModeDoesNoIO(t *testing.T) {
 
 	click(t, tt, "查看引擎日志尾部")
 	tt.Frame()
-	if !tt.HasText("预览模式不读取本地日志文件。") {
+	if !tt.HasText("预览模式无本地日志。") {
 		t.Fatalf("preview placeholder missing: %v", tt.Texts())
 	}
 

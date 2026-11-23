@@ -86,7 +86,7 @@ func sourceLabel(source core.ResourceSource) string {
 func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 	card(c, "资源曲线", func() {
 		series := resourceSeriesData(samples)
-		ui.Text(c, fmt.Sprintf("采样点：%d（每来源保留最近 600 点）", len(samples)))
+		ui.Text(c, fmt.Sprintf("采样点：%d", len(samples)))
 		if len(series) == 0 {
 			ui.Text(c, "等待资源采样…")
 			return
@@ -103,7 +103,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 				}
 			}
 			if len(options) == 0 {
-				ui.Text(c, metric.label+" · 此运行未记录该指标").TextColor(theme.TextMuted)
+				ui.Text(c, metric.label+" · —").TextColor(theme.TextMuted)
 				return
 			}
 			container := ui.Column(c).FillWidth().Gap(tokens(c).Density.Row)
@@ -139,8 +139,8 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 						s.samplesTable = pageTableState{}
 						s.resourceTablePage = 0
 					}
-				} else {
-					ui.Text(c, secondarySourceLabel(metric.id, options[current].source)).TextColor(theme.TextMuted)
+				} else if label := secondarySourceLabel(metric.id, options[current].source); label != "" {
+					ui.Text(c, label).TextColor(theme.TextMuted)
 				}
 				chosen := options[current]
 				selected = append(selected, chosen.points...)
@@ -157,7 +157,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 				}
 				chart.Line(c, &state.chart, data, chart.Options{
 					HideLegend: true, Label: metric.label + "曲线", PlotHeight: 140, AnimationDuration: -1,
-					Description: "本来源独立刻度与时间，左右方向键选择样本。",
+					Description: "左右方向键选择样本",
 					Detail: func(c *ui.Context, selection chart.Selection) {
 						ui.Column(c).Children(func() {
 							if selection.Index >= 0 && selection.Index < len(chosen.points) {
@@ -194,7 +194,7 @@ func secondarySourceLabel(metricID string, source core.ResourceSource) string {
 	if metricID == "temperature" || !strings.Contains(name, ":") {
 		return name
 	}
-	return "单一采样来源"
+	return ""
 }
 
 type resourceMetric struct {

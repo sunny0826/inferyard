@@ -274,7 +274,7 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 			s.pushNotification(studioNotification{
 				Key:   "run:" + task.TaskId + ":done",
 				Title: name + "已完成",
-				Body:  "运行证据已保存，可查看实时详情或生成报告。",
+				Body:  "结果已保存，可查看实时详情或生成报告。",
 				Kind:  stateSuccess,
 				Primary: &notificationAction{
 					Label: "查看详情",
@@ -309,7 +309,7 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 			s.pushNotification(studioNotification{
 				Key:   "run:" + task.TaskId + ":cancelled",
 				Title: name + "已取消",
-				Body:  "已完成进度与运行证据已保留。",
+				Body:  "已完成进度与结果已保留。",
 				Kind:  stateInfo,
 			})
 		}

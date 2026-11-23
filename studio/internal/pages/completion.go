@@ -16,7 +16,6 @@ func (s *viewState) completionView(c *ui.Context) {
 		s.completionActions(c, path)
 		return
 	}
-	ui.Text(c, fmt.Sprintf("本轮共 %d 次运行。", len(runs)))
 	for _, run := range runs {
 		card(c, completionRunTitle(run), func() {
 			deviceRow(c, "通过率", runPassRate(run))
@@ -83,11 +82,8 @@ func completionRunTitle(run core.RunSummary) string {
 }
 
 func runPassRate(run core.RunSummary) string {
-	if run.Score == nil {
-		return "缺测 — 未记录分数"
-	}
-	if run.Score.Valid == 0 {
-		return "缺测 — 没有有效题"
+	if run.Score == nil || run.Score.Valid == 0 {
+		return "—"
 	}
 	if gap := run.Score.RateGap(); gap != "" {
 		return fmt.Sprintf("%d / %d（%s）", run.Score.Passed, run.Score.Valid, gapDescription(*run.Score, gap))
@@ -120,18 +116,15 @@ func gapDescription(score core.RunScore, gap string) string {
 func runDuration(run core.RunSummary) string {
 	start, finish := emptyText(run.StartedAt), emptyText(run.FinishedAt)
 	if start == "" || finish == "" {
-		return "缺测 — 未记录开始或结束时间"
+		return "—"
 	}
 	from, err := time.Parse(time.RFC3339Nano, start)
 	if err != nil {
-		return "缺测 — 开始时间无法解析"
+		return "—"
 	}
 	to, err := time.Parse(time.RFC3339Nano, finish)
-	if err != nil {
-		return "缺测 — 结束时间无法解析"
-	}
-	if to.Before(from) {
-		return "缺测 — 结束早于开始"
+	if err != nil || to.Before(from) {
+		return "—"
 	}
 	return formatDuration(to.Sub(from))
 }

@@ -108,7 +108,10 @@ func progressBar(c *ui.Context, value float64, label string) ui.Element {
 }
 
 func errorAnnouncement(e *core.ApiError) string {
-	return e.Code + "：" + human(e.Code) + " " + e.Message
+	if e.Message != "" {
+		return e.Message
+	}
+	return human(e.Code)
 }
 
 func (s *viewState) submissionFailed(e *core.ApiError) {
@@ -226,7 +229,7 @@ func runColor(c *ui.Context, task core.RunTask) ui.Color {
 
 func progressTotal(total *int64) string {
 	if total == nil || *total <= 0 {
-		return "总量未知"
+		return "—"
 	}
 	return fmt.Sprint(*total)
 }

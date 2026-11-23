@@ -129,12 +129,12 @@ func TestHistoryTabNamesRowInteraction(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) {
 		ui.Column(c).Children(func() { s.historyView(c) })
 	}, 1120, 900)
-	if !tt.HasText("点击某行查看详情与操作。") {
-		t.Fatalf("missing row hint: %v", tt.Texts())
+	if tt.HasText("运行 ID：run-1") {
+		t.Fatalf("row details appeared before clicking row: %v", tt.Texts())
 	}
 	click(t, tt, "run-1")
-	if tt.HasText("点击某行查看详情与操作。") {
-		t.Fatal("row hint stayed after a row was selected")
+	if !tt.HasText("运行 ID：run-1") {
+		t.Fatalf("row details did not appear after clicking row: %v", tt.Texts())
 	}
 }
 
@@ -144,8 +144,8 @@ func TestHistoryHintOnlyWhenRowsExist(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) {
 		ui.Column(c).Children(func() { s.historyView(c) })
 	}, 1120, 900)
-	if tt.HasText("点击某行查看详情与操作。") {
-		t.Fatalf("row hint appeared without rows: %v", tt.Texts())
+	if tt.HasText("运行 ID：") {
+		t.Fatalf("row details appeared without rows: %v", tt.Texts())
 	}
 }
 

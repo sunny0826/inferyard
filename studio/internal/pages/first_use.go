@@ -54,7 +54,6 @@ func (s *viewState) needsTaskAssets() bool {
 func (s *viewState) taskAssetsView(c *ui.Context) {
 	assets := s.availableTaskAssets()
 	card(c, "准备模型与引擎", func() {
-		ui.Text(c, "测评前需准备本地模型与推理引擎。")
 		for _, asset := range []struct {
 			kind, label string
 			available   bool
@@ -167,7 +166,7 @@ func (s *viewState) downloadGuideStatus() string {
 	case active > 0:
 		return fmt.Sprintf("正在下载 %d 项资源…", active)
 	case failed > 0:
-		return fmt.Sprintf("有 %d 项下载任务失败，可在下方重新创建。", failed)
+		return fmt.Sprintf("有 %d 项下载失败。", failed)
 	case assets.model && assets.engine:
 		return "模型与引擎已就绪，可返回任务页开始测评。"
 	default:

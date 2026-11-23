@@ -275,7 +275,7 @@ func TestModelResolveButtonPreviewAndLiveAsyncResolution(t *testing.T) {
 		}
 		time.Sleep(15 * time.Millisecond)
 	}
-	if !ttLive.HasText("已解析版本："+sha) || !ttLive.HasText("固定地址："+pinnedURL) || !ttLive.HasText("609.82 MiB（639446688 bytes）") {
+	if !ttLive.HasText("已解析版本："+sha) || !ttLive.HasText("固定地址："+pinnedURL) || !ttLive.HasText("609.82 MiB") {
 		t.Fatalf("live resolved info missing: %v", ttLive.Texts())
 	}
 

@@ -38,7 +38,7 @@ func (s *Service) DiscardOrphanRecord() (EngineState, *ApiError) {
 			return clone(e.state), orphanIdentityError()
 		}
 		if identityErr == nil && same {
-			return clone(e.state), &ApiError{Code: "engine_orphaned", Message: "logs/engine-owner.json 的进程身份仍匹配，请使用「停止遗留服务」。"}
+			return clone(e.state), &ApiError{Code: "engine_orphaned", Message: "遗留服务的进程身份仍匹配，请使用「停止遗留服务」。"}
 		}
 		if err := removeEngineOwnerLocked(e.path, owner); err != nil {
 			return clone(e.state), ownerRemovalError()
@@ -58,5 +58,5 @@ func (s *Service) DiscardOrphanRecord() (EngineState, *ApiError) {
 }
 
 func ownerRemovalError() *ApiError {
-	return &ApiError{Code: "engine_owner_remove_failed", Message: "无法读取或删除工作区 logs/engine-owner.json，请检查文件权限；未终止任何进程。"}
+	return &ApiError{Code: "engine_owner_remove_failed", Message: "无法读取或删除遗留服务记录，请检查文件权限；未终止任何进程。"}
 }

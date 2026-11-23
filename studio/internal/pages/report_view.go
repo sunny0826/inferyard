@@ -103,7 +103,6 @@ func reportSummaryGrid(c *ui.Context, cards ...func(*ui.Context)) {
 func reportSourceView(c *ui.Context, run core.ReportRun) {
 	card(c, "数据来源", func() {
 		deviceRow(c, "运行", reportText(run.Source.RunID))
-		deviceRow(c, "索引", "studio.json")
 		deviceRow(c, "停止原因", stopReasonLabel(run.Summary.StopReason))
 	})
 }
@@ -121,7 +120,7 @@ func stopReasonLabel(raw string) string {
 	case "interrupted_checkpoint":
 		return "中断后恢复的检查点"
 	case "diagnostic_run_not_formal":
-		return "诊断运行，不进入正式测评"
+		return "诊断运行"
 	case "check_only_no_formal_cases":
 		return "仅检查，无正式题目"
 	case "unscorable_case":
@@ -129,7 +128,7 @@ func stopReasonLabel(raw string) string {
 	case "service_stop_unconfirmed":
 		return "服务停止未确认"
 	default:
-		return "未识别停止原因：" + raw
+		return raw
 	}
 }
 

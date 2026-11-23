@@ -42,20 +42,27 @@ func reportMemoryReason(reason *string) string {
 	case "":
 		return ""
 	default:
-		return "缺测原因：" + *reason
+		return *reason
 	}
+}
+
+func reportExcludedNote(v *int64) string {
+	if v == nil || *v <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("排除 %d", *v)
 }
 
 func reportMetrics(c *ui.Context, run core.ReportRun) {
 	d := run.Dashboard
 	qualityNote := ""
 	if !d.Quality.Complete {
-		qualityNote = "仅已记录通过数"
+		qualityNote = "部分评分"
 	}
 	metrics := []struct{ label, value, detail, note string }{
 		{"答案通过", reportPassRate(d.Quality), "通过 / 评分题", qualityNote},
-		{"请求完成", reportRate(run.Summary.CompletionRate), "完成 / 发出", "排除 " + reportNumber(run.Summary.CompletionRate.Excluded)},
-		{"完成请求耗时（中位）", reportScaled(d.Latency.P50, 1000, "s"), reportNumber(d.Latency.SampleCount) + " 个有效样本", "排除 " + reportNumber(d.Latency.Excluded)},
+		{"请求完成", reportRate(run.Summary.CompletionRate), "完成 / 发出", reportExcludedNote(run.Summary.CompletionRate.Excluded)},
+		{"完成请求耗时（中位）", reportScaled(d.Latency.P50, 1000, "s"), reportNumber(d.Latency.SampleCount) + " 个有效样本", reportExcludedNote(d.Latency.Excluded)},
 		{"服务进程内存（采样峰值）", reportScaled(d.SampledPeakRSSBytes, 1<<30, "GiB"), "采样期间系统最少可用 " + reportScaled(d.SampledMinimumAvailableBytes, 1<<30, "GiB"), reportMemoryReason(d.SampledPeakRSSReason)},
 	}
 	columns := 4
@@ -127,7 +134,7 @@ func reportThroughputReason(reason *string) string {
 	case "no_formal_requests":
 		return "无正式请求"
 	case "terminal_window_unavailable":
-		return "无可用终态窗口"
+		return "无有效窗口"
 	case "output_token_counts_incomplete":
 		return "输出 token 计数不完整"
 	case "no_completed_requests":
@@ -135,9 +142,9 @@ func reportThroughputReason(reason *string) string {
 	case "quality_not_applicable":
 		return "质量不适用"
 	case "thresholds_not_preregistered":
-		return "未预注册达标阈值"
+		return "未设阈值"
 	case "goodput_indeterminable":
-		return "无法判定（不可判请求存在）"
+		return "无法判定"
 	case "observation_missing":
 		return "缺少观测"
 	default:
@@ -155,7 +162,7 @@ func reportOutputIntervals(c *ui.Context, run core.ReportRun) {
 		deviceRow(c, "中位", reportMilliseconds("", intervals.P50, ""))
 		deviceRow(c, "P95", reportIntervalP95(intervals))
 		if reason := reportIntervalReason(intervals.Reason); reason != "" {
-			ui.Text(c, "缺测原因："+reason).TextColor(c.Theme().TextMuted)
+			ui.Text(c, reason).TextColor(c.Theme().TextMuted)
 		}
 		componentFoldKeyed(c, "interval-details", "间隔详情", func() {
 			deviceRow(c, "间隔数", fmt.Sprintf("%d 个", intervals.IntervalCount))

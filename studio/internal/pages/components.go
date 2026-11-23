@@ -29,11 +29,10 @@ func badgeSurfaceColors(t *ui.Theme, tint ui.Color) (background, foreground ui.C
 }
 
 type phaseProgressOptions struct {
-	Labels      []string
-	Current     int
-	RowLabel    string
-	BarLabel    string
-	Description string
+	Labels   []string
+	Current  int
+	RowLabel string
+	BarLabel string
 }
 
 func phaseProgress(c *ui.Context, o phaseProgressOptions) {
@@ -54,7 +53,7 @@ func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 	if len(o.Labels) > 0 {
 		value = float64(o.Current) / float64(len(o.Labels))
 	}
-	progressBar(c, value, o.BarLabel).Description(o.Description)
+	progressBar(c, value, o.BarLabel)
 }
 
 func metricCard(c *ui.Context, label, value, detail, note string) {
@@ -94,13 +93,7 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 					ui.Text(c, options.kind).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
 				}
 			})
-			badge := statusBadge(c, options.state, options.color)
-			components.Tooltip(c, badge, map[string]string{
-				"下载中": "任务正在下载，总量未知。",
-				"已结束": "下载任务已结束。",
-				"失败":  "下载任务失败，输出目录保留。",
-				"已取消": "下载任务已取消，输出目录保留。",
-			}[options.state])
+			statusBadge(c, options.state, options.color)
 		})
 		if options.status != "" {
 			ui.Text(c, options.status).TextColor(c.Theme().TextMuted)
@@ -129,7 +122,7 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 			options.notice()
 		}
 		options.actions()
-		componentFold(c, "观测依据与输出", func() { options.details() })
+		componentFold(c, "任务详情", func() { options.details() })
 	})
 }
 

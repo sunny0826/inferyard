@@ -42,13 +42,17 @@ func TestManualBindingFailureIsOwnedByStepFour(t *testing.T) {
 		t.Fatalf("binding failure not attributed to the step: %+v", s.bindFailure)
 	}
 	tt := ui.NewTester(s.view, 1120, 1800)
-	if !tt.HasText("candidate_endpoint_mismatch") {
-		t.Fatalf("step does not show the cause: %v", tt.Texts())
-	}
 	if !tt.HasText("服务地址与本次固定的测评配置不一致") {
 		t.Fatalf("step does not show the recovery guidance: %v", tt.Texts())
 	}
-	if n := countText(tt, "candidate_endpoint_mismatch"); n != 1 {
+	if tt.HasText("candidate_endpoint_mismatch") {
+		t.Fatalf("raw code leaked before expanding error details: %v", tt.Texts())
+	}
+	if n := countText(tt, "错误详情"); n != 1 {
+		t.Fatalf("error details rendered %d times: %v", n, tt.Texts())
+	}
+	click(t, tt, "错误详情")
+	if n := countText(tt, "错误码：candidate_endpoint_mismatch"); n != 1 {
 		t.Fatalf("cause rendered %d times: %v", n, tt.Texts())
 	}
 }
@@ -56,8 +60,18 @@ func TestManualBindingFailureIsOwnedByStepFour(t *testing.T) {
 func TestStartupFailureRendersOnce(t *testing.T) {
 	s := bindingState(core.Err("engine_start_failed"))
 	tt := ui.NewTester(s.view, 1120, 1800)
-	if n := countText(tt, "engine_start_failed"); n != 1 {
+	if !tt.HasText("引擎进程启动失败") {
+		t.Fatalf("missing startup failure message: %v", tt.Texts())
+	}
+	if tt.HasText("engine_start_failed") {
+		t.Fatalf("raw code leaked before expanding error details: %v", tt.Texts())
+	}
+	if n := countText(tt, "错误详情"); n != 1 {
 		t.Fatalf("startup failure rendered %d times: %v", n, tt.Texts())
+	}
+	click(t, tt, "错误详情")
+	if n := countText(tt, "错误码：engine_start_failed"); n != 1 {
+		t.Fatalf("startup failure code rendered %d times: %v", n, tt.Texts())
 	}
 	if !tt.HasText("连接并核验服务失败") {
 		t.Fatalf("step lost its failure summary: %v", tt.Texts())
@@ -94,7 +108,7 @@ func TestFreshTaskDoesNotShowPreviousEngineFailure(t *testing.T) {
 		t.Fatalf("fresh task is not on the configuration step: %d", s.step())
 	}
 	tt := ui.NewTester(s.stageView, 1120, 1600)
-	if tt.HasText("engine_start_failed") || tt.HasText("未返回原因码。") {
+	if tt.HasText("engine_start_failed") || tt.HasText("引擎进程启动失败") || tt.HasText("操作失败，无详细原因。") {
 		t.Fatalf("stale engine failure leaked into the new task: %v", tt.Texts())
 	}
 }
@@ -158,11 +172,18 @@ func TestDiscoveredBindingFailureIsOwnedByStepFour(t *testing.T) {
 	e := core.Err("service_process_unavailable")
 	s.bindingOutcome("zh-svg-pelican", e)
 	tt := ui.NewTester(s.view, 1120, 1800)
-	if !tt.HasText("service_process_unavailable") || !tt.HasText("已连接的服务进程不可用") {
+	if !tt.HasText("已连接的服务进程不可用") {
 		t.Fatalf("discovered failure not shown in the step: %v", tt.Texts())
 	}
-	if n := countText(tt, "service_process_unavailable"); n != 1 {
+	if tt.HasText("service_process_unavailable") {
+		t.Fatalf("raw code leaked before expanding error details: %v", tt.Texts())
+	}
+	if n := countText(tt, "错误详情"); n != 1 {
 		t.Fatalf("cause rendered %d times: %v", n, tt.Texts())
+	}
+	click(t, tt, "错误详情")
+	if n := countText(tt, "错误码：service_process_unavailable"); n != 1 {
+		t.Fatalf("discovered failure code rendered %d times: %v", n, tt.Texts())
 	}
 }
 

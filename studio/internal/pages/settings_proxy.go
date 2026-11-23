@@ -47,13 +47,12 @@ func (s *viewState) syncSavedProxy(patch map[string]json.RawMessage, submitted s
 func (s *viewState) proxySettingsView(c *ui.Context) {
 	settingsFormSection(c, settingsFormOptions{
 		Title:       "网络与代理",
-		Description: "可选；仅显式用于模型解析与资源下载请求，跨源重定向时不会透传凭据。",
+		Description: "仅用于模型解析与资源下载",
 		Dirty:       s.proxyEdited(),
 		Fields: func() {
 			field(c, "下载代理地址（可选）", &s.downloadProxy).
 				Placeholder("http://127.0.0.1:7890").
 				Error(downloadProxyError(s.downloadProxy))
-			settingsNotice(c, s.proxyEdited(), "代理设置已修改，点击保存后生效。")
 		},
 		Actions: func() {
 			if primaryActionButton(c, "保存代理设置", s.actionBusy("save-proxy")).Disabled(!s.canSaveProxy()).Clicked() {

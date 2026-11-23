@@ -77,13 +77,13 @@ func TestSettingsRevertDefaultsShowsUnsavedNotice(t *testing.T) {
 	s := settingsState()
 	tt := settingsTester(s)
 	tt.Frame()
-	if tt.HasText("已填入默认值，请点击保存生效。") {
-		t.Fatalf("notice shown before the revert: %v", tt.Texts())
+	if tt.HasText("有未保存修改") || s.downloadNamesEdited() {
+		t.Fatalf("unsaved badge shown before the revert: %v", tt.Texts())
 	}
 	click(t, tt, "恢复默认值")
 	tt.Frame()
-	if !tt.HasText("已填入默认值，请点击保存生效。") {
-		t.Fatalf("revert did not explain that saving is still required: %v", tt.Texts())
+	if !tt.HasText("有未保存修改") || !s.downloadNamesEdited() {
+		t.Fatalf("revert did not mark download names as unsaved: %v", tt.Texts())
 	}
 	if !s.canSaveDownloadNames() {
 		t.Fatal("revert left the download-name save disabled")
@@ -98,21 +98,22 @@ func TestSettingsNoticesFollowTheirOwnCard(t *testing.T) {
 	s.modelName = "renamed-model"
 	tt := settingsTester(s)
 	tt.Frame()
-	if tt.HasText("路径有未保存的修改，点击保存后生效。") {
-		t.Fatalf("path notice followed a download-name edit: %v", tt.Texts())
+	if !s.downloadNamesEdited() || s.pathsEdited() || s.proxyEdited() {
+		t.Fatalf("edited flags wrong for download-name change: names=%v paths=%v proxy=%v", s.downloadNamesEdited(), s.pathsEdited(), s.proxyEdited())
 	}
-	if !tt.HasText("下载目录名已修改，请点击保存生效。") {
-		t.Fatalf("download-name edit had no unsaved notice: %v", tt.Texts())
+	// One Badge emits 2 text nodes in tt.Texts().
+	if n := countText(tt, "有未保存修改"); n != 2 {
+		t.Fatalf("unsaved badge count = %d, want 2: %v", n, tt.Texts())
 	}
 	s = settingsState()
 	s.results = "/other/results"
 	tt = settingsTester(s)
 	tt.Frame()
-	if !tt.HasText("路径有未保存的修改，点击保存后生效。") {
-		t.Fatalf("path edit had no unsaved notice: %v", tt.Texts())
+	if !s.pathsEdited() || s.downloadNamesEdited() || s.proxyEdited() {
+		t.Fatalf("edited flags wrong for path change: paths=%v names=%v proxy=%v", s.pathsEdited(), s.downloadNamesEdited(), s.proxyEdited())
 	}
-	if tt.HasText("下载目录名已修改，请点击保存生效。") || tt.HasText("已填入默认值，请点击保存生效。") {
-		t.Fatalf("download-name notice followed a path edit: %v", tt.Texts())
+	if n := countText(tt, "有未保存修改"); n != 2 {
+		t.Fatalf("unsaved badge count = %d, want 2: %v", n, tt.Texts())
 	}
 	if !tt.HasText("保存") || !tt.HasText("保存下载目录名") {
 		t.Fatalf("settings lost a save action: %v", tt.Texts())

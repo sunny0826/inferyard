@@ -64,7 +64,7 @@ func (w *viewState) candidateFields(c *ui.Context) {
 	engineOptions, revoked, hasEligible := w.engineChoices()
 	engineHint := ""
 	if !w.checks.Supported {
-		engineHint = "当前 CLI 不支持引擎核验，列表中的引擎尚未核验。"
+		engineHint = "当前 CLI 过旧，暂无法核验引擎。"
 	}
 	selectField(c, termCandidateEngine, engineHint, &w.engine, engineOptions)
 	selectField(c, "测评模型", "", &w.model, modelOptions)
@@ -151,7 +151,7 @@ func failureView(c *ui.Context, title string, e *core.ApiError, next string) {
 	if e != nil {
 		errorView(c, e)
 	} else {
-		noticeBanner(c, noticeBannerOptions{Kind: stateDanger, Size: bannerCompact, Message: "未返回原因码。"})
+		noticeBanner(c, noticeBannerOptions{Kind: stateDanger, Size: bannerCompact, Message: "操作失败，无详细原因。"})
 	}
 	if next != "" {
 		ui.Text(c, next).TextColor(tokens(c).Color.FgSecondary)
@@ -164,7 +164,7 @@ func (w *viewState) engineLogDiagnosticsView(c *ui.Context) {
 	ui.Column(c.Key("engine-log-diagnostics")).FillWidth().Gap(t.Density.Tight).Children(func() {
 		componentFoldKeyed(c, "engine-log-tail", "查看引擎日志尾部", func() {
 			if w.preview != nil {
-				ui.Text(c, "预览模式不读取本地日志文件。").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				ui.Text(c, "预览模式无本地日志。").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 				return
 			}
 			var tail string
@@ -212,14 +212,13 @@ func (w *viewState) serviceView(c *ui.Context) {
 	if w.bindingStale {
 		noticeBanner(c, noticeBannerOptions{Kind: stateDanger, Size: bannerCompact, Message: "旧绑定已失效，请重启服务并重新绑定"})
 	}
-	ui.Text(c, "由 Studio 托管模型服务，退出时自动停止。").TextColor(tokens(c).Color.FgSecondary)
 	if w.stepFailed() {
 		title := "模型服务失败"
 		if w.step() == 3 {
 			title = "连接并核验服务失败"
 		}
 		failureView(c, title, w.activeTaskFailure(),
-			"可重新启动服务；若进程已在本机运行，请展开「连接已有本机服务」选择，或用「高级：手动连接」填写 PID 与地址。")
+			"可重启服务，或在下方连接已有本机服务。")
 	}
 	if (w.stepFailed() || w.engineState.State == "failed") && w.engineState.LogPath != "" {
 		w.engineLogDiagnosticsView(c)
@@ -313,11 +312,11 @@ func (w *viewState) serviceView(c *ui.Context) {
 func (w *viewState) runView(c *ui.Context) {
 	heading(c, "运行当前测评题集", 3)
 	if w.stepFailed() && w.running() == nil && !w.serviceCardVisible() {
-		failureView(c, "运行未完成", w.activeTaskFailure(), "处理原因后重试未完成的测评题集；已完成的题集结果会保留。")
+		failureView(c, "运行未完成", w.activeTaskFailure(), "已完成题集会保留，仅重试未完成项。")
 	}
 	if task := w.running(); task != nil {
 		value := -1.0
-		label := "正在运行，等待进度…（总量未知）"
+		label := "正在运行，等待进度…"
 		var done, total int64
 		if p := w.runProgress; p != nil && p.Total != nil && *p.Total > 0 {
 			value = progressValue(p.Done, p.Total)

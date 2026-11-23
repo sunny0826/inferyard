@@ -48,7 +48,7 @@ func TestDownloadGuideFollowsTaskCards(t *testing.T) {
 		t.Fatal(got)
 	}
 	s.downloads[0].State = "done"
-	if got := s.downloadGuideStatus(); got != "有 1 项下载任务失败，可在下方重新创建。" {
+	if got := s.downloadGuideStatus(); got != "有 1 项下载失败。" {
 		t.Fatal(got)
 	}
 	s.downloads = nil
@@ -63,7 +63,7 @@ func TestDownloadGuideClearsFailureAfterRetrySucceeds(t *testing.T) {
 	failed := core.DownloadTask{TaskId: "model-1", Kind: "model", OutName: "model", SourceUrl: "https://example.test/model.gguf", State: "failed", StartedAt: "2026-10-17T00:00:00Z"}
 	s := preparingDownloadsState()
 	s.downloads = []core.DownloadTask{failed}
-	if got := s.downloadGuideStatus(); got != "有 1 项下载任务失败，可在下方重新创建。" {
+	if got := s.downloadGuideStatus(); got != "有 1 项下载失败。" {
 		t.Fatalf("unresolved failure is hidden: %q", got)
 	}
 
@@ -148,7 +148,7 @@ func TestOlderSuccessDoesNotMaskNewerFailure(t *testing.T) {
 		{
 			name:      "standalone",
 			downloads: []core.DownloadTask{failed, done},
-			want:      "有 1 项下载任务失败，可在下方重新创建。",
+			want:      "有 1 项下载失败。",
 		},
 		{
 			name: "alongside active engine",
@@ -203,7 +203,7 @@ func TestDownloadOrderBeatsClockRollback(t *testing.T) {
 	if got := s.unresolvedDownloadFailures(); got != 1 {
 		t.Fatalf("rolled-back older success masked the newer failure: %d", got)
 	}
-	if got := s.downloadGuideStatus(); got != "有 1 项下载任务失败，可在下方重新创建。" {
+	if got := s.downloadGuideStatus(); got != "有 1 项下载失败。" {
 		t.Fatalf("banner = %q", got)
 	}
 }

@@ -61,10 +61,6 @@ func (s *viewState) downloadsView(c *ui.Context) {
 		ui.Text(c, "暂无下载任务。")
 		return
 	}
-	componentFold(c, "单位与进度口径", func() {
-		ui.Text(c, "文件大小按 1 MiB = 1,048,576 bytes、1 GiB = 1,073,741,824 bytes 换算；速率按 bytes/s 记录。")
-		ui.Text(c, "总量未知时不显示百分比或剩余时间，活动指示只表示任务仍在进行。")
-	})
 	for _, task := range s.orderedDownloads() {
 		s.downloadTaskCard(c, task)
 	}
@@ -194,7 +190,7 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 		if stageText == "" {
 			stageText = stateLabel(task.State)
 		}
-		rateVal, rateReason := "缺测", "无速率读数"
+		rateVal, rateReason := "—", ""
 		if task.BytesPerSecond != nil {
 			rateVal = formatRate(*task.BytesPerSecond)
 			rateReason = ""
@@ -213,9 +209,9 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 	default:
 		stageReason := downloadStageLabel(task.Stage)
 		metrics = []taskMetric{
-			{"已观测", formatDownloadBytes(task.DownloadedBytes), stageReason},
-			{"速率", "缺测", "无速率读数"},
-			{"总量", "总量未知", ""},
+			{"已下载", formatDownloadBytes(task.DownloadedBytes), stageReason},
+			{"速率", "—", ""},
+			{"总量", "—", ""},
 		}
 		if task.BytesPerSecond != nil {
 			metrics[1] = taskMetric{"速率", formatRate(*task.BytesPerSecond), ""}
@@ -291,7 +287,7 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 	if task.State == "downloading" || pendingHere {
 		if s.destructiveAction(c, destructiveOption{
 			kind: destructiveCancelDownload, id: task.TaskId, label: "取消下载", confirmLabel: "确认取消下载",
-			prompt:   "将取消本次下载；已写入的输出目录保留，再次下载会使用新的目录名。",
+			prompt:   "取消本次下载？已下载文件将保留。",
 			disabled: s.busy,
 		}) {
 			if s.simulate(previewCancelDownload{id: task.TaskId}) {
@@ -331,10 +327,10 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 }
 
 func (s *viewState) downloadDetails(c *ui.Context, task core.DownloadTask) {
-	ui.Text(c, "实际目录名："+task.OutName).Selectable()
+	ui.Text(c, "目录名："+task.OutName).Selectable()
 	ui.Text(c, "文件："+displayName(text(task.FileName)))
 	if task.Kind == "engine" && task.TotalBytes == nil && task.DownloadedBytes == 0 && task.BytesPerSecond == nil {
-		ui.Text(c, "已下载 缺测 · 速率 缺测")
+		ui.Text(c, "已下载 — · 速率 —")
 	} else {
 		if task.TotalBytes != nil {
 			ui.Text(c, fmt.Sprintf("已下载 %d / %d bytes", task.DownloadedBytes, *task.TotalBytes))
@@ -372,13 +368,10 @@ func (s *viewState) downloadDetails(c *ui.Context, task core.DownloadTask) {
 		})
 	}
 	if task.Result != nil {
-		ui.Text(c, fmt.Sprintf("实测大小：%d bytes · SHA-256：%s", task.Result.Bytes, task.Result.Sha256)).Selectable()
+		ui.Text(c, fmt.Sprintf("大小：%s · SHA-256：%s", formatDownloadBytes(task.Result.Bytes), task.Result.Sha256)).Selectable()
 	}
 	if task.Error != nil {
 		ui.Text(c, "错误码："+task.Error.Code).Selectable()
-	}
-	if task.State == "failed" || task.State == "cancelled" {
-		ui.Text(c, "输出目录与未完成分片保留；重试时将自动续传或使用新目录名。")
 	}
 }
 

@@ -8,13 +8,13 @@ import (
 func (s *viewState) setupGuide(c *ui.Context) {
 	card(c, "环境准备", func() {
 		ui.Text(c, "首次使用流程：1. 准备运行环境 → 2. 获取引擎与模型 → 3. 开始首次测评").TextColor(c.Theme().TextMuted)
-		ui.Text(c, "自动安装或复用本地 CLI、uv 与工作区目录，已完成步骤将跳过。")
 		locations, known := s.preparationLocations()
-		setupActions(c, locations, known)
-		if known {
-			setupTargets(c, locations)
-		}
-		ui.Text(c, "首次准备需联网下载组件，耗时视网络环境而定；也可在设置页手动指定 CLI 路径。").TextColor(c.Theme().TextMuted)
+		componentFold(c, "查看准备详情", func() {
+			setupActions(c, locations, known)
+			if known {
+				setupTargets(c, locations)
+			}
+		})
 		preparing := s.actionBusy("prepare-env")
 		row := ui.Row(c.Key("setup-actions")).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row)
 		showProgress, elapsed := delayedElapsed(c, row, "prepare-env", preparing)
@@ -40,7 +40,7 @@ func setupActions(c *ui.Context, locations core.PreparationLocations, known bool
 	if known && locations.CLI != nil {
 		ui.Text(c, "CLI：复用 "+displayName(*locations.CLI))
 	} else {
-		ui.Text(c, "CLI：安装配套版本（Python "+managedPythonLabel(known, locations)+"，不修改 shell 配置）")
+		ui.Text(c, "CLI：安装配套版本（Python "+managedPythonLabel(known, locations)+"）")
 	}
 	if known && locations.UV != nil {
 		ui.Text(c, "uv：复用 "+displayName(*locations.UV))
@@ -80,7 +80,7 @@ func managedPythonLabel(known bool, locations core.PreparationLocations) string 
 
 func configuredPath(value *string) string {
 	if value == nil || *value == "" {
-		return "尚未配置（准备时使用默认值）"
+		return "默认路径"
 	}
 	return displayName(*value)
 }

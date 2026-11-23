@@ -37,7 +37,7 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 		}
 		ui.Text(c, "得分："+runScore(r))
 		componentFold(c, "运行原始详情", func() {
-			ui.Text(c, "时钟基准：UTC · 开始："+formatTimestampOrMissingUTC(r.StartedAt)+" · 结束："+formatTimestampOrMissingUTC(r.FinishedAt)).Selectable()
+			ui.Text(c, "开始："+formatTimestampOrMissingUTC(r.StartedAt)+" · 结束："+formatTimestampOrMissingUTC(r.FinishedAt)).Selectable()
 			if r.StopReason != nil {
 				ui.Text(c, "原始停止原因："+*r.StopReason).Selectable()
 			}
@@ -68,7 +68,7 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 		if r.BatchId == nil {
 			ui.Text(c, "独立运行不支持续测。")
 		} else if !r.Resumable || s.denied[r.Path] {
-			ui.Text(c, "当前来源不可续测；请回到任务页检查服务连接，或用「新任务」重新测评。")
+			ui.Text(c, "当前来源不可续测，请检查服务或新建任务。")
 		}
 
 	})
@@ -236,8 +236,6 @@ func (s *viewState) historyView(c *ui.Context) {
 			}
 		}
 		s.historyRow(c, r)
-	} else if len(runs) > 0 {
-		ui.Text(c, "点击某行查看详情与操作。").TextColor(c.Theme().TextMuted)
 	}
 }
 

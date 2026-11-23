@@ -31,10 +31,10 @@ func TestLaunchSummaryLineLocalEngines(t *testing.T) {
 		wants  []string
 		forbid string
 	}{
-		{"mlx-lm · local", []string{"运行条件：", "MLX", "Metal 加速", "上下文 8192", "端口自动（默认 48857）"}, ""},
-		{"llama-cpp · local", []string{"运行条件：", "llama.cpp", "Metal 加速", "上下文 8192", "端口自动（默认 48857）"}, ""},
-		{"vllm · local", []string{"运行条件：", "vLLM", "上下文 8192", "端口自动（默认 48857）"}, ""},
-		{"sglang · local", []string{"运行条件：", "SGLang", "上下文 8192", "端口自动（默认 48857）"}, ""},
+		{"mlx-lm · local", []string{"运行条件：", "MLX", "Metal 加速", "上下文 8192"}, ""},
+		{"llama-cpp · local", []string{"运行条件：", "llama.cpp", "Metal 加速", "上下文 8192"}, ""},
+		{"vllm · local", []string{"运行条件：", "vLLM", "上下文 8192"}, ""},
+		{"sglang · local", []string{"运行条件：", "SGLang", "上下文 8192"}, ""},
 		{"lmstudio · local", []string{"运行条件：", "LM Studio", "上下文 8192", "使用外部服务地址"}, "端口自动"},
 	} {
 		s.engine = tc.engine
@@ -63,20 +63,20 @@ func TestLaunchSummaryLinePrism(t *testing.T) {
 			snapshot: `{"hardware":{"platform":"Darwin","apple_silicon":true,"gpu":{"devices":[{"name":"Apple M3","metal_supported":true}]}}}`,
 			check:    core.EngineEligibility{State: core.EngineCheckEligible, Modes: map[string]bool{"cpu": true, "metal": true}},
 			ctxLen:   ptr(int64(32768)),
-			wants:    []string{"运行条件：", "Metal 加速", "上下文 4096", "关闭思考模式", "端口自动（默认 48857）"},
+			wants:    []string{"运行条件：", "Metal 加速", "上下文 4096", "关闭思考模式"},
 		},
 		{
 			name:     "darwin metal respects smaller model context",
 			snapshot: `{"hardware":{"platform":"Darwin","gpu":{"devices":[{"metal_supported":true}]}}}`,
 			check:    core.EngineEligibility{State: core.EngineCheckEligible},
 			ctxLen:   ptr(int64(2048)),
-			wants:    []string{"Metal 加速", "上下文 2048", "关闭思考模式", "端口自动（默认 48857）"},
+			wants:    []string{"Metal 加速", "上下文 2048", "关闭思考模式"},
 		},
 		{
 			name:     "cpu when engine check disables metal",
 			snapshot: `{"hardware":{"platform":"Darwin","apple_silicon":true,"gpu":{"devices":[{"metal_supported":true}]}}}`,
 			check:    core.EngineEligibility{State: core.EngineCheckEligible, Modes: map[string]bool{"cpu": true, "metal": false}},
-			wants:    []string{"CPU", "上下文 4096", "关闭思考模式", "端口自动（默认 48857）"},
+			wants:    []string{"CPU", "上下文 4096", "关闭思考模式"},
 		},
 		{
 			name:     "cpu on intel mac",
@@ -149,7 +149,7 @@ func TestLMStudioHandoffNotice(t *testing.T) {
 		{Name: "mlx-lm · local", Family: "mlx-lm", Kind: "local_installation"},
 	}
 	s.engine = "lmstudio · local"
-	const want = "提示：选择多个题集时，LM Studio 会在第一套题集完成后暂停，需重启一次后台服务并重新绑定 PID 后继续。"
+	const want = "选择多个题集时，LM Studio 会在第一套题集完成后暂停，需重启一次后台服务并重新绑定 PID 后继续。"
 	if got := lmStudioHandoffNotice(&s); got != want {
 		t.Fatalf("2 checked bundles got %q, want %q", got, want)
 	}
@@ -199,7 +199,7 @@ func TestCandidateFieldsRendersExecutionUX(t *testing.T) {
 	if !tt.HasText(wantSummary) {
 		t.Fatalf("launch summary %q not rendered: %v", wantSummary, tt.Texts())
 	}
-	wantNotice := "提示：选择多个题集时，LM Studio 会在第一套题集完成后暂停，需重启一次后台服务并重新绑定 PID 后继续。"
+	wantNotice := "选择多个题集时，LM Studio 会在第一套题集完成后暂停，需重启一次后台服务并重新绑定 PID 后继续。"
 	if !tt.HasText(wantNotice) {
 		t.Fatalf("LM Studio handoff notice not rendered: %v", tt.Texts())
 	}

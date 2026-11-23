@@ -73,7 +73,7 @@ func TestDSKPIOverviewAndErrorRecovery(t *testing.T) {
 		})
 	}, 1000, 800)
 	tt.Frame()
-	for _, want := range []string{"性能总览", "84.26 tok/s", "缺测", "口径说明与观测依据", "已有任务或服务在运行"} {
+	for _, want := range []string{"性能总览", "84.26 tok/s", "缺测", "指标说明", "已有任务或服务在运行"} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing %q in %v", want, tt.Texts())
 		}

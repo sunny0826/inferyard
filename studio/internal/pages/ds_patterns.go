@@ -28,16 +28,24 @@ func errorRecoveryBanner(c *ui.Context, e *core.ApiError, actions func()) {
 	noticeBanner(c, noticeBannerOptions{
 		Kind:    stateDanger,
 		Icon:    lucide.CircleAlert,
-		Message: message + " · " + e.Code,
+		Message: message,
 		Actions: actions,
 		Details: func() {
 			scale := stateScale(c, stateDanger)
 			for _, v := range e.Limitations {
-				ui.Text(c, human(v)+" · "+v).TextColor(scale.Fg)
+				ui.Text(c, human(v)).TextColor(scale.Fg)
 			}
-			if len(e.Details) > 0 {
+			if e.Code != "" || len(e.Limitations) > 0 || len(e.Details) > 0 {
 				componentFoldKeyed(c, "error-details-"+e.Code, "错误详情", func() {
-					kvview(c, "kv-error-details", e.Details)
+					if e.Code != "" {
+						ui.Text(c, "错误码："+e.Code).TextColor(scale.Fg)
+					}
+					if len(e.Limitations) > 0 {
+						ui.Text(c, "限制码："+strings.Join(e.Limitations, "、")).TextColor(scale.Fg)
+					}
+					if len(e.Details) > 0 {
+						kvview(c, "kv-error-details", e.Details)
+					}
 				})
 			}
 		},
@@ -97,7 +105,7 @@ func kpiOverviewSection(c *ui.Context, opts kpiOverviewOptions) {
 		if opts.Evidence != nil {
 			title := opts.EvidenceTitle
 			if title == "" {
-				title = "口径说明与观测依据"
+				title = "指标说明"
 			}
 			key := opts.EvidenceKey
 			if key == "" {

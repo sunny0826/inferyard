@@ -80,7 +80,7 @@ func (p *previewSession) tickSpeed(r *speedTask, missing bool) {
 		sample := previewSpeedSample(r.context, len(r.samples))
 		if missing && len(r.samples) == 4 {
 			sample.seconds, sample.prefill, sample.decode = nil, nil, nil
-			sample.reason = "引擎阶段计时缺失（模拟）；速度与耗时缺测。"
+			sample.reason = "引擎阶段计时缺失（模拟）"
 		}
 		r.samples = append(r.samples, sample)
 		r.completed = len(r.samples)
@@ -127,7 +127,7 @@ func (p *previewSession) cancelSpeed(after func()) {
 	p.cancelEvents("speed")
 	r.stage = speedCancelling
 	p.after("speed", 500*time.Millisecond, func() {
-		r.stage, r.reason = speedCancelled, "任务已取消；保留已经完成的测量，不补跑。"
+		r.stage, r.reason = speedCancelled, "任务已取消，已完成的测量已保留。"
 		if s.engineState.State == "starting" {
 			s.engineState.State = "stopped"
 		}
@@ -157,7 +157,7 @@ func (p *previewSession) readSpeed(id string) {
 			copy := *r
 			copy.samples, copy.summary, copy.result = nil, nil, nil
 			w.opened = &copy
-			w.readError = "模拟结果读取失败；重新读取不会再次运行模型。"
+			w.readError = "模拟结果读取失败，可重试。"
 		}
 		return
 	}

@@ -19,13 +19,6 @@ func (s *viewState) eligibility(name string) core.EngineEligibility {
 	return e
 }
 
-func failureBadge(state core.EngineState) string {
-	if state.Error == nil {
-		return "失败"
-	}
-	return "失败：" + state.Error.Code + " · " + human(state.Error.Code)
-}
-
 func (s *viewState) preflightReady() bool {
 	p := s.progress
 	if s.localEngine() != nil {
@@ -47,5 +40,5 @@ func loopbackEndpoint(raw string) string {
 			return raw
 		}
 	}
-	return "非本机地址（不显示）"
+	return "非本机地址"
 }

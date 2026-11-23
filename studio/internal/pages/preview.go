@@ -13,7 +13,7 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-const previewNotice = "此操作尚未接入模拟流程，未执行实际操作。"
+const previewNotice = "模拟模式暂不支持此操作。"
 
 type previewSession struct {
 	ctx                context.Context
@@ -137,7 +137,7 @@ func (p *previewSession) left(c *ui.Context) {
 				if p.state.speed != nil && (p.state.speed.selected || p.state.speed.current != nil) {
 					components.Checkbox(c, &p.speedMissingTiming, "下次专项模拟缺测")
 				}
-				ui.Text(c, "全部为模拟数据；操作仅改变本窗口，不运行模型或写入文件。").TextColor(c.Theme().TextMuted)
+				ui.Text(c, "模拟数据模式").TextColor(c.Theme().TextMuted)
 				if p.notice != "" {
 					ui.Text(c, p.notice).Role(ui.RoleStatus).TextColor(stateColor(c, stateWarning))
 				}

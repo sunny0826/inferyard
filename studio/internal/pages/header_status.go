@@ -135,7 +135,7 @@ func statusPanelParts(c *ui.Context, o statusPanelOptions, content func(close fu
 		t := c.Theme()
 		anchor := components.Button(c, "", components.ButtonGhost).
 			Padding(t.Space(.75), t.Space(1.5)).Radius(t.Space(4.5)).
-			Label(o.label).Description("点击或按 Enter 查看详情")
+			Label(o.label)
 		local := ui.Local(anchor, "status-panel", func() statusPanelState { return statusPanelState{} })
 		anchor.Children(func() {
 			ui.Row(c).AlignItems(ui.Center).Gap(t.Space(.75)).Children(func() {

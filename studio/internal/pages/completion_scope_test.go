@@ -44,10 +44,10 @@ func TestCompletionDoesNotMixInEarlierWorkspaceRuns(t *testing.T) {
 		{RunId: "round-2", Path: "/results/round-2", Bundle: ptr("zh-svg-pelican"), Status: "complete"},
 	}
 	tt := ui.NewTester(s.completionView, 1120, 1600)
-	if !tt.HasText("本轮共 1 次运行。") || !tt.HasText("zh-svg-pelican") {
+	if !tt.HasText("zh-svg-pelican") {
 		t.Fatalf("round scope is wrong: %v", tt.Texts())
 	}
-	if tt.HasText("本轮共 2 次运行。") || tt.HasText("zh-core") {
+	if tt.HasText("zh-core") {
 		t.Fatal("an earlier workspace run was attributed to this round")
 	}
 	if !tt.HasText("查看报告") {
