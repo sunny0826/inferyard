@@ -172,21 +172,42 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 	s := p.state
 	if task.Kind == "polystrata" {
 		engName := "polystrata · " + task.OutName
-		s.registry.Engines = append(s.registry.Engines, core.EngineAsset{
-			Name: engName, Family: "polystrata", Kind: "local_installation", Source: "模拟引导安装",
-			Path: emptyText(task.InstallationPath),
-		})
+		instPath := emptyText(task.InstallationPath)
+		existing := false
+		for _, eng := range s.registry.Engines {
+			if eng.Family == "polystrata" && (eng.Path == instPath || eng.Source == "模拟引导安装") {
+				engName = eng.Name
+				existing = true
+				break
+			}
+		}
+		if !existing {
+			s.registry.Engines = append(s.registry.Engines, core.EngineAsset{
+				Name: engName, Family: "polystrata", Kind: "local_installation", Source: "模拟引导安装",
+				Path: instPath,
+			})
+		}
 		s.registry.DefaultEngine = engName
 		if s.checks.Engines == nil {
 			s.checks.Engines = map[string]core.EngineEligibility{}
 		}
 		s.checks.Engines[engName] = core.EngineEligibility{State: core.EngineCheckEligible, Family: "polystrata", VerificationScope: "installation", Version: "v0.1.45-poly.10"}
-		s.registry.Models = append(s.registry.Models, core.ModelAsset{
-			Name:      "strata-preview.json",
-			Format:    "strata_pack",
-			Path:      emptyText(task.ModelConfigPath),
-			Available: true,
-		})
+		cfgPath := emptyText(task.ModelConfigPath)
+		modelExists := false
+		for _, m := range s.registry.Models {
+			if cfgPath != "" && m.Path == cfgPath {
+				modelExists = true
+				break
+			}
+		}
+		if !modelExists {
+			s.registry.Models = append(s.registry.Models, core.ModelAsset{
+				Name:      "strata-preview.json",
+				Format:    "strata_pack",
+				Path:      cfgPath,
+				Available: true,
+			})
+		}
 		s.adoptDownloadedEngine()
 		s.adoptOnlyModel()
 		return
