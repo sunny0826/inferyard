@@ -74,7 +74,7 @@ func TestCreatePolystrataSetupReusesManagedInstallationOnSecondModelInstall(t *t
 					"details": map[string]any{
 						"definition": "local-engine-check.v2", "eligible": true, "reason": nil,
 						"family": "polystrata", "declaration_sha256": strings.Repeat("c", 64),
-						"verification_scope": "installation_runtime_closure_only",
+						"verification_scope":  "installation_runtime_closure_only",
 						"model_requests_sent": 0, "ready_to_run": false,
 					},
 				})
@@ -222,7 +222,7 @@ func TestRetrySecondPolystrataModelReusesManagedDirAndSavedDataDir(t *testing.T)
 					"details": map[string]any{
 						"definition": "local-engine-check.v2", "eligible": true, "reason": nil,
 						"family": "polystrata", "declaration_sha256": strings.Repeat("c", 64),
-						"verification_scope": "installation_runtime_closure_only",
+						"verification_scope":  "installation_runtime_closure_only",
 						"model_requests_sent": 0, "ready_to_run": false,
 					},
 				})
@@ -335,4 +335,3 @@ func TestExistingPolystrataDataDirFallsBackToInstallationJSON(t *testing.T) {
 		t.Fatalf("existingPolystrataDataDir() = %q, want %q", got, expected)
 	}
 }
-

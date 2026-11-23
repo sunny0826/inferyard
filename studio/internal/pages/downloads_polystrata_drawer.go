@@ -228,7 +228,7 @@ func polystrataCLICommand(build core.EnginePlatformBuild, req core.PolystrataSet
 	if req.Context > 0 {
 		parts = append(parts, "--context", strconv.Itoa(req.Context))
 	}
-	if source := strings.TrimSpace(req.ModelSource); source != "" && source != "auto" {
+	if source := strings.TrimSpace(req.ModelSource); source != "" {
 		parts = append(parts, "--model-source", source)
 	}
 	return strings.Join(parts, " ")

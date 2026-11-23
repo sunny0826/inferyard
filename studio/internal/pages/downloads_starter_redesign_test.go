@@ -317,4 +317,3 @@ func TestStarterHiddenConsistentWithDownloadResolvedAcrossDistinctModels(t *test
 		t.Fatalf("starter card must stay hidden whenever downloadResolved considers task A unresolved: %v", tt.Texts())
 	}
 }
-

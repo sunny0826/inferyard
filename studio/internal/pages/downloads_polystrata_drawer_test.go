@@ -80,6 +80,12 @@ func TestPolystrataEnginesTabOpensDrawerWithModelPickerWhenInstalled(t *testing.
 		EstimatedDownloadBytes: 10947100928,
 		RecommendedContext:     32768,
 	}))
+	s.preview = nil
+	click(t, tt, "复制命令")
+	if autoCmd := tt.Clipboard(); !strings.Contains(autoCmd, "--model-source auto") {
+		t.Fatalf("auto download source must be explicit in CLI command, got %q", autoCmd)
+	}
+	s.preview = stub
 	click(t, tt, "ModelScope")
 	s.preview = nil
 	click(t, tt, "复制命令")
@@ -147,6 +153,9 @@ func TestPolystrataDrawerBlocksIncompatibleHardwareSnapshot(t *testing.T) {
 	}
 	if tt.HasText("Qwen3.6-35B-A3B") || tt.HasText("Qwen3.8-Flash-Next") {
 		t.Fatalf("drawer must not re-inject oversized PolyStrata models excluded by snapshot: %v", tt.Texts())
+	}
+	if tt.HasText("复制命令") || tt.HasText("inferyard engine prepare-polystrata") {
+		t.Fatalf("drawer must hide fallback CLI command and copy button when no PolyStrata model fits: %v", tt.Texts())
 	}
 	info, ok := tt.AccessByRole(ui.RoleButton, "安装此版本 · polystrata")
 	if !ok || !info.Disabled {

@@ -221,6 +221,8 @@ func (s *viewState) engineDrawerInstallSection(
 		polystrataSelected, hasPolystrataOpt = s.polystrataDrawerSetupSection(c, st, hostPlatform)
 		if hasPolystrataOpt {
 			cmd = polystrataCLICommand(build, polystrataRequestForOption(polystrataSelected, st.polystrataModelSource))
+		} else {
+			cmd = ""
 		}
 	}
 	if note != "" || cmd != "" {
