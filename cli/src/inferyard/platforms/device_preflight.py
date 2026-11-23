@@ -80,6 +80,7 @@ def hardware_snapshot(disk_path, environment=None, *, gpu_observation=None):
         result["gpu"] = {"status": "unavailable", "reason": "not_measured", "devices": []}
     if system == "Darwin":
         result["apple_silicon"] = env.get("apple_silicon")
+        result["xcode_clt_installed"] = env.get("xcode_clt_installed")
     if env.get("logical_cpus") is None and result["logical_cpus"] is not None:
         sources["logical_cpus"] = "os.cpu_count"
     for field in (

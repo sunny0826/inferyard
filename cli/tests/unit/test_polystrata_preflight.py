@@ -167,3 +167,58 @@ def test_preflight_family_without_model_uses_smallest_size_in_family(tmp_path: P
         disk_usage_fn=_disk_usage(20 * GIB),
     )
     assert report["blockers"] == []
+
+
+def test_preflight_omitted_family_model_guards_against_12gib_underestimate(tmp_path: Path):
+    # Omitting both --family and --model must not underestimate at 12 GiB and pass 15 GiB hosts
+    with pytest.raises(PreparationError) as exc_fallback:
+        run_polystrata_preflight(
+            tmp_path / "out-omitted",
+            tmp_path / "data-omitted",
+            platform_info=("Darwin", "arm64"),
+            macos_version="15.4",
+            xcode_clt_check=lambda: True,
+            disk_usage_fn=_disk_usage(15 * GIB),
+        )
+    assert exc_fallback.value.reason == "polystrata_disk_insufficient"
+    disk_blocker = exc_fallback.value.details["blockers"][0]
+    assert disk_blocker["required_bytes"] > 20 * GIB
+    assert "--family" in disk_blocker["message"] and "--model" in disk_blocker["message"]
+
+    # Explicit lightweight model with exact selection passes with 15 GiB
+    explicit = run_polystrata_preflight(
+        tmp_path / "out-explicit",
+        tmp_path / "data-explicit",
+        family="lfm25",
+        model="UD-Q3_K_XL",
+        platform_info=("Darwin", "arm64"),
+        macos_version="15.4",
+        xcode_clt_check=lambda: True,
+        disk_usage_fn=_disk_usage(15 * GIB),
+    )
+    assert explicit["disk_estimate_exact"] is True
+
+    # Platform-filtered matching: Darwin --model UD-Q3_K_M uses macOS qwen36 (~19.93 GiB),
+    # not Linux-only gemma4 (~16.71 GiB).
+    with pytest.raises(PreparationError) as exc_mac:
+        run_polystrata_preflight(
+            tmp_path / "out-mac-size",
+            tmp_path / "data-mac-size",
+            model="UD-Q3_K_M",
+            platform_info=("Darwin", "arm64"),
+            macos_version="15.4",
+            xcode_clt_check=lambda: True,
+            disk_usage_fn=_disk_usage(18 * GIB),
+        )
+    assert exc_mac.value.reason == "polystrata_disk_insufficient"
+
+    ok_mac = run_polystrata_preflight(
+        tmp_path / "out-mac-size-ok",
+        tmp_path / "data-mac-size-ok",
+        model="UD-Q3_K_M",
+        platform_info=("Darwin", "arm64"),
+        macos_version="15.4",
+        xcode_clt_check=lambda: True,
+        disk_usage_fn=_disk_usage(20 * GIB),
+    )
+    assert ok_mac["disk_estimate_exact"] is False

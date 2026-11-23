@@ -21,7 +21,7 @@ from inferyard.provisioning.polystrata_preflight_checks import (
     _check_credentialed_env_urls,
     _detect_sibling_migration_risk,
     _disk_free_bytes,
-    _required_model_disk_bytes,
+    _estimate_model_disk_bytes,
     _resolve_macos_gguf_choice,
     _validate_gguf_path,
 )
@@ -407,13 +407,23 @@ def run_polystrata_preflight(
         and (out / "serve" / "server.py").is_file()
     )
     runtime_needed = _RESUME_RUNTIME_DISK_BYTES if runtime_already_extracted else _DEFAULT_RUNTIME_DISK_BYTES
-    model_needed = _required_model_disk_bytes(
+    model_needed, disk_estimate_exact = _estimate_model_disk_bytes(
         system=system,
+        backend=backend,
         family=resolved_family,
         model=resolved_model,
         gguf_path=gguf_path,
         resume=resume,
         data_dir=data_dir,
+    )
+    fallback_hint = (
+        " (conservative fallback because --family/--model were not specified; "
+        "pass --family and --model for an exact requirement)"
+        if not disk_estimate_exact
+        and not resolved_family
+        and not resolved_model
+        and gguf_path is None
+        else ""
     )
     out_free, out_dev = _disk_free_bytes(out, disk_usage_fn=disk_usage_fn)
     data_free, data_dev = _disk_free_bytes(data_dir, disk_usage_fn=disk_usage_fn)
@@ -426,7 +436,7 @@ def run_polystrata_preflight(
                     "code": "polystrata_disk_insufficient",
                     "message": (
                         f"Insufficient free disk space: {out_free / GIB:.1f} GiB available, "
-                        f"at least {combined_needed / GIB:.1f} GiB required."
+                        f"at least {combined_needed / GIB:.1f} GiB required.{fallback_hint}"
                     ),
                     "required_bytes": combined_needed,
                     "free_bytes": out_free,
@@ -453,7 +463,7 @@ def run_polystrata_preflight(
                     "code": "polystrata_disk_insufficient",
                     "message": (
                         f"Insufficient disk space at --data-dir: {data_free / GIB:.1f} GiB available, "
-                        f"at least {model_needed / GIB:.1f} GiB required."
+                        f"at least {model_needed / GIB:.1f} GiB required.{fallback_hint}"
                     ),
                     "required_bytes": model_needed,
                     "free_bytes": data_free,
@@ -487,5 +497,6 @@ def run_polystrata_preflight(
         "data_free_bytes": data_free,
         "runtime_required_bytes": runtime_needed,
         "model_required_bytes": model_needed,
+        "disk_estimate_exact": disk_estimate_exact,
         "blockers": [],
     }

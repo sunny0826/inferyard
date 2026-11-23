@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
-from importlib.resources import files
+from collections.abc import Callable
 import re
 
-from inferyard.contracts.validation import strict_json_loads
+from inferyard.platforms.polystrata_sizing import (
+    GIB,
+    load_starter_catalog,
+    polystrata_total_disk_bytes,
+)
 
-GIB = 1024**3
 STARTER_DEFINITION = "starter-recommendation.v1"
 _MIN_NVIDIA_COMPUTE = (7, 5)
 _MIN_NVIDIA_DRIVER_MAJOR = 580
@@ -16,8 +18,6 @@ _MIN_MACOS_METAL = (15, 0)
 _PC_RAM_TOLERANCE = int(1.5 * GIB)
 # Real nvidia-smi reports slightly under nominal GiB (e.g. 8188 MiB on 8 GB, 12227 MiB on 12 GB).
 _VRAM_TIER_TOLERANCE = 512 * 1024**2
-_STRATA_MTP_DISK_BYTES = 8_000_000_000
-_LOW_RAM_HEADROOM_GB = 10.0
 _POLY_RAM_BESIDE_GB = 10.0
 _POLY_RAM_TOLERANCE_GB = 4.0
 _GIB_TO_GB = 1.073741824
@@ -29,11 +29,7 @@ _SUPPORTED_AMD_ARCH = frozenset(
 )
 _VERSION_PART_RE = re.compile(r"\d+")
 
-
-@lru_cache(maxsize=1)
-def _load_catalog() -> dict:
-    raw = files("inferyard").joinpath("data", "starter_catalog.json").read_text(encoding="utf-8")
-    return strict_json_loads(raw)
+_load_catalog = load_starter_catalog
 
 
 def _valid_bytes(value) -> int | None:
@@ -172,36 +168,6 @@ def _collect_polystrata_accelerators(
     return [(backend, entry[1]) for backend, entry in ordered], []
 
 
-def _required_disk_bytes(
-    model: dict,
-    *,
-    backend: str,
-    avx512: bool | None,
-    ram_total: int,
-) -> int:
-    if "min_disk_bytes" in model:
-        return int(model["min_disk_bytes"])
-    download = int(model["download_bytes"])
-    if model.get("engine_core") == "strata":
-        extra = _STRATA_MTP_DISK_BYTES
-        if backend == "metal":
-            # Two-shard Qwen3.8 models are mapped directly on Metal without repacking.
-            if model.get("mac_needs_repack"):
-                extra += int(model.get("mac_pack_bytes", 0))
-            return download + extra
-        arena_gb = int(model["arena_bytes"]) / 1e9
-        ram_gib = ram_total / GIB
-        q2_avx = avx512 is True and bool(model.get("avx512_conversion_bytes"))
-        low_ram = ram_gib < arena_gb + _LOW_RAM_HEADROOM_GB
-        if q2_avx:
-            extra += int(model["avx512_conversion_bytes"])
-        elif low_ram:
-            extra += int((arena_gb + 1.0) * 1e9)
-        return download + extra
-    # strata-poly reads GGUF in place; allow modest headroom for partial writes and metadata.
-    return int(download * 1.1) + 2 * GIB
-
-
 def _poly_ram_need_gb(model: dict, vram_bytes: int | None) -> float:
     """Upstream setup.py poly_ram_need() in decimal GB using measured VRAM in GiB."""
     vram_gib = (vram_bytes or 0) / GIB
@@ -305,8 +271,8 @@ def _evaluate_polystrata(
             if not ram_ok:
                 rejection_reasons.append("insufficient_ram")
                 continue
-            need_disk = _required_disk_bytes(
-                model, backend=backend, avx512=avx512, ram_total=ram_total
+            need_disk = polystrata_total_disk_bytes(
+                model, system=str(system), avx512=avx512
             )
             if disk_free < need_disk:
                 rejection_reasons.append("insufficient_disk")
@@ -407,7 +373,31 @@ def _blocked_result(reason: str, disk_free: int | None, notes: list[str]) -> dic
     }
 
 
-def recommend_starter(hardware: dict, *, catalog: dict | None = None) -> dict:
+def _select_polystrata_alternatives(
+    chosen: dict, remaining: list[dict], *, limit: int = 3
+) -> list[dict]:
+    """Ensure high-RAM hosts still see at least one lightweight strata-poly alternative."""
+    selected = list(remaining[:limit])
+    if (
+        chosen.get("engine_core") != "strata-poly"
+        and selected
+        and not any(item.get("engine_core") == "strata-poly" for item in selected)
+    ):
+        lightweight = next(
+            (item for item in remaining[limit:] if item.get("engine_core") == "strata-poly"),
+            None,
+        )
+        if lightweight is not None:
+            selected[-1] = lightweight
+    return selected
+
+
+def recommend_starter(
+    hardware: dict,
+    *,
+    catalog: dict | None = None,
+    xcode_clt_check: Callable[[], bool] | None = None,
+) -> dict:
     """Recommend default starter engine and model from observed hardware."""
     cat = catalog if catalog is not None else _load_catalog()
     disk_free, notes = _effective_disk(hardware)
@@ -438,6 +428,12 @@ def recommend_starter(hardware: dict, *, catalog: dict | None = None) -> dict:
 
     if poly_fits:
         chosen = poly_fits[0]
+        if hardware.get("platform") == "Darwin" and hardware.get("apple_silicon") is True:
+            clt_installed = hardware.get("xcode_clt_installed")
+            if clt_installed is None and xcode_clt_check is not None:
+                clt_installed = bool(xcode_clt_check())
+            if clt_installed is False:
+                notes.append("xcode_clt_missing")
         if (hardware.get("cpu_features") or {}).get("avx2") is False:
             notes.append("cpu_missing_avx2_experimental_build")
         if hardware.get("platform") == "Windows":
@@ -447,7 +443,8 @@ def recommend_starter(hardware: dict, *, catalog: dict | None = None) -> dict:
         if ram_available is not None and ram_available < int(chosen["estimated_ram_bytes"] * 0.6):
             notes.append("host_available_memory_tight")
 
-        alternatives = [_public_item(item) for item in poly_fits[1:4]]
+        poly_alts = _select_polystrata_alternatives(chosen, poly_fits[1:])
+        alternatives = [_public_item(item) for item in poly_alts]
         if fallback_fits:
             alternatives.append(_public_item(fallback_fits[0]))
         return {
