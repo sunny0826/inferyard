@@ -44,7 +44,7 @@ func (p *previewSession) startSpeed(op previewSpeedStart) {
 			return
 		}
 		r.stage = speedBinding
-		s.engineState.State = "starting"
+		s.engineState = p.previewEngineMetadata("starting", 42, false, "")
 	})
 	p.after("speed", 1100*time.Millisecond, func() {
 		if reject("binding") {

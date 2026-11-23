@@ -18,15 +18,21 @@ import (
 )
 
 type EngineState struct {
-	StartTicks int64     `json:"start_ticks"`
-	Local      bool      `json:"local"`
-	Family     string    `json:"family,omitempty"`
-	State      string    `json:"state"`
-	Pid        int64     `json:"pid"`
-	Endpoint   string    `json:"endpoint"`
-	LogPath    string    `json:"log_path"`
-	Candidate  string    `json:"candidate"`
-	Error      *ApiError `json:"error,omitempty"`
+	StartTicks    int64     `json:"start_ticks"`
+	Local         bool      `json:"local"`
+	Family        string    `json:"family,omitempty"`
+	Adapter       string    `json:"adapter,omitempty"`
+	Executable    string    `json:"executable,omitempty"`
+	Model         string    `json:"model,omitempty"`
+	ModelKind     string    `json:"model_kind,omitempty"`
+	ContextSize   int64     `json:"context_size,omitempty"`
+	WebUIDisabled bool      `json:"webui_disabled,omitempty"`
+	State         string    `json:"state"`
+	Pid           int64     `json:"pid"`
+	Endpoint      string    `json:"endpoint"`
+	LogPath       string    `json:"log_path"`
+	Candidate     string    `json:"candidate"`
+	Error         *ApiError `json:"error,omitempty"`
 }
 
 type engineEntry struct {
@@ -117,7 +123,32 @@ func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
 		_ = logFile.Close()
 		return EngineState{}, &ApiError{Code: "engine_start_failed", Message: "引擎进程启动失败，请检查文件权限与运行环境。"}
 	}
-	entry := &engineEntry{family: startup.Family, cmd: cmd, logFile: logFile, stop: make(chan struct{}), done: make(chan struct{}), state: EngineState{State: "starting", Local: startup.Local, Family: startup.Family, Pid: int64(cmd.Process.Pid), Endpoint: endpoint, LogPath: logPath, Candidate: candidate}}
+	executable := ""
+	if startup.Path != "" {
+		executable = filepath.Base(startup.Path)
+	}
+	entry := &engineEntry{
+		family:  startup.Family,
+		cmd:     cmd,
+		logFile: logFile,
+		stop:    make(chan struct{}),
+		done:    make(chan struct{}),
+		state: EngineState{
+			State:         "starting",
+			Local:         startup.Local,
+			Family:        startup.Family,
+			Adapter:       startup.Adapter,
+			Executable:    executable,
+			Model:         startup.ModelPath,
+			ModelKind:     startup.ModelKind,
+			ContextSize:   startup.ContextSize,
+			WebUIDisabled: startup.WebUIDisabled,
+			Pid:           int64(cmd.Process.Pid),
+			Endpoint:      endpoint,
+			LogPath:       logPath,
+			Candidate:     candidate,
+		},
+	}
 	if failure := s.persistEngineOwner(entry, *w); failure != nil {
 		if entry.state.Local {
 			if cleanupErr := s.terminateOwnedTree(&entry.owner, ""); cleanupErr != nil {

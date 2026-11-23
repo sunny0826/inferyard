@@ -15,10 +15,15 @@ type Startup struct {
 	Args             []string          `json:"startup_args"`
 	Kind             string            `json:"kind"`
 	Family           string            `json:"family"`
+	Adapter          string            `json:"adapter,omitempty"`
 	Local            bool              `json:"local"`
 	WorkingDirectory string            `json:"working_directory"`
 	Environment      map[string]string `json:"environment"`
 	Endpoint         string            `json:"endpoint"`
+	ModelPath        string            `json:"model_path,omitempty"`
+	ModelKind        string            `json:"model_kind,omitempty"`
+	ContextSize      int64             `json:"context_size,omitempty"`
+	WebUIDisabled    bool              `json:"webui_disabled,omitempty"`
 }
 type ProcessCandidate struct {
 	PID  int64  `json:"pid"`
@@ -31,12 +36,31 @@ func (s *Service) Startup(candidate string) (Startup, *ApiError) {
 		return Startup{}, failure
 	}
 	launch := description.Launch
-	result := Startup{Kind: launch.Kind, Family: description.Family,
+	modelPath := description.Assets.Model.Path
+	if modelPath == "" {
+		modelPath = launch.ServedModel
+	}
+	result := Startup{
+		Kind:             launch.Kind,
+		Family:           description.Family,
+		Adapter:          description.Adapter,
 		Local:            description.Definition == "local-engine-description.v2",
-		WorkingDirectory: str(launch.WorkingDirectory), Environment: launch.Environment,
-		Endpoint: description.Endpoint.URL, Args: []string{}}
+		WorkingDirectory: str(launch.WorkingDirectory),
+		Environment:      launch.Environment,
+		Endpoint:         description.Endpoint.URL,
+		ModelPath:        modelPath,
+		ModelKind:        description.Assets.Model.Kind,
+		ContextSize:      description.Conditions.ContextSize,
+		Args:             []string{},
+	}
 	if launch.Kind == "direct_process" {
 		result.Path, result.Args = launch.Argv[0], launch.Argv[1:]
+	}
+	for _, arg := range result.Args {
+		if arg == "--no-webui" || strings.HasPrefix(arg, "--no-webui=") {
+			result.WebUIDisabled = true
+			break
+		}
 	}
 	return result, nil
 }
