@@ -259,12 +259,13 @@ func TestUpdateDownloadVerifyChecksumRejectionCancelAndRetry(t *testing.T) {
 
 	stagingRoot := filepath.Join(t.TempDir(), "staging")
 	s := newUpdateTestService(t, UpdateOptions{
-		APIURL:         srv.URL + "/latest",
-		CurrentVersion: "0.9.9",
-		GOOS:           "linux",
-		GOARCH:         "amd64",
-		StagingRoot:    stagingRoot,
-		InspectTarget:  func() updateInstallTarget { return updateInstallTarget{CanSelfUpdate: true, ExePath: "/opt/inferyard/inferyard-studio"} },
+		APIURL:              srv.URL + "/latest",
+		CurrentVersion:      "0.9.9",
+		GOOS:                "linux",
+		GOARCH:              "amd64",
+		StagingRoot:         stagingRoot,
+		DisableAutoDownload: true,
+		InspectTarget:       func() updateInstallTarget { return updateInstallTarget{CanSelfUpdate: true, ExePath: "/opt/inferyard/inferyard-studio"} },
 	})
 
 	if _, err := s.CheckForUpdate(context.Background()); err != nil {

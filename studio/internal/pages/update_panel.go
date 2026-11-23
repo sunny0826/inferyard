@@ -208,7 +208,7 @@ func (s *viewState) updateDialog(c *ui.Context) {
 							}
 						}
 						if button(c, "稍后").Clicked() {
-							s.updateDialogOpen = false
+							s.dismissUpdateReadyPrompt(st)
 						}
 					})
 				case core.UpdateApplying:
@@ -289,7 +289,7 @@ func (s *viewState) updateReadyPrompt(c *ui.Context) {
 						ui.Text(c, "稍后").FontSize(t.Type.Body).TextColor(t.Color.FgSecondary)
 					})
 					if laterBtn.Clicked() {
-						s.updateReadyPromptDismissedVersion = ver
+						s.dismissUpdateReadyPrompt(st)
 					}
 					restartBtn := components.Button(c, "更新并重启", components.ButtonPrimary).
 						Padding(8, 18).Radius(10)
@@ -304,6 +304,15 @@ func (s *viewState) updateReadyPrompt(c *ui.Context) {
 			})
 		})
 	})
+}
+
+func (s *viewState) dismissUpdateReadyPrompt(st core.UpdateState) {
+	if st.Release != nil {
+		if ver := strings.TrimPrefix(st.Release.Version, "v"); ver != "" {
+			s.updateReadyPromptDismissedVersion = ver
+		}
+	}
+	s.updateDialogOpen = false
 }
 
 func (s *viewState) applyUpdateState(next core.UpdateState) {

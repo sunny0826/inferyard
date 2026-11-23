@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -204,6 +205,15 @@ func (m *updateManager) checkForUpdate(ctx context.Context, manual bool) (Update
 		}
 	}
 
+	prevWasReady := m.state.State == UpdateReadyToApply
+	prevArtifact := m.stagedArtifact
+	prevSHA := m.stagedSHA256
+	var prevVer, prevAsset string
+	if m.state.Release != nil {
+		prevVer = m.state.Release.Version
+		prevAsset = m.state.Release.AssetName
+	}
+
 	m.opSeq++
 	seq := m.opSeq
 	opCtx, cancel := context.WithTimeout(ctx, m.opts.CheckTimeout)
@@ -227,10 +237,18 @@ func (m *updateManager) checkForUpdate(ctx context.Context, manual bool) (Update
 
 	var target updateInstallTarget
 	var workloads UpdateActiveWorkloads
+	var reuseReady bool
+	var reusedSize int64
 	if checkErr == nil && newer {
 		target = m.inspectTarget()
 		if m.service != nil {
 			workloads = m.service.ActiveUpdateWorkloads()
+		}
+		if prevWasReady && prevArtifact != "" && prevSHA != "" && prevVer == rel.Version && prevAsset == rel.AssetName {
+			if st, statErr := os.Stat(prevArtifact); statErr == nil && st.Mode().IsRegular() {
+				reuseReady = true
+				reusedSize = st.Size()
+			}
 		}
 	}
 
@@ -280,9 +298,30 @@ func (m *updateManager) checkForUpdate(ctx context.Context, manual bool) (Update
 		return m.cloneStateLocked(), nil
 	}
 
-	if m.state.Release == nil || m.state.Release.Version != rel.Version {
-		m.removeStagedLocked()
+	if reuseReady && m.stagedArtifact == prevArtifact && m.stagedSHA256 == prevSHA {
+		m.state.State = UpdateReadyToApply
+		m.state.Release = &rel
+		m.state.DownloadedBytes = reusedSize
+		if reusedSize > 0 {
+			m.state.TotalBytes = ptr(reusedSize)
+		} else if rel.AssetSize > 0 {
+			m.state.TotalBytes = ptr(rel.AssetSize)
+		} else {
+			m.state.TotalBytes = nil
+		}
+		m.state.BytesPerSecond = nil
+		m.state.Workloads = workloads
+		m.state.CanSelfUpdate = target.CanSelfUpdate
+		m.state.SelfUpdateBlock = target.BlockMessage
+		if m.state.CanSelfUpdate && (rel.AssetURL == "" || rel.ChecksumsURL == "") {
+			m.state.CanSelfUpdate = false
+			m.state.SelfUpdateBlock = "当前发布未提供适用安装包或校验文件，请前往发布页下载。"
+		}
+		m.publishLocked()
+		return m.cloneStateLocked(), nil
 	}
+
+	m.removeStagedLocked()
 	m.state.State = UpdateAvailable
 	m.state.Release = &rel
 	m.state.DownloadedBytes = 0

@@ -341,6 +341,21 @@ func (s *Service) UpdateStatus() UpdateState {
 	return snap
 }
 
+func (m *updateManager) maybeAutoDownload(ctx context.Context, st UpdateState, async bool) {
+	if m.opts.DisableAutoDownload || st.State != UpdateAvailable || !st.CanSelfUpdate ||
+		st.Release == nil || st.Release.AssetURL == "" || st.Release.ChecksumsURL == "" {
+		return
+	}
+	run := func() {
+		_, _ = m.downloadUpdateWithSeq(ctx, false, st.Seq)
+	}
+	if async {
+		go run()
+		return
+	}
+	run()
+}
+
 func (s *Service) StartBackgroundUpdateCheck() {
 	if s == nil || s.updater == nil {
 		return
@@ -371,9 +386,8 @@ func (s *Service) StartBackgroundUpdateCheck() {
 			}
 			m.mu.Unlock()
 			st, err := m.checkForUpdate(s.ctx, false)
-			if err == nil && !m.opts.DisableAutoDownload && st.State == UpdateAvailable && st.CanSelfUpdate &&
-				st.Release != nil && st.Release.AssetURL != "" && st.Release.ChecksumsURL != "" {
-				_, _ = m.downloadUpdate(s.ctx, false)
+			if err == nil {
+				m.maybeAutoDownload(s.ctx, st, false)
 			}
 		}()
 	})
@@ -383,7 +397,11 @@ func (s *Service) CheckForUpdate(ctx context.Context) (UpdateState, error) {
 	if s == nil || s.updater == nil {
 		return UpdateState{State: UpdateIdle, CurrentVersion: Version}, errors.New("update service unavailable")
 	}
-	return s.updater.checkForUpdate(ctx, true)
+	st, err := s.updater.checkForUpdate(ctx, true)
+	if err == nil {
+		s.updater.maybeAutoDownload(s.ctx, st, true)
+	}
+	return st, err
 }
 
 func (s *Service) DownloadUpdate(ctx context.Context) (UpdateState, error) {

@@ -20,7 +20,7 @@ import (
 
 const darwinRenameSwap uint32 = 0x00000002
 
-type darwinSwapFunc func(appDir, stageApp, backupApp string) (cleanupPath string, err error)
+type darwinSwapFunc func(appDir, stageApp string) error
 
 type darwinRenamexFuncs struct {
 	renamex  func(from, to string, flags uint32) int32
@@ -59,7 +59,7 @@ func inspectPlatformInstallTarget(exePath string) updateInstallTarget {
 }
 
 func applyPlatformUpdate(ctx context.Context, plan platformApplyPlan) error {
-	return applyDarwinUpdate(ctx, plan, swapDarwinBundlesAtomic)
+	return applyDarwinUpdate(ctx, plan, renamexSwapDarwin)
 }
 
 func applyDarwinUpdate(ctx context.Context, plan platformApplyPlan, swapFn darwinSwapFunc) error {
@@ -122,7 +122,6 @@ func applyDarwinUpdate(ctx context.Context, plan platformApplyPlan, swapFn darwi
 
 	suffix := uuid()[:8]
 	stageApp := filepath.Join(parentDir, "."+filepath.Base(appDir)+".new-"+suffix)
-	backupApp := filepath.Join(parentDir, "."+filepath.Base(appDir)+".bak-"+suffix)
 	cleanupStage := true
 	defer func() {
 		if cleanupStage {
@@ -140,18 +139,19 @@ func applyDarwinUpdate(ctx context.Context, plan platformApplyPlan, swapFn darwi
 	_, _ = plan.RunCmd(ctx, "xattr", "-dr", "com.apple.quarantine", stageApp)
 	detachDMG()
 
-	cleanupPath, err := swapFn(appDir, stageApp, backupApp)
-	if err != nil {
+	if err := swapFn(appDir, stageApp); err != nil {
+		msg := "替换应用包失败，原有安装已保留。"
+		if errors.Is(err, syscall.ENOTSUP) || errors.Is(err, syscall.ENOSYS) {
+			msg = "当前磁盘不支持原子替换应用包，可打开安装包手动安装或前往发布页下载。"
+		}
 		return &updateCheckError{
 			code:    "update_apply_failed",
-			message: "替换应用包失败，原有安装已保留。",
+			message: msg,
 			cause:   err,
 		}
 	}
 	cleanupStage = false
-	if cleanupPath != "" {
-		_ = os.RemoveAll(cleanupPath)
-	}
+	_ = os.RemoveAll(stageApp)
 	if plan.StagingDir != "" {
 		_ = os.RemoveAll(plan.StagingDir)
 	}
@@ -193,28 +193,6 @@ func renamexSwapDarwin(pathA, pathB string) error {
 		return eno
 	}
 	return syscall.EIO
-}
-
-func swapDarwinBundlesAtomic(appDir, stageApp, backupApp string) (string, error) {
-	err := renamexSwapDarwin(appDir, stageApp)
-	if err == nil {
-		return stageApp, nil
-	}
-	if errors.Is(err, syscall.ENOTSUP) || errors.Is(err, syscall.ENOSYS) {
-		return swapDarwinBundlesFallback(appDir, stageApp, backupApp, os.Rename)
-	}
-	return "", err
-}
-
-func swapDarwinBundlesFallback(appDir, stageApp, backupApp string, renameFn func(string, string) error) (string, error) {
-	if err := renameFn(appDir, backupApp); err != nil {
-		return "", err
-	}
-	if err := renameFn(stageApp, appDir); err != nil {
-		_ = renameFn(backupApp, appDir)
-		return "", err
-	}
-	return backupApp, nil
 }
 
 func spawnDarwinRelaunch(pid int, appDir string) error {

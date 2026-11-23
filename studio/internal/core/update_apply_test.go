@@ -112,12 +112,13 @@ func TestUpdateContextSpeedGuardDevModeAndCorruptArchiveCleanup(t *testing.T) {
 	// Active context_speed run blocks unconfirmed ApplyUpdate, and corrupt apply cleans up staging.
 	stagingRoot := filepath.Join(t.TempDir(), "staging")
 	s := newUpdateTestService(t, UpdateOptions{
-		APIURL:         srv.URL + "/latest",
-		CurrentVersion: "0.9.9",
-		GOOS:           "linux",
-		GOARCH:         "amd64",
-		StagingRoot:    stagingRoot,
-		InspectTarget:  func() updateInstallTarget { return updateInstallTarget{CanSelfUpdate: true, ExePath: "/opt/inferyard-studio"} },
+		APIURL:              srv.URL + "/latest",
+		CurrentVersion:      "0.9.9",
+		GOOS:                "linux",
+		GOARCH:              "amd64",
+		StagingRoot:         stagingRoot,
+		DisableAutoDownload: true,
+		InspectTarget:       func() updateInstallTarget { return updateInstallTarget{CanSelfUpdate: true, ExePath: "/opt/inferyard-studio"} },
 		ApplyFunc: func(context.Context, platformApplyPlan) error {
 			return &updateCheckError{code: "update_extract_failed", message: "bad archive"}
 		},
@@ -210,10 +211,11 @@ func TestUpdateActiveWorkloadGuardAndUnwritableFallback(t *testing.T) {
 	var allowWrite atomic.Bool
 	var applied atomic.Bool
 	s := newUpdateTestService(t, UpdateOptions{
-		APIURL:         srv.URL + "/latest",
-		CurrentVersion: "0.9.9",
-		GOOS:           "linux",
-		GOARCH:         "amd64",
+		APIURL:              srv.URL + "/latest",
+		CurrentVersion:      "0.9.9",
+		GOOS:                "linux",
+		GOARCH:              "amd64",
+		DisableAutoDownload: true,
 		InspectTarget: func() updateInstallTarget {
 			if !allowWrite.Load() {
 				return updateInstallTarget{

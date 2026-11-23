@@ -56,8 +56,7 @@ func TestApplyDarwinUpdateSwapAndRollbackBeforeShutdown(t *testing.T) {
 		return nil, nil
 	}
 
-	// Case 1: Swap failure rolls back original .app and does NOT call Shutdown or RequestQuit.
-	renameCount := 0
+	// Case 1: Unsupported atomic swap (ENOTSUP) returns update_apply_failed, preserves original .app untouched, cleans staging .new-*, and does NOT call Shutdown/RequestQuit.
 	planFail := platformApplyPlan{
 		ArtifactPath: filepath.Join(stagingDir, "update.dmg"),
 		StagingDir:   stagingDir,
@@ -69,24 +68,22 @@ func TestApplyDarwinUpdateSwapAndRollbackBeforeShutdown(t *testing.T) {
 		RequestQuit:  func() { quitCalls++ },
 		RunCmd:       runner,
 	}
-	err := applyDarwinUpdate(context.Background(), planFail, func(app, stage, backup string) (string, error) {
-		return swapDarwinBundlesFallback(app, stage, backup, func(oldPath, newPath string) error {
-			renameCount++
-			if renameCount == 2 {
-				return errors.New("simulated swap error")
-			}
-			return os.Rename(oldPath, newPath)
-		})
+	err := applyDarwinUpdate(context.Background(), planFail, func(string, string) error {
+		return syscall.ENOTSUP
 	})
-	if err == nil {
-		t.Fatal("expected swap failure")
+	var ce *updateCheckError
+	if !errors.As(err, &ce) || ce.code != "update_apply_failed" {
+		t.Fatalf("expected update_apply_failed on ENOTSUP, got %v", err)
 	}
 	if shutdownCalls != 0 || quitCalls != 0 {
 		t.Fatalf("failed swap must not shut down service or quit: shutdown=%d quit=%d", shutdownCalls, quitCalls)
 	}
 	gotExe, readErr := os.ReadFile(exePath)
 	if readErr != nil || string(gotExe) != "old-version" {
-		t.Fatalf("rollback failed: err=%v content=%q", readErr, string(gotExe))
+		t.Fatalf("original bundle altered on ENOTSUP: err=%v content=%q", readErr, string(gotExe))
+	}
+	if entries, err := os.ReadDir(installParent); err != nil || len(entries) != 1 || entries[0].Name() != "InferYard Studio.app" {
+		t.Fatalf("failed swap left unexpected entries in installParent: err=%v entries=%v", err, entries)
 	}
 
 	// Case 2: Successful atomic swap detaches DMG, replaces .app, cleans staging and old bundle, then calls Shutdown & RequestQuit.

@@ -50,6 +50,10 @@ func parseSHA256Sums(content, targetName string) (string, bool) {
 }
 
 func (m *updateManager) downloadUpdate(ctx context.Context, manual bool) (UpdateState, error) {
+	return m.downloadUpdateWithSeq(ctx, manual, 0)
+}
+
+func (m *updateManager) downloadUpdateWithSeq(ctx context.Context, manual bool, expectedSeq uint64) (UpdateState, error) {
 	if ctx == nil {
 		if m.service != nil && m.service.ctx != nil {
 			ctx = m.service.ctx
@@ -64,6 +68,11 @@ func (m *updateManager) downloadUpdate(ctx context.Context, manual bool) (Update
 		m.mu.Unlock()
 		return snap, &updateCheckError{code: "update_busy", message: "更新正在处理中，请稍候。"}
 	}
+	if expectedSeq != 0 && (m.state.Seq != expectedSeq || m.state.State != UpdateAvailable) {
+		snap := m.cloneStateLocked()
+		m.mu.Unlock()
+		return snap, nil
+	}
 	if m.state.State == UpdateReadyToApply && m.stagedArtifact != "" {
 		if st, err := os.Stat(m.stagedArtifact); err == nil && st.Mode().IsRegular() {
 			snap := m.cloneStateLocked()
@@ -72,7 +81,7 @@ func (m *updateManager) downloadUpdate(ctx context.Context, manual bool) (Update
 		}
 	}
 	switch m.state.State {
-	case UpdateDownloading, UpdateVerifying, UpdateApplying:
+	case UpdateChecking, UpdateDownloading, UpdateVerifying, UpdateApplying:
 		snap := m.cloneStateLocked()
 		m.mu.Unlock()
 		return snap, &updateCheckError{code: "update_busy", message: "更新正在处理中，请稍候。"}

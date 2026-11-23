@@ -253,15 +253,25 @@ func TestUpdateReadyPromptCardActionsAndWorkloadGuard(t *testing.T) {
 		}
 	}
 
-	// Clicking "查看更新日志" opens the full update modal and hides the floating card.
+	// Clicking "查看更新日志" opens the full update modal and hides the floating card;
+	// clicking "稍后" inside the modal dismisses BOTH without popping the card right back up, while keeping header badge available.
 	click(t, tt, "查看更新日志")
 	if !s.updateDialogOpen {
 		t.Fatal("clicking 查看更新日志 did not open update dialog")
 	}
-	s.updateDialogOpen = false
 	tt.Frame()
+	click(t, tt, "稍后")
+	tt.Frame()
+	if s.updateDialogOpen || s.updateReadyPromptDismissedVersion != "0.10.0" || tt.HasText("版本 0.10.0 已可更新，重启后生效。") {
+		t.Fatalf("modal 稍后 bounced floating card back: dialog=%v dismissed=%q texts=%v", s.updateDialogOpen, s.updateReadyPromptDismissedVersion, tt.Texts())
+	}
+	if label, _, _, _ := updateBadgePresentation(s.updateState); label == "" {
+		t.Fatalf("expected header update badge to remain available after defer")
+	}
 
-	// Clicking "稍后" dismisses the floating card for this version while preserving ready state.
+	// Clicking "稍后" directly on the floating card also dismisses it for this version while preserving ready state.
+	s.updateReadyPromptDismissedVersion = ""
+	tt.Frame()
 	click(t, tt, "稍后")
 	if s.updateReadyPromptDismissedVersion != "0.10.0" || tt.HasText("版本 0.10.0 已可更新，重启后生效。") {
 		t.Fatalf("稍后 did not dismiss ready card: dismissed=%q texts=%v", s.updateReadyPromptDismissedVersion, tt.Texts())
