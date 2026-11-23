@@ -150,3 +150,50 @@ func TestPolystrataFailedAndCancelledRecoveryActionsOpenDrawerOrResume(t *testin
 		})
 	}
 }
+
+func TestPolystrataPhaseIndexAndRecoveryDrawerRestoresModelSource(t *testing.T) {
+	if got := polystrataPhaseIndex(core.DownloadTask{
+		State:     "downloading",
+		Stage:     "setup_engine",
+		Step:      ptr(4),
+		StepTotal: ptr(4),
+	}); got != 3 {
+		t.Fatalf("expected valid 4-stage Step=4 to win over Stage=setup_engine, got %d", got)
+	}
+	if got := polystrataPhaseIndex(core.DownloadTask{
+		State: "downloading",
+		Stage: "setup_engine",
+	}); got != 2 {
+		t.Fatalf("expected Stage=setup_engine fallback without Step to return 2, got %d", got)
+	}
+
+	s := testState()
+	st := s.ensureDownloadsUI()
+	st.hostPlatform = "darwin/arm64"
+	st.setPolystrataModelSource("huggingface")
+	s.downloads = []core.DownloadTask{{
+		TaskId:      "ps-restore-src",
+		Kind:        "polystrata",
+		DisplayName: "PolyStrata · qwen36 · UD-Q4_K_M",
+		State:       "failed",
+		Stage:       "downloading_model",
+		ModelSource: "modelscope",
+		OutName:     "polystrata",
+	}}
+	stub := &resolvePreviewStub{}
+	s.preview = stub
+	tt := ui.NewTester(s.downloadsPageView, 1120, 2600)
+
+	click(t, tt, "更换方案或下载源")
+	if !st.engineDrawerOpen || st.polystrataModelSource != "modelscope" {
+		t.Fatalf("expected recovery drawer to restore ModelSource=modelscope, got open=%v src=%q", st.engineDrawerOpen, st.polystrataModelSource)
+	}
+	click(t, tt, "安装此版本 · polystrata")
+	if len(stub.intents) != 1 {
+		t.Fatalf("expected 1 setup intent, got %#v", stub.intents)
+	}
+	req := stub.intents[0].(previewPolystrataSetup).req
+	if req.ModelSource != "modelscope" {
+		t.Fatalf("expected restored ModelSource=modelscope in submitted setup request, got %+v", req)
+	}
+}

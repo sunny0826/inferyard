@@ -296,6 +296,10 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	displayName := orig.Task.DisplayName
 	totalBytes := orig.Task.TotalBytes
 	prevDataDir := orig.dataDir
+	prevModelSource := strings.TrimSpace(orig.Task.ModelSource)
+	if prevModelSource == "" && polystrataCopy != nil {
+		prevModelSource = strings.TrimSpace(polystrataCopy.ModelSource)
+	}
 	s.mu.Unlock()
 
 	u := downloadNameDefaults(s.userSettings())
@@ -406,6 +410,7 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	}
 	if kind == "polystrata" {
 		task.Stage = "preflight"
+		task.ModelSource = prevModelSource
 		task.LogPath = ptr(filepath.Join(outDir, ".inferyard-setup.log"))
 	}
 	entry := &downloadEntry{

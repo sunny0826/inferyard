@@ -227,3 +227,36 @@ def test_parse_setup_line_maps_substeps_cmake_pip_and_weights_monotonically():
     assert events[-1]["stage"] == "verifying"
     assert events[-1]["step"] == 4
     assert events[-1]["detail"] == "Step 7: writing start script"
+
+
+def test_parse_setup_line_keeps_step6_downloads_and_sha256_verify_in_phase4():
+    buf = io.StringIO()
+    em = ProgressEmitter(enabled=True, stream=buf, min_interval_seconds=0.0)
+    st, step = "setup_engine", 3
+    lines = [
+        "=== Step 5: downloading Qwen3.6 weights ===",
+        "Qwen3.6.gguf: 4.20 / 4.20 GB (100.0%)",
+        "checking Qwen3.6.gguf (SHA-256, 4.20 GB)",
+        "draft.gguf: 100.00 / 500.00 MB (20.0%)",
+        "=== Step 6: Configure runtime ===",
+        "chat_template.jinja: 0.01 / 0.01 MB (100.0%)",
+    ]
+    for line in lines:
+        st, step = parse_setup_line(line, st, step, em)
+
+    events = [json.loads(line) for line in buf.getvalue().splitlines()]
+    _assert_monotonic_four_steps(events)
+    verify_ev = next(ev for ev in events if ev["stage"] == "verifying" and "SHA-256" in ev["detail"])
+    assert verify_ev["step"] == 4
+    assert verify_ev["step_total"] == 4
+    assert verify_ev["total_bytes"] is None
+    assert verify_ev["bytes_per_second"] is None
+
+    draft_ev = next(ev for ev in events if ev.get("detail") == "draft.gguf")
+    assert draft_ev["stage"] == "downloading_model"
+    assert draft_ev["step"] == 4
+
+    tmpl_ev = next(ev for ev in events if ev.get("detail") == "chat_template.jinja")
+    assert tmpl_ev["stage"] == "downloading_model"
+    assert tmpl_ev["step"] == 4
+    assert tmpl_ev["step_total"] == 4

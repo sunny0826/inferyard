@@ -200,8 +200,12 @@ def parse_setup_line(
         mult = _UNIT_MULTIPLIERS[dl_match.group(4).lower()]
         have_bytes = int(float(dl_match.group(2)) * mult)
         total_bytes = max(1, int(float(dl_match.group(3)) * mult))
-        dl_stage = "downloading_model" if current_stage == "downloading_model" else "setup_engine"
-        outer_step = 4 if (dl_stage == "downloading_model" or base_step >= 4) else 3
+        dl_stage = (
+            "downloading_model"
+            if (current_stage == "downloading_model" or base_step >= 4)
+            else "setup_engine"
+        )
+        outer_step = 4 if dl_stage == "downloading_model" else 3
         emitter.update(
             dl_stage,
             have_bytes,
@@ -242,6 +246,25 @@ def parse_setup_line(
                 detail=ninja_match.group(3).strip() or stripped,
             )
             return stage, base_step
+
+    if current_stage == "downloading_model":
+        lower = stripped.lower()
+        if (
+            lower.startswith("checking ")
+            or lower.startswith("verifying ")
+            or "sha-256" in lower
+            or "sha256" in lower
+        ):
+            emitter.update(
+                "verifying",
+                0,
+                None,
+                step=4,
+                step_total=4,
+                detail=stripped,
+                force=True,
+            )
+            return "verifying", 4
 
     if current_stage in ("setup_engine", "verifying") and any(ch.isalnum() for ch in stripped):
         emitter.update(

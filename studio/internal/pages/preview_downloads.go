@@ -80,6 +80,7 @@ func (p *previewSession) startPolystrataSetup(req core.PolystrataSetupRequest) {
 		StepTotal:   previewValue(4),
 		Percent:     previewValue(10.0),
 		Detail:      previewValue("检查环境"),
+		ModelSource: strings.TrimSpace(req.ModelSource),
 		SourceUrl:   "https://github.com/simplexai-labs/PolyStrata/archive/3e1642161198c50ff1abed4046f4e4f476099dbb.tar.gz",
 		OutName:     outName,
 		OutDir:      outDir,
@@ -252,16 +253,23 @@ func (p *previewSession) downloadLogTail(taskID string) string {
 }
 
 func previewPolystrataRequestFromTask(task core.DownloadTask, fallback core.PolystrataSetupRequest) core.PolystrataSetupRequest {
+	modelSource := strings.TrimSpace(task.ModelSource)
+	if modelSource == "" {
+		modelSource = fallback.ModelSource
+	}
 	parts := strings.Split(task.DisplayName, " · ")
 	if len(parts) >= 2 && strings.TrimSpace(parts[0]) == "PolyStrata" {
 		req := core.PolystrataSetupRequest{
 			Family:      strings.TrimSpace(parts[1]),
-			ModelSource: fallback.ModelSource,
+			ModelSource: modelSource,
 		}
 		if len(parts) >= 3 {
 			req.Model = strings.TrimSpace(parts[2])
 		}
 		return req
+	}
+	if modelSource != "" {
+		fallback.ModelSource = modelSource
 	}
 	return fallback
 }

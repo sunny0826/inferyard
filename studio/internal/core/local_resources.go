@@ -127,6 +127,7 @@ func (s *Service) RegisterEngineInstallation(ctx context.Context, path string) (
 	if p.Status != "ok" {
 		return SettingsResponse{}, cliProbeError(p)
 	}
+	cliKey, checkGen := s.captureCheckGeneration(p)
 	ctx, cancel := context.WithTimeout(ctx, installationCheckTimeout)
 	defer cancel()
 	result, failure := s.checkInstallationWithCLI(ctx, str(p.Path), path)
@@ -157,7 +158,7 @@ func (s *Service) RegisterEngineInstallation(ctx context.Context, path string) (
 	if saveErr != nil {
 		return SettingsResponse{}, saveErr
 	}
-	s.cacheInstallationCheck(p, path, key, result)
+	s.cacheInstallationCheck(cliKey, checkGen, path, key, result)
 	return resp, nil
 }
 

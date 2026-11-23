@@ -165,6 +165,7 @@ func (s *Service) CreatePolystrataSetup(req PolystrataSetupRequest) (DownloadTas
 			TaskId:      uuid(),
 			State:       "downloading",
 			Stage:       "preflight",
+			ModelSource: strings.TrimSpace(req.ModelSource),
 			SourceUrl:   sourceURL,
 			OutName:     outName,
 			OutDir:      outDir,

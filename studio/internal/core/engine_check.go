@@ -306,24 +306,10 @@ func (s *Service) runEngineCheck(t engineCheckTarget) {
 	s.Bus.Publish("engine.check", map[string]any{"engine": t.name, "eligibility": eligibility})
 }
 
-func (s *Service) cacheInstallationCheck(p InferyardProbe, path, key string, result inferyard.EngineCheck) {
-	if !result.Eligible {
-		return
-	}
+func (s *Service) captureCheckGeneration(p InferyardProbe) (string, uint64) {
 	cliKey := str(p.Path) + "|" + str(p.Version) + "|" + p.Status
-	eligibility := EngineEligibility{
-		State:             EngineCheckEligible,
-		Version:           str(result.ReportedVersion),
-		Release:           result.ExpectedRelease,
-		Mode:              str(result.Mode),
-		Family:            str(result.Family),
-		DeclarationSHA256: result.DeclarationSHA256,
-		VerificationScope: "installation_runtime_closure_only",
-	}
-	if result.Modes != nil {
-		eligibility.Modes = map[string]bool{"cpu": result.Modes.CPU, "metal": result.Modes.Metal}
-	}
 	s.checkMu.Lock()
+	defer s.checkMu.Unlock()
 	if s.checks == nil {
 		s.checks = map[string]engineCheckEntry{}
 	}
@@ -340,9 +326,34 @@ func (s *Service) cacheInstallationCheck(p InferyardProbe, path, key string, res
 		s.checkInflight = map[string]bool{}
 		s.checkSupported = true
 	}
+	return cliKey, s.checkGeneration
+}
+
+func (s *Service) cacheInstallationCheck(cliKey string, generation uint64, path, key string, result inferyard.EngineCheck) {
+	if !result.Eligible {
+		return
+	}
+	eligibility := EngineEligibility{
+		State:             EngineCheckEligible,
+		Version:           str(result.ReportedVersion),
+		Release:           result.ExpectedRelease,
+		Mode:              str(result.Mode),
+		Family:            str(result.Family),
+		DeclarationSHA256: result.DeclarationSHA256,
+		VerificationScope: "installation_runtime_closure_only",
+	}
+	if result.Modes != nil {
+		eligibility.Modes = map[string]bool{"cpu": result.Modes.CPU, "metal": result.Modes.Metal}
+	}
+	s.checkMu.Lock()
+	defer s.checkMu.Unlock()
+	if s.checkCLI != cliKey || s.checkGeneration != generation || s.checkInflight[path] {
+		return
+	}
+	if s.checks == nil {
+		s.checks = map[string]engineCheckEntry{}
+	}
 	s.checks[path] = engineCheckEntry{key: key, verified: true, result: eligibility}
-	delete(s.checkInflight, path)
-	s.checkMu.Unlock()
 }
 
 func (s *Service) EngineChecks() EngineCheckOverview {

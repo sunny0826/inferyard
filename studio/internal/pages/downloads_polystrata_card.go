@@ -15,6 +15,10 @@ func polystrataPhaseIndex(task core.DownloadTask) int {
 	if task.State == "done" {
 		return len(polystrataPhaseLabels)
 	}
+	if task.Step != nil && (task.StepTotal == nil || *task.StepTotal == len(polystrataPhaseLabels)) &&
+		*task.Step >= 1 && *task.Step <= len(polystrataPhaseLabels) {
+		return *task.Step - 1
+	}
 	switch task.Stage {
 	case "preflight":
 		return 0
@@ -153,6 +157,9 @@ func (s *viewState) openPolystrataRecoveryDrawer(task core.DownloadTask) {
 		return
 	}
 	st := s.ensureDownloadsUI()
+	if src := strings.TrimSpace(task.ModelSource); src != "" {
+		st.setPolystrataModelSource(src)
+	}
 	hostPlatform := s.downloadsHostPlatform()
 	releases := fam.ReleasesForPlatform(hostPlatform, false)
 	if len(releases) == 0 {
