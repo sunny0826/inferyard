@@ -34,6 +34,7 @@ type ModelAsset struct {
 	Reason        string
 	Path          string
 	Deletable     bool
+	CoveredPaths  []string `json:"-"`
 }
 type EngineAsset struct {
 	Name           string
@@ -48,6 +49,7 @@ type registryEntry struct {
 	path, rawPath, source string
 	installation, family  string
 	receipt, displayName  string
+	assetFiles            []assetFileSize
 	model                 ModelAsset
 	engine                EngineAsset
 	modified, downloaded  time.Time
@@ -374,12 +376,14 @@ func (s *Service) registry() registryData {
 			}
 		}
 	}
-	for _, entry := range scanPolystrataModelConfigs(u.EngineInstallations) {
+	psModels, psScope := scanPolystrataModelConfigs(u.EngineInstallations)
+	for _, entry := range psModels {
 		if _, found := models[entry.path]; !found {
 			models[entry.path] = len(data.models)
 			data.models = append(data.models, entry)
 		}
 	}
+	data.models = deduplicatePolystrataModels(data.models, psScope)
 	data.engines = append(data.engines, installationEntries(u.EngineInstallations)...)
 	sort.SliceStable(data.engines, func(i, j int) bool {
 		a, b := data.engines[i], data.engines[j]
@@ -402,13 +406,16 @@ func nameEntries(entries []registryEntry, engine bool) {
 	for i := range entries {
 		e := &entries[i]
 		name := filepath.Base(e.path)
+		if e.displayName != "" {
+			name = e.displayName
+		}
 		if engine {
-			name = filepath.Base(filepath.Dir(e.path)) + " · " + name
-			if e.displayName != "" {
-				name = e.displayName
-			}
+			name = filepath.Base(filepath.Dir(e.path)) + " · " + filepath.Base(e.path)
 			if e.installation != "" {
 				name = e.family + " · " + filepath.Base(e.installation)
+			}
+			if e.displayName != "" {
+				name = e.displayName
 			}
 		}
 		counts[name]++
@@ -476,85 +483,6 @@ func (s *Service) Registry() Registry {
 		result.DefaultEngine = result.Engines[0].Name
 	}
 	return result
-}
-
-func scanPolystrataModelConfigs(installPaths []string) []registryEntry {
-	entries := []registryEntry{}
-	seen := map[string]bool{}
-	for _, instPath := range installPaths {
-		raw, err := installationBytes(instPath)
-		if err != nil {
-			continue
-		}
-		var decl struct {
-			Family           string `json:"family"`
-			WorkingDirectory string `json:"working_directory"`
-			DataDir          string `json:"data_dir"`
-		}
-		if json.Unmarshal(raw, &decl) != nil || decl.Family != "polystrata" {
-			continue
-		}
-		dirs := []string{}
-		if decl.WorkingDirectory != "" {
-			dirs = append(dirs, decl.WorkingDirectory)
-		}
-		if decl.DataDir != "" {
-			modelsDir := filepath.Join(decl.DataDir, "models")
-			dirs = append(dirs, decl.DataDir, modelsDir)
-			if subEntries, err := os.ReadDir(modelsDir); err == nil {
-				for _, sub := range subEntries {
-					if sub.Type()&os.ModeSymlink == 0 && sub.IsDir() {
-						dirs = append(dirs, filepath.Join(modelsDir, sub.Name()))
-					}
-				}
-			}
-		}
-		for _, dir := range dirs {
-			dirEntries, err := os.ReadDir(dir)
-			if err != nil {
-				continue
-			}
-			for _, item := range dirEntries {
-				name := item.Name()
-				if item.IsDir() || !strings.HasPrefix(name, "strata-") || !strings.HasSuffix(name, ".json") {
-					continue
-				}
-				full := filepath.Join(dir, name)
-				info, err := os.Lstat(full)
-				if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() > maxInstallationBytes {
-					continue
-				}
-				cfgRaw, err := os.ReadFile(full)
-				if err != nil {
-					continue
-				}
-				var cfg struct {
-					Exe       string   `json:"exe"`
-					Args      []string `json:"args"`
-					ModelName string   `json:"model_name"`
-				}
-				if json.Unmarshal(cfgRaw, &cfg) != nil || strings.TrimSpace(cfg.Exe) == "" || cfg.Args == nil {
-					continue
-				}
-				resolved, err := canonical(full)
-				if err != nil || seen[resolved] {
-					continue
-				}
-				seen[resolved] = true
-				entries = append(entries, registryEntry{
-					path:    resolved,
-					rawPath: full,
-					source:  "PolyStrata 配置",
-					model: ModelAsset{
-						Name:      filepath.Base(resolved),
-						Format:    "strata_pack",
-						Available: true,
-					},
-				})
-			}
-		}
-	}
-	return entries
 }
 
 func (s *Service) resourcePath(name string, engine bool) (string, *ApiError) {

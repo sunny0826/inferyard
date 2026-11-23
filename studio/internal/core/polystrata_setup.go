@@ -392,16 +392,24 @@ func (s *Service) runPolystrataSetup(ctx context.Context, binary string, d *down
 			if details.LogPath != "" {
 				d.Task.LogPath = ptr(details.LogPath)
 			}
-			d.Task.InstallationPath = ptr(details.InstallationPath)
+			instPath := details.InstallationPath
+			if c, err := canonical(instPath); err == nil {
+				instPath = c
+			}
+			d.Task.InstallationPath = ptr(instPath)
 			if details.ModelConfigPath != "" {
-				d.Task.ModelConfigPath = ptr(details.ModelConfigPath)
+				cfgPath := details.ModelConfigPath
+				if c, err := canonical(cfgPath); err == nil {
+					cfgPath = c
+				}
+				d.Task.ModelConfigPath = ptr(cfgPath)
 			}
 			switch {
 			case regErr == nil:
 				d.Task.State = "done"
 				d.Task.Stage = ""
 				d.Task.Percent = ptr(100.0)
-				d.Task.EnginePath = ptr(details.InstallationPath)
+				d.Task.EnginePath = ptr(instPath)
 			case ctx.Err() != nil:
 				d.Task.State = "cancelled"
 			default:
@@ -409,10 +417,13 @@ func (s *Service) runPolystrataSetup(ctx context.Context, binary string, d *down
 				d.Task.Error = regErr
 			}
 			doneOK := d.Task.State == "done"
-			s.Bus.Publish("download.state", map[string]any{"task": clone(d.Task)})
+			taskSnap := clone(d.Task)
 			s.mu.Unlock()
 			if doneOK {
-				go s.VerifyEngines()
+				s.VerifyEngines()
+			}
+			s.Bus.Publish("download.state", map[string]any{"task": taskSnap})
+			if doneOK {
 				go func() { _ = s.RefreshAssets() }()
 			}
 			return

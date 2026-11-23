@@ -20,20 +20,102 @@ func (s *viewState) availableTaskAssets() taskAssets {
 	return assets
 }
 
+func (s *viewState) selectedModelPath() string {
+	if s.model == "" {
+		return ""
+	}
+	for _, model := range s.registry.Models {
+		if model.Name == s.model {
+			return cleanMatchPath(model.Path)
+		}
+	}
+	return ""
+}
+
+func (s *viewState) reconcileSelectedModel(prevModelPath string) bool {
+	if s.model == "" {
+		return false
+	}
+	for _, model := range s.registry.Models {
+		if model.Name == s.model && model.Available {
+			return false
+		}
+	}
+	if prevModelPath != "" {
+		var matches []string
+		for _, model := range s.registry.Models {
+			if !model.Available || model.Format != "strata_pack" {
+				continue
+			}
+			for _, covered := range model.CoveredPaths {
+				if cleanMatchPath(covered) == prevModelPath {
+					matches = append(matches, model.Name)
+					break
+				}
+			}
+		}
+		if len(matches) == 1 {
+			s.model = matches[0]
+			return false
+		}
+		s.model = ""
+		return true
+	}
+	s.model = ""
+	return false
+}
+
 func (s *viewState) adoptOnlyModel() {
 	if s.model != "" {
 		return
 	}
 	name := ""
+	availCount := 0
 	for _, model := range s.registry.Models {
 		if model.Available {
-			if name != "" {
-				return
-			}
 			name = model.Name
+			availCount++
 		}
 	}
-	s.model = name
+	if availCount == 1 {
+		s.model = name
+		return
+	}
+	if s.engine != "" {
+		compat := ""
+		compatCount := 0
+		for _, model := range s.registry.Models {
+			if model.Available && s.compatibleModel(model) {
+				compat = model.Name
+				compatCount++
+			}
+		}
+		if compatCount == 1 {
+			s.model = compat
+			return
+		}
+	}
+	for _, task := range s.downloads {
+		if task.Kind != "polystrata" || task.State != "done" || task.ModelConfigPath == nil {
+			continue
+		}
+		wantPath := cleanMatchPath(*task.ModelConfigPath)
+		if wantPath == "" {
+			continue
+		}
+		for _, model := range s.registry.Models {
+			if !model.Available || model.Format != "strata_pack" {
+				continue
+			}
+			if s.engine != "" && !s.compatibleModel(model) {
+				continue
+			}
+			if cleanMatchPath(model.Path) == wantPath {
+				s.model = model.Name
+				return
+			}
+		}
+	}
 }
 
 func (s *viewState) preparingTask() bool {

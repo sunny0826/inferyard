@@ -87,14 +87,25 @@ func installationEntries(paths []string) []registryEntry {
 		}
 		seen[path] = true
 		family := "local"
+		displayName := ""
 		var display struct {
-			Family string `json:"family"`
+			Family           string `json:"family"`
+			WorkingDirectory string `json:"working_directory"`
 		}
 		if raw, err := installationBytes(path); err == nil && json.Unmarshal(raw, &display) == nil &&
 			slices.Contains([]string{"llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio", "polystrata"}, display.Family) {
 			family = display.Family
+			if family == "polystrata" {
+				displayName = polystrataInstallationDisplayName(path, display.WorkingDirectory)
+			}
 		}
-		entries = append(entries, registryEntry{path: path, installation: path, family: family, source: "本地安装声明"})
+		entries = append(entries, registryEntry{
+			path:         path,
+			installation: path,
+			family:       family,
+			displayName:  displayName,
+			source:       "本地安装声明",
+		})
 	}
 	return entries
 }
