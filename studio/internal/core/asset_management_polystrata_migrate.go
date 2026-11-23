@@ -2,6 +2,8 @@ package core
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -70,6 +73,22 @@ type migratedPolystrataConfig struct {
 	dd      string
 	name    string
 	payload []byte
+}
+
+func polystrataMigPlansDigest(plans []migratedPolystrataConfig) string {
+	ordered := slices.Clone(plans)
+	sort.Slice(ordered, func(i, j int) bool {
+		if ordered[i].dd != ordered[j].dd {
+			return ordered[i].dd < ordered[j].dd
+		}
+		return ordered[i].name < ordered[j].name
+	})
+	h := sha256.New()
+	for _, p := range ordered {
+		sum := sha256.Sum256(p.payload)
+		_, _ = fmt.Fprintf(h, "%s|%s|%x\n", p.dd, p.name, sum)
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir string, managedDataDirs []string) ([]migratedPolystrataConfig, error) {

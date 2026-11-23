@@ -257,18 +257,18 @@ func collectOtherPolystrataProtectedRefs(u UserSettings, wsEnginesRoot, targetCa
 				continue
 			}
 			full := filepath.Join(dir, name)
-			info, err := os.Lstat(full)
-			if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() > maxInstallationBytes {
+			info, err := os.Stat(full)
+			if err != nil || !info.Mode().IsRegular() || info.Size() > maxInstallationBytes {
 				continue
 			}
 			resolved, err := canonical(full)
 			if err != nil {
 				continue
 			}
-			if targetCanonCfg != "" && sameDirectoryEntry(resolved, targetCanonCfg) {
+			if targetCanonCfg != "" && (sameDirectoryEntry(resolved, targetCanonCfg) || sameDirectoryEntry(full, targetCanonCfg)) {
 				continue
 			}
-			if seenCfgInContext(seenContexts, resolved, declWorkDir, declDataDir) {
+			if seenCfgInContext(seenContexts, resolved, declWorkDir, declDataDir, false) {
 				continue
 			}
 			seenContexts = append(seenContexts, polystrataCfgContext{
@@ -276,10 +276,12 @@ func collectOtherPolystrataProtectedRefs(u UserSettings, wsEnginesRoot, targetCa
 				workDir: filepath.Clean(strings.TrimSpace(declWorkDir)),
 				dataDir: filepath.Clean(strings.TrimSpace(declDataDir)),
 			})
-			if !containsSameDirEntry(prot.cfgs, resolved) {
-				prot.cfgs = append(prot.cfgs, resolved)
+			for _, cfgEntry := range []string{resolved, filepath.Clean(full)} {
+				if !containsSameDirEntry(prot.cfgs, cfgEntry) {
+					prot.cfgs = append(prot.cfgs, cfgEntry)
+				}
+				recordFile(cfgEntry)
 			}
-			recordFile(resolved)
 			files, dirs := resolvePolystrataConfigRefsLenient(resolved, declWorkDir, declDataDir)
 			for _, f := range files {
 				recordFile(f.path)

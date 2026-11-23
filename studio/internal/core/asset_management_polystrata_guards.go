@@ -14,16 +14,17 @@ import (
 var polystrataSecretEnvSubstrings = []string{"API_KEY", "TOKEN", "PASSWORD", "SECRET", "AUTH"}
 
 type polystrataCfgContext struct {
-	cfg     string
-	workDir string
-	dataDir string
+	cfg      string
+	workDir  string
+	dataDir  string
+	checkExe bool
 }
 
-func seenCfgInContext(list []polystrataCfgContext, cfg, workDir, dataDir string) bool {
+func seenCfgInContext(list []polystrataCfgContext, cfg, workDir, dataDir string, checkExe bool) bool {
 	nw := filepath.Clean(strings.TrimSpace(workDir))
 	nd := filepath.Clean(strings.TrimSpace(dataDir))
 	for _, item := range list {
-		if item.workDir == nw && item.dataDir == nd && sameDirectoryEntry(item.cfg, cfg) {
+		if item.workDir == nw && item.dataDir == nd && item.checkExe == checkExe && sameDirectoryEntry(item.cfg, cfg) {
 			return true
 		}
 	}
@@ -78,7 +79,10 @@ func findPolystrataPlaintextCredentialField(rawMap map[string]any, args []string
 			matched := slices.ContainsFunc(polystrataSecretEnvSubstrings, func(sub string) bool {
 				return strings.Contains(upper, sub)
 			})
-			if matched && v != nil && strings.TrimSpace(fmt.Sprint(v)) != "" {
+			if matched {
+				if s, ok := v.(string); ok && strings.TrimSpace(s) == "" {
+					continue
+				}
 				return k, true
 			}
 		}
@@ -164,12 +168,64 @@ func rawPathTraversesDir(rawRef string, bases []string, targetDir string) bool {
 	return false
 }
 
-func survivingPolystrataConfigDependsOnInstallDir(cfgPath, declWorkDir, declDataDir, installDir string) bool {
+func exeDependsOnInstallDir(exeRaw, cwdRaw, declWorkDir, cfgDir, installDir string) bool {
+	trimmedExe := strings.TrimSpace(exeRaw)
+	if trimmedExe == "" {
+		return false
+	}
+	outBase := strings.TrimSpace(declWorkDir)
+	if outBase == "" {
+		outBase = cfgDir
+	}
+	baseExpr := outBase
+	if trimmedCwd := strings.TrimSpace(cwdRaw); trimmedCwd != "" {
+		if filepath.IsAbs(trimmedCwd) {
+			baseExpr = trimmedCwd
+		} else {
+			baseExpr = strings.TrimRight(outBase, "/\\") + "/" + trimmedCwd
+		}
+	}
+	exeCand := trimmedExe
+	if !filepath.IsAbs(exeCand) {
+		exeCand = strings.TrimRight(baseExpr, "/\\") + "/" + exeCand
+	}
+	if rawPathTraversesDir(exeCand, nil, installDir) {
+		return true
+	}
+	cleanExe := filepath.Clean(filepath.FromSlash(exeCand))
+	if pathWithinDirSameFS(installDir, cleanExe) {
+		return true
+	}
+	if canonExe, err := canonical(cleanExe); err == nil && pathWithinDirSameFS(installDir, canonExe) {
+		return true
+	}
+	return false
+}
+
+func winningRefBase(ref string, bases []string) []string {
+	if filepath.IsAbs(strings.TrimSpace(ref)) {
+		return nil
+	}
+	for _, b := range bases {
+		if _, _, ok := resolvePolystrataAssetRef(ref, []string{b}); ok {
+			return []string{b}
+		}
+	}
+	for _, b := range bases {
+		if len(collectBrokenSplitGGUFShards(ref, []string{b})) > 0 {
+			return []string{b}
+		}
+	}
+	return bases
+}
+
+func survivingPolystrataConfigDependsOnInstallDir(cfgPath, declWorkDir, declDataDir, installDir string, checkExe bool) bool {
 	raw, err := os.ReadFile(cfgPath)
 	if err != nil {
 		return false
 	}
 	var cfg struct {
+		Exe  string   `json:"exe"`
 		Args []string `json:"args"`
 		Cwd  string   `json:"cwd"`
 	}
@@ -180,13 +236,22 @@ func survivingPolystrataConfigDependsOnInstallDir(cfgPath, declWorkDir, declData
 	_ = json.Unmarshal(raw, &rawMap)
 
 	cfgDir := filepath.Dir(cfgPath)
+	if checkExe && exeDependsOnInstallDir(cfg.Exe, cfg.Cwd, declWorkDir, cfgDir, installDir) {
+		return true
+	}
+
 	origBases := polystrataConfigBases(cfg.Cwd, declWorkDir, cfgDir, declDataDir)
 	refs := extractPolystrataAssetRefs(cfg.Args, rawMap)
-	if rawPathTraversesDir(cfg.Cwd, []string{declWorkDir, cfgDir, declDataDir}, installDir) {
+	cwdBase := strings.TrimSpace(declWorkDir)
+	if cwdBase == "" {
+		cwdBase = cfgDir
+	}
+	if rawPathTraversesDir(cfg.Cwd, []string{cwdBase}, installDir) {
 		return true
 	}
 	for _, ref := range refs {
-		if rawPathTraversesDir(ref, origBases, installDir) {
+		winBase := winningRefBase(ref, origBases)
+		if rawPathTraversesDir(ref, winBase, installDir) {
 			return true
 		}
 	}
@@ -201,22 +266,41 @@ func survivingPolystrataConfigDependsOnInstallDir(cfgPath, declWorkDir, declData
 			return true
 		}
 	}
-	origValidFiles, origValidDirs, origOK := validatePolystrataAssets(refs, cfgDir, origBases)
-	if origOK {
-		postBases := make([]string, 0, len(origBases))
-		for _, b := range origBases {
-			if pathWithinDirSameFS(installDir, b) {
-				continue
-			}
-			if cb, err := canonical(b); err == nil && pathWithinDirSameFS(installDir, cb) {
-				continue
-			}
+
+	pointsInsideInstall := func(rawDir string) bool {
+		trimmed := strings.TrimSpace(rawDir)
+		if trimmed == "" {
+			return false
+		}
+		if sameFileOrPath(trimmed, installDir) || pathWithinDirSameFS(installDir, trimmed) {
+			return true
+		}
+		canonDir, cerr := canonical(trimmed)
+		return cerr == nil && (sameFileOrPath(canonDir, installDir) || pathWithinDirSameFS(installDir, canonDir))
+	}
+	postWorkDir := declWorkDir
+	if pointsInsideInstall(postWorkDir) {
+		postWorkDir = ""
+	}
+	postDataDir := declDataDir
+	if pointsInsideInstall(postDataDir) {
+		postDataDir = ""
+	}
+	rawPostBases := polystrataConfigBases(cfg.Cwd, postWorkDir, cfgDir, postDataDir)
+	postBases := make([]string, 0, len(rawPostBases))
+	for _, b := range rawPostBases {
+		if !pointsInsideInstall(b) {
 			postBases = append(postBases, b)
 		}
+	}
+
+	origValidFiles, origValidDirs, origOK := validatePolystrataAssets(refs, cfgDir, origBases)
+	if origOK {
 		postFiles, postDirs, postOK := validatePolystrataAssets(refs, cfgDir, postBases)
 		if !postOK || !sameAssetFileSets(origValidFiles, postFiles) || !samePathSets(origValidDirs, postDirs) {
 			return true
 		}
 	}
-	return false
+	postLenFiles, postLenDirs := resolvePolystrataConfigRefsWithBases(cfg.Args, rawMap, cfgDir, postBases)
+	return !sameAssetFileSets(files, postLenFiles) || !samePathSets(dirs, postLenDirs)
 }

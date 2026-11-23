@@ -502,11 +502,19 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 	if err := verifyPolystrataRuntimeTreeSafe(installDir, u.ResultsRoot); err != nil {
 		return false, errAssetNotDeletable()
 	}
+	declWorkDir, declDataDir := readPolystrataInstallDirs(eng.Path)
+	migPlans, migErr := snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir, defaultManagedPolystrataDataDirs(u, wsEngines))
+	if migErr != nil {
+		if apiErr, ok := polystrataCredentialApiError(migErr); ok {
+			return false, apiErr
+		}
+		return false, Err("internal_error")
+	}
 	if expectedTarget != "" {
 		if !sameFileOrPath(installDir, expectedTarget) {
 			return false, deleteTargetChangedError()
 		}
-		if expectedFP != "" && polystrataEngineDeleteFingerprint(installDir, eng.Path) != expectedFP {
+		if expectedFP != "" && polystrataEngineDeleteFingerprint(installDir, eng.Path, migPlans) != expectedFP {
 			return false, deleteTargetChangedError()
 		}
 	}
@@ -520,15 +528,6 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 		} else if sameDirectoryEntry(rawInst, rawPath) || sameDirectoryEntry(rawInst, eng.Path) {
 			removeRaw[rawInst] = true
 		}
-	}
-
-	declWorkDir, declDataDir := readPolystrataInstallDirs(eng.Path)
-	migPlans, migErr := snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir, defaultManagedPolystrataDataDirs(u, wsEngines))
-	if migErr != nil {
-		if apiErr, ok := polystrataCredentialApiError(migErr); ok {
-			return false, apiErr
-		}
-		return false, Err("internal_error")
 	}
 
 	stagedDir := filepath.Join(filepath.Dir(installDir), ".inferyard-uninstall-"+filepath.Base(installDir)+"-"+uuid())

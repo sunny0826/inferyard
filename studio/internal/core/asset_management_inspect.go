@@ -183,18 +183,19 @@ func standardAssetDeleteFingerprint(kind, canonTarget string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func polystrataEngineDeleteFingerprint(installDir, canonInstPath string) string {
+func polystrataEngineDeleteFingerprint(installDir, canonInstPath string, migPlans []migratedPolystrataConfig) string {
 	info, err := os.Lstat(canonInstPath)
 	if err != nil {
 		return ""
 	}
 	raw := fmt.Sprintf(
-		"%s|%s|%d|%d|%s",
+		"%s|%s|%d|%d|%s|%s",
 		installDir,
 		canonInstPath,
 		reclaimableDiskBytes([]string{installDir}, nil),
 		info.ModTime().UnixNano(),
 		dirTreeManifestHash(installDir),
+		polystrataMigPlansDigest(migPlans),
 	)
 	sum := sha256.Sum256([]byte(raw))
 	return hex.EncodeToString(sum[:])
@@ -296,7 +297,7 @@ func polystrataInstallHasExternalDependents(u UserSettings, wsEnginesRoot, canon
 	}
 
 	var seenContexts []polystrataCfgContext
-	checkSurvivingDir := func(dir, declWorkDir, declDataDir string) bool {
+	checkSurvivingDir := func(dir, declWorkDir, declDataDir string, checkExe bool) bool {
 		dirEntries, err := os.ReadDir(dir)
 		if err != nil {
 			return false
@@ -307,23 +308,24 @@ func polystrataInstallHasExternalDependents(u UserSettings, wsEnginesRoot, canon
 				continue
 			}
 			full := filepath.Join(dir, name)
-			info, err := os.Lstat(full)
-			if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() > maxInstallationBytes {
+			info, err := os.Stat(full)
+			if err != nil || !info.Mode().IsRegular() || info.Size() > maxInstallationBytes {
 				continue
 			}
 			resolved, err := canonical(full)
-			if err != nil || pathWithinDirSameFS(installDir, resolved) {
+			if err != nil || pathWithinDirSameFS(installDir, full) || pathWithinDirSameFS(installDir, resolved) {
 				continue
 			}
-			if seenCfgInContext(seenContexts, resolved, declWorkDir, declDataDir) {
+			if seenCfgInContext(seenContexts, resolved, declWorkDir, declDataDir, checkExe) {
 				continue
 			}
 			seenContexts = append(seenContexts, polystrataCfgContext{
-				cfg:     resolved,
-				workDir: filepath.Clean(strings.TrimSpace(declWorkDir)),
-				dataDir: filepath.Clean(strings.TrimSpace(declDataDir)),
+				cfg:      resolved,
+				workDir:  filepath.Clean(strings.TrimSpace(declWorkDir)),
+				dataDir:  filepath.Clean(strings.TrimSpace(declDataDir)),
+				checkExe: checkExe,
 			})
-			if survivingPolystrataConfigDependsOnInstallDir(resolved, declWorkDir, declDataDir, installDir) {
+			if survivingPolystrataConfigDependsOnInstallDir(resolved, declWorkDir, declDataDir, installDir, checkExe) {
 				return true
 			}
 		}
@@ -343,15 +345,17 @@ func polystrataInstallHasExternalDependents(u UserSettings, wsEnginesRoot, canon
 		if json.Unmarshal(rawBytes, &decl) != nil || decl.Family != "polystrata" {
 			continue
 		}
+		canonRaw, cerr := canonical(rawInst)
+		isOtherEngine := cerr == nil && !sameDirectoryEntry(canonRaw, canonInstPath) && !pathWithinDirSameFS(installDir, canonRaw)
 		for _, dir := range polystrataConfigSearchDirs(decl.WorkingDirectory, decl.DataDir) {
-			if checkSurvivingDir(dir, decl.WorkingDirectory, decl.DataDir) {
+			if checkSurvivingDir(dir, decl.WorkingDirectory, decl.DataDir, isOtherEngine) {
 				return true
 			}
 		}
 	}
 	for _, dd := range defaultManagedPolystrataDataDirs(u, wsEnginesRoot) {
 		for _, dir := range polystrataConfigSearchDirs("", dd) {
-			if checkSurvivingDir(dir, "", dd) {
+			if checkSurvivingDir(dir, "", dd, false) {
 				return true
 			}
 		}
@@ -468,7 +472,8 @@ func (s *Service) inspectDeleteEngineAsset(u UserSettings, paths *BoundPaths, re
 				return AssetDeleteInfo{}, errAssetNotDeletable()
 			}
 			declWorkDir, declDataDir := readPolystrataInstallDirs(eng.Path)
-			if _, migErr := snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir, defaultManagedPolystrataDataDirs(u, wsEngines)); migErr != nil {
+			migPlans, migErr := snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir, defaultManagedPolystrataDataDirs(u, wsEngines))
+			if migErr != nil {
 				if apiErr, ok := polystrataCredentialApiError(migErr); ok {
 					return AssetDeleteInfo{}, apiErr
 				}
@@ -477,7 +482,7 @@ func (s *Service) inspectDeleteEngineAsset(u UserSettings, paths *BoundPaths, re
 				Kind:             "engine",
 				Name:             name,
 				TargetPath:       installDir,
-				Fingerprint:      polystrataEngineDeleteFingerprint(installDir, eng.Path),
+				Fingerprint:      polystrataEngineDeleteFingerprint(installDir, eng.Path, migPlans),
 				ReclaimableBytes: ptr(reclaimableDiskBytes([]string{installDir}, nil)),
 				Scope:            "polystrata_engine",
 				KeepsModelData:   polystrataInstallKeepsExternalData(u, wsEngines, eng.Path, installDir),

@@ -119,6 +119,12 @@ func TestPolystrataUninstallRejectsMigratingPlaintextCredentialRootConfig(t *tes
 			secret:      "hf_secret_123",
 		},
 		{
+			name:        "env_hf_token_null",
+			extraFields: map[string]any{"env": map[string]any{"HF_TOKEN": nil}},
+			wantField:   "env.HF_TOKEN",
+			secret:      "unexpected_never_echoed",
+		},
+		{
 			name:      "args_api_key",
 			extraArgs: []string{"--api-key=cli-secret-token"},
 			wantField: "args",
