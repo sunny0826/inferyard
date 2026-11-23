@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -52,13 +53,13 @@ def test_polystrata_python_resolver_prefers_uv_and_tools_dir(tmp_path: Path, mon
     tools_dir = tmp_path / "tools"
     tools_uv = _write_fake_uv(tools_dir)
     tools_creator, tools_blockers = resolve_polystrata_venv_creator(
-        system="Linux",
+        system="Windows" if os.name == "nt" else "Linux",
         env={"PATH": "", "INFERYARD_TOOLS_DIR": str(tools_dir)},
     )
     assert tools_blockers == []
     assert tools_creator is not None
     assert tools_creator.kind == "uv"
-    assert Path(tools_creator.executable) == tools_uv
+    assert Path(tools_creator.executable) == tools_uv.absolute()
 
     # _ensure_polystrata_venv invokes `uv venv --no-project --seed --python 3.12` and forwards proxy
     out = tmp_path / "out-uv"
@@ -163,7 +164,7 @@ def test_polystrata_python_resolver_local_priority_and_ignores_315(tmp_path: Pat
     assert none_creator is None
     assert len(venv_blockers) == 1
     assert venv_blockers[0]["code"] == "polystrata_python_venv_missing"
-    assert "python3-venv" in venv_blockers[0]["fix_command"]
+    assert "python3.12-venv" in venv_blockers[0]["fix_command"]
 
 
 def test_polystrata_python_resolver_explicit_python(tmp_path: Path):

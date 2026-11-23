@@ -41,6 +41,8 @@ from inferyard.provisioning.polystrata_preflight import run_polystrata_preflight
 from inferyard.provisioning.polystrata_python import (
     VenvCreator,
     build_venv_command,
+    is_supported_python_version,
+    probe_python_version,
     resolve_polystrata_venv_creator,
 )
 from inferyard.provisioning.polystrata_runner import run_setup_process
@@ -64,6 +66,7 @@ def _ensure_polystrata_venv(
     venv_creator: Callable[[Path], Path] | None = None,
     venv_python: str | None = None,
     resolved_creator: VenvCreator | None = None,
+    reuse_existing_venv: bool | None = None,
     proxy_origin: str | None = None,
     env: dict[str, str] | None = None,
     linux_venv_check: Callable[[str], bool] | None = None,
@@ -71,12 +74,25 @@ def _ensure_polystrata_venv(
     venv_dir = out / ".venv"
     if os.path.lexists(venv_dir) and linked(venv_dir):
         raise PreparationError("polystrata_venv_invalid")
+    if venv_creator is not None:
+        if (venv_dir / "pyvenv.cfg").is_file():
+            existing = pick_venv_python(venv_dir, platform_system=system)
+            if existing is not None:
+                return existing
+        return venv_creator(out)
     if (venv_dir / "pyvenv.cfg").is_file():
         existing = pick_venv_python(venv_dir, platform_system=system)
-        if existing is not None:
+        can_reuse = (
+            reuse_existing_venv
+            if reuse_existing_venv is not None
+            else (
+                venv_python is None
+                and existing is not None
+                and is_supported_python_version(probe_python_version(str(existing)))
+            )
+        )
+        if can_reuse and existing is not None:
             return existing
-    if venv_creator is not None:
-        return venv_creator(out)
     if venv_dir.exists():
         shutil.rmtree(venv_dir, ignore_errors=True)
     creator = resolved_creator
@@ -336,6 +352,7 @@ def prepare_polystrata(
         venv_creator=venv_creator,
         venv_python=venv_python,
         resolved_creator=resolved_creator,
+        reuse_existing_venv=bool(preflight.get("reuse_existing_venv")),
         proxy_origin=proxy_origin,
         env=env,
         linux_venv_check=linux_venv_check,

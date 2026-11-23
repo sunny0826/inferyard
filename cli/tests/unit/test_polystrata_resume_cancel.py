@@ -219,6 +219,7 @@ time.sleep(60)
 from pathlib import Path
 from types import SimpleNamespace
 import sys
+from inferyard.platforms.local_engines.detect_polystrata import pick_venv_python
 from inferyard.provisioning import polystrata_prepare
 from inferyard.provisioning.preparation_io import PreparationError
 
@@ -233,6 +234,7 @@ try:
         macos_version="15.4",
         xcode_clt_check=lambda: True,
         disk_usage_fn=lambda _p: SimpleNamespace(total=400*1024**3, used=0, free=200*1024**3),
+        venv_creator=lambda p: pick_venv_python(p / ".venv", platform_system="Darwin"),
     )
 except PreparationError as exc:
     sys.exit(exc.code)

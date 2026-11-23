@@ -109,7 +109,7 @@ def test_preflight_blockers_are_read_only(tmp_path: Path):
     venv_blocker = next(
         b for b in exc_info.value.details["blockers"] if b["code"] == "polystrata_python_venv_missing"
     )
-    assert "python3-venv" in venv_blocker["fix_command"]
+    assert "python3.12-venv" in venv_blocker["fix_command"]
 
     # Insufficient disk space
     with pytest.raises(PreparationError) as exc_info:

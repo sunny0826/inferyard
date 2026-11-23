@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 import os
 from pathlib import Path
+import platform
 import re
 import shutil
 import subprocess
@@ -113,14 +114,22 @@ def _resolve_explicit_python(raw: str, *, search_path: str, system: str) -> str 
         return str(candidate.absolute())
     if not search_path:
         return None
-    return shutil.which(text, path=search_path)
+    found = shutil.which(text, path=search_path)
+    return str(Path(found).absolute()) if found else None
 
 
-def probe_python_version(executable: str) -> tuple[int, int] | None:
-    """Return `(major, minor)` for a Python executable, or None if unavailable."""
+def probe_python_interpreter(
+    executable: str, *, system: str | None = None
+) -> tuple[tuple[int, int], str] | None:
+    """Return `((major, minor), concrete_executable)` for a Python executable."""
+    target_system = system or platform.system()
     try:
         res = subprocess.run(
-            [executable, "-c", "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')"],
+            [
+                executable,
+                "-c",
+                "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}\\n{sys.executable}')",
+            ],
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
@@ -131,10 +140,25 @@ def probe_python_version(executable: str) -> tuple[int, int] | None:
         return None
     if res.returncode != 0:
         return None
-    match = _VERSION_RE.match(res.stdout)
+    lines = [line.strip() for line in res.stdout.splitlines() if line.strip()]
+    if not lines:
+        return None
+    match = _VERSION_RE.match(lines[0])
     if match is None:
         return None
-    return int(match.group(1)), int(match.group(2))
+    version = (int(match.group(1)), int(match.group(2)))
+    resolved_exe = str(Path(executable).absolute())
+    if len(lines) >= 2:
+        reported = Path(lines[1])
+        if _is_executable_file(reported, system=target_system):
+            resolved_exe = str(reported.absolute())
+    return version, resolved_exe
+
+
+def probe_python_version(executable: str) -> tuple[int, int] | None:
+    """Return `(major, minor)` for a Python executable, or None if unavailable."""
+    probed = probe_python_interpreter(executable, system=platform.system())
+    return probed[0] if probed is not None else None
 
 
 def check_python_venv(python_executable: str) -> bool:
@@ -172,13 +196,17 @@ def _find_uv(env: dict[str, str] | None, *, search_path: str, system: str) -> st
     source_env = os.environ if env is None else env
     has_tools, tools_dir = _lookup_env(dict(source_env), "INFERYARD_TOOLS_DIR", system=system)
     if has_tools and tools_dir and tools_dir.strip():
+        tools_raw = tools_dir.strip()
+        found_tools = shutil.which("uv", path=tools_raw)
+        if found_tools:
+            candidates.append(found_tools)
         uv_name = "uv.exe" if system == "Windows" else "uv"
-        candidates.append(str(Path(tools_dir.strip()) / uv_name))
+        candidates.append(str(Path(tools_raw) / uv_name))
 
     seen: set[str] = set()
     for raw_cand in candidates:
-        cand_path = Path(raw_cand)
-        key = str(cand_path)
+        cand_path = Path(raw_cand).absolute()
+        key = os.path.normcase(str(cand_path))
         if key in seen or not _is_executable_file(cand_path, system=system):
             continue
         seen.add(key)
@@ -226,16 +254,14 @@ def _discover_local_pythons(*, search_path: str, system: str) -> list[str]:
                     raw_candidates.append(exe)
 
     unique: list[str] = []
-    seen_real: set[str] = set()
+    seen_paths: set[str] = set()
     for path in raw_candidates:
-        try:
-            real = os.path.realpath(path)
-        except OSError:
-            real = path
-        if real in seen_real:
+        abs_path = os.path.abspath(path)
+        key = os.path.normcase(abs_path)
+        if key in seen_paths:
             continue
-        seen_real.add(real)
-        unique.append(path)
+        seen_paths.add(key)
+        unique.append(abs_path)
     return unique
 
 
@@ -249,8 +275,10 @@ def _install_python_fix_command(system: str) -> str:
     return "uv venv --seed --python 3.12"
 
 
-def _venv_missing_fix_command(system: str) -> str:
+def _venv_missing_fix_command(system: str, version: tuple[int, int] | None = None) -> str:
     if system == "Linux":
+        if version is not None:
+            return f"sudo apt install python{version[0]}.{version[1]}-venv"
         return "sudo apt install python3-venv"
     if system == "Darwin":
         return "brew install python@3.12"
@@ -259,7 +287,7 @@ def _venv_missing_fix_command(system: str) -> str:
     return "sudo apt install python3-venv"
 
 
-def _is_supported_version(version: tuple[int, int] | None) -> bool:
+def is_supported_python_version(version: tuple[int, int] | None) -> bool:
     return (
         version is not None
         and POLYSTRATA_MIN_PYTHON <= version <= POLYSTRATA_MAX_PYTHON
@@ -276,8 +304,15 @@ def resolve_polystrata_venv_creator(
 ) -> tuple[VenvCreator | None, list[dict]]:
     """Resolve explicit `--python`, `uv`, or Python 3.10-3.13; never silently accept 3.15."""
     search_path = _search_path(env, system=system)
-    probe = version_probe if version_probe is not None else probe_python_version
     check_venv = venv_check if venv_check is not None else check_python_venv
+
+    def _probe(executable: str) -> tuple[tuple[int, int] | None, str]:
+        if version_probe is not None:
+            return version_probe(executable), str(Path(executable).absolute())
+        probed = probe_python_interpreter(executable, system=system)
+        if probed is None:
+            return None, str(Path(executable).absolute())
+        return probed[0], probed[1]
 
     if venv_python is not None:
         resolved = _resolve_explicit_python(venv_python, search_path=search_path, system=system)
@@ -292,8 +327,8 @@ def resolve_polystrata_venv_creator(
                     "fix_command": _install_python_fix_command(system),
                 }
             ]
-        version = probe(resolved)
-        if not _is_supported_version(version):
+        version, concrete_exe = _probe(resolved)
+        if not is_supported_python_version(version):
             ver_label = f"{version[0]}.{version[1]}" if version is not None else "unknown"
             return None, [
                 {
@@ -305,18 +340,21 @@ def resolve_polystrata_venv_creator(
                     "fix_command": _install_python_fix_command(system),
                 }
             ]
-        if not check_venv(resolved):
+        assert version is not None
+        if not check_venv(concrete_exe):
             return None, [
                 {
                     "code": "polystrata_python_venv_missing",
                     "message": (
-                        f"Python {version[0]}.{version[1]} at '{resolved}' lacks venv/ensurepip support."
+                        f"Python {version[0]}.{version[1]} at '{concrete_exe}' lacks venv/ensurepip support."
                     ),
-                    "fix_command": _venv_missing_fix_command(system),
+                    "fix_command": _venv_missing_fix_command(system, version=version),
                 }
             ]
         return (
-            VenvCreator(kind="python", executable=resolved, python_version=version, explicit=True),
+            VenvCreator(
+                kind="python", executable=concrete_exe, python_version=version, explicit=True
+            ),
             [],
         )
 
@@ -328,27 +366,41 @@ def resolve_polystrata_venv_creator(
     compatible: list[tuple[int, int, str, tuple[int, int]]] = []
     incompatible_versions: list[str] = []
     for order_idx, cand in enumerate(candidates):
-        ver = probe(cand)
-        if _is_supported_version(ver):
+        ver, concrete_exe = _probe(cand)
+        if is_supported_python_version(ver):
             assert ver is not None
             priority = POLYSTRATA_PREFERRED_VERSIONS.index(ver)
-            compatible.append((priority, order_idx, cand, ver))
+            compatible.append((priority, order_idx, concrete_exe, ver))
         elif ver is not None:
             ver_text = f"{ver[0]}.{ver[1]}"
             if ver_text not in incompatible_versions:
                 incompatible_versions.append(ver_text)
 
     compatible.sort(key=lambda item: (item[0], item[1]))
-    for _, _, cand, ver in compatible:
-        if check_venv(cand):
-            return VenvCreator(kind="python", executable=cand, python_version=ver, explicit=False), []
+    deduped_compatible: list[tuple[int, int, str, tuple[int, int]]] = []
+    seen_concrete: set[str] = set()
+    for item in compatible:
+        key = os.path.normcase(item[2])
+        if key in seen_concrete:
+            continue
+        seen_concrete.add(key)
+        deduped_compatible.append(item)
 
-    if compatible:
+    for _, _, concrete_exe, ver in deduped_compatible:
+        if check_venv(concrete_exe):
+            return (
+                VenvCreator(
+                    kind="python", executable=concrete_exe, python_version=ver, explicit=False
+                ),
+                [],
+            )
+
+    if deduped_compatible:
         return None, [
             {
                 "code": "polystrata_python_venv_missing",
                 "message": "Python venv support (with ensurepip) is required for PolyStrata.",
-                "fix_command": _venv_missing_fix_command(system),
+                "fix_command": _venv_missing_fix_command(system, version=deduped_compatible[0][3]),
             }
         ]
 

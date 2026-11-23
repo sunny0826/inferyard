@@ -27,6 +27,8 @@ from inferyard.provisioning.polystrata_preflight_checks import (
 )
 from inferyard.provisioning.polystrata_python import (
     check_python_venv,
+    is_supported_python_version,
+    probe_python_version,
     resolve_polystrata_venv_creator,
 )
 from inferyard.provisioning.preparation_io import PreparationError, linked, native_platform
@@ -370,13 +372,18 @@ def run_polystrata_preflight(
             )
 
     resolved_venv_creator = None
-    reusable_existing_venv = (
+    reusable_existing_venv = False
+    if (
         resume
         and venv_python is None
         and (out / ".venv" / "pyvenv.cfg").is_file()
         and not linked(out / ".venv")
-        and pick_venv_python(out / ".venv", platform_system=system) is not None
-    )
+    ):
+        existing_venv_py = pick_venv_python(out / ".venv", platform_system=system)
+        if existing_venv_py is not None and is_supported_python_version(
+            probe_python_version(str(existing_venv_py))
+        ):
+            reusable_existing_venv = True
     if (system, arch) in _SUPPORTED_PLATFORMS and not reusable_existing_venv:
         resolved_venv_creator, py_blockers = resolve_polystrata_venv_creator(
             system=system,
@@ -472,6 +479,7 @@ def run_polystrata_preflight(
         "venv_creator": (
             resolved_venv_creator.to_dict() if resolved_venv_creator is not None else None
         ),
+        "reuse_existing_venv": reusable_existing_venv,
         "out_free_bytes": out_free,
         "data_free_bytes": data_free,
         "runtime_required_bytes": runtime_needed,
