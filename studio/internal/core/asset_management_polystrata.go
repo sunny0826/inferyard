@@ -296,7 +296,7 @@ func isEngineAssetDeletable(u UserSettings, rawPath, canonPath, kind, family, ws
 
 func otherEngineSharesInstallDir(installDir, selfCanonPath string, engines []registryEntry) bool {
 	for _, other := range engines {
-		if other.path == "" || sameFileOrPath(other.path, selfCanonPath) {
+		if other.path == "" || sameDirectoryEntry(other.path, selfCanonPath) {
 			continue
 		}
 		if otherCanon, err := canonical(other.path); err == nil && pathWithinDirSameFS(installDir, otherCanon) {
@@ -482,7 +482,7 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 
 	rawPath := ""
 	for _, rawInst := range u.EngineInstallations {
-		if canonInst, err := canonical(rawInst); err == nil && sameFileOrPath(canonInst, eng.Path) {
+		if canonInst, err := canonical(rawInst); err == nil && sameDirectoryEntry(canonInst, eng.Path) {
 			rawPath = rawInst
 			break
 		}
@@ -514,10 +514,10 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 	removeRaw := map[string]bool{}
 	for _, rawInst := range u.EngineInstallations {
 		if canonInst, err := canonical(rawInst); err == nil {
-			if sameFileOrPath(canonInst, eng.Path) || pathWithinDirSameFS(installDir, canonInst) {
+			if sameDirectoryEntry(canonInst, eng.Path) || pathWithinDirSameFS(installDir, canonInst) {
 				removeRaw[rawInst] = true
 			}
-		} else if sameFileOrPath(rawInst, rawPath) || sameFileOrPath(rawInst, eng.Path) {
+		} else if sameDirectoryEntry(rawInst, rawPath) || sameDirectoryEntry(rawInst, eng.Path) {
 			removeRaw[rawInst] = true
 		}
 	}
@@ -564,12 +564,12 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 
 	s.checkMu.Lock()
 	for path := range s.checks {
-		if sameFileOrPath(path, eng.Path) || pathWithinDirSameFS(installDir, path) {
+		if sameDirectoryEntry(path, eng.Path) || pathWithinDirSameFS(installDir, path) {
 			delete(s.checks, path)
 		}
 	}
 	for path := range s.checkInflight {
-		if sameFileOrPath(path, eng.Path) || pathWithinDirSameFS(installDir, path) {
+		if sameDirectoryEntry(path, eng.Path) || pathWithinDirSameFS(installDir, path) {
 			delete(s.checkInflight, path)
 		}
 	}

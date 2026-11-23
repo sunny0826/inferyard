@@ -82,7 +82,7 @@ func installationEntries(paths []string) []registryEntry {
 			continue
 		}
 		path, err := canonical(raw)
-		if err != nil || slices.ContainsFunc(seen, func(prev string) bool { return sameFileOrPath(prev, path) }) {
+		if err != nil || slices.ContainsFunc(seen, func(prev string) bool { return sameDirectoryEntry(prev, path) }) {
 			continue
 		}
 		seen = append(seen, path)

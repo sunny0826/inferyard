@@ -385,7 +385,7 @@ func planPolystrataModelDelete(u UserSettings, wsEnginesRoot, rawCfgPath, canonC
 	plan := polystrataModelDeletePlan{
 		configPath:     canonCfgPath,
 		dataDirs:       scope.dataDirs,
-		protectedPaths: protectedPaths,
+		protectedPaths: append(slices.Clone(protectedPaths), prot.dirs...),
 	}
 	inManagedInstall := pathStrictlyInsideAnySameFS(canonCfgPath, scope.installDirs)
 

@@ -259,7 +259,7 @@ func polystrataInstallHasExternalDependents(u UserSettings, wsEnginesRoot, canon
 	}
 	for _, rawInst := range u.EngineInstallations {
 		canonOther, err := canonical(rawInst)
-		if err != nil || sameFileOrPath(canonOther, canonInstPath) {
+		if err != nil || sameDirectoryEntry(canonOther, canonInstPath) {
 			continue
 		}
 		if pathWithinDirSameFS(installDir, canonOther) {

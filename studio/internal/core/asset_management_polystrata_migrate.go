@@ -177,7 +177,7 @@ func polystrataRefsScopedToDataDir(files []assetFileSize, dirs []string, install
 		if pathWithinDirSameFS(installDir, d) {
 			return false
 		}
-		if pathStrictlyInsideDirSameFS(d, dd) {
+		if pathWithinDirSameFS(dd, d) {
 			inDD = true
 		}
 	}
@@ -188,7 +188,7 @@ func rewritePolystrataConfigMapForDataDir(rawMap map[string]any, origArgs, origB
 	cloned := maps.Clone(rawMap)
 	rewriteVal := func(rawVal string) string {
 		trimmed := strings.TrimSpace(rawVal)
-		if trimmed == "" || filepath.IsAbs(trimmed) {
+		if trimmed == "" {
 			return rawVal
 		}
 		if canonPath, _, ok := resolvePolystrataAssetRef(trimmed, origBases); ok {
@@ -320,24 +320,30 @@ func samePathSets(a, b []string) bool {
 
 func selectMigratedConfigPath(dd, name string, payload []byte) (string, bool, error) {
 	destPath := filepath.Join(dd, name)
-	existing, err := os.ReadFile(destPath)
-	if err == nil {
+	linfo, lerr := os.Lstat(destPath)
+	if os.IsNotExist(lerr) {
+		return destPath, false, nil
+	}
+	if lerr != nil {
+		return "", false, lerr
+	}
+	if linfo.Mode()&os.ModeSymlink == 0 && linfo.Mode().IsRegular() {
+		existing, err := os.ReadFile(destPath)
+		if err != nil {
+			return "", false, err
+		}
 		if bytes.Equal(existing, payload) {
 			return "", true, nil
 		}
-		stem := strings.TrimSuffix(name, ".json")
-		for i := 1; i <= 100; i++ {
-			cand := filepath.Join(dd, fmt.Sprintf("%s-retained-%d.json", stem, i))
-			if _, lerr := os.Lstat(cand); os.IsNotExist(lerr) {
-				return cand, false, nil
-			}
+	}
+	stem := strings.TrimSuffix(name, ".json")
+	for i := 1; i <= 100; i++ {
+		cand := filepath.Join(dd, fmt.Sprintf("%s-retained-%d.json", stem, i))
+		if _, cerr := os.Lstat(cand); os.IsNotExist(cerr) {
+			return cand, false, nil
 		}
-		return "", false, errors.New("no available retained strata config slot")
 	}
-	if !os.IsNotExist(err) {
-		return "", false, err
-	}
-	return destPath, false, nil
+	return "", false, errors.New("no available retained strata config slot")
 }
 
 func writeFileAtomic(dir, destPath string, payload []byte, mode os.FileMode) error {
