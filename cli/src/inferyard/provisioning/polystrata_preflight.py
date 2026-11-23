@@ -376,6 +376,9 @@ def run_polystrata_preflight(
     if (
         resume
         and venv_python is None
+        and os.path.lexists(out)
+        and not linked(out)
+        and (out / ".inferyard-runtime.json").is_file()
         and (out / ".venv" / "pyvenv.cfg").is_file()
         and not linked(out / ".venv")
     ):

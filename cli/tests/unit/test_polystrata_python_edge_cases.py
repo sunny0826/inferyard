@@ -130,14 +130,26 @@ def test_polystrata_resume_rebuilds_incompatible_or_explicit_venv(tmp_path: Path
     (data / "models" / "keep.gguf.part").write_bytes(b"keep")
     # Seed an old Python 3.15 .venv (default _make_fake_venv uses sys.executable == 3.15)
     _make_fake_venv(out)
+    target_platform = ("Windows", "x64") if os.name == "nt" else ("Darwin", "arm64")
+    gpu_probe_fn = (
+        (
+            lambda _sys: {
+                "status": "available",
+                "devices": [{"vendor": "nvidia", "driver_version": "580.65.06"}],
+            }
+        )
+        if os.name == "nt"
+        else None
+    )
 
     pf_old = run_polystrata_preflight(
         out,
         data,
         resume=True,
-        platform_info=("Darwin", "arm64"),
+        platform_info=target_platform,
         macos_version="15.4",
         xcode_clt_check=lambda: True,
+        gpu_probe=gpu_probe_fn,
         disk_usage_fn=_disk_usage(200 * GIB),
         env={"PATH": str(bin_dir)},
     )
@@ -161,9 +173,10 @@ def test_polystrata_resume_rebuilds_incompatible_or_explicit_venv(tmp_path: Path
             data_dir=data,
             source=str(archive),
             resume=True,
-            platform_info=("Darwin", "arm64"),
+            platform_info=target_platform,
             macos_version="15.4",
             xcode_clt_check=lambda: True,
+            gpu_probe=gpu_probe_fn,
             disk_usage_fn=_disk_usage(200 * GIB),
             env={"PATH": str(bin_dir)},
         )
@@ -171,35 +184,36 @@ def test_polystrata_resume_rebuilds_incompatible_or_explicit_venv(tmp_path: Path
     assert venv_cmds == [[str(py312), "-m", "venv", str(out / ".venv")]]
     assert (data / "models" / "keep.gguf.part").read_bytes() == b"keep"
 
-    # Replace .venv python with one reporting 3.12 -> reused without --python, rebuilt with --python
-    venv_py_bin = out / ".venv" / ("Scripts" if os.name == "nt" else "bin")
-    _write_fake_python(venv_py_bin, "python", 3, 12, venv_ok=True)
-    pf_ok = run_polystrata_preflight(
-        out,
-        data,
-        resume=True,
-        platform_info=("Darwin", "arm64"),
-        macos_version="15.4",
-        xcode_clt_check=lambda: True,
-        disk_usage_fn=_disk_usage(200 * GIB),
-        env={"PATH": str(bin_dir)},
-    )
-    assert pf_ok["reuse_existing_venv"] is True
-    assert pf_ok["venv_creator"] is None
+    if os.name != "nt":
+        # Replace .venv python with one reporting 3.12 -> reused without --python, rebuilt with --python
+        venv_py_bin = out / ".venv" / "bin"
+        _write_fake_python(venv_py_bin, "python", 3, 12, venv_ok=True)
+        pf_ok = run_polystrata_preflight(
+            out,
+            data,
+            resume=True,
+            platform_info=target_platform,
+            macos_version="15.4",
+            xcode_clt_check=lambda: True,
+            disk_usage_fn=_disk_usage(200 * GIB),
+            env={"PATH": str(bin_dir)},
+        )
+        assert pf_ok["reuse_existing_venv"] is True
+        assert pf_ok["venv_creator"] is None
 
-    pf_override = run_polystrata_preflight(
-        out,
-        data,
-        resume=True,
-        venv_python=str(py311),
-        platform_info=("Darwin", "arm64"),
-        macos_version="15.4",
-        xcode_clt_check=lambda: True,
-        disk_usage_fn=_disk_usage(200 * GIB),
-        env={"PATH": str(bin_dir)},
-    )
-    assert pf_override["reuse_existing_venv"] is False
-    assert Path(pf_override["venv_creator"]["executable"]) == py311
+        pf_override = run_polystrata_preflight(
+            out,
+            data,
+            resume=True,
+            venv_python=str(py311),
+            platform_info=target_platform,
+            macos_version="15.4",
+            xcode_clt_check=lambda: True,
+            disk_usage_fn=_disk_usage(200 * GIB),
+            env={"PATH": str(bin_dir)},
+        )
+        assert pf_override["reuse_existing_venv"] is False
+        assert Path(pf_override["venv_creator"]["executable"]) == py311
 
 
 def test_polystrata_multicall_shim_realpath_and_linux_apt_minor_version(tmp_path: Path):

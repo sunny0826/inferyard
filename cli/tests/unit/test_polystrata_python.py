@@ -96,7 +96,7 @@ def test_polystrata_python_resolver_prefers_uv_and_tools_dir(tmp_path: Path, mon
         "3.12",
         str(out / ".venv"),
     ]
-    assert captured["cwd"] == str(out)
+    assert captured["cwd"] is None
     assert captured["env"]["HTTPS_PROXY"] == "http://127.0.0.1:7890"
 
 

@@ -122,7 +122,6 @@ def _ensure_polystrata_venv(
     try:
         res = subprocess.run(
             cmd,
-            cwd=str(out) if out.is_dir() else None,
             env=run_env,
             stdin=subprocess.DEVNULL,
             capture_output=True,
