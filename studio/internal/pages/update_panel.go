@@ -81,6 +81,7 @@ func (s *viewState) updateSettingsView(c *ui.Context) {
 			st.State == core.UpdateVerifying || st.State == core.UpdateApplying
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			if button(c, "检查更新").Disabled(checkingOrBusy).Clicked() {
+				s.updateDialogOpen = true
 				s.triggerUpdateCheck()
 			}
 			if st.Release != nil || st.State == core.UpdateReadyToApply || st.State == core.UpdateError {
@@ -246,6 +247,15 @@ func (s *viewState) updateDialog(c *ui.Context) {
 	})
 }
 
+func (s *viewState) applyUpdateState(next core.UpdateState) {
+	if next.State == "" {
+		return
+	}
+	if s.updateState.State == "" || next.Seq >= s.updateState.Seq {
+		s.updateState = next
+	}
+}
+
 func (s *viewState) triggerUpdateCheck() {
 	if s.simulate(previewUpdateCheck{}) {
 		return
@@ -264,7 +274,7 @@ func (s *viewState) triggerUpdateCheck() {
 	go func() {
 		st, _ := checkFn(ctx)
 		s.runOnUI(func() {
-			s.updateState = st
+			s.applyUpdateState(st)
 		})
 	}()
 }
@@ -291,7 +301,7 @@ func (s *viewState) triggerUpdateCancel() {
 		cancelFn = s.service.CancelUpdate
 	}
 	if cancelFn != nil {
-		s.updateState = cancelFn()
+		s.applyUpdateState(cancelFn())
 	}
 }
 
@@ -313,7 +323,7 @@ func (s *viewState) triggerUpdateApply(confirmStop bool) {
 	go func() {
 		st, _ := applyFn(ctx, confirmStop)
 		s.runOnUI(func() {
-			s.updateState = st
+			s.applyUpdateState(st)
 		})
 	}()
 }

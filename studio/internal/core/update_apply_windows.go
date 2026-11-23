@@ -91,6 +91,9 @@ func applyPlatformUpdate(_ context.Context, plan platformApplyPlan) error {
 		"-InstallDir", installDir,
 		"-StagingDir", plan.StagingDir,
 		"-LaunchExe", launchExe,
+		"-ErrorRecordPath", plan.ErrorRecordPath,
+		"-TargetVersion", plan.TargetVersion,
+		"-ReleaseURL", plan.ReleaseURL,
 	)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		HideWindow:    true,

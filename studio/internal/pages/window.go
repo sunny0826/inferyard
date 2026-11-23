@@ -357,9 +357,7 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	s.applyDashboard(b.dashboard, b.progressError)
 	s.engineState = s.service.Engine()
 	s.checks = s.service.EngineChecks()
-	if b.updateState.State != "" && (s.updateState.State == "" || b.updateState.Seq >= s.updateState.Seq) {
-		s.updateState = b.updateState
-	}
+	s.applyUpdateState(b.updateState)
 	s.adoptDownloadedEngine()
 	s.loaded = true
 	cliKey := emptyText(b.ready.CLI.Path) + "|" + emptyText(b.ready.CLI.Version) + "|" + b.ready.CLI.Status

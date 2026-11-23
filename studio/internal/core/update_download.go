@@ -165,7 +165,8 @@ func (m *updateManager) downloadUpdate(ctx context.Context) (UpdateState, error)
 	m.publishLocked()
 	m.mu.Unlock()
 
-	if err := m.verifyArtifactChecksum(opCtx, rel, currentVer, proxy, actualSum); err != nil {
+	expectedHex, err := m.verifyArtifactChecksum(opCtx, rel, currentVer, proxy, actualSum)
+	if err != nil {
 		return m.failDownload(seq, opCtx, stagingDir, err)
 	}
 
@@ -190,6 +191,7 @@ func (m *updateManager) downloadUpdate(ctx context.Context) (UpdateState, error)
 	}
 	m.cancel = nil
 	m.stagedArtifact = finalPath
+	m.stagedSHA256 = expectedHex
 	m.state.State = UpdateReadyToApply
 	m.state.DownloadedBytes = downloaded
 	m.state.TotalBytes = ptr(downloaded)
@@ -304,28 +306,28 @@ func (m *updateManager) streamDownloadArtifact(ctx context.Context, seq uint64, 
 	return downloaded, hex.EncodeToString(hasher.Sum(nil)), nil
 }
 
-func (m *updateManager) verifyArtifactChecksum(ctx context.Context, rel UpdateRelease, currentVer, proxy, actualHex string) error {
+func (m *updateManager) verifyArtifactChecksum(ctx context.Context, rel UpdateRelease, currentVer, proxy, actualHex string) (string, error) {
 	client, err := m.httpClient(proxy, updateVerifyTimeout)
 	if err != nil {
-		return err
+		return "", err
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rel.ChecksumsURL, nil)
 	if err != nil {
-		return &updateCheckError{code: "update_verify_failed", message: "请求校验文件失败。", cause: err}
+		return "", &updateCheckError{code: "update_verify_failed", message: "请求校验文件失败。", cause: err}
 	}
 	req.Header.Set("User-Agent", "InferYard-Studio/"+strings.TrimPrefix(currentVer, "v"))
 
 	resp, err := client.Do(req)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || ctx.Err() != nil {
-			return context.Canceled
+			return "", context.Canceled
 		}
-		return &updateCheckError{code: "update_verify_failed", message: "下载 SHA256SUMS 校验文件失败，请重试。", cause: err}
+		return "", &updateCheckError{code: "update_verify_failed", message: "下载 SHA256SUMS 校验文件失败，请重试。", cause: err}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return &updateCheckError{
+		return "", &updateCheckError{
 			code:    "update_verify_failed",
 			message: fmt.Sprintf("获取校验文件失败（HTTP %d），请重试。", resp.StatusCode),
 		}
@@ -333,18 +335,31 @@ func (m *updateManager) verifyArtifactChecksum(ctx context.Context, rel UpdateRe
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		if errors.Is(err, context.Canceled) || ctx.Err() != nil {
-			return context.Canceled
+			return "", context.Canceled
 		}
-		return &updateCheckError{code: "update_verify_failed", message: "读取 SHA256SUMS 校验文件失败。", cause: err}
+		return "", &updateCheckError{code: "update_verify_failed", message: "读取 SHA256SUMS 校验文件失败。", cause: err}
 	}
 	expectedHex, ok := parseSHA256Sums(string(raw), rel.AssetName)
 	if !ok {
-		return &updateCheckError{code: "update_checksum_missing", message: "SHA256SUMS 中未找到对应安装包的校验和。"}
+		return "", &updateCheckError{code: "update_checksum_missing", message: "SHA256SUMS 中未找到对应安装包的校验和。"}
 	}
 	if subtle.ConstantTimeCompare([]byte(strings.ToLower(actualHex)), []byte(expectedHex)) != 1 {
-		return &updateCheckError{code: "update_checksum_mismatch", message: "安装包 SHA-256 校验未通过，已删除损坏文件。"}
+		return "", &updateCheckError{code: "update_checksum_mismatch", message: "安装包 SHA-256 校验未通过，已删除损坏文件。"}
 	}
-	return nil
+	return expectedHex, nil
+}
+
+func sha256File(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func (m *updateManager) failDownload(seq uint64, ctx context.Context, stagingDir string, err error) (UpdateState, error) {
@@ -396,6 +411,9 @@ func (m *updateManager) failDownload(seq uint64, ctx context.Context, stagingDir
 func (m *updateManager) cancelUpdate() UpdateState {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if m.state.State == UpdateApplying {
+		return m.cloneStateLocked()
+	}
 	m.opSeq++
 	if m.cancel != nil {
 		m.cancel()

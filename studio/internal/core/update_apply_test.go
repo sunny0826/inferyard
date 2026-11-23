@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -339,30 +338,5 @@ func TestUpdatePlatformHelpersAndSecurityGuards(t *testing.T) {
 	}
 	if script := windowsUpdateScriptContent(); !strings.Contains(script, "[string]$InstallDir") || !strings.Contains(script, "/VERYSILENT") {
 		t.Fatalf("unexpected Windows helper script: %s", script)
-	}
-
-	if runtime.GOOS == "darwin" {
-		origApp := filepath.Join(tmp, "Swap.app")
-		newApp := filepath.Join(tmp, "Swap.app.new")
-		bakApp := filepath.Join(tmp, "Swap.app.bak")
-		_ = os.MkdirAll(filepath.Join(origApp, "Contents"), 0o755)
-		_ = os.MkdirAll(filepath.Join(newApp, "Contents"), 0o755)
-		_ = os.WriteFile(filepath.Join(origApp, "Contents", "ver.txt"), []byte("old"), 0o644)
-		_ = os.WriteFile(filepath.Join(newApp, "Contents", "ver.txt"), []byte("new"), 0o644)
-		calls := 0
-		err := swapDarwinBundles(origApp, newApp, bakApp, func(oldPath, newPath string) error {
-			calls++
-			if calls == 2 {
-				return errors.New("simulated second rename failure")
-			}
-			return os.Rename(oldPath, newPath)
-		})
-		if err == nil {
-			t.Fatal("expected swap error")
-		}
-		restored, readErr := os.ReadFile(filepath.Join(origApp, "Contents", "ver.txt"))
-		if readErr != nil || string(restored) != "old" {
-			t.Fatalf("rollback failed: err=%v content=%q", readErr, string(restored))
-		}
 	}
 }

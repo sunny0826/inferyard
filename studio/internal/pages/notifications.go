@@ -407,12 +407,10 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 		var payload struct {
 			Update core.UpdateState `json:"update"`
 		}
-		if json.Unmarshal(event.Data, &payload) != nil || payload.Update.State == "" {
+		if json.Unmarshal(event.Data, &payload) != nil {
 			return
 		}
-		if s.updateState.State == "" || payload.Update.Seq >= s.updateState.Seq {
-			s.updateState = payload.Update
-		}
+		s.applyUpdateState(payload.Update)
 	case "engine.check":
 		var payload struct {
 			Engine      string                 `json:"engine"`

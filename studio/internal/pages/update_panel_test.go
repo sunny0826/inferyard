@@ -94,6 +94,8 @@ func TestUpdateDialogActionsActiveWorkloadWarningAndFallback(t *testing.T) {
 	}
 
 	s := readyState("reports")
+	uiCh := make(chan func(), 4)
+	s.updateWindow = func(fn func()) { uiCh <- fn }
 	s.updateDialogOpen = true
 	s.updateState = core.UpdateState{
 		State:          core.UpdateAvailable,
@@ -111,7 +113,11 @@ func TestUpdateDialogActionsActiveWorkloadWarningAndFallback(t *testing.T) {
 	}
 	s.updateApplyFn = func(_ context.Context, confirmStop bool) (core.UpdateState, error) {
 		applyCalls = append(applyCalls, confirmStop)
-		return s.updateState, nil
+		return core.UpdateState{
+			State:          core.UpdateApplying,
+			CurrentVersion: "0.0.8",
+			Release:        sampleUpdateRelease(),
+		}, nil
 	}
 
 	tt := ui.NewTester(s.contentView, 1120, 800)
@@ -142,12 +148,25 @@ func TestUpdateDialogActionsActiveWorkloadWarningAndFallback(t *testing.T) {
 		t.Fatalf("expected active workload warning & confirm CTA: %v", tt.Texts())
 	}
 	click(t, tt, "停止任务并安装")
+	select {
+	case fn := <-uiCh:
+		fn()
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for stop-and-apply UI callback")
+	}
 	s.tasks = nil
+	s.updateState.State = core.UpdateReadyToApply
 	tt.Frame()
 	if !tt.HasText("安装并重启") {
 		t.Fatalf("expected idle apply CTA: %v", tt.Texts())
 	}
 	click(t, tt, "安装并重启")
+	select {
+	case fn := <-uiCh:
+		fn()
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for idle-apply UI callback")
+	}
 	if len(applyCalls) != 2 || !applyCalls[0] || applyCalls[1] {
 		t.Fatalf("unexpected applyCalls: %v", applyCalls)
 	}
@@ -195,7 +214,16 @@ func TestSettingsUpdateSectionManualCheckAndNonDirtyInvariant(t *testing.T) {
 		t.Fatal("timed out waiting for update check UI callback")
 	}
 	tt.Frame()
-	if checks != 1 || !tt.HasText("已是最新版本") {
-		t.Fatalf("manual check did not update feedback: checks=%d texts=%v", checks, tt.Texts())
+	if checks != 1 || !tt.HasText("已是最新版本") || !s.updateDialogOpen {
+		t.Fatalf("manual check did not update feedback or open dialog: checks=%d dialog=%v texts=%v", checks, s.updateDialogOpen, tt.Texts())
+	}
+}
+
+func TestUpdateStateRejectsStaleSeqCallbacks(t *testing.T) {
+	s := readyState("reports")
+	s.applyUpdateState(core.UpdateState{Seq: 3, State: core.UpdateDownloading, CurrentVersion: "0.0.8", Release: sampleUpdateRelease()})
+	s.applyUpdateState(core.UpdateState{Seq: 2, State: core.UpdateAvailable, CurrentVersion: "0.0.8", Release: sampleUpdateRelease()})
+	if s.updateState.State != core.UpdateDownloading || s.updateState.Seq != 3 {
+		t.Fatalf("stale seq 2 overwrote seq 3: %+v", s.updateState)
 	}
 }

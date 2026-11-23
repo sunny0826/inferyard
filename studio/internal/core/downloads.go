@@ -126,8 +126,8 @@ func (s *Service) createModelDownload(req CreateDownloadRequest, requestedSource
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.closing {
-		return DownloadTask{}, Err("service_closing")
+	if apiErr := s.admitDownloadLocked(); apiErr != nil {
+		return DownloadTask{}, apiErr
 	}
 	if req.OutName == "" {
 		if existing, found := s.activeDownloadLocked("model", req.SourceUrl, requestedSource); found {
@@ -334,8 +334,8 @@ func (s *Service) CreateEngineDownload(source, outName string) (DownloadTask, *A
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.closing {
-		return DownloadTask{}, Err("service_closing")
+	if apiErr := s.admitDownloadLocked(); apiErr != nil {
+		return DownloadTask{}, apiErr
 	}
 	if outName == "" {
 		if existing, found := s.activeDownloadLocked("engine", source, ""); found {

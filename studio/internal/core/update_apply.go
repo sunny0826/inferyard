@@ -1,12 +1,12 @@
 package core
 
 import (
-	"archive/tar"
-	"compress/gzip"
+	"bytes"
 	"context"
+	"crypto/subtle"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,10 +14,13 @@ import (
 	"time"
 )
 
-const (
-	maxUpdateTarEntries = 500
-	maxUpdateTarBytes   = 512 << 20
-)
+const updateErrorRecordFile = "last-apply-error.json"
+
+type pendingApplyErrorRecord struct {
+	Version    string `json:"version"`
+	ReleaseURL string `json:"release_url"`
+	ExitCode   int    `json:"exit_code"`
+}
 
 func (m *updateManager) applyUpdate(ctx context.Context, confirmStopWorkloads bool) (UpdateState, error) {
 	if ctx == nil {
@@ -41,6 +44,12 @@ func (m *updateManager) applyUpdate(ctx context.Context, confirmStopWorkloads bo
 	}
 	artifact := m.stagedArtifact
 	stagingDir := m.stagedDir
+	expectedSHA := m.stagedSHA256
+	var targetVer, releaseURL string
+	if m.state.Release != nil {
+		targetVer = m.state.Release.Version
+		releaseURL = m.state.Release.ReleaseURL
+	}
 	quitFn := m.requestQuit
 	runCmd := m.opts.CommandRunner
 	applyFn := m.opts.ApplyFunc
@@ -59,11 +68,27 @@ func (m *updateManager) applyUpdate(ctx context.Context, confirmStopWorkloads bo
 		return snap, &updateCheckError{code: m.state.ErrorCode, message: m.state.ErrorMessage}
 	}
 
-	var workloads UpdateActiveWorkloads
-	if m.service != nil {
-		workloads = m.service.ActiveUpdateWorkloads()
+	actualSHA, hashErr := sha256File(artifact)
+	if expectedSHA == "" || hashErr != nil || subtle.ConstantTimeCompare([]byte(actualSHA), []byte(expectedSHA)) != 1 {
+		m.mu.Lock()
+		m.removeStagedLocked()
+		m.state.State = UpdateError
+		m.state.ErrorCode = "update_checksum_mismatch"
+		m.state.ErrorMessage = "安装包 SHA-256 校验未通过，已删除异常文件。"
+		m.publishLocked()
+		snap := m.cloneStateLocked()
+		m.mu.Unlock()
+		return snap, &updateCheckError{code: m.state.ErrorCode, message: m.state.ErrorMessage}
 	}
-	if workloads.Any() && !confirmStopWorkloads {
+
+	workloads, apiErr, admitted := m.service.beginUpdateApplyAdmission(confirmStopWorkloads)
+	if apiErr != nil {
+		m.mu.Lock()
+		snap := m.cloneStateLocked()
+		m.mu.Unlock()
+		return snap, apiErr
+	}
+	if !admitted {
 		m.mu.Lock()
 		if m.state.State == UpdateReadyToApply {
 			m.state.Workloads = workloads
@@ -73,6 +98,13 @@ func (m *updateManager) applyUpdate(ctx context.Context, confirmStopWorkloads bo
 		m.mu.Unlock()
 		return snap, ErrUpdateWorkloadActive
 	}
+
+	keepAdmissionFrozen := false
+	defer func() {
+		if !keepAdmissionFrozen && m.service != nil {
+			m.service.endUpdateApplyAdmission()
+		}
+	}()
 
 	target := m.inspectTarget()
 	if !target.CanSelfUpdate || target.BlockCode != "" {
@@ -120,13 +152,21 @@ func (m *updateManager) applyUpdate(ctx context.Context, confirmStopWorkloads bo
 		}
 	}
 
+	errRecordPath := m.pendingErrorRecordPath()
+	if stagingDir != "" {
+		errRecordPath = filepath.Join(filepath.Dir(stagingDir), updateErrorRecordFile)
+	}
+
 	plan := platformApplyPlan{
-		ArtifactPath: artifact,
-		StagingDir:   stagingDir,
-		ExePath:      target.ExePath,
-		AppPath:      target.AppPath,
-		InstallDir:   target.InstallDir,
-		SkipRelaunch: skipRelaunch,
+		ArtifactPath:    artifact,
+		StagingDir:      stagingDir,
+		ExePath:         target.ExePath,
+		AppPath:         target.AppPath,
+		InstallDir:      target.InstallDir,
+		TargetVersion:   targetVer,
+		ReleaseURL:      releaseURL,
+		ErrorRecordPath: errRecordPath,
+		SkipRelaunch:    skipRelaunch,
 		Shutdown: func() error {
 			if m.service == nil {
 				return nil
@@ -175,7 +215,59 @@ func (m *updateManager) applyUpdate(ctx context.Context, confirmStopWorkloads bo
 		m.publishLocked()
 		return m.cloneStateLocked(), applyErr
 	}
+	keepAdmissionFrozen = true
 	return m.cloneStateLocked(), nil
+}
+
+func (m *updateManager) pendingErrorRecordPath() string {
+	if m.opts.StagingRoot != "" {
+		return filepath.Join(m.opts.StagingRoot, updateErrorRecordFile)
+	}
+	cacheDir, err := os.UserCacheDir()
+	if err != nil || strings.TrimSpace(cacheDir) == "" {
+		cacheDir = os.TempDir()
+	}
+	return filepath.Join(cacheDir, "InferYard Studio", "updates", updateErrorRecordFile)
+}
+
+func (m *updateManager) consumePendingApplyError() bool {
+	path := m.pendingErrorRecordPath()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	_ = os.Remove(path)
+	raw = bytes.TrimPrefix(raw, []byte("\xEF\xBB\xBF"))
+	var rec pendingApplyErrorRecord
+	if json.Unmarshal(raw, &rec) != nil {
+		return false
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.state.State != UpdateIdle {
+		return false
+	}
+	ver := strings.TrimPrefix(strings.TrimSpace(rec.Version), "v")
+	if ver != "" || validateUpdateURL(rec.ReleaseURL, m.opts.AllowInsecureHTTP) {
+		rel := UpdateRelease{
+			Version: ver,
+			TagName: "v" + ver,
+			Name:    "v" + ver,
+		}
+		if validateUpdateURL(rec.ReleaseURL, m.opts.AllowInsecureHTTP) {
+			rel.ReleaseURL = rec.ReleaseURL
+		}
+		if ver == "" {
+			rel.TagName = ""
+			rel.Name = ""
+		}
+		m.state.Release = &rel
+	}
+	m.state.State = UpdateError
+	m.state.ErrorCode = "update_windows_install_failed"
+	m.state.ErrorMessage = "上次安装更新未完成，现有版本保持可用，可重试或前往发布页下载。"
+	m.publishLocked()
+	return true
 }
 
 func retainFallbackOnApplyError(code string) bool {
@@ -234,176 +326,6 @@ func resolveDarwinAppBundle(exePath string) (appBundlePath, blockCode, blockMsg 
 	return appDir, "", ""
 }
 
-func extractUpdateTarGz(archivePath, destDir string) (string, error) {
-	if err := os.MkdirAll(destDir, 0o700); err != nil {
-		return "", err
-	}
-	f, err := os.Open(archivePath)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-
-	gz, err := gzip.NewReader(f)
-	if err != nil {
-		return "", err
-	}
-	defer gz.Close()
-
-	tr := tar.NewReader(gz)
-	cleanDest := filepath.Clean(destDir)
-	var entries int
-	var totalBytes int64
-
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return "", err
-		}
-		entries++
-		if entries > maxUpdateTarEntries {
-			return "", errors.New("archive contains too many entries")
-		}
-
-		cleanName := filepath.Clean(strings.TrimPrefix(hdr.Name, "./"))
-		if cleanName == "." || cleanName == "" {
-			continue
-		}
-		if filepath.IsAbs(cleanName) || cleanName == ".." || strings.HasPrefix(cleanName, ".."+string(filepath.Separator)) || strings.ContainsRune(cleanName, 0) {
-			return "", fmt.Errorf("unsafe archive entry path: %s", hdr.Name)
-		}
-		target := filepath.Join(cleanDest, cleanName)
-		rel, err := filepath.Rel(cleanDest, target)
-		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-			return "", fmt.Errorf("archive path escapes destination: %s", hdr.Name)
-		}
-
-		switch hdr.Typeflag {
-		case tar.TypeDir:
-			if err := os.MkdirAll(target, 0o755); err != nil {
-				return "", err
-			}
-		case tar.TypeReg:
-			if hdr.Size < 0 || totalBytes+hdr.Size > maxUpdateTarBytes {
-				return "", errors.New("archive exceeds maximum allowed size")
-			}
-			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-				return "", err
-			}
-			mode := os.FileMode(hdr.Mode) & 0o777
-			if mode == 0 {
-				mode = 0o644
-			}
-			out, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
-			if err != nil {
-				return "", err
-			}
-			written, copyErr := io.Copy(out, io.LimitReader(tr, hdr.Size+1))
-			closeErr := out.Close()
-			if copyErr != nil {
-				return "", copyErr
-			}
-			if closeErr != nil {
-				return "", closeErr
-			}
-			if written != hdr.Size {
-				return "", fmt.Errorf("truncated archive entry: %s", hdr.Name)
-			}
-			totalBytes += written
-		default:
-			return "", fmt.Errorf("unsupported archive entry type for %s", hdr.Name)
-		}
-	}
-
-	if info, err := os.Stat(filepath.Join(cleanDest, "inferyard-studio")); err == nil && info.Mode().IsRegular() {
-		return cleanDest, nil
-	}
-	dirEntries, err := os.ReadDir(cleanDest)
-	if err != nil {
-		return "", err
-	}
-	for _, entry := range dirEntries {
-		if !entry.IsDir() {
-			continue
-		}
-		candidate := filepath.Join(cleanDest, entry.Name())
-		if info, err := os.Stat(filepath.Join(candidate, "inferyard-studio")); err == nil && info.Mode().IsRegular() {
-			return candidate, nil
-		}
-	}
-	return "", errors.New("extracted archive does not contain inferyard-studio executable")
-}
-
-func applyLinuxExtracted(extractedRoot, exePath string) error {
-	targetDir := filepath.Dir(exePath)
-	if err := checkDirWritable(targetDir); err != nil {
-		return &updateCheckError{
-			code:    "update_path_unwritable",
-			message: "当前安装目录没有写入权限，可打开安装包手动更新或前往发布页下载。",
-			cause:   err,
-		}
-	}
-	srcExe := filepath.Join(extractedRoot, "inferyard-studio")
-	if err := atomicCopyFile(srcExe, exePath, 0o755); err != nil {
-		return &updateCheckError{
-			code:    "update_apply_failed",
-			message: "替换可执行文件失败，原有安装保持不变。",
-			cause:   err,
-		}
-	}
-	for _, companion := range []string{"LICENSE", "README.txt", "icon.png"} {
-		src := filepath.Join(extractedRoot, companion)
-		if info, err := os.Stat(src); err == nil && info.Mode().IsRegular() {
-			_ = atomicCopyFile(src, filepath.Join(targetDir, companion), 0o644)
-		}
-	}
-	return nil
-}
-
-func atomicCopyFile(srcPath, dstPath string, mode os.FileMode) error {
-	src, err := os.Open(srcPath)
-	if err != nil {
-		return err
-	}
-	defer src.Close()
-
-	dstDir := filepath.Dir(dstPath)
-	tmp, err := os.CreateTemp(dstDir, "."+filepath.Base(dstPath)+".update-*")
-	if err != nil {
-		return err
-	}
-	tmpPath := tmp.Name()
-	cleanup := true
-	defer func() {
-		if cleanup {
-			_ = os.Remove(tmpPath)
-		}
-	}()
-
-	if _, err := io.Copy(tmp, src); err != nil {
-		_ = tmp.Close()
-		return err
-	}
-	if err := tmp.Sync(); err != nil {
-		_ = tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	if err := os.Chmod(tmpPath, mode); err != nil {
-		return err
-	}
-	if err := os.Rename(tmpPath, dstPath); err != nil {
-		return err
-	}
-	cleanup = false
-	return nil
-}
-
 func windowsInstallerArgs(installDir string) []string {
 	return []string{
 		"/SP-",
@@ -420,7 +342,10 @@ func windowsUpdateScriptContent() string {
   [string]$InstallerPath,
   [string]$InstallDir,
   [string]$StagingDir,
-  [string]$LaunchExe
+  [string]$LaunchExe,
+  [string]$ErrorRecordPath,
+  [string]$TargetVersion,
+  [string]$ReleaseURL
 )
 $deadline = [DateTime]::UtcNow.AddSeconds(60)
 while ([DateTime]::UtcNow -lt $deadline) {
@@ -428,16 +353,26 @@ while ([DateTime]::UtcNow -lt $deadline) {
   if (-not $proc) { break }
   Start-Sleep -Milliseconds 150
 }
+$exitCode = -1
 try {
   $dirArg = '/DIR="' + $InstallDir + '"'
   $argList = @('/SP-', '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', $dirArg)
   $res = Start-Process -FilePath $InstallerPath -ArgumentList $argList -Wait -PassThru
-  if ($res.ExitCode -eq 0 -and (Test-Path -LiteralPath $LaunchExe -PathType Leaf)) {
-    Start-Process -FilePath $LaunchExe | Out-Null
-  }
+  if ($null -ne $res) { $exitCode = [int]$res.ExitCode }
+} catch {
+  $exitCode = -1
 } finally {
+  if ($exitCode -ne 0 -and $ErrorRecordPath) {
+    try {
+      $payload = @{ version = $TargetVersion; release_url = $ReleaseURL; exit_code = $exitCode } | ConvertTo-Json -Compress
+      [System.IO.File]::WriteAllText($ErrorRecordPath, $payload, [System.Text.UTF8Encoding]::new($false))
+    } catch {}
+  }
   if ($StagingDir -and (Test-Path -LiteralPath $StagingDir)) {
     Remove-Item -LiteralPath $StagingDir -Recurse -Force -ErrorAction SilentlyContinue
+  }
+  if ($LaunchExe -and (Test-Path -LiteralPath $LaunchExe -PathType Leaf)) {
+    Start-Process -FilePath $LaunchExe | Out-Null
   }
   if ($PSCommandPath -and (Test-Path -LiteralPath $PSCommandPath)) {
     Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue

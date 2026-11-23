@@ -42,6 +42,7 @@ type Service struct {
 	ctx               context.Context
 	cancel            context.CancelFunc
 	closing           bool
+	updateApplying    bool
 	shutdownOnce      sync.Once
 	shutdownDone      chan struct{}
 	queueDone         chan struct{}

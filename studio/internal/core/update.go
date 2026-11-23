@@ -82,16 +82,19 @@ type updateInstallTarget struct {
 }
 
 type platformApplyPlan struct {
-	ArtifactPath string
-	StagingDir   string
-	ExePath      string
-	AppPath      string
-	InstallDir   string
-	SkipRelaunch bool
-	Shutdown     func() error
-	RequestQuit  func()
-	PreserveDir  func()
-	RunCmd       func(context.Context, string, ...string) ([]byte, error)
+	ArtifactPath    string
+	StagingDir      string
+	ExePath         string
+	AppPath         string
+	InstallDir      string
+	TargetVersion   string
+	ReleaseURL      string
+	ErrorRecordPath string
+	SkipRelaunch    bool
+	Shutdown        func() error
+	RequestQuit     func()
+	PreserveDir     func()
+	RunCmd          func(context.Context, string, ...string) ([]byte, error)
 }
 
 type UpdateOptions struct {
@@ -122,6 +125,7 @@ type updateManager struct {
 	startupOnce           sync.Once
 	stagedDir             string
 	stagedArtifact        string
+	stagedSHA256          string
 	preserveStagingOnExit bool
 	requestQuit           func()
 }
@@ -219,6 +223,7 @@ func (m *updateManager) removeStagedLocked() {
 	}
 	m.stagedDir = ""
 	m.stagedArtifact = ""
+	m.stagedSHA256 = ""
 	m.preserveStagingOnExit = false
 	m.state.FallbackPath = ""
 }
@@ -266,12 +271,7 @@ func (s *Service) SetUpdateQuitHook(fn func()) {
 	s.updater.mu.Unlock()
 }
 
-func (s *Service) ActiveUpdateWorkloads() UpdateActiveWorkloads {
-	if s == nil {
-		return UpdateActiveWorkloads{}
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (s *Service) activeUpdateWorkloadsLocked() UpdateActiveWorkloads {
 	var w UpdateActiveWorkloads
 	for _, r := range s.runs {
 		if !terminal(r.Task.State) {
@@ -284,6 +284,41 @@ func (s *Service) ActiveUpdateWorkloads() UpdateActiveWorkloads {
 		}
 	}
 	return w
+}
+
+func (s *Service) ActiveUpdateWorkloads() UpdateActiveWorkloads {
+	if s == nil {
+		return UpdateActiveWorkloads{}
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.activeUpdateWorkloadsLocked()
+}
+
+func (s *Service) beginUpdateApplyAdmission(confirmStop bool) (UpdateActiveWorkloads, *ApiError, bool) {
+	if s == nil {
+		return UpdateActiveWorkloads{}, nil, true
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closing {
+		return UpdateActiveWorkloads{}, Err("service_closing"), false
+	}
+	workloads := s.activeUpdateWorkloadsLocked()
+	if workloads.Any() && !confirmStop {
+		return workloads, nil, false
+	}
+	s.updateApplying = true
+	return workloads, nil, true
+}
+
+func (s *Service) endUpdateApplyAdmission() {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	s.updateApplying = false
+	s.mu.Unlock()
 }
 
 func (s *Service) UpdateStatus() UpdateState {
@@ -307,6 +342,9 @@ func (s *Service) StartBackgroundUpdateCheck() {
 	}
 	m := s.updater
 	m.startupOnce.Do(func() {
+		if m.consumePendingApplyError() {
+			return
+		}
 		delay := m.opts.StartupDelay
 		go func() {
 			if delay > 0 {
