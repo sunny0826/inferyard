@@ -37,17 +37,26 @@ func TestPolystrataEngineDrawerShowsSizeAndSHA256(t *testing.T) {
 }
 
 func TestPolystrataStage2ProxyGuidanceOnNetworkFailure(t *testing.T) {
-	proxyUnsetErr := core.Err("engine_acquire_incomplete")
+	proxyUnsetErr := core.Err("cli_blocked")
+	proxyUnsetErr.Limitations = []string{"engine_acquire_incomplete"}
 	proxyUnsetErr.Details = map[string]any{
-		"failure_stage": "downloading_runtime",
+		"failure_stage": "download_body",
 		"failure_cause": "connection_error",
 	}
-	proxySetErr := core.Err("engine_acquire_incomplete")
+	proxySetErr := core.Err("cli_blocked")
+	proxySetErr.Limitations = []string{"engine_acquire_incomplete"}
 	proxySetErr.Details = map[string]any{
 		"failure_stage": "download_open",
 		"failure_cause": "network_timeout",
 	}
-	preflightErr := core.Err("polystrata_preflight_blocked")
+	transferErr := core.Err("cli_blocked")
+	transferErr.Limitations = []string{"engine_acquire_incomplete"}
+	transferErr.Details = map[string]any{
+		"failure_stage": "download_open",
+		"failure_cause": "transfer_error",
+	}
+	preflightErr := core.Err("cli_blocked")
+	preflightErr.Limitations = []string{"polystrata_xcode_clt_missing"}
 	preflightErr.Details = map[string]any{
 		"failure_stage": "preflight",
 		"failure_cause": "polystrata_xcode_clt_missing",
@@ -65,18 +74,30 @@ func TestPolystrataStage2ProxyGuidanceOnNetworkFailure(t *testing.T) {
 			Error:       proxyUnsetErr,
 		},
 		{
+			TaskId:      "ps-transfer",
+			Kind:        "polystrata",
+			DisplayName: "PolyStrata · transfer",
+			OutName:     "polystrata-2",
+			State:       "failed",
+			Stage:       "downloading_runtime",
+			Error:       transferErr,
+		},
+		{
 			TaskId:      "ps-preflight",
 			Kind:        "polystrata",
 			DisplayName: "PolyStrata · preflight",
-			OutName:     "polystrata-2",
+			OutName:     "polystrata-3",
 			State:       "failed",
 			Stage:       "preflight",
 			Error:       preflightErr,
 		},
 	}
-	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1000, 1400)
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1000, 1600)
 	if !tt.HasText("设置 → 下载代理") || !tt.HasText("ModelScope") {
 		t.Fatalf("expected Stage 2 unset-proxy guidance, got %v", tt.Texts())
+	}
+	if _, ok := tt.Find("前往设置代理 · ps-transfer"); ok {
+		t.Fatalf("transfer_error must not show Stage 2 proxy guidance: %v", tt.Texts())
 	}
 	if _, ok := tt.Find("前往设置代理 · ps-preflight"); ok {
 		t.Fatalf("preflight failure must not show Stage 2 proxy guidance: %v", tt.Texts())
@@ -89,7 +110,7 @@ func TestPolystrataStage2ProxyGuidanceOnNetworkFailure(t *testing.T) {
 		TaskId:      "ps-net-set",
 		Kind:        "polystrata",
 		DisplayName: "PolyStrata · qwen36",
-		OutName:     "polystrata-3",
+		OutName:     "polystrata-4",
 		State:       "failed",
 		Stage:       "downloading_runtime",
 		Error:       proxySetErr,

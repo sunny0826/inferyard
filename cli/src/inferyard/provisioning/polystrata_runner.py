@@ -53,6 +53,8 @@ def _merge_no_proxy(
             if token and key not in seen:
                 seen.add(key)
                 merged.append(token)
+    if "*" in seen:
+        return "*"
     for host in additions:
         key = host.casefold()
         if key not in seen:

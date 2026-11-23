@@ -274,11 +274,12 @@ def prepare_polystrata(
     """Run managed 4-stage PolyStrata setup: preflight -> runtime -> setup.py -> verify."""
     expected_sha256 = validate_sha256(expected_sha256)
     remote_source, local_archive, kind = resolve_polystrata_source(source)
-    if (
-        expected_sha256 is None
-        and remote_source is not None
-        and remote_source.url == DEFAULT_POLYSTRATA_SOURCE_URL
-    ):
+    if remote_source is not None and remote_source.url == DEFAULT_POLYSTRATA_SOURCE_URL:
+        if expected_sha256 is not None and expected_sha256 != DEFAULT_POLYSTRATA_SOURCE_SHA256:
+            raise PreparationError(
+                "engine_checksum_mismatch",
+                details=failure_details("verify", "engine_checksum_mismatch"),
+            )
         expected_sha256 = DEFAULT_POLYSTRATA_SOURCE_SHA256
     gguf_resolved = Path(gguf_path).expanduser().absolute() if gguf_path is not None else None
 

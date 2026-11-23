@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -16,19 +17,12 @@ func polystrataRuntimeNetworkFailure(task core.DownloadTask) bool {
 		failureStage == "downloading_runtime" ||
 		failureStage == "download_open" ||
 		failureStage == "download_body" ||
-		task.Error.Code == "engine_acquire_incomplete"
+		slices.Contains(task.Error.Limitations, "engine_acquire_incomplete")
 	if !inRuntimeStage {
 		return false
 	}
 	cause, _ := task.Error.Details["failure_cause"].(string)
-	switch cause {
-	case "connection_error", "network_timeout", "transfer_error":
-		return true
-	case "":
-		return task.Error.Code == "engine_acquire_incomplete"
-	default:
-		return false
-	}
+	return cause == "connection_error" || cause == "network_timeout"
 }
 
 func polystrataRuntimeProxyHint(task core.DownloadTask, proxyConfigured bool) string {

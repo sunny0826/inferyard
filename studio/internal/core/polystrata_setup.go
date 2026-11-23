@@ -198,23 +198,11 @@ func polystrataPrepareArgs(outDir, dataDir string, req *PolystrataSetupRequest, 
 		src = strings.TrimSpace(req.Source)
 	}
 	if src == "" || src == polystrataDefaultSourceURL {
-		expectedSHA := polystrataDefaultSourceSHA256
-		if entry, ok := CatalogEntryByID("engine-polystrata"); ok {
-			if strings.TrimSpace(entry.URL) != "" {
-				src = entry.URL
-			} else {
-				src = polystrataDefaultSourceURL
-			}
-			if strings.TrimSpace(entry.SHA256) != "" {
-				expectedSHA = entry.SHA256
-			}
-		} else {
-			src = polystrataDefaultSourceURL
-		}
-		args = append(args, "--source", src)
-		if expectedSHA != "" {
-			args = append(args, "--expected-sha256", expectedSHA)
-		}
+		args = append(
+			args,
+			"--source", polystrataDefaultSourceURL,
+			"--expected-sha256", polystrataDefaultSourceSHA256,
+		)
 	} else {
 		args = append(args, "--source", src)
 	}
