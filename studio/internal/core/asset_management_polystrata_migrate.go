@@ -13,7 +13,60 @@ import (
 	"strings"
 )
 
-func migratePolystrataRootConfigsToDataDir(stagedDir, origInstallDir string, managedDataDirs []string) ([]string, error) {
+func readPolystrataInstallDirs(canonInstPath string) (workDir, dataDir string) {
+	rawBytes, err := installationBytes(canonInstPath)
+	if err != nil {
+		return "", ""
+	}
+	var decl struct {
+		WorkingDirectory string `json:"working_directory"`
+		DataDir          string `json:"data_dir"`
+	}
+	if json.Unmarshal(rawBytes, &decl) != nil {
+		return "", ""
+	}
+	return strings.TrimSpace(decl.WorkingDirectory), strings.TrimSpace(decl.DataDir)
+}
+
+func registeredInstallationProtectedPaths(u UserSettings, wsEnginesRoot string) []string {
+	out := protectedPolystrataDataDirs(u, wsEnginesRoot)
+	addPath := func(raw string) {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" || strings.ContainsRune(trimmed, 0) {
+			return
+		}
+		resolved := filepath.Clean(trimmed)
+		if c, err := canonical(trimmed); err == nil {
+			resolved = c
+		}
+		if !slices.ContainsFunc(out, func(prev string) bool { return sameFileOrPath(prev, resolved) }) {
+			out = append(out, resolved)
+		}
+	}
+	for _, rawInst := range u.EngineInstallations {
+		addPath(rawInst)
+		rawBytes, err := installationBytes(rawInst)
+		if err != nil {
+			continue
+		}
+		var decl struct {
+			Executable       string   `json:"executable"`
+			WorkingDirectory string   `json:"working_directory"`
+			ModelsRoot       string   `json:"models_root"`
+			DataDir          string   `json:"data_dir"`
+			RuntimeRoots     []string `json:"runtime_roots"`
+		}
+		if json.Unmarshal(rawBytes, &decl) != nil {
+			continue
+		}
+		for _, p := range append([]string{decl.Executable, decl.WorkingDirectory, decl.ModelsRoot, decl.DataDir}, decl.RuntimeRoots...) {
+			addPath(p)
+		}
+	}
+	return out
+}
+
+func migratePolystrataRootConfigsToDataDir(stagedDir, origInstallDir, declWorkDir, declDataDir string, managedDataDirs []string) ([]string, error) {
 	if len(managedDataDirs) == 0 {
 		return nil, nil
 	}
@@ -56,12 +109,15 @@ func migratePolystrataRootConfigsToDataDir(stagedDir, origInstallDir string, man
 			continue
 		}
 
+		origBases := migrateConfigOrigBases(cfg.Cwd, declWorkDir, stagedDir, origInstallDir, declDataDir)
+		origLenFiles, origLenDirs := resolvePolystrataConfigRefsWithBases(cfg.Args, rawMap, stagedDir, origBases)
+		origRefs := extractPolystrataAssetRefs(cfg.Args, rawMap)
+		origValidFiles, origValidDirs, origValidOK := validatePolystrataAssets(origRefs, stagedDir, origBases)
+
 		for _, dd := range managedDataDirs {
 			if isSymlinkPath(dd) {
 				continue
 			}
-			origBases := migrateConfigOrigBases(cfg.Cwd, stagedDir, origInstallDir, dd)
-			origLenFiles, origLenDirs := resolvePolystrataConfigRefsWithBases(cfg.Args, rawMap, stagedDir, origBases)
 			if !polystrataRefsScopedToDataDir(origLenFiles, origLenDirs, stagedDir, origInstallDir, dd) {
 				continue
 			}
@@ -74,7 +130,7 @@ func migratePolystrataRootConfigsToDataDir(stagedDir, origInstallDir string, man
 			}
 			rewrittenBytes = append(rewrittenBytes, '\n')
 
-			if err := verifyMigratedPolystrataConfig(dd, stagedDir, origBases, cfg.Args, rawMap, origLenFiles, origLenDirs, rewrittenArgs, clonedMap); err != nil {
+			if err := verifyMigratedPolystrataConfig(dd, origLenFiles, origLenDirs, origValidFiles, origValidDirs, origValidOK, rewrittenArgs, clonedMap); err != nil {
 				rollback()
 				return nil, err
 			}
@@ -119,13 +175,16 @@ func polystrataRefsScopedToDataDir(files []assetFileSize, dirs []string, stagedD
 	return inDD
 }
 
-func migrateConfigOrigBases(cwd, stagedDir, origInstallDir, dd string) []string {
+func migrateConfigOrigBases(cwd, declWorkDir, stagedDir, origInstallDir, declDataDir string) []string {
 	candidates := []string{}
-	trimmedCwd := strings.TrimSpace(cwd)
-	if trimmedCwd != "" {
-		mapped := trimmedCwd
+	addCandidate := func(raw string, joinBase string) {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" {
+			return
+		}
+		mapped := trimmed
 		if !filepath.IsAbs(mapped) {
-			mapped = filepath.Join(stagedDir, mapped)
+			mapped = filepath.Join(joinBase, mapped)
 		} else if relocated, ok := rebaseInstallSubpath(mapped, origInstallDir, stagedDir); ok {
 			mapped = relocated
 		}
@@ -133,11 +192,16 @@ func migrateConfigOrigBases(cwd, stagedDir, origInstallDir, dd string) []string 
 			candidates = append(candidates, mapped)
 		}
 	}
-	for _, dir := range []string{stagedDir, dd} {
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			candidates = append(candidates, dir)
-		}
+	cwdRelBase := strings.TrimSpace(declWorkDir)
+	if cwdRelBase == "" {
+		cwdRelBase = stagedDir
+	} else if relocated, ok := rebaseInstallSubpath(cwdRelBase, origInstallDir, stagedDir); ok {
+		cwdRelBase = relocated
 	}
+	addCandidate(cwd, cwdRelBase)
+	addCandidate(declWorkDir, stagedDir)
+	addCandidate(stagedDir, stagedDir)
+	addCandidate(declDataDir, stagedDir)
 	return uniqueCleanPaths(candidates)
 }
 
@@ -233,21 +297,20 @@ func rewritePolystrataConfigMapForDataDir(rawMap map[string]any, origArgs, origB
 }
 
 func verifyMigratedPolystrataConfig(
-	dd, stagedDir string,
-	origBases, origArgs []string,
-	origMap map[string]any,
+	dd string,
 	origLenFiles []assetFileSize,
 	origLenDirs []string,
+	origValidFiles []assetFileSize,
+	origValidDirs []string,
+	origValidOK bool,
 	newArgs []string,
 	newMap map[string]any,
 ) error {
 	destCwd, _ := newMap["cwd"].(string)
 	destBases := polystrataConfigBases(destCwd, "", dd, dd)
 
-	origRefs := extractPolystrataAssetRefs(origArgs, origMap)
 	newRefs := extractPolystrataAssetRefs(newArgs, newMap)
-	origValidFiles, origValidDirs, origOK := validatePolystrataAssets(origRefs, stagedDir, origBases)
-	if origOK {
+	if origValidOK {
 		newValidFiles, newValidDirs, newOK := validatePolystrataAssets(newRefs, dd, destBases)
 		if !newOK || !sameAssetFileSets(origValidFiles, newValidFiles) || !samePathSets(origValidDirs, newValidDirs) {
 			return fmt.Errorf("migrated config assets differ after relocating to %s", dd)
@@ -266,7 +329,9 @@ func sameAssetFileSets(a, b []assetFileSize) bool {
 		return false
 	}
 	for _, af := range a {
-		if !slices.ContainsFunc(b, func(bf assetFileSize) bool { return sameFileOrPath(af.path, bf.path) }) {
+		if !slices.ContainsFunc(b, func(bf assetFileSize) bool {
+			return af.size == bf.size && sameFileOrPath(af.path, bf.path)
+		}) {
 			return false
 		}
 	}

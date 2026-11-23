@@ -63,11 +63,11 @@ func reclaimableDiskBytes(dirs, files []string) int64 {
 	}
 	inodes := map[fileInodeKey]*inodeAcc{}
 	var total int64
-	recordInfo := func(info os.FileInfo) {
+	recordInfo := func(path string, info os.FileInfo) {
 		if info == nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
 			return
 		}
-		if key, nlink, ok := fileInodeLinks(info); ok {
+		if key, nlink, ok := fileInodeLinks(path, info); ok {
 			acc, exists := inodes[key]
 			if !exists {
 				acc = &inodeAcc{size: info.Size(), nlink: nlink}
@@ -80,7 +80,7 @@ func reclaimableDiskBytes(dirs, files []string) int64 {
 	}
 
 	for _, d := range uniqueDirs {
-		_ = filepath.WalkDir(d, func(_ string, entry fs.DirEntry, walkErr error) error {
+		_ = filepath.WalkDir(d, func(path string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil || entry == nil || entry.Type()&os.ModeSymlink != 0 {
 				if entry != nil && entry.Type()&os.ModeSymlink != 0 && entry.IsDir() {
 					return filepath.SkipDir
@@ -89,7 +89,7 @@ func reclaimableDiskBytes(dirs, files []string) int64 {
 			}
 			if entry.Type().IsRegular() {
 				if info, err := entry.Info(); err == nil {
-					recordInfo(info)
+					recordInfo(path, info)
 				}
 			}
 			return nil
@@ -109,7 +109,7 @@ func reclaimableDiskBytes(dirs, files []string) int64 {
 		}
 		seenFiles = append(seenFiles, f)
 		if info, err := os.Lstat(f); err == nil {
-			recordInfo(info)
+			recordInfo(f, info)
 		}
 	}
 

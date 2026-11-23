@@ -522,6 +522,7 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 		}
 	}
 
+	declWorkDir, declDataDir := readPolystrataInstallDirs(eng.Path)
 	stagedDir := filepath.Join(filepath.Dir(installDir), ".inferyard-uninstall-"+filepath.Base(installDir)+"-"+uuid())
 	if err := os.Rename(installDir, stagedDir); err != nil {
 		return false, Err("internal_error")
@@ -531,7 +532,7 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 		return false, Err("internal_error")
 	}
 
-	migratedPaths, migErr := migratePolystrataRootConfigsToDataDir(stagedDir, installDir, defaultManagedPolystrataDataDirs(u, wsEngines))
+	migratedPaths, migErr := migratePolystrataRootConfigsToDataDir(stagedDir, installDir, declWorkDir, declDataDir, defaultManagedPolystrataDataDirs(u, wsEngines))
 	if migErr != nil {
 		_ = os.Rename(stagedDir, installDir)
 		return false, Err("internal_error")

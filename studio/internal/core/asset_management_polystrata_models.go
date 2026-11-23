@@ -73,7 +73,7 @@ func containsSameDirEntry(list []string, target string) bool {
 
 func appendUniqueAssetFile(files *[]assetFileSize, candidate assetFileSize) {
 	for _, existing := range *files {
-		if sameFileOrPath(existing.path, candidate.path) {
+		if sameDirectoryEntry(existing.path, candidate.path) {
 			return
 		}
 	}
@@ -379,6 +379,7 @@ func planPolystrataModelDelete(u UserSettings, wsEnginesRoot, rawCfgPath, canonC
 	workDir, dataDir := findOwningPolystrataDecl(u, wsEnginesRoot, canonCfgPath)
 	targetFiles, targetDirs := resolvePolystrataConfigRefsLenient(canonCfgPath, workDir, dataDir)
 	prot := collectOtherPolystrataProtectedRefs(u, wsEnginesRoot, canonCfgPath)
+	protectedPaths := registeredInstallationProtectedPaths(u, wsEnginesRoot)
 
 	plan := polystrataModelDeletePlan{
 		configPath: canonCfgPath,
@@ -399,7 +400,7 @@ func planPolystrataModelDelete(u UserSettings, wsEnginesRoot, rawCfgPath, canonC
 		if isProtectedPolystrataContainer(d, scope.dataDirs) {
 			continue
 		}
-		if prot.touchesDir(d) {
+		if prot.touchesDir(d) || slices.ContainsFunc(protectedPaths, func(p string) bool { return sameFileOrPath(d, p) || pathWithinDirSameFS(d, p) }) {
 			plan.preservedShared = true
 			continue
 		}
@@ -421,7 +422,7 @@ func planPolystrataModelDelete(u UserSettings, wsEnginesRoot, rawCfgPath, canonC
 			plan.preservedExternal = true
 			continue
 		}
-		if prot.touchesFile(f.path) {
+		if prot.touchesFile(f.path) || slices.ContainsFunc(protectedPaths, func(p string) bool { return sameFileOrPath(f.path, p) }) {
 			plan.preservedShared = true
 			continue
 		}

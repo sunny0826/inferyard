@@ -312,11 +312,7 @@ func TestPolystrataUninstallFingerprintsDetectMemberSwapAndExcludeExternalHardli
 	mustWriteFile(t, hlInner, oneMiB, 0o600)
 	cfgHL := writeStrataConfigFixture(t, filepath.Join(dataDir, "models", "hlr", "strata-hl-reclaim.json"), "HL Reclaim", []string{"--pack", hlPack})
 
-	if runtime.GOOS != "windows" {
-		if err := os.Link(hlInner, hlOuter); err != nil {
-			t.Fatal(err)
-		}
-	}
+	linkCreated := os.Link(hlInner, hlOuter) == nil
 
 	s := testService(t, assetTestExec)
 	s.mu.Lock()
@@ -358,8 +354,8 @@ func TestPolystrataUninstallFingerprintsDetectMemberSwapAndExcludeExternalHardli
 		t.Fatalf("renamed directory member must survive rejected delete: %v", statErr)
 	}
 
-	// 2. External hardlink excludes shared file bytes from ReclaimableBytes.
-	if runtime.GOOS != "windows" {
+	// 2. External hardlink excludes shared file bytes from ReclaimableBytes across POSIX & NTFS.
+	if linkCreated {
 		cfgInfo, statErr := os.Lstat(cfgHL)
 		if statErr != nil {
 			t.Fatal(statErr)

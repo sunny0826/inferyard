@@ -12,7 +12,7 @@ type fileInodeKey struct {
 	ino uint64
 }
 
-func fileInodeLinks(info os.FileInfo) (fileInodeKey, uint64, bool) {
+func fileInodeLinks(_ string, info os.FileInfo) (fileInodeKey, uint64, bool) {
 	if info == nil {
 		return fileInodeKey{}, 1, false
 	}
