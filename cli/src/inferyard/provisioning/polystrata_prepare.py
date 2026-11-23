@@ -359,6 +359,19 @@ def prepare_polystrata(
         if isinstance(preflight.get("venv_creator"), dict)
         else None
     )
+    progress.update(
+        "setup_engine",
+        0,
+        None,
+        step=3,
+        step_total=4,
+        detail=(
+            "reusing Python environment"
+            if preflight.get("reuse_existing_venv")
+            else "creating Python environment"
+        ),
+        force=True,
+    )
     venv_py = _ensure_polystrata_venv(
         out_path,
         system=system,

@@ -440,6 +440,9 @@ def acquire_runtime_tree(
                         emitter=emitter,
                         download_stage="downloading_runtime",
                         verify_stage="downloading_runtime",
+                        step=2,
+                        step_total=4,
+                        detail="downloading PolyStrata runtime",
                     )
                 except PreparationError as exc:
                     if exc.reason == "engine_checksum_mismatch":
@@ -460,6 +463,9 @@ def acquire_runtime_tree(
                         emitter=emitter,
                         download_stage="downloading_runtime",
                         verify_stage="downloading_runtime",
+                        step=2,
+                        step_total=4,
+                        detail="downloading PolyStrata runtime",
                     )
                     stream.flush()
                     os.fsync(stream.fileno())

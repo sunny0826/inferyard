@@ -76,18 +76,28 @@ func (s *Service) applyTransferProgress(d *downloadEntry, ev transferProgressLin
 	s.mu.Lock()
 	stageChanged := ev.Stage != "" && ev.Stage != d.Task.Stage
 	stepChanged := ev.Step != nil && (d.Task.Step == nil || *ev.Step != *d.Task.Step)
-	if d.Task.Kind == "polystrata" && (stageChanged || stepChanged) {
-		if ev.Percent == nil {
-			d.Task.Percent = nil
-		}
-		if ev.TotalBytes == nil {
-			d.Task.TotalBytes = nil
-		}
-		if ev.Detail == nil {
-			d.Task.Detail = nil
-		}
-		if ev.BytesPerSecond == nil {
-			d.Task.BytesPerSecond = nil
+	if d.Task.Kind == "polystrata" {
+		if stageChanged || stepChanged {
+			if ev.Percent == nil {
+				d.Task.Percent = nil
+			}
+			if ev.TotalBytes == nil {
+				d.Task.TotalBytes = nil
+			}
+			if ev.Detail == nil {
+				d.Task.Detail = nil
+			}
+			if ev.BytesPerSecond == nil {
+				d.Task.BytesPerSecond = nil
+			}
+		} else {
+			if ev.TotalBytes == nil && (ev.DownloadedBytes == nil || *ev.DownloadedBytes == 0) {
+				d.Task.TotalBytes = nil
+				d.Task.BytesPerSecond = nil
+			}
+			if ev.Percent == nil && ev.Detail != nil && strings.HasPrefix(strings.TrimSpace(*ev.Detail), "Step ") {
+				d.Task.Percent = nil
+			}
 		}
 	}
 	if ev.Stage != "" {

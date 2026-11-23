@@ -306,6 +306,45 @@ func (s *Service) runEngineCheck(t engineCheckTarget) {
 	s.Bus.Publish("engine.check", map[string]any{"engine": t.name, "eligibility": eligibility})
 }
 
+func (s *Service) cacheInstallationCheck(p InferyardProbe, path, key string, result inferyard.EngineCheck) {
+	if !result.Eligible {
+		return
+	}
+	cliKey := str(p.Path) + "|" + str(p.Version) + "|" + p.Status
+	eligibility := EngineEligibility{
+		State:             EngineCheckEligible,
+		Version:           str(result.ReportedVersion),
+		Release:           result.ExpectedRelease,
+		Mode:              str(result.Mode),
+		Family:            str(result.Family),
+		DeclarationSHA256: result.DeclarationSHA256,
+		VerificationScope: "installation_runtime_closure_only",
+	}
+	if result.Modes != nil {
+		eligibility.Modes = map[string]bool{"cpu": result.Modes.CPU, "metal": result.Modes.Metal}
+	}
+	s.checkMu.Lock()
+	if s.checks == nil {
+		s.checks = map[string]engineCheckEntry{}
+	}
+	if s.checkInflight == nil {
+		s.checkInflight = map[string]bool{}
+	}
+	if s.checkCLI == "" {
+		s.checkCLI = cliKey
+		s.checkSupported = true
+	} else if s.checkCLI != cliKey {
+		s.checkCLI = cliKey
+		s.checkGeneration++
+		s.checks = map[string]engineCheckEntry{}
+		s.checkInflight = map[string]bool{}
+		s.checkSupported = true
+	}
+	s.checks[path] = engineCheckEntry{key: key, verified: true, result: eligibility}
+	delete(s.checkInflight, path)
+	s.checkMu.Unlock()
+}
+
 func (s *Service) EngineChecks() EngineCheckOverview {
 	s.checkMu.Lock()
 	defer s.checkMu.Unlock()
