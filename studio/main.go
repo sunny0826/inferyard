@@ -74,6 +74,8 @@ func runMain() (exitCode int) {
 	}
 	runApp(ctx, func() {
 		suppress := pages.New(ctx, service, "")
+		service.SetUpdateQuitHook(func() { mygo.App.Quit() })
+		service.StartBackgroundUpdateCheck()
 		desktop.SubscribeWithFilter(ctx, service.Bus, suppress, func(message desktop.Message) error {
 			return mygo.NewNotification(mygo.NotificationOptions{Title: message.Title, Body: message.Body}).Show()
 		}, log.Printf)

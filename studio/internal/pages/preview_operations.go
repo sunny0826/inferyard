@@ -49,6 +49,16 @@ func (p *previewSession) dispatch(intent previewIntent) {
 		p.beginBenchmark(previewBenchmark{model: s.model, engine: s.engine, bundles: []string{op.bundle}, resumePath: op.resumePath})
 	case previewCancelRun:
 		p.cancelRun(op.id)
+	case previewUpdateCheck:
+		p.checkUpdate()
+	case previewUpdateStart:
+		p.startUpdateDownload(true)
+	case previewUpdateCancel:
+		p.cancelUpdate()
+	case previewUpdateApply:
+		p.applyUpdate(op.confirmStopWorkloads)
+	case previewUpdateRetry:
+		p.retryUpdate()
 	case previewStep:
 		p.dispatchStep(op)
 	default:
@@ -402,6 +412,9 @@ func (p *previewSession) activateScene() {
 				p.tickDownload(task.TaskId, false, 0)
 			}
 		}
+	}
+	if s.updateState.State == core.UpdateDownloading {
+		p.tickUpdateDownload(false, 2, false)
 	}
 }
 

@@ -114,6 +114,7 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 				})
 			})
 		}
+		s.updateHeaderBadge(c)
 		s.notificationBell(c)
 	})
 }

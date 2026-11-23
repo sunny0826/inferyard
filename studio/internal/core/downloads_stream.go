@@ -254,9 +254,9 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 		s.mu.Unlock()
 		return DownloadTask{}, Conflict("invalid_state")
 	}
-	if s.closing {
+	if apiErr := s.admitDownloadLocked(); apiErr != nil {
 		s.mu.Unlock()
-		return DownloadTask{}, Err("service_closing")
+		return DownloadTask{}, apiErr
 	}
 	kind := orig.Task.Kind
 	sourceURL := orig.Task.SourceUrl
@@ -300,8 +300,8 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.closing {
-		return DownloadTask{}, Err("service_closing")
+	if apiErr := s.admitDownloadLocked(); apiErr != nil {
+		return DownloadTask{}, apiErr
 	}
 	if kind == "polystrata" {
 		if active, found := s.activePolystrataSetupLocked(); found {

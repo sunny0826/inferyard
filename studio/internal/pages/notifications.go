@@ -403,6 +403,14 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 				},
 			})
 		}
+	case "update.state":
+		var payload struct {
+			Update core.UpdateState `json:"update"`
+		}
+		if json.Unmarshal(event.Data, &payload) != nil {
+			return
+		}
+		s.applyUpdateState(payload.Update)
 	case "engine.check":
 		var payload struct {
 			Engine      string                 `json:"engine"`

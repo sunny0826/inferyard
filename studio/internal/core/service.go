@@ -29,6 +29,7 @@ type Options struct {
 	ExecStream         func(context.Context, func(string), string, ...string) (inferyard.Execution, error)
 	HostStatePath      string
 	EngineStartTimeout time.Duration
+	Update             UpdateOptions
 }
 
 type Service struct {
@@ -41,6 +42,7 @@ type Service struct {
 	ctx               context.Context
 	cancel            context.CancelFunc
 	closing           bool
+	updateApplying    bool
 	shutdownOnce      sync.Once
 	shutdownDone      chan struct{}
 	queueDone         chan struct{}
@@ -81,6 +83,7 @@ type Service struct {
 	probeModTime      int64
 	probeCheckedAt    time.Time
 	probeResult       InferyardProbe
+	updater           *updateManager
 }
 
 func New(ctx context.Context, o Options) (*Service, error) {
@@ -123,6 +126,7 @@ func New(ctx context.Context, o Options) (*Service, error) {
 	}
 	serviceCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 	s := &Service{ctx: serviceCtx, cancel: cancel, shutdownDone: make(chan struct{}), queueDone: make(chan struct{}), settingsPath: o.SettingsPath, exec: o.Execute, execStream: o.ExecStream, Bus: NewEventBus(), wake: make(chan struct{}, 1), hostStatePath: o.HostStatePath, engineTimeout: o.EngineStartTimeout, checks: map[string]engineCheckEntry{}, checkInflight: map[string]bool{}, checkSupported: true, checkSem: make(chan struct{}, 2), checkRetry: time.Minute}
+	s.updater = newUpdateManager(s, o.Update)
 	raw, err := os.ReadFile(o.SettingsPath)
 	if err == nil {
 		if err = json.Unmarshal(raw, &s.settings); err != nil {

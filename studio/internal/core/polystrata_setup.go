@@ -111,8 +111,8 @@ func (s *Service) CreatePolystrataSetup(req PolystrataSetupRequest) (DownloadTas
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.closing {
-		return DownloadTask{}, Err("service_closing")
+	if apiErr := s.admitDownloadLocked(); apiErr != nil {
+		return DownloadTask{}, apiErr
 	}
 	if active, found := s.activePolystrataSetupLocked(); found {
 		if samePolystrataRequest(active.polystrata, &req) {

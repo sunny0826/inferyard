@@ -71,7 +71,9 @@ func New(ctx context.Context, service *core.Service, page string) func(core.Even
 					batch := events
 					s.win.Update(func() { s.ingestCoreEvents(batch) })
 				}
-				s.refresh(fullRefresh(events, reset))
+				if needsRefresh(events, reset) {
+					s.refresh(fullRefresh(events, reset))
+				}
 			}
 		}
 	}()
@@ -202,6 +204,13 @@ type viewState struct {
 	resourceTablePage                                                                   int
 	settingsEpochMu                                                                     sync.Mutex
 	settingsEpoch                                                                       uint64
+	updateState                                                                         core.UpdateState
+	updateDialogOpen                                                                    bool
+	updateReadyPromptDismissedVersion                                                   string
+	updateCheckFn                                                                       func(context.Context) (core.UpdateState, error)
+	updateStartFn                                                                       func()
+	updateCancelFn                                                                      func() core.UpdateState
+	updateApplyFn                                                                       func(context.Context, bool) (core.UpdateState, error)
 }
 
 func (s *viewState) settingsSequence() uint64 {
@@ -252,6 +261,7 @@ func (s *viewState) refresh(full bool) {
 		}
 	}
 	settings = s.service.Settings()
+	updateState := s.service.UpdateStatus()
 	if full {
 		history, he = s.service.History()
 		_, reports, re = s.service.Reports()
@@ -280,6 +290,7 @@ func (s *viewState) refresh(full bool) {
 			id: id, detail: detail, detailError: de, settings: settings,
 			history: history, reports: reports, historyError: he, reportsError: re,
 			ready: ready, progress: progress, progressError: pe, dashboard: dashboard, registry: registry,
+			updateState: updateState,
 		}
 		if !s.applyRefreshBatch(batch) {
 			return
@@ -313,6 +324,7 @@ type refreshBatch struct {
 	progressError              *core.ApiError
 	dashboard                  dashboardSnapshot
 	registry                   core.Registry
+	updateState                core.UpdateState
 }
 
 func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
@@ -346,6 +358,7 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	s.applyDashboard(b.dashboard, b.progressError)
 	s.engineState = s.service.Engine()
 	s.checks = s.service.EngineChecks()
+	s.applyUpdateState(b.updateState)
 	s.adoptDownloadedEngine()
 	s.loaded = true
 	cliKey := emptyText(b.ready.CLI.Path) + "|" + emptyText(b.ready.CLI.Version) + "|" + b.ready.CLI.Status
@@ -468,6 +481,8 @@ func (s *viewState) contentView(c *ui.Context) {
 	})
 	s.resumeDialog(c)
 	s.settingsDiscardDialog(c)
+	s.updateDialog(c)
+	s.updateReadyPrompt(c)
 	s.studioNotifications(c)
 	studioToasts(c)
 }

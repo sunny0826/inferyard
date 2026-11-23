@@ -49,6 +49,7 @@ func (s *Service) beginShutdown() {
 			if orphanDone != nil {
 				<-orphanDone
 			}
+			s.cleanupUpdateStagingOnShutdown()
 			close(s.shutdownDone)
 		}()
 	})
@@ -58,6 +59,9 @@ func (s *Service) admitRunLocked() *ApiError {
 	if s.closing {
 		return Err("service_closing")
 	}
+	if s.updateApplying {
+		return Conflict("update_applying")
+	}
 	for _, t := range s.runs {
 		if t.Task.ContextSpeed != nil && !terminal(t.Task.State) {
 			return Conflict("context_speed_preparing")
@@ -66,6 +70,16 @@ func (s *Service) admitRunLocked() *ApiError {
 	if (s.engine != nil && s.engine.state.State == "stopping") ||
 		(s.orphan != nil && s.orphan.state.State == "stopping") {
 		return Err("engine_stopping")
+	}
+	return nil
+}
+
+func (s *Service) admitDownloadLocked() *ApiError {
+	if s.closing {
+		return Err("service_closing")
+	}
+	if s.updateApplying {
+		return Conflict("update_applying")
 	}
 	return nil
 }

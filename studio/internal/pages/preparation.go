@@ -150,6 +150,7 @@ func (s *viewState) settingsView(c *ui.Context) {
 		s.localInstallationsView(c)
 		s.downloadNamesView(c)
 		s.proxySettingsView(c)
+		s.updateSettingsView(c)
 		return
 	}
 	settingsFormSection(c, settingsFormOptions{
@@ -185,6 +186,7 @@ func (s *viewState) settingsView(c *ui.Context) {
 	s.localInstallationsView(c)
 	s.downloadNamesView(c)
 	s.proxySettingsView(c)
+	s.updateSettingsView(c)
 }
 
 func (s *viewState) pathsEdited() bool {
