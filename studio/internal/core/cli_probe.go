@@ -19,7 +19,7 @@ func parseCLISemver(raw string) (ver semver, prerelease bool, ok bool) {
 		return semver{}, false, false
 	}
 	if base, build, hasBuild := strings.Cut(trimmed, "+"); hasBuild {
-		if build == "" {
+		if !validBuildMetadata(build) {
 			return semver{}, false, false
 		}
 		trimmed = base
@@ -45,6 +45,24 @@ func parseCLISemver(raw string) (ver semver, prerelease bool, ok bool) {
 	}
 	ver, ok = parseSemver(trimmed)
 	return ver, prerelease, ok
+}
+
+func validBuildMetadata(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, seg := range strings.Split(s, ".") {
+		if seg == "" {
+			return false
+		}
+		for i := 0; i < len(seg); i++ {
+			c := seg[i]
+			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '-') {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func allDigits(s string) bool {

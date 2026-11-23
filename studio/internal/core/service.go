@@ -300,6 +300,10 @@ func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResp
 	return s.saveSettings(u)
 }
 func (s *Service) saveSettings(u UserSettings) (SettingsResponse, *ApiError) {
+	return s.persistSettings(u, false)
+}
+
+func (s *Service) persistSettings(u UserSettings, forceCLIRefresh bool) (SettingsResponse, *ApiError) {
 	if s.paths != nil && !s.paths.matches(u) {
 		return SettingsResponse{}, Conflict("paths_bound")
 	}
@@ -334,7 +338,7 @@ func (s *Service) saveSettings(u UserSettings) (SettingsResponse, *ApiError) {
 		return SettingsResponse{}, Err("internal_error")
 	}
 	s.mu.Lock()
-	cliChanged := str(u.InferyardPath) != str(s.settings.InferyardPath)
+	cliChanged := forceCLIRefresh || str(u.InferyardPath) != str(s.settings.InferyardPath)
 	changed := str(u.ResultsRoot) != str(s.settings.ResultsRoot)
 	modelsChanged := str(u.ModelsRoot) != str(s.settings.ModelsRoot) || !slicesEqualStrings(u.ExtraModelsRoots, s.settings.ExtraModelsRoots)
 	if modelsChanged || cliChanged {

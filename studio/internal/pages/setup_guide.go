@@ -39,8 +39,6 @@ func (s *viewState) upgradeCLI() {
 		}); e != nil {
 			return "", e
 		}
-		_ = s.service.RefreshAssets()
-		_ = s.service.RefreshDevice()
 		return "CLI 已升级", nil
 	})
 }

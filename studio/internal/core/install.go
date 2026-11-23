@@ -8,7 +8,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"io"
 	"net/http"
 	"os"
@@ -364,10 +363,19 @@ func (s *Service) InstallCLI(ctx context.Context, onStatus func(string)) (string
 	return s.finishInstall(installed, report)
 }
 
+func (s *Service) saveInstalledCLIPath(path string) (SettingsResponse, *ApiError) {
+	if !filepath.IsAbs(path) || strings.ContainsRune(path, 0) {
+		return SettingsResponse{}, Err("invalid_request")
+	}
+	s.settingsMu.Lock()
+	defer s.settingsMu.Unlock()
+	u := s.userSettings()
+	u.InferyardPath = ptr(path)
+	return s.persistSettings(u, true)
+}
+
 func (s *Service) finishInstall(path string, onStatus func(string)) (string, *ApiError) {
-	s.clearProbeCache()
-	raw, _ := json.Marshal(path)
-	if _, e := s.UpdateSettings(map[string]json.RawMessage{"inferyard_path": raw}); e != nil {
+	if _, e := s.saveInstalledCLIPath(path); e != nil {
 		return "", e
 	}
 	if onStatus != nil {
