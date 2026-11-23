@@ -120,6 +120,9 @@ func snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir string, 
 			if !polystrataRefsScopedToDataDir(origLenFiles, origLenDirs, installDir, dd) {
 				continue
 			}
+			if field, hasCred := findPolystrataPlaintextCredentialField(rawMap, cfg.Args); hasCred {
+				return nil, &polystrataCredentialError{configName: name, field: field}
+			}
 
 			clonedMap, rewrittenArgs := rewritePolystrataConfigMapForDataDir(rawMap, cfg.Args, origBases, installDir)
 			rewrittenBytes, err := json.MarshalIndent(clonedMap, "", "  ")

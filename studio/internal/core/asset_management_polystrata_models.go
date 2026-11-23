@@ -232,7 +232,7 @@ func findOwningPolystrataDecl(u UserSettings, wsEnginesRoot, canonCfgPath string
 
 func collectOtherPolystrataProtectedRefs(u UserSettings, wsEnginesRoot, targetCanonCfg string) protectedPolystrataRefs {
 	prot := protectedPolystrataRefs{}
-	var seenCfgs []string
+	var seenContexts []polystrataCfgContext
 	seenDirs := map[string]bool{}
 	seenFiles := map[string]bool{}
 
@@ -265,11 +265,20 @@ func collectOtherPolystrataProtectedRefs(u UserSettings, wsEnginesRoot, targetCa
 			if err != nil {
 				continue
 			}
-			if (targetCanonCfg != "" && sameDirectoryEntry(resolved, targetCanonCfg)) || containsSameDirEntry(seenCfgs, resolved) {
+			if targetCanonCfg != "" && sameDirectoryEntry(resolved, targetCanonCfg) {
 				continue
 			}
-			seenCfgs = append(seenCfgs, resolved)
-			prot.cfgs = append(prot.cfgs, resolved)
+			if seenCfgInContext(seenContexts, resolved, declWorkDir, declDataDir) {
+				continue
+			}
+			seenContexts = append(seenContexts, polystrataCfgContext{
+				cfg:     resolved,
+				workDir: filepath.Clean(strings.TrimSpace(declWorkDir)),
+				dataDir: filepath.Clean(strings.TrimSpace(declDataDir)),
+			})
+			if !containsSameDirEntry(prot.cfgs, resolved) {
+				prot.cfgs = append(prot.cfgs, resolved)
+			}
 			recordFile(resolved)
 			files, dirs := resolvePolystrataConfigRefsLenient(resolved, declWorkDir, declDataDir)
 			for _, f := range files {

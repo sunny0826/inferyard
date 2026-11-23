@@ -525,6 +525,9 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 	declWorkDir, declDataDir := readPolystrataInstallDirs(eng.Path)
 	migPlans, migErr := snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir, defaultManagedPolystrataDataDirs(u, wsEngines))
 	if migErr != nil {
+		if apiErr, ok := polystrataCredentialApiError(migErr); ok {
+			return false, apiErr
+		}
 		return false, Err("internal_error")
 	}
 
