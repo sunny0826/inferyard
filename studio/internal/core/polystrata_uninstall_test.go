@@ -60,7 +60,7 @@ func TestDeleteManagedPolystrataEngineVenvExternalAndSafetyGuards(t *testing.T) 
 	managedDir := filepath.Join(ws, "engines", "polystrata-managed")
 	managedInst := setupPolystrataInstallFixture(t, managedDir, dataDir, "v0.1.45-poly.10", true)
 
-	hostPython := filepath.Join(base, "host-python3")
+	hostPython := filepath.Join(base, "uv-python", "bin", "python3.12")
 	mustWriteFile(t, hostPython, []byte("#!/bin/sh\n"), 0o755)
 	mustWriteFile(t, filepath.Join(managedDir, ".venv", "pyvenv.cfg"), []byte("home = "+filepath.ToSlash(base)+"\n"), 0o644)
 	if runtime.GOOS != "windows" {

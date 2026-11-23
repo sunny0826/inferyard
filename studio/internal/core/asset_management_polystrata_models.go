@@ -20,6 +20,22 @@ type polystrataModelDeletePlan struct {
 	preservedExternal bool
 }
 
+type protectedPolystrataRefs struct {
+	fileInfos []os.FileInfo
+	files     []string
+	dirs      []string
+	cfgs      []string
+}
+
+func appendUniqueAssetFile(files *[]assetFileSize, candidate assetFileSize) {
+	for _, existing := range *files {
+		if sameFileOrPath(existing.path, candidate.path) {
+			return
+		}
+	}
+	*files = append(*files, candidate)
+}
+
 func expandSplitGGUFShardsLenient(canonPath string) []assetFileSize {
 	m := splitGGUFPattern.FindStringSubmatch(filepath.Base(canonPath))
 	if m != nil {
@@ -28,7 +44,7 @@ func expandSplitGGUFShardsLenient(canonPath string) []assetFileSize {
 		total, err2 := strconv.Atoi(totalStr)
 		if err1 == nil && err2 == nil && total >= 2 && total <= 256 && index >= 1 && index <= total {
 			dir := filepath.Dir(canonPath)
-			shards := make([]assetFileSize, 0, total)
+			var shards []assetFileSize
 			for i := 1; i <= total; i++ {
 				shardPath := filepath.Join(dir, fmt.Sprintf("%s-%05d-of-%05d%s", stem, i, total, ext))
 				info, err := os.Lstat(shardPath)
@@ -39,7 +55,7 @@ func expandSplitGGUFShardsLenient(canonPath string) []assetFileSize {
 				if cerr != nil {
 					canonShard = shardPath
 				}
-				shards = append(shards, assetFileSize{path: canonShard, size: info.Size()})
+				appendUniqueAssetFile(&shards, assetFileSize{path: canonShard, size: info.Size()})
 			}
 			return shards
 		}
@@ -49,6 +65,34 @@ func expandSplitGGUFShardsLenient(canonPath string) []assetFileSize {
 		return nil
 	}
 	return []assetFileSize{{path: canonPath, size: info.Size()}}
+}
+
+func findExistingSplitGGUFParent(ref string, bases []string) (string, bool) {
+	baseName := filepath.Base(ref)
+	if !splitGGUFPattern.MatchString(baseName) {
+		return "", false
+	}
+	checkDir := func(dir string) (string, bool) {
+		info, err := os.Lstat(dir)
+		if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+			return "", false
+		}
+		canonDir, cerr := canonical(dir)
+		if cerr != nil {
+			return "", false
+		}
+		return filepath.Join(canonDir, baseName), true
+	}
+	if filepath.IsAbs(ref) {
+		return checkDir(filepath.Dir(ref))
+	}
+	relDir := filepath.Dir(ref)
+	for _, b := range bases {
+		if joined, ok := checkDir(filepath.Join(b, relDir)); ok {
+			return joined, true
+		}
+	}
+	return "", false
 }
 
 func resolvePolystrataConfigRefsLenient(cfgPath, declWorkDir, declDataDir string) ([]assetFileSize, []string) {
@@ -70,13 +114,11 @@ func resolvePolystrataConfigRefsLenient(cfgPath, declWorkDir, declDataDir string
 	bases := polystrataConfigBases(cfg.Cwd, declWorkDir, cfgDir, declDataDir)
 	refs := extractPolystrataAssetRefs(cfg.Args, rawMap)
 
-	fileMap := map[string]int64{}
-	dirMap := map[string]bool{}
+	var files []assetFileSize
 	var dirs []string
 	if len(refs) == 0 {
 		if hasPackFallbackMarker(cfgDir) {
 			if canonDir, cerr := canonical(cfgDir); cerr == nil {
-				dirMap[canonDir] = true
 				dirs = append(dirs, canonDir)
 			}
 		}
@@ -84,30 +126,30 @@ func resolvePolystrataConfigRefsLenient(cfgPath, declWorkDir, declDataDir string
 		for _, ref := range refs {
 			canonPath, isDir, ok := resolvePolystrataAssetRef(ref, bases)
 			if !ok {
+				if fallbackShard, okSplit := findExistingSplitGGUFParent(ref, bases); okSplit {
+					for _, f := range expandSplitGGUFShardsLenient(fallbackShard) {
+						appendUniqueAssetFile(&files, f)
+					}
+				}
 				continue
 			}
 			if isDir {
-				if !dirMap[canonPath] {
-					dirMap[canonPath] = true
+				if !slices.ContainsFunc(dirs, func(prev string) bool { return sameFileOrPath(prev, canonPath) }) {
 					dirs = append(dirs, canonPath)
 				}
 				continue
 			}
 			for _, f := range expandSplitGGUFShardsLenient(canonPath) {
-				fileMap[f.path] = f.size
+				appendUniqueAssetFile(&files, f)
 			}
 		}
-	}
-	files := make([]assetFileSize, 0, len(fileMap))
-	for p, sz := range fileMap {
-		files = append(files, assetFileSize{path: p, size: sz})
 	}
 	slices.SortFunc(files, func(a, b assetFileSize) int { return strings.Compare(a.path, b.path) })
 	slices.Sort(dirs)
 	return files, dirs
 }
 
-func findOwningPolystrataDecl(u UserSettings, canonCfgPath string) (string, string) {
+func findOwningPolystrataDecl(u UserSettings, wsEnginesRoot, canonCfgPath string) (string, string) {
 	cfgDir := filepath.Dir(canonCfgPath)
 	for _, rawInst := range u.EngineInstallations {
 		rawBytes, err := installationBytes(rawInst)
@@ -123,20 +165,73 @@ func findOwningPolystrataDecl(u UserSettings, canonCfgPath string) (string, stri
 			continue
 		}
 		for _, dir := range polystrataConfigSearchDirs(decl.WorkingDirectory, decl.DataDir) {
-			if canonDir, cerr := canonical(dir); cerr == nil && canonDir == cfgDir {
+			if canonDir, cerr := canonical(dir); cerr == nil && sameFileOrPath(canonDir, cfgDir) {
 				return decl.WorkingDirectory, decl.DataDir
+			}
+		}
+	}
+	for _, dd := range defaultManagedPolystrataDataDirs(u, wsEnginesRoot) {
+		for _, dir := range polystrataConfigSearchDirs("", dd) {
+			if canonDir, cerr := canonical(dir); cerr == nil && sameFileOrPath(canonDir, cfgDir) {
+				return "", dd
 			}
 		}
 	}
 	return "", ""
 }
 
-func collectOtherPolystrataProtectedRefs(u UserSettings, targetCanonCfg string) (map[string]bool, []string, []string) {
-	protFiles := map[string]bool{}
-	protDirSet := map[string]bool{}
-	var protDirs []string
-	var otherCfgs []string
+func collectOtherPolystrataProtectedRefs(u UserSettings, wsEnginesRoot, targetCanonCfg string) protectedPolystrataRefs {
+	prot := protectedPolystrataRefs{}
 	seenCfgs := map[string]bool{}
+	seenDirs := map[string]bool{}
+	seenFiles := map[string]bool{}
+
+	recordFile := func(p string) {
+		if seenFiles[p] {
+			return
+		}
+		seenFiles[p] = true
+		prot.files = append(prot.files, p)
+		if info, err := os.Lstat(p); err == nil {
+			prot.fileInfos = append(prot.fileInfos, info)
+		}
+	}
+	scanDir := func(dir, declWorkDir, declDataDir string) {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			return
+		}
+		for _, item := range entries {
+			name := item.Name()
+			if item.IsDir() || !strings.HasPrefix(name, "strata-") || !strings.HasSuffix(name, ".json") {
+				continue
+			}
+			full := filepath.Join(dir, name)
+			info, err := os.Lstat(full)
+			if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() > maxInstallationBytes {
+				continue
+			}
+			resolved, err := canonical(full)
+			if err != nil || seenCfgs[resolved] || sameFileOrPath(resolved, targetCanonCfg) {
+				continue
+			}
+			seenCfgs[resolved] = true
+			prot.cfgs = append(prot.cfgs, resolved)
+			files, dirs := resolvePolystrataConfigRefsLenient(resolved, declWorkDir, declDataDir)
+			for _, f := range files {
+				recordFile(f.path)
+			}
+			for _, d := range dirs {
+				if !seenDirs[d] {
+					seenDirs[d] = true
+					prot.dirs = append(prot.dirs, d)
+				}
+				for _, f := range collectNonSymlinkDirFiles(d, 6) {
+					recordFile(f.path)
+				}
+			}
+		}
+	}
 
 	for _, rawInst := range u.EngineInstallations {
 		rawBytes, err := installationBytes(rawInst)
@@ -152,48 +247,60 @@ func collectOtherPolystrataProtectedRefs(u UserSettings, targetCanonCfg string) 
 			continue
 		}
 		for _, dir := range polystrataConfigSearchDirs(decl.WorkingDirectory, decl.DataDir) {
-			entries, err := os.ReadDir(dir)
-			if err != nil {
-				continue
-			}
-			for _, item := range entries {
-				name := item.Name()
-				if item.IsDir() || !strings.HasPrefix(name, "strata-") || !strings.HasSuffix(name, ".json") {
-					continue
-				}
-				full := filepath.Join(dir, name)
-				info, err := os.Lstat(full)
-				if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() > maxInstallationBytes {
-					continue
-				}
-				resolved, err := canonical(full)
-				if err != nil || resolved == targetCanonCfg || seenCfgs[resolved] {
-					continue
-				}
-				seenCfgs[resolved] = true
-				otherCfgs = append(otherCfgs, resolved)
-				files, dirs := resolvePolystrataConfigRefsLenient(resolved, decl.WorkingDirectory, decl.DataDir)
-				for _, f := range files {
-					protFiles[f.path] = true
-				}
-				for _, d := range dirs {
-					if !protDirSet[d] {
-						protDirSet[d] = true
-						protDirs = append(protDirs, d)
-					}
-					for _, f := range collectNonSymlinkDirFiles(d, 6) {
-						protFiles[f.path] = true
-					}
-				}
+			scanDir(dir, decl.WorkingDirectory, decl.DataDir)
+		}
+	}
+	for _, dd := range defaultManagedPolystrataDataDirs(u, wsEnginesRoot) {
+		for _, dir := range polystrataConfigSearchDirs("", dd) {
+			scanDir(dir, "", dd)
+		}
+	}
+	return prot
+}
+
+func (p protectedPolystrataRefs) touchesFile(path string) bool {
+	if slices.ContainsFunc(p.files, func(pf string) bool { return sameFileOrPath(pf, path) }) {
+		return true
+	}
+	if info, err := os.Lstat(path); err == nil {
+		for _, pfInfo := range p.fileInfos {
+			if os.SameFile(info, pfInfo) {
+				return true
 			}
 		}
 	}
-	return protFiles, protDirs, otherCfgs
+	for _, pd := range p.dirs {
+		if pathWithinDirSameFS(pd, path) {
+			return true
+		}
+	}
+	return false
+}
+
+func (p protectedPolystrataRefs) touchesDir(dir string) bool {
+	for _, otherCfg := range p.cfgs {
+		if pathWithinDirSameFS(dir, otherCfg) {
+			return true
+		}
+	}
+	for _, pd := range p.dirs {
+		if sameFileOrPath(dir, pd) || pathWithinDirSameFS(dir, pd) || pathWithinDirSameFS(pd, dir) {
+			return true
+		}
+	}
+	for _, pf := range p.files {
+		if pathWithinDirSameFS(dir, pf) {
+			return true
+		}
+	}
+	return false
 }
 
 func isProtectedPolystrataContainer(canonDir string, managedDataDirs []string) bool {
 	for _, dd := range managedDataDirs {
-		if canonDir == dd || canonDir == filepath.Join(dd, "models") || canonDir == filepath.Join(dd, "packs") {
+		if sameFileOrPath(canonDir, dd) ||
+			sameFileOrPath(canonDir, filepath.Join(dd, "models")) ||
+			sameFileOrPath(canonDir, filepath.Join(dd, "packs")) {
 			return true
 		}
 	}
@@ -216,60 +323,22 @@ func planPolystrataModelDelete(u UserSettings, wsEnginesRoot, rawCfgPath, canonC
 		return polystrataModelDeletePlan{}, errAssetNotDeletable()
 	}
 
-	workDir, dataDir := findOwningPolystrataDecl(u, canonCfgPath)
+	workDir, dataDir := findOwningPolystrataDecl(u, wsEnginesRoot, canonCfgPath)
 	targetFiles, targetDirs := resolvePolystrataConfigRefsLenient(canonCfgPath, workDir, dataDir)
-	protFiles, protDirs, otherCfgs := collectOtherPolystrataProtectedRefs(u, canonCfgPath)
-
-	isProtectedFile := func(p string) bool {
-		if protFiles[p] {
-			return true
-		}
-		for _, pd := range protDirs {
-			if withinCanonicalDir(pd, p) {
-				return true
-			}
-		}
-		return false
-	}
-	dirTouchesProtected := func(d string) bool {
-		for _, otherCfg := range otherCfgs {
-			if withinCanonicalDir(d, otherCfg) {
-				return true
-			}
-		}
-		for _, pd := range protDirs {
-			if d == pd || withinCanonicalDir(d, pd) || withinCanonicalDir(pd, d) {
-				return true
-			}
-		}
-		for pf := range protFiles {
-			if withinCanonicalDir(d, pf) {
-				return true
-			}
-		}
-		return false
-	}
+	prot := collectOtherPolystrataProtectedRefs(u, wsEnginesRoot, canonCfgPath)
 
 	plan := polystrataModelDeletePlan{
 		configPath: canonCfgPath,
 		dataDirs:   scope.dataDirs,
 	}
-	inManagedInstall := pathStrictlyInsideAny(filepath.Dir(canonCfgPath), scope.installDirs) ||
-		slices.Contains(scope.installDirs, filepath.Dir(canonCfgPath))
+	inManagedInstall := pathStrictlyInsideAnySameFS(canonCfgPath, scope.installDirs)
 
 	for _, d := range targetDirs {
-		coveredByPlannedDir := false
-		for _, prev := range plan.dirs {
-			if withinCanonicalDir(prev, d) {
-				coveredByPlannedDir = true
-				break
-			}
-		}
-		if coveredByPlannedDir {
+		if slices.ContainsFunc(plan.dirs, func(prev string) bool { return pathWithinDirSameFS(prev, d) }) {
 			continue
 		}
-		if !pathStrictlyInsideAny(d, scope.dataDirs) {
-			if !(len(targetFiles) == 0 && len(targetDirs) == 1 && d == filepath.Dir(canonCfgPath) && inManagedInstall) {
+		if !pathStrictlyInsideAnySameFS(d, scope.dataDirs) {
+			if !(len(targetFiles) == 0 && len(targetDirs) == 1 && sameFileOrPath(d, filepath.Dir(canonCfgPath)) && inManagedInstall) {
 				plan.preservedExternal = true
 			}
 			continue
@@ -277,7 +346,7 @@ func planPolystrataModelDelete(u UserSettings, wsEnginesRoot, rawCfgPath, canonC
 		if isProtectedPolystrataContainer(d, scope.dataDirs) {
 			continue
 		}
-		if dirTouchesProtected(d) {
+		if prot.touchesDir(d) {
 			plan.preservedShared = true
 			continue
 		}
@@ -288,30 +357,19 @@ func planPolystrataModelDelete(u UserSettings, wsEnginesRoot, rawCfgPath, canonC
 		plan.reclaimableBytes += dirDiskUsageNoSymlinks(d)
 	}
 
-	cfgInsideDeletedDir := false
-	for _, d := range plan.dirs {
-		if withinCanonicalDir(d, canonCfgPath) {
-			cfgInsideDeletedDir = true
-			break
-		}
-	}
+	cfgInsideDeletedDir := slices.ContainsFunc(plan.dirs, func(d string) bool {
+		return pathWithinDirSameFS(d, canonCfgPath)
+	})
 
 	for _, f := range targetFiles {
-		coveredByPlannedDir := false
-		for _, d := range plan.dirs {
-			if withinCanonicalDir(d, f.path) {
-				coveredByPlannedDir = true
-				break
-			}
-		}
-		if coveredByPlannedDir {
+		if slices.ContainsFunc(plan.dirs, func(d string) bool { return pathWithinDirSameFS(d, f.path) }) {
 			continue
 		}
-		if !pathStrictlyInsideAny(f.path, scope.dataDirs) {
+		if !pathStrictlyInsideAnySameFS(f.path, scope.dataDirs) {
 			plan.preservedExternal = true
 			continue
 		}
-		if isProtectedFile(f.path) {
+		if prot.touchesFile(f.path) {
 			plan.preservedShared = true
 			continue
 		}
@@ -331,7 +389,7 @@ func planPolystrataModelDelete(u UserSettings, wsEnginesRoot, rawCfgPath, canonC
 func pruneEmptyPolystrataDataDirs(startDirs, managedDataDirs []string, resultsRoot *string) {
 	for _, start := range startDirs {
 		cur := filepath.Clean(start)
-		for pathStrictlyInsideAny(cur, managedDataDirs) && !isProtectedPolystrataContainer(cur, managedDataDirs) {
+		for pathStrictlyInsideAnySameFS(cur, managedDataDirs) && !isProtectedPolystrataContainer(cur, managedDataDirs) {
 			if isSymlinkPath(cur) || overlapsResultsRoot(cur, resultsRoot) {
 				break
 			}
@@ -347,15 +405,28 @@ func pruneEmptyPolystrataDataDirs(startDirs, managedDataDirs []string, resultsRo
 	}
 }
 
-func (s *Service) deleteManagedPolystrataModel(u UserSettings, paths *BoundPaths, rawCfgPath, canonCfgPath string) *ApiError {
+func (s *Service) deleteManagedPolystrataModel(rawCfgPath, canonCfgPath string) *ApiError {
+	s.settingsMu.Lock()
+	s.mu.Lock()
+	if s.assetWorkspaceBusyLocked() {
+		s.mu.Unlock()
+		s.settingsMu.Unlock()
+		return workspaceBusyError()
+	}
+	u := clone(s.settings)
+	paths := s.paths
+	s.mu.Unlock()
+
 	plan, err := planPolystrataModelDelete(u, workspaceEnginesRoot(u, paths), rawCfgPath, canonCfgPath)
 	if err != nil {
+		s.settingsMu.Unlock()
 		return err
 	}
 
 	s.mu.Lock()
 	if s.assetWorkspaceBusyLocked() {
 		s.mu.Unlock()
+		s.settingsMu.Unlock()
 		return workspaceBusyError()
 	}
 
@@ -363,6 +434,7 @@ func (s *Service) deleteManagedPolystrataModel(u UserSettings, paths *BoundPaths
 	for _, dir := range plan.dirs {
 		if rmErr := os.RemoveAll(dir); rmErr != nil && !os.IsNotExist(rmErr) {
 			s.mu.Unlock()
+			s.settingsMu.Unlock()
 			return Err("internal_error")
 		}
 		pruneDirs = append(pruneDirs, filepath.Dir(dir))
@@ -371,6 +443,7 @@ func (s *Service) deleteManagedPolystrataModel(u UserSettings, paths *BoundPaths
 	for _, file := range plan.files {
 		if rmErr := os.Remove(file); rmErr != nil && !os.IsNotExist(rmErr) {
 			s.mu.Unlock()
+			s.settingsMu.Unlock()
 			return Err("internal_error")
 		}
 		pruneDirs = append(pruneDirs, filepath.Dir(file))
@@ -378,14 +451,16 @@ func (s *Service) deleteManagedPolystrataModel(u UserSettings, paths *BoundPaths
 	}
 	if rmErr := os.Remove(plan.configPath); rmErr != nil && !os.IsNotExist(rmErr) {
 		s.mu.Unlock()
+		s.settingsMu.Unlock()
 		return Err("internal_error")
 	}
-	if pathStrictlyInsideAny(plan.configPath, plan.dataDirs) {
+	if pathStrictlyInsideAnySameFS(plan.configPath, plan.dataDirs) {
 		pruneDirs = append(pruneDirs, filepath.Dir(plan.configPath))
 	}
 	pruneEmptyPolystrataDataDirs(pruneDirs, plan.dataDirs, u.ResultsRoot)
 	s.pruneAssetSnapshotLocked("model", plan.configPath)
 	s.mu.Unlock()
+	s.settingsMu.Unlock()
 
 	_ = s.RefreshAssets()
 	return nil

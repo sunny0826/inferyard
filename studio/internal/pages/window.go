@@ -366,6 +366,7 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 		s.historyError, s.reportsError = b.historyError, b.reportsError
 		prevModelPath := s.selectedModelPath()
 		s.registry = b.registry
+		s.reconcileSelectedEngine()
 		s.applyPendingPolystrataSelection()
 		skipModelAdopt = s.reconcileSelectedModel(prevModelPath)
 	}
@@ -394,6 +395,18 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 		s.refreshDiscovery()
 	}
 	return true
+}
+
+func (s *viewState) reconcileSelectedEngine() {
+	if s.engine == "" {
+		return
+	}
+	for _, eng := range s.registry.Engines {
+		if eng.Name == s.engine {
+			return
+		}
+	}
+	s.engine = ""
 }
 
 func (s *viewState) work(fn func() (string, *core.ApiError)) {

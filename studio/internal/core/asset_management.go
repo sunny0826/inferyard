@@ -299,7 +299,7 @@ func errAssetNotDeletable() *ApiError {
 }
 
 func (s *Service) assetWorkspaceBusyLocked() bool {
-	if s.runsActiveLocked() {
+	if s.orphan != nil || s.runsActiveLocked() {
 		return true
 	}
 	for _, d := range s.downloads {
@@ -440,7 +440,7 @@ func (s *Service) DeleteManagedAsset(kind, name string) *ApiError {
 				return errAssetNotDeletable()
 			}
 			if eng.Kind == "local_installation" && eng.Family == "polystrata" {
-				return s.deleteManagedPolystrataEngine(u, paths, name, eng)
+				return s.deleteManagedPolystrataEngine(name, eng)
 			}
 			assetPath, deletable = eng.Path, eng.Deletable
 			break
@@ -455,7 +455,7 @@ func (s *Service) DeleteManagedAsset(kind, name string) *ApiError {
 			}
 			if mod.Format == "strata_pack" {
 				rawPath := s.findAssetRawPath("model", name, mod.Path)
-				return s.deleteManagedPolystrataModel(u, paths, rawPath, mod.Path)
+				return s.deleteManagedPolystrataModel(rawPath, mod.Path)
 			}
 			assetPath, deletable = mod.Path, mod.Deletable
 			break

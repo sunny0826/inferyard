@@ -367,7 +367,7 @@ func (s *viewState) assetRowActions(c *ui.Context, kind, name, path, format, fam
 		})
 	}
 	if deletable {
-		if dangerButton(c, "删除").Label("删除 · " + name).Disabled(s.busy).Clicked() {
+		if dangerButton(c, "删除").Label("删除 · " + name).Disabled(s.busy || pending.inspecting).Clicked() {
 			s.openDeleteConfirm(pending, kind, name, path, format, family, sizeBytes)
 		}
 	}
@@ -382,6 +382,9 @@ func cloneBytesPtr(v *int64) *int64 {
 }
 
 func (s *viewState) openDeleteConfirm(pending *pendingAssetDelete, kind, name, path, format, family string, sizeBytes *int64) {
+	if pending.inspecting {
+		return
+	}
 	seq := pending.seq + 1
 	scope := "standard"
 	var initialSize *int64
@@ -414,7 +417,12 @@ func (s *viewState) openDeleteConfirm(pending *pendingAssetDelete, kind, name, p
 		*pending = next
 		return
 	}
-	if s.win == nil {
+	updateFn := s.updateWindow
+	if updateFn == nil && s.win != nil {
+		win := s.win
+		updateFn = win.Update
+	}
+	if updateFn == nil {
 		info, err := s.service.InspectDeleteAsset(kind, name)
 		if err != nil {
 			s.submissionFailed(err)
@@ -426,23 +434,27 @@ func (s *viewState) openDeleteConfirm(pending *pendingAssetDelete, kind, name, p
 		return
 	}
 
-	next.inspecting = true
-	*pending = next
+	*pending = pendingAssetDelete{
+		seq:        seq,
+		inspecting: true,
+		kind:       kind,
+		name:       name,
+	}
 	svc := s.service
-	win := s.win
 	go func() {
 		info, err := svc.InspectDeleteAsset(kind, name)
-		win.Update(func() {
-			if !pending.open || pending.seq != seq {
+		updateFn(func() {
+			if pending.seq != seq || !pending.inspecting {
 				return
 			}
+			pending.inspecting = false
 			if err != nil {
 				*pending = pendingAssetDelete{seq: seq}
 				s.submissionFailed(err)
 				return
 			}
-			applyDeleteInfo(pending, info)
-			pending.inspecting = false
+			applyDeleteInfo(&next, info)
+			*pending = next
 		})
 	}()
 }
@@ -462,8 +474,6 @@ func assetDeleteConfirmMessage(p pendingAssetDelete) string {
 	sizeClause := ""
 	if p.reclaimableBytes != nil {
 		sizeClause = fmt.Sprintf("，预计释放 %s", compactAssetBytes(*p.reclaimableBytes))
-	} else if p.inspecting {
-		sizeClause = "（正在计算可释放空间…）"
 	}
 	pathClause := ""
 	if p.path != "" {
@@ -519,7 +529,7 @@ func (s *viewState) assetDeleteDialog(c *ui.Context, pending *pendingAssetDelete
 	case components.DialogCancelled:
 		*pending = pendingAssetDelete{seq: pending.seq}
 	default:
-		if !pending.open {
+		if !pending.open && !pending.inspecting {
 			*pending = pendingAssetDelete{seq: pending.seq}
 		}
 	}

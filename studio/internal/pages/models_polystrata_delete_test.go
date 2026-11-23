@@ -214,3 +214,52 @@ func TestModelsPolystrataDeletePreviewModeZeroIO(t *testing.T) {
 		t.Fatalf("expected only external engine left in preview registry: %+v engine=%q", s.registry.Engines, s.engine)
 	}
 }
+
+func TestModelsPolystrataWindowedAsyncConfirmAndEngineReconcile(t *testing.T) {
+	svc, _, _, _, _ := newModelsPolystrataDeleteService(t)
+	waitUntil(t, func() bool { return !svc.Registry().Refreshing })
+
+	s := testState()
+	s.selected = "models"
+	s.service = svc
+	s.settings = svc.Settings()
+	s.registry = svc.Registry()
+	s.engine = "PolyStrata · v0.1.45-poly.10"
+
+	queued := make(chan func(), 4)
+	s.updateWindow = func(fn func()) { queued <- fn }
+
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.modelsView(c) }) }, 1120, 1400)
+	tt.Frame()
+
+	// Clicking delete in windowed async mode must NOT open dialog before InspectDeleteAsset completes.
+	click(t, tt, "删除 · Qwen3.6 Shared")
+	if tt.HasText("确认删除") {
+		t.Fatalf("dialog must wait until InspectDeleteAsset completes: %v", tt.Texts())
+	}
+
+	applyAsync := <-queued
+	applyAsync()
+	tt.Frame()
+	if !tt.HasText("确认删除") || !strings.Contains(strings.Join(tt.Texts(), "\n"), "共享权重将被保留") {
+		t.Fatalf("expected verified dialog after async inspect completed: %v", tt.Texts())
+	}
+
+	// Full refresh batch removes stale selected engine if it was uninstalled.
+	s.ctx = context.Background()
+	s.discoveryLoaded = true
+	batch := refreshBatch{
+		epoch:    s.settingsSequence(),
+		full:     true,
+		settings: s.settings,
+		registry: core.Registry{
+			Engines: []core.EngineAsset{{Name: "PolyStrata · v0.1.44-ext", Family: "polystrata", Kind: "local_installation"}},
+		},
+	}
+	if !s.applyRefreshBatch(batch) {
+		t.Fatal("expected full refresh batch to apply")
+	}
+	if s.engine != "" {
+		t.Fatalf("expected uninstalled engine selection cleared after refresh batch, got %q", s.engine)
+	}
+}

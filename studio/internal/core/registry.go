@@ -378,7 +378,7 @@ func (s *Service) registry() registryData {
 			}
 		}
 	}
-	psModels, psScope := scanPolystrataModelConfigs(u.EngineInstallations)
+	psModels, psScope := scanPolystrataModelConfigs(u.EngineInstallations, defaultManagedPolystrataDataDirs(u, data.wsEngines))
 	for _, entry := range psModels {
 		if _, found := models[entry.path]; !found {
 			models[entry.path] = len(data.models)
