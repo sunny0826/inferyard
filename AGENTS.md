@@ -49,8 +49,16 @@ mise run test:studio-ui:full
 When adopting, configuring, or running pluvy, or triaging its findings,
 first read `.agents/skills/pluvy/SKILL.md` and follow it.
 
+## 发布流程
+
+执行发版或发版预演时，先读取并遵循 `.agents/skills/release/SKILL.md`：
+
+- 入口命令：`mise run release patch --dry-run`（支持 `patch` / `minor` / `major` / `X.Y.Z`、`--notes`、`--prepare-only`）。
+- 必须在干净且已同步 `origin/main` 的 `main` 分支运行；Agent 须先展示 `--dry-run` 预览并获用户明确确认后，再执行 `mise run release <target>`。
+- 流程通过仓库所有者 `gh` 账号自动同步 4 处版本号与 `cli/CHANGELOG.md`、提并 squash 合并发布 PR、推送 `vX.Y.Z` tag，由 `.github/workflows/release.yml` 自动拼装 Release Notes 并直接发布正式 GitHub Release 与 PyPI（不产生 bot 提交）。
+
 ## 交付规则
 
 - 交付改动必须先建分支，不直接提交到 `main`；通过相关检查后保留在本地提交。
-- 未经用户明确同意，不执行 `git push`、创建/合并/关闭 PR。PR 合并使用仓库所有者账号（GitHub 网页或本地 `gh` CLI），不允许 bot 作者提交。
+- 未经用户明确同意，不执行 `git push`、创建/合并/关闭 PR 或推送发布 tag。PR 合并使用仓库所有者账号（GitHub 网页或本地 `gh` CLI），不允许 bot 作者提交。
 - 报告变更时简要说明改动内容、实际运行的检查及未验证范围。

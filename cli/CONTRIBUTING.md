@@ -21,8 +21,10 @@ Modified or new benchmark bundles are validated structurally and semantically by
 
 ## Releases
 
-Formal releases are built and published via [release.yml](https://github.com/sunny0826/inferyard/actions/workflows/release.yml) when pushing a version tag (`vX.Y.Z`) matching `cli/pyproject.toml` and `studio/mygo.config.ts` (or via manual `workflow_dispatch`):
+Run `mise run release patch` (or `minor` / `major` / `X.Y.Z`) from the repository root to bump `cli/pyproject.toml`, `cli/src/inferyard/__init__.py`, `cli/uv.lock`, `cli/CHANGELOG.md`, and `studio/mygo.config.ts`, verify local checks, open and squash-merge a release PR, and push the `vX.Y.Z` tag (use `--dry-run` to preview or `--prepare-only` to commit locally without pushing).
+
+Formal releases are built and published via [release.yml](https://github.com/sunny0826/inferyard/actions/workflows/release.yml) when pushing a version tag (`vX.Y.Z`) matching `cli/pyproject.toml`, `cli/src/inferyard/__init__.py`, and `studio/mygo.config.ts` (or via manual `workflow_dispatch`):
 
 1. Builds and smoke-tests the CLI wheel/sdist (`uv build`), and builds/packages Studio release binaries for macOS (`darwin-arm64`), Windows (`windows-amd64`), and Linux (`linux-amd64`).
-2. Creates a Draft GitHub Release with all artifacts and `SHA256SUMS`.
+2. Publishes the GitHub Release directly (not Draft, unless `draft=true` on `workflow_dispatch`) with all artifacts, `SHA256SUMS`, and auto-assembled release notes (macOS `xattr` installation step, `cli/CHANGELOG.md` highlights, and PR summary).
 3. Publishes the CLI wheel and sdist to PyPI via Trusted Publishing (`pypi` environment).
