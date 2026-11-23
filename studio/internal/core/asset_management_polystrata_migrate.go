@@ -39,7 +39,7 @@ func registeredInstallationProtectedPaths(u UserSettings, wsEnginesRoot string) 
 		if c, err := canonical(trimmed); err == nil {
 			resolved = c
 		}
-		if !slices.ContainsFunc(out, func(prev string) bool { return sameFileOrPath(prev, resolved) }) {
+		if !slices.ContainsFunc(out, func(prev string) bool { return sameDirectoryEntry(prev, resolved) }) {
 			out = append(out, resolved)
 		}
 	}
@@ -66,34 +66,33 @@ func registeredInstallationProtectedPaths(u UserSettings, wsEnginesRoot string) 
 	return out
 }
 
-func migratePolystrataRootConfigsToDataDir(stagedDir, origInstallDir, declWorkDir, declDataDir string, managedDataDirs []string) ([]string, error) {
+type migratedPolystrataConfig struct {
+	dd      string
+	name    string
+	payload []byte
+}
+
+func snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir string, managedDataDirs []string) ([]migratedPolystrataConfig, error) {
 	if len(managedDataDirs) == 0 {
 		return nil, nil
 	}
-	entries, err := os.ReadDir(stagedDir)
+	entries, err := os.ReadDir(installDir)
 	if err != nil {
 		return nil, err
 	}
-	var written []string
-	rollback := func() {
-		for i := len(written) - 1; i >= 0; i-- {
-			_ = os.Remove(written[i])
-		}
-	}
-
+	var plans []migratedPolystrataConfig
 	for _, item := range entries {
 		name := item.Name()
 		if item.IsDir() || !strings.HasPrefix(name, "strata-") || !strings.HasSuffix(name, ".json") {
 			continue
 		}
-		srcPath := filepath.Join(stagedDir, name)
+		srcPath := filepath.Join(installDir, name)
 		info, err := os.Lstat(srcPath)
 		if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() > maxInstallationBytes {
 			continue
 		}
 		raw, err := os.ReadFile(srcPath)
 		if err != nil {
-			rollback()
 			return nil, err
 		}
 		var cfg struct {
@@ -109,55 +108,65 @@ func migratePolystrataRootConfigsToDataDir(stagedDir, origInstallDir, declWorkDi
 			continue
 		}
 
-		origBases := migrateConfigOrigBases(cfg.Cwd, declWorkDir, stagedDir, origInstallDir, declDataDir)
-		origLenFiles, origLenDirs := resolvePolystrataConfigRefsWithBases(cfg.Args, rawMap, stagedDir, origBases)
+		origBases := polystrataConfigBases(cfg.Cwd, declWorkDir, installDir, declDataDir)
+		origLenFiles, origLenDirs := resolvePolystrataConfigRefsWithBases(cfg.Args, rawMap, installDir, origBases)
 		origRefs := extractPolystrataAssetRefs(cfg.Args, rawMap)
-		origValidFiles, origValidDirs, origValidOK := validatePolystrataAssets(origRefs, stagedDir, origBases)
+		origValidFiles, origValidDirs, origValidOK := validatePolystrataAssets(origRefs, installDir, origBases)
 
 		for _, dd := range managedDataDirs {
 			if isSymlinkPath(dd) {
 				continue
 			}
-			if !polystrataRefsScopedToDataDir(origLenFiles, origLenDirs, stagedDir, origInstallDir, dd) {
+			if !polystrataRefsScopedToDataDir(origLenFiles, origLenDirs, installDir, dd) {
 				continue
 			}
 
-			clonedMap, rewrittenArgs := rewritePolystrataConfigMapForDataDir(rawMap, cfg.Args, origBases, stagedDir, origInstallDir)
+			clonedMap, rewrittenArgs := rewritePolystrataConfigMapForDataDir(rawMap, cfg.Args, origBases, installDir)
 			rewrittenBytes, err := json.MarshalIndent(clonedMap, "", "  ")
 			if err != nil {
-				rollback()
 				return nil, err
 			}
 			rewrittenBytes = append(rewrittenBytes, '\n')
 
 			if err := verifyMigratedPolystrataConfig(dd, origLenFiles, origLenDirs, origValidFiles, origValidDirs, origValidOK, rewrittenArgs, clonedMap); err != nil {
-				rollback()
 				return nil, err
 			}
-
-			destPath, skipExisting, err := selectMigratedConfigPath(dd, name, rewrittenBytes)
-			if err != nil {
-				rollback()
-				return nil, err
-			}
-			if skipExisting {
-				break
-			}
-			if err := writeFileAtomic(dd, destPath, rewrittenBytes, 0o600); err != nil {
-				rollback()
-				return nil, err
-			}
-			written = append(written, destPath)
+			plans = append(plans, migratedPolystrataConfig{dd: dd, name: name, payload: rewrittenBytes})
 			break
 		}
+	}
+	return plans, nil
+}
+
+func writeMigratedPolystrataConfigs(plans []migratedPolystrataConfig) ([]string, error) {
+	var written []string
+	rollback := func() {
+		for i := len(written) - 1; i >= 0; i-- {
+			_ = os.Remove(written[i])
+		}
+	}
+	for _, p := range plans {
+		destPath, skipExisting, err := selectMigratedConfigPath(p.dd, p.name, p.payload)
+		if err != nil {
+			rollback()
+			return nil, err
+		}
+		if skipExisting {
+			continue
+		}
+		if err := writeFileAtomic(p.dd, destPath, p.payload, 0o600); err != nil {
+			rollback()
+			return nil, err
+		}
+		written = append(written, destPath)
 	}
 	return written, nil
 }
 
-func polystrataRefsScopedToDataDir(files []assetFileSize, dirs []string, stagedDir, origInstallDir, dd string) bool {
+func polystrataRefsScopedToDataDir(files []assetFileSize, dirs []string, installDir, dd string) bool {
 	inDD := false
 	for _, f := range files {
-		if pathWithinDirSameFS(stagedDir, f.path) || pathWithinDirSameFS(origInstallDir, f.path) {
+		if pathWithinDirSameFS(installDir, f.path) {
 			return false
 		}
 		if pathStrictlyInsideDirSameFS(f.path, dd) {
@@ -165,7 +174,7 @@ func polystrataRefsScopedToDataDir(files []assetFileSize, dirs []string, stagedD
 		}
 	}
 	for _, d := range dirs {
-		if pathWithinDirSameFS(stagedDir, d) || pathWithinDirSameFS(origInstallDir, d) {
+		if pathWithinDirSameFS(installDir, d) {
 			return false
 		}
 		if pathStrictlyInsideDirSameFS(d, dd) {
@@ -175,52 +184,7 @@ func polystrataRefsScopedToDataDir(files []assetFileSize, dirs []string, stagedD
 	return inDD
 }
 
-func migrateConfigOrigBases(cwd, declWorkDir, stagedDir, origInstallDir, declDataDir string) []string {
-	candidates := []string{}
-	addCandidate := func(raw string, joinBase string) {
-		trimmed := strings.TrimSpace(raw)
-		if trimmed == "" {
-			return
-		}
-		mapped := trimmed
-		if !filepath.IsAbs(mapped) {
-			mapped = filepath.Join(joinBase, mapped)
-		} else if relocated, ok := rebaseInstallSubpath(mapped, origInstallDir, stagedDir); ok {
-			mapped = relocated
-		}
-		if info, err := os.Stat(mapped); err == nil && info.IsDir() {
-			candidates = append(candidates, mapped)
-		}
-	}
-	cwdRelBase := strings.TrimSpace(declWorkDir)
-	if cwdRelBase == "" {
-		cwdRelBase = stagedDir
-	} else if relocated, ok := rebaseInstallSubpath(cwdRelBase, origInstallDir, stagedDir); ok {
-		cwdRelBase = relocated
-	}
-	addCandidate(cwd, cwdRelBase)
-	addCandidate(declWorkDir, stagedDir)
-	addCandidate(stagedDir, stagedDir)
-	addCandidate(declDataDir, stagedDir)
-	return uniqueCleanPaths(candidates)
-}
-
-func rebaseInstallSubpath(path, origInstallDir, stagedDir string) (string, bool) {
-	cleanOrig := filepath.Clean(origInstallDir)
-	cleanPath := filepath.Clean(path)
-	if cleanPath == cleanOrig {
-		return stagedDir, true
-	}
-	if withinCanonicalDir(cleanOrig, cleanPath) {
-		rel, err := filepath.Rel(cleanOrig, cleanPath)
-		if err == nil {
-			return filepath.Join(stagedDir, rel), true
-		}
-	}
-	return "", false
-}
-
-func rewritePolystrataConfigMapForDataDir(rawMap map[string]any, origArgs, origBases []string, stagedDir, origInstallDir string) (map[string]any, []string) {
+func rewritePolystrataConfigMapForDataDir(rawMap map[string]any, origArgs, origBases []string, installDir string) (map[string]any, []string) {
 	cloned := maps.Clone(rawMap)
 	rewriteVal := func(rawVal string) string {
 		trimmed := strings.TrimSpace(rawVal)
@@ -228,14 +192,14 @@ func rewritePolystrataConfigMapForDataDir(rawMap map[string]any, origArgs, origB
 			return rawVal
 		}
 		if canonPath, _, ok := resolvePolystrataAssetRef(trimmed, origBases); ok {
-			if !pathWithinDirSameFS(stagedDir, canonPath) && !pathWithinDirSameFS(origInstallDir, canonPath) {
+			if !pathWithinDirSameFS(installDir, canonPath) {
 				return canonPath
 			}
 			return rawVal
 		}
 		if shards := collectBrokenSplitGGUFShards(trimmed, origBases); len(shards) > 0 {
 			dir := filepath.Dir(shards[0].path)
-			if !pathWithinDirSameFS(stagedDir, dir) && !pathWithinDirSameFS(origInstallDir, dir) {
+			if !pathWithinDirSameFS(installDir, dir) {
 				return filepath.Join(dir, filepath.Base(trimmed))
 			}
 		}
@@ -285,12 +249,16 @@ func rewritePolystrataConfigMapForDataDir(rawMap map[string]any, origArgs, origB
 	}
 	if cwdRaw, ok := cloned["cwd"].(string); ok {
 		trimmedCwd := strings.TrimSpace(cwdRaw)
-		if trimmedCwd != "" && (!filepath.IsAbs(trimmedCwd) ||
-			pathWithinDirSameFS(origInstallDir, filepath.Clean(trimmedCwd)) ||
-			pathWithinDirSameFS(stagedDir, filepath.Clean(trimmedCwd)) ||
-			withinCanonicalDir(filepath.Clean(origInstallDir), filepath.Clean(trimmedCwd)) ||
-			filepath.Clean(trimmedCwd) == filepath.Clean(origInstallDir)) {
-			delete(cloned, "cwd")
+		if trimmedCwd != "" {
+			canonCwd := ""
+			if c, err := canonical(trimmedCwd); err == nil {
+				canonCwd = c
+			}
+			if !filepath.IsAbs(trimmedCwd) ||
+				pathWithinDirSameFS(installDir, filepath.Clean(trimmedCwd)) ||
+				(canonCwd != "" && pathWithinDirSameFS(installDir, canonCwd)) {
+				delete(cloned, "cwd")
+			}
 		}
 	}
 	return cloned, outArgs
@@ -399,4 +367,35 @@ func writeFileAtomic(dir, destPath string, payload []byte, mode os.FileMode) err
 		return err
 	}
 	return nil
+}
+
+type stagedDeleteTarget struct {
+	orig   string
+	staged string
+	isDir  bool
+}
+
+func stagePolystrataDeleteTargets(targets []stagedDeleteTarget) ([]stagedDeleteTarget, error) {
+	staged := make([]stagedDeleteTarget, 0, len(targets))
+	rollback := func() {
+		for i := len(staged) - 1; i >= 0; i-- {
+			_ = os.Rename(staged[i].staged, staged[i].orig)
+		}
+	}
+	for _, t := range targets {
+		stagedPath := filepath.Join(filepath.Dir(t.orig), ".inferyard-del-"+uuid()+"-"+filepath.Base(t.orig))
+		if err := os.Rename(t.orig, stagedPath); err != nil {
+			rollback()
+			return nil, err
+		}
+		entry := stagedDeleteTarget{orig: t.orig, staged: stagedPath, isDir: t.isDir}
+		staged = append(staged, entry)
+		if t.isDir {
+			if err := checkDirTreeWritable(stagedPath); err != nil {
+				rollback()
+				return nil, err
+			}
+		}
+	}
+	return staged, nil
 }

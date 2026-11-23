@@ -501,7 +501,7 @@ func assetDeleteConfirmMessage(p pendingAssetDelete) string {
 	case "polystrata_model":
 		msg := fmt.Sprintf("将删除 PolyStrata 模型「%s」的配置及未被引用的托管模型权重%s，此操作不可撤销。", p.name, sizeClause)
 		if p.preservedShared {
-			msg += " 其他模型配置仍引用的共享权重将被保留。"
+			msg += " 仍在使用的共享权重将被保留。"
 		}
 		if p.preservedExternal {
 			msg += " 托管目录外的外部权重文件不会被删除。"
@@ -510,7 +510,7 @@ func assetDeleteConfirmMessage(p pendingAssetDelete) string {
 	case "polystrata_model_config_only":
 		msg := fmt.Sprintf("将仅删除 PolyStrata 模型配置「%s」%s，此操作不可撤销。", p.name, sizeClause)
 		if p.preservedShared {
-			msg += " 其他模型配置仍引用的共享权重将被保留。"
+			msg += " 仍在使用的共享权重将被保留。"
 		}
 		if p.preservedExternal {
 			msg += " 外部权重文件不会被删除。"

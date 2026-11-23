@@ -13,6 +13,7 @@ import (
 type polystrataModelDeletePlan struct {
 	configPath        string
 	dataDirs          []string
+	protectedPaths    []string
 	files             []string
 	dirs              []string
 	reclaimableBytes  int64
@@ -382,8 +383,9 @@ func planPolystrataModelDelete(u UserSettings, wsEnginesRoot, rawCfgPath, canonC
 	protectedPaths := registeredInstallationProtectedPaths(u, wsEnginesRoot)
 
 	plan := polystrataModelDeletePlan{
-		configPath: canonCfgPath,
-		dataDirs:   scope.dataDirs,
+		configPath:     canonCfgPath,
+		dataDirs:       scope.dataDirs,
+		protectedPaths: protectedPaths,
 	}
 	inManagedInstall := pathStrictlyInsideAnySameFS(canonCfgPath, scope.installDirs)
 
@@ -440,11 +442,16 @@ func planPolystrataModelDelete(u UserSettings, wsEnginesRoot, rawCfgPath, canonC
 	return plan, nil
 }
 
-func pruneEmptyPolystrataDataDirs(startDirs, managedDataDirs []string, resultsRoot *string) {
+func pruneEmptyPolystrataDataDirs(startDirs, managedDataDirs, protectedPaths []string, resultsRoot *string) {
 	for _, start := range startDirs {
 		cur := filepath.Clean(start)
 		for pathStrictlyInsideAnySameFS(cur, managedDataDirs) && !isProtectedPolystrataContainer(cur, managedDataDirs) {
 			if isSymlinkPath(cur) || overlapsResultsRoot(cur, resultsRoot) {
+				break
+			}
+			if slices.ContainsFunc(protectedPaths, func(p string) bool {
+				return sameFileOrPath(cur, p) || pathWithinDirSameFS(cur, p)
+			}) {
 				break
 			}
 			entries, err := os.ReadDir(cur)
@@ -457,37 +464,6 @@ func pruneEmptyPolystrataDataDirs(startDirs, managedDataDirs []string, resultsRo
 			cur = filepath.Dir(cur)
 		}
 	}
-}
-
-type stagedDeleteTarget struct {
-	orig   string
-	staged string
-	isDir  bool
-}
-
-func stagePolystrataDeleteTargets(targets []stagedDeleteTarget) ([]stagedDeleteTarget, error) {
-	staged := make([]stagedDeleteTarget, 0, len(targets))
-	rollback := func() {
-		for i := len(staged) - 1; i >= 0; i-- {
-			_ = os.Rename(staged[i].staged, staged[i].orig)
-		}
-	}
-	for _, t := range targets {
-		stagedPath := filepath.Join(filepath.Dir(t.orig), ".inferyard-del-"+uuid()+"-"+filepath.Base(t.orig))
-		if err := os.Rename(t.orig, stagedPath); err != nil {
-			rollback()
-			return nil, err
-		}
-		entry := stagedDeleteTarget{orig: t.orig, staged: stagedPath, isDir: t.isDir}
-		staged = append(staged, entry)
-		if t.isDir {
-			if err := checkDirTreeWritable(stagedPath); err != nil {
-				rollback()
-				return nil, err
-			}
-		}
-	}
-	return staged, nil
 }
 
 func (s *Service) deleteManagedPolystrataModel(rawCfgPath, canonCfgPath, expectedTarget, expectedFP string) *ApiError {
@@ -577,7 +553,7 @@ func (s *Service) runDeleteManagedPolystrataModel(rawCfgPath, canonCfgPath, expe
 			pruneDirs = append(pruneDirs, filepath.Dir(entry.orig))
 		}
 	}
-	pruneEmptyPolystrataDataDirs(pruneDirs, plan.dataDirs, u.ResultsRoot)
+	pruneEmptyPolystrataDataDirs(pruneDirs, plan.dataDirs, plan.protectedPaths, u.ResultsRoot)
 
 	s.mu.Lock()
 	for _, orig := range removedOrigs {
