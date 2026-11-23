@@ -200,6 +200,7 @@ type viewState struct {
 	historyTable                                                                        pageTableState
 	downloadsUI                                                                         *downloadsUIState
 	engineCatalog                                                                       *core.EngineCatalogRegistry
+	pendingPolystrataSelection                                                          *polystrataSelectionTarget
 	reportChoices                                                                       ui.Selection[any]
 	scrolls                                                                             map[string]*ui.ScrollState
 	casesTable, samplesTable                                                            pageTableState
@@ -376,7 +377,9 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	s.engineState = s.service.Engine()
 	s.checks = s.service.EngineChecks()
 	s.applyUpdateState(b.updateState)
+	s.applyPendingPolystrataSelection()
 	s.adoptDownloadedEngine()
+	s.adoptOnlyModel()
 	s.loaded = true
 	cliKey := emptyText(b.ready.CLI.Path) + "|" + emptyText(b.ready.CLI.Version) + "|" + b.ready.CLI.Status
 	if cliKey != s.discoveryCLI {

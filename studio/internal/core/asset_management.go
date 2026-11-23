@@ -126,10 +126,38 @@ func isEngineDeletable(rawPath, canonPath, kind, wsEnginesRoot string, resultsRo
 
 func registryStorageMetrics(u UserSettings, modelRoots []string, models []registryEntry, scanned *inferyard.AssetScan) (int64, *int64) {
 	var total int64
+	countedFiles := map[string]bool{}
 	for _, entry := range models {
+		if entry.model.Format == "strata_pack" {
+			continue
+		}
+		if entry.path != "" {
+			countedFiles[entry.path] = true
+		}
 		if entry.model.SizeBytes != nil && *entry.model.SizeBytes > 0 {
 			total += *entry.model.SizeBytes
 		}
+	}
+	for _, entry := range models {
+		if entry.model.Format != "strata_pack" || entry.model.SizeBytes == nil || *entry.model.SizeBytes <= 0 {
+			continue
+		}
+		if len(entry.assetPaths) > 0 {
+			allCounted := true
+			for _, p := range entry.assetPaths {
+				if !countedFiles[p] {
+					allCounted = false
+					break
+				}
+			}
+			if allCounted {
+				continue
+			}
+			for _, p := range entry.assetPaths {
+				countedFiles[p] = true
+			}
+		}
+		total += *entry.model.SizeBytes
 	}
 	if total == 0 && scanned != nil && scanned.TotalModelBytes != nil {
 		total = *scanned.TotalModelBytes

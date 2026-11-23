@@ -3,11 +3,28 @@ package pages
 import (
 	"fmt"
 	"math"
+	"path/filepath"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 )
+
+type polystrataSelectionTarget struct {
+	installationPath string
+	modelConfigPath  string
+}
+
+func cleanMatchPath(p string) string {
+	trimmed := strings.TrimSpace(p)
+	if trimmed == "" {
+		return ""
+	}
+	if resolved, err := filepath.EvalSymlinks(trimmed); err == nil {
+		return filepath.Clean(resolved)
+	}
+	return filepath.Clean(trimmed)
+}
 
 var polystrataPhaseLabels = []string{"预检", "获取运行时", "构建环境", "模型与核验"}
 
@@ -139,6 +156,12 @@ func (s *viewState) polystrataDownloadActions(c *ui.Context, task core.DownloadT
 			})
 		}
 	}
+	if task.State == "done" {
+		if primaryButton(c, "前往开始测评").Disabled(s.busy).Clicked() {
+			s.startBenchmarkFromPolystrataTask(task)
+		}
+		return
+	}
 	if task.State != "failed" && task.State != "cancelled" {
 		return
 	}
@@ -157,6 +180,104 @@ func (s *viewState) polystrataDownloadActions(c *ui.Context, task core.DownloadT
 			s.openPolystrataRecoveryDrawer(task)
 		}
 	})
+}
+
+func (s *viewState) startBenchmarkFromPolystrataTask(task core.DownloadTask) {
+	wantInst := cleanMatchPath(emptyText(task.InstallationPath))
+	if wantInst == "" {
+		wantInst = cleanMatchPath(emptyText(task.EnginePath))
+	}
+	wantModel := cleanMatchPath(emptyText(task.ModelConfigPath))
+	engineMatched, modelMatched := s.applyPolystrataSelection(wantInst, wantModel)
+	if (!engineMatched || !modelMatched) && s.service != nil && s.preview == nil {
+		s.pendingPolystrataSelection = &polystrataSelectionTarget{
+			installationPath: wantInst,
+			modelConfigPath:  wantModel,
+		}
+		go s.refresh(true)
+	} else {
+		s.pendingPolystrataSelection = nil
+	}
+	if !s.roundWorkActive() && s.running() == nil {
+		if s.speed != nil {
+			s.speed.selected = false
+		}
+		if s.task.stage != "" && s.task.stage != "prepare_candidate" {
+			s.clearBenchmark()
+			s.task.stage = "prepare_candidate"
+		}
+	}
+	s.navigateTo("dashboard", "")
+}
+
+func (s *viewState) applyPendingPolystrataSelection() {
+	if s.pendingPolystrataSelection == nil {
+		return
+	}
+	engineMatched, modelMatched := s.applyPolystrataSelection(
+		s.pendingPolystrataSelection.installationPath,
+		s.pendingPolystrataSelection.modelConfigPath,
+	)
+	if engineMatched && modelMatched {
+		s.pendingPolystrataSelection = nil
+	}
+}
+
+func (s *viewState) applyPolystrataSelection(wantInst, wantModel string) (bool, bool) {
+	engineMatched := wantInst == ""
+	modelMatched := wantModel == ""
+
+	selectedEngine := ""
+	fallbackEligible := ""
+	fallbackPoly := ""
+	for _, eng := range s.registry.Engines {
+		if wantInst != "" && cleanMatchPath(eng.Path) == wantInst {
+			selectedEngine = eng.Name
+			engineMatched = true
+			break
+		}
+		if eng.Family == "polystrata" {
+			if s.eligibility(eng.Name).State == core.EngineCheckEligible && fallbackEligible == "" {
+				fallbackEligible = eng.Name
+			} else if fallbackPoly == "" {
+				fallbackPoly = eng.Name
+			}
+		}
+	}
+	if selectedEngine == "" {
+		if fallbackEligible != "" {
+			selectedEngine = fallbackEligible
+		} else if fallbackPoly != "" {
+			selectedEngine = fallbackPoly
+		}
+	}
+	if selectedEngine != "" {
+		s.engine = selectedEngine
+	}
+
+	selectedModel := ""
+	fallbackPack := ""
+	for _, m := range s.registry.Models {
+		if !m.Available {
+			continue
+		}
+		if wantModel != "" && cleanMatchPath(m.Path) == wantModel {
+			selectedModel = m.Name
+			modelMatched = true
+			break
+		}
+		if m.Format == "strata_pack" && fallbackPack == "" {
+			fallbackPack = m.Name
+		}
+	}
+	if selectedModel == "" && wantModel == "" && fallbackPack != "" {
+		selectedModel = fallbackPack
+		modelMatched = true
+	}
+	if selectedModel != "" {
+		s.model = selectedModel
+	}
+	return engineMatched, modelMatched
 }
 
 func (s *viewState) openPolystrataRecoveryDrawer(task core.DownloadTask) {

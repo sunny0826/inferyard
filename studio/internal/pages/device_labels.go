@@ -69,6 +69,7 @@ var deviceLabels = map[string]string{
 	"total_memory_unverified":                             "系统总内存未检测到",
 	"multiple_models_roots_unselected":                    "检测到多个模型目录，待确认目标目录",
 	"xcode_clt_missing":                                   "缺少 Xcode Command Line Tools（构建 PolyStrata 所需）",
+	"polystrata_config_model_missing":                     "配置文件引用的模型文件缺失",
 }
 
 func deviceLabel(value string) string {

@@ -172,7 +172,7 @@ func (p *previewSession) tickDownload(id string, fail bool, tick int) {
 func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 	s := p.state
 	if task.Kind == "polystrata" {
-		engName := "polystrata · " + task.OutName
+		engName := "PolyStrata · v0.1.45-poly.10"
 		instPath := emptyText(task.InstallationPath)
 		existing := false
 		for _, eng := range s.registry.Engines {
@@ -202,9 +202,14 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 			}
 		}
 		if !modelExists {
+			modelName := strings.TrimSpace(strings.TrimPrefix(task.DisplayName, "PolyStrata · "))
+			if modelName == "" || modelName == task.DisplayName {
+				modelName = "Qwen3.6-35B-A3B (preview)"
+			}
 			s.registry.Models = append(s.registry.Models, core.ModelAsset{
-				Name:      "strata-preview.json",
+				Name:      modelName,
 				Format:    "strata_pack",
+				SizeBytes: previewValue(int64(22663387424)),
 				Path:      cfgPath,
 				Available: true,
 			})
