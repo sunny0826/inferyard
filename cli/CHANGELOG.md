@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.0.8
+
+- feat(release): add fast PR-compliant release workflow and agent skill (#171)
+- feat(studio): redesign engine status card with web UI link and unified header toggle (#170)
+- refactor(studio): clean defensive and explanatory UI copy (#169)
+- test(studio): update native preview XCUITest for PolyStrata starter recommendation (#168)
+- feat(studio): wire hardware-aware starter recommendations, PolyStrata UI flows, previews, and docs (#167)
+- feat(studio): integrate PolyStrata engine catalog, managed setup, lifecycle, and recommendation service (#166)
+- feat(cli): add managed engine prepare-polystrata command with preflight and streaming progress (#165)
+- feat(cli): add PolyStrata HTTP protocol adapter and service discovery support (#164)
+- feat(cli): extend local-engine contracts, cross-platform installation, and hip backend schema for PolyStrata (#163)
+- feat(cli): add hardware-aware starter engine and model recommendation (#155) (#162)
+- feat(cli): enhance cross-platform hardware detection (#154) (#161)
+- docs: add macOS quarantine removal step after Studio install (#153)
+
 ## 0.0.7
 
 - Redesigned Studio UI onto a unified design system with semantic color tokens, surface materials, concentric radii, drawer overlays, unsaved-form guards, and an in-app toast and notification inbox.
