@@ -60,7 +60,6 @@ func prismLlamaCppProvider() EngineCatalogProvider {
 			ID:             "llama-cpp",
 			Name:           "llama.cpp",
 			ModelFormat:    "gguf",
-			Summary:        "",
 			HomepageURL:    "https://github.com/ggml-org/llama.cpp",
 			ReleasesURL:    "https://github.com/PrismML-Eng/llama.cpp/releases",
 			SupportsWizard: true,
@@ -130,7 +129,7 @@ func prismLlamaCppProvider() EngineCatalogProvider {
 							Artifacts: []EngineArtifact{
 								artifactFromCatalog("engine-linux-x64", "engine", "llama-server", "prism-b10743-adfffbe"),
 							},
-							Note: "使用 inferyard config assets 与 linux.example.toml 准备配置。",
+							Note: "下载解压后注册本地引擎。",
 						},
 						{
 							ID:          "engine-linux-arm64",
@@ -140,7 +139,7 @@ func prismLlamaCppProvider() EngineCatalogProvider {
 							Artifacts: []EngineArtifact{
 								artifactFromCatalog("engine-linux-arm64", "engine", "llama-server", "prism-b10743-adfffbe"),
 							},
-							Note: "使用 inferyard config assets 与 linux.example.toml 准备配置。",
+							Note: "下载解压后注册本地引擎。",
 						},
 					},
 				},
@@ -157,7 +156,6 @@ func upstreamLlamaCppProvider() EngineCatalogProvider {
 			ID:             "llama-cpp",
 			Name:           "llama.cpp",
 			ModelFormat:    "gguf",
-			Summary:        "",
 			HomepageURL:    "https://github.com/ggml-org/llama.cpp",
 			ReleasesURL:    "https://github.com/ggml-org/llama.cpp/releases",
 			SupportsWizard: true,
@@ -180,7 +178,7 @@ func upstreamLlamaCppProvider() EngineCatalogProvider {
 								{Role: "release_page", Label: "v1.0.0 发布页", Version: "v1.0.0", URL: v100URL},
 							},
 							InstallCommand: "brew install llama.cpp",
-							Note:           "通过 Homebrew 安装或从 GitHub Releases 下载后，注册本地引擎。",
+							Note:           "通过 Homebrew 或发布页安装后注册本地引擎。",
 						},
 						{
 							ID:          "llama-upstream-v1.0.0-macos-x64",
@@ -191,7 +189,7 @@ func upstreamLlamaCppProvider() EngineCatalogProvider {
 								{Role: "release_page", Label: "v1.0.0 发布页", Version: "v1.0.0", URL: v100URL},
 							},
 							InstallCommand: "brew install llama.cpp",
-							Note:           "通过 Homebrew 安装或从 GitHub Releases 下载后，注册本地引擎。",
+							Note:           "通过 Homebrew 或发布页安装后注册本地引擎。",
 						},
 						{
 							ID:          "llama-upstream-v1.0.0-win-x64",
@@ -202,7 +200,7 @@ func upstreamLlamaCppProvider() EngineCatalogProvider {
 								{Role: "release_page", Label: "v1.0.0 发布页", Version: "v1.0.0", URL: v100URL},
 							},
 							InstallCommand: "irm https://llama.app/install.ps1 | iex",
-							Note:           "运行官方安装脚本或从 GitHub Releases 下载后，注册本地引擎。",
+							Note:           "运行安装脚本或从发布页下载后注册本地引擎。",
 						},
 						{
 							ID:          "llama-upstream-v1.0.0-linux-x64",
@@ -213,7 +211,7 @@ func upstreamLlamaCppProvider() EngineCatalogProvider {
 								{Role: "release_page", Label: "v1.0.0 发布页", Version: "v1.0.0", URL: v100URL},
 							},
 							InstallCommand: "curl -LsSf https://llama.app/install.sh | sh",
-							Note:           "运行官方安装脚本或从 GitHub Releases 下载后，注册本地引擎。",
+							Note:           "运行安装脚本或从发布页下载后注册本地引擎。",
 						},
 						{
 							ID:          "llama-upstream-v1.0.0-linux-arm64",
@@ -244,7 +242,7 @@ func upstreamLlamaCppProvider() EngineCatalogProvider {
 							Artifacts: []EngineArtifact{
 								{Role: "release_page", Label: "b11146 发布页", Version: "b11146", URL: b11146URL},
 							},
-							Note: "从 GitHub Releases 下载 b11146 对应压缩包并解压后，注册本地引擎。",
+							Note: "下载并解压后注册本地引擎。",
 						},
 						{
 							ID:          "llama-upstream-b11146-macos-x64",
@@ -254,7 +252,7 @@ func upstreamLlamaCppProvider() EngineCatalogProvider {
 							Artifacts: []EngineArtifact{
 								{Role: "release_page", Label: "b11146 发布页", Version: "b11146", URL: b11146URL},
 							},
-							Note: "从 GitHub Releases 下载 b11146 对应压缩包并解压后，注册本地引擎。",
+							Note: "下载并解压后注册本地引擎。",
 						},
 						{
 							ID:          "llama-upstream-b11146-win-x64",
@@ -264,7 +262,7 @@ func upstreamLlamaCppProvider() EngineCatalogProvider {
 							Artifacts: []EngineArtifact{
 								{Role: "release_page", Label: "b11146 发布页", Version: "b11146", URL: b11146URL},
 							},
-							Note: "从 GitHub Releases 按显卡选择对应压缩包后，注册本地引擎。",
+							Note: "按显卡下载对应压缩包后注册本地引擎。",
 						},
 						{
 							ID:          "llama-upstream-b11146-linux-x64",
@@ -274,7 +272,7 @@ func upstreamLlamaCppProvider() EngineCatalogProvider {
 							Artifacts: []EngineArtifact{
 								{Role: "release_page", Label: "b11146 发布页", Version: "b11146", URL: b11146URL},
 							},
-							Note: "从 GitHub Releases 下载后，配合 linux.example.toml 准备配置。",
+							Note: "下载并解压后注册本地引擎。",
 						},
 						{
 							ID:          "llama-upstream-b11146-linux-arm64",

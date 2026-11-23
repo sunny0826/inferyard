@@ -56,7 +56,7 @@ func (s *viewState) localEngineWizardView(c *ui.Context) {
 	}
 	container.Children(func() {
 		section(c, "添加本地引擎", func() {
-			segmentedField(c, "引擎类型", "选择要添加的本地引擎类型。", &w.family, localEngineFamilyOptions)
+			segmentedField(c, "引擎类型", "", &w.family, localEngineFamilyOptions)
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				if secondaryActionButton(c, "自动探测本机引擎", w.detecting).Disabled(s.busy || w.detecting).Clicked() {
 					s.detectWizardEngines(w)
@@ -86,18 +86,19 @@ func (s *viewState) localEngineWizardView(c *ui.Context) {
 				})
 			}
 			execLabel, execDesc := wizardExecutableLabels(w.family)
-			s.pathField(c, execLabel, &w.executable, browseExecutable).
-				Description(execDesc).
+			execField := s.pathField(c, execLabel, &w.executable, browseExecutable).
 				Error(s.browseError(browseExecutable.key, pathError(w.executable)))
+			if execDesc != "" {
+				execField.Description(execDesc)
+			}
 			if w.family == "lmstudio" {
 				s.pathField(c, "LM Studio 模型目录", &w.modelsRoot, browseModelsRootDir).
-					Description("填写或选择 LM Studio 本地模型目录绝对路径。").
 					Error(s.browseError(browseModelsRootDir.key, pathError(w.modelsRoot)))
 			}
 			if w.family == "polystrata" {
-				monoField(c, "PolyStrata 数据目录（可选）", "模型与 strata-*.json 配置目录（data_dir），留空则由安装目录自动解析。", "", pathError(w.dataDir), &w.dataDir)
+				monoField(c, "PolyStrata 数据目录（可选）", "留空由安装目录自动解析。", "", pathError(w.dataDir), &w.dataDir)
 			}
-			monoField(c, "工作目录（可选）", "留空则默认使用可执行文件所在目录。", "", pathError(w.workingDir), &w.workingDir)
+			monoField(c, "工作目录（可选）", "留空默认使用可执行文件所在目录。", "", pathError(w.workingDir), &w.workingDir)
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				if wizardActionButton(c, "生成并注册引擎", "注册引擎", s.actionBusy("install-init")).Disabled(s.busy || !wizardCanSubmit(w)).Clicked() {
 					s.initAndRegisterWizardEngine(w)
@@ -128,13 +129,13 @@ func wizardActionButton(c *ui.Context, visibleLabel, accessibleLabel string, act
 func wizardExecutableLabels(family string) (string, string) {
 	switch family {
 	case "polystrata":
-		return "PolyStrata Python 路径", "选择 PolyStrata 虚拟环境中的 python 解释器（.venv/bin/python）。"
+		return "PolyStrata Python 路径", "PolyStrata 虚拟环境中的 .venv/bin/python"
 	case "mlx-lm", "vllm", "sglang":
-		return "虚拟环境 Python 路径", "选择独立虚拟环境中的 python 解释器（venv/bin/python）。"
+		return "虚拟环境 Python 路径", "独立虚拟环境中的 venv/bin/python"
 	case "lmstudio":
-		return "LM Studio CLI (lms) 路径", "选择 lms 可执行文件绝对路径。"
+		return "LM Studio CLI (lms) 路径", ""
 	default:
-		return "引擎可执行文件路径", "选择 llama-server 可执行文件绝对路径。"
+		return "引擎可执行文件路径", "llama-server 可执行文件"
 	}
 }
 

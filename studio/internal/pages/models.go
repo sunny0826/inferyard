@@ -143,7 +143,7 @@ func modelDetails(model core.ModelAsset) string {
 		parts = append(parts, "不可用："+reason)
 	}
 	if len(parts) == 0 {
-		return "未记录额外信息"
+		return ""
 	}
 	return joinParts(parts)
 }
@@ -209,7 +209,7 @@ func joinParts(parts []string) string {
 
 func (s *viewState) engineFit() string {
 	if !s.checks.Supported && len(s.registry.Engines) > 0 {
-		return "当前 CLI 不支持引擎核验，所列引擎均未核验。"
+		return "当前 CLI 过旧，暂无法核验引擎。"
 	}
 	eligible, ineligible := 0, 0
 	for _, e := range s.registry.Engines {

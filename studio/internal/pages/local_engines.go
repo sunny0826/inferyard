@@ -224,14 +224,9 @@ func (s *viewState) localServicePicker(c *ui.Context, pidLabel, endpointLabel st
 }
 
 func (s *viewState) localSelectionView(c *ui.Context) {
-	if e := s.localEngine(); e != nil {
-		ui.Text(c, e.Family+" · 每个测评题集单独连接服务；完成后再进入下一测评题集。").TextColor(c.Theme().TextMuted)
-		if e.Family == "lmstudio" {
-			ui.Text(c, "先在 LM Studio 启动后台服务并加载所选模型。Studio 只绑定已有服务；请使用后台服务 PID。")
-			s.localServicePicker(c, "LM Studio 后台 PID", "LM Studio 服务地址")
-		} else {
-			ui.Text(c, "Studio 管理本次启动的服务；退出时停止其进程树。")
-		}
+	if e := s.localEngine(); e != nil && e.Family == "lmstudio" {
+		ui.Text(c, "请先在 LM Studio 启动后台服务并加载所选模型，再填写后台 PID 与地址。")
+		s.localServicePicker(c, "LM Studio 后台 PID", "LM Studio 服务地址")
 	}
 	if reason := s.localSelectionError(); reason != "" {
 		noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: reason})
@@ -242,12 +237,10 @@ func (s *viewState) localInstallationsView(c *ui.Context) {
 	card(c, "已有本地引擎", func() {
 		s.localEngineWizardView(c)
 		componentFold(c, "高级：直接导入已有 installation.json", func() {
-			ui.Text(c, "注册本地引擎安装声明（支持 PolyStrata、llama.cpp、MLX、vLLM、SGLang、LM Studio）。")
 			componentFold(c, "installation.json 字段说明", func() {
 				ui.Text(c, "声明 definition 为 local-engine-installation.v1，填写 family、executable、working_directory、runtime_roots 与 environment 绝对路径。")
 			})
 			s.pathField(c, "安装声明 JSON 路径", &s.installationPath, browseInstallation).
-				Description("已准备好的 installation.json 绝对路径。").
 				Error(s.browseError(browseInstallation.key, pathError(s.installationPath)))
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 				if primaryActionButton(c, "导入并注册", s.actionBusy("install-register")).Disabled(s.busy || s.installationPath == "" || pathError(s.installationPath) != "").Clicked() {
@@ -323,7 +316,7 @@ func (s *viewState) awaitingLocalServiceView(c *ui.Context) {
 			s.localBindingTask, s.localPID, s.handoffFailure = task.TaskId, "", nil
 		}
 		card(c, "连接下一测评题集的 LM Studio 服务", func() {
-			ui.Text(c, emptyText(task.Bundle)+" · 请结束上一测评题集的服务，重新启动后台服务并加载同一模型。CLI 将重新校验身份。")
+			ui.Text(c, emptyText(task.Bundle)+" · 请重启 LM Studio 后台服务并加载同一模型。")
 			if s.handoffFailure != nil {
 				failureView(c, "连接此测评题集失败", s.handoffFailure, "服务就绪后可用同一 PID 重试。")
 			}

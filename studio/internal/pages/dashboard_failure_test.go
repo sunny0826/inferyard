@@ -35,8 +35,12 @@ func TestServiceViewShowsTaskFailureWithoutEngineError(t *testing.T) {
 	if !tt.HasText("连接并核验服务失败") {
 		t.Fatalf("missing failure heading: %v", tt.Texts())
 	}
-	if !tt.HasText("engine_start_failed") || !tt.HasText("引擎进程启动失败") {
+	if !tt.HasText("引擎进程启动失败") {
 		t.Fatalf("missing cause: %v", tt.Texts())
+	}
+	click(t, tt, "错误详情")
+	if !tt.HasText("错误码：engine_start_failed") {
+		t.Fatalf("missing code in error details: %v", tt.Texts())
 	}
 	if !tt.HasText("连接已有本机服务") || !tt.HasText("高级：手动连接") {
 		t.Fatalf("missing recovery entry points: %v", tt.Texts())
@@ -49,7 +53,7 @@ func TestServiceViewReportsFailedStateWithoutCause(t *testing.T) {
 	texts := serviceTexts(&s)
 	found := false
 	for _, text := range texts {
-		if text == "未返回原因码。" {
+		if text == "操作失败，无详细原因。" {
 			found = true
 		}
 	}

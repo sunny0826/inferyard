@@ -104,11 +104,15 @@ func TestFreshAttemptClearsStaleBindFailure(t *testing.T) {
 		t.Fatalf("stale cause still wins: %+v", cause)
 	}
 	tt := ui.NewTester(s.view, 1120, 1800)
-	if tt.HasText("service_identity_unavailable") {
+	if tt.HasText("service_identity_unavailable") || tt.HasText("无法核验后台进程的启动身份") {
 		t.Fatalf("stale cause still rendered: %v", tt.Texts())
 	}
-	if !tt.HasText("engine_start_timeout") {
+	if !tt.HasText("模型服务启动超时（模型加载未完成）") {
 		t.Fatalf("fresh cause missing: %v", tt.Texts())
+	}
+	click(t, tt, "错误详情")
+	if tt.HasText("service_identity_unavailable") || !tt.HasText("错误码：engine_start_timeout") {
+		t.Fatalf("fresh cause code missing or stale code leaked: %v", tt.Texts())
 	}
 }
 

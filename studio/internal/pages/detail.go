@@ -60,7 +60,7 @@ func (s *viewState) detailView(c *ui.Context) {
 				return "已请求取消，等待安全收尾", e
 			})
 		}
-		componentFold(c, "运行原始字段", func() { detailRawFields(c, t) })
+		componentFoldKeyed(c, "detail-raw-run", "原始字段", func() { detailRawFields(c, t) })
 	})
 	card(c, "实时进度", func() { s.detailProgress(c, d) })
 	s.resourceView(c, d.Resources)
@@ -103,7 +103,7 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 		values := []string{item.CaseId, stateLabel(item.State), optionalText(item.Category), caseQuality(item), formatDurationMs(item.DurationMs), caseErrorCategory(item)}
 		ui.Text(c, values[col]).Selectable()
 	}).Height(240).Label("题目进度表")
-	componentFold(c, "进度原始字段", func() {
+	componentFoldKeyed(c, "detail-raw-progress", "原始字段", func() {
 		ui.Text(c, fmt.Sprintf("阶段：%s · 序号：%d · 当前题：%s", optionalText(p.Phase), p.LastSeq, text(p.CurrentCaseId))).Selectable()
 	})
 }

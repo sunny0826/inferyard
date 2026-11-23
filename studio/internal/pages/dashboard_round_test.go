@@ -89,14 +89,18 @@ func TestStepDiagnosisPrefersLatestBindingRejection(t *testing.T) {
 		t.Fatalf("stale auto-start error still shown: %+v", cause)
 	}
 	tt := ui.NewTester(s.view, 1120, 1800)
-	if tt.HasText("engine_start_failed") {
+	if tt.HasText("engine_start_failed") || tt.HasText("引擎进程启动失败") {
 		t.Fatalf("stale cause still visible: %v", tt.Texts())
 	}
-	if !tt.HasText("service_identity_unavailable") {
+	if !tt.HasText("无法核验后台进程的启动身份") {
 		t.Fatalf("latest cause missing: %v", tt.Texts())
 	}
-	if n := countText(tt, "service_identity_unavailable"); n != 1 {
-		t.Fatalf("cause rendered %d times: %v", n, tt.Texts())
+	if n := countText(tt, "错误详情"); n != 1 {
+		t.Fatalf("banner rendered %d times: %v", n, tt.Texts())
+	}
+	click(t, tt, "错误详情")
+	if tt.HasText("engine_start_failed") || countText(tt, "错误码：service_identity_unavailable") != 1 {
+		t.Fatalf("unexpected error details: %v", tt.Texts())
 	}
 }
 
@@ -109,11 +113,18 @@ func TestHandoffFailureStaysVisible(t *testing.T) {
 	e := core.Err("service_identity_unavailable")
 	s.handoffFailure, s.failure = e, e
 	tt := ui.NewTester(s.view, 1120, 1800)
-	if n := countText(tt, "service_identity_unavailable"); n != 1 {
+	if tt.HasText("service_identity_unavailable") || !tt.HasText("无法核验后台进程的启动身份") {
+		t.Fatalf("unexpected handoff error view: %v", tt.Texts())
+	}
+	if n := countText(tt, "错误详情"); n != 1 {
 		t.Fatalf("handoff error rendered %d times: %v", n, tt.Texts())
 	}
 	if !tt.HasText("连接此测评题集失败") {
 		t.Fatalf("handoff card does not render its error: %v", tt.Texts())
+	}
+	click(t, tt, "错误详情")
+	if n := countText(tt, "错误码：service_identity_unavailable"); n != 1 {
+		t.Fatalf("handoff error code rendered %d times: %v", n, tt.Texts())
 	}
 }
 
@@ -190,11 +201,15 @@ func TestRunStepDoesNotDuplicateServiceFailure(t *testing.T) {
 		t.Fatalf("fixture hides the service card: step=%d", s.step())
 	}
 	tt := ui.NewTester(s.view, 1120, 2200)
-	if !tt.HasText("service_identity_unavailable") {
-		t.Fatalf("step lost the cause: %v", tt.Texts())
+	if tt.HasText("service_identity_unavailable") || !tt.HasText("无法核验后台进程的启动身份") {
+		t.Fatalf("step lost or leaked the cause: %v", tt.Texts())
 	}
-	if n := countText(tt, "service_identity_unavailable"); n != 1 {
+	if n := countText(tt, "错误详情"); n != 1 {
 		t.Fatalf("cause rendered %d times: %v", n, tt.Texts())
+	}
+	click(t, tt, "错误详情")
+	if n := countText(tt, "错误码：service_identity_unavailable"); n != 1 {
+		t.Fatalf("cause code rendered %d times: %v", n, tt.Texts())
 	}
 }
 

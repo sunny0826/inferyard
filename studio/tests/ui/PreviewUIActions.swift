@@ -44,7 +44,7 @@ extension PreviewUITests {
     }
 
     /// toggleTaskDetails expands the details fold of the named task card.
-    func toggleTaskDetails(_ name: String, fold: String = "观测依据与输出") {
+    func toggleTaskDetails(_ name: String, fold: String = "任务详情") {
         let card = taskCard(name)
         expectExists(card, timeout: 5)
         let triangle = card.disclosureTriangles[fold]

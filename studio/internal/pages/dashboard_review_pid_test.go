@@ -15,7 +15,14 @@ func TestHandoffFailureRenderedOnce(t *testing.T) {
 	s.localBindingTask = "second"
 	s.handoffFailure, s.failure = e, e
 	tt := ui.NewTester(s.view, 1120, 2000)
-	if n := countText(tt, "cli_blocked"); n != 1 {
+	if tt.HasText("cli_blocked") || !tt.HasText("inferyard 拒绝执行") {
+		t.Fatalf("unexpected handoff summary: %v", tt.Texts())
+	}
+	if n := countText(tt, "错误详情"); n != 1 {
+		t.Fatalf("handoff banner rendered %d times: %v", n, tt.Texts())
+	}
+	click(t, tt, "错误详情")
+	if n := countText(tt, "错误码：cli_blocked"); n != 1 {
 		t.Fatalf("handoff cause rendered %d times: %v", n, tt.Texts())
 	}
 }
@@ -26,7 +33,14 @@ func TestTaskErrorOutsideHandoffStaysListed(t *testing.T) {
 	e := core.Err("cli_blocked")
 	s.tasks = []core.RunTask{{TaskId: "first", State: "failed", Bundle: ptr("zh-core"), Error: e}}
 	tt := ui.NewTester(s.view, 1120, 2000)
-	if n := countText(tt, "cli_blocked"); n != 1 {
+	if tt.HasText("cli_blocked") || !tt.HasText("inferyard 拒绝执行") {
+		t.Fatalf("unexpected task error summary: %v", tt.Texts())
+	}
+	if n := countText(tt, "错误详情"); n != 1 {
+		t.Fatalf("task banner rendered %d times: %v", n, tt.Texts())
+	}
+	click(t, tt, "错误详情")
+	if n := countText(tt, "错误码：cli_blocked"); n != 1 {
 		t.Fatalf("task cause rendered %d times: %v", n, tt.Texts())
 	}
 }

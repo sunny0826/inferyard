@@ -60,7 +60,6 @@ type EngineFamilyCatalog struct {
 	ID             string
 	Name           string
 	ModelFormat    string
-	Summary        string
 	HomepageURL    string
 	ReleasesURL    string
 	SupportsWizard bool
@@ -126,9 +125,6 @@ func (r *EngineCatalogRegistry) Register(provider EngineCatalogProvider) {
 	}
 	if existing.ModelFormat == "" {
 		existing.ModelFormat = incoming.ModelFormat
-	}
-	if existing.Summary == "" {
-		existing.Summary = incoming.Summary
 	}
 	if existing.HomepageURL == "" {
 		existing.HomepageURL = incoming.HomepageURL

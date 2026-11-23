@@ -2,16 +2,6 @@ package pages
 
 import "fmt"
 
-func catalogSize(bytes int64) string {
-	if bytes <= 0 {
-		return "大小未知"
-	}
-	if bytes < 1024 {
-		return fmt.Sprintf("%d bytes", bytes)
-	}
-	return fmt.Sprintf("%s（%d bytes）", catalogHumanSize(bytes), bytes)
-}
-
 func catalogHumanSize(bytes int64) string {
 	switch {
 	case bytes <= 0:

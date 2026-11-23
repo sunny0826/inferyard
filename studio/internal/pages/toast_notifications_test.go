@@ -172,13 +172,17 @@ func TestFeedbackBannerScopedToTriggerPageAndDismissible(t *testing.T) {
 	s.submissionFailed(&core.ApiError{Code: "io_error", Message: "写入失败"})
 	tt := ui.NewTester(s.view, 1120, 800)
 
-	if !tt.HasText("写入失败 · io_error") {
-		t.Fatalf("failure banner did not render on trigger page: %v", tt.Texts())
+	if !tt.HasText("写入失败") || tt.HasText("错误码：io_error") {
+		t.Fatalf("failure banner did not render expected summary on trigger page: %v", tt.Texts())
+	}
+	click(t, tt, "错误详情")
+	if !tt.HasText("错误码：io_error") {
+		t.Fatalf("error details did not reveal code: %v", tt.Texts())
 	}
 
 	s.selected = "reports"
 	tt.Frame()
-	if tt.HasText("写入失败 · io_error") || s.failure != nil {
+	if tt.HasText("写入失败") || tt.HasText("io_error") || s.failure != nil {
 		t.Fatalf("failure banner leaked across pages: failure=%+v", s.failure)
 	}
 }

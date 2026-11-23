@@ -404,8 +404,9 @@ func TestModelPresetStatusRequiresMatchingSourceURL(t *testing.T) {
 
 	tt := ui.NewTester(s.downloadsPageView, 1120, 2600)
 	clickDownloadsTab(t, tt, "模型")
-	if tt.HasText("已下载") {
-		t.Fatalf("unexpected 已下载 badge for filename-only local model: %v", tt.Texts())
+	// Active download card renders "已下载" once as a metric label; a preset badge adds two more nodes.
+	if n := countText(tt, "已下载"); n > 1 {
+		t.Fatalf("unexpected 已下载 badge for filename-only local model (count=%d): %v", n, tt.Texts())
 	}
 	btn, ok := tt.Find("下载模型 · " + qwen.ID)
 	if !ok || btn.W <= 0 {

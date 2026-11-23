@@ -251,7 +251,7 @@ func (s *viewState) notificationBell(c *ui.Context) {
 	ui.Column(c).Children(func() {
 		anchor := components.Button(c, "", components.ButtonGhost).
 			Padding(c.Theme().Space(.75), c.Theme().Space(1.5)).Radius(c.Theme().Space(4.5)).
-			Label(label).Description("点击查看通知记录")
+			Label(label)
 		anchor.Children(func() {
 			ui.Row(c).AlignItems(ui.Center).Gap(4).Children(func() {
 				iconColor := t.Color.FgSecondary

@@ -78,7 +78,14 @@ func TestDiscoveredBindingFailureRenderedOnce(t *testing.T) {
 	s.progress.NextAction = "bind"
 	s.applyBinding("zh-svg-pelican", core.Err("service_process_unavailable"), 4001)
 	tt := ui.NewTester(s.view, 1120, 1800)
-	if n := countText(tt, "service_process_unavailable"); n != 1 {
+	if tt.HasText("service_process_unavailable") || !tt.HasText("已连接的服务进程不可用") {
+		t.Fatalf("unexpected discovered binding failure view: %v", tt.Texts())
+	}
+	if n := countText(tt, "错误详情"); n != 1 {
+		t.Fatalf("banner rendered %d times: %v", n, tt.Texts())
+	}
+	click(t, tt, "错误详情")
+	if n := countText(tt, "错误码：service_process_unavailable"); n != 1 {
 		t.Fatalf("cause rendered %d times: %v", n, tt.Texts())
 	}
 }

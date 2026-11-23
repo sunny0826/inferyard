@@ -126,9 +126,6 @@ func (s *viewState) reportSourcesDialog(c *ui.Context) {
 				})
 			}
 			count := s.reportChoices.Len()
-			if count < 1 || count > 100 {
-				ui.Text(c, "请选择 1–100 个来源运行。").TextColor(c.Theme().TextMuted)
-			}
 			ui.Text(c, fmt.Sprintf("已选 %d / 100", count))
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 				if primaryActionButton(c, "生成报告", s.actionBusy("create-report")).AlignSelf(ui.Start).Disabled(s.busy || count < 1 || count > 100).Clicked() {

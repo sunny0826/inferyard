@@ -148,7 +148,7 @@ func applySpeedResult(task *speedTask, result inferyard.ContextSpeedResult) {
 }
 
 func speedMissingLabels(c inferyard.SpeedColumns) string {
-	labels := []string{"Context", "Prompt length", "Time", "Prefill", "Decode"}
+	labels := []string{"上下文", "输入长度", "输入处理", "Prefill", "Decode"}
 	reasons := []*string{c.Context.MissingReason, c.PromptLength.MissingReason, c.Time.MissingReason, c.Prefill.MissingReason, c.Decode.MissingReason}
 	var missing []string
 	for i, reason := range reasons {

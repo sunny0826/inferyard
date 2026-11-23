@@ -138,7 +138,7 @@ func (s *Service) signalOwnedPID(pid int64, sig os.Signal) error {
 
 func (s *Service) clearOrphanLocked(e *orphanEngine) *ApiError {
 	if err := removeEngineOwner(e.path, e.owner); err != nil {
-		return &ApiError{Code: "engine_owner_remove_failed", Message: "无法清除工作区 logs/engine-owner.json；可重试仅删除记录（不终止进程）。"}
+		return &ApiError{Code: "engine_owner_remove_failed", Message: "无法清除遗留服务记录；可重试仅删除记录（不终止进程）。"}
 	}
 	if s.orphan == e {
 		s.orphan = nil

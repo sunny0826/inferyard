@@ -18,14 +18,14 @@ var catalogEntries = []CatalogEntry{
 		Family: "llama-cpp", URL: catalogEngineBase + "llama-prism-b10743-adfffbe-bin-ubuntu-x64.tar.gz",
 		Bytes: 17779725, SHA256: "1bb340929fddae8667c97ec6d4064a5768fe1dd08eeee0074b8d5e08f07dfc31",
 		Revision: "prism-b10743-adfffbe", Platform: "linux/amd64",
-		Reason: "Linux 平台当前请使用 inferyard config assets 与 linux.example.toml 准备本地配置。",
+		Reason: "Linux 平台请手动下载并注册本地引擎。",
 	},
 	{
 		ID: "engine-linux-arm64", Kind: CatalogEngine, Title: "llama-server",
 		Family: "llama-cpp", URL: catalogEngineBase + "llama-prism-b10743-adfffbe-bin-ubuntu-arm64.tar.gz",
 		Bytes: 13800344, SHA256: "ee4cb83a2985572459a5686ef175503d4e526b46b97c7fcc7152e868169b3060",
 		Revision: "prism-b10743-adfffbe", Platform: "linux/arm64",
-		Reason: "Linux 平台当前请使用 inferyard config assets 与 linux.example.toml 准备本地配置。",
+		Reason: "Linux 平台请手动下载并注册本地引擎。",
 	},
 	{
 		ID: "engine-windows-x64", Kind: CatalogEngine, Title: "llama-server",

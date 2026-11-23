@@ -47,7 +47,7 @@ func (s *Service) persistEngineOwner(e *engineEntry, workspace string) *ApiError
 	e.state.StartTicks = ticks
 	path := ownerPath(workspace)
 	if err := writeEngineOwner(path, owner); err != nil {
-		return &ApiError{Code: "engine_owner_write_failed", Message: "无法保存工作区 logs/engine-owner.json，已中止启动。"}
+		return &ApiError{Code: "engine_owner_write_failed", Message: "无法保存服务记录，已中止启动。"}
 	}
 	e.ownerPath = path
 	e.owner = owner
@@ -162,16 +162,16 @@ func (s *Service) detectEngineOwnerLocked() {
 	var owner engineOwner
 	var failure *ApiError
 	if err != nil || json.Unmarshal(raw, &owner) != nil || !validOwner(owner) {
-		failure = &ApiError{Code: "engine_owner_invalid", Message: "引擎所有权记录无法读取，请检查工作区 logs/engine-owner.json，或仅删除记录（不终止进程）。"}
+		failure = &ApiError{Code: "engine_owner_invalid", Message: "遗留服务记录无法读取；可仅删除记录（不终止进程）。"}
 	} else {
 		same, err := s.ownedTreeAlive(&owner, path)
 		if err == nil && !same {
 			if err := removeEngineOwner(path, owner); err == nil {
 				return
 			}
-			failure = &ApiError{Code: "engine_owner_remove_failed", Message: "无法清除工作区 logs/engine-owner.json；可重试仅删除记录（不终止进程）。"}
+			failure = &ApiError{Code: "engine_owner_remove_failed", Message: "无法清除遗留服务记录；可重试仅删除记录（不终止进程）。"}
 		} else if err != nil {
-			failure = &ApiError{Code: "service_identity_unreadable", Message: "无法确认遗留引擎的启动标识；可仅删除工作区 logs/engine-owner.json（不终止进程）。"}
+			failure = &ApiError{Code: "service_identity_unreadable", Message: "无法确认遗留引擎的启动标识；可仅删除记录（不终止进程）。"}
 		}
 	}
 	state := EngineState{State: "orphaned", Pid: owner.PID, StartTicks: owner.StartTicks, Local: owner.Local, Endpoint: owner.Endpoint, LogPath: owner.LogFile, Candidate: owner.Candidate, Error: failure}

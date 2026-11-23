@@ -79,7 +79,7 @@ func (p *previewSession) startPolystrataSetup(req core.PolystrataSetupRequest) {
 		Step:        previewValue(1),
 		StepTotal:   previewValue(4),
 		Percent:     previewValue(10.0),
-		Detail:      previewValue("checking environment"),
+		Detail:      previewValue("检查环境"),
 		SourceUrl:   "https://github.com/simplexai-labs/PolyStrata/archive/refs/tags/v0.1.45-poly.10.tar.gz",
 		OutName:     outName,
 		OutDir:      outDir,
@@ -108,7 +108,7 @@ func (p *previewSession) tickPolystrataSetup(id string, fail bool, tick int) {
 				apiErr.Details = map[string]any{
 					"blockers": []map[string]any{{
 						"code":        "xcode_clt_missing",
-						"message":     "Xcode Command Line Tools are required to build PolyStrata.",
+						"message":     "需要安装 Xcode Command Line Tools 才能构建 PolyStrata。",
 						"fix_command": "xcode-select --install",
 					}},
 				}
@@ -121,10 +121,10 @@ func (p *previewSession) tickPolystrataSetup(id string, fail bool, tick int) {
 				task.Detail = previewValue("PolyStrata v0.1.45-poly.10")
 			case 1:
 				task.Stage, task.Step, task.Percent = "setup_engine", previewValue(3), previewValue(65.0)
-				task.Detail = previewValue("Metal build")
+				task.Detail = previewValue("编译 Metal 核心")
 			case 2:
 				task.Stage, task.Step, task.Percent = "downloading_model", previewValue(4), previewValue(90.0)
-				task.Detail = previewValue("downloading starter model")
+				task.Detail = previewValue("下载推荐模型")
 			default:
 				instPath := filepath.Join(task.OutDir, "installation.json")
 				cfgPath := filepath.Join(task.OutDir, "strata-preview.json")

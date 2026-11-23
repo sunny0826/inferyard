@@ -18,7 +18,7 @@ final class PreviewUITests: XCTestCase {
         app.launch()
         expectExists(app.windows["InferYard Studio · UI 调试"], timeout: 10)
         positionPreviewWindowForCapture(app.windows["InferYard Studio · UI 调试"])
-        expectText("全部为模拟数据；操作仅改变本窗口，不运行模型或写入文件。")
+        expectText("模拟数据模式")
     }
 
     override func tearDownWithError() throws {
@@ -146,14 +146,14 @@ final class PreviewUITests: XCTestCase {
         // Folds belong to one task card; never click a label that only happens to
         // exist on another card.
         toggleTaskDetails("model-2")
-        expectText("实际目录名：model-2")
+        expectText("目录名：model-2")
         XCTAssertFalse(text("错误码：download_failed").exists, "Opening model-2 must not expand model")
         toggleTaskDetails("model")
         expectText("错误码：download_failed")
         click("任务")
         click("下载")
         toggleTaskDetails("model-2")
-        expectText("实际目录名：model-2")
+        expectText("目录名：model-2")
         click("重置场景")
         click("下载")
         // An empty downloads page omits the task card and shows the catalog.
@@ -162,13 +162,13 @@ final class PreviewUITests: XCTestCase {
         XCTAssertFalse(text("下载任务").exists, "Empty downloads page omits the task card")
         XCTAssertFalse(taskCard("model").exists)
         XCTAssertFalse(taskCard("model-2").exists)
-        XCTAssertFalse(app.staticTexts["实际目录名：model-2"].exists)
+        XCTAssertFalse(app.staticTexts["目录名：model-2"].exists)
         XCTAssertFalse(text("错误码：download_failed").exists)
         selectTab("模型")
         click("下载模型 · model-qwen3-0.6b-q8")
         expectText("已结束")
         toggleTaskDetails("model")
-        expectText("实际目录名：model")
+        expectText("目录名：model")
     }
 
     private func contextSpeedResultAndHistory() {
@@ -216,13 +216,13 @@ final class PreviewUITests: XCTestCase {
         click("确认取消专项测评")
         click("查看结果", timeout: 10)
         expectText("有效 0/5 · 未形成完整汇总")
-        expectText("任务已取消。已完成的测量已保留；未完成项显示为 —。")
-        XCTAssertFalse(text("第 1 次缺测：Context: not_executed；Prompt length: not_executed；Time: not_executed；Prefill: not_executed；Decode: not_executed").exists)
+        expectText("任务已取消，已完成的测量已保留。")
+        XCTAssertFalse(text("第 1 次缺测：上下文: not_executed；输入长度: not_executed；输入处理: not_executed；Prefill: not_executed；Decode: not_executed").exists)
         keepScreenshot("Context speed cancelled")
         let diagnostics = app.disclosureTriangles["查看诊断详情"]
         revealInContent(diagnostics)
         diagnostics.click()
-        expectText("第 1 次缺测：Context: not_executed；Prompt length: not_executed；Time: not_executed；Prefill: not_executed；Decode: not_executed")
+        expectText("第 1 次缺测：上下文: not_executed；输入长度: not_executed；输入处理: not_executed；Prefill: not_executed；Decode: not_executed")
         keepScreenshot("Context speed cancellation diagnostics")
     }
 
@@ -237,14 +237,14 @@ final class PreviewUITests: XCTestCase {
         click("开始专项测评")
         click("查看结果", timeout: 15)
         expectText("有效 4/5 · 未形成完整汇总")
-        expectText("测量结果不满足完整汇总条件；请展开诊断详情查看缺测或校验原因。")
+        expectText("未形成完整汇总，原因见下方诊断详情。")
         XCTAssertFalse(text("第 5 次：final_timing_missing、metric_missing").exists)
         keepScreenshot("Context speed missing timing")
         let diagnostics = app.disclosureTriangles["查看诊断详情"]
         revealInContent(diagnostics)
         diagnostics.click()
         expectText("第 5 次：final_timing_missing、metric_missing")
-        expectText("第 5 次缺测：Time: final_timing_missing；Prefill: final_timing_missing；Decode: final_timing_missing")
+        expectText("第 5 次缺测：输入处理: final_timing_missing；Prefill: final_timing_missing；Decode: final_timing_missing")
         keepScreenshot("Context speed missing timing diagnostics")
         click("返回历史任务")
         let row = app.tables["专项历史表"].tableRows.element(boundBy: 2)
@@ -252,7 +252,7 @@ final class PreviewUITests: XCTestCase {
         row.click()
         app.checkBoxes["下次操作模拟失败"].click()
         click("打开专项结果")
-        expectText("模拟结果读取失败；重新读取不会再次运行模型。")
+        expectText("模拟结果读取失败，可重试。")
         keepScreenshot("Context speed read error")
         click("重新读取结果")
         expectText("有效 4/5 · 未形成完整汇总")
@@ -263,7 +263,7 @@ final class PreviewUITests: XCTestCase {
         click("准备环境")
         expectText("准备模型与引擎")
         XCTAssertFalse(text("工作区进度").exists)
-        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "尚未识别的原因码")).firstMatch.exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "操作失败（")).firstMatch.exists)
         keepScreenshot("First use with no local assets")
         click("到下载页")
         expectText("推荐组合")
@@ -306,8 +306,8 @@ final class PreviewUITests: XCTestCase {
     }
 
     private func resourceChartsAndSourceSelection() {
-        expectText("服务 CPU % · 此运行未记录该指标")
-        expectText("传感器温度 °C · 此运行未记录该指标")
+        expectText("服务 CPU % · —")
+        expectText("传感器温度 °C · —")
         let memoryChart = text("可用内存 GiB曲线")
         revealInContent(memoryChart)
         keepScreenshot("Dense memory samples without empty CPU and temperature plots")

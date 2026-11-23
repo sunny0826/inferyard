@@ -163,7 +163,7 @@ func TestStopReasonAndQualityLabelsStayChinese(t *testing.T) {
 		"plan_finished":   "已完成",
 		"user_cancelled":  "用户取消",
 		"":                "—",
-		"some_new_reason": "未识别停止原因：some_new_reason",
+		"some_new_reason": "some_new_reason",
 	} {
 		if got := stopReasonLabel(raw); got != want {
 			t.Errorf("stopReasonLabel(%q) = %q, want %q", raw, got, want)

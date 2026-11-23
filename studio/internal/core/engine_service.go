@@ -80,7 +80,7 @@ func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
 		return EngineState{}, Err("service_closing")
 	}
 	if s.orphan != nil {
-		return clone(s.orphan.state), &ApiError{Code: "engine_orphaned", Message: "请先处理工作区 logs/engine-owner.json 对应的遗留服务或无效记录，再启动引擎。"}
+		return clone(s.orphan.state), &ApiError{Code: "engine_orphaned", Message: "请先处理遗留服务或无效记录，再启动引擎。"}
 	}
 	if s.engine != nil && (s.engine.state.State == "starting" || s.engine.state.State == "running" || s.engine.state.State == "stopping") {
 		if s.engine.state.Candidate != candidate {
@@ -185,7 +185,7 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 			state, err = "failed", treeErr
 			s.orphan = &orphanEngine{owner: e.owner, path: e.ownerPath, state: EngineState{State: "orphaned", Pid: e.owner.PID, StartTicks: e.owner.StartTicks, Local: e.owner.Local, Endpoint: e.owner.Endpoint, Candidate: e.owner.Candidate, Error: err}}
 		} else if removeErr := removeEngineOwner(e.ownerPath, e.owner); removeErr != nil {
-			state, err = "failed", &ApiError{Code: "engine_owner_remove_failed", Message: "引擎已退出，但工作区 logs/engine-owner.json 未能清除；可仅删除记录（不终止进程）。"}
+			state, err = "failed", &ApiError{Code: "engine_owner_remove_failed", Message: "引擎已退出，但遗留服务记录未能清除；可仅删除记录（不终止进程）。"}
 			s.orphan = &orphanEngine{owner: e.owner, path: e.ownerPath, state: EngineState{State: "orphaned", Error: err}}
 		}
 		e.state.State, e.state.Error = state, err

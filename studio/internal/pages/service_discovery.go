@@ -55,11 +55,11 @@ func (s *viewState) managedServiceView(c *ui.Context) {
 		heading(c, "Studio 启动的服务", 3)
 		ui.Text(c, "状态："+stateLabel(state.State))
 	case state.State == "orphaned":
-		heading(c, "遗留服务记录（状态未确认）", 3)
+		heading(c, "遗留服务记录", 3)
 		noticeBanner(c, noticeBannerOptions{
 			Kind:    stateWarning,
 			Size:    bannerCompact,
-			Message: "上次 Studio 留下的服务或记录，尚不能确认运行状态。",
+			Message: "上次 Studio 留下的服务或记录，运行状态未确认。",
 		})
 	default:
 		ui.Text(c, "暂无 Studio 启动的活动服务。").TextColor(tokens(c).Color.FgSecondary)
@@ -89,27 +89,19 @@ func (s *viewState) discoveryBody(c *ui.Context, bindable bool) {
 	errorView(c, s.discoveryError)
 	if s.discoveryError == nil {
 		for _, code := range s.discovery.Limitations {
-			warningBanner(c, human(code)+" · "+code)
+			warningBanner(c, human(code))
 		}
 	}
-	compatible, other := 0, 0
+	compatible := 0
 	for _, service := range s.discovery.Services {
-		listed := false
 		for _, endpoint := range service.Endpoints {
-			if endpoint.Models != nil || s.managedEndpoint(service, endpoint) {
-				listed = true
-			}
 			if endpoint.Models != nil && !s.managedEndpoint(service, endpoint) {
 				compatible++
 			}
 		}
-		if !listed {
-			other++
-		}
 	}
 	if compatible > 0 {
 		componentFold(c, "待确认的兼容接口", func() {
-			ui.Text(c, "这些接口可能是代理；模型目录不证明本机已加载模型。")
 			for _, service := range s.discovery.Services {
 				for _, endpoint := range service.Endpoints {
 					if endpoint.Models != nil && !s.managedEndpoint(service, endpoint) {
@@ -131,9 +123,6 @@ func (s *viewState) discoveryBody(c *ui.Context, bindable bool) {
 		}
 		ui.Text(c, message)
 	}
-	if other > 0 && s.discoveryError == nil {
-		ui.Text(c, fmt.Sprintf("另有 %d 个未提供模型目录的进程未列出。", other)).TextColor(c.Theme().TextMuted)
-	}
 }
 
 func (s *viewState) compatibleEndpointView(c *ui.Context, service inferyard.DiscoveredService, endpoint inferyard.DiscoveredEndpoint, bindable bool) {
@@ -146,10 +135,10 @@ func (s *viewState) compatibleEndpointView(c *ui.Context, service inferyard.Disc
 			ui.Text(c, "健康检查："+*endpoint.Health)
 		}
 		if endpoint.AmbiguousListener {
-			warningBanner(c, "多个进程监听同一端口，归属存在歧义 · ambiguous_listener")
+			warningBanner(c, "多个进程监听同一端口，归属存在歧义")
 		}
 		if endpoint.Reason != nil {
-			ui.Text(c, human(*endpoint.Reason)+" · "+*endpoint.Reason)
+			ui.Text(c, human(*endpoint.Reason))
 		}
 		componentFold(c, fmt.Sprintf("模型目录（%d）", len(endpoint.Models)), func() {
 			for _, model := range endpoint.Models {

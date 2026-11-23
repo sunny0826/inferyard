@@ -90,7 +90,7 @@ func (p *previewSession) installation(op previewInstallation) {
 		p.showNotice()
 		return
 	}
-	p.notice = "模拟引擎列表已更新，仅本窗口有效。"
+	p.notice = "模拟引擎列表已更新。"
 }
 
 func (p *previewSession) beginLocalBenchmark(op previewBenchmark, retry bool) {

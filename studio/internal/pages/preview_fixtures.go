@@ -64,7 +64,7 @@ func previewDownloadsPolystrata(s *viewState) {
 	blockerErr.Details = map[string]any{
 		"blockers": []map[string]any{{
 			"code":        "cmake_missing",
-			"message":     "CMake is required to build PolyStrata.",
+			"message":     "需要安装 CMake 才能构建 PolyStrata。",
 			"fix_command": "brew install cmake",
 		}},
 	}

@@ -103,7 +103,7 @@ func runStateMessage(data json.RawMessage) (Message, bool) {
 	case "failed":
 		return Message{Title: name + "失败", Body: "请打开 Studio 查看失败原因与恢复操作。"}, true
 	case "cancelled":
-		return Message{Title: name + "已取消", Body: "已完成的进度与证据已保留。"}, true
+		return Message{Title: name + "已取消", Body: "已完成的进度与结果已保留。"}, true
 	default:
 		return Message{}, false
 	}

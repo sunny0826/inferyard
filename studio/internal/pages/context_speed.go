@@ -115,13 +115,9 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 		{Value: inferyard.ContextSpeed256K, Label: "256k"},
 	})
 	ui.Text(c, fmt.Sprintf("%s · %d 次测量 · 每次输出 256 tokens", inferyard.ContextSpeedBundleID, inferyard.ContextSpeedSamples))
-	componentFold(c, "查看配方与停止条件", func() {
+	componentFold(c, "测评条件", func() {
 		ui.Text(c, "并发 1 · 固定输入 · 关闭输入缓存与投机解码")
-		ui.Text(c, "超时、内存、磁盘及设备限制由 CLI 核验；容量不足或题库尚未批准时拒绝执行。")
 	})
-	if s.preview != nil {
-		noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: "模拟数据；数值不代表模型性能。"})
-	}
 	reason := s.speedStartBlockReason()
 	if engineLocked(s.engineState.State) {
 		if s.destructiveDialog(c, destructiveOption{
@@ -199,7 +195,7 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 	}
 	ui.Text(c, label+r.id).TextColor(c.Theme().TextMuted)
 	if r.budget > 0 {
-		ui.Text(c, fmt.Sprintf("固定墙钟预算 %.0f 秒（含准备与排空）", r.budget))
+		ui.Text(c, fmt.Sprintf("时间上限 %.0f 秒", r.budget))
 	}
 	card(c, "任务进度", func() {
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
@@ -242,7 +238,7 @@ func (s *viewState) speedTaskActions(c *ui.Context, r *speedTask) {
 	if r.active() {
 		if s.destructiveAction(c, destructiveOption{
 			kind: destructiveCancelRun, id: r.id, label: "取消专项测评", confirmLabel: "确认取消专项测评",
-			prompt:   "将取消本次专项测评并等待安全收尾；已写入的测量记录保留，不形成完整汇总。",
+			prompt:   "取消本次专项测评？已完成记录将保留，但不形成完整汇总。",
 			disabled: r.stage == speedCancelling,
 		}) {
 			s.cancelSpeed()
@@ -350,12 +346,12 @@ func (s *viewState) speedResultView(c *ui.Context) {
 		return
 	}
 	if r.stage == speedCancelled {
-		infoBanner(c, "任务已取消。已完成的测量已保留；未完成项显示为 —。")
+		infoBanner(c, "任务已取消，已完成的测量已保留。")
 	} else if r.summary == nil {
 		noticeBanner(c, noticeBannerOptions{
 			Kind:    stateWarning,
 			Size:    bannerCompact,
-			Message: "测量结果不满足完整汇总条件；请展开诊断详情查看缺测或校验原因。",
+			Message: "未形成完整汇总，原因见下方诊断详情。",
 		})
 	}
 	card(c, "测量结果", func() {
@@ -397,9 +393,6 @@ func speedResultFolds(c *ui.Context, w *speedWorkspace, r *speedTask) {
 			speedTable(c.Key("speed-samples"), &w.samples, "专项逐次测量", r, r.samples)
 		})
 	}
-	componentFold(c, "指标口径说明", func() {
-		ui.Text(c, "输入长度为套用聊天模板后的实际 token 数；输入处理为引擎报告的输入处理耗时（prompt_ms）。")
-	})
 }
 
 func speedTable(c *ui.Context, state *pageTableState, label string, task *speedTask, rows []speedSample) {
@@ -450,13 +443,10 @@ func (s *viewState) speedHistoryView(c *ui.Context) {
 	}
 	w := s.speed
 	card(c, "专项历史任务", func() {
-		if s.preview != nil {
-			ui.Text(c, "本窗口的模拟记录；关闭窗口后清空。").TextColor(c.Theme().TextMuted)
-		}
 		selectableTable(&w.historyTable, func(i int) any { return w.history[i].id }, func(i int) string { return w.history[i].id })
 		pageTable(c.Key("speed-history"), &w.historyTable, "专项历史表", []ui.TableColumn{
 			{Title: "任务", MinWidth: c.Theme().Rem(11)}, {Title: "模型 / 引擎", MinWidth: c.Theme().Rem(24)},
-			{Title: "Context", MinWidth: c.Theme().Rem(6)}, {Title: "状态", MinWidth: c.Theme().Rem(6)},
+			{Title: "上下文", MinWidth: c.Theme().Rem(6)}, {Title: "状态", MinWidth: c.Theme().Rem(6)},
 		}, len(w.history), func(row, col int) {
 			r := w.history[row]
 			if col == 1 {
@@ -469,8 +459,6 @@ func (s *viewState) speedHistoryView(c *ui.Context) {
 			if primaryButton(c, "打开专项结果").Clicked() || w.historyTable.submitted {
 				s.openSpeed(w.history[i].id)
 			}
-		} else {
-			ui.Text(c, "选择任务后打开结果。")
 		}
 	})
 }

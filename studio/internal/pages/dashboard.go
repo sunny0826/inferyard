@@ -86,7 +86,7 @@ func (s *viewState) dashboardView(c *ui.Context) {
 	if len(s.task.start.localCandidates) > 0 && s.task.failure != nil && !s.busy {
 		noticeBanner(c, noticeBannerOptions{
 			Kind:    stateWarning,
-			Message: "已完成题集将保留，确认问题解决后仅重试未完成项。",
+			Message: "已完成题集会保留，仅重试未完成项。",
 			Actions: func() {
 				button(c, "重试未完成的测评题集").OnClick(s.retryBenchmark)
 			},
@@ -118,11 +118,10 @@ func (s *viewState) conclusionView(c *ui.Context) {
 	card(c, "工作区进度", func() {
 		step := s.step()
 		phaseProgress(c, phaseProgressOptions{
-			Labels:      []string{"准备", "设备检查", termBenchmarkStage, "连接并核验服务", "运行", "报告"},
-			Current:     step,
-			RowLabel:    "六阶段进度",
-			BarLabel:    "工作区六阶段准备进度",
-			Description: "六个准备阶段，不表示样本完成率。",
+			Labels:   []string{"准备", "设备检查", termBenchmarkStage, "连接并核验服务", "运行", "报告"},
+			Current:  step,
+			RowLabel: "六阶段进度",
+			BarLabel: "工作区六阶段准备进度",
 		})
 		failed := s.failedBundles()
 		for _, b := range s.taskBundles() {
@@ -170,7 +169,7 @@ func (s *viewState) conclusionView(c *ui.Context) {
 			noticeBanner(c, noticeBannerOptions{
 				Kind:    stateDanger,
 				Size:    bannerCompact,
-				Message: "当前任务已中止：" + human(code) + "。原因与恢复操作见下方当前阶段。",
+				Message: "当前任务已中止：" + human(code),
 			})
 		}
 	})
@@ -252,7 +251,7 @@ func (s *viewState) stageView(c *ui.Context) {
 			s.speedTypeSwitch(c)
 			s.configStage(c, func() {
 				if s.task.failure != nil {
-					failureView(c, termBenchmarkStage+"失败", s.task.failure, "原因解决后可从本阶段重新开始；已完成的测评题集结果会保留。")
+					failureView(c, termBenchmarkStage+"失败", s.task.failure, "已完成题集会保留，仅重试未完成项。")
 				}
 				s.candidateFields(c)
 			})

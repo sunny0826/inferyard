@@ -23,7 +23,7 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 		emptyGuideCard(c, emptyGuideOptions{
 			Icon:        lucide.FileText,
 			Title:       "暂无报告",
-			Description: "暂无报告。可新建任务，或从历史运行生成报告。",
+			Description: "可新建任务，或从历史运行生成报告。",
 			Surface:     emptyCard,
 			Action: func() {
 				primaryButton(c, "新任务").OnClick(s.newBenchmark)
@@ -42,7 +42,7 @@ func reportCard(c *ui.Context, report core.ReportSummary, open func()) {
 		ui.Text(c, reportHeading(report)).Bold()
 		ui.Text(c, reportSubheading(report)).TextColor(c.Theme().TextMuted)
 		if report.Unreadable {
-			ui.Text(c, "无法读取；打开后可重试或返回列表。").TextColor(stateColor(c, stateDanger))
+			ui.Text(c, "报告文件无法读取").TextColor(stateColor(c, stateDanger))
 		} else {
 			for _, run := range report.RunSummaries {
 				ui.Text(c, reportRunLine(report, run)).Selectable()
@@ -51,7 +51,7 @@ func reportCard(c *ui.Context, report core.ReportSummary, open func()) {
 		primaryButton(c, "打开报告").Label("打开报告 · " + report.ReportId).OnClick(open)
 		componentFoldKeyed(c, "report-"+report.ReportId, "报告详情", func() {
 			ui.Text(c, "报告 ID："+report.ReportId).Selectable()
-			ui.Text(c, "报告文件修改时间："+configuredValue(formatTimestampUTC(emptyText(report.ModifiedAt)))).Selectable()
+			ui.Text(c, "更新时间："+configuredValue(formatTimestampUTC(emptyText(report.ModifiedAt)))).Selectable()
 			for _, id := range report.RunIds {
 				ui.Text(c, "来源运行："+id).Selectable()
 			}
@@ -78,18 +78,17 @@ func reportHeading(report core.ReportSummary) string {
 }
 
 func reportSubheading(report core.ReportSummary) string {
-	modified := "报告文件修改时间未记录"
+	parts := []string{}
+	if len(report.RunSummaries) <= 1 {
+		if label := reportBundleLabel(report); label != "" {
+			parts = append(parts, label)
+		}
+	}
+	parts = append(parts, fmt.Sprintf("%d 次运行", len(report.RunIds)))
 	if report.ModifiedAt != nil {
-		modified = "报告文件修改时间 " + displayValue(formatTimestamp(*report.ModifiedAt))
+		parts = append(parts, "更新于 "+displayValue(formatTimestamp(*report.ModifiedAt)))
 	}
-	runs := fmt.Sprintf("%d 次运行", len(report.RunIds))
-	if len(report.RunSummaries) > 1 {
-		return runs + " · " + modified
-	}
-	if label := reportBundleLabel(report); label != "" {
-		return label + " · " + runs + " · " + modified
-	}
-	return runs + " · " + modified
+	return joinParts(parts)
 }
 
 func reportBundleLabel(report core.ReportSummary) string {
@@ -115,7 +114,7 @@ func reportRunLine(report core.ReportSummary, run core.ReportListRun) string {
 	}
 	line := prefix + fmt.Sprintf("答案通过 %s", reportRate(quality.StudioCounts))
 	if !quality.Complete {
-		line += "（仅已记录通过数）"
+		line += "（部分评分）"
 	}
 	return line
 }

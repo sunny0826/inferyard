@@ -156,7 +156,6 @@ func (s *viewState) settingsView(c *ui.Context) {
 		Dirty:       s.pathsEdited(),
 		Fields: func() {
 			s.pathFields(c)
-			settingsNotice(c, s.pathsEdited(), "路径有未保存的修改，点击保存后生效。")
 		},
 		Actions: func() {
 			if primaryActionButton(c, "保存", s.actionBusy("save-paths")).Disabled(!s.canSavePaths()).Clicked() {
@@ -276,16 +275,9 @@ func (s *viewState) applySettings(value core.SettingsResponse) {
 	}
 }
 
-func settingsNotice(c *ui.Context, dirty bool, message string) {
-	if !dirty {
-		return
-	}
-	ui.Text(c, message).Role(ui.RoleStatus).TextColor(stateColor(c, stateWarning))
-}
-
 func (s *viewState) pathFields(c *ui.Context) {
 	ui.Column(c).Gap(tokens(c).Density.Row).Children(func() {
-		s.pathField(c, "CLI", &s.cliPath, browseCLI).Description("留空则自动从 PATH 及常用本地目录查找。").Error(s.browseError(browseCLI.key, pathError(s.cliPath)))
+		s.pathField(c, "CLI", &s.cliPath, browseCLI).Description("留空自动查找本地 CLI").Error(s.browseError(browseCLI.key, pathError(s.cliPath)))
 		s.pathField(c, "工作区目录", &s.workspace, browseWorkspace).Description(directoryState(s.workspace, s.ready.Workspace, emptyText(s.settings.Effective.WorkspaceRoot))).Error(s.browseError(browseWorkspace.key, settingsPathError(s.workspace, emptyText(s.settings.Effective.WorkspaceRoot))))
 		s.pathField(c, "结果目录", &s.results, browseResults).Description(directoryState(s.results, s.ready.Results, emptyText(s.settings.Settings.ResultsRoot))).Error(s.browseError(browseResults.key, settingsPathError(s.results, emptyText(s.settings.Settings.ResultsRoot))))
 		s.pathField(c, "模型目录", &s.models, browseModels).Description(directoryState(s.models, s.ready.Models, emptyText(s.settings.Settings.ModelsRoot))).Error(s.browseError(browseModels.key, settingsPathError(s.models, emptyText(s.settings.Settings.ModelsRoot))))
@@ -295,14 +287,13 @@ func (s *viewState) pathFields(c *ui.Context) {
 func (s *viewState) downloadNamesView(c *ui.Context) {
 	settingsFormSection(c, settingsFormOptions{
 		Title:       "下载目录名",
-		Description: "仅允许字母、数字、.、_、-；重名时自动追加序号（默认 model / engine）。",
+		Description: "仅限字母、数字、.、_、-，默认 model / engine",
 		Dirty:       s.downloadNamesEdited(),
 		Fields: func() {
 			ui.Column(c).Gap(tokens(c).Density.Row).Children(func() {
 				field(c, "模型下载目录名", &s.modelName).Error(downloadNameError(s.modelName))
 				field(c, "引擎下载目录名", &s.engineName).Error(downloadNameError(s.engineName))
 			})
-			settingsNotice(c, s.downloadNamesEdited(), downloadNamesNotice(s.modelName, s.engineName))
 		},
 		Actions: func() {
 			if primaryActionButton(c, "保存下载目录名", s.actionBusy("save-download-names")).Disabled(!s.canSaveDownloadNames()).Clicked() {
@@ -329,13 +320,6 @@ func (s *viewState) downloadNamesView(c *ui.Context) {
 			})
 		},
 	})
-}
-
-func downloadNamesNotice(modelName, engineName string) string {
-	if modelName == "model" && engineName == "engine" {
-		return "已填入默认值，请点击保存生效。"
-	}
-	return "下载目录名已修改，请点击保存生效。"
 }
 
 func downloadNameError(name string) string {
