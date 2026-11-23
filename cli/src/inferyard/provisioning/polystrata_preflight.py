@@ -11,7 +11,7 @@ import re
 import shutil
 import subprocess
 
-from inferyard.platforms.device_gpu import detect_gpus
+from inferyard.platforms.device_gpu import cpu_features_snapshot, detect_gpus
 from inferyard.platforms.local_engines.detect_polystrata import pick_venv_python
 from inferyard.provisioning.http_client import validate_proxy_origin
 from inferyard.provisioning.polystrata_preflight_checks import (
@@ -286,6 +286,7 @@ def run_polystrata_preflight(
     linux_venv_check: Callable[[str], bool] | None = None,
     gpu_probe: Callable[[str], dict] | None = None,
     build_tools_check: Callable[[bool], list[str]] | None = None,
+    cpu_features_probe: Callable[[str], tuple[dict, str, dict]] | None = None,
     disk_usage_fn=shutil.disk_usage,
     venv_python: str | None = None,
     env: dict[str, str] | None = None,
@@ -407,6 +408,12 @@ def run_polystrata_preflight(
         and (out / "serve" / "server.py").is_file()
     )
     runtime_needed = _RESUME_RUNTIME_DISK_BYTES if runtime_already_extracted else _DEFAULT_RUNTIME_DISK_BYTES
+    avx512: bool | None = None
+    if system in ("Linux", "Windows"):
+        cpu_fn = cpu_features_probe if cpu_features_probe is not None else cpu_features_snapshot
+        cpu_feats, _, _ = cpu_fn(system)
+        raw_avx512 = (cpu_feats or {}).get("avx512")
+        avx512 = raw_avx512 if isinstance(raw_avx512, bool) else None
     model_needed, disk_estimate_exact = _estimate_model_disk_bytes(
         system=system,
         backend=backend,
@@ -415,6 +422,7 @@ def run_polystrata_preflight(
         gguf_path=gguf_path,
         resume=resume,
         data_dir=data_dir,
+        avx512=avx512,
     )
     fallback_hint = (
         " (conservative fallback because --family/--model were not specified; "

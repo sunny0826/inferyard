@@ -118,13 +118,13 @@ def polystrata_fallback_model_disk_bytes(
     *,
     system: str,
     backend: str | None = None,
+    avx512: bool | None = None,
     catalog: dict | None = None,
 ) -> int:
-    """Conservative fallback disk budget when both --family and --model are omitted."""
+    """Conservative fallback disk budget covering all platform defaults when model is omitted."""
     entries = _platform_entries_or_all(system=system, backend=backend, catalog=catalog)
     if not entries:
         return _FALLBACK_EMPTY_CATALOG_BYTES
-    poly_entries = [entry for entry in entries if entry.get("engine_core") == "strata-poly"]
-    if poly_entries:
-        return max(polystrata_model_disk_bytes(entry, system=system) for entry in poly_entries)
-    return min(polystrata_model_disk_bytes(entry, system=system) for entry in entries)
+    return max(
+        polystrata_model_disk_bytes(entry, system=system, avx512=avx512) for entry in entries
+    )

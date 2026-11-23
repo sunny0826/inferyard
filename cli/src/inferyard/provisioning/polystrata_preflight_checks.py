@@ -69,8 +69,10 @@ def _matching_catalog_models(
     return matches
 
 
-def _entry_disk_bytes(entry: dict, *, system: str, gguf_path: Path | None) -> int:
-    return polystrata_model_disk_bytes(entry, system=system, gguf_path=gguf_path)
+def _entry_disk_bytes(
+    entry: dict, *, system: str, gguf_path: Path | None, avx512: bool | None = None
+) -> int:
+    return polystrata_model_disk_bytes(entry, system=system, gguf_path=gguf_path, avx512=avx512)
 
 
 def _existing_ancestor(path: Path) -> Path | None:
@@ -157,16 +159,25 @@ def _estimate_model_disk_bytes(
     gguf_path: Path | None,
     resume: bool,
     data_dir: Path,
+    avx512: bool | None = None,
 ) -> tuple[int, bool]:
     matches = _matching_catalog_models(family, model, system=system, backend=backend)
     if not matches:
         if gguf_path is not None:
             return GGUF_WORK_DISK_BYTES, True
         if not family and not model:
-            return polystrata_fallback_model_disk_bytes(system=system, backend=backend), False
+            return (
+                polystrata_fallback_model_disk_bytes(
+                    system=system, backend=backend, avx512=avx512
+                ),
+                False,
+            )
         return polystrata_min_model_disk_bytes(system=system, backend=backend), False
-    best_entry = min(matches, key=lambda e: _entry_disk_bytes(e, system=system, gguf_path=gguf_path))
-    base = _entry_disk_bytes(best_entry, system=system, gguf_path=gguf_path)
+    best_entry = min(
+        matches,
+        key=lambda e: _entry_disk_bytes(e, system=system, gguf_path=gguf_path, avx512=avx512),
+    )
+    base = _entry_disk_bytes(best_entry, system=system, gguf_path=gguf_path, avx512=avx512)
     exact = gguf_path is not None or bool(family and model)
     if resume and gguf_path is None:
         download_cap = int(best_entry.get("download_bytes") or 0)
@@ -186,6 +197,7 @@ def _required_model_disk_bytes(
     resume: bool,
     data_dir: Path,
     backend: str | None = None,
+    avx512: bool | None = None,
 ) -> int:
     required, _exact = _estimate_model_disk_bytes(
         system=system,
@@ -195,6 +207,7 @@ def _required_model_disk_bytes(
         gguf_path=gguf_path,
         resume=resume,
         data_dir=data_dir,
+        avx512=avx512,
     )
     return required
 

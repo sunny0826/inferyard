@@ -170,7 +170,7 @@ def test_preflight_family_without_model_uses_smallest_size_in_family(tmp_path: P
 
 
 def test_preflight_omitted_family_model_guards_against_12gib_underestimate(tmp_path: Path):
-    # Omitting both --family and --model must not underestimate at 12 GiB and pass 15 GiB hosts
+    # Omitting both --family and --model covers default catalog models instead of 12 GiB under-estimate
     with pytest.raises(PreparationError) as exc_fallback:
         run_polystrata_preflight(
             tmp_path / "out-omitted",
@@ -178,11 +178,11 @@ def test_preflight_omitted_family_model_guards_against_12gib_underestimate(tmp_p
             platform_info=("Darwin", "arm64"),
             macos_version="15.4",
             xcode_clt_check=lambda: True,
-            disk_usage_fn=_disk_usage(15 * GIB),
+            disk_usage_fn=_disk_usage(30 * GIB),
         )
     assert exc_fallback.value.reason == "polystrata_disk_insufficient"
     disk_blocker = exc_fallback.value.details["blockers"][0]
-    assert disk_blocker["required_bytes"] > 20 * GIB
+    assert disk_blocker["required_bytes"] > 130 * GIB
     assert "--family" in disk_blocker["message"] and "--model" in disk_blocker["message"]
 
     # Explicit lightweight model with exact selection passes with 15 GiB

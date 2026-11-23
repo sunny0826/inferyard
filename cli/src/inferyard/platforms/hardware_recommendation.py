@@ -6,6 +6,7 @@ from collections.abc import Callable
 import re
 
 from inferyard.platforms.polystrata_sizing import (
+    DEFAULT_RUNTIME_DISK_BYTES,
     GIB,
     load_starter_catalog,
     polystrata_total_disk_bytes,
@@ -240,6 +241,13 @@ def _evaluate_polystrata(
     disk_free: int,
 ) -> tuple[list[dict], list[str]]:
     system = hardware.get("platform")
+    runtime_disk_free = _valid_bytes(hardware.get("disk_free_bytes"))
+    if (
+        "models_disk_free_bytes" in hardware
+        and runtime_disk_free is not None
+        and runtime_disk_free < DEFAULT_RUNTIME_DISK_BYTES
+    ):
+        return [], ["insufficient_disk"]
     avx512 = (hardware.get("cpu_features") or {}).get("avx512")
     best_by_model: dict[str, dict] = {}
     rejection_reasons: list[str] = []

@@ -15,13 +15,21 @@ from inferyard.platforms.polystrata_sizing import (
     load_starter_catalog,
     polystrata_total_disk_bytes,
 )
+from inferyard.provisioning import polystrata_preflight
 from inferyard.provisioning.polystrata_preflight import run_polystrata_preflight
+from inferyard.provisioning.polystrata_preflight_checks import _disk_free_bytes as _real_disk_free
 from inferyard.provisioning.preparation_io import PreparationError
 from polystrata_test_helpers import _disk_usage
 
 
-def _mac_hw(*, ram_gib=96, disk_bytes=200 * GIB, xcode_clt_installed=True):
-    return {
+def _mac_hw(
+    *,
+    ram_gib=96,
+    disk_bytes=200 * GIB,
+    models_disk_bytes: int | None = None,
+    xcode_clt_installed=True,
+):
+    hw = {
         "platform": "Darwin",
         "os_version": "15.4",
         "architecture": "arm64",
@@ -50,6 +58,9 @@ def _mac_hw(*, ram_gib=96, disk_bytes=200 * GIB, xcode_clt_installed=True):
         "sources": {},
         "missing": {},
     }
+    if models_disk_bytes is not None:
+        hw["models_disk_free_bytes"] = models_disk_bytes
+    return hw
 
 
 def _pc_hw(*, platform_name="Linux", backend="cuda", ram_gib=64, disk_bytes=200 * GIB, avx512=False):
@@ -102,6 +113,7 @@ def _preflight_for_option(
     family: str,
     model: str,
     disk_bytes: int,
+    avx512: bool | None = None,
 ) -> dict:
     arch = "arm64" if system == "Darwin" else "x64"
     gpu_devices = (
@@ -125,6 +137,9 @@ def _preflight_for_option(
         if system != "Darwin"
         else None,
         build_tools_check=(lambda _nvcc: []) if system == "Linux" else None,
+        cpu_features_probe=(lambda _sys: ({"avx512": avx512}, "test", {}))
+        if system != "Darwin"
+        else None,
         disk_usage_fn=_disk_usage(disk_bytes),
     )
 
@@ -159,32 +174,36 @@ def test_catalog_matrix_parity_between_recommendation_and_preflight(tmp_path: Pa
                         family=entry["family"],
                         model=entry["size"],
                         disk_bytes=required,
+                        avx512=avx512,
                     )
                     assert report["blockers"] == []
+                    assert report["runtime_required_bytes"] + report["model_required_bytes"] == required
 
-                low_disk = polystrata_total_disk_bytes(entry, system=system, avx512=False) - 1
-                hw_low = (
-                    _mac_hw(ram_gib=128, disk_bytes=low_disk)
-                    if system == "Darwin"
-                    else _pc_hw(
-                        platform_name=system,
-                        backend=backend,
-                        ram_gib=128,
-                        disk_bytes=low_disk,
+                    low_disk = required - 1
+                    hw_low = (
+                        _mac_hw(ram_gib=128, disk_bytes=low_disk)
+                        if system == "Darwin"
+                        else _pc_hw(
+                            platform_name=system,
+                            backend=backend,
+                            ram_gib=128,
+                            disk_bytes=low_disk,
+                            avx512=avx512,
+                        )
                     )
-                )
-                assert recommend_starter(hw_low, catalog=single_cat)["status"] == "blocked"
-                with pytest.raises(PreparationError) as exc_low:
-                    _preflight_for_option(
-                        tmp_path,
-                        f"{idx}-{system}-{backend}-low",
-                        system=system,
-                        backend=backend,
-                        family=entry["family"],
-                        model=entry["size"],
-                        disk_bytes=low_disk,
-                    )
-                assert exc_low.value.reason == "polystrata_disk_insufficient"
+                    assert recommend_starter(hw_low, catalog=single_cat)["status"] == "blocked"
+                    with pytest.raises(PreparationError) as exc_low:
+                        _preflight_for_option(
+                            tmp_path,
+                            f"{idx}-{system}-{backend}-{avx512}-low",
+                            system=system,
+                            backend=backend,
+                            family=entry["family"],
+                            model=entry["size"],
+                            disk_bytes=low_disk,
+                            avx512=avx512,
+                        )
+                    assert exc_low.value.reason == "polystrata_disk_insufficient"
 
 
 def test_issue_179_mac_100gib_reproducer_and_avx512_q2_0_parity(tmp_path: Path):
@@ -220,6 +239,7 @@ def test_issue_179_mac_100gib_reproducer_and_avx512_q2_0_parity(tmp_path: Path):
             family=rec_no_avx["family"],
             model=rec_no_avx["size"],
             disk_bytes=disk,
+            avx512=False,
         )["blockers"]
         == []
     )
@@ -232,9 +252,86 @@ def test_issue_179_mac_100gib_reproducer_and_avx512_q2_0_parity(tmp_path: Path):
             family=rec_avx["family"],
             model=rec_avx["size"],
             disk_bytes=disk,
+            avx512=True,
         )["blockers"]
         == []
     )
+    q2_entry = next(
+        m for m in load_starter_catalog()["polystrata_models"] if m["id"] == "polystrata-qwen38-q2-0"
+    )
+    with pytest.raises(PreparationError) as exc_q2_avx:
+        _preflight_for_option(
+            tmp_path,
+            "avx-q2-blocked",
+            system="Linux",
+            backend="cuda",
+            family="qwen",
+            model="Q2_0",
+            disk_bytes=disk,
+            avx512=True,
+        )
+    assert exc_q2_avx.value.reason == "polystrata_disk_insufficient"
+    assert (
+        exc_q2_avx.value.details["blockers"][0]["required_bytes"]
+        == polystrata_total_disk_bytes(q2_entry, system="Linux", avx512=True)
+    )
+
+
+def test_split_volume_runtime_disk_below_minimum_blocks_polystrata(monkeypatch, tmp_path: Path):
+    rec_low_runtime = recommend_starter(
+        _mac_hw(ram_gib=96, disk_bytes=1 * GIB, models_disk_bytes=200 * GIB)
+    )
+    assert rec_low_runtime["engine"] == "llama-cpp"
+    assert rec_low_runtime["reason"] == "fallback_llama_cpp_insufficient_disk_for_polystrata"
+
+    rec_ok = recommend_starter(
+        _mac_hw(ram_gib=96, disk_bytes=2 * GIB, models_disk_bytes=200 * GIB)
+    )
+    assert rec_ok["engine"] == "polystrata"
+    assert rec_ok["size"] == "IQ3_S"
+
+    vol_out = tmp_path / "vol-out"
+    vol_data = tmp_path / "vol-data"
+    vol_out.mkdir()
+    vol_data.mkdir()
+
+    def split_disk_usage(out_free_bytes: int, data_free_bytes: int):
+        def _fake_disk_free(path: Path, disk_usage_fn=_disk_usage(data_free_bytes)):
+            is_out = path == vol_out or vol_out in path.parents
+            free, _ = _real_disk_free(
+                path,
+                disk_usage_fn=_disk_usage(out_free_bytes if is_out else data_free_bytes),
+            )
+            return free, (1 if is_out else 2)
+
+        return _fake_disk_free
+
+    monkeypatch.setattr(polystrata_preflight, "_disk_free_bytes", split_disk_usage(1 * GIB, 200 * GIB))
+    with pytest.raises(PreparationError) as exc_out:
+        run_polystrata_preflight(
+            vol_out / "ps",
+            vol_data / "ps-data",
+            family=rec_ok["family"],
+            model=rec_ok["size"],
+            backend="metal",
+            platform_info=("Darwin", "arm64"),
+            macos_version="15.4",
+            xcode_clt_check=lambda: True,
+        )
+    assert exc_out.value.reason == "polystrata_disk_insufficient"
+
+    monkeypatch.setattr(polystrata_preflight, "_disk_free_bytes", split_disk_usage(2 * GIB, 200 * GIB))
+    report = run_polystrata_preflight(
+        vol_out / "ps-ok",
+        vol_data / "ps-data-ok",
+        family=rec_ok["family"],
+        model=rec_ok["size"],
+        backend="metal",
+        platform_info=("Darwin", "arm64"),
+        macos_version="15.4",
+        xcode_clt_check=lambda: True,
+    )
+    assert report["blockers"] == []
 
 
 @pytest.mark.parametrize(
