@@ -64,9 +64,13 @@ func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
 	defer s.settingsMu.Unlock()
 	s.mu.Lock()
 	closing := s.closing
+	deleting := s.deletingAssets > 0
 	s.mu.Unlock()
 	if closing {
 		return EngineState{}, Err("service_closing")
+	}
+	if deleting {
+		return EngineState{}, workspaceBusyError()
 	}
 	startup, e := s.Startup(candidate)
 	if e != nil {
@@ -84,6 +88,9 @@ func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
 	defer s.mu.Unlock()
 	if s.closing {
 		return EngineState{}, Err("service_closing")
+	}
+	if s.deletingAssets > 0 {
+		return EngineState{}, workspaceBusyError()
 	}
 	if s.orphan != nil {
 		return clone(s.orphan.state), &ApiError{Code: "engine_orphaned", Message: "请先处理遗留服务或无效记录，再启动引擎。"}

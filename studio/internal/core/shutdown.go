@@ -62,6 +62,9 @@ func (s *Service) admitRunLocked() *ApiError {
 	if s.updateApplying {
 		return Conflict("update_applying")
 	}
+	if s.deletingAssets > 0 {
+		return workspaceBusyError()
+	}
 	for _, t := range s.runs {
 		if t.Task.ContextSpeed != nil && !terminal(t.Task.State) {
 			return Conflict("context_speed_preparing")
@@ -80,6 +83,9 @@ func (s *Service) admitDownloadLocked() *ApiError {
 	}
 	if s.updateApplying {
 		return Conflict("update_applying")
+	}
+	if s.deletingAssets > 0 {
+		return workspaceBusyError()
 	}
 	return nil
 }

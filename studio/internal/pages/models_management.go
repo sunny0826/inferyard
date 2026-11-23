@@ -19,6 +19,7 @@ type pendingAssetDelete struct {
 	kind              string
 	name              string
 	path              string
+	fingerprint       string
 	scope             string
 	reclaimableBytes  *int64
 	preservedShared   bool
@@ -226,10 +227,14 @@ func (s *viewState) revealAsset(kind, name string) {
 }
 
 func (s *viewState) deleteManagedAsset(kind, name string) {
+	s.deleteManagedAssetVerified(kind, name, "", "")
+}
+
+func (s *viewState) deleteManagedAssetVerified(kind, name, expectedPath, expectedFP string) {
 	if s.preview != nil {
 		if kind == "model" {
 			s.registry.Models = slices.DeleteFunc(s.registry.Models, func(m core.ModelAsset) bool {
-				return m.Name == name
+				return m.Name == name && (expectedPath == "" || m.Path == expectedPath)
 			})
 			var total int64
 			for _, m := range s.registry.Models {
@@ -243,7 +248,7 @@ func (s *viewState) deleteManagedAsset(kind, name string) {
 			}
 		} else {
 			s.registry.Engines = slices.DeleteFunc(s.registry.Engines, func(e core.EngineAsset) bool {
-				return e.Name == name
+				return e.Name == name && (expectedPath == "" || e.Path == expectedPath)
 			})
 			if s.checks.Engines != nil {
 				delete(s.checks.Engines, name)
@@ -258,16 +263,22 @@ func (s *viewState) deleteManagedAsset(kind, name string) {
 	if s.service == nil {
 		return
 	}
+	execDelete := func() *core.ApiError {
+		if expectedPath != "" {
+			return s.service.DeleteManagedAssetVerified(kind, name, expectedPath, expectedFP)
+		}
+		return s.service.DeleteManagedAsset(kind, name)
+	}
 	if s.win != nil {
 		s.workAs("delete-asset-"+kind+"-"+name, func() (string, *core.ApiError) {
-			if err := s.service.DeleteManagedAsset(kind, name); err != nil {
+			if err := execDelete(); err != nil {
 				return "", err
 			}
 			return "已删除：" + name, nil
 		})
 		return
 	}
-	if err := s.service.DeleteManagedAsset(kind, name); err != nil {
+	if err := execDelete(); err != nil {
 		s.submissionFailed(err)
 		return
 	}
@@ -463,6 +474,7 @@ func applyDeleteInfo(p *pendingAssetDelete, info core.AssetDeleteInfo) {
 	if info.TargetPath != "" {
 		p.path = info.TargetPath
 	}
+	p.fingerprint = info.Fingerprint
 	p.scope = info.Scope
 	p.reclaimableBytes = cloneBytesPtr(info.ReclaimableBytes)
 	p.preservedShared = info.PreservedShared
@@ -524,8 +536,9 @@ func (s *viewState) assetDeleteDialog(c *ui.Context, pending *pendingAssetDelete
 	switch result {
 	case components.DialogConfirmed:
 		kind, name, seq := pending.kind, pending.name, pending.seq
+		expectedPath, expectedFP := pending.path, pending.fingerprint
 		*pending = pendingAssetDelete{seq: seq}
-		s.deleteManagedAsset(kind, name)
+		s.deleteManagedAssetVerified(kind, name, expectedPath, expectedFP)
 	case components.DialogCancelled:
 		*pending = pendingAssetDelete{seq: pending.seq}
 	default:

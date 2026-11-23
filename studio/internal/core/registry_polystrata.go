@@ -43,7 +43,7 @@ func (s polystrataDedupeScope) covers(canonPath string) bool {
 	}
 	inDataDir := false
 	for _, dir := range s.dataDirs {
-		if pathStrictlyInsideDir(canonPath, dir) {
+		if pathStrictlyInsideDirSameFS(canonPath, dir) {
 			inDataDir = true
 			break
 		}
@@ -54,8 +54,13 @@ func (s polystrataDedupeScope) covers(canonPath string) bool {
 	if s.coveredFiles[canonPath] {
 		return true
 	}
+	for cf := range s.coveredFiles {
+		if sameFileOrPath(canonPath, cf) {
+			return true
+		}
+	}
 	for _, dir := range s.coveredDirs {
-		if pathWithinDir(canonPath, dir) {
+		if pathWithinDirSameFS(dir, canonPath) {
 			return true
 		}
 	}
@@ -167,7 +172,7 @@ func uniqueCleanPaths(raw []string) []string {
 
 func scanPolystrataModelConfigs(installPaths, extraDataDirs []string) ([]registryEntry, polystrataDedupeScope) {
 	entries := []registryEntry{}
-	seen := map[string]bool{}
+	var seen []string
 	scope := polystrataDedupeScope{coveredFiles: map[string]bool{}}
 
 	addDataDir := func(dd string) string {
@@ -225,10 +230,10 @@ func scanPolystrataModelConfigs(installPaths, extraDataDirs []string) ([]registr
 			var rawMap map[string]any
 			_ = json.Unmarshal(cfgRaw, &rawMap)
 			resolved, err := canonical(full)
-			if err != nil || seen[resolved] {
+			if err != nil || containsSameDirEntry(seen, resolved) {
 				continue
 			}
-			seen[resolved] = true
+			seen = append(seen, resolved)
 
 			bases := polystrataConfigBases(cfg.Cwd, declWorkDir, filepath.Dir(full), declDataDir)
 			refs := extractPolystrataAssetRefs(cfg.Args, rawMap)

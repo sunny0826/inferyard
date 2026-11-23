@@ -55,6 +55,7 @@ type registryEntry struct {
 	modified, downloaded  time.Time
 }
 type registryData struct {
+	settings        UserSettings
 	modelError      *ApiError
 	refreshing      bool
 	models, engines []registryEntry
@@ -195,6 +196,7 @@ func (s *Service) registry() registryData {
 	}
 	s.mu.Unlock()
 	data := registryData{
+		settings:    u,
 		refreshing:  assets.AssetsRefreshing || device.Refreshing,
 		modelRoots:  activeModelRoots(u),
 		resultsRoot: u.ResultsRoot,
@@ -482,7 +484,7 @@ func (s *Service) Registry() Registry {
 	for _, e := range data.engines {
 		eng := e.engine
 		eng.Path = e.path
-		eng.Deletable = isEngineAssetDeletable(e.rawPath, e.path, eng.Kind, eng.Family, data.wsEngines, data.resultsRoot, data.engines)
+		eng.Deletable = isEngineAssetDeletable(data.settings, e.rawPath, e.path, eng.Kind, eng.Family, data.wsEngines, data.resultsRoot, data.engines)
 		result.Engines = append(result.Engines, eng)
 	}
 	if len(result.Engines) > 0 {

@@ -76,16 +76,16 @@ func installationKey(path string) string {
 
 func installationEntries(paths []string) []registryEntry {
 	entries := []registryEntry{}
-	seen := map[string]bool{}
+	var seen []string
 	for _, raw := range paths {
 		if !filepath.IsAbs(raw) || strings.ContainsRune(raw, 0) {
 			continue
 		}
 		path, err := canonical(raw)
-		if err != nil || seen[path] {
+		if err != nil || slices.ContainsFunc(seen, func(prev string) bool { return sameFileOrPath(prev, path) }) {
 			continue
 		}
-		seen[path] = true
+		seen = append(seen, path)
 		family := "local"
 		displayName := ""
 		var display struct {

@@ -1,17 +1,26 @@
 package core
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 )
 
-const polystrataRuntimeDefinition = "polystrata-runtime.v1"
+const (
+	polystrataRuntimeDefinition  = "polystrata-runtime.v1"
+	polystrataPinnedSamplePath   = "bench/results/2026-10-09-community-gfx1151-ud-iq4xs-0.1.41/raw/events.jsonl"
+	polystrataPinnedSampleBytes  = int64(9150)
+	polystrataPinnedSampleSHA256 = "27c7f41b753d89d170cd2d1ed7af449e3cf1e8794c6ca6bb937a6ec3734540e5"
+)
 
 var (
 	polystrataVenvPythonName   = regexp.MustCompile(`(?i)^python(3(\.\d+)?)?(\.exe)?$`)
@@ -74,20 +83,74 @@ func pathStrictlyInsideAnySameFS(path string, dirs []string) bool {
 	return false
 }
 
-func hasPolystrataRuntimeReceipt(dir string) bool {
+func readPolystrataRuntimeReceiptSHA256(dir string) (string, bool) {
 	receiptPath := filepath.Join(dir, ".inferyard-runtime.json")
 	info, err := os.Lstat(receiptPath)
 	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() > maxInstallationBytes {
-		return false
+		return "", false
 	}
 	raw, err := os.ReadFile(receiptPath)
 	if err != nil {
-		return false
+		return "", false
 	}
 	var receipt struct {
-		Definition string `json:"definition"`
+		Definition    string `json:"definition"`
+		ArchiveSHA256 string `json:"archive_sha256"`
 	}
-	return json.Unmarshal(raw, &receipt) == nil && receipt.Definition == polystrataRuntimeDefinition
+	if json.Unmarshal(raw, &receipt) != nil || receipt.Definition != polystrataRuntimeDefinition {
+		return "", false
+	}
+	return strings.TrimSpace(receipt.ArchiveSHA256), true
+}
+
+func hasPolystrataRuntimeReceipt(dir string) bool {
+	_, ok := readPolystrataRuntimeReceiptSHA256(dir)
+	return ok
+}
+
+type polystrataSampleSpec struct {
+	archiveSHA string
+	relPath    string
+	size       int64
+	sha256     string
+}
+
+var knownPolystrataSamples = []polystrataSampleSpec{{
+	archiveSHA: polystrataDefaultSourceSHA256,
+	relPath:    polystrataPinnedSamplePath,
+	size:       polystrataPinnedSampleBytes,
+	sha256:     polystrataPinnedSampleSHA256,
+}}
+
+func isKnownPolystrataArchiveSample(archiveSHA, canonRoot, fullPath string, d fs.DirEntry) bool {
+	if archiveSHA == "" || d.Type()&os.ModeSymlink != 0 || !d.Type().IsRegular() {
+		return false
+	}
+	rel, err := filepath.Rel(canonRoot, fullPath)
+	if err != nil {
+		return false
+	}
+	slashRel := filepath.ToSlash(rel)
+	info, err := d.Info()
+	if err != nil {
+		return false
+	}
+	for _, spec := range knownPolystrataSamples {
+		if archiveSHA != spec.archiveSHA || slashRel != spec.relPath || info.Size() != spec.size {
+			continue
+		}
+		f, err := os.Open(fullPath)
+		if err != nil {
+			return false
+		}
+		h := sha256.New()
+		n, copyErr := io.Copy(h, io.LimitReader(f, spec.size+1))
+		_ = f.Close()
+		if copyErr == nil && n == spec.size && hex.EncodeToString(h.Sum(nil)) == spec.sha256 {
+			return true
+		}
+	}
+	return false
 }
 
 func managedPolystrataInstallDir(rawInstPath, canonInstPath, wsEnginesRoot string, resultsRoot *string) (string, bool) {
@@ -203,7 +266,6 @@ func polystrataManagedScopeFor(u UserSettings, wsEnginesRoot string) polystrataM
 		if err != nil || !filepath.IsAbs(canonDD) || overlapsResultsRoot(canonDD, u.ResultsRoot) {
 			continue
 		}
-		// Custom data_dir outside Studio's default polystrata-data is only managed if contained inside installDir.
 		if pathStrictlyInsideDirSameFS(canonDD, installDir) {
 			appendUnique(&scope.dataDirs, canonDD)
 		}
@@ -218,7 +280,7 @@ func isManagedPolystrataModelDeletable(rawPath, canonPath string, scope polystra
 	return pathStrictlyInsideAnySameFS(canonPath, scope.installDirs) || pathStrictlyInsideAnySameFS(canonPath, scope.dataDirs)
 }
 
-func isEngineAssetDeletable(rawPath, canonPath, kind, family, wsEnginesRoot string, resultsRoot *string, engines []registryEntry) bool {
+func isEngineAssetDeletable(u UserSettings, rawPath, canonPath, kind, family, wsEnginesRoot string, resultsRoot *string, engines []registryEntry) bool {
 	if kind != "local_installation" {
 		return isEngineDeletable(rawPath, canonPath, kind, wsEnginesRoot, resultsRoot)
 	}
@@ -229,7 +291,7 @@ func isEngineAssetDeletable(rawPath, canonPath, kind, family, wsEnginesRoot stri
 	if !ok {
 		return false
 	}
-	return !otherEngineSharesInstallDir(installDir, canonPath, engines)
+	return !polystrataInstallHasExternalDependents(u, wsEnginesRoot, canonPath, installDir, engines)
 }
 
 func otherEngineSharesInstallDir(installDir, selfCanonPath string, engines []registryEntry) bool {
@@ -294,11 +356,15 @@ func verifyPolystrataRuntimeTreeSafe(canonInstallDir string, resultsRoot *string
 	if err != nil {
 		return errUnsafeAssetTree
 	}
+	archiveSHA, _ := readPolystrataRuntimeReceiptSHA256(canonRoot)
 	return filepath.WalkDir(canonRoot, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
 		if !d.IsDir() && isSealedEvidenceMarker(d.Name()) {
+			if d.Type()&os.ModeSymlink == 0 && isKnownPolystrataArchiveSample(archiveSHA, canonRoot, path, d) {
+				return nil
+			}
 			return errUnsafeAssetTree
 		}
 		if d.Type()&os.ModeSymlink != 0 {
@@ -310,6 +376,33 @@ func verifyPolystrataRuntimeTreeSafe(canonInstallDir string, resultsRoot *string
 				return errUnsafeAssetTree
 			}
 			return nil
+		}
+		return nil
+	})
+}
+
+func checkDirTreeWritable(root string) error {
+	if runtime.GOOS == "windows" {
+		return nil
+	}
+	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.Type()&os.ModeSymlink != 0 {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.IsDir() {
+			info, statErr := os.Lstat(path)
+			if statErr != nil {
+				return statErr
+			}
+			if info.Mode().Perm()&0o300 != 0o300 {
+				return errUnsafeAssetTree
+			}
 		}
 		return nil
 	})
@@ -374,17 +467,34 @@ func removePolystrataRuntimeKeepMarkers(stagedDir string) error {
 	return nil
 }
 
-func (s *Service) deleteManagedPolystrataEngine(name string, eng EngineAsset) *ApiError {
+func (s *Service) deleteManagedPolystrataEngine(name string, eng EngineAsset, expectedTarget, expectedFP string) *ApiError {
+	if err := s.runDeleteManagedPolystrataEngine(name, eng, expectedTarget, expectedFP); err != nil {
+		return err
+	}
+	s.VerifyEngines()
+	_ = s.RefreshAssets()
+	return nil
+}
+
+func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset, expectedTarget, expectedFP string) *ApiError {
 	s.settingsMu.Lock()
+	defer s.settingsMu.Unlock()
+
 	s.mu.Lock()
 	if s.assetWorkspaceBusyLocked() {
 		s.mu.Unlock()
-		s.settingsMu.Unlock()
 		return workspaceBusyError()
 	}
+	s.deletingAssets++
+	prevU := clone(s.settings)
 	u := clone(s.settings)
 	paths := s.paths
 	s.mu.Unlock()
+	defer func() {
+		s.mu.Lock()
+		s.deletingAssets--
+		s.mu.Unlock()
+	}()
 
 	rawPath := ""
 	for _, rawInst := range u.EngineInstallations {
@@ -394,83 +504,75 @@ func (s *Service) deleteManagedPolystrataEngine(name string, eng EngineAsset) *A
 		}
 	}
 	if rawPath == "" {
-		s.settingsMu.Unlock()
 		return Err("not_found")
 	}
 	wsEngines := workspaceEnginesRoot(u, paths)
 	installDir, ok := managedPolystrataInstallDir(rawPath, eng.Path, wsEngines, u.ResultsRoot)
 	if !ok {
-		s.settingsMu.Unlock()
 		return errAssetNotDeletable()
 	}
 	data := s.registry()
-	if otherEngineSharesInstallDir(installDir, eng.Path, data.engines) {
-		s.settingsMu.Unlock()
+	if polystrataInstallHasExternalDependents(u, wsEngines, eng.Path, installDir, data.engines) {
 		return errAssetNotDeletable()
-	}
-	for _, rawInst := range u.EngineInstallations {
-		canonInst, err := canonical(rawInst)
-		if err != nil {
-			continue
-		}
-		if !sameFileOrPath(canonInst, eng.Path) && pathWithinDirSameFS(installDir, canonInst) {
-			s.settingsMu.Unlock()
-			return errAssetNotDeletable()
-		}
 	}
 	if err := verifyPolystrataRuntimeTreeSafe(installDir, u.ResultsRoot); err != nil {
-		s.settingsMu.Unlock()
 		return errAssetNotDeletable()
+	}
+	if expectedTarget != "" {
+		if !sameFileOrPath(installDir, expectedTarget) {
+			return deleteTargetChangedError()
+		}
+		if expectedFP != "" && polystrataEngineDeleteFingerprint(installDir, eng.Path) != expectedFP {
+			return deleteTargetChangedError()
+		}
+	}
+
+	removeRaw := map[string]bool{}
+	for _, rawInst := range u.EngineInstallations {
+		if canonInst, err := canonical(rawInst); err == nil {
+			if sameFileOrPath(canonInst, eng.Path) || pathWithinDirSameFS(installDir, canonInst) {
+				removeRaw[rawInst] = true
+			}
+		} else if sameFileOrPath(rawInst, rawPath) || sameFileOrPath(rawInst, eng.Path) {
+			removeRaw[rawInst] = true
+		}
 	}
 
 	stagedDir := filepath.Join(filepath.Dir(installDir), ".inferyard-uninstall-"+filepath.Base(installDir)+"-"+uuid())
-	s.mu.Lock()
-	if s.assetWorkspaceBusyLocked() {
-		s.mu.Unlock()
-		s.settingsMu.Unlock()
-		return workspaceBusyError()
-	}
 	if err := os.Rename(installDir, stagedDir); err != nil {
-		s.mu.Unlock()
-		s.settingsMu.Unlock()
 		return Err("internal_error")
 	}
-	s.mu.Unlock()
-
-	if err := removePolystrataRuntimeKeepMarkers(stagedDir); err != nil {
+	if err := checkDirTreeWritable(stagedDir); err != nil {
 		_ = os.Rename(stagedDir, installDir)
-		s.settingsMu.Unlock()
 		return Err("internal_error")
 	}
 
-	s.mu.Lock()
-	if s.assetWorkspaceBusyLocked() {
-		s.mu.Unlock()
-		_ = os.Rename(stagedDir, installDir)
-		s.settingsMu.Unlock()
-		return workspaceBusyError()
-	}
-	nextU := clone(s.settings)
-	s.mu.Unlock()
-
+	nextU := clone(u)
 	nextU.EngineInstallations = slices.DeleteFunc(slices.Clone(nextU.EngineInstallations), func(rawInst string) bool {
-		if canonInst, err := canonical(rawInst); err == nil {
-			return sameFileOrPath(canonInst, eng.Path) || pathWithinDirSameFS(installDir, canonInst)
-		}
-		return sameFileOrPath(rawInst, rawPath) || sameFileOrPath(rawInst, eng.Path)
+		return removeRaw[rawInst]
 	})
 	if _, saveErr := s.saveSettings(nextU); saveErr != nil {
 		_ = os.Rename(stagedDir, installDir)
-		s.settingsMu.Unlock()
 		return saveErr
 	}
 
-	_ = os.RemoveAll(stagedDir)
+	migratePolystrataRootConfigsToDataDir(stagedDir, installDir, defaultManagedPolystrataDataDirs(u, wsEngines))
+
+	if err := removePolystrataRuntimeKeepMarkers(stagedDir); err != nil {
+		_ = os.Rename(stagedDir, installDir)
+		_, _ = s.saveSettings(prevU)
+		return Err("internal_error")
+	}
+	if err := os.RemoveAll(stagedDir); err != nil && !os.IsNotExist(err) {
+		_ = os.Rename(stagedDir, installDir)
+		_, _ = s.saveSettings(prevU)
+		return Err("internal_error")
+	}
+
 	s.mu.Lock()
 	s.pruneAssetSnapshotLocked("engine", installDir)
 	s.pruneAssetSnapshotLocked("model", installDir)
 	s.mu.Unlock()
-	s.settingsMu.Unlock()
 
 	s.checkMu.Lock()
 	for path := range s.checks {
@@ -484,8 +586,5 @@ func (s *Service) deleteManagedPolystrataEngine(name string, eng EngineAsset) *A
 		}
 	}
 	s.checkMu.Unlock()
-	s.VerifyEngines()
-
-	_ = s.RefreshAssets()
 	return nil
 }

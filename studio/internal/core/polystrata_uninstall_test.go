@@ -55,6 +55,7 @@ func TestDeleteManagedPolystrataEngineVenvExternalAndSafetyGuards(t *testing.T) 
 	resultsRoot := filepath.Join(base, "results")
 	dataDir := filepath.Join(modelsRoot, "polystrata-data")
 	mustMkdir(t, ws, modelsRoot, resultsRoot, dataDir)
+	mustWriteFile(t, filepath.Join(dataDir, "models", "kept.bin"), []byte("kept"), 0o600)
 	mustWriteFile(t, filepath.Join(resultsRoot, "run-1", "manifest.json"), []byte("{}"), 0o644)
 
 	managedDir := filepath.Join(ws, "engines", "polystrata-managed")
@@ -330,9 +331,13 @@ func TestDeleteManagedPolystrataModelsSharedExternalAndBusyGuards(t *testing.T) 
 	}
 
 	// 2. Shared asset protection
+	sharedCfgInfoA, statErr := os.Stat(cfgSharedPackA)
+	if statErr != nil {
+		t.Fatal(statErr)
+	}
 	sharedInfoA, err := s.InspectDeleteAsset("model", findModel(cfgSharedPackA).Name)
-	if err != nil || !sharedInfoA.PreservedShared || *sharedInfoA.ReclaimableBytes >= 512 {
-		t.Fatalf("expected PreservedShared excluding 512B pack bytes, got %+v err=%+v", sharedInfoA, err)
+	if err != nil || !sharedInfoA.PreservedShared || *sharedInfoA.ReclaimableBytes != sharedCfgInfoA.Size() {
+		t.Fatalf("expected PreservedShared excluding pack bytes (want config size %d), got %+v err=%+v", sharedCfgInfoA.Size(), sharedInfoA, err)
 	}
 	if err := s.DeleteManagedAsset("model", findModel(cfgSharedPackA).Name); err != nil {
 		t.Fatalf("delete shared pack A failed: %+v", err)
@@ -347,9 +352,13 @@ func TestDeleteManagedPolystrataModelsSharedExternalAndBusyGuards(t *testing.T) 
 		t.Fatalf("unreferenced sharedPackFile should now be deleted, stat err=%v", statErr)
 	}
 
+	splitCfgInfoA, statErr := os.Stat(cfgSplitShA)
+	if statErr != nil {
+		t.Fatal(statErr)
+	}
 	splitInfoA, err := s.InspectDeleteAsset("model", findModel(cfgSplitShA).Name)
-	if err != nil || !splitInfoA.PreservedShared || *splitInfoA.ReclaimableBytes >= 300 {
-		t.Fatalf("expected cross-shard PreservedShared, got %+v err=%+v", splitInfoA, err)
+	if err != nil || !splitInfoA.PreservedShared || *splitInfoA.ReclaimableBytes != splitCfgInfoA.Size() {
+		t.Fatalf("expected cross-shard PreservedShared (want config size %d), got %+v err=%+v", splitCfgInfoA.Size(), splitInfoA, err)
 	}
 	if err := s.DeleteManagedAsset("model", findModel(cfgSplitShA).Name); err != nil {
 		t.Fatalf("delete split shared A failed: %+v", err)
