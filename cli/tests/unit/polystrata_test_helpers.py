@@ -178,7 +178,12 @@ root = Path(__file__).resolve().parent
 argv = sys.argv[1:]
 (root / "received_argv.json").write_text(json.dumps(argv), encoding="utf-8")
 (root / "received_env.json").write_text(
-    json.dumps({k: os.environ.get(k) for k in ("HTTP_PROXY", "HTTPS_PROXY", "STRATA_SOURCE")}),
+    json.dumps(
+        {
+            k: os.environ.get(k)
+            for k in ("HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "no_proxy", "STRATA_SOURCE")
+        }
+    ),
     encoding="utf-8",
 )
 

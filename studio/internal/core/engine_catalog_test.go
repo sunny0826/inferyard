@@ -88,6 +88,17 @@ func TestDefaultEngineCatalogIntegrity(t *testing.T) {
 			t.Fatalf("family %s ExternalApp = %v, want %v", fam.ID, fam.ExternalApp, wantExternal)
 		}
 	}
+
+	psEntry, ok := CatalogEntryByID("engine-polystrata")
+	if !ok || psEntry.Bytes != polystrataDefaultSourceBytes || psEntry.SHA256 != polystrataDefaultSourceSHA256 || !hexDigest.MatchString(psEntry.SHA256) || psEntry.URL != polystrataDefaultSourceURL {
+		t.Fatalf("engine-polystrata catalog integrity mismatch: ok=%v entry=%+v", ok, psEntry)
+	}
+	psFam, _ := reg.FamilyByID("polystrata")
+	for _, b := range psFam.Releases[0].Builds {
+		if b.TotalBytes() != polystrataDefaultSourceBytes || !b.HasSHA256() || len(b.Artifacts) != 1 || b.Artifacts[0].SHA256 != polystrataDefaultSourceSHA256 {
+			t.Fatalf("polystrata build %s missing size/sha256: %+v", b.ID, b)
+		}
+	}
 }
 
 func TestSortEngineReleasesStableFirst(t *testing.T) {

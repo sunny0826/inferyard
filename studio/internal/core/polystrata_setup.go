@@ -13,7 +13,12 @@ import (
 	"time"
 )
 
-const polystrataDefaultSourceURL = "https://github.com/simplexai-labs/PolyStrata/archive/refs/tags/v0.1.45-poly.10.tar.gz"
+const (
+	polystrataPinnedCommit        = "3e1642161198c50ff1abed4046f4e4f476099dbb"
+	polystrataDefaultSourceURL    = "https://github.com/simplexai-labs/PolyStrata/archive/" + polystrataPinnedCommit + ".tar.gz"
+	polystrataDefaultSourceBytes  = int64(25747544)
+	polystrataDefaultSourceSHA256 = "aeced362c54ae3534a66646f1befffe4dc62f0f20cc4869c74ccfa2d90384a92"
+)
 
 type PolystrataSetupRequest struct {
 	Family      string `json:"family,omitempty"`
@@ -187,9 +192,31 @@ func polystrataPrepareArgs(outDir, dataDir string, req *PolystrataSetupRequest, 
 		if v := strings.TrimSpace(req.GGUFPath); v != "" {
 			args = append(args, "--gguf-path", v)
 		}
-		if v := strings.TrimSpace(req.Source); v != "" {
-			args = append(args, "--source", v)
+	}
+	src := ""
+	if req != nil {
+		src = strings.TrimSpace(req.Source)
+	}
+	if src == "" || src == polystrataDefaultSourceURL {
+		expectedSHA := polystrataDefaultSourceSHA256
+		if entry, ok := CatalogEntryByID("engine-polystrata"); ok {
+			if strings.TrimSpace(entry.URL) != "" {
+				src = entry.URL
+			} else {
+				src = polystrataDefaultSourceURL
+			}
+			if strings.TrimSpace(entry.SHA256) != "" {
+				expectedSHA = entry.SHA256
+			}
+		} else {
+			src = polystrataDefaultSourceURL
 		}
+		args = append(args, "--source", src)
+		if expectedSHA != "" {
+			args = append(args, "--expected-sha256", expectedSHA)
+		}
+	} else {
+		args = append(args, "--source", src)
 	}
 	if resume {
 		args = append(args, "--resume")

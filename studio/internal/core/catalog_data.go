@@ -116,6 +116,7 @@ var catalogEntries = []CatalogEntry{
 	{
 		ID: "engine-polystrata", Kind: CatalogEngine, Title: "PolyStrata v0.1.45-poly.10",
 		Family: "polystrata", URL: polystrataDefaultSourceURL,
+		Bytes: polystrataDefaultSourceBytes, SHA256: polystrataDefaultSourceSHA256,
 		Revision: "v0.1.45-poly.10", Platform: "any",
 		Reason: "通过 inferyard engine prepare-polystrata 托管安装。",
 	},

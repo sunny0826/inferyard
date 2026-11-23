@@ -242,6 +242,7 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 					}
 				}
 				s.downloadErrorView(c, task.Error)
+				s.polystrataRuntimeProxyGuidance(c, task)
 			},
 			actions: func() { s.downloadActions(c, task) },
 			details: func() { s.downloadDetails(c, task) },
