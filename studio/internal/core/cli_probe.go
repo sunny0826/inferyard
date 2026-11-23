@@ -13,16 +13,67 @@ import (
 
 const probeTTL = 10 * time.Second
 
-func cliVersionOutdated(cliVersion, studioVersion string) bool {
-	studioVer, ok := parseSemver(studioVersion)
-	if !ok {
+func parseCLISemver(raw string) (ver semver, prerelease bool, ok bool) {
+	trimmed := strings.TrimPrefix(strings.TrimSpace(raw), "v")
+	if trimmed == "" {
+		return semver{}, false, false
+	}
+	if base, build, hasBuild := strings.Cut(trimmed, "+"); hasBuild {
+		if build == "" {
+			return semver{}, false, false
+		}
+		trimmed = base
+	}
+	if base, pre, hasPre := strings.Cut(trimmed, "-"); hasPre {
+		if pre == "" {
+			return semver{}, false, false
+		}
+		prerelease = true
+		trimmed = base
+	} else {
+		parts := strings.Split(trimmed, ".")
+		if len(parts) == 4 && strings.HasPrefix(parts[3], "dev") && allDigits(parts[3][3:]) {
+			prerelease = true
+			trimmed = strings.Join(parts[:3], ".")
+		} else if len(parts) == 3 {
+			if corePatch, okSuffix := splitPEP440Prerelease(parts[2]); okSuffix {
+				prerelease = true
+				parts[2] = corePatch
+				trimmed = strings.Join(parts, ".")
+			}
+		}
+	}
+	ver, ok = parseSemver(trimmed)
+	return ver, prerelease, ok
+}
+
+func allDigits(s string) bool {
+	if s == "" {
 		return false
 	}
-	cliVer, ok := parseSemver(cliVersion)
-	if !ok {
-		return false
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
 	}
-	return compareSemver(cliVer, studioVer) < 0
+	return true
+}
+
+func splitPEP440Prerelease(patch string) (string, bool) {
+	idx := 0
+	for idx < len(patch) && patch[idx] >= '0' && patch[idx] <= '9' {
+		idx++
+	}
+	if idx == 0 || idx == len(patch) {
+		return "", false
+	}
+	suffix := patch[idx:]
+	for _, tag := range []string{"rc", "a", "b"} {
+		if strings.HasPrefix(suffix, tag) && allDigits(suffix[len(tag):]) {
+			return patch[:idx], true
+		}
+	}
+	return "", false
 }
 
 func cliOutdatedError(cliVersion *string) *ApiError {
@@ -97,8 +148,14 @@ func (s *Service) probeCLI(path string) InferyardProbe {
 	if e != nil {
 		return InferyardProbe{Path: &p, Status: "version_failed"}
 	}
-	if cliVersionOutdated(v, Version) {
-		return InferyardProbe{Path: &p, Version: &v, Source: source, Status: "outdated"}
+	if studioVer, ok := parseSemver(Version); ok {
+		cliVer, pre, ok := parseCLISemver(v)
+		if !ok {
+			return InferyardProbe{Path: &p, Version: &v, Source: source, Status: "version_failed"}
+		}
+		if cmp := compareSemver(cliVer, studioVer); cmp < 0 || (cmp == 0 && pre) {
+			return InferyardProbe{Path: &p, Version: &v, Source: source, Status: "outdated"}
+		}
 	}
 	result := InferyardProbe{Path: &p, Version: &v, Source: source, Status: "ok"}
 	s.rememberProbe(p, st, statErr, result)

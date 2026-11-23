@@ -269,6 +269,7 @@ func (s *viewState) settingsDiscardDialog(c *ui.Context) {
 
 func (s *viewState) applySettings(value core.SettingsResponse) {
 	updateForm := !s.settingsLoaded || !s.settingsEdited()
+	cliUntouched := s.settingsLoaded && s.cliPath == emptyText(s.settings.Settings.InferyardPath)
 	if emptyText(s.settings.Effective.WorkspaceRoot) != emptyText(value.Effective.WorkspaceRoot) {
 		s.resetWorkspace()
 	}
@@ -277,6 +278,9 @@ func (s *viewState) applySettings(value core.SettingsResponse) {
 		s.loadSettings(value)
 		s.settingsLoaded = true
 	} else {
+		if cliUntouched {
+			s.cliPath = emptyText(value.Settings.InferyardPath)
+		}
 		s.loadThemeSettings(value)
 	}
 }

@@ -337,7 +337,7 @@ func (s *Service) saveSettings(u UserSettings) (SettingsResponse, *ApiError) {
 	cliChanged := str(u.InferyardPath) != str(s.settings.InferyardPath)
 	changed := str(u.ResultsRoot) != str(s.settings.ResultsRoot)
 	modelsChanged := str(u.ModelsRoot) != str(s.settings.ModelsRoot) || !slicesEqualStrings(u.ExtraModelsRoots, s.settings.ExtraModelsRoots)
-	if modelsChanged {
+	if modelsChanged || cliChanged {
 		s.deviceGeneration++
 		s.device.Snapshot = nil
 		s.device.CapturedAt = nil
@@ -363,7 +363,7 @@ func (s *Service) saveSettings(u UserSettings) (SettingsResponse, *ApiError) {
 	if changed {
 		go s.rebuild(u)
 	}
-	if modelsChanged && len(allModelsRoots(u)) > 0 {
+	if (modelsChanged || cliChanged) && len(allModelsRoots(u)) > 0 {
 		s.RefreshAssets()
 		s.RefreshDevice()
 	}

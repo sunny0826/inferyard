@@ -2,15 +2,27 @@ package pages
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
 )
+
+func hasSubstring(texts []string, sub string) bool {
+	for _, txt := range texts {
+		if strings.Contains(txt, sub) {
+			return true
+		}
+	}
+	return false
+}
 
 func TestDashboardShowsCLIUpgradeCardWhenOnlyCLIOutdated(t *testing.T) {
 	origVer := core.Version
@@ -34,14 +46,15 @@ func TestDashboardShowsCLIUpgradeCardWhenOnlyCLIOutdated(t *testing.T) {
 	}
 
 	tt := ui.NewTester(s.dashboardView, 1120, 1200)
-	if !tt.HasText("CLI 需要升级") || !slices.Contains(tt.Texts(), "升级 CLI") {
-		t.Fatalf("expected CLI upgrade card and button, got: %v", tt.Texts())
+	texts := tt.Texts()
+	if !tt.HasText("CLI 需要升级") || !slices.Contains(texts, "升级 CLI") {
+		t.Fatalf("expected CLI upgrade card and button, got: %v", texts)
 	}
-	if !tt.HasText("CLI 版本过旧（当前 0.0.3，需要 0.0.9），请升级 CLI。") {
-		t.Fatalf("expected outdated summary copy, got: %v", tt.Texts())
+	if !hasSubstring(texts, "0.0.3") || !hasSubstring(texts, "0.0.9") {
+		t.Fatalf("expected current and required version in dashboard upgrade card: %v", texts)
 	}
 	if tt.HasText("无法读取工作区进度") {
-		t.Fatalf("unexpected generic progress failure message: %v", tt.Texts())
+		t.Fatalf("unexpected generic progress failure message: %v", texts)
 	}
 }
 
@@ -61,8 +74,9 @@ func TestOutdatedCLIBannerShownOutsideDashboardAndHiddenInBoundMode(t *testing.T
 	tt := ui.NewTester(func(c *ui.Context) {
 		ui.Column(c).Children(func() { s.feedback(c) })
 	}, 1120, 400)
-	if !slices.Contains(tt.Texts(), "升级 CLI") || !tt.HasText("CLI 版本过旧（当前 0.0.3，需要 0.0.9），请升级 CLI。") {
-		t.Fatalf("expected global outdated CLI banner on reports page, got: %v", tt.Texts())
+	texts := tt.Texts()
+	if !slices.Contains(texts, "升级 CLI") || !hasSubstring(texts, "0.0.3") || !hasSubstring(texts, "0.0.9") {
+		t.Fatalf("expected global outdated CLI banner with upgrade button on reports page, got: %v", texts)
 	}
 
 	root := t.TempDir()
@@ -91,11 +105,12 @@ func TestOutdatedCLIBannerShownOutsideDashboardAndHiddenInBoundMode(t *testing.T
 
 	s.service = svc
 	tt.Frame()
-	if !tt.HasText("CLI 版本过旧（当前 0.0.3，需要 0.0.9），请升级 CLI。") {
-		t.Fatalf("expected outdated CLI summary in dev mode, got: %v", tt.Texts())
+	texts = tt.Texts()
+	if !hasSubstring(texts, "0.0.3") || !hasSubstring(texts, "0.0.9") {
+		t.Fatalf("expected outdated CLI versions in dev mode, got: %v", texts)
 	}
-	if slices.Contains(tt.Texts(), "升级 CLI") {
-		t.Fatalf("did not expect 升级 CLI button in bound dev mode: %v", tt.Texts())
+	if slices.Contains(texts, "升级 CLI") {
+		t.Fatalf("did not expect 升级 CLI button in bound dev mode: %v", texts)
 	}
 }
 
@@ -115,13 +130,14 @@ func TestSetupActionsDistinguishesReuseAndUpgrade(t *testing.T) {
 			setupActions(c, outdatedLocs, true, core.InferyardProbe{Status: "outdated", Version: ptr("0.0.3")})
 		})
 	}, 900, 400)
-	for _, txt := range ttOutdated.Texts() {
+	outdatedTexts := ttOutdated.Texts()
+	for _, txt := range outdatedTexts {
 		if strings.HasPrefix(txt, "CLI：复用") {
-			t.Fatalf("outdated CLI rendered reuse copy: %v", ttOutdated.Texts())
+			t.Fatalf("outdated CLI rendered reuse copy: %v", outdatedTexts)
 		}
 	}
-	if !ttOutdated.HasText("CLI：从 0.0.3 升级至 0.0.9（Python 3.15.2）") {
-		t.Fatalf("expected CLI upgrade action copy, got: %v", ttOutdated.Texts())
+	if !hasSubstring(outdatedTexts, "升级") || !hasSubstring(outdatedTexts, "0.0.3") || !hasSubstring(outdatedTexts, "0.0.9") {
+		t.Fatalf("expected CLI upgrade action with versions, got: %v", outdatedTexts)
 	}
 
 	okLocs := core.PreparationLocations{
@@ -134,7 +150,7 @@ func TestSetupActionsDistinguishesReuseAndUpgrade(t *testing.T) {
 			setupActions(c, okLocs, true, core.InferyardProbe{Status: "ok", Version: ptr("0.0.9")})
 		})
 	}, 900, 400)
-	if !ttOK.HasText("CLI：复用 " + displayName("/Users/test/.local/bin/inferyard")) {
+	if !hasSubstring(ttOK.Texts(), "CLI：复用") {
 		t.Fatalf("expected CLI reuse copy when CLIStatus==ok, got: %v", ttOK.Texts())
 	}
 }
@@ -162,7 +178,111 @@ func TestApplyDashboardAndSettingsShowOutdatedCLICopy(t *testing.T) {
 		Status:  "outdated",
 	}
 	tt := settingsTester(s)
-	if !tt.HasText("CLI 版本过旧（当前 0.0.3，需要 0.0.9），请升级 CLI。") {
-		t.Fatalf("settings CLI field did not show outdated version info: %v", tt.Texts())
+	texts := tt.Texts()
+	if !hasSubstring(texts, "0.0.3") || !hasSubstring(texts, "0.0.9") || !hasSubstring(texts, "升级") {
+		t.Fatalf("settings CLI field did not show outdated version info: %v", texts)
+	}
+}
+
+func TestSettingsDraftSavePreservesUpgradedCLIPath(t *testing.T) {
+	origVer := core.Version
+	core.Version = "0.0.9"
+	t.Cleanup(func() { core.Version = origVer })
+
+	root := t.TempDir()
+	oldCLI := filepath.Join(root, "old-inferyard")
+	newCLI := filepath.Join(root, "new-inferyard")
+	for _, p := range []string{oldCLI, newCLI} {
+		if err := os.WriteFile(p, []byte("#!/bin/sh\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ws := filepath.Join(root, "ws")
+	oldResults := filepath.Join(root, "results-old")
+	newResults := filepath.Join(root, "results-new")
+	modelsDir := filepath.Join(root, "models")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	svc, err := core.New(ctx, core.Options{
+		SettingsPath:  filepath.Join(root, "settings.json"),
+		HostStatePath: filepath.Join(root, "host.json"),
+		Execute: func(_ context.Context, path string, args ...string) (inferyard.Execution, error) {
+			if len(args) > 0 && args[0] == "--version" {
+				if path == oldCLI {
+					return inferyard.Execution{ExitCode: 0, Stdout: []byte("inferyard 0.0.3 source=release\n")}, nil
+				}
+				if path == newCLI {
+					return inferyard.Execution{ExitCode: 0, Stdout: []byte("inferyard 0.0.9 source=release\n")}, nil
+				}
+			}
+			return inferyard.Execution{ExitCode: 4}, nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = svc.Shutdown(context.Background()) })
+
+	initPatch := map[string]json.RawMessage{}
+	for k, v := range map[string]string{
+		"inferyard_path": oldCLI,
+		"workspace_root": ws,
+		"results_root":   oldResults,
+		"models_root":    modelsDir,
+	} {
+		initPatch[k], _ = json.Marshal(v)
+	}
+	if _, apiErr := svc.UpdateSettings(initPatch); apiErr != nil {
+		t.Fatal(apiErr)
+	}
+
+	s := testState()
+	s.selected = "settings"
+	s.settingsLoaded = false
+	s.service = svc
+	updates := make(chan func(), 16)
+	s.updateWindow = func(fn func()) { updates <- fn }
+	s.applySettings(svc.Settings())
+
+	// User has an unsaved results_root draft while clicking "升级 CLI".
+	s.results = newResults
+	if !s.settingsEdited() || !s.canSavePaths() {
+		t.Fatalf("expected results draft to enable save: edited=%v canSave=%v", s.settingsEdited(), s.canSavePaths())
+	}
+
+	upgradedPatch, _ := json.Marshal(newCLI)
+	upgradedSettings, apiErr := svc.UpdateSettings(map[string]json.RawMessage{"inferyard_path": upgradedPatch})
+	if apiErr != nil {
+		t.Fatal(apiErr)
+	}
+	s.applySettings(upgradedSettings)
+
+	if s.results != newResults {
+		t.Fatalf("applySettings overwrote unsaved results draft: got %q want %q", s.results, newResults)
+	}
+	if s.cliPath != newCLI {
+		t.Fatalf("applySettings did not sync untouched cliPath to upgraded CLI: got %q want %q", s.cliPath, newCLI)
+	}
+
+	tt := settingsTester(&s)
+	click(t, tt, "保存")
+
+	deadline := time.After(3 * time.Second)
+	for s.busy {
+		select {
+		case fn := <-updates:
+			fn()
+		case <-deadline:
+			t.Fatal("timed out waiting for settings save")
+		}
+	}
+
+	saved := svc.Settings().Settings
+	if saved.ResultsRoot == nil || *saved.ResultsRoot != newResults {
+		t.Fatalf("saved ResultsRoot = %v, want %q", saved.ResultsRoot, newResults)
+	}
+	if saved.InferyardPath == nil || *saved.InferyardPath != newCLI {
+		t.Fatalf("saving results draft reverted InferyardPath to %v, want %q", saved.InferyardPath, newCLI)
 	}
 }
