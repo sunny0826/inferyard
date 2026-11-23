@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.0.10
+
+- fix(studio): deduplicate PolyStrata preflight errors, localize failure stages, and fix notification and action copy (#195)
+- feat(studio): support safe uninstall and disk cleanup for managed PolyStrata installations and model packs (#194)
+- fix(studio): deduplicate PolyStrata GGUF/config models, improve display names, and auto-select for benchmark (#193)
+- feat(cli,studio): unify PolyStrata 4-stage progress and recovery actions (#192)
+- feat(studio): redesign starter card and PolyStrata setup drawer (#191)
+- fix(cli,studio): pin PolyStrata source integrity (SHA-256/size) and refine proxy/mirror routing (#190)
+- fix(studio): validate CLI version, upgrade outdated CLI, and classify progress_version mismatch (#188)
+- fix(cli): align PolyStrata disk estimation and surface lightweight alternatives (#189)
+- fix(cli,studio): decouple PolyStrata venv from Python 3.15 and align Linux preflight (#186)
+
 ## 0.0.9
 
 - feat(studio): add automatic update discovery and one-click in-app update (#177)
