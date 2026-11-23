@@ -222,6 +222,9 @@ func (s *viewState) deviceRecommendationCard(c *ui.Context, rec core.StarterReco
 	card(c, "推荐配置", func() {
 		if rec.Status == "blocked" {
 			deviceRow(c, "状态", deviceLabel(rec.Reason))
+			if notes := localizedDeviceNotes(rec.Notes); len(notes) > 0 {
+				deviceRow(c, "提示", strings.Join(notes, "；"))
+			}
 			return
 		}
 		engineText := starterEngineLabel(rec.Engine)
@@ -238,6 +241,12 @@ func (s *viewState) deviceRecommendationCard(c *ui.Context, rec core.StarterReco
 		}
 		if rec.EstimatedDownloadBytes > 0 {
 			deviceRow(c, "预计下载", formatDownloadBytes(rec.EstimatedDownloadBytes))
+		}
+		if rec.Reason != "" && rec.Reason != "polystrata_hardware_fit" {
+			deviceRow(c, "说明", deviceLabel(rec.Reason))
+		}
+		if notes := localizedDeviceNotes(rec.Notes); len(notes) > 0 {
+			deviceRow(c, "提示", strings.Join(notes, "；"))
 		}
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			button(c, "前往下载").OnClick(func() { s.selected = "downloads" })

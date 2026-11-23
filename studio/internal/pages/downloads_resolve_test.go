@@ -73,14 +73,17 @@ func clickLastSegmented(t *testing.T, tt *ui.Tester, label string) {
 	tt.Frame()
 }
 
-func TestStarterDownloadButtonVisibilityAndSecondaryStyle(t *testing.T) {
+func TestStarterDownloadButtonVisibilityAndPrimaryHierarchy(t *testing.T) {
 	s := testState()
+	st := s.ensureDownloadsUI()
+	st.hostPlatform = "darwin/arm64"
+	st.selectedRelease["llama-cpp"] = "llama-cpp-prism-b10743"
 	s.progress.NextAction = "prepare_candidate"
 	var accent ui.Color
 	tt := ui.NewTester(func(c *ui.Context) {
 		accent = c.Theme().Accent
 		s.downloadsPageView(c)
-	}, 1120, 2400)
+	}, 1120, 2600)
 
 	if core.DefaultEngineURL() != "" && core.DefaultModelURL() != "" {
 		if !tt.HasText("推荐组合") {
@@ -90,8 +93,17 @@ func TestStarterDownloadButtonVisibilityAndSecondaryStyle(t *testing.T) {
 		if !found {
 			t.Fatalf("starter button missing when both assets missing: %v", tt.Texts())
 		}
-		if filled {
-			t.Fatal("starter button must remain secondary (not primary filled)")
+		if !filled {
+			t.Fatal("starter button must use primaryButton styling when visible")
+		}
+		for _, rowBtn := range []string{"安装 · polystrata", "安装 · llama-cpp"} {
+			rowFilled, rowFound := buttonFill(tt, rowBtn, accent)
+			if !rowFound {
+				t.Fatalf("missing engine row button %q: %v", rowBtn, tt.Texts())
+			}
+			if rowFilled {
+				t.Fatalf("engine row button %q must remain secondary while starter card is visible", rowBtn)
+			}
 		}
 		stub := &resolvePreviewStub{}
 		s.preview = stub

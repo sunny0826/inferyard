@@ -314,19 +314,30 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 		return existing, nil
 	}
 	resolvedPrev, resolveErr := Resolve(root, prevOutDir)
-	inUse := false
+	activeWriter := false
+	hasDone := false
 	for _, other := range s.downloads {
-		if other.Task.OutDir == resolvedPrev && (other.Task.State == "downloading" || other.Task.State == "done") {
-			inUse = true
+		if other.Task.OutDir != resolvedPrev {
+			continue
+		}
+		if other.Task.State == "downloading" {
+			activeWriter = true
 			break
+		}
+		if other.Task.State == "done" {
+			hasDone = true
 		}
 	}
 	canReuse, partBytes := false, int64(0)
-	if resolveErr == nil && !inUse {
+	if resolveErr == nil && !activeWriter {
 		if kind == "polystrata" {
-			info, statErr := os.Lstat(resolvedPrev)
-			canReuse = os.IsNotExist(statErr) || (statErr == nil && info.Mode()&os.ModeSymlink == 0 && info.IsDir())
-		} else {
+			if hasDone {
+				canReuse = isManagedPolystrataDir(root, u, resolvedPrev, sourceURL)
+			} else {
+				info, statErr := os.Lstat(resolvedPrev)
+				canReuse = os.IsNotExist(statErr) || (statErr == nil && info.Mode()&os.ModeSymlink == 0 && info.IsDir())
+			}
+		} else if !hasDone {
 			canReuse, partBytes = inspectResumeDirectory(resolvedPrev)
 		}
 	}
@@ -334,6 +345,11 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	var resume bool
 	if canReuse && ValidDownloadName(prevOutName) {
 		outName, outDir, resume = prevOutName, resolvedPrev, true
+		if kind == "polystrata" && strings.TrimSpace(prevDataDir) == "" {
+			if saved := existingPolystrataDataDir(outDir); saved != "" {
+				prevDataDir = saved
+			}
+		}
 	} else {
 		configured := u.ModelDownloadName
 		if kind == "engine" {

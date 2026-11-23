@@ -10,22 +10,24 @@ import (
 )
 
 type downloadsUIState struct {
-	activeTab             int
-	hostPlatform          string
-	selectedRelease       map[string]string
-	selectedPlatform      map[string]string
-	selectedBuild         map[string]string
-	drawerStableOnly      bool
-	engineDrawerOpen      bool
-	engineDrawerFamilyID  string
-	modelSource           string
-	polystrataModelSource string
-	starterChoice         int
-	modelDrawerOpen       bool
-	modelDrawerID         string
-	customEngineURL       string
-	customModelURL        string
-	customModelResolve    *modelResolveState
+	activeTab               int
+	hostPlatform            string
+	selectedRelease         map[string]string
+	selectedPlatform        map[string]string
+	selectedBuild           map[string]string
+	drawerStableOnly        bool
+	engineDrawerOpen        bool
+	engineDrawerFamilyID    string
+	polystrataDrawerModelID string
+	modelSource             string
+	polystrataModelSource   string
+	starterChoice           int
+	starterAltOpen          bool
+	modelDrawerOpen         bool
+	modelDrawerID           string
+	customEngineURL         string
+	customModelURL          string
+	customModelResolve      *modelResolveState
 }
 
 func (s *viewState) ensureDownloadsUI() *downloadsUIState {
@@ -92,6 +94,24 @@ func (st *downloadsUIState) openModelDrawer(entryID string) {
 	st.modelDrawerID = entryID
 }
 
+func (st *downloadsUIState) setDirectModelSource(source string) {
+	if source != "modelscope" {
+		source = "huggingface"
+	}
+	st.modelSource = source
+	st.polystrataModelSource = source
+}
+
+func (st *downloadsUIState) setPolystrataModelSource(source string) {
+	if source != "modelscope" && source != "huggingface" {
+		source = "auto"
+	}
+	st.polystrataModelSource = source
+	if source == "modelscope" || source == "huggingface" {
+		st.modelSource = source
+	}
+}
+
 func (s *viewState) downloadsPageView(c *ui.Context) {
 	st := s.ensureDownloadsUI()
 	t := tokens(c)
@@ -138,6 +158,9 @@ func (s *viewState) downloadActive(kind string) bool {
 }
 
 func (s *viewState) downloadAction(c *ui.Context, kind, label string) ui.Element {
+	if kind == "engine" && s.starterCardVisible() {
+		return button(c, label)
+	}
 	if s.downloadPrimaryKind() == kind {
 		return primaryButton(c, label)
 	}

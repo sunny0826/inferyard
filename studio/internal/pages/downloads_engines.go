@@ -118,6 +118,10 @@ func (s *viewState) engineFamilyRow(c *ui.Context, fam core.EngineFamilyCatalog,
 		})
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 			outlineButton(c, "版本与地址").Label("版本与地址 · " + fam.ID).OnClick(func() {
+				if fam.ID == "polystrata" {
+					s.openPolystrataConfigDrawer(fam.ID, rel.ID, build.Platform, build.ID)
+					return
+				}
 				st.openEngineDrawer(fam.ID, rel.ID, build.Platform, build.ID)
 			})
 			switch {
@@ -125,8 +129,12 @@ func (s *viewState) engineFamilyRow(c *ui.Context, fam core.EngineFamilyCatalog,
 				if s.downloadActive("polystrata") {
 					button(c, "安装中…").Label("安装 · " + fam.ID).Disabled(true)
 				} else {
-					s.downloadAction(c, "engine", "一键安装").Label("安装 · " + fam.ID).Disabled(s.busy).OnClick(func() {
-						s.acquirePolystrataSetup(s.defaultPolystrataSetupRequest())
+					actionLabel := "配置并安装"
+					if installed {
+						actionLabel = "安装新模型"
+					}
+					s.downloadAction(c, "engine", actionLabel).Label("安装 · " + fam.ID).Disabled(s.busy).OnClick(func() {
+						s.openPolystrataConfigDrawer(fam.ID, rel.ID, build.Platform, build.ID)
 					})
 				}
 			case build.CanDirectDownloadOn(hostPlatform):

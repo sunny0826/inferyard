@@ -136,13 +136,26 @@ func TestPolystrataRound1ReviewRegressions(t *testing.T) {
 	tt.Frame()
 	click(t, tt, "切换备选方案（1）")
 	click(t, tt, "使用此方案 · polystrata-qwen38-coder-iq1-m")
+	if st.starterAltOpen {
+		t.Fatal("expected alternatives fold to auto-collapse after selecting alternative")
+	}
 	click(t, tt, "安装 · polystrata")
+	if len(stub.intents) != 0 {
+		t.Fatalf("engine row must open config drawer instead of blind-installing: %#v", stub.intents)
+	}
+	if !st.engineDrawerOpen || !tt.HasText("Qwen3.8-Flash-Next Coder (IQ1_M)") {
+		t.Fatalf("expected PolyStrata drawer open with selected alternative pre-populated: open=%v texts=%v", st.engineDrawerOpen, tt.Texts())
+	}
+	click(t, tt, "安装此版本 · polystrata")
+	if st.engineDrawerOpen {
+		t.Fatal("expected PolyStrata drawer to close automatically after confirming setup")
+	}
 	if len(stub.intents) != 1 {
-		t.Fatalf("expected 1 setup intent, got %#v", stub.intents)
+		t.Fatalf("expected 1 setup intent after drawer confirm, got %#v", stub.intents)
 	}
 	gotReq := stub.intents[0].(previewPolystrataSetup).req
 	if gotReq.Family != "coder" || gotReq.Model != "IQ1_M" {
-		t.Fatalf("engine row ignored selected PolyStrata alternative: %+v", gotReq)
+		t.Fatalf("engine row drawer ignored selected PolyStrata alternative: %+v", gotReq)
 	}
 
 	// 2. llama.cpp fallback selects Windows CUDA build on windows/amd64 + cuda, and exposes Linux guidance

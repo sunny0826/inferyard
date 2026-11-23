@@ -125,21 +125,36 @@ func (s *Service) CreatePolystrataSetup(req PolystrataSetupRequest) (DownloadTas
 		}
 		return DownloadTask{}, Conflict("polystrata_setup_active")
 	}
-	outName, outDir, failure := s.downloadOutputLocked(root, req.OutName, "polystrata")
-	if failure != nil {
-		return DownloadTask{}, failure
+	var outName, outDir string
+	var resume bool
+	sourceURL := strings.TrimSpace(req.Source)
+	if sourceURL == "" {
+		sourceURL = polystrataDefaultSourceURL
+	}
+	if strings.TrimSpace(req.OutName) == "" {
+		if existingName, existingDir, ok := existingManagedPolystrataDir(root, u, sourceURL); ok {
+			outName, outDir, resume = existingName, existingDir, true
+		}
+	}
+	if outDir == "" {
+		var failure *ApiError
+		outName, outDir, failure = s.downloadOutputLocked(root, req.OutName, "polystrata")
+		if failure != nil {
+			return DownloadTask{}, failure
+		}
 	}
 	dataDir := strings.TrimSpace(req.DataDir)
+	if dataDir == "" && resume {
+		if saved := existingPolystrataDataDir(outDir); saved != "" {
+			dataDir = saved
+		}
+	}
 	if dataDir == "" {
 		if u.ModelsRoot != nil && strings.TrimSpace(*u.ModelsRoot) != "" {
 			dataDir = filepath.Join(*u.ModelsRoot, "polystrata-data")
 		} else {
 			dataDir = filepath.Join(filepath.Dir(outDir), "PolyStrata-data")
 		}
-	}
-	sourceURL := strings.TrimSpace(req.Source)
-	if sourceURL == "" {
-		sourceURL = polystrataDefaultSourceURL
 	}
 	reqCopy := req
 	ctx, cancel := context.WithCancel(s.ctx)
@@ -157,6 +172,7 @@ func (s *Service) CreatePolystrataSetup(req PolystrataSetupRequest) (DownloadTas
 			StartedAt:   now(),
 		},
 		cancel:     cancel,
+		resume:     resume,
 		polystrata: &reqCopy,
 		dataDir:    dataDir,
 	}
@@ -164,6 +180,120 @@ func (s *Service) CreatePolystrataSetup(req PolystrataSetupRequest) (DownloadTas
 	s.Bus.Publish("download.state", map[string]any{"task": clone(d.Task)})
 	go s.runPolystrataSetup(ctx, *p.Path, d)
 	return clone(d.Task), nil
+}
+
+func isRegularNonSymlink(path string) bool {
+	info, err := os.Lstat(path)
+	return err == nil && info.Mode().IsRegular()
+}
+
+func existingPolystrataDataDir(dir string) string {
+	for _, rel := range []string{
+		filepath.Join(".inferyard-config", "polystrata", "settings.json"),
+		filepath.Join(".inferyard-config", "PolyStrata", "settings.json"),
+		"installation.json",
+	} {
+		candidate := filepath.Join(dir, rel)
+		if !isRegularNonSymlink(candidate) {
+			continue
+		}
+		raw, err := os.ReadFile(candidate)
+		if err != nil {
+			continue
+		}
+		var payload struct {
+			DataDir string `json:"data_dir"`
+		}
+		if json.Unmarshal(raw, &payload) != nil {
+			continue
+		}
+		trimmed := strings.TrimSpace(payload.DataDir)
+		if trimmed != "" && filepath.IsAbs(trimmed) {
+			return trimmed
+		}
+	}
+	return ""
+}
+
+func isManagedPolystrataDir(root string, u UserSettings, dir, sourceURL string) bool {
+	if sourceURL != polystrataDefaultSourceURL || len(u.EngineInstallations) == 0 {
+		return false
+	}
+	leafInfo, err := os.Lstat(dir)
+	if err != nil || !leafInfo.IsDir() || leafInfo.Mode()&os.ModeSymlink != 0 {
+		return false
+	}
+	canonicalRoot, err := canonical(root)
+	if err != nil {
+		canonicalRoot = filepath.Clean(root)
+	}
+	targetDir, err := canonical(dir)
+	if err != nil {
+		targetDir = filepath.Clean(dir)
+	}
+	if filepath.Dir(targetDir) != canonicalRoot {
+		return false
+	}
+	registered := false
+	for _, rawInst := range u.EngineInstallations {
+		instPath, err := canonical(rawInst)
+		if err != nil {
+			instPath = filepath.Clean(rawInst)
+		}
+		if filepath.Dir(instPath) == targetDir {
+			registered = true
+			break
+		}
+	}
+	if !registered {
+		return false
+	}
+	dirInfo, err := os.Lstat(targetDir)
+	if err != nil || !dirInfo.IsDir() || dirInfo.Mode()&os.ModeSymlink != 0 {
+		return false
+	}
+	if !isRegularNonSymlink(filepath.Join(targetDir, "setup.py")) ||
+		!isRegularNonSymlink(filepath.Join(targetDir, "serve", "server.py")) ||
+		!isRegularNonSymlink(filepath.Join(targetDir, "installation.json")) {
+		return false
+	}
+	receiptPath := filepath.Join(targetDir, ".inferyard-runtime.json")
+	if !isRegularNonSymlink(receiptPath) {
+		return false
+	}
+	rawReceipt, err := os.ReadFile(receiptPath)
+	if err != nil {
+		return false
+	}
+	var receipt struct {
+		Definition    string `json:"definition"`
+		Source        string `json:"source"`
+		ArchiveSHA256 string `json:"archive_sha256"`
+	}
+	if json.Unmarshal(rawReceipt, &receipt) != nil {
+		return false
+	}
+	return receipt.Definition == "polystrata-runtime.v1" &&
+		receipt.Source == sourceURL &&
+		receipt.ArchiveSHA256 == polystrataDefaultSourceSHA256
+}
+
+func existingManagedPolystrataDir(root string, u UserSettings, sourceURL string) (string, string, bool) {
+	if sourceURL != polystrataDefaultSourceURL || len(u.EngineInstallations) == 0 {
+		return "", "", false
+	}
+	for _, rawInst := range u.EngineInstallations {
+		dir := filepath.Dir(rawInst)
+		if !isManagedPolystrataDir(root, u, dir, sourceURL) {
+			continue
+		}
+		canonicalDir, err := canonical(dir)
+		if err != nil {
+			canonicalDir = filepath.Clean(dir)
+		}
+		return filepath.Base(canonicalDir), canonicalDir, true
+	}
+	return "", "", false
 }
 
 func polystrataPrepareArgs(outDir, dataDir string, req *PolystrataSetupRequest, resume bool, proxy string) []string {
