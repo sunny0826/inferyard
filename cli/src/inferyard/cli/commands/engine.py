@@ -94,6 +94,11 @@ def add_commands(commands):
         choices=("auto", "huggingface", "modelscope"),
     )
     prepare_ps.add_argument("--gguf-path", dest="gguf_path", type=Path)
+    prepare_ps.add_argument(
+        "--python",
+        dest="polystrata_python",
+        help="explicit Python 3.10-3.13 executable to create PolyStrata's .venv",
+    )
     prepare_ps.add_argument("--source", dest="engine_source_url")
     prepare_ps.add_argument("--expected-sha256")
     prepare_ps.add_argument(

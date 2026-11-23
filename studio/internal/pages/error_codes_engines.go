@@ -75,8 +75,12 @@ func humanLocalEngineCode(code string) (string, bool) {
 		return "PolyStrata 安装已取消。", true
 	case "polystrata_runtime_invalid":
 		return "PolyStrata 运行时环境无效，请重新安装或修复。", true
-	case "polystrata_venv_missing", "polystrata_python_venv_missing":
+	case "polystrata_python_unsupported":
+		return "未找到兼容的 Python（需 3.10–3.13，推荐 3.12）或 uv，请安装后重试。", true
+	case "polystrata_venv_missing":
 		return "缺少 PolyStrata 虚拟环境，请先准备环境。", true
+	case "polystrata_python_venv_missing":
+		return "当前 Python 缺少 venv / ensurepip 模块，无法创建 PolyStrata 虚拟环境。", true
 	case "polystrata_venv_invalid":
 		return "PolyStrata 虚拟环境无效，请重新准备环境。", true
 	case "polystrata_venv_failed":

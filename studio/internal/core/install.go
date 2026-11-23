@@ -74,9 +74,12 @@ func FindCLI() string {
 }
 
 func FindUV(toolsDir string) string {
-	candidates := []string{filepath.Join(toolsDir, uvBinaryName())}
+	candidates := []string{}
 	if p, err := installLookPath(uvBinaryName()); err == nil {
-		candidates = append([]string{p}, candidates...)
+		candidates = append(candidates, p)
+	}
+	if strings.TrimSpace(toolsDir) != "" {
+		candidates = append(candidates, filepath.Join(toolsDir, uvBinaryName()))
 	}
 	if home, err := os.UserHomeDir(); err == nil {
 		candidates = append(candidates,

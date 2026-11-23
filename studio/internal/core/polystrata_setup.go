@@ -200,11 +200,30 @@ func polystrataPrepareArgs(outDir, dataDir string, req *PolystrataSetupRequest, 
 	return args
 }
 
+func (s *Service) polystrataUVDir() string {
+	toolsDir := ""
+	if strings.TrimSpace(s.settingsPath) != "" {
+		toolsDir = filepath.Join(filepath.Dir(s.settingsPath), "tools")
+	}
+	uvPath := FindUV(toolsDir)
+	if uvPath == "" {
+		return ""
+	}
+	uvDir := filepath.Dir(uvPath)
+	if inferyard.PathContainsDir(os.Getenv("PATH"), uvDir) {
+		return ""
+	}
+	return uvDir
+}
+
 func (s *Service) runPolystrataSetup(ctx context.Context, binary string, d *downloadEntry) {
 	defer d.cancel()
 	var streamSeen atomic.Bool
 	args := polystrataPrepareArgs(d.Task.OutDir, d.dataDir, d.polystrata, d.resume, s.downloadProxy())
 	execCtx := inferyard.WithDrainGrace(ctx, 8*time.Second)
+	if uvDir := s.polystrataUVDir(); uvDir != "" {
+		execCtx = inferyard.WithPrependedPath(execCtx, uvDir)
+	}
 	out, execErr := s.execStream(execCtx, s.newStderrProgressHandler(d, &streamSeen), binary, args...)
 
 	if out.ExitCode == inferyard.ExitComplete && execErr == nil && ctx.Err() == nil {

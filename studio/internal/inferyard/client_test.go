@@ -93,3 +93,41 @@ func TestCancellationProcess(t *testing.T) {
 	fmt.Println("interrupted")
 	os.Exit(130)
 }
+
+func TestPrependedPathAndMerge(t *testing.T) {
+	ctx := WithPrependedPath(context.Background(), "/tmp/tools-a", " ", "/tmp/tools-a", "/tmp/tools-b")
+	got := PrependedPaths(ctx)
+	want := []string{filepath.Clean("/tmp/tools-a"), filepath.Clean("/tmp/tools-b")}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("PrependedPaths = %v, want %v", got, want)
+	}
+
+	sep := string(os.PathListSeparator)
+	merged := MergePrependedPath(
+		[]string{"FOO=bar", "PATH=/usr/bin" + sep + "/tmp/tools-b"},
+		got,
+	)
+	var pathVal string
+	for _, entry := range merged {
+		if strings.HasPrefix(entry, "PATH=") {
+			pathVal = strings.TrimPrefix(entry, "PATH=")
+		}
+	}
+	wantPath := strings.Join([]string{
+		filepath.Clean("/tmp/tools-a"),
+		filepath.Clean("/tmp/tools-b"),
+		filepath.Clean("/usr/bin"),
+	}, sep)
+	if pathVal != wantPath {
+		t.Fatalf("merged PATH = %q, want %q", pathVal, wantPath)
+	}
+
+	if !PathContainsDir(pathVal, filepath.Clean("/tmp/tools-a")+"/") {
+		t.Fatalf("expected PathContainsDir to match cleaned entry in %q", pathVal)
+	}
+
+	noPathMerged := MergePrependedPath([]string{"FOO=bar"}, []string{"/tmp/tools-a"})
+	if !strings.HasSuffix(strings.Join(noPathMerged, "\n"), "PATH="+filepath.Clean("/tmp/tools-a")) {
+		t.Fatalf("expected PATH appended when absent, got %v", noPathMerged)
+	}
+}
