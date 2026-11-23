@@ -215,11 +215,14 @@ func (s *viewState) engineDrawerInstallSection(
 	t := tokens(c)
 	var polystrataSelected starterOption
 	var hasPolystrataOpt bool
-	if family.ID == "polystrata" && build.AcquireMode == core.EngineAcquireManagedSetup && (build.Platform == hostPlatform || build.Platform == "any") {
-		polystrataSelected, hasPolystrataOpt = s.polystrataDrawerSetupSection(c, st, hostPlatform)
-	}
 	note := strings.TrimSpace(build.Note)
 	cmd := strings.TrimSpace(build.InstallCommand)
+	if family.ID == "polystrata" && build.AcquireMode == core.EngineAcquireManagedSetup && (build.Platform == hostPlatform || build.Platform == "any") {
+		polystrataSelected, hasPolystrataOpt = s.polystrataDrawerSetupSection(c, st, hostPlatform)
+		if hasPolystrataOpt {
+			cmd = polystrataCLICommand(build, polystrataRequestForOption(polystrataSelected, st.polystrataModelSource))
+		}
+	}
 	if note != "" || cmd != "" {
 		heading(c, "安装说明", 3)
 		if note != "" {
@@ -245,11 +248,11 @@ func (s *viewState) engineDrawerInstallSection(
 				if s.isEngineFamilyInstalled(family.ID) {
 					confirmLabel = "安装所选模型"
 				}
-				primaryButton(c, confirmLabel).Label("安装此版本 · " + family.ID).Disabled(s.busy).OnClick(func() {
-					req := s.defaultPolystrataSetupRequest()
-					if hasPolystrataOpt {
-						req = polystrataRequestForOption(polystrataSelected, st.polystrataModelSource)
+				primaryButton(c, confirmLabel).Label("安装此版本 · " + family.ID).Disabled(s.busy || !hasPolystrataOpt).OnClick(func() {
+					if !hasPolystrataOpt {
+						return
 					}
+					req := polystrataRequestForOption(polystrataSelected, st.polystrataModelSource)
 					st.engineDrawerOpen = false
 					s.acquirePolystrataSetup(req)
 				})

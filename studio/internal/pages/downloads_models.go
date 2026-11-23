@@ -32,10 +32,14 @@ func (s *viewState) downloadsModelsTab(c *ui.Context) {
 		applyMaterial(c, ui.Column(c).MinWidth(0).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
 			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Row(c).Grow(1).MinWidth(0).Children(func() { heading(c, "模型", 2) })
+				prev := st.modelSource
 				segmentedControl(c, "下载源", &st.modelSource, []components.NativeSelectOption[string]{
 					{Value: "huggingface", Label: "HuggingFace"},
 					{Value: "modelscope", Label: "ModelScope"},
 				})
+				if st.modelSource != prev {
+					st.setDirectModelSource(st.modelSource)
+				}
 			})
 			if len(supported) == 0 {
 				ui.Text(c, "当前平台暂无预设模型。").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
@@ -218,10 +222,14 @@ func (s *viewState) downloadsModelDrawer(c *ui.Context) {
 		ui.Scroll(c.Key("downloads-model-drawer-scroll")).FillWidth().Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
 				if entry.MirrorURL != "" {
+					prev := st.modelSource
 					segmentedControl(c, "模型详情下载源", &st.modelSource, []components.NativeSelectOption[string]{
 						{Value: "huggingface", Label: "HuggingFace"},
 						{Value: "modelscope", Label: modelCatalogMirrorLabel(entry)},
 					})
+					if st.modelSource != prev {
+						st.setDirectModelSource(st.modelSource)
+					}
 				}
 				ui.Column(c).FillWidth().Gap(t.Density.Tight).Children(func() {
 					keyValueRow(c, "格式", core.ModelFormatLabel(modelCatalogFormat(entry)), false)

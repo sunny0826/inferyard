@@ -94,6 +94,24 @@ func (st *downloadsUIState) openModelDrawer(entryID string) {
 	st.modelDrawerID = entryID
 }
 
+func (st *downloadsUIState) setDirectModelSource(source string) {
+	if source != "modelscope" {
+		source = "huggingface"
+	}
+	st.modelSource = source
+	st.polystrataModelSource = source
+}
+
+func (st *downloadsUIState) setPolystrataModelSource(source string) {
+	if source != "modelscope" && source != "huggingface" {
+		source = "auto"
+	}
+	st.polystrataModelSource = source
+	if source == "modelscope" || source == "huggingface" {
+		st.modelSource = source
+	}
+}
+
 func (s *viewState) downloadsPageView(c *ui.Context) {
 	st := s.ensureDownloadsUI()
 	t := tokens(c)

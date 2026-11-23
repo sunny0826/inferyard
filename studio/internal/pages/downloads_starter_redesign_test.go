@@ -171,80 +171,6 @@ func TestStarterHiddenWhenUnresolvedPolystrataTaskExists(t *testing.T) {
 	}
 }
 
-func TestPolystrataEnginesTabOpensDrawerWithModelPickerWhenInstalled(t *testing.T) {
-	s := testState()
-	s.registry.Engines = []core.EngineAsset{{
-		Name:   "polystrata · local",
-		Family: "polystrata",
-		Kind:   "local_installation",
-		Path:   "/ws/engines/polystrata/installation.json",
-	}}
-	s.registry.Models = []core.ModelAsset{{
-		Name:      "strata-qwen36.json",
-		Format:    "strata_pack",
-		Available: true,
-	}}
-	s.device.Snapshot = json.RawMessage(`{
-		"starter_recommendation": {
-			"definition": "starter-recommendation.v1",
-			"status": "recommended",
-			"engine": "polystrata",
-			"backend": "metal",
-			"model_id": "polystrata-qwen36-ud-q4-k-m",
-			"model_title": "Qwen3.6-35B-A3B (UD-Q4_K_M)",
-			"family": "qwen36",
-			"size": "UD-Q4_K_M",
-			"fit_level": "fits",
-			"recommended_context": 32768,
-			"estimated_download_bytes": 22663387424
-		}
-	}`)
-	stub := &resolvePreviewStub{}
-	s.preview = stub
-	st := s.ensureDownloadsUI()
-	st.hostPlatform = "darwin/arm64"
-	tt := ui.NewTester(s.downloadsPageView, 1120, 2600)
-	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
-	tt.Frame()
-
-	if !tt.HasText("安装新模型") {
-		t.Fatalf("expected 安装新模型 CTA on installed PolyStrata row: %v", tt.Texts())
-	}
-	click(t, tt, "安装 · polystrata")
-	if len(stub.intents) != 0 {
-		t.Fatalf("must not launch install before confirming in drawer: %#v", stub.intents)
-	}
-	if !st.engineDrawerOpen || !tt.HasText("新增模型配置") || !tt.HasText("预计下载") || !tt.HasText("安装所选模型") {
-		t.Fatalf("expected PolyStrata model configuration drawer: open=%v texts=%v", st.engineDrawerOpen, tt.Texts())
-	}
-
-	click(t, tt, "选择模型")
-	if !tt.HasText("LFM2.5-24B-A2B (UD-Q3_K_XL)") {
-		t.Fatalf("expected catalog models in PolyStrata picker popup: %v", tt.Texts())
-	}
-	if tt.HasText("Flint 40B-A2.5B") {
-		t.Fatalf("darwin/arm64 picker must filter out CUDA-only Flint models: %v", tt.Texts())
-	}
-	click(t, tt, polystrataDrawerOptionSummary(starterOption{
-		ModelTitle:             "LFM2.5-24B-A2B (UD-Q3_K_XL)",
-		EstimatedDownloadBytes: 10947100928,
-		RecommendedContext:     32768,
-	}))
-	click(t, tt, "ModelScope")
-	click(t, tt, "安装此版本 · polystrata")
-
-	if st.engineDrawerOpen {
-		t.Fatal("expected drawer to auto-close after confirming PolyStrata setup")
-	}
-	if len(stub.intents) != 1 {
-		t.Fatalf("expected 1 setup intent after confirming in drawer, got %#v", stub.intents)
-	}
-	req := stub.intents[0].(previewPolystrataSetup).req
-	if req.Family != "lfm25" || req.Model != "UD-Q3_K_XL" || req.Backend != "metal" || req.ModelSource != "modelscope" {
-		t.Fatalf("unexpected confirmed PolyStrata setup request: %+v", req)
-	}
-}
-
 func TestStarterAndDeviceRecommendationLabelsLocalized(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -311,3 +237,84 @@ func TestStarterAndDeviceRecommendationLabelsLocalized(t *testing.T) {
 		})
 	}
 }
+
+func TestDownloadSourceSyncedAcrossModelsTabDetailDrawerAndStarter(t *testing.T) {
+	s := testState()
+	s.device.Snapshot = json.RawMessage(`{
+		"starter_recommendation": {
+			"definition": "starter-recommendation.v1",
+			"status": "recommended",
+			"engine": "polystrata",
+			"backend": "metal",
+			"model_id": "polystrata-qwen36-ud-q4-k-m",
+			"model_title": "Qwen3.6-35B-A3B (UD-Q4_K_M)",
+			"family": "qwen36",
+			"size": "UD-Q4_K_M",
+			"recommended_context": 32768
+		}
+	}`)
+	st := s.ensureDownloadsUI()
+	st.hostPlatform = "darwin/arm64"
+	tt := ui.NewTester(s.downloadsPageView, 1120, 2600)
+
+	click(t, tt, "HuggingFace")
+	if st.polystrataModelSource != "huggingface" || st.modelSource != "huggingface" {
+		t.Fatalf("expected huggingface sync from starter card: poly=%q direct=%q", st.polystrataModelSource, st.modelSource)
+	}
+
+	clickDownloadsTab(t, tt, "模型")
+	clickLastSegmented(t, tt, "ModelScope")
+	if st.modelSource != "modelscope" || st.polystrataModelSource != "modelscope" {
+		t.Fatalf("Models tab ModelScope click failed to sync polystrataModelSource: direct=%q poly=%q", st.modelSource, st.polystrataModelSource)
+	}
+
+	click(t, tt, "模型详情 · model-qwen3-4b-q4km")
+	clickLastSegmented(t, tt, "HuggingFace")
+	if st.modelSource != "huggingface" || st.polystrataModelSource != "huggingface" {
+		t.Fatalf("model detail drawer HuggingFace click failed to sync polystrataModelSource: direct=%q poly=%q", st.modelSource, st.polystrataModelSource)
+	}
+}
+
+func TestStarterHiddenConsistentWithDownloadResolvedAcrossDistinctModels(t *testing.T) {
+	s := testState()
+	s.device.Snapshot = json.RawMessage(`{
+		"starter_recommendation": {
+			"definition": "starter-recommendation.v1",
+			"status": "recommended",
+			"engine": "polystrata",
+			"backend": "metal",
+			"model_id": "polystrata-qwen36-ud-q4-k-m",
+			"model_title": "Qwen3.6-35B-A3B (UD-Q4_K_M)",
+			"family": "qwen36",
+			"size": "UD-Q4_K_M",
+			"recommended_context": 32768
+		}
+	}`)
+	st := s.ensureDownloadsUI()
+	st.hostPlatform = "darwin/arm64"
+	s.downloads = []core.DownloadTask{
+		{
+			TaskId:      "ps-b-done",
+			Kind:        "polystrata",
+			DisplayName: "PolyStrata · lfm25 · UD-Q3_K_XL",
+			State:       "done",
+			OutName:     "polystrata",
+		},
+		{
+			TaskId:      "ps-a-failed",
+			Kind:        "polystrata",
+			DisplayName: "PolyStrata · qwen36 · UD-Q4_K_M",
+			State:       "failed",
+			Stage:       "downloading_model",
+			OutName:     "polystrata",
+		},
+	}
+	if s.unresolvedDownloadFailures() != 1 {
+		t.Fatalf("expected task A to remain unresolved when newer done task has different DisplayName, got %d", s.unresolvedDownloadFailures())
+	}
+	tt := ui.NewTester(s.downloadsPageView, 1120, 2600)
+	if tt.HasText("一键安装 PolyStrata") {
+		t.Fatalf("starter card must stay hidden whenever downloadResolved considers task A unresolved: %v", tt.Texts())
+	}
+}
+

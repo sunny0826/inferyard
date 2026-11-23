@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -134,6 +135,9 @@ func (s *viewState) polystrataDrawerOptions(hostPlatform string) []starterOption
 		seen[opt.ModelID] = true
 		out = append(out, opt)
 	}
+	if rec.FromSnapshot {
+		return out
+	}
 
 	backend := polystrataDrawerBackend(rec, hostPlatform)
 	for _, preset := range polystrataCatalogPresets {
@@ -196,18 +200,70 @@ func polystrataDrawerOptionSummary(opt starterOption) string {
 	return joinParts(parts)
 }
 
+func polystrataCLICommand(build core.EnginePlatformBuild, req core.PolystrataSetupRequest) string {
+	base := strings.TrimSpace(build.InstallCommand)
+	if base == "" {
+		return ""
+	}
+	parts := strings.Fields(base)
+	if backend := strings.TrimSpace(req.Backend); backend != "" {
+		replaced := false
+		for i := 0; i < len(parts)-1; i++ {
+			if parts[i] == "--backend" {
+				parts[i+1] = backend
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			parts = append(parts, "--backend", backend)
+		}
+	}
+	if family := strings.TrimSpace(req.Family); family != "" {
+		parts = append(parts, "--family", family)
+	}
+	if model := strings.TrimSpace(req.Model); model != "" {
+		parts = append(parts, "--model", model)
+	}
+	if req.Context > 0 {
+		parts = append(parts, "--context", strconv.Itoa(req.Context))
+	}
+	if source := strings.TrimSpace(req.ModelSource); source != "" && source != "auto" {
+		parts = append(parts, "--model-source", source)
+	}
+	return strings.Join(parts, " ")
+}
+
 func (s *viewState) polystrataDrawerSetupSection(c *ui.Context, st *downloadsUIState, hostPlatform string) (starterOption, bool) {
 	t := tokens(c)
-	selected, options := s.resolvePolystrataDrawerOption(hostPlatform)
-	if len(options) == 0 {
-		return starterOption{}, false
-	}
+	rec := s.starterRecommendation()
 	installed := s.isEngineFamilyInstalled("polystrata")
 	sectionHeading := "安装配置"
 	if installed {
 		sectionHeading = "新增模型配置"
 	}
 	heading(c, sectionHeading, 3)
+
+	selected, options := s.resolvePolystrataDrawerOption(hostPlatform)
+	if len(options) == 0 {
+		msg := strings.TrimSpace(deviceLabel(rec.Reason))
+		if msg == "" {
+			msg = "当前设备硬件暂不满足 PolyStrata 运行条件。"
+		}
+		if notes := localizedDeviceNotes(rec.Notes); len(notes) > 0 {
+			msg += "（" + strings.Join(notes, "；") + "）"
+		}
+		noticeBanner(c, noticeBannerOptions{
+			Kind:    stateWarning,
+			Size:    bannerCompact,
+			Message: msg,
+		})
+		return starterOption{}, false
+	}
+
+	if !rec.FromSnapshot {
+		ui.Text(c, deviceLabel("device_snapshot_unavailable")+"，以下为当前平台可选模型。").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+	}
 
 	chosenID := selected.ModelID
 	ui.Box(c.Key("polystrata-drawer-model-select")).Children(func() {
@@ -247,9 +303,6 @@ func (s *viewState) polystrataDrawerSetupSection(c *ui.Context, st *downloadsUIS
 				badge(c, "预计下载 "+formatDownloadBytes(selected.EstimatedDownloadBytes), stateNeutral, badgeOptions{Style: badgeSoft, Size: sizeSM})
 			}
 		})
-		if installed {
-			ui.Text(c, "将复用当前受管 PolyStrata 环境安装所选模型。").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-		}
 	})
 
 	ui.Row(c.Key("polystrata-drawer-source-row")).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
@@ -260,8 +313,8 @@ func (s *viewState) polystrataDrawerSetupSection(c *ui.Context, st *downloadsUIS
 			{Value: "modelscope", Label: "ModelScope"},
 			{Value: "huggingface", Label: "HuggingFace"},
 		})
-		if st.polystrataModelSource != prev && (st.polystrataModelSource == "modelscope" || st.polystrataModelSource == "huggingface") {
-			st.modelSource = st.polystrataModelSource
+		if st.polystrataModelSource != prev {
+			st.setPolystrataModelSource(st.polystrataModelSource)
 		}
 	})
 

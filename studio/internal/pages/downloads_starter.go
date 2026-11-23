@@ -271,15 +271,7 @@ func (s *viewState) hasUnresolvedPolystrataTask() bool {
 		if task.Kind != "polystrata" || (task.State != "failed" && task.State != "cancelled") {
 			continue
 		}
-		resolved := false
-		for j := 0; j < i; j++ {
-			newer := s.downloads[j]
-			if newer.Kind == "polystrata" && (newer.State == "downloading" || newer.State == "done") {
-				resolved = true
-				break
-			}
-		}
-		if !resolved {
+		if !s.downloadResolved(task, i) {
 			return true
 		}
 	}
@@ -431,8 +423,8 @@ func (s *viewState) downloadsStarterCard(c *ui.Context) {
 						{Value: "modelscope", Label: "ModelScope"},
 						{Value: "huggingface", Label: "HuggingFace"},
 					})
-					if st.polystrataModelSource != prev && (st.polystrataModelSource == "modelscope" || st.polystrataModelSource == "huggingface") {
-						st.modelSource = st.polystrataModelSource
+					if st.polystrataModelSource != prev {
+						st.setPolystrataModelSource(st.polystrataModelSource)
 					}
 				})
 			} else {
@@ -443,7 +435,7 @@ func (s *viewState) downloadsStarterCard(c *ui.Context) {
 						{Value: "modelscope", Label: "ModelScope"},
 					})
 					if st.modelSource != prev {
-						st.polystrataModelSource = st.modelSource
+						st.setDirectModelSource(st.modelSource)
 					}
 				})
 			}
