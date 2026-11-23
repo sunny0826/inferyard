@@ -24,11 +24,18 @@ type StatusResponse struct {
 	ActiveDownloads int64          `json:"active_downloads"`
 }
 
+const (
+	ThemeSystem = "system"
+	ThemeLight  = "light"
+	ThemeDark   = "dark"
+)
+
 type UserSettings struct {
 	EngineInstallations []string `json:"engine_installations,omitempty"`
 	ModelDownloadName   string   `json:"model_download_name"`
 	EngineDownloadName  string   `json:"engine_download_name"`
 	DownloadProxy       *string  `json:"download_proxy,omitempty"`
+	Theme               string   `json:"theme,omitempty"`
 	WorkspaceRoot       *string  `json:"workspace_root"`
 	InferyardPath       *string  `json:"inferyard_path"`
 	ResultsRoot         *string  `json:"results_root"`
@@ -45,6 +52,7 @@ type EffectiveSettings struct {
 	ModelsRoot       *string  `json:"models_root"`
 	ExtraModelsRoots []string `json:"extra_models_roots,omitempty"`
 	DownloadProxy    *string  `json:"download_proxy,omitempty"`
+	Theme            string   `json:"theme"`
 	ReportsRoot      *string  `json:"reports_root"`
 }
 

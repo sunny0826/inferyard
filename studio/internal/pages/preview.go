@@ -55,31 +55,51 @@ func newPreviewSession(ctx context.Context) *previewSession {
 	return p
 }
 
+func previewThemeModeString(mode int) string {
+	switch mode {
+	case 1:
+		return core.ThemeLight
+	case 2:
+		return core.ThemeDark
+	default:
+		return core.ThemeSystem
+	}
+}
+
+func previewThemeModeIndex(mode string) int {
+	switch normalizeThemeMode(mode) {
+	case core.ThemeLight:
+		return 1
+	case core.ThemeDark:
+		return 2
+	default:
+		return 0
+	}
+}
+
+func (p *previewSession) syncStateTheme() {
+	if p.state == nil {
+		return
+	}
+	mode := previewThemeModeString(p.themeMode)
+	p.state.themeMode = mode
+	p.state.appliedThemeMode = mode
+	p.state.settings.Settings.Theme = mode
+	p.state.settings.Effective.Theme = mode
+}
+
 func (p *previewSession) syncNativeTheme() {
 	if p.win == nil || p.appliedThemeMode == p.themeMode {
 		return
 	}
 	p.appliedThemeMode = p.themeMode
-	switch p.themeMode {
-	case 1:
-		mygo.Theme.SetSource(mygo.ThemeLight)
-	case 2:
-		mygo.Theme.SetSource(mygo.ThemeDark)
-	default:
-		mygo.Theme.SetSource(mygo.ThemeSystem)
-	}
+	syncNativeTheme(previewThemeModeString(p.themeMode))
 }
 
 func (p *previewSession) themeFor(c *ui.Context) *ui.Theme {
+	p.syncStateTheme()
 	p.syncNativeTheme()
-	switch p.themeMode {
-	case 1:
-		return studioThemeFor(c, false)
-	case 2:
-		return studioThemeFor(c, true)
-	default:
-		return studioTheme(c)
-	}
+	return resolveStudioTheme(c, previewThemeModeString(p.themeMode))
 }
 
 func (p *previewSession) shellOptions() sidebar.ShellOptions {
@@ -104,6 +124,7 @@ func (p *previewSession) loadScene(index int) {
 	s.preview, s.win = p, p.win
 	p.state = s
 	previewScenes[index].apply(s)
+	p.syncStateTheme()
 	p.activateScene()
 }
 
@@ -128,11 +149,16 @@ func (p *previewSession) left(c *ui.Context) {
 					}
 				})
 				button(c, "重置场景").OnClick(func() { p.loadScene(p.scene) })
+				prevTheme := p.themeMode
 				segmentedField(c, "外观预览", "", &p.themeMode, []components.NativeSelectOption[int]{
 					{Label: "系统", Value: 0},
 					{Label: "浅色", Value: 1},
 					{Label: "深灰", Value: 2},
 				})
+				if p.themeMode != prevTheme {
+					p.syncStateTheme()
+					p.syncNativeTheme()
+				}
 				components.Checkbox(c, &p.failNext, "下次操作模拟失败")
 				if p.state.speed != nil && (p.state.speed.selected || p.state.speed.current != nil) {
 					components.Checkbox(c, &p.speedMissingTiming, "下次专项模拟缺测")

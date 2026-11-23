@@ -2,6 +2,7 @@ package pages
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"sync"
 	"time"
@@ -33,8 +34,25 @@ func New(ctx context.Context, service *core.Service, page string) func(core.Even
 	if paths := service.BoundPaths(); paths != nil {
 		title = paths.WindowTitle
 	}
-	s := &viewState{ctx: ctx, service: service, selected: firstOpen(page, service.FirstRun()), windowTitle: title, denied: map[string]bool{}, speed: &speedWorkspace{context: inferyard.ContextSpeed64K}}
-	shell := sidebar.NewShell(pageShellOptions(title, "inferyard-studio-main", s.leftNav, s.contentView))
+	initialTheme := service.Theme()
+	syncNativeTheme(initialTheme)
+	s := &viewState{
+		ctx:              ctx,
+		service:          service,
+		selected:         firstOpen(page, service.FirstRun()),
+		windowTitle:      title,
+		denied:           map[string]bool{},
+		speed:            &speedWorkspace{context: inferyard.ContextSpeed64K},
+		themeMode:        initialTheme,
+		appliedThemeMode: initialTheme,
+		settings: core.SettingsResponse{
+			Settings:  core.UserSettings{Theme: initialTheme},
+			Effective: core.EffectiveSettings{Theme: initialTheme},
+		},
+	}
+	options := pageShellOptions(title, "inferyard-studio-main", s.leftNav, s.contentView)
+	options.Theme = s.themeFor
+	shell := sidebar.NewShell(options)
 	w := shell.Window()
 	s.win = w
 	w.OnClosed(cancel)
@@ -167,6 +185,14 @@ type viewState struct {
 	localUsedPIDs                                                                       map[int64]bool
 	localPendingPIDs                                                                    map[string]int64
 	modelName, tokenEnv, engineName, downloadProxy                                      string
+	themeMode, appliedThemeMode                                                         string
+	themeSaving                                                                         bool
+	themeMu                                                                             sync.Mutex
+	themeWanted                                                                         string
+	themeWantedSeq                                                                      uint64
+	themeWorkerRunning                                                                  bool
+	applyNativeTheme                                                                    func(string)
+	persistTheme                                                                        func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
 	historyTable                                                                        pageTableState
 	downloadsUI                                                                         *downloadsUIState
 	engineCatalog                                                                       *core.EngineCatalogRegistry

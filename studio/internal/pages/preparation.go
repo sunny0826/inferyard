@@ -11,6 +11,7 @@ import (
 )
 
 func (s *viewState) loadSettings(v core.SettingsResponse) {
+	s.loadThemeSettings(v)
 	s.loadPathSettings(v)
 	s.loadDownloadNames(v)
 	s.loadProxySettings(v)
@@ -135,6 +136,7 @@ func (s *viewState) persistSettings(patch map[string]json.RawMessage, submitted 
 }
 func (s *viewState) settingsView(c *ui.Context) {
 	s.header(c, "设置")
+	s.appearanceSettingsView(c)
 	if s.service != nil && s.service.BoundPaths() != nil {
 		p := s.service.BoundPaths()
 		card(c, "开发环境 · 固定路径", func() {
@@ -272,6 +274,8 @@ func (s *viewState) applySettings(value core.SettingsResponse) {
 	if updateForm {
 		s.loadSettings(value)
 		s.settingsLoaded = true
+	} else {
+		s.loadThemeSettings(value)
 	}
 }
 

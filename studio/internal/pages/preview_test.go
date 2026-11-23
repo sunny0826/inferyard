@@ -5,6 +5,8 @@ package pages
 import (
 	"context"
 	"encoding/json"
+	"io/fs"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -286,5 +288,96 @@ func TestPreviewFirstUsePolystrataUnlocksAndRunsBenchmark(t *testing.T) {
 	click(t, tt, "查看报告")
 	if !tt.HasText("各类任务表现") {
 		t.Fatalf("expected report categories after clicking 查看报告: %v", tt.Texts())
+	}
+}
+
+func TestPreviewThemeSwitcherSyncsWithSidebarAndStaysInMemory(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+
+	p := newPreviewSession(context.Background())
+	p.state.selected = "settings"
+	var frameDark bool
+	tt := ui.NewTester(func(c *ui.Context) {
+		c.SetTheme(p.themeFor(c))
+		frameDark = c.Theme().Dark
+		ui.Row(c).Fill().Children(func() {
+			ui.Column(c).Width(205).Shrink(0).Children(func() { p.left(c) })
+			p.content(c)
+		})
+	}, 1120, 2200)
+	tt.Frame()
+
+	// Switching in Settings updates previewSession and themeFor immediately without dirtying Settings.
+	click(t, tt, "深色")
+	if p.themeMode != 2 || p.state.themeMode != core.ThemeDark || p.state.settings.Effective.Theme != core.ThemeDark || !frameDark {
+		t.Fatalf("settings dark switch failed: p.themeMode=%d state=%q eff=%q dark=%v",
+			p.themeMode, p.state.themeMode, p.state.settings.Effective.Theme, frameDark)
+	}
+	if p.state.settingsUnsaved() || p.state.service != nil {
+		t.Fatalf("preview settings should stay clean and service-free: unsaved=%v service=%v",
+			p.state.settingsUnsaved(), p.state.service)
+	}
+
+	// Switching in debug sidebar syncs back to Settings state.
+	click(t, tt, "系统")
+	if p.themeMode != 0 || p.state.themeMode != core.ThemeSystem || p.state.settings.Effective.Theme != core.ThemeSystem {
+		t.Fatalf("sidebar system switch did not sync: p.themeMode=%d state=%q eff=%q",
+			p.themeMode, p.state.themeMode, p.state.settings.Effective.Theme)
+	}
+
+	click(t, tt, "深灰")
+	if p.themeMode != 2 || p.state.themeMode != core.ThemeDark || p.state.settings.Effective.Theme != core.ThemeDark || !frameDark {
+		t.Fatalf("sidebar dark switch did not sync: p.themeMode=%d state=%q eff=%q dark=%v",
+			p.themeMode, p.state.themeMode, p.state.settings.Effective.Theme, frameDark)
+	}
+
+	click(t, tt, "跟随系统")
+	if p.themeMode != 0 || p.state.themeMode != core.ThemeSystem || p.state.settings.Effective.Theme != core.ThemeSystem {
+		t.Fatalf("settings system switch did not sync: p.themeMode=%d state=%q eff=%q",
+			p.themeMode, p.state.themeMode, p.state.settings.Effective.Theme)
+	}
+
+	settingsOnly := ui.NewTester(func(c *ui.Context) {
+		c.SetTheme(p.themeFor(c))
+		p.state.settingsView(c)
+	}, 1120, 1800)
+	settingsOnly.Frame()
+	click(t, settingsOnly, "浅色")
+	if p.themeMode != 1 || p.state.themeMode != core.ThemeLight || p.state.settings.Effective.Theme != core.ThemeLight {
+		t.Fatalf("settings light switch failed: p.themeMode=%d state=%q eff=%q",
+			p.themeMode, p.state.themeMode, p.state.settings.Effective.Theme)
+	}
+
+	// Simulated failure rolls back without losing current preview theme.
+	p.failNext = true
+	click(t, tt, "深色")
+	if p.state.failure == nil || p.themeMode != 1 || p.state.themeMode != core.ThemeLight {
+		t.Fatalf("failed preview switch did not roll back: failure=%+v p.themeMode=%d state=%q",
+			p.state.failure, p.themeMode, p.state.themeMode)
+	}
+
+	// Scene switch preserves active preview theme.
+	p.loadScene(1)
+	if p.state.themeMode != core.ThemeLight || p.state.settings.Effective.Theme != core.ThemeLight {
+		t.Fatalf("scene reload lost active preview theme: state=%q eff=%q",
+			p.state.themeMode, p.state.settings.Effective.Theme)
+	}
+
+	var files []string
+	if err := filepath.WalkDir(home, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			files = append(files, path)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(files) != 0 {
+		t.Fatalf("preview mode wrote real files: %v", files)
 	}
 }
