@@ -110,7 +110,7 @@ func TestPolystrataRegistryDeduplicationNamingSizesAndAvailability(t *testing.T)
 		}
 	}
 	qwen, ok := byName["Qwen3.6-35B-A3B (UD-Q4_K_M)"]
-	if !ok || qwen.Format != "strata_pack" || !qwen.Available || qwen.Deletable {
+	if !ok || qwen.Format != "strata_pack" || !qwen.Available || !qwen.Deletable {
 		t.Fatalf("unexpected deduplicated PolyStrata model: ok=%v asset=%+v", ok, qwen)
 	}
 	if qwen.SizeBytes == nil || *qwen.SizeBytes != 4096+512 {

@@ -62,6 +62,7 @@ type Service struct {
 	rebuilding        bool
 	runs              []*runEntry
 	downloads         []*downloadEntry
+	deletingAssets    int
 	engine            *engineEntry
 	candidateOrigins  map[string]localCandidateOrigin
 	engineTimeout     time.Duration

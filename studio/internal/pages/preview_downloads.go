@@ -185,7 +185,7 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 		if !existing {
 			s.registry.Engines = append(s.registry.Engines, core.EngineAsset{
 				Name: engName, Family: "polystrata", Kind: "local_installation", Source: "模拟引导安装",
-				Path: instPath,
+				Path: instPath, Deletable: true,
 			})
 		}
 		s.registry.DefaultEngine = engName
@@ -212,6 +212,7 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 				SizeBytes: previewValue(int64(22663387424)),
 				Path:      cfgPath,
 				Available: true,
+				Deletable: true,
 			})
 		}
 		s.adoptDownloadedEngine()

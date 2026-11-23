@@ -76,23 +76,23 @@ func installationKey(path string) string {
 
 func installationEntries(paths []string) []registryEntry {
 	entries := []registryEntry{}
-	seen := map[string]bool{}
-	for _, path := range paths {
-		if !filepath.IsAbs(path) || strings.ContainsRune(path, 0) {
+	var seen []string
+	for _, raw := range paths {
+		if !filepath.IsAbs(raw) || strings.ContainsRune(raw, 0) {
 			continue
 		}
-		path, err := canonical(path)
-		if err != nil || seen[path] {
+		path, err := canonical(raw)
+		if err != nil || slices.ContainsFunc(seen, func(prev string) bool { return sameDirectoryEntry(prev, path) }) {
 			continue
 		}
-		seen[path] = true
+		seen = append(seen, path)
 		family := "local"
 		displayName := ""
 		var display struct {
 			Family           string `json:"family"`
 			WorkingDirectory string `json:"working_directory"`
 		}
-		if raw, err := installationBytes(path); err == nil && json.Unmarshal(raw, &display) == nil &&
+		if rawBytes, err := installationBytes(path); err == nil && json.Unmarshal(rawBytes, &display) == nil &&
 			slices.Contains([]string{"llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio", "polystrata"}, display.Family) {
 			family = display.Family
 			if family == "polystrata" {
@@ -101,6 +101,7 @@ func installationEntries(paths []string) []registryEntry {
 		}
 		entries = append(entries, registryEntry{
 			path:         path,
+			rawPath:      raw,
 			installation: path,
 			family:       family,
 			displayName:  displayName,

@@ -299,7 +299,7 @@ func errAssetNotDeletable() *ApiError {
 }
 
 func (s *Service) assetWorkspaceBusyLocked() bool {
-	if s.runsActiveLocked() {
+	if s.orphan != nil || s.deletingAssets > 0 || s.runsActiveLocked() {
 		return true
 	}
 	for _, d := range s.downloads {
@@ -399,6 +399,9 @@ func verifyAssetTreeSafe(target string, isDir bool) error {
 		if walkErr != nil {
 			return walkErr
 		}
+		if !d.IsDir() && isSealedEvidenceMarker(d.Name()) {
+			return errUnsafeAssetTree
+		}
 		if d.Type()&os.ModeSymlink != 0 {
 			resolved, linkErr := filepath.EvalSymlinks(path)
 			if linkErr != nil || !withinCanonicalDir(canonTarget, resolved) || isSealedEvidenceMarker(filepath.Base(resolved)) {
@@ -406,30 +409,66 @@ func verifyAssetTreeSafe(target string, isDir bool) error {
 			}
 			return nil
 		}
-		if !d.IsDir() && isSealedEvidenceMarker(d.Name()) {
-			return errUnsafeAssetTree
-		}
 		return nil
 	})
 }
 
 func (s *Service) DeleteManagedAsset(kind, name string) *ApiError {
+	return s.deleteManagedAssetInternal(kind, name, "", "")
+}
+
+// DeleteManagedAssetVerified deletes a managed asset after confirming its target path and plan
+// fingerprint still match what was inspected for user confirmation.
+func (s *Service) DeleteManagedAssetVerified(kind, name, expectedTargetPath, expectedFingerprint string) *ApiError {
+	return s.deleteManagedAssetInternal(kind, name, expectedTargetPath, expectedFingerprint)
+}
+
+func (s *Service) deleteManagedAssetInternal(kind, name, expectedTargetPath, expectedFingerprint string) *ApiError {
 	if (kind != "model" && kind != "engine") || strings.TrimSpace(name) == "" {
 		return Err("invalid_request")
 	}
 	s.mu.Lock()
 	if s.assetWorkspaceBusyLocked() {
 		s.mu.Unlock()
-		err := Conflict("workspace_busy")
-		err.Message = "当前有任务、下载或模型服务正在运行，请停止后再删除。"
-		return err
+		return workspaceBusyError()
 	}
 	u := clone(s.settings)
 	paths := s.paths
 	s.mu.Unlock()
 
 	reg := s.Registry()
-	assetPath, deletable := s.lookupAsset(kind, name)
+	var assetPath string
+	var deletable bool
+	if kind == "engine" {
+		for _, eng := range reg.Engines {
+			if eng.Name != name {
+				continue
+			}
+			if !eng.Deletable {
+				return errAssetNotDeletable()
+			}
+			if eng.Kind == "local_installation" && eng.Family == "polystrata" {
+				return s.deleteManagedPolystrataEngine(name, eng, expectedTargetPath, expectedFingerprint)
+			}
+			assetPath, deletable = eng.Path, eng.Deletable
+			break
+		}
+	} else {
+		for _, mod := range reg.Models {
+			if mod.Name != name {
+				continue
+			}
+			if !mod.Deletable {
+				return errAssetNotDeletable()
+			}
+			if mod.Format == "strata_pack" {
+				rawPath := s.findAssetRawPath("model", name, mod.Path)
+				return s.deleteManagedPolystrataModel(rawPath, mod.Path, expectedTargetPath, expectedFingerprint)
+			}
+			assetPath, deletable = mod.Path, mod.Deletable
+			break
+		}
+	}
 	if assetPath == "" {
 		return Err("not_found")
 	}
@@ -453,8 +492,13 @@ func (s *Service) DeleteManagedAsset(kind, name string) *ApiError {
 	}
 
 	var allowedRoots []string
+	var protectedDataDirs []string
+	var prot protectedPolystrataRefs
 	if kind == "model" {
 		allowedRoots = activeModelRoots(u)
+		wsEngines := workspaceEnginesRoot(u, paths)
+		protectedDataDirs = protectedPolystrataDataDirs(u, wsEngines)
+		prot = collectOtherPolystrataProtectedRefs(u, wsEngines, "")
 	} else if wsEngines := workspaceEnginesRoot(u, paths); wsEngines != "" {
 		allowedRoots = []string{wsEngines}
 	}
@@ -464,11 +508,8 @@ func (s *Service) DeleteManagedAsset(kind, name string) *ApiError {
 	}
 
 	deleteTarget := canonAsset
-	if kind == "model" && !assetInfo.IsDir() && strings.HasSuffix(strings.ToLower(canonAsset), ".gguf") {
-		parent := filepath.Dir(canonAsset)
-		if canRemoveSingleGGUFDir(parent, matchedRoot, filepath.Base(canonAsset)) {
-			deleteTarget = parent
-		}
+	if kind == "model" {
+		deleteTarget = resolveStandardModelDeleteTarget(canonAsset, matchedRoot, assetInfo.IsDir(), protectedDataDirs)
 	} else if kind == "engine" {
 		deleteTarget = resolveEngineDeleteTarget(canonAsset, matchedRoot, name, reg.Engines)
 	}
@@ -496,28 +537,40 @@ func (s *Service) DeleteManagedAsset(kind, name string) *ApiError {
 	if err := verifyAssetTreeSafe(canonDelete, targetInfo.IsDir()); err != nil {
 		return errAssetNotDeletable()
 	}
+	if kind == "model" && isStandardModelProtectedByPolystrata(canonAsset, canonDelete, targetInfo.IsDir(), protectedDataDirs, prot) {
+		return errAssetNotDeletable()
+	}
+	if expectedTargetPath != "" {
+		if !sameFileOrPath(canonDelete, expectedTargetPath) {
+			return deleteTargetChangedError()
+		}
+		if expectedFingerprint != "" && standardAssetDeleteFingerprint(kind, canonDelete) != expectedFingerprint {
+			return deleteTargetChangedError()
+		}
+	}
 
 	s.mu.Lock()
 	if s.assetWorkspaceBusyLocked() {
 		s.mu.Unlock()
-		err := Conflict("workspace_busy")
-		err.Message = "当前有任务、下载或模型服务正在运行，请停止后再删除。"
-		return err
+		return workspaceBusyError()
 	}
+	s.deletingAssets++
 	if targetInfo.IsDir() {
 		err = os.RemoveAll(canonDelete)
 	} else {
 		err = os.Remove(canonDelete)
 	}
+	if err == nil {
+		s.pruneAssetSnapshotLocked(kind, canonDelete)
+	}
+	s.deletingAssets--
+	s.mu.Unlock()
 	if err != nil {
-		s.mu.Unlock()
 		if os.IsNotExist(err) {
 			return Err("not_found")
 		}
 		return Err("internal_error")
 	}
-	s.pruneAssetSnapshotLocked(kind, canonDelete)
-	s.mu.Unlock()
 
 	if refreshErr := s.RefreshAssets(); refreshErr != nil && refreshErr.Code != "conflict" {
 		return nil

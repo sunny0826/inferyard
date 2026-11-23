@@ -43,7 +43,7 @@ func (s polystrataDedupeScope) covers(canonPath string) bool {
 	}
 	inDataDir := false
 	for _, dir := range s.dataDirs {
-		if pathStrictlyInsideDir(canonPath, dir) {
+		if pathStrictlyInsideDirSameFS(canonPath, dir) {
 			inDataDir = true
 			break
 		}
@@ -54,8 +54,13 @@ func (s polystrataDedupeScope) covers(canonPath string) bool {
 	if s.coveredFiles[canonPath] {
 		return true
 	}
+	for cf := range s.coveredFiles {
+		if sameFileOrPath(canonPath, cf) {
+			return true
+		}
+	}
 	for _, dir := range s.coveredDirs {
-		if pathWithinDir(canonPath, dir) {
+		if pathWithinDirSameFS(dir, canonPath) {
 			return true
 		}
 	}
@@ -165,11 +170,118 @@ func uniqueCleanPaths(raw []string) []string {
 	return out
 }
 
-func scanPolystrataModelConfigs(installPaths []string) ([]registryEntry, polystrataDedupeScope) {
+func scanPolystrataModelConfigs(installPaths, extraDataDirs []string) ([]registryEntry, polystrataDedupeScope) {
 	entries := []registryEntry{}
-	seen := map[string]bool{}
-	seenDataDirs := map[string]bool{}
+	var seen []string
 	scope := polystrataDedupeScope{coveredFiles: map[string]bool{}}
+
+	addDataDir := func(dd string) string {
+		dd = strings.TrimSpace(dd)
+		if dd == "" {
+			return ""
+		}
+		info, err := os.Lstat(dd)
+		if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+			return ""
+		}
+		canonDD, err := canonical(dd)
+		if err != nil {
+			return ""
+		}
+		for _, prev := range scope.dataDirs {
+			if sameFileOrPath(prev, canonDD) {
+				return prev
+			}
+		}
+		scope.dataDirs = append(scope.dataDirs, canonDD)
+		return canonDD
+	}
+
+	scanConfigDir := func(dir, declWorkDir, declDataDir string) {
+		dirEntries, err := os.ReadDir(dir)
+		if err != nil {
+			return
+		}
+		for _, item := range dirEntries {
+			name := item.Name()
+			if item.IsDir() || !strings.HasPrefix(name, "strata-") || !strings.HasSuffix(name, ".json") {
+				continue
+			}
+			full := filepath.Join(dir, name)
+			info, err := os.Lstat(full)
+			if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() > maxStrataConfigBytes {
+				continue
+			}
+			cfgRaw, err := os.ReadFile(full)
+			if err != nil {
+				continue
+			}
+			var cfg struct {
+				Exe         string   `json:"exe"`
+				Args        []string `json:"args"`
+				Cwd         string   `json:"cwd"`
+				ModelName   string   `json:"model_name"`
+				DisplayName string   `json:"display_name"`
+				Context     *int64   `json:"context"`
+			}
+			if json.Unmarshal(cfgRaw, &cfg) != nil || strings.TrimSpace(cfg.Exe) == "" || cfg.Args == nil {
+				continue
+			}
+			var rawMap map[string]any
+			_ = json.Unmarshal(cfgRaw, &rawMap)
+			resolved, err := canonical(full)
+			if err != nil || containsSameDirEntry(seen, resolved) {
+				continue
+			}
+			seen = append(seen, resolved)
+
+			bases := polystrataConfigBases(cfg.Cwd, declWorkDir, filepath.Dir(full), declDataDir)
+			refs := extractPolystrataAssetRefs(cfg.Args, rawMap)
+			assetFiles, resolvedDirs, assetOK := validatePolystrataAssets(refs, filepath.Dir(full), bases)
+
+			available := false
+			reason := "polystrata_config_model_missing"
+			var sizeBytes *int64
+			var coveredPaths []string
+			if assetOK {
+				available = true
+				reason = ""
+				var totalSize int64
+				for _, f := range assetFiles {
+					totalSize += f.size
+					scope.coveredFiles[f.path] = true
+					coveredPaths = append(coveredPaths, f.path)
+				}
+				for _, d := range resolvedDirs {
+					scope.coveredDirs = append(scope.coveredDirs, d)
+				}
+				if totalSize > 0 {
+					sizeBytes = ptr(totalSize)
+				}
+			} else {
+				assetFiles = nil
+			}
+
+			ctxLen := parsePolystrataContextLength(cfg.Args, cfg.Context)
+			displayName := polystrataConfigDisplayName(cfg.DisplayName, cfg.ModelName, resolved)
+			entries = append(entries, registryEntry{
+				path:        resolved,
+				rawPath:     full,
+				source:      "PolyStrata 配置",
+				displayName: displayName,
+				assetFiles:  assetFiles,
+				model: ModelAsset{
+					Name:          displayName,
+					Format:        "strata_pack",
+					SizeBytes:     sizeBytes,
+					ContextLength: ctxLen,
+					Available:     available,
+					Reason:        reason,
+					CoveredPaths:  coveredPaths,
+				},
+			})
+		}
+	}
 
 	for _, instPath := range installPaths {
 		raw, err := installationBytes(instPath)
@@ -184,99 +296,18 @@ func scanPolystrataModelConfigs(installPaths []string) ([]registryEntry, polystr
 		if json.Unmarshal(raw, &decl) != nil || decl.Family != "polystrata" {
 			continue
 		}
-		if dd := strings.TrimSpace(decl.DataDir); dd != "" {
-			if info, err := os.Lstat(dd); err == nil && info.Mode()&os.ModeSymlink == 0 && info.IsDir() {
-				if canonDD, err := canonical(dd); err == nil && !seenDataDirs[canonDD] {
-					seenDataDirs[canonDD] = true
-					scope.dataDirs = append(scope.dataDirs, canonDD)
-				}
-			}
+		addDataDir(decl.DataDir)
+		for _, dir := range polystrataConfigSearchDirs(decl.WorkingDirectory, decl.DataDir) {
+			scanConfigDir(dir, decl.WorkingDirectory, decl.DataDir)
 		}
-		dirs := polystrataConfigSearchDirs(decl.WorkingDirectory, decl.DataDir)
-		for _, dir := range dirs {
-			dirEntries, err := os.ReadDir(dir)
-			if err != nil {
-				continue
-			}
-			for _, item := range dirEntries {
-				name := item.Name()
-				if item.IsDir() || !strings.HasPrefix(name, "strata-") || !strings.HasSuffix(name, ".json") {
-					continue
-				}
-				full := filepath.Join(dir, name)
-				info, err := os.Lstat(full)
-				if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() > maxInstallationBytes {
-					continue
-				}
-				cfgRaw, err := os.ReadFile(full)
-				if err != nil {
-					continue
-				}
-				var cfg struct {
-					Exe         string   `json:"exe"`
-					Args        []string `json:"args"`
-					Cwd         string   `json:"cwd"`
-					ModelName   string   `json:"model_name"`
-					DisplayName string   `json:"display_name"`
-					Context     *int64   `json:"context"`
-				}
-				if json.Unmarshal(cfgRaw, &cfg) != nil || strings.TrimSpace(cfg.Exe) == "" || cfg.Args == nil {
-					continue
-				}
-				var rawMap map[string]any
-				_ = json.Unmarshal(cfgRaw, &rawMap)
-				resolved, err := canonical(full)
-				if err != nil || seen[resolved] {
-					continue
-				}
-				seen[resolved] = true
-
-				bases := polystrataConfigBases(cfg.Cwd, decl.WorkingDirectory, filepath.Dir(full), decl.DataDir)
-				refs := extractPolystrataAssetRefs(cfg.Args, rawMap)
-				assetFiles, resolvedDirs, assetOK := validatePolystrataAssets(refs, filepath.Dir(full), bases)
-
-				available := false
-				reason := "polystrata_config_model_missing"
-				var sizeBytes *int64
-				var coveredPaths []string
-				if assetOK {
-					available = true
-					reason = ""
-					var totalSize int64
-					for _, f := range assetFiles {
-						totalSize += f.size
-						scope.coveredFiles[f.path] = true
-						coveredPaths = append(coveredPaths, f.path)
-					}
-					for _, d := range resolvedDirs {
-						scope.coveredDirs = append(scope.coveredDirs, d)
-					}
-					if totalSize > 0 {
-						sizeBytes = ptr(totalSize)
-					}
-				} else {
-					assetFiles = nil
-				}
-
-				ctxLen := parsePolystrataContextLength(cfg.Args, cfg.Context)
-				displayName := polystrataConfigDisplayName(cfg.DisplayName, cfg.ModelName, resolved)
-				entries = append(entries, registryEntry{
-					path:        resolved,
-					rawPath:     full,
-					source:      "PolyStrata 配置",
-					displayName: displayName,
-					assetFiles:  assetFiles,
-					model: ModelAsset{
-						Name:          displayName,
-						Format:        "strata_pack",
-						SizeBytes:     sizeBytes,
-						ContextLength: ctxLen,
-						Available:     available,
-						Reason:        reason,
-						CoveredPaths:  coveredPaths,
-					},
-				})
-			}
+	}
+	for _, dd := range extraDataDirs {
+		canonDD := addDataDir(dd)
+		if canonDD == "" {
+			continue
+		}
+		for _, dir := range polystrataConfigSearchDirs("", canonDD) {
+			scanConfigDir(dir, "", canonDD)
 		}
 	}
 	return entries, scope

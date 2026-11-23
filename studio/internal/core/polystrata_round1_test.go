@@ -172,14 +172,21 @@ func TestPolystrataRound1Regressions(t *testing.T) {
 	foundTop, foundNested := false, false
 	for _, m := range reg.Models {
 		if m.Format == "strata_pack" {
-			if m.Deletable {
-				t.Fatalf("strata_pack config %s must not be Deletable", m.Path)
+			if strings.Contains(m.Path, "strata-qwen38-q2-0.json") {
+				if m.Deletable {
+					t.Fatalf("external strata_pack config %s must not be Deletable", m.Path)
+				}
+				if m.Available {
+					foundTop = true
+				}
 			}
-			if strings.Contains(m.Path, "strata-qwen38-q2-0.json") && m.Available {
-				foundTop = true
-			}
-			if strings.Contains(m.Path, "strata-q2-nested.json") && m.Available {
-				foundNested = true
+			if strings.Contains(m.Path, "strata-q2-nested.json") {
+				if !m.Deletable {
+					t.Fatalf("managed polystrata-data config %s should be Deletable", m.Path)
+				}
+				if m.Available {
+					foundNested = true
+				}
 			}
 		}
 	}

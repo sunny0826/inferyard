@@ -55,12 +55,14 @@ type registryEntry struct {
 	modified, downloaded  time.Time
 }
 type registryData struct {
+	settings        UserSettings
 	modelError      *ApiError
 	refreshing      bool
 	models, engines []registryEntry
 	modelRoots      []string
 	resultsRoot     *string
 	wsEngines       string
+	psScope         polystrataManagedScope
 	totalModelBytes int64
 	diskFreeBytes   *int64
 }
@@ -194,11 +196,13 @@ func (s *Service) registry() registryData {
 	}
 	s.mu.Unlock()
 	data := registryData{
+		settings:    u,
 		refreshing:  assets.AssetsRefreshing || device.Refreshing,
 		modelRoots:  activeModelRoots(u),
 		resultsRoot: u.ResultsRoot,
 		wsEngines:   workspaceEnginesRoot(u, s.paths),
 	}
+	data.psScope = polystrataManagedScopeFor(u, data.wsEngines)
 	models := map[string]int{}
 	var scanned *inferyard.AssetScan
 	if assets.Parsed != nil {
@@ -376,7 +380,7 @@ func (s *Service) registry() registryData {
 			}
 		}
 	}
-	psModels, psScope := scanPolystrataModelConfigs(u.EngineInstallations)
+	psModels, psScope := scanPolystrataModelConfigs(u.EngineInstallations, defaultManagedPolystrataDataDirs(u, data.wsEngines))
 	for _, entry := range psModels {
 		if _, found := models[entry.path]; !found {
 			models[entry.path] = len(data.models)
@@ -467,16 +471,38 @@ func (s *Service) Registry() Registry {
 		DiskFreeBytes:   data.diskFreeBytes,
 		ModelRoots:      data.modelRoots,
 	}
+	protectedDataDirs := protectedPolystrataDataDirs(data.settings, data.wsEngines)
+	prot := collectOtherPolystrataProtectedRefs(data.settings, data.wsEngines, "")
 	for _, e := range data.models {
 		m := e.model
 		m.Path = e.path
-		m.Deletable = m.Format != "strata_pack" && isModelDeletable(e.rawPath, e.path, data.modelRoots, data.resultsRoot)
+		if m.Format == "strata_pack" {
+			m.Deletable = isManagedPolystrataModelDeletable(e.rawPath, e.path, data.psScope, data.resultsRoot)
+		} else {
+			m.Deletable = isModelDeletable(e.rawPath, e.path, data.modelRoots, data.resultsRoot)
+			if m.Deletable {
+				target := e.path
+				targetIsDir := m.Format == "directory"
+				if info, statErr := os.Lstat(e.path); statErr == nil {
+					targetIsDir = info.IsDir()
+					if matchedRoot, ok := strictlyInsideAnyRoot(e.path, data.modelRoots); ok {
+						target = resolveStandardModelDeleteTarget(e.path, matchedRoot, targetIsDir, protectedDataDirs)
+						if tInfo, tErr := os.Lstat(target); tErr == nil {
+							targetIsDir = tInfo.IsDir()
+						}
+					}
+				}
+				if isStandardModelProtectedByPolystrata(e.path, target, targetIsDir, protectedDataDirs, prot) {
+					m.Deletable = false
+				}
+			}
+		}
 		result.Models = append(result.Models, m)
 	}
 	for _, e := range data.engines {
 		eng := e.engine
 		eng.Path = e.path
-		eng.Deletable = isEngineDeletable(e.rawPath, e.path, eng.Kind, data.wsEngines, data.resultsRoot)
+		eng.Deletable = isEngineAssetDeletable(data.settings, e.rawPath, e.path, eng.Kind, eng.Family, data.wsEngines, data.resultsRoot, data.engines)
 		result.Engines = append(result.Engines, eng)
 	}
 	if len(result.Engines) > 0 {
