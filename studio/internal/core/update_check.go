@@ -205,7 +205,6 @@ func (m *updateManager) checkForUpdate(ctx context.Context, manual bool) (Update
 		}
 	}
 
-	prevWasReady := m.state.State == UpdateReadyToApply
 	prevArtifact := m.stagedArtifact
 	prevSHA := m.stagedSHA256
 	var prevVer, prevAsset string
@@ -244,7 +243,7 @@ func (m *updateManager) checkForUpdate(ctx context.Context, manual bool) (Update
 		if m.service != nil {
 			workloads = m.service.ActiveUpdateWorkloads()
 		}
-		if prevWasReady && prevArtifact != "" && prevSHA != "" && prevVer == rel.Version && prevAsset == rel.AssetName {
+		if prevArtifact != "" && prevSHA != "" && prevVer == rel.Version && prevAsset == rel.AssetName {
 			if st, statErr := os.Stat(prevArtifact); statErr == nil && st.Mode().IsRegular() {
 				reuseReady = true
 				reusedSize = st.Size()
@@ -301,6 +300,7 @@ func (m *updateManager) checkForUpdate(ctx context.Context, manual bool) (Update
 	if reuseReady && m.stagedArtifact == prevArtifact && m.stagedSHA256 == prevSHA {
 		m.state.State = UpdateReadyToApply
 		m.state.Release = &rel
+		m.state.FallbackPath = ""
 		m.state.DownloadedBytes = reusedSize
 		if reusedSize > 0 {
 			m.state.TotalBytes = ptr(reusedSize)

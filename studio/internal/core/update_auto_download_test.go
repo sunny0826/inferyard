@@ -188,6 +188,21 @@ func TestUpdateManualCheckAutoDownloadsAndPreservesReadyArtifact(t *testing.T) {
 		t.Fatalf("same-version re-check triggered unexpected re-download: hits=%d", assetHits.Load())
 	}
 
+	// 3b. A transient 503 check error followed by retry against the same v0.10.0 preserves the verified artifact.
+	mode.Store(0)
+	errSt, checkErr := svc.CheckForUpdate(context.Background())
+	if checkErr == nil || errSt.State != UpdateError {
+		t.Fatalf("expected UpdateError on transient 503 check, got state=%+v err=%v", errSt, checkErr)
+	}
+	mode.Store(1)
+	retrySt, retryErr := svc.CheckForUpdate(context.Background())
+	if retryErr != nil || retrySt.State != UpdateReadyToApply || retrySt.Release == nil || retrySt.Release.Version != "0.10.0" {
+		t.Fatalf("retry after transient check error lost ready state: state=%+v err=%v", retrySt, retryErr)
+	}
+	if assetHits.Load() != 1 {
+		t.Fatalf("retry after transient check error triggered unexpected re-download: hits=%d", assetHits.Load())
+	}
+
 	// 4. Newer release v0.11.0 supersedes v0.10.0 and auto-downloads to ready_to_apply.
 	mode.Store(2)
 	if _, err := svc.CheckForUpdate(context.Background()); err != nil {
