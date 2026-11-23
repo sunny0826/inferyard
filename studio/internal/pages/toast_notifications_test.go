@@ -206,3 +206,88 @@ func TestToastAndNotificationsRenderInDarkAndReducedMotion(t *testing.T) {
 		t.Fatalf("notification did not render on narrow dark layout: %v", tt.Texts())
 	}
 }
+
+func TestPolystrataDownloadStateNotifications(t *testing.T) {
+	mustJSON := func(v any) json.RawMessage {
+		raw, err := json.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return raw
+	}
+
+	s := readyState("downloads")
+	s.registry.Engines = []core.EngineAsset{{
+		Name:   "polystrata-1",
+		Family: "polystrata",
+		Path:   "/opt/engines/ps-1/installation.json",
+	}}
+	s.registry.Models = []core.ModelAsset{{
+		Name:      "qwen36-pack",
+		Format:    "strata_pack",
+		Path:      "/opt/models/qwen36-strata.json",
+		Available: true,
+	}}
+
+	s.ingestCoreEvents([]core.Event{
+		{
+			Type: "download.state",
+			Data: mustJSON(map[string]any{
+				"task": map[string]any{
+					"task_id":           "ps-done",
+					"kind":              "polystrata",
+					"state":             "done",
+					"display_name":      "PolyStrata · qwen36 · UD-Q4_K_M",
+					"out_name":          "polystrata-1",
+					"installation_path": "/opt/engines/ps-1/installation.json",
+					"model_config_path": "/opt/models/qwen36-strata.json",
+				},
+			}),
+		},
+		{
+			Type: "download.state",
+			Data: mustJSON(map[string]any{
+				"task": map[string]any{
+					"task_id":      "ps-failed",
+					"kind":         "polystrata",
+					"state":        "failed",
+					"display_name": "PolyStrata · qwen · Q2_0",
+					"out_name":     "polystrata-2",
+				},
+			}),
+		},
+	})
+
+	items := s.notifications().items
+	if len(items) != 2 {
+		t.Fatalf("expected 2 polystrata notifications, got %d: %+v", len(items), items)
+	}
+	var doneItem, failedItem *studioNotification
+	for i := range items {
+		if strings.Contains(items[i].Title, "模型下载") {
+			t.Fatalf("polystrata notification must not say 模型下载: %+v", items[i])
+		}
+		switch items[i].Key {
+		case "dl:ps-done:done":
+			doneItem = items[i]
+		case "dl:ps-failed:failed":
+			failedItem = items[i]
+		}
+	}
+	if doneItem == nil || doneItem.Title != "PolyStrata 安装完成" || doneItem.Primary == nil || doneItem.Primary.Label != "前往测评" {
+		t.Fatalf("unexpected polystrata done notification: %+v", doneItem)
+	}
+	if failedItem == nil || failedItem.Title != "PolyStrata 安装失败" || !failedItem.NeedsDecision || failedItem.Primary == nil || failedItem.Primary.Label != "查看并重试" {
+		t.Fatalf("unexpected polystrata failed notification: %+v", failedItem)
+	}
+
+	doneItem.Primary.OnClick()
+	if s.selected != "dashboard" || s.engine != "polystrata-1" || s.model != "qwen36-pack" {
+		t.Fatalf("done CTA did not navigate to dashboard with PolyStrata selection: page=%q engine=%q model=%q", s.selected, s.engine, s.model)
+	}
+
+	failedItem.Primary.OnClick()
+	if s.selected != "downloads" {
+		t.Fatalf("failed CTA did not navigate to downloads: %q", s.selected)
+	}
+}

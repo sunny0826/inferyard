@@ -214,3 +214,29 @@ func TestDownloadCardDisplaysReadableNameProgressBarStagesAndETA(t *testing.T) {
 		t.Fatalf("unexpected indeterminate bar when total_bytes is known: %v", tt.Texts())
 	}
 }
+
+func TestDownloadFailureStageLabelLocalizesPolystrataStages(t *testing.T) {
+	want := map[string]string{
+		"token":                  "读取访问凭据",
+		"download_open":          "建立下载连接",
+		"download_body":          "传输下载数据",
+		"disk_write":             "写入本地文件",
+		"checksum":               "校验文件完整性",
+		"verify":                 "校验文件完整性",
+		"preflight":              "环境预检",
+		"downloading_runtime":    "下载运行时",
+		"setup_engine":           "安装引擎环境",
+		"downloading_model":      "下载模型",
+		"verifying":              "校验中",
+		"verifying_installation": "核验安装",
+		"extracting":             "解压中",
+		"preparing":              "准备中",
+		"downloading":            "下载中",
+		"unknown_stage":          "unknown_stage",
+	}
+	for stage, expected := range want {
+		if got := downloadFailureStageLabel(stage); got != expected {
+			t.Fatalf("downloadFailureStageLabel(%q) = %q, want %q", stage, got, expected)
+		}
+	}
+}
