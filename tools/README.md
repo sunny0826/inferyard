@@ -19,3 +19,13 @@ mise run dev:stop
 - **`mise run dev -- --prepare-only`**: syncs the CLI, builds Studio, verifies `--help`, and initializes the workspace without opening a window.
 
 Development flags (`--dev-profile`, `--dev-assets`, `--dev-cli`, `--dev-label`, `--dev-status`) are excluded from `-tags release` builds.
+
+## Fast release
+
+```sh
+mise run release patch              # bump versions + CHANGELOG, open/merge release PR, tag, watch CI
+mise run release patch --dry-run    # preview version bump, files, and changelog without changes
+mise run release 0.1.0 --prepare-only  # commit release prep on chore/release-v0.1.0 locally
+```
+
+Use `patch`, `minor`, `major`, or an explicit `X.Y.Z` version. Pass `--notes "..."` to override generated commit bullets, `--no-check` to skip local preflight checks, `--wait-pr-checks` to wait for PR workflows before merging, or `--no-watch` to return immediately after pushing the tag.

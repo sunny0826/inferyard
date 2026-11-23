@@ -9,6 +9,10 @@ on:
         description: Also publish CLI wheel and sdist to PyPI via Trusted Publishing
         type: boolean
         default: false
+      draft:
+        description: Create a Draft GitHub Release instead of publishing immediately
+        type: boolean
+        default: false
 permissions: {}
 jobs:
   metadata:
@@ -38,12 +42,18 @@ jobs:
           import os, re, tomllib
           from pathlib import Path
           cli_version = tomllib.loads(Path("cli/pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+          if not re.fullmatch(r"\d+\.\d+\.\d+", cli_version):
+              raise SystemExit(f"invalid cli version (expected X.Y.Z): {cli_version}")
+          init_match = re.search(r"^__version__\s*=\s*[\x27\"]([^\x27\"]+)[\x27\"]", Path("cli/src/inferyard/__init__.py").read_text(encoding="utf-8"), re.M)
+          if not init_match:
+              raise SystemExit("__version__ missing in cli/src/inferyard/__init__.py")
+          init_version = init_match.group(1)
           match = re.search(r"^\s*version:\s*[\x27\"]([^\x27\"]+)[\x27\"]", Path("studio/mygo.config.ts").read_text(encoding="utf-8"), re.M)
           if not match:
               raise SystemExit("studio version missing in studio/mygo.config.ts")
           studio_version = match.group(1)
-          if cli_version != studio_version:
-              raise SystemExit(f"version mismatch: cli={cli_version} studio={studio_version}")
+          if len({cli_version, init_version, studio_version}) != 1:
+              raise SystemExit(f"version mismatch: cli={cli_version} init={init_version} studio={studio_version}")
           expected_tag = f"v{cli_version}"
           event_name = os.environ.get("EVENT_NAME", "")
           ref = os.environ.get("REF", "")
@@ -275,6 +285,13 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            cli/CHANGELOG.md
+            tools/release_notes.py
+          sparse-checkout-cone-mode: false
       - uses: actions/download-artifact@v8
         with:
           name: cli-dist
@@ -318,26 +335,61 @@ jobs:
             if (object.type !== 'commit' || object.sha !== process.env.SOURCE_COMMIT) {
               throw new Error(`Release tag ${process.env.TAG} points at another commit (${object.sha})`);
             }
-      - name: Create Draft GitHub Release
+      - name: Build release notes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.metadata.outputs.tag }}
+          VERSION: ${{ needs.metadata.outputs.version }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          gh api "repos/$GH_REPO/releases/generate-notes" \
+            -f tag_name="$TAG" \
+            -f target_commitish="$SOURCE_COMMIT" \
+            --jq .body > generated-notes.md
+          python3 tools/release_notes.py \
+            --version "$VERSION" \
+            --changelog cli/CHANGELOG.md \
+            --generated generated-notes.md \
+            --out release-notes.md
+      - name: Publish GitHub Release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.metadata.outputs.tag }}
           SOURCE_COMMIT: ${{ github.sha }}
-        run: >-
-          gh release create "$TAG" release-assets/*
-          --target "$SOURCE_COMMIT"
-          --draft
-          --title "$TAG"
-          --generate-notes
+          IS_DRAFT: ${{ github.event_name == 'workflow_dispatch' && inputs.draft == true }}
+        run: |
+          while IFS=$'\t' read -r rel_id rel_tag rel_draft; do
+            if [ "$rel_tag" = "$TAG" ]; then
+              if [ "$rel_draft" = "false" ]; then
+                echo "Published release for $TAG already exists (id=$rel_id); refusing to overwrite."
+                exit 1
+              fi
+              echo "Removing stale draft release $rel_id for $TAG before re-creating..."
+              gh api -X DELETE "repos/$GH_REPO/releases/$rel_id"
+            fi
+          done < <(gh api --paginate "repos/$GH_REPO/releases?per_page=100" --jq '.[] | [.id, .tag_name, .draft] | @tsv')
+
+          args=(
+            release create "$TAG" release-assets/*
+            --target "$SOURCE_COMMIT"
+            --title "$TAG"
+            --notes-file release-notes.md
+          )
+          if [ "$IS_DRAFT" = "true" ]; then
+            args+=(--draft)
+          fi
+          gh "${args[@]}"
 
   pypi:
     needs: [metadata, cli, github-release]
     if: >-
       needs.metadata.outputs.allow_release == 'true' &&
       (needs.metadata.outputs.is_tag_push == 'true' ||
-        (github.event_name == 'workflow_dispatch' && inputs.publish_pypi == true))
+        (github.event_name == 'workflow_dispatch' && inputs.publish_pypi == true && inputs.draft != true))
     runs-on: ubuntu-24.04
     environment:
       name: pypi
