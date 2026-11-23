@@ -177,7 +177,8 @@ func (p *previewSession) advanceLocalRun(index int) {
 		task.PreparationStage = "starting_engine"
 		p.copyLocalTask(id)
 		l.pid = int64(5000 + p.serial + index)
-		s.engineState = core.EngineState{State: "starting", Local: true, Pid: l.pid, StartTicks: l.pid * 10, Candidate: emptyText(task.CandidatePath), Endpoint: "http://127.0.0.1:48857"}
+		s.engineState = p.previewEngineMetadata("starting", l.pid, true, emptyText(task.CandidatePath))
+		s.engineState.StartTicks = l.pid * 10
 		p.after("task", 400*time.Millisecond, func() { p.startLocalBinding(l.pid) })
 	})
 }

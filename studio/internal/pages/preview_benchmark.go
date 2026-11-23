@@ -40,7 +40,7 @@ func (p *previewSession) beginBenchmark(op previewBenchmark) {
 		s.task.stage, s.progress.NextAction = "bind", "bind"
 		s.candidate = filepath.Join(s.workspace, "candidates", p.nextID("candidate"))
 		s.task.start = startChainResult{candidate: s.candidate, workspace: s.workspace}
-		s.engineState = core.EngineState{State: "starting", Pid: 42, Candidate: s.candidate, Endpoint: "http://127.0.0.1:48857"}
+		s.engineState = p.previewEngineMetadata("starting", 42, false, s.candidate)
 		for i := range s.progress.Bundles {
 			b := &s.progress.Bundles[i]
 			if slices.Contains(op.bundles, b.Bundle) {

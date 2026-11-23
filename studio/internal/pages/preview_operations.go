@@ -281,6 +281,47 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 	p.notice = "设置已保存到本次模拟会话。"
 }
 
+func (p *previewSession) previewEngineMetadata(state string, pid int64, local bool, candidate string) core.EngineState {
+	s := p.state
+	family := "llama-cpp"
+	executable := "llama-server"
+	modelKind := "gguf"
+	contextSize := int64(32768)
+	if e := s.localEngine(); e != nil {
+		family = e.Family
+		switch e.Family {
+		case "polystrata":
+			executable = "polystrata"
+		case "mlx-lm":
+			executable = "python"
+			modelKind = "directory"
+		case "vllm":
+			executable = "vllm"
+			modelKind = "directory"
+		case "sglang":
+			executable = "sglang"
+			modelKind = "directory"
+		case "lmstudio":
+			executable = "lms"
+		}
+	}
+	if s.speed != nil && s.speed.current != nil && s.speed.current.context > 0 {
+		contextSize = int64(s.speed.current.context)
+	}
+	return core.EngineState{
+		State:       state,
+		Local:       local,
+		Family:      family,
+		Executable:  executable,
+		Model:       s.model,
+		ModelKind:   modelKind,
+		ContextSize: contextSize,
+		Pid:         pid,
+		Endpoint:    "http://127.0.0.1:48857",
+		Candidate:   candidate,
+	}
+}
+
 func (p *previewSession) startService(bind bool, candidate string) {
 	s := p.state
 	if s.busy || s.running() != nil {
@@ -288,7 +329,7 @@ func (p *previewSession) startService(bind bool, candidate string) {
 	}
 	fail := p.takeFailure()
 	s.busy = bind
-	s.engineState = core.EngineState{State: "starting", Pid: 42, Endpoint: "http://127.0.0.1:48857", Candidate: candidate}
+	s.engineState = p.previewEngineMetadata("starting", 42, false, candidate)
 	p.after("service", 800*time.Millisecond, func() {
 		if bind {
 			s.busy = false

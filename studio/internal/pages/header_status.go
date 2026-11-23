@@ -8,7 +8,6 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
-	"inferyard/studio/internal/core"
 )
 
 type queueActivity struct{ running, waiting int }
@@ -60,7 +59,15 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 		case "orphaned":
 			color = stateColor(c, stateWarning)
 		}
-		statusPanelParts(c, statusPanelOptions{key: "engine-status", label: "引擎 · " + stateLabel(state), visible: "引擎 · " + engineStatusText(state), icon: lucide.Server, color: color, animated: animated}, func(close func()) {
+		statusPanelParts(c, statusPanelOptions{
+			key:      "engine-status",
+			label:    "引擎 · " + stateLabel(state),
+			visible:  "引擎 · " + engineStatusText(state),
+			icon:     lucide.Server,
+			color:    color,
+			animated: animated,
+			width:    c.Theme().Space(88),
+		}, func(close func()) {
 			s.engineStatusPanel(c, q.active(), close)
 		})
 		if s.destructiveDialogModal(c, destructiveOption{
@@ -126,6 +133,7 @@ type statusPanelOptions struct {
 	icon                func() *ui.SVG
 	color               ui.Color
 	animated            bool
+	width               float32
 	onClose             func()
 }
 
@@ -151,8 +159,12 @@ func statusPanelParts(c *ui.Context, o statusPanelOptions, content func(close fu
 			local.open = !local.open
 		}
 		components.Popover(c, anchor, &local.open, func(panel ui.Element) {
+			width := o.width
+			if width <= 0 {
+				width = t.Space(78)
+			}
 			panel.AttachTo(anchor, ui.AnchorBottomRight, ui.AnchorTopRight).
-				Width(t.Space(78)).MaxWidthPercent(100).Label(o.label + "面板")
+				Width(width).MaxWidthPercent(100).Label(o.label + "面板")
 			panel.Children(func() { content(func() { local.open = false }) })
 		})
 		if local.wasOpen && !local.open && o.onClose != nil {
@@ -177,82 +189,4 @@ func engineStatusText(state string) string {
 	default:
 		return "已停止"
 	}
-}
-
-func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func()) {
-	state := s.engineState
-	label := state.State
-	if label == "" {
-		label = "stopped"
-	}
-	heading(c, "模型引擎", 3)
-	ui.Text(c, stateLabel(label))
-	if state.Candidate != "" {
-		ui.Text(c, "测评配置："+displayName(state.Candidate))
-	}
-	if state.Pid > 0 {
-		ui.Text(c, fmt.Sprintf("PID %d", state.Pid))
-	}
-	if state.Endpoint != "" {
-		ui.Text(c, loopbackEndpoint(state.Endpoint))
-	}
-	errorView(c, state.Error)
-	switch state.State {
-	case "starting", "running", "stopping":
-		if dangerButton(c, "停止引擎").AlignSelf(ui.Start).Disabled(!s.stopEnabled(true, runActive)).Clicked() {
-			s.pendingDestructive = s.destructiveRequestFor(destructiveOption{kind: destructiveStopEngine, id: "header"})
-			close()
-		}
-		if runActive {
-			ui.Text(c, "请先结束或取消测评任务，再停止引擎。").TextColor(c.Theme().TextMuted)
-		}
-	case "orphaned":
-		ui.Text(c, "遗留服务状态尚未确认，请到任务页处理。")
-		button(c, "前往任务").OnClick(func() { s.navigateTo("dashboard", ""); close() })
-	default:
-		primaryActionButton(c, "开启引擎", s.actionBusy("start-engine")).Disabled(!s.canStartManagedEngine()).OnClick(s.startManagedEngine)
-		if s.managedEngineCandidate() == "" {
-			ui.Text(c, "先在任务页选择模型并创建测评配置。").TextColor(c.Theme().TextMuted)
-			button(c, "前往任务").OnClick(func() { s.navigateTo("dashboard", ""); close() })
-		}
-	}
-}
-
-func (s *viewState) managedEngineCandidate() string {
-	if s.task.start.candidate != "" {
-		return s.task.start.candidate
-	}
-	return s.candidate
-}
-
-func (s *viewState) canStartManagedEngine() bool {
-	state := s.engineState.State
-	return (state == "" || state == "stopped" || state == "failed") &&
-		!s.busy && !s.newTaskPending && !s.queueActivity().active() && s.managedEngineCandidate() != ""
-}
-
-func (s *viewState) startManagedEngine() {
-	if !s.canStartManagedEngine() {
-		return
-	}
-	candidate := s.managedEngineCandidate()
-	if s.simulate(previewManagedEngine{candidate: candidate}) {
-		return
-	}
-	const toastID = "start-managed-engine"
-	s.engineStartToastID = toastID
-	s.enqueueProgressToast(toastID, "正在开启引擎…")
-	s.guideWorkAs("start-engine", func() (string, *core.ApiError) {
-		state, e := s.service.StartEngine(candidate)
-		if e != nil {
-			s.engineStartToastID = ""
-			s.dismissToast(toastID)
-			return "", e
-		}
-		if state.State == "running" {
-			s.engineStartToastID = ""
-			s.resolveProgressToast(toastID, "引擎已就绪", "", nil)
-		}
-		return "", nil
-	})
 }

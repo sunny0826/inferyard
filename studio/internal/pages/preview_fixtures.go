@@ -30,7 +30,16 @@ var previewScenes = []struct {
 	{"任务 · 已完成", previewCompleted},
 	{"任务 · 失败", func(s *viewState) {
 		s.task = benchmarkTask{stage: "bind", start: startChainResult{candidate: "/preview/candidate"}, failure: core.Err("engine_start_failed")}
-		s.engineState.State = "failed"
+		s.engineState = core.EngineState{
+			State:       "failed",
+			Family:      "llama-cpp",
+			Executable:  "llama-server",
+			Model:       s.model,
+			ModelKind:   "gguf",
+			ContextSize: 32768,
+			Candidate:   "/preview/candidate",
+			Error:       core.Err("engine_start_failed"),
+		}
 	}},
 	{"首次使用 · 无资源", func(s *viewState) {
 		previewPreparation(s)
@@ -212,7 +221,17 @@ func previewRunning(s *viewState) {
 	s.progress.NextAction = "run"
 	s.progress.Bundles[0].Phase, s.progress.Bundles[0].NextAction = "run_incomplete", "run"
 	s.progress.Bundles[0].BlockedReason = previewValue("single_run_resume_not_supported")
-	s.engineState = core.EngineState{State: "running", Pid: 42, Endpoint: "http://127.0.0.1:48857", Candidate: "/preview/candidate"}
+	s.engineState = core.EngineState{
+		State:       "running",
+		Family:      "llama-cpp",
+		Executable:  "llama-server",
+		Model:       s.model,
+		ModelKind:   "gguf",
+		ContextSize: 32768,
+		Pid:         42,
+		Endpoint:    "http://127.0.0.1:48857",
+		Candidate:   "/preview/candidate",
+	}
 	s.tasks = []core.RunTask{{TaskId: "preview-run", State: "running", Bundle: previewValue(inferyard.DefaultBundleCore), RunPath: previewValue("/preview/results/preview-run")}}
 	s.runProgress = &core.RunProgress{Done: 42, Total: previewValue(int64(120)), CurrentCaseId: previewValue("preview-case-043")}
 }

@@ -111,7 +111,6 @@ def build_config(
         "127.0.0.1",
         "--port",
         str(port),
-        "--no-webui",
         "--reasoning",
         "off",
         "--jinja",

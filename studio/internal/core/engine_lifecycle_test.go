@@ -200,3 +200,52 @@ func ignoreHelperTermination() {
 		signal.Ignore(syscall.SIGTERM)
 	}
 }
+
+func TestStartupAndEngineStateMetadata(t *testing.T) {
+	t.Setenv("ENGINE_HELPER", "1")
+	binary, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name            string
+		extraArgs       []string
+		wantWebDisabled bool
+	}{
+		{name: "webui-enabled", wantWebDisabled: false},
+		{name: "webui-disabled", extraArgs: []string{"--no-webui"}, wantWebDisabled: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			port := freePort(t)
+			workspace, candidate := engineWorkspace(t, port)
+			args := append([]string{"--port", fmt.Sprint(port), "--host", "127.0.0.1"}, tc.extraArgs...)
+			rawArgs, _ := json.Marshal(args)
+			toml := fmt.Sprintf("[engine]\nbinary_path = %q\nstartup_args = %s\n", binary, rawArgs)
+			if err := os.WriteFile(filepath.Join(candidate, "candidate.toml"), []byte(toml), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			s := engineService(t, workspace)
+			startup, apiErr := s.Startup(candidate)
+			if apiErr != nil {
+				t.Fatal(apiErr)
+			}
+			if startup.Adapter != "llama_cpp_b11146_v1" || startup.ModelPath != "/fixture/model.gguf" ||
+				startup.ModelKind != "gguf" || startup.ContextSize != 4096 || startup.WebUIDisabled != tc.wantWebDisabled {
+				t.Fatalf("unexpected startup metadata: %+v", startup)
+			}
+			if _, apiErr := s.StartEngine(candidate); apiErr != nil {
+				t.Fatal(apiErr)
+			}
+			state := pollEngine(t, s, "running")
+			if state.Adapter != "llama_cpp_b11146_v1" || state.Executable != filepath.Base(binary) ||
+				state.Model != "/fixture/model.gguf" || state.ModelKind != "gguf" ||
+				state.ContextSize != 4096 || state.WebUIDisabled != tc.wantWebDisabled {
+				t.Fatalf("unexpected engine metadata: %+v", state)
+			}
+			if _, apiErr := s.StopEngine(); apiErr != nil {
+				t.Fatal(apiErr)
+			}
+			pollEngine(t, s, "stopped")
+		})
+	}
+}
