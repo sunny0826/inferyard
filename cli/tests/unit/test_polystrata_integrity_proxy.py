@@ -7,9 +7,11 @@ import json
 from pathlib import Path
 import urllib.request
 
+import httpx
 import pytest
 
 from inferyard.provisioning import polystrata_archive, polystrata_prepare
+from inferyard.provisioning.acquire_errors import classify_httpx_error
 from inferyard.provisioning.polystrata_archive import (
     DEFAULT_POLYSTRATA_SOURCE_BYTES,
     DEFAULT_POLYSTRATA_SOURCE_SHA256,
@@ -165,3 +167,41 @@ def test_polystrata_default_source_pinning_and_modelscope_no_proxy_merge(monkeyp
             )
             is True
         )
+
+        # Proxy CONNECT failures classify as connection_error (triggering Stage 2 proxy guidance)
+        assert classify_httpx_error(httpx.ProxyError("502 Bad Gateway")) == "connection_error"
+
+        # NO_PROXY="*" shadowed by lowercase no_proxy="localhost" must NOT become "*"
+        # and no_proxy="localhost,*" must preserve original routing for github.com while bypassing modelscope.cn
+        for case_name, upper_val, lower_val in (
+            ("shadowed-star", "*", "localhost"),
+            ("list-with-star", None, "localhost,*"),
+        ):
+            mp.setenv("NO_PROXY", upper_val or "")
+            if upper_val is None:
+                mp.delenv("NO_PROXY", raising=False)
+            mp.setenv("no_proxy", lower_val)
+            out_case = tmp_path / f"out-{case_name}"
+            polystrata_prepare.prepare_polystrata(
+                out_case,
+                data_dir=tmp_path / f"data-{case_name}",
+                source=str(archive),
+                model_source="modelscope",
+                proxy_origin="http://127.0.0.1:7890",
+                platform_info=("Darwin", "arm64"),
+                macos_version="15.4",
+                xcode_clt_check=lambda: True,
+                disk_usage_fn=_disk_usage(200 * GIB),
+                venv_creator=_make_fake_venv,
+            )
+            case_env = json.loads((out_case / "received_env.json").read_text(encoding="utf-8"))
+            assert (
+                urllib.request.proxy_bypass_environment("github.com", {"no": case_env["no_proxy"]})
+                is False
+            )
+            assert (
+                urllib.request.proxy_bypass_environment(
+                    "www.modelscope.cn", {"no": case_env["no_proxy"]}
+                )
+                is True
+            )

@@ -20,7 +20,10 @@ def classify_httpx_error(exc: Exception) -> str:
     """Classify an httpx transport or protocol exception into a fixed cause."""
     if isinstance(exc, httpx.TimeoutException):
         return "network_timeout"
-    if isinstance(exc, (httpx.ConnectError, httpx.NetworkError, httpx.RemoteProtocolError)):
+    if isinstance(
+        exc,
+        (httpx.ConnectError, httpx.ProxyError, httpx.NetworkError, httpx.RemoteProtocolError),
+    ):
         return "connection_error"
     return "transfer_error"
 

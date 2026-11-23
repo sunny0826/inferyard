@@ -42,19 +42,22 @@ _MODELSCOPE_NO_PROXY_HOSTS = ("modelscope.cn", ".modelscope.cn")
 def _merge_no_proxy(
     existing_upper: str | None, existing_lower: str | None, additions: tuple[str, ...]
 ) -> str:
+    active = existing_lower if existing_lower is not None else existing_upper
+    if active is not None and active.strip() == "*":
+        return "*"
     merged: list[str] = []
     seen: set[str] = set()
-    for raw in (existing_upper, existing_lower):
+    for is_upper, raw in ((True, existing_upper), (False, existing_lower)):
         if not raw:
             continue
         for part in raw.split(","):
             token = part.strip()
+            if is_upper and existing_lower is not None and token == "*":
+                continue
             key = token.casefold()
             if token and key not in seen:
                 seen.add(key)
                 merged.append(token)
-    if "*" in seen:
-        return "*"
     for host in additions:
         key = host.casefold()
         if key not in seen:

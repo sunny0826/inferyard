@@ -26,7 +26,11 @@ from polystrata_test_helpers import (
 )
 
 
-def test_happy_path_local_tar_progress_log_sanitization_and_installation(tmp_path: Path):
+def test_happy_path_local_tar_progress_log_sanitization_and_installation(
+    monkeypatch, tmp_path: Path
+):
+    monkeypatch.delenv("NO_PROXY", raising=False)
+    monkeypatch.delenv("no_proxy", raising=False)
     archive = _tar_gz_file(
         tmp_path / "PolyStrata-v0.1.45-poly.10.tar.gz",
         [
