@@ -355,6 +355,7 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 		s.detailError = b.detailError
 	}
 	s.applySettings(b.settings)
+	skipModelAdopt := false
 	if b.full {
 		if b.historyError == nil {
 			s.history = b.history
@@ -363,9 +364,10 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 			s.reports = b.reports
 		}
 		s.historyError, s.reportsError = b.historyError, b.reportsError
+		prevModelPath := s.selectedModelPath()
 		s.registry = b.registry
 		s.applyPendingPolystrataSelection()
-		s.reconcileSelectedModel()
+		skipModelAdopt = s.reconcileSelectedModel(prevModelPath)
 	}
 	s.ready, s.progress = b.ready, b.progress.Progress
 	if b.hasPrepLocations {
@@ -380,7 +382,9 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	s.checks = s.service.EngineChecks()
 	s.applyUpdateState(b.updateState)
 	s.adoptDownloadedEngine()
-	s.adoptOnlyModel()
+	if !skipModelAdopt {
+		s.adoptOnlyModel()
+	}
 	s.loaded = true
 	cliKey := emptyText(b.ready.CLI.Path) + "|" + emptyText(b.ready.CLI.Version) + "|" + b.ready.CLI.Status
 	if cliKey != s.discoveryCLI {

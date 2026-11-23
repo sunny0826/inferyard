@@ -34,6 +34,7 @@ type ModelAsset struct {
 	Reason        string
 	Path          string
 	Deletable     bool
+	CoveredPaths  []string `json:"-"`
 }
 type EngineAsset struct {
 	Name           string

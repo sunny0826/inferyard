@@ -133,6 +133,13 @@ func registryStorageMetrics(u UserSettings, modelRoots []string, models []regist
 		}
 		if entry.path != "" {
 			countedFiles[entry.path] = true
+			if entry.model.Format == "gguf" {
+				if shards, ok := expandSplitGGUFShards(entry.path); ok {
+					for _, sh := range shards {
+						countedFiles[sh.path] = true
+					}
+				}
+			}
 		}
 		if entry.model.SizeBytes != nil && *entry.model.SizeBytes > 0 {
 			total += *entry.model.SizeBytes

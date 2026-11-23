@@ -238,6 +238,7 @@ func scanPolystrataModelConfigs(installPaths []string) ([]registryEntry, polystr
 				available := false
 				reason := "polystrata_config_model_missing"
 				var sizeBytes *int64
+				var coveredPaths []string
 				if assetOK {
 					available = true
 					reason = ""
@@ -245,6 +246,7 @@ func scanPolystrataModelConfigs(installPaths []string) ([]registryEntry, polystr
 					for _, f := range assetFiles {
 						totalSize += f.size
 						scope.coveredFiles[f.path] = true
+						coveredPaths = append(coveredPaths, f.path)
 					}
 					for _, d := range resolvedDirs {
 						scope.coveredDirs = append(scope.coveredDirs, d)
@@ -271,6 +273,7 @@ func scanPolystrataModelConfigs(installPaths []string) ([]registryEntry, polystr
 						ContextLength: ctxLen,
 						Available:     available,
 						Reason:        reason,
+						CoveredPaths:  coveredPaths,
 					},
 				})
 			}
@@ -383,10 +386,15 @@ func polystrataConfigBases(cwd, workDir, cfgDir, dataDir string) []string {
 
 func extractPolystrataAssetRefs(args []string, rawMap map[string]any) []string {
 	refs := []string{}
-	for _, flag := range []string{"--model", "--native", "--pack", "--ple-gguf", "--draft-model", "--mmproj"} {
+	for _, flag := range []string{"--model", "--native", "--pack", "--ple-gguf", "--embd-gguf", "--draft-model", "--mmproj"} {
 		refs = append(refs, extractAllStrataArgValues(args, flag)...)
 	}
-	for _, key := range polystrataLegacyModelKeys {
+	for _, mtpVal := range extractAllStrataArgValues(args, "--mtp") {
+		if _, err := strconv.Atoi(mtpVal); err != nil {
+			refs = append(refs, mtpVal)
+		}
+	}
+	for _, key := range append(append([]string(nil), polystrataLegacyModelKeys...), "tokenizer", "tokenizer_path", "tokenizer_dir") {
 		if val, ok := rawMap[key].(string); ok && strings.TrimSpace(val) != "" {
 			refs = append(refs, strings.TrimSpace(val))
 		}
@@ -474,14 +482,18 @@ func expandSplitGGUFShards(canonPath string) ([]assetFileSize, bool) {
 		}
 		return []assetFileSize{{path: canonPath, size: fi.Size()}}, true
 	}
-	stem, totalStr, ext := m[1], m[3], m[4]
-	total, err := strconv.Atoi(totalStr)
-	if err != nil || total < 2 || total > 64 {
+	stem, idxStr, totalStr, ext := m[1], m[2], m[3], m[4]
+	index, err1 := strconv.Atoi(idxStr)
+	total, err2 := strconv.Atoi(totalStr)
+	if err1 != nil || err2 != nil || total < 2 || index < 1 || index > total {
 		fi, err := os.Stat(canonPath)
 		if err != nil {
 			return nil, false
 		}
 		return []assetFileSize{{path: canonPath, size: fi.Size()}}, true
+	}
+	if total > 256 {
+		return nil, false
 	}
 	dir := filepath.Dir(canonPath)
 	shards := make([]assetFileSize, 0, total)

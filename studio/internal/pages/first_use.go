@@ -20,16 +20,49 @@ func (s *viewState) availableTaskAssets() taskAssets {
 	return assets
 }
 
-func (s *viewState) reconcileSelectedModel() {
+func (s *viewState) selectedModelPath() string {
 	if s.model == "" {
-		return
+		return ""
+	}
+	for _, model := range s.registry.Models {
+		if model.Name == s.model {
+			return cleanMatchPath(model.Path)
+		}
+	}
+	return ""
+}
+
+func (s *viewState) reconcileSelectedModel(prevModelPath string) bool {
+	if s.model == "" {
+		return false
 	}
 	for _, model := range s.registry.Models {
 		if model.Name == s.model && model.Available {
-			return
+			return false
 		}
 	}
+	if prevModelPath != "" {
+		var matches []string
+		for _, model := range s.registry.Models {
+			if !model.Available || model.Format != "strata_pack" {
+				continue
+			}
+			for _, covered := range model.CoveredPaths {
+				if cleanMatchPath(covered) == prevModelPath {
+					matches = append(matches, model.Name)
+					break
+				}
+			}
+		}
+		if len(matches) == 1 {
+			s.model = matches[0]
+			return false
+		}
+		s.model = ""
+		return true
+	}
 	s.model = ""
+	return false
 }
 
 func (s *viewState) adoptOnlyModel() {

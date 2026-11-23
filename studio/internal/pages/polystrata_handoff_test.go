@@ -129,37 +129,76 @@ func TestPolystrataAutoSelectAndDoneTaskCTA(t *testing.T) {
 }
 
 func TestPolystrataReconcileIdleResetAndOneShotPendingSelection(t *testing.T) {
-	// 1. Vanished raw .gguf selection is cleared after deduplicating refresh, while still-valid selection stays intact.
+	// 1. Path-aware reconciliation: user selected raw B.gguf before B's helper weight existed;
+	// after refresh deduplicates B.gguf into Config B alongside Config A (with A in done downloads),
+	// s.model migrates cleanly onto Config B (never hijacking onto Config A) and keeps still-valid selections intact.
 	s := settingsState()
 	s.service = settingsTestService(t, t.TempDir())
 	s.ctx = context.Background()
 	s.discoveryLoaded = true
 	s.engine = "PolyStrata · v0.1.45-poly.10"
-	s.model = "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf"
+	s.registry.Models = []core.ModelAsset{
+		{Name: "A Config", Format: "strata_pack", Path: "/ws/models/ps/strata-a.json", CoveredPaths: []string{"/ws/models/ps/A.gguf"}, Available: true},
+		{Name: "B.gguf", Format: "gguf", Path: "/ws/models/ps/B.gguf", Available: true},
+	}
+	s.model = "B.gguf"
 
 	batch := refreshBatch{
-		epoch: s.settingsSequence(),
-		full:  true,
+		epoch:    s.settingsSequence(),
+		full:     true,
+		settings: s.settings,
 		registry: core.Registry{
 			Engines: []core.EngineAsset{{Name: "PolyStrata · v0.1.45-poly.10", Family: "polystrata", Kind: "local_installation", Path: "/ws/engines/ps/installation.json"}},
 			Models: []core.ModelAsset{
-				{Name: "Qwen3.6-35B-A3B (UD-Q4_K_M)", Format: "strata_pack", Path: "/ws/models/strata-qwen36.json", Available: true},
+				{Name: "A Config", Format: "strata_pack", Path: "/ws/models/ps/strata-a.json", CoveredPaths: []string{"/ws/models/ps/A.gguf"}, Available: true},
+				{Name: "B Config", Format: "strata_pack", Path: "/ws/models/ps/strata-b.json", CoveredPaths: []string{"/ws/models/ps/B.gguf"}, Available: true},
 				{Name: "valid-other.gguf", Format: "gguf", Path: "/ws/models/valid-other.gguf", Available: true},
 			},
 		},
 		downloads: []core.DownloadTask{{
-			TaskId:           "ps-done",
+			TaskId:           "ps-done-a",
 			Kind:             "polystrata",
 			State:            "done",
 			InstallationPath: ptr("/ws/engines/ps/installation.json"),
-			ModelConfigPath:  ptr("/ws/models/strata-qwen36.json"),
+			ModelConfigPath:  ptr("/ws/models/ps/strata-a.json"),
 		}},
 	}
 	if !s.applyRefreshBatch(batch) {
 		t.Fatal("expected full refresh batch to apply")
 	}
-	if s.model != "Qwen3.6-35B-A3B (UD-Q4_K_M)" {
-		t.Fatalf("expected vanished raw .gguf to reconcile onto installed strata_pack, got %q", s.model)
+	if s.model != "B Config" {
+		t.Fatalf("expected vanished raw B.gguf to migrate by CoveredPaths to B Config (not A Config), got %q", s.model)
+	}
+
+	// Ambiguous replacement (B1 and B2 both cover B.gguf) leaves model unselected instead of switching to A Config.
+	sAmbig := settingsState()
+	sAmbig.service = settingsTestService(t, t.TempDir())
+	sAmbig.ctx = context.Background()
+	sAmbig.discoveryLoaded = true
+	sAmbig.engine = "PolyStrata · v0.1.45-poly.10"
+	sAmbig.registry.Models = []core.ModelAsset{
+		{Name: "B.gguf", Format: "gguf", Path: "/ws/models/ps/B.gguf", Available: true},
+	}
+	sAmbig.model = "B.gguf"
+	ambigBatch := refreshBatch{
+		epoch:    sAmbig.settingsSequence(),
+		full:     true,
+		settings: sAmbig.settings,
+		registry: core.Registry{
+			Engines: batch.registry.Engines,
+			Models: []core.ModelAsset{
+				batch.registry.Models[0],
+				{Name: "B1 Config", Format: "strata_pack", Path: "/ws/models/ps/strata-b1.json", CoveredPaths: []string{"/ws/models/ps/B.gguf"}, Available: true},
+				{Name: "B2 Config", Format: "strata_pack", Path: "/ws/models/ps/strata-b2.json", CoveredPaths: []string{"/ws/models/ps/B.gguf"}, Available: true},
+			},
+		},
+		downloads: batch.downloads,
+	}
+	if !sAmbig.applyRefreshBatch(ambigBatch) {
+		t.Fatal("expected ambiguous refresh batch to apply")
+	}
+	if sAmbig.model != "" {
+		t.Fatalf("expected ambiguous replacement to clear selection rather than switching to A Config, got %q", sAmbig.model)
 	}
 
 	s.model = "valid-other.gguf"
@@ -213,6 +252,7 @@ func TestPolystrataReconcileIdleResetAndOneShotPendingSelection(t *testing.T) {
 	missingBatch := refreshBatch{
 		epoch:    sPending.settingsSequence(),
 		full:     true,
+		settings: sPending.settings,
 		registry: sPending.registry,
 	}
 	if !sPending.applyRefreshBatch(missingBatch) {
