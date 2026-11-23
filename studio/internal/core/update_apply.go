@@ -32,7 +32,7 @@ func (m *updateManager) applyUpdate(ctx context.Context, confirmStopWorkloads bo
 	}
 
 	m.mu.Lock()
-	if m.state.State == UpdateApplying {
+	if m.state.State == UpdateApplying || m.applyInFlight {
 		snap := m.cloneStateLocked()
 		m.mu.Unlock()
 		return snap, &updateCheckError{code: "update_busy", message: "正在安装更新，请稍候。"}
@@ -42,6 +42,7 @@ func (m *updateManager) applyUpdate(ctx context.Context, confirmStopWorkloads bo
 		m.mu.Unlock()
 		return snap, &updateCheckError{code: "update_not_ready", message: "更新安装包尚未准备就绪。"}
 	}
+	m.applyInFlight = true
 	artifact := m.stagedArtifact
 	stagingDir := m.stagedDir
 	expectedSHA := m.stagedSHA256
@@ -55,6 +56,11 @@ func (m *updateManager) applyUpdate(ctx context.Context, confirmStopWorkloads bo
 	applyFn := m.opts.ApplyFunc
 	skipRelaunch := m.opts.SkipRelaunch
 	m.mu.Unlock()
+	defer func() {
+		m.mu.Lock()
+		m.applyInFlight = false
+		m.mu.Unlock()
+	}()
 
 	if st, err := os.Stat(artifact); err != nil || !st.Mode().IsRegular() {
 		m.mu.Lock()

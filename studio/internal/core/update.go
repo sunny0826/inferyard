@@ -127,6 +127,7 @@ type updateManager struct {
 	stagedDir             string
 	stagedArtifact        string
 	stagedSHA256          string
+	applyInFlight         bool
 	preserveStagingOnExit bool
 	requestQuit           func()
 }
@@ -304,6 +305,9 @@ func (s *Service) beginUpdateApplyAdmission(confirmStop bool) (UpdateActiveWorkl
 	defer s.mu.Unlock()
 	if s.closing {
 		return UpdateActiveWorkloads{}, Err("service_closing"), false
+	}
+	if s.updateApplying {
+		return UpdateActiveWorkloads{}, Conflict("update_applying"), false
 	}
 	workloads := s.activeUpdateWorkloadsLocked()
 	if workloads.Any() && !confirmStop {

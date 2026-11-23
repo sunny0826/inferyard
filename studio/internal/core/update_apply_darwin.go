@@ -4,13 +4,47 @@ package core
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
+	"strings"
+	"sync"
 	"syscall"
 	"time"
+
+	"github.com/ebitengine/purego"
 )
+
+const darwinRenameSwap uint32 = 0x00000002
+
+type darwinSwapFunc func(appDir, stageApp, backupApp string) (cleanupPath string, err error)
+
+type darwinRenamexFuncs struct {
+	renamex  func(from, to string, flags uint32) int32
+	errnoPtr func() *int32
+}
+
+var loadDarwinRenamex = sync.OnceValues(func() (darwinRenamexFuncs, error) {
+	handle, err := purego.Dlopen("/usr/lib/libSystem.B.dylib", purego.RTLD_NOW|purego.RTLD_LOCAL)
+	if err != nil {
+		return darwinRenamexFuncs{}, err
+	}
+	renamexSym, err := purego.Dlsym(handle, "renamex_np")
+	if err != nil {
+		return darwinRenamexFuncs{}, err
+	}
+	errnoSym, err := purego.Dlsym(handle, "__error")
+	if err != nil {
+		return darwinRenamexFuncs{}, err
+	}
+	var fns darwinRenamexFuncs
+	purego.RegisterFunc(&fns.renamex, renamexSym)
+	purego.RegisterFunc(&fns.errnoPtr, errnoSym)
+	return fns, nil
+})
 
 func inspectPlatformInstallTarget(exePath string) updateInstallTarget {
 	appDir, blockCode, blockMsg := resolveDarwinAppBundle(exePath)
@@ -25,10 +59,10 @@ func inspectPlatformInstallTarget(exePath string) updateInstallTarget {
 }
 
 func applyPlatformUpdate(ctx context.Context, plan platformApplyPlan) error {
-	return applyDarwinUpdate(ctx, plan, os.Rename)
+	return applyDarwinUpdate(ctx, plan, swapDarwinBundlesAtomic)
 }
 
-func applyDarwinUpdate(ctx context.Context, plan platformApplyPlan, renameFn func(string, string) error) error {
+func applyDarwinUpdate(ctx context.Context, plan platformApplyPlan, swapFn darwinSwapFunc) error {
 	appDir := plan.AppPath
 	if appDir == "" {
 		var code, msg string
@@ -106,7 +140,8 @@ func applyDarwinUpdate(ctx context.Context, plan platformApplyPlan, renameFn fun
 	_, _ = plan.RunCmd(ctx, "xattr", "-dr", "com.apple.quarantine", stageApp)
 	detachDMG()
 
-	if err := swapDarwinBundles(appDir, stageApp, backupApp, renameFn); err != nil {
+	cleanupPath, err := swapFn(appDir, stageApp, backupApp)
+	if err != nil {
 		return &updateCheckError{
 			code:    "update_apply_failed",
 			message: "替换应用包失败，原有安装已保留。",
@@ -114,7 +149,9 @@ func applyDarwinUpdate(ctx context.Context, plan platformApplyPlan, renameFn fun
 		}
 	}
 	cleanupStage = false
-	_ = os.RemoveAll(backupApp)
+	if cleanupPath != "" {
+		_ = os.RemoveAll(cleanupPath)
+	}
 	if plan.StagingDir != "" {
 		_ = os.RemoveAll(plan.StagingDir)
 	}
@@ -138,15 +175,46 @@ func applyDarwinUpdate(ctx context.Context, plan platformApplyPlan, renameFn fun
 	return nil
 }
 
-func swapDarwinBundles(appDir, stageApp, backupApp string, renameFn func(string, string) error) error {
+func renamexSwapDarwin(pathA, pathB string) error {
+	if strings.IndexByte(pathA, 0) >= 0 || strings.IndexByte(pathB, 0) >= 0 {
+		return syscall.EINVAL
+	}
+	fns, err := loadDarwinRenamex()
+	if err != nil {
+		return syscall.ENOSYS
+	}
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	*fns.errnoPtr() = 0
+	if fns.renamex(pathA, pathB, darwinRenameSwap) == 0 {
+		return nil
+	}
+	if eno := syscall.Errno(*fns.errnoPtr()); eno != 0 {
+		return eno
+	}
+	return syscall.EIO
+}
+
+func swapDarwinBundlesAtomic(appDir, stageApp, backupApp string) (string, error) {
+	err := renamexSwapDarwin(appDir, stageApp)
+	if err == nil {
+		return stageApp, nil
+	}
+	if errors.Is(err, syscall.ENOTSUP) || errors.Is(err, syscall.ENOSYS) {
+		return swapDarwinBundlesFallback(appDir, stageApp, backupApp, os.Rename)
+	}
+	return "", err
+}
+
+func swapDarwinBundlesFallback(appDir, stageApp, backupApp string, renameFn func(string, string) error) (string, error) {
 	if err := renameFn(appDir, backupApp); err != nil {
-		return err
+		return "", err
 	}
 	if err := renameFn(stageApp, appDir); err != nil {
 		_ = renameFn(backupApp, appDir)
-		return err
+		return "", err
 	}
-	return nil
+	return backupApp, nil
 }
 
 func spawnDarwinRelaunch(pid int, appDir string) error {

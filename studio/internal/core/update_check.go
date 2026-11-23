@@ -170,6 +170,14 @@ func (m *updateManager) checkForUpdate(ctx context.Context, manual bool) (Update
 	}
 
 	m.mu.Lock()
+	if m.applyInFlight {
+		snap := m.cloneStateLocked()
+		m.mu.Unlock()
+		if !manual {
+			return snap, nil
+		}
+		return snap, &updateCheckError{code: "update_busy", message: "更新正在处理中，请稍候。"}
+	}
 	switch m.state.State {
 	case UpdateDownloading, UpdateVerifying, UpdateApplying:
 		snap := m.cloneStateLocked()

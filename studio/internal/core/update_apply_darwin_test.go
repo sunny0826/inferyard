@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"syscall"
 	"testing"
 )
 
@@ -68,12 +69,14 @@ func TestApplyDarwinUpdateSwapAndRollbackBeforeShutdown(t *testing.T) {
 		RequestQuit:  func() { quitCalls++ },
 		RunCmd:       runner,
 	}
-	err := applyDarwinUpdate(context.Background(), planFail, func(oldPath, newPath string) error {
-		renameCount++
-		if renameCount == 2 {
-			return errors.New("simulated swap error")
-		}
-		return os.Rename(oldPath, newPath)
+	err := applyDarwinUpdate(context.Background(), planFail, func(app, stage, backup string) (string, error) {
+		return swapDarwinBundlesFallback(app, stage, backup, func(oldPath, newPath string) error {
+			renameCount++
+			if renameCount == 2 {
+				return errors.New("simulated swap error")
+			}
+			return os.Rename(oldPath, newPath)
+		})
 	})
 	if err == nil {
 		t.Fatal("expected swap failure")
@@ -86,12 +89,12 @@ func TestApplyDarwinUpdateSwapAndRollbackBeforeShutdown(t *testing.T) {
 		t.Fatalf("rollback failed: err=%v content=%q", readErr, string(gotExe))
 	}
 
-	// Case 2: Successful swap detaches DMG, replaces .app, cleans staging, then calls Shutdown & RequestQuit.
+	// Case 2: Successful atomic swap detaches DMG, replaces .app, cleans staging and old bundle, then calls Shutdown & RequestQuit.
 	cmds = nil
 	if err := os.MkdirAll(stagingDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := applyDarwinUpdate(context.Background(), planFail, os.Rename); err != nil {
+	if err := applyPlatformUpdate(context.Background(), planFail); err != nil {
 		t.Fatalf("successful darwin apply failed: %v", err)
 	}
 	if shutdownCalls != 1 || quitCalls != 1 {
@@ -104,7 +107,37 @@ func TestApplyDarwinUpdateSwapAndRollbackBeforeShutdown(t *testing.T) {
 	if _, statErr := os.Stat(stagingDir); !os.IsNotExist(statErr) {
 		t.Fatalf("stagingDir not cleaned up: %v", statErr)
 	}
+	entries, readDirErr := os.ReadDir(installParent)
+	if readDirErr != nil || len(entries) != 1 || entries[0].Name() != "InferYard Studio.app" {
+		t.Fatalf("unexpected entries in installParent after swap: err=%v entries=%v", readDirErr, entries)
+	}
 	if !slices.Contains(cmds, "hdiutil attach") || !slices.Contains(cmds, "hdiutil detach") || !slices.Contains(cmds, "ditto "+filepath.Join(stagingDir, "mount", "InferYard Studio.app")) {
 		t.Fatalf("unexpected macOS apply commands: %v", cmds)
+	}
+}
+
+func TestRenamexSwapDarwinAtomic(t *testing.T) {
+	root := t.TempDir()
+	appDir, oldExe := setupFakeDarwinApp(t, root, "InferYard Studio.app", "old-version")
+	stageApp, stageExe := setupFakeDarwinApp(t, root, ".InferYard Studio.app.new", "new-version")
+
+	if err := renamexSwapDarwin(appDir, stageApp); err != nil {
+		t.Fatalf("renamexSwapDarwin failed: %v", err)
+	}
+	gotNew, err := os.ReadFile(oldExe)
+	if err != nil || string(gotNew) != "new-version" {
+		t.Fatalf("appDir did not receive new bundle atomically: err=%v content=%q", err, string(gotNew))
+	}
+	gotOld, err := os.ReadFile(stageExe)
+	if err != nil || string(gotOld) != "old-version" {
+		t.Fatalf("stageApp did not receive old bundle atomically: err=%v content=%q", err, string(gotOld))
+	}
+
+	if err := renamexSwapDarwin(appDir, filepath.Join(root, "does-not-exist")); !errors.Is(err, syscall.ENOENT) {
+		t.Fatalf("expected ENOENT for missing target, got %v", err)
+	}
+	gotStillNew, err := os.ReadFile(oldExe)
+	if err != nil || string(gotStillNew) != "new-version" {
+		t.Fatalf("failed swap disturbed existing bundle: err=%v content=%q", err, string(gotStillNew))
 	}
 }

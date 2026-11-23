@@ -237,3 +237,111 @@ func TestUpdateBackgroundAutoDownloadAndSilentFailureDegradation(t *testing.T) {
 		t.Fatalf("failed auto-download staging not cleaned: %v", entries)
 	}
 }
+
+func TestUpdateOverlappingApplyKeepsAdmissionFrozen(t *testing.T) {
+	payload := buildTestTarGz(t, map[string][]byte{
+		"inferyard-studio-v0.10.0-linux-amd64/inferyard-studio": []byte("new-bin"),
+	}, nil)
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/latest":
+			_ = json.NewEncoder(w).Encode(githubReleasePayload{
+				TagName: "v0.10.0",
+				HTMLURL: srv.URL + "/releases/v0.10.0",
+				Assets: []githubReleaseAsset{
+					{Name: "inferyard-studio-v0.10.0-linux-amd64.tar.gz", BrowserDownloadURL: srv.URL + "/asset", Size: int64(len(payload))},
+					{Name: "SHA256SUMS", BrowserDownloadURL: srv.URL + "/SHA256SUMS", Size: 120},
+				},
+			})
+		case "/asset":
+			_, _ = w.Write(payload)
+		case "/SHA256SUMS":
+			_, _ = w.Write([]byte(sha256Hex(payload) + "  inferyard-studio-v0.10.0-linux-amd64.tar.gz\n"))
+		}
+	}))
+	defer srv.Close()
+
+	enteredApply := make(chan struct{})
+	releaseApply := make(chan struct{})
+	var applyCalls atomic.Int32
+	svc := newUpdateTestService(t, UpdateOptions{
+		APIURL:              srv.URL + "/latest",
+		CurrentVersion:      "0.9.9",
+		GOOS:                "linux",
+		GOARCH:              "amd64",
+		DisableAutoDownload: true,
+		InspectTarget:       func() updateInstallTarget { return updateInstallTarget{CanSelfUpdate: true, ExePath: "/opt/inferyard-studio"} },
+		ApplyFunc: func(_ context.Context, _ platformApplyPlan) error {
+			if applyCalls.Add(1) == 1 {
+				close(enteredApply)
+				<-releaseApply
+			}
+			return &updateCheckError{code: "update_apply_failed", message: "simulated fail"}
+		},
+	})
+	svc.settings.ModelsRoot = ptr(t.TempDir())
+	svc.settings.ResultsRoot = ptr(t.TempDir())
+	svc.settings.InferyardPath = ptr(os.Args[0])
+	svc.exec = func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
+		if len(args) > 0 && args[0] == "--version" {
+			return inferyard.Execution{ExitCode: 0, Stdout: []byte("inferyard 1.0 source=release\n")}, nil
+		}
+		return inferyard.Execution{ExitCode: 0}, nil
+	}
+
+	// Part A: Service admission lock rejects a second overlapping beginUpdateApplyAdmission without releasing the first.
+	if _, apiErr, admitted := svc.beginUpdateApplyAdmission(false); !admitted || apiErr != nil {
+		t.Fatalf("first admission failed: admitted=%v err=%+v", admitted, apiErr)
+	}
+	if _, apiErr, admitted := svc.beginUpdateApplyAdmission(false); admitted || apiErr == nil || apiErr.Details["reason"] != "update_applying" {
+		t.Fatalf("second overlapping admission should conflict cleanly, got admitted=%v err=%+v", admitted, apiErr)
+	}
+	if _, apiErr := svc.CreateModelDownload(CreateDownloadRequest{SourceUrl: DefaultModelURL()}, ""); apiErr == nil || apiErr.Details["reason"] != "update_applying" {
+		t.Fatalf("download admission should stay frozen during first apply: %+v", apiErr)
+	}
+	svc.endUpdateApplyAdmission()
+
+	// Part B: Two concurrent ApplyUpdate calls + a third overlapping call while ApplyFunc is running keep download admission blocked.
+	if _, err := svc.CheckForUpdate(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.DownloadUpdate(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	start := make(chan struct{})
+	errCh := make(chan error, 2)
+	for range 2 {
+		go func() {
+			<-start
+			_, err := svc.ApplyUpdate(context.Background(), false)
+			errCh <- err
+		}()
+	}
+	close(start)
+	<-enteredApply
+
+	// The losing concurrent ApplyUpdate must fail without unfreezing admission.
+	loserErr := <-errCh
+	if loserErr == nil {
+		t.Fatal("expected losing concurrent ApplyUpdate to fail with busy/conflict")
+	}
+	// Deterministic overlapping call while winner is still in ApplyFunc must also be rejected and preserve lock.
+	if _, err := svc.ApplyUpdate(context.Background(), false); err == nil {
+		t.Fatal("expected overlapping ApplyUpdate during active apply to fail")
+	}
+	if _, apiErr := svc.CreateModelDownload(CreateDownloadRequest{SourceUrl: DefaultModelURL()}, ""); apiErr == nil || apiErr.Details["reason"] != "update_applying" {
+		t.Fatalf("download was unexpectedly admitted during active apply after overlapping ApplyUpdate: %+v", apiErr)
+	}
+	if w := svc.ActiveUpdateWorkloads(); w.ActiveDownloads != 0 {
+		t.Fatalf("expected zero active downloads, got %+v", w)
+	}
+
+	close(releaseApply)
+	if winnerErr := <-errCh; winnerErr == nil {
+		t.Fatal("expected simulated apply error from winner")
+	}
+	if got := applyCalls.Load(); got != 1 {
+		t.Fatalf("expected ApplyFunc called once, got %d", got)
+	}
+}

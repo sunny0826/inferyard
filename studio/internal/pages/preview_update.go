@@ -175,8 +175,11 @@ func (p *previewSession) tickUpdateDownload(fail bool, step int, oneClick bool) 
 }
 
 func (p *previewSession) cancelUpdate() {
-	p.cancelEvents("update")
 	s := p.state
+	if s.updateState.State == core.UpdateApplying {
+		return
+	}
+	p.cancelEvents("update")
 	s.updateState.DownloadedBytes = 0
 	s.updateState.BytesPerSecond = nil
 	s.updateState.ErrorCode = ""
@@ -199,6 +202,7 @@ func (p *previewSession) applyUpdate(confirmStop bool) {
 	workloads := s.effectiveUpdateWorkloads()
 	if workloads.Any() && !confirmStop {
 		s.updateState.Workloads = workloads
+		s.updateDialogOpen = true
 		return
 	}
 	fail := p.takeFailure()
@@ -216,6 +220,7 @@ func (p *previewSession) applyUpdate(confirmStop bool) {
 			s.updateState.ErrorMessage = "当前安装目录没有写入权限，可打开安装包手动安装或前往发布页下载。"
 			s.updateState.FallbackPath = "/preview/updates/" + s.updateState.Release.AssetName
 			s.updateState.CanSelfUpdate = false
+			s.updateDialogOpen = true
 			return
 		}
 		ver := s.updateState.Release.Version

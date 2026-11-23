@@ -2,6 +2,7 @@ package pages
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -381,9 +382,12 @@ func (s *viewState) triggerUpdateApply(confirmStop bool) {
 		ctx = context.Background()
 	}
 	go func() {
-		st, _ := applyFn(ctx, confirmStop)
+		st, err := applyFn(ctx, confirmStop)
 		s.runOnUI(func() {
 			s.applyUpdateState(st)
+			if errors.Is(err, core.ErrUpdateWorkloadActive) || st.State == core.UpdateError {
+				s.updateDialogOpen = true
+			}
 		})
 	}()
 }

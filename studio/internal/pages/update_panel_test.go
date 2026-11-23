@@ -276,8 +276,37 @@ func TestUpdateReadyPromptCardActionsAndWorkloadGuard(t *testing.T) {
 		t.Fatalf("active workload should open dialog instead of silent apply: dialog=%v calls=%v", s.updateDialogOpen, applyCalls)
 	}
 
-	// When idle, clicking "更新并重启" invokes apply directly.
+	// Active workload returned lazily by ApplyUpdate opens modal when triggered from closed floating card.
 	s.tasks = nil
+	s.updateDialogOpen = false
+	s.updateApplyFn = func(context.Context, bool) (core.UpdateState, error) {
+		return core.UpdateState{
+			Seq:            5,
+			State:          core.UpdateReadyToApply,
+			CurrentVersion: "0.0.8",
+			Release:        sampleUpdateRelease(),
+			Workloads:      core.UpdateActiveWorkloads{ActiveDownloads: 1},
+		}, core.ErrUpdateWorkloadActive
+	}
+	tt.Frame()
+	click(t, tt, "更新并重启")
+	select {
+	case fn := <-uiCh:
+		fn()
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for workload conflict callback")
+	}
+	if !s.updateDialogOpen {
+		t.Fatal("workload conflict from ready prompt did not open modal")
+	}
+
+	// When idle, clicking "更新并重启" invokes apply directly.
+	s.updateApplyFn = func(_ context.Context, confirmStop bool) (core.UpdateState, error) {
+		applyCalls = append(applyCalls, confirmStop)
+		return core.UpdateState{Seq: 6, State: core.UpdateApplying, CurrentVersion: "0.0.8", Release: sampleUpdateRelease()}, nil
+	}
+	s.tasks = nil
+	s.updateState.Workloads = core.UpdateActiveWorkloads{}
 	s.updateDialogOpen = false
 	tt.Frame()
 	click(t, tt, "更新并重启")

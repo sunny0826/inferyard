@@ -59,6 +59,11 @@ func (m *updateManager) downloadUpdate(ctx context.Context, manual bool) (Update
 	}
 
 	m.mu.Lock()
+	if m.applyInFlight {
+		snap := m.cloneStateLocked()
+		m.mu.Unlock()
+		return snap, &updateCheckError{code: "update_busy", message: "更新正在处理中，请稍候。"}
+	}
 	if m.state.State == UpdateReadyToApply && m.stagedArtifact != "" {
 		if st, err := os.Stat(m.stagedArtifact); err == nil && st.Mode().IsRegular() {
 			snap := m.cloneStateLocked()
@@ -411,7 +416,7 @@ func (m *updateManager) failDownload(seq uint64, ctx context.Context, stagingDir
 func (m *updateManager) cancelUpdate() UpdateState {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.state.State == UpdateApplying {
+	if m.state.State == UpdateApplying || m.applyInFlight {
 		return m.cloneStateLocked()
 	}
 	m.opSeq++
