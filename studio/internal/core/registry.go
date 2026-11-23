@@ -471,6 +471,8 @@ func (s *Service) Registry() Registry {
 		DiskFreeBytes:   data.diskFreeBytes,
 		ModelRoots:      data.modelRoots,
 	}
+	protectedDataDirs := protectedPolystrataDataDirs(data.settings, data.wsEngines)
+	prot := collectOtherPolystrataProtectedRefs(data.settings, data.wsEngines, "")
 	for _, e := range data.models {
 		m := e.model
 		m.Path = e.path
@@ -478,6 +480,22 @@ func (s *Service) Registry() Registry {
 			m.Deletable = isManagedPolystrataModelDeletable(e.rawPath, e.path, data.psScope, data.resultsRoot)
 		} else {
 			m.Deletable = isModelDeletable(e.rawPath, e.path, data.modelRoots, data.resultsRoot)
+			if m.Deletable {
+				target := e.path
+				targetIsDir := m.Format == "directory"
+				if info, statErr := os.Lstat(e.path); statErr == nil {
+					targetIsDir = info.IsDir()
+					if matchedRoot, ok := strictlyInsideAnyRoot(e.path, data.modelRoots); ok {
+						target = resolveStandardModelDeleteTarget(e.path, matchedRoot, targetIsDir, protectedDataDirs)
+						if tInfo, tErr := os.Lstat(target); tErr == nil {
+							targetIsDir = tInfo.IsDir()
+						}
+					}
+				}
+				if isStandardModelProtectedByPolystrata(e.path, target, targetIsDir, protectedDataDirs, prot) {
+					m.Deletable = false
+				}
+			}
 		}
 		result.Models = append(result.Models, m)
 	}

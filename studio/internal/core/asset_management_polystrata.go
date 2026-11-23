@@ -450,43 +450,27 @@ func workspaceBusyError() *ApiError {
 	return err
 }
 
-func removePolystrataRuntimeKeepMarkers(stagedDir string) error {
-	entries, err := os.ReadDir(stagedDir)
-	if err != nil {
-		return err
-	}
-	for _, entry := range entries {
-		name := entry.Name()
-		if name == "installation.json" || name == ".inferyard-runtime.json" {
-			continue
-		}
-		if err := os.RemoveAll(filepath.Join(stagedDir, name)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
+var removeStagedPolystrataDir = os.RemoveAll
 
 func (s *Service) deleteManagedPolystrataEngine(name string, eng EngineAsset, expectedTarget, expectedFP string) *ApiError {
-	if err := s.runDeleteManagedPolystrataEngine(name, eng, expectedTarget, expectedFP); err != nil {
-		return err
+	unregistered, err := s.runDeleteManagedPolystrataEngine(name, eng, expectedTarget, expectedFP)
+	if unregistered || err == nil {
+		s.VerifyEngines()
+		_ = s.RefreshAssets()
 	}
-	s.VerifyEngines()
-	_ = s.RefreshAssets()
-	return nil
+	return err
 }
 
-func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset, expectedTarget, expectedFP string) *ApiError {
+func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset, expectedTarget, expectedFP string) (bool, *ApiError) {
 	s.settingsMu.Lock()
 	defer s.settingsMu.Unlock()
 
 	s.mu.Lock()
 	if s.assetWorkspaceBusyLocked() {
 		s.mu.Unlock()
-		return workspaceBusyError()
+		return false, workspaceBusyError()
 	}
 	s.deletingAssets++
-	prevU := clone(s.settings)
 	u := clone(s.settings)
 	paths := s.paths
 	s.mu.Unlock()
@@ -504,26 +488,26 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 		}
 	}
 	if rawPath == "" {
-		return Err("not_found")
+		return false, Err("not_found")
 	}
 	wsEngines := workspaceEnginesRoot(u, paths)
 	installDir, ok := managedPolystrataInstallDir(rawPath, eng.Path, wsEngines, u.ResultsRoot)
 	if !ok {
-		return errAssetNotDeletable()
+		return false, errAssetNotDeletable()
 	}
 	data := s.registry()
 	if polystrataInstallHasExternalDependents(u, wsEngines, eng.Path, installDir, data.engines) {
-		return errAssetNotDeletable()
+		return false, errAssetNotDeletable()
 	}
 	if err := verifyPolystrataRuntimeTreeSafe(installDir, u.ResultsRoot); err != nil {
-		return errAssetNotDeletable()
+		return false, errAssetNotDeletable()
 	}
 	if expectedTarget != "" {
 		if !sameFileOrPath(installDir, expectedTarget) {
-			return deleteTargetChangedError()
+			return false, deleteTargetChangedError()
 		}
 		if expectedFP != "" && polystrataEngineDeleteFingerprint(installDir, eng.Path) != expectedFP {
-			return deleteTargetChangedError()
+			return false, deleteTargetChangedError()
 		}
 	}
 
@@ -540,11 +524,17 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 
 	stagedDir := filepath.Join(filepath.Dir(installDir), ".inferyard-uninstall-"+filepath.Base(installDir)+"-"+uuid())
 	if err := os.Rename(installDir, stagedDir); err != nil {
-		return Err("internal_error")
+		return false, Err("internal_error")
 	}
 	if err := checkDirTreeWritable(stagedDir); err != nil {
 		_ = os.Rename(stagedDir, installDir)
-		return Err("internal_error")
+		return false, Err("internal_error")
+	}
+
+	migratedPaths, migErr := migratePolystrataRootConfigsToDataDir(stagedDir, installDir, defaultManagedPolystrataDataDirs(u, wsEngines))
+	if migErr != nil {
+		_ = os.Rename(stagedDir, installDir)
+		return false, Err("internal_error")
 	}
 
 	nextU := clone(u)
@@ -552,22 +542,14 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 		return removeRaw[rawInst]
 	})
 	if _, saveErr := s.saveSettings(nextU); saveErr != nil {
+		for i := len(migratedPaths) - 1; i >= 0; i-- {
+			_ = os.Remove(migratedPaths[i])
+		}
 		_ = os.Rename(stagedDir, installDir)
-		return saveErr
+		return false, saveErr
 	}
 
-	migratePolystrataRootConfigsToDataDir(stagedDir, installDir, defaultManagedPolystrataDataDirs(u, wsEngines))
-
-	if err := removePolystrataRuntimeKeepMarkers(stagedDir); err != nil {
-		_ = os.Rename(stagedDir, installDir)
-		_, _ = s.saveSettings(prevU)
-		return Err("internal_error")
-	}
-	if err := os.RemoveAll(stagedDir); err != nil && !os.IsNotExist(err) {
-		_ = os.Rename(stagedDir, installDir)
-		_, _ = s.saveSettings(prevU)
-		return Err("internal_error")
-	}
+	rmErr := removeStagedPolystrataDir(stagedDir)
 
 	s.mu.Lock()
 	s.pruneAssetSnapshotLocked("engine", installDir)
@@ -586,5 +568,11 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 		}
 	}
 	s.checkMu.Unlock()
-	return nil
+
+	if rmErr != nil && !os.IsNotExist(rmErr) {
+		apiErr := Err("internal_error")
+		apiErr.Message = "已取消注册引擎，但暂存目录中的部分文件无法移除（可检查权限后清理暂存目录）。"
+		return true, apiErr
+	}
+	return true, nil
 }

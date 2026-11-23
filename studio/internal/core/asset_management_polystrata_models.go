@@ -159,7 +159,11 @@ func resolvePolystrataConfigRefsLenient(cfgPath, declWorkDir, declDataDir string
 
 	cfgDir := filepath.Dir(cfgPath)
 	bases := polystrataConfigBases(cfg.Cwd, declWorkDir, cfgDir, declDataDir)
-	refs := extractPolystrataAssetRefs(cfg.Args, rawMap)
+	return resolvePolystrataConfigRefsWithBases(cfg.Args, rawMap, cfgDir, bases)
+}
+
+func resolvePolystrataConfigRefsWithBases(args []string, rawMap map[string]any, cfgDir string, bases []string) ([]assetFileSize, []string) {
+	refs := extractPolystrataAssetRefs(args, rawMap)
 
 	var files []assetFileSize
 	var dirs []string
@@ -265,6 +269,7 @@ func collectOtherPolystrataProtectedRefs(u UserSettings, wsEnginesRoot, targetCa
 			}
 			seenCfgs = append(seenCfgs, resolved)
 			prot.cfgs = append(prot.cfgs, resolved)
+			recordFile(resolved)
 			files, dirs := resolvePolystrataConfigRefsLenient(resolved, declWorkDir, declDataDir)
 			for _, f := range files {
 				recordFile(f.path)
@@ -402,7 +407,6 @@ func planPolystrataModelDelete(u UserSettings, wsEnginesRoot, rawCfgPath, canonC
 			return polystrataModelDeletePlan{}, errAssetNotDeletable()
 		}
 		plan.dirs = append(plan.dirs, d)
-		plan.reclaimableBytes += dirDiskUsageNoSymlinks(d)
 	}
 
 	cfgInsideDeletedDir := slices.ContainsFunc(plan.dirs, func(d string) bool {
@@ -425,12 +429,13 @@ func planPolystrataModelDelete(u UserSettings, wsEnginesRoot, rawCfgPath, canonC
 			return polystrataModelDeletePlan{}, errAssetNotDeletable()
 		}
 		plan.files = append(plan.files, f.path)
-		plan.reclaimableBytes += f.size
 	}
 
+	reclaimFiles := append([]string(nil), plan.files...)
 	if !cfgInsideDeletedDir {
-		plan.reclaimableBytes += cfgInfo.Size()
+		reclaimFiles = append(reclaimFiles, plan.configPath)
 	}
+	plan.reclaimableBytes = reclaimableDiskBytes(plan.dirs, reclaimFiles)
 	return plan, nil
 }
 
@@ -453,22 +458,53 @@ func pruneEmptyPolystrataDataDirs(startDirs, managedDataDirs []string, resultsRo
 	}
 }
 
-func (s *Service) deleteManagedPolystrataModel(rawCfgPath, canonCfgPath, expectedTarget, expectedFP string) *ApiError {
-	if err := s.runDeleteManagedPolystrataModel(rawCfgPath, canonCfgPath, expectedTarget, expectedFP); err != nil {
-		return err
-	}
-	_ = s.RefreshAssets()
-	return nil
+type stagedDeleteTarget struct {
+	orig   string
+	staged string
+	isDir  bool
 }
 
-func (s *Service) runDeleteManagedPolystrataModel(rawCfgPath, canonCfgPath, expectedTarget, expectedFP string) *ApiError {
+func stagePolystrataDeleteTargets(targets []stagedDeleteTarget) ([]stagedDeleteTarget, error) {
+	staged := make([]stagedDeleteTarget, 0, len(targets))
+	rollback := func() {
+		for i := len(staged) - 1; i >= 0; i-- {
+			_ = os.Rename(staged[i].staged, staged[i].orig)
+		}
+	}
+	for _, t := range targets {
+		stagedPath := filepath.Join(filepath.Dir(t.orig), ".inferyard-del-"+uuid()+"-"+filepath.Base(t.orig))
+		if err := os.Rename(t.orig, stagedPath); err != nil {
+			rollback()
+			return nil, err
+		}
+		entry := stagedDeleteTarget{orig: t.orig, staged: stagedPath, isDir: t.isDir}
+		staged = append(staged, entry)
+		if t.isDir {
+			if err := checkDirTreeWritable(stagedPath); err != nil {
+				rollback()
+				return nil, err
+			}
+		}
+	}
+	return staged, nil
+}
+
+func (s *Service) deleteManagedPolystrataModel(rawCfgPath, canonCfgPath, expectedTarget, expectedFP string) *ApiError {
+	mutated, err := s.runDeleteManagedPolystrataModel(rawCfgPath, canonCfgPath, expectedTarget, expectedFP)
+	if mutated || err == nil {
+		_ = s.RefreshAssets()
+	}
+	return err
+}
+
+func (s *Service) runDeleteManagedPolystrataModel(rawCfgPath, canonCfgPath, expectedTarget, expectedFP string) (bool, *ApiError) {
 	s.settingsMu.Lock()
 	defer s.settingsMu.Unlock()
 
 	s.mu.Lock()
 	if s.assetWorkspaceBusyLocked() {
 		s.mu.Unlock()
-		return workspaceBusyError()
+		return false, workspaceBusyError()
 	}
 	s.deletingAssets++
 	u := clone(s.settings)
@@ -482,46 +518,74 @@ func (s *Service) runDeleteManagedPolystrataModel(rawCfgPath, canonCfgPath, expe
 
 	plan, err := planPolystrataModelDelete(u, workspaceEnginesRoot(u, paths), rawCfgPath, canonCfgPath)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if expectedTarget != "" {
 		if !sameFileOrPath(plan.configPath, expectedTarget) {
-			return deleteTargetChangedError()
+			return false, deleteTargetChangedError()
 		}
 		if expectedFP != "" && polystrataModelDeleteFingerprint(plan) != expectedFP {
-			return deleteTargetChangedError()
+			return false, deleteTargetChangedError()
 		}
 	}
 
-	var pruneDirs []string
+	var targets []stagedDeleteTarget
+	cfgInsideDeletedDir := slices.ContainsFunc(plan.dirs, func(d string) bool {
+		return pathWithinDirSameFS(d, plan.configPath)
+	})
+	if !cfgInsideDeletedDir {
+		targets = append(targets, stagedDeleteTarget{orig: plan.configPath, isDir: false})
+	}
 	for _, dir := range plan.dirs {
-		if rmErr := os.RemoveAll(dir); rmErr != nil && !os.IsNotExist(rmErr) {
-			return Err("internal_error")
-		}
-		pruneDirs = append(pruneDirs, filepath.Dir(dir))
+		targets = append(targets, stagedDeleteTarget{orig: dir, isDir: true})
 	}
 	for _, file := range plan.files {
-		if rmErr := os.Remove(file); rmErr != nil && !os.IsNotExist(rmErr) {
-			return Err("internal_error")
+		targets = append(targets, stagedDeleteTarget{orig: file, isDir: false})
+	}
+
+	staged, stageErr := stagePolystrataDeleteTargets(targets)
+	if stageErr != nil {
+		if os.IsNotExist(stageErr) {
+			return false, Err("not_found")
 		}
-		pruneDirs = append(pruneDirs, filepath.Dir(file))
+		return false, Err("internal_error")
 	}
-	if rmErr := os.Remove(plan.configPath); rmErr != nil && !os.IsNotExist(rmErr) {
-		return Err("internal_error")
-	}
-	if pathStrictlyInsideAnySameFS(plan.configPath, plan.dataDirs) {
-		pruneDirs = append(pruneDirs, filepath.Dir(plan.configPath))
+
+	var removeErr error
+	var pruneDirs []string
+	var removedOrigs []string
+	for _, entry := range staged {
+		var rmErr error
+		if entry.isDir {
+			rmErr = os.RemoveAll(entry.staged)
+		} else {
+			rmErr = os.Remove(entry.staged)
+		}
+		if rmErr != nil && !os.IsNotExist(rmErr) {
+			if removeErr == nil {
+				removeErr = rmErr
+			}
+			continue
+		}
+		removedOrigs = append(removedOrigs, entry.orig)
+		if !entry.isDir && sameFileOrPath(entry.orig, plan.configPath) {
+			if pathStrictlyInsideAnySameFS(plan.configPath, plan.dataDirs) {
+				pruneDirs = append(pruneDirs, filepath.Dir(plan.configPath))
+			}
+		} else {
+			pruneDirs = append(pruneDirs, filepath.Dir(entry.orig))
+		}
 	}
 	pruneEmptyPolystrataDataDirs(pruneDirs, plan.dataDirs, u.ResultsRoot)
 
 	s.mu.Lock()
-	for _, dir := range plan.dirs {
-		s.pruneAssetSnapshotLocked("model", dir)
-	}
-	for _, file := range plan.files {
-		s.pruneAssetSnapshotLocked("model", file)
+	for _, orig := range removedOrigs {
+		s.pruneAssetSnapshotLocked("model", orig)
 	}
 	s.pruneAssetSnapshotLocked("model", plan.configPath)
 	s.mu.Unlock()
-	return nil
+	if removeErr != nil {
+		return true, Err("internal_error")
+	}
+	return true, nil
 }

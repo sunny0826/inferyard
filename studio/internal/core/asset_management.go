@@ -492,8 +492,13 @@ func (s *Service) deleteManagedAssetInternal(kind, name, expectedTargetPath, exp
 	}
 
 	var allowedRoots []string
+	var protectedDataDirs []string
+	var prot protectedPolystrataRefs
 	if kind == "model" {
 		allowedRoots = activeModelRoots(u)
+		wsEngines := workspaceEnginesRoot(u, paths)
+		protectedDataDirs = protectedPolystrataDataDirs(u, wsEngines)
+		prot = collectOtherPolystrataProtectedRefs(u, wsEngines, "")
 	} else if wsEngines := workspaceEnginesRoot(u, paths); wsEngines != "" {
 		allowedRoots = []string{wsEngines}
 	}
@@ -503,11 +508,8 @@ func (s *Service) deleteManagedAssetInternal(kind, name, expectedTargetPath, exp
 	}
 
 	deleteTarget := canonAsset
-	if kind == "model" && !assetInfo.IsDir() && strings.HasSuffix(strings.ToLower(canonAsset), ".gguf") {
-		parent := filepath.Dir(canonAsset)
-		if canRemoveSingleGGUFDir(parent, matchedRoot, filepath.Base(canonAsset)) {
-			deleteTarget = parent
-		}
+	if kind == "model" {
+		deleteTarget = resolveStandardModelDeleteTarget(canonAsset, matchedRoot, assetInfo.IsDir(), protectedDataDirs)
 	} else if kind == "engine" {
 		deleteTarget = resolveEngineDeleteTarget(canonAsset, matchedRoot, name, reg.Engines)
 	}
@@ -535,16 +537,8 @@ func (s *Service) deleteManagedAssetInternal(kind, name, expectedTargetPath, exp
 	if err := verifyAssetTreeSafe(canonDelete, targetInfo.IsDir()); err != nil {
 		return errAssetNotDeletable()
 	}
-	if kind == "model" {
-		wsEngines := workspaceEnginesRoot(u, paths)
-		managedDataDirs := defaultManagedPolystrataDataDirs(u, wsEngines)
-		inManagedData := pathStrictlyInsideAnySameFS(canonAsset, managedDataDirs) || pathStrictlyInsideAnySameFS(canonDelete, managedDataDirs)
-		if inManagedData {
-			prot := collectOtherPolystrataProtectedRefs(u, wsEngines, "")
-			if prot.touchesFile(canonAsset) || prot.touchesFile(canonDelete) || (targetInfo.IsDir() && prot.touchesDir(canonDelete)) {
-				return errAssetNotDeletable()
-			}
-		}
+	if kind == "model" && isStandardModelProtectedByPolystrata(canonAsset, canonDelete, targetInfo.IsDir(), protectedDataDirs, prot) {
+		return errAssetNotDeletable()
 	}
 	if expectedTargetPath != "" {
 		if !sameFileOrPath(canonDelete, expectedTargetPath) {

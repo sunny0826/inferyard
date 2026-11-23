@@ -114,21 +114,47 @@ func TestPolystrataUninstallHardlinksCaseDedupeAndRawGGUFProtection(t *testing.T
 	s.mu.Unlock()
 
 	reg := s.Registry()
-	for _, m := range reg.Models {
-		if m.Format == "gguf" && sameFileOrPath(m.Path, weightsUpper) {
-			t.Fatalf("expected case-aliased raw GGUF covered by strata-case.json to be deduplicated: %+v", m)
+	infoUpper, errU := os.Lstat(weightsUpper)
+	infoLower, errL := os.Lstat(weightsLower)
+	if errU == nil && errL == nil && os.SameFile(infoUpper, infoLower) {
+		for _, m := range reg.Models {
+			if m.Format == "gguf" && sameFileOrPath(m.Path, weightsUpper) {
+				t.Fatalf("expected case-aliased raw GGUF covered by strata-case.json to be deduplicated: %+v", m)
+			}
 		}
 	}
 
-	// Simulate raw GGUF exposed in Assets and ensure raw DeleteManagedAsset still blocks active ref deletion.
-	otherGGUF := filepath.Join(dataDir, "models", "m1", "other.gguf")
-	mustWriteFile(t, otherGGUF, bytes.Repeat([]byte("o"), 256), 0o600)
+	// Keep a raw GGUF exposed in Assets (referenced by an incomplete strata-*.json) and verify
+	// list, inspect, and DeleteManagedAsset all reject deletion with asset_not_deletable.
+	_ = cfgCase
+	partialGGUF := filepath.Join(dataDir, "models", "m-partial", "partial.gguf")
+	mustWriteFile(t, partialGGUF, bytes.Repeat([]byte("p"), 256), 0o600)
+	_ = writeStrataConfigFixture(t, filepath.Join(dataDir, "models", "m-partial", "strata-partial.json"), "Partial Model", []string{
+		"--model", partialGGUF,
+		"--mmproj", filepath.Join(dataDir, "models", "m-partial", "missing-mmproj.gguf"),
+	})
 	s.mu.Lock()
-	s.assets.Parsed.Models = []inferyard.ScannedModel{{Path: otherGGUF, Name: "other", Format: "gguf", Available: true}}
+	s.assets.Parsed.Models = []inferyard.ScannedModel{{Path: partialGGUF, Name: "partial", Format: "gguf", SizeBytes: ptr(int64(256)), Available: true}}
 	s.mu.Unlock()
-	_ = writeStrataConfigFixture(t, cfgCase, "Case Model", []string{"--model", weightsLower})
-	if err := s.DeleteManagedAsset("model", "Weights.gguf"); err == nil || (err.Code != "not_found" && err.Code != "asset_not_deletable") {
-		t.Fatalf("unexpected result deleting covered raw gguf: %+v", err)
+
+	var partialModel ModelAsset
+	for _, m := range s.Registry().Models {
+		if m.Format == "gguf" && m.Name == "partial.gguf" {
+			partialModel = m
+			break
+		}
+	}
+	if partialModel.Name == "" || partialModel.Deletable {
+		t.Fatalf("expected visible raw GGUF referenced by strata-partial.json to have Deletable=false: %+v", partialModel)
+	}
+	if _, err := s.InspectDeleteAsset("model", "partial.gguf"); err == nil || err.Code != "asset_not_deletable" {
+		t.Fatalf("expected asset_not_deletable from InspectDeleteAsset for protected raw GGUF, got %+v", err)
+	}
+	if err := s.DeleteManagedAsset("model", "partial.gguf"); err == nil || err.Code != "asset_not_deletable" {
+		t.Fatalf("expected asset_not_deletable deleting protected raw GGUF, got %+v", err)
+	}
+	if _, err := os.Stat(partialGGUF); err != nil {
+		t.Fatalf("protected raw GGUF must remain on disk: %v", err)
 	}
 
 	if runtime.GOOS != "windows" {

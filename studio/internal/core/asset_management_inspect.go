@@ -1,13 +1,14 @@
 package core
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -30,18 +31,154 @@ func deleteTargetChangedError() *ApiError {
 	return err
 }
 
+func reclaimableDiskBytes(dirs, files []string) int64 {
+	var uniqueDirs []string
+	for _, d := range dirs {
+		if strings.TrimSpace(d) == "" {
+			continue
+		}
+		covered := false
+		for _, prev := range uniqueDirs {
+			if sameFileOrPath(prev, d) || pathWithinDirSameFS(prev, d) {
+				covered = true
+				break
+			}
+		}
+		if covered {
+			continue
+		}
+		kept := uniqueDirs[:0]
+		for _, prev := range uniqueDirs {
+			if !pathWithinDirSameFS(d, prev) {
+				kept = append(kept, prev)
+			}
+		}
+		uniqueDirs = append(kept, d)
+	}
+
+	type inodeAcc struct {
+		size  int64
+		nlink uint64
+		count uint64
+	}
+	inodes := map[fileInodeKey]*inodeAcc{}
+	var total int64
+	recordInfo := func(info os.FileInfo) {
+		if info == nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			return
+		}
+		if key, nlink, ok := fileInodeLinks(info); ok {
+			acc, exists := inodes[key]
+			if !exists {
+				acc = &inodeAcc{size: info.Size(), nlink: nlink}
+				inodes[key] = acc
+			}
+			acc.count++
+			return
+		}
+		total += info.Size()
+	}
+
+	for _, d := range uniqueDirs {
+		_ = filepath.WalkDir(d, func(_ string, entry fs.DirEntry, walkErr error) error {
+			if walkErr != nil || entry == nil || entry.Type()&os.ModeSymlink != 0 {
+				if entry != nil && entry.Type()&os.ModeSymlink != 0 && entry.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if entry.Type().IsRegular() {
+				if info, err := entry.Info(); err == nil {
+					recordInfo(info)
+				}
+			}
+			return nil
+		})
+	}
+
+	var seenFiles []string
+	for _, f := range files {
+		if strings.TrimSpace(f) == "" {
+			continue
+		}
+		if slices.ContainsFunc(uniqueDirs, func(d string) bool { return pathWithinDirSameFS(d, f) }) {
+			continue
+		}
+		if containsSameDirEntry(seenFiles, f) {
+			continue
+		}
+		seenFiles = append(seenFiles, f)
+		if info, err := os.Lstat(f); err == nil {
+			recordInfo(info)
+		}
+	}
+
+	for _, acc := range inodes {
+		if acc.count >= acc.nlink {
+			total += acc.size
+		}
+	}
+	return total
+}
+
+func fileStatToken(path string) string {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return "missing"
+	}
+	return fmt.Sprintf("%t|%d|%d", info.Mode()&os.ModeSymlink != 0, info.Size(), info.ModTime().UnixNano())
+}
+
+func dirTreeManifestHash(root string) string {
+	h := sha256.New()
+	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			_, _ = fmt.Fprintf(h, "err|%s|%v\n", path, walkErr)
+			return nil
+		}
+		if path == root {
+			return nil
+		}
+		rel, relErr := filepath.Rel(root, path)
+		if relErr != nil {
+			rel = path
+		}
+		rel = filepath.ToSlash(rel)
+		if d.Type()&os.ModeSymlink != 0 {
+			target, _ := os.Readlink(path)
+			_, _ = fmt.Fprintf(h, "sym|%s|%s\n", rel, target)
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.IsDir() {
+			_, _ = fmt.Fprintf(h, "dir|%s\n", rel)
+			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			_, _ = fmt.Fprintf(h, "stat|%s|%v\n", rel, err)
+			return nil
+		}
+		_, _ = fmt.Fprintf(h, "file|%s|%d|%d\n", rel, info.Size(), info.ModTime().UnixNano())
+		return nil
+	})
+	return hex.EncodeToString(h.Sum(nil))
+}
+
 func standardAssetDeleteFingerprint(kind, canonTarget string) string {
 	info, err := os.Lstat(canonTarget)
 	if err != nil {
 		return ""
 	}
-	var size int64
+	var contentSig string
 	if info.IsDir() {
-		size = dirDiskUsageNoSymlinks(canonTarget)
+		contentSig = fmt.Sprintf("%d|%s", dirDiskUsageNoSymlinks(canonTarget), dirTreeManifestHash(canonTarget))
 	} else {
-		size = info.Size()
+		contentSig = fmt.Sprintf("%d|%d", info.Size(), info.ModTime().UnixNano())
 	}
-	raw := fmt.Sprintf("%s|%s|%t|%d|%d", kind, canonTarget, info.IsDir(), size, info.ModTime().UnixNano())
+	raw := fmt.Sprintf("%s|%s|%t|%s", kind, canonTarget, info.IsDir(), contentSig)
 	sum := sha256.Sum256([]byte(raw))
 	return hex.EncodeToString(sum[:])
 }
@@ -51,18 +188,36 @@ func polystrataEngineDeleteFingerprint(installDir, canonInstPath string) string 
 	if err != nil {
 		return ""
 	}
-	raw := fmt.Sprintf("%s|%s|%d|%d", installDir, canonInstPath, dirDiskUsageNoSymlinks(installDir), info.ModTime().UnixNano())
+	raw := fmt.Sprintf(
+		"%s|%s|%d|%d|%s",
+		installDir,
+		canonInstPath,
+		dirDiskUsageNoSymlinks(installDir),
+		info.ModTime().UnixNano(),
+		dirTreeManifestHash(installDir),
+	)
 	sum := sha256.Sum256([]byte(raw))
 	return hex.EncodeToString(sum[:])
 }
 
 func polystrataModelDeleteFingerprint(plan polystrataModelDeletePlan) string {
+	dirEntries := slices.Clone(plan.dirs)
+	slices.Sort(dirEntries)
+	for i, d := range dirEntries {
+		dirEntries[i] = d + ":" + dirTreeManifestHash(d)
+	}
+	fileEntries := slices.Clone(plan.files)
+	slices.Sort(fileEntries)
+	for i, f := range fileEntries {
+		fileEntries[i] = f + ":" + fileStatToken(f)
+	}
 	raw := fmt.Sprintf(
-		"%s|%d|%s|%s|%t|%t",
+		"%s:%s|%d|%s|%s|%t|%t",
 		plan.configPath,
+		fileStatToken(plan.configPath),
 		plan.reclaimableBytes,
-		strings.Join(plan.dirs, ","),
-		strings.Join(plan.files, ","),
+		strings.Join(dirEntries, ","),
+		strings.Join(fileEntries, ","),
 		plan.preservedShared,
 		plan.preservedExternal,
 	)
@@ -117,13 +272,14 @@ func polystrataInstallHasExternalDependents(u UserSettings, wsEnginesRoot, canon
 		var decl struct {
 			Executable       string   `json:"executable"`
 			WorkingDirectory string   `json:"working_directory"`
+			ModelsRoot       string   `json:"models_root"`
 			DataDir          string   `json:"data_dir"`
 			RuntimeRoots     []string `json:"runtime_roots"`
 		}
 		if json.Unmarshal(rawBytes, &decl) != nil {
 			continue
 		}
-		refs := append([]string{decl.Executable, decl.WorkingDirectory, decl.DataDir}, decl.RuntimeRoots...)
+		refs := append([]string{decl.Executable, decl.WorkingDirectory, decl.ModelsRoot, decl.DataDir}, decl.RuntimeRoots...)
 		for _, rawRef := range refs {
 			trimmed := strings.TrimSpace(rawRef)
 			if trimmed == "" {
@@ -207,81 +363,73 @@ func polystrataInstallHasExternalDependents(u UserSettings, wsEnginesRoot, canon
 	return false
 }
 
-func migratePolystrataRootConfigsToDataDir(stagedDir, origInstallDir string, managedDataDirs []string) {
-	if len(managedDataDirs) == 0 {
-		return
-	}
-	entries, err := os.ReadDir(stagedDir)
-	if err != nil {
-		return
-	}
-	for _, item := range entries {
-		name := item.Name()
-		if item.IsDir() || !strings.HasPrefix(name, "strata-") || !strings.HasSuffix(name, ".json") {
-			continue
+func protectedPolystrataDataDirs(u UserSettings, wsEnginesRoot string) []string {
+	out := defaultManagedPolystrataDataDirs(u, wsEnginesRoot)
+	addDir := func(raw string) {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" || isSymlinkPath(trimmed) {
+			return
 		}
-		srcPath := filepath.Join(stagedDir, name)
-		info, err := os.Lstat(srcPath)
-		if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() > maxInstallationBytes {
-			continue
+		info, err := os.Lstat(trimmed)
+		if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+			return
 		}
-		raw, err := os.ReadFile(srcPath)
+		canonDir, err := canonical(trimmed)
+		if err != nil || !filepath.IsAbs(canonDir) {
+			return
+		}
+		if !slices.ContainsFunc(out, func(prev string) bool { return sameFileOrPath(prev, canonDir) }) {
+			out = append(out, canonDir)
+		}
+	}
+	for _, rawInst := range u.EngineInstallations {
+		rawBytes, err := installationBytes(rawInst)
 		if err != nil {
 			continue
 		}
-		var cfg struct {
-			Exe  string   `json:"exe"`
-			Args []string `json:"args"`
+		var decl struct {
+			Family  string `json:"family"`
+			DataDir string `json:"data_dir"`
 		}
-		if json.Unmarshal(raw, &cfg) != nil || strings.TrimSpace(cfg.Exe) == "" || cfg.Args == nil {
-			continue
-		}
-		for _, dd := range managedDataDirs {
-			if isSymlinkPath(dd) {
-				continue
-			}
-			files, dirs := resolvePolystrataConfigRefsLenient(srcPath, origInstallDir, dd)
-			inDD, inRuntime := false, false
-			for _, f := range files {
-				if pathWithinDirSameFS(stagedDir, f.path) || pathWithinDirSameFS(origInstallDir, f.path) {
-					inRuntime = true
-				}
-				if pathStrictlyInsideDirSameFS(f.path, dd) {
-					inDD = true
-				}
-			}
-			for _, d := range dirs {
-				if pathWithinDirSameFS(stagedDir, d) || pathWithinDirSameFS(origInstallDir, d) {
-					inRuntime = true
-				}
-				if pathStrictlyInsideDirSameFS(d, dd) {
-					inDD = true
-				}
-			}
-			if !inDD || inRuntime {
-				continue
-			}
-			destPath := filepath.Join(dd, name)
-			if existing, readErr := os.ReadFile(destPath); readErr == nil {
-				if bytes.Equal(existing, raw) {
-					break
-				}
-				destPath = ""
-				stem := strings.TrimSuffix(name, ".json")
-				for i := 1; i <= 100; i++ {
-					cand := filepath.Join(dd, fmt.Sprintf("%s-retained-%d.json", stem, i))
-					if _, lerr := os.Lstat(cand); os.IsNotExist(lerr) {
-						destPath = cand
-						break
-					}
-				}
-			}
-			if destPath != "" {
-				_ = os.WriteFile(destPath, raw, 0o600)
-			}
-			break
+		if json.Unmarshal(rawBytes, &decl) == nil && decl.Family == "polystrata" {
+			addDir(decl.DataDir)
 		}
 	}
+	return out
+}
+
+func resolveStandardModelDeleteTarget(canonAsset, matchedRoot string, assetIsDir bool, protectedDataDirs []string) string {
+	if assetIsDir || !strings.HasSuffix(strings.ToLower(canonAsset), ".gguf") {
+		return canonAsset
+	}
+	parent := filepath.Dir(canonAsset)
+	if !canRemoveSingleGGUFDir(parent, matchedRoot, filepath.Base(canonAsset)) {
+		return canonAsset
+	}
+	if isProtectedPolystrataContainer(parent, protectedDataDirs) {
+		return canonAsset
+	}
+	for _, dd := range protectedDataDirs {
+		if sameFileOrPath(parent, dd) || pathWithinDirSameFS(parent, dd) {
+			return canonAsset
+		}
+	}
+	return parent
+}
+
+func isStandardModelProtectedByPolystrata(canonAsset, canonTarget string, targetIsDir bool, protectedDataDirs []string, prot protectedPolystrataRefs) bool {
+	if isProtectedPolystrataContainer(canonAsset, protectedDataDirs) || isProtectedPolystrataContainer(canonTarget, protectedDataDirs) {
+		return true
+	}
+	for _, dd := range protectedDataDirs {
+		if sameFileOrPath(canonAsset, dd) || sameFileOrPath(canonTarget, dd) {
+			return true
+		}
+		if targetIsDir && pathWithinDirSameFS(canonTarget, dd) {
+			return true
+		}
+	}
+	return prot.touchesFile(canonAsset) || prot.touchesFile(canonTarget) || (targetIsDir && prot.touchesDir(canonTarget))
 }
 
 // InspectDeleteAsset previews the deletion scope and reclaimable disk size without mutating state.
@@ -328,7 +476,7 @@ func (s *Service) inspectDeleteEngineAsset(u UserSettings, paths *BoundPaths, re
 				Name:             name,
 				TargetPath:       installDir,
 				Fingerprint:      polystrataEngineDeleteFingerprint(installDir, eng.Path),
-				ReclaimableBytes: ptr(dirDiskUsageNoSymlinks(installDir)),
+				ReclaimableBytes: ptr(reclaimableDiskBytes([]string{installDir}, nil)),
 				Scope:            "polystrata_engine",
 				KeepsModelData:   polystrataInstallKeepsExternalData(u, wsEngines, eng.Path, installDir),
 			}, nil
@@ -342,9 +490,9 @@ func (s *Service) inspectDeleteEngineAsset(u UserSettings, paths *BoundPaths, re
 		var sizePtr *int64
 		if info, err := os.Lstat(target); err == nil {
 			if info.IsDir() {
-				sizePtr = ptr(dirDiskUsageNoSymlinks(target))
+				sizePtr = ptr(reclaimableDiskBytes([]string{target}, nil))
 			} else if info.Mode().IsRegular() {
-				sizePtr = ptr(info.Size())
+				sizePtr = ptr(reclaimableDiskBytes(nil, []string{target}))
 			}
 		}
 		return AssetDeleteInfo{
@@ -390,14 +538,26 @@ func (s *Service) inspectDeleteModelAsset(u UserSettings, paths *BoundPaths, reg
 		}
 		target := m.Path
 		sizePtr := clone(m.SizeBytes)
-		if info, err := os.Lstat(m.Path); err == nil && !info.IsDir() && strings.HasSuffix(strings.ToLower(m.Path), ".gguf") {
+		wsEngines := workspaceEnginesRoot(u, paths)
+		protectedDataDirs := protectedPolystrataDataDirs(u, wsEngines)
+		prot := collectOtherPolystrataProtectedRefs(u, wsEngines, "")
+		targetIsDir := m.Format == "directory"
+		if info, err := os.Lstat(m.Path); err == nil {
+			targetIsDir = info.IsDir()
 			if matchedRoot, ok := strictlyInsideAnyRoot(m.Path, activeModelRoots(u)); ok {
-				parent := filepath.Dir(m.Path)
-				if canRemoveSingleGGUFDir(parent, matchedRoot, filepath.Base(m.Path)) {
-					target = parent
-					sizePtr = ptr(dirDiskUsageNoSymlinks(target))
+				target = resolveStandardModelDeleteTarget(m.Path, matchedRoot, targetIsDir, protectedDataDirs)
+			}
+			if tInfo, tErr := os.Lstat(target); tErr == nil {
+				targetIsDir = tInfo.IsDir()
+				if targetIsDir {
+					sizePtr = ptr(reclaimableDiskBytes([]string{target}, nil))
+				} else if tInfo.Mode().IsRegular() {
+					sizePtr = ptr(reclaimableDiskBytes(nil, []string{target}))
 				}
 			}
+		}
+		if isStandardModelProtectedByPolystrata(m.Path, target, targetIsDir, protectedDataDirs, prot) {
+			return AssetDeleteInfo{}, errAssetNotDeletable()
 		}
 		return AssetDeleteInfo{
 			Kind:             "model",
