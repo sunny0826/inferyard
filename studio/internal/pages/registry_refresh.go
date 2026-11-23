@@ -14,3 +14,15 @@ func fullRefresh(events []core.Event, reset bool) bool {
 	}
 	return false
 }
+
+func needsRefresh(events []core.Event, reset bool) bool {
+	if reset {
+		return true
+	}
+	for _, event := range events {
+		if event.Type != "update.state" {
+			return true
+		}
+	}
+	return false
+}

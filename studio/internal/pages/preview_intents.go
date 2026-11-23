@@ -97,3 +97,23 @@ func (previewSpeedCancel) previewIntent() {}
 type previewSpeedRead struct{ id string }
 
 func (previewSpeedRead) previewIntent() {}
+
+type previewUpdateCheck struct{}
+
+func (previewUpdateCheck) previewIntent() {}
+
+type previewUpdateStart struct{}
+
+func (previewUpdateStart) previewIntent() {}
+
+type previewUpdateCancel struct{}
+
+func (previewUpdateCancel) previewIntent() {}
+
+type previewUpdateApply struct{ confirmStopWorkloads bool }
+
+func (previewUpdateApply) previewIntent() {}
+
+type previewUpdateRetry struct{}
+
+func (previewUpdateRetry) previewIntent() {}

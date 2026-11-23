@@ -63,6 +63,9 @@ var previewScenes = []struct {
 	{"报告 · 读取失败", func(s *viewState) { s.openReport("broken-report") }},
 	{"下载 · 进行中与失败", previewDownloadsActiveAndFailed},
 	{"下载 · PolyStrata 引导安装", previewDownloadsPolystrata},
+	{"更新 · 发现新版本", previewUpdateAvailable},
+	{"更新 · 下载中", previewUpdateDownloading},
+	{"更新 · 更新失败", previewUpdateError},
 }
 
 func previewDownloadsPolystrata(s *viewState) {

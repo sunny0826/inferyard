@@ -49,6 +49,7 @@ func (s *Service) beginShutdown() {
 			if orphanDone != nil {
 				<-orphanDone
 			}
+			s.cleanupUpdateStagingOnShutdown()
 			close(s.shutdownDone)
 		}()
 	})
