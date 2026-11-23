@@ -125,7 +125,7 @@ func (s *Service) RegisterEngineInstallation(ctx context.Context, path string) (
 	}
 	p := s.probe(s.userSettings())
 	if p.Status != "ok" {
-		return SettingsResponse{}, Err("cli_unavailable")
+		return SettingsResponse{}, cliProbeError(p)
 	}
 	ctx, cancel := context.WithTimeout(ctx, installationCheckTimeout)
 	defer cancel()
@@ -191,7 +191,7 @@ func (s *Service) DetectLocalEngines(ctx context.Context) (inferyard.EngineDetec
 	}
 	p := s.probe(s.userSettings())
 	if p.Status != "ok" {
-		return inferyard.EngineDetectResult{}, Err("cli_unavailable")
+		return inferyard.EngineDetectResult{}, cliProbeError(p)
 	}
 	detectCtx, cancel := context.WithTimeout(ctx, engineDetectTimeout)
 	defer cancel()
@@ -346,7 +346,7 @@ func (s *Service) InitAndRegisterLocalEngine(ctx context.Context, req InitLocalE
 	}
 	p := s.probe(u)
 	if p.Status != "ok" {
-		return SettingsResponse{}, Err("cli_unavailable")
+		return SettingsResponse{}, cliProbeError(p)
 	}
 	args := []string{
 		"engine", "init-installation",

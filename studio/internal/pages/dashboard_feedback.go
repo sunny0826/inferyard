@@ -131,7 +131,7 @@ func human(code string) string {
 	case "engine_binary_missing":
 		return "引擎归档内未找到 llama-server，请检查引擎来源。"
 	case "cli_outdated":
-		return "CLI 不可用或缺少所需命令，请安装或升级 CLI 后重试。"
+		return "CLI 版本过旧或缺少所需命令，请升级 CLI 后重试。"
 	case "engine_check_error":
 		return "引擎核验执行失败，请检查引擎路径后重试。"
 	case "engine_check_invalid_response":
@@ -281,4 +281,31 @@ func (s *viewState) feedback(c *ui.Context) {
 			},
 		})
 	}
+	s.outdatedCLIBanner(c)
+}
+
+func (s *viewState) outdatedCLIBanner(c *ui.Context) {
+	if !s.loaded || s.ready.CLI.Status != "outdated" || (s.selected == "dashboard" && s.detailID == "") {
+		return
+	}
+	msg := cliOutdatedSummary(s.ready.CLI.Version)
+	if s.cliInstallStatus != "" {
+		msg = s.cliInstallStatus
+	}
+	bound := s.service != nil && s.service.BoundPaths() != nil
+	var actions func()
+	if !bound {
+		actions = func() {
+			upgrading := s.actionBusy("upgrade-cli")
+			if primaryActionButton(c, "升级 CLI", upgrading).Disabled(s.busy).Clicked() {
+				s.upgradeCLI()
+			}
+		}
+	}
+	noticeBanner(c, noticeBannerOptions{
+		Kind:    stateWarning,
+		Size:    bannerCompact,
+		Message: msg,
+		Actions: actions,
+	})
 }

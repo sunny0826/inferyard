@@ -107,7 +107,7 @@ func (s *Service) CreatePolystrataSetup(req PolystrataSetupRequest) (DownloadTas
 	}
 	p := s.probe(u)
 	if p.Status != "ok" {
-		return DownloadTask{}, Err("cli_unavailable")
+		return DownloadTask{}, cliProbeError(p)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

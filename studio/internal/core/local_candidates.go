@@ -54,7 +54,7 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 	}
 	probe := s.probe(u)
 	if probe.Status != "ok" {
-		return nil, Err("cli_unavailable")
+		return nil, cliProbeError(probe)
 	}
 	key := installationKey(selected.installation)
 	checked, err := s.exec(ctx, *probe.Path, "engine", "check", "--installation", selected.installation)

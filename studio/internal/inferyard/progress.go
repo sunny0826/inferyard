@@ -45,6 +45,14 @@ type ProgressReport struct {
 	Runs   []string `json:"runs"`
 }
 
+type ProgressVersionError struct {
+	Version int
+}
+
+func (e ProgressVersionError) Error() string {
+	return "unsupported progress version"
+}
+
 func ParseProgress(raw []byte) (WorkspaceProgress, error) {
 	var result WorkspaceProgress
 	raw = bytes.TrimSpace(raw)
@@ -68,7 +76,7 @@ func ParseProgress(raw []byte) (WorkspaceProgress, error) {
 		return result, errors.New("unsupported progress kind")
 	}
 	if result.ProgressVersion != 2 {
-		return result, errors.New("unsupported progress version")
+		return result, ProgressVersionError{Version: result.ProgressVersion}
 	}
 	if result.Workspace == "" {
 		return result, errors.New("workspace is empty")

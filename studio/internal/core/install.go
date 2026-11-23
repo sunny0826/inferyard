@@ -54,21 +54,47 @@ func extraBinDirs() []string {
 	return nil
 }
 
-func FindCLI() string {
-	if p, err := installLookPath(cliBinaryName()); err == nil {
-		return p
+func cliCandidatePaths(configured string) []string {
+	var raw []string
+	if trimmed := strings.TrimSpace(configured); trimmed != "" {
+		if st, err := installStat(trimmed); err == nil && !st.IsDir() {
+			raw = append(raw, trimmed)
+		}
 	}
-	candidates := []string{}
+	if p, err := installLookPath(cliBinaryName()); err == nil {
+		raw = append(raw, p)
+	}
+	var dirs []string
 	if home, err := os.UserHomeDir(); err == nil {
-		candidates = append(candidates, filepath.Join(home, ".local", "bin", cliBinaryName()))
+		dirs = append(dirs, filepath.Join(home, ".local", "bin", cliBinaryName()))
 	}
 	for _, dir := range extraBinDirs() {
-		candidates = append(candidates, filepath.Join(dir, cliBinaryName()))
+		dirs = append(dirs, filepath.Join(dir, cliBinaryName()))
 	}
-	for _, p := range candidates {
+	for _, p := range dirs {
 		if st, err := installStat(p); err == nil && !st.IsDir() {
-			return p
+			raw = append(raw, p)
 		}
+	}
+	seen := map[string]bool{}
+	var out []string
+	for _, cand := range raw {
+		abs, err := filepath.Abs(cand)
+		if err != nil {
+			abs = cand
+		}
+		if seen[abs] {
+			continue
+		}
+		seen[abs] = true
+		out = append(out, abs)
+	}
+	return out
+}
+
+func FindCLI() string {
+	if paths := cliCandidatePaths(""); len(paths) > 0 {
+		return paths[0]
 	}
 	return ""
 }
@@ -256,46 +282,63 @@ func writeBinaryTo(src io.Reader, target, code, message string) *ApiError {
 	return nil
 }
 
+func (s *Service) inspectCLIForInstall(u UserSettings) (string, *InferyardProbe) {
+	var outdated *InferyardProbe
+	for _, cand := range cliCandidatePaths(str(u.InferyardPath)) {
+		p := s.probeCLI(cand)
+		if p.Status == "ok" && p.Path != nil {
+			return *p.Path, nil
+		}
+		if p.Status == "outdated" && outdated == nil {
+			copyP := copyProbe(p)
+			outdated = &copyP
+		}
+	}
+	return "", outdated
+}
+
 func (s *Service) InstallCLI(ctx context.Context, onStatus func(string)) (string, *ApiError) {
 	if s.paths != nil {
-		if p := s.probe(s.userSettings()); p.Status != "ok" || p.Path == nil || *p.Path != s.paths.CLI {
+		p := s.probe(s.userSettings())
+		if p.Status == "outdated" {
+			return "", cliOutdatedError(p.Version)
+		}
+		if p.Status != "ok" || p.Path == nil || *p.Path != s.paths.CLI {
 			return "", Conflict("cli_binding_failed")
 		}
 		return s.paths.CLI, nil
 	}
+	report := func(message string) {
+		if onStatus != nil {
+			onStatus(message)
+		}
+	}
 	toolsDir := filepath.Join(filepath.Dir(s.settingsPath), "tools")
-	existing := strings.TrimSpace(str(s.userSettings().InferyardPath))
-	if existing != "" {
-		if st, err := installStat(existing); err != nil || st.IsDir() {
-			existing = ""
-		}
+	reusable, outdated := s.inspectCLIForInstall(s.userSettings())
+	if reusable != "" {
+		return s.finishInstall(reusable, report)
 	}
-	if existing == "" {
-		existing = FindCLI()
-	}
-	if existing != "" {
-		abs, err := filepath.Abs(existing)
-		if err != nil {
-			return "", Err("internal_error")
-		}
-		return s.finishInstall(abs, onStatus)
-	}
-	if strings.TrimSpace(Version) == "" || Version == "dev" {
+	targetVersion := strings.TrimPrefix(strings.TrimSpace(Version), "v")
+	if _, ok := parseSemver(targetVersion); !ok {
 		return "", &ApiError{Code: "install_version_unknown", Message: "无法确定要安装的 CLI 版本。"}
 	}
 	uv := FindUV(toolsDir)
 	if uv == "" {
-		onStatus("未找到 uv，正在下载独立工具…")
+		report("未找到 uv，正在下载独立工具…")
 		var e *ApiError
 		uv, e = downloadUV(ctx, toolsDir)
 		if e != nil {
 			return "", e
 		}
 	}
-	onStatus("正在安装 InferYard CLI " + Version + "（首次需下载 Python 运行时，可能需要几分钟）…")
+	if outdated != nil {
+		report("正在升级 InferYard CLI 至 " + targetVersion + "…")
+	} else {
+		report("正在安装 InferYard CLI " + targetVersion + "（首次需下载 Python 运行时，可能需要几分钟）…")
+	}
 	installCtx, cancel := context.WithTimeout(ctx, 15*time.Minute)
 	defer cancel()
-	out, err := installCommandOutput(installCtx, uv, "tool", "install", "--managed-python", "--python", installPython, "inferyard=="+Version)
+	out, err := installCommandOutput(installCtx, uv, "tool", "install", "--upgrade", "--force", "--managed-python", "--python", installPython, "inferyard=="+targetVersion)
 	if err != nil {
 		tail := string(out)
 		if len(tail) > 600 {
@@ -311,14 +354,24 @@ func (s *Service) InstallCLI(ctx context.Context, onStatus func(string)) (string
 	if st, err := installStat(installed); err != nil || st.IsDir() {
 		return "", &ApiError{Code: "install_failed", Message: "安装结果缺失，请改用「手动指定路径」。"}
 	}
-	return s.finishInstall(installed, onStatus)
+	s.clearProbeCache()
+	if p := s.probeCLI(installed); p.Status != "ok" {
+		if p.Status == "outdated" {
+			return "", cliOutdatedError(p.Version)
+		}
+		return "", &ApiError{Code: "install_failed", Message: "安装后的 CLI 无法正常运行，可改用「手动指定路径」。"}
+	}
+	return s.finishInstall(installed, report)
 }
 
 func (s *Service) finishInstall(path string, onStatus func(string)) (string, *ApiError) {
+	s.clearProbeCache()
 	raw, _ := json.Marshal(path)
 	if _, e := s.UpdateSettings(map[string]json.RawMessage{"inferyard_path": raw}); e != nil {
 		return "", e
 	}
-	onStatus("CLI 已就绪：" + path)
+	if onStatus != nil {
+		onStatus("CLI 已就绪：" + path)
+	}
 	return path, nil
 }

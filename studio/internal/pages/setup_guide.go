@@ -1,16 +1,100 @@
 package pages
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 )
 
+func cliOutdatedSummary(version *string) string {
+	cur := strings.TrimSpace(emptyText(version))
+	req := strings.TrimPrefix(strings.TrimSpace(core.Version), "v")
+	if req == "dev" {
+		req = ""
+	}
+	switch {
+	case cur != "" && req != "":
+		return fmt.Sprintf("CLI 版本过旧（当前 %s，需要 %s），请升级 CLI。", cur, req)
+	case cur != "":
+		return fmt.Sprintf("CLI 版本过旧（当前 %s），请升级 CLI。", cur)
+	default:
+		return "CLI 版本过旧，请升级 CLI。"
+	}
+}
+
+func (s *viewState) upgradeCLI() {
+	if s.simulate(previewPrepareEnvironment) {
+		return
+	}
+	if s.service == nil {
+		return
+	}
+	s.cliInstallStatus = ""
+	s.guideWorkAs("upgrade-cli", func() (string, *core.ApiError) {
+		defer s.updateView(func() { s.cliInstallStatus = "" })
+		if _, e := s.service.InstallCLI(s.ctx, func(message string) {
+			s.updateView(func() { s.cliInstallStatus = message })
+		}); e != nil {
+			return "", e
+		}
+		_ = s.service.RefreshAssets()
+		_ = s.service.RefreshDevice()
+		return "CLI 已升级", nil
+	})
+}
+
 func (s *viewState) setupGuide(c *ui.Context) {
+	onlyCLIOutdated := s.ready.CLI.Status == "outdated" && s.ready.Workspace.Initialized && s.ready.Results.Exists && s.ready.Models.Exists
+	if onlyCLIOutdated {
+		upgrading := s.actionBusy("upgrade-cli")
+		bound := s.service != nil && s.service.BoundPaths() != nil
+		card(c, "CLI 需要升级", func() {
+			ui.Text(c, cliOutdatedSummary(s.ready.CLI.Version)).TextColor(c.Theme().TextMuted)
+			locations, known := s.preparationLocations()
+			componentFold(c, "查看准备详情", func() {
+				setupActions(c, locations, known, s.ready.CLI)
+				if known {
+					setupTargets(c, locations)
+				}
+			})
+			if bound {
+				ui.Text(c, "当前为开发环境绑定模式，请同步更新本地 CLI 后刷新。").TextColor(c.Theme().TextMuted)
+			} else {
+				row := ui.Row(c.Key("upgrade-cli-actions")).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row)
+				showProgress, elapsed := delayedElapsed(c, row, "upgrade-cli", upgrading)
+				row.Children(func() {
+					if primaryActionButton(c, "升级 CLI", upgrading).Disabled(s.busy).Clicked() {
+						s.upgradeCLI()
+					}
+					button(c, "前往设置").Disabled(s.busy).OnClick(func() { s.selected = "settings" })
+				})
+				if showProgress {
+					progressBar(c, -1, "CLI 升级进度")
+					if elapsed >= loadingSlowThreshold {
+						ui.Text(c, "网络下载或环境初始化耗时较长，仍在继续…").TextColor(c.Theme().TextMuted)
+					}
+				}
+			}
+			if s.cliInstallStatus != "" {
+				ui.Text(c, s.cliInstallStatus)
+			}
+		})
+		return
+	}
 	card(c, "环境准备", func() {
 		ui.Text(c, "首次使用流程：1. 准备运行环境 → 2. 获取引擎与模型 → 3. 开始首次测评").TextColor(c.Theme().TextMuted)
+		if s.ready.CLI.Status == "outdated" {
+			noticeBanner(c, noticeBannerOptions{
+				Kind:    stateWarning,
+				Size:    bannerCompact,
+				Message: cliOutdatedSummary(s.ready.CLI.Version),
+			})
+		}
 		locations, known := s.preparationLocations()
 		componentFold(c, "查看准备详情", func() {
-			setupActions(c, locations, known)
+			setupActions(c, locations, known, s.ready.CLI)
 			if known {
 				setupTargets(c, locations)
 			}
@@ -36,11 +120,27 @@ func (s *viewState) setupGuide(c *ui.Context) {
 	})
 }
 
-func setupActions(c *ui.Context, locations core.PreparationLocations, known bool) {
-	if known && locations.CLI != nil {
+func setupActions(c *ui.Context, locations core.PreparationLocations, known bool, cli core.InferyardProbe) {
+	py := managedPythonLabel(known, locations)
+	switch {
+	case known && locations.CLI != nil && locations.CLIStatus == "ok":
 		ui.Text(c, "CLI：复用 "+displayName(*locations.CLI))
-	} else {
-		ui.Text(c, "CLI：安装配套版本（Python "+managedPythonLabel(known, locations)+"）")
+	case (known && locations.CLIStatus == "outdated") || cli.Status == "outdated":
+		oldVer := emptyText(cli.Version)
+		if known && emptyText(locations.CLIVersion) != "" {
+			oldVer = emptyText(locations.CLIVersion)
+		}
+		wantVer := strings.TrimPrefix(strings.TrimSpace(core.Version), "v")
+		if wantVer == "dev" {
+			wantVer = ""
+		}
+		if oldVer != "" && wantVer != "" {
+			ui.Text(c, fmt.Sprintf("CLI：从 %s 升级至 %s（Python %s）", oldVer, wantVer, py))
+		} else {
+			ui.Text(c, "CLI：升级至配套版本（Python "+py+"）")
+		}
+	default:
+		ui.Text(c, "CLI：安装配套版本（Python "+py+"）")
 	}
 	if known && locations.UV != nil {
 		ui.Text(c, "uv：复用 "+displayName(*locations.UV))
@@ -65,6 +165,9 @@ func setupTargets(c *ui.Context, locations core.PreparationLocations) {
 }
 
 func (s *viewState) preparationLocations() (core.PreparationLocations, bool) {
+	if s.prepLocationsLoaded {
+		return s.prepLocations, true
+	}
 	if s.service == nil {
 		return core.PreparationLocations{}, false
 	}

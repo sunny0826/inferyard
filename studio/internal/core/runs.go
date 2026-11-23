@@ -99,7 +99,7 @@ func (s *Service) StartRuns(req StartRunsRequest) ([]RunTask, *ApiError) {
 	}
 	p := s.probe(u)
 	if p.Status != "ok" {
-		return nil, Err("cli_unavailable")
+		return nil, cliProbeError(p)
 	}
 	entries := []*runEntry{}
 	seen, bundles := map[string]bool{}, map[string]bool{}
@@ -183,7 +183,7 @@ func (s *Service) Resume(req ResumeRunRequest) (RunTask, *ApiError) {
 	}
 	p := s.probe(u)
 	if p.Status != "ok" {
-		return RunTask{}, Err("cli_unavailable")
+		return RunTask{}, cliProbeError(p)
 	}
 	args := []string{"resume", "--from-run", path}
 	if req.EndpointUrl != nil {

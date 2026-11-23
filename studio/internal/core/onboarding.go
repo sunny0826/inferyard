@@ -166,7 +166,7 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 	u := s.userSettings()
 	p := s.probe(u)
 	if p.Status != "ok" {
-		return result, Err("cli_unavailable")
+		return result, cliProbeError(p)
 	}
 	if out := value(flags, "--out"); out != "" {
 		if !filepath.IsAbs(out) {

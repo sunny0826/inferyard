@@ -295,7 +295,7 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	}
 	p := s.probe(u)
 	if p.Status != "ok" {
-		return DownloadTask{}, Err("cli_unavailable")
+		return DownloadTask{}, cliProbeError(p)
 	}
 
 	s.mu.Lock()

@@ -147,7 +147,7 @@ func (s *Service) ResolveModelURL(ctx context.Context, rawURL, tokenEnv string) 
 	u := downloadNameDefaults(s.userSettings())
 	p := s.probe(u)
 	if p.Status != "ok" {
-		return inferyard.ModelResolve{}, Err("cli_unavailable")
+		return inferyard.ModelResolve{}, cliProbeError(p)
 	}
 	proxy := s.downloadProxy()
 	if proxy != "" && !ValidateDownloadProxy(proxy) {

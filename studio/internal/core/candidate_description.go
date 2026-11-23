@@ -38,7 +38,7 @@ func (s *Service) DescribeCandidate(ctx context.Context, candidate string) (infe
 	}
 	probe := s.probe(s.userSettings())
 	if probe.Status != "ok" {
-		return result, Err("cli_unavailable")
+		return result, cliProbeError(probe)
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
