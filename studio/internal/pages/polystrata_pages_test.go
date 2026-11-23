@@ -274,7 +274,7 @@ func TestPolystrataTaskCardProgressBlockersAndLogTail(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1120, 2200)
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
 	tt.Frame()
-	for _, want := range []string{"PolyStrata 引导安装", "3 / 4", "安装引擎环境", "65%", "Metal 编译", "环境预检未通过", "CMake 3.24+ is required.", "brew install cmake"} {
+	for _, want := range []string{"PolyStrata 引导安装", "3 / 4", "安装引擎环境", "65%", "Metal 编译", "预检", "获取运行时", "构建环境", "模型与核验", "环境预检未通过", "CMake 3.24+ is required.", "brew install cmake"} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing %q in polystrata task cards: %v", want, tt.Texts())
 		}
@@ -283,10 +283,9 @@ func TestPolystrataTaskCardProgressBlockersAndLogTail(t *testing.T) {
 	if got := tt.Clipboard(); got != "brew install cmake" {
 		t.Fatalf("clipboard = %q, want brew install cmake", got)
 	}
-	click(t, tt, "任务详情")
-	click(t, tt, "查看日志尾部")
+	click(t, tt, "查看安装日志")
 	if !tt.HasText("building strata metal kernel") {
-		t.Fatalf("expected log tail content in expanded fold: %v", tt.Texts())
+		t.Fatalf("expected log tail content in top-level expanded fold: %v", tt.Texts())
 	}
 }
 

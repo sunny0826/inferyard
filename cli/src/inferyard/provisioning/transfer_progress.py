@@ -348,6 +348,9 @@ def download_resumable_part(
     combined_total: int | None = None,
     download_stage: str = "downloading",
     verify_stage: str = "verifying",
+    step: int | None = None,
+    step_total: int | None = None,
+    detail: str | None = None,
 ) -> tuple[int, str]:
     """Stream one file into part_name with optional HTTP Range resume and full SHA-256."""
     offset = output.part_size(part_name) if (resume and isinstance(output, ResumeDirectory)) else 0
@@ -356,7 +359,14 @@ def download_resumable_part(
         if existing_digest == expected_sha256:
             reported_total = combined_total if combined_total is not None else existing_size
             if emitter is not None:
-                emitter.update(verify_stage, base_offset + existing_size, reported_total)
+                emitter.update(
+                    verify_stage,
+                    base_offset + existing_size,
+                    reported_total,
+                    step=step,
+                    step_total=step_total,
+                    detail=detail,
+                )
             return existing_size, existing_digest
 
     req_headers = dict(headers or {"Accept-Encoding": "identity"})
@@ -418,30 +428,62 @@ def download_resumable_part(
         if not skip_body:
             downloaded = offset
             if emitter is not None:
-                emitter.update(download_stage, base_offset + downloaded, reported_total)
+                emitter.update(
+                    download_stage,
+                    base_offset + downloaded,
+                    reported_total,
+                    step=step,
+                    step_total=step_total,
+                    detail=detail,
+                )
             with _open_part_stream(output, part_name, append=resuming_append) as stream:
                 try:
                     for chunk in opened.iter_raw():
                         stream.write(chunk)
                         downloaded += len(chunk)
                         if emitter is not None:
-                            emitter.update(download_stage, base_offset + downloaded, reported_total)
+                            emitter.update(
+                                download_stage,
+                                base_offset + downloaded,
+                                reported_total,
+                                step=step,
+                                step_total=step_total,
+                                detail=detail,
+                            )
                 except Exception:
                     if emitter is not None and downloaded > offset:
                         emitter.update(
                             download_stage,
                             base_offset + downloaded,
                             reported_total,
+                            step=step,
+                            step_total=step_total,
+                            detail=detail,
                             force=True,
                         )
                     raise
             if emitter is not None:
-                emitter.update(download_stage, base_offset + downloaded, reported_total, force=True)
+                emitter.update(
+                    download_stage,
+                    base_offset + downloaded,
+                    reported_total,
+                    step=step,
+                    step_total=step_total,
+                    detail=detail,
+                    force=True,
+                )
 
     reported_total = combined_total if combined_total is not None else file_total
     if emitter is not None:
         final_bytes = base_offset + (offset if skip_body else downloaded)
-        emitter.update(verify_stage, final_bytes, reported_total or final_bytes)
+        emitter.update(
+            verify_stage,
+            final_bytes,
+            reported_total or final_bytes,
+            step=step,
+            step_total=step_total,
+            detail=detail,
+        )
 
     size, actual = hash_part_file(output, part_name)
     if expected_sha256 is not None and actual != expected_sha256:

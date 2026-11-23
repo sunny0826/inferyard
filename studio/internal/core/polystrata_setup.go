@@ -165,6 +165,7 @@ func (s *Service) CreatePolystrataSetup(req PolystrataSetupRequest) (DownloadTas
 			TaskId:      uuid(),
 			State:       "downloading",
 			Stage:       "preflight",
+			ModelSource: strings.TrimSpace(req.ModelSource),
 			SourceUrl:   sourceURL,
 			OutName:     outName,
 			OutDir:      outDir,
@@ -379,6 +380,12 @@ func (s *Service) runPolystrataSetup(ctx context.Context, binary string, d *down
 			LogPath          string `json:"log_path"`
 		}
 		if parseErr == nil && json.Unmarshal(cr.Details, &details) == nil && details.InstallationPath != "" {
+			s.applyTransferProgress(d, transferProgressLine{
+				Stage:     "verifying_installation",
+				Step:      ptr(4),
+				StepTotal: ptr(4),
+				Detail:    ptr("注册并核验引擎安装"),
+			})
 			_, regErr := s.RegisterEngineInstallation(ctx, details.InstallationPath)
 			s.mu.Lock()
 			d.Task.FinishedAt = ptr(now())

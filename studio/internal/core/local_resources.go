@@ -127,6 +127,7 @@ func (s *Service) RegisterEngineInstallation(ctx context.Context, path string) (
 	if p.Status != "ok" {
 		return SettingsResponse{}, cliProbeError(p)
 	}
+	cliKey, checkGen := s.captureCheckGeneration(p)
 	ctx, cancel := context.WithTimeout(ctx, installationCheckTimeout)
 	defer cancel()
 	result, failure := s.checkInstallationWithCLI(ctx, str(p.Path), path)
@@ -137,19 +138,28 @@ func (s *Service) RegisterEngineInstallation(ctx context.Context, path string) (
 		return SettingsResponse{}, Err(str(result.Reason))
 	}
 	s.settingsMu.Lock()
-	defer s.settingsMu.Unlock()
-	if ctx.Err() != nil {
-		return SettingsResponse{}, Err("cancelled")
+	var resp SettingsResponse
+	var saveErr *ApiError
+	switch {
+	case ctx.Err() != nil:
+		saveErr = Err("cancelled")
+	case installationKey(path) != key:
+		saveErr = Err("local_engine_installation_changed")
+	default:
+		u := s.userSettings()
+		if slices.Contains(u.EngineInstallations, path) {
+			resp = s.Settings()
+		} else {
+			u.EngineInstallations = append(u.EngineInstallations, path)
+			resp, saveErr = s.saveSettings(u)
+		}
 	}
-	if installationKey(path) != key {
-		return SettingsResponse{}, Err("local_engine_installation_changed")
+	s.settingsMu.Unlock()
+	if saveErr != nil {
+		return SettingsResponse{}, saveErr
 	}
-	u := s.userSettings()
-	if slices.Contains(u.EngineInstallations, path) {
-		return s.Settings(), nil
-	}
-	u.EngineInstallations = append(u.EngineInstallations, path)
-	return s.saveSettings(u)
+	s.cacheInstallationCheck(cliKey, checkGen, path, key, result)
+	return resp, nil
 }
 
 func (s *Service) RemoveEngineInstallation(path string) (SettingsResponse, *ApiError) {

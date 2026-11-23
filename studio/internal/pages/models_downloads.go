@@ -124,60 +124,33 @@ func formatDownloadETA(seconds float64) string {
 	return fmt.Sprintf("%dh %dm", total/3600, (total%3600)/60)
 }
 
+func downloadStateColor(c *ui.Context, state string) ui.Color {
+	switch state {
+	case "done":
+		return stateColor(c, stateSuccess)
+	case "failed":
+		return stateColor(c, stateDanger)
+	case "downloading":
+		return stateColor(c, stateActive)
+	default:
+		return stateColor(c, stateNeutral)
+	}
+}
+
 func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
+	if task.Kind == "polystrata" {
+		s.polystrataDownloadTaskCard(c, task)
+		return
+	}
 	kind := "模型"
-	switch task.Kind {
-	case "engine":
+	if task.Kind == "engine" {
 		kind = "引擎"
-	case "polystrata":
-		kind = "PolyStrata 引导安装"
 	}
 	engineIndeterminate := task.Kind == "engine" && task.TotalBytes == nil && task.DownloadedBytes == 0 && task.BytesPerSecond == nil && task.Stage == ""
 	var metrics []taskMetric
 	var status string
 	active := task.State == "downloading"
 	switch {
-	case task.Kind == "polystrata":
-		stageText := downloadStageLabel(task.Stage)
-		if stageText == "" {
-			stageText = stateLabel(task.State)
-		}
-		stepVal, stepSub := stageText, ""
-		if task.Step != nil && task.StepTotal != nil && *task.StepTotal > 0 {
-			stepVal = fmt.Sprintf("%d / %d", *task.Step, *task.StepTotal)
-			stepSub = stageText
-		}
-		progressVal, progressSub := stageText, ""
-		switch {
-		case task.TotalBytes != nil && *task.TotalBytes > 0:
-			pct := progressValue(task.DownloadedBytes, task.TotalBytes) * 100
-			if pct < 0 {
-				pct = 0
-			}
-			progressVal = fmt.Sprintf("%s / %s", formatDownloadBytes(task.DownloadedBytes), formatDownloadBytes(*task.TotalBytes))
-			progressSub = fmt.Sprintf("%.1f%%", pct)
-			active = false
-		case task.Percent != nil:
-			progressVal = fmt.Sprintf("%.0f%%", math.Max(0, math.Min(100, *task.Percent)))
-			active = false
-		}
-		detailLabel, detailVal, detailSub := "状态", stageText, ""
-		switch {
-		case task.BytesPerSecond != nil:
-			detailLabel = "速率"
-			detailVal = formatRate(*task.BytesPerSecond)
-			if task.State == "downloading" && task.TotalBytes != nil && *task.BytesPerSecond > 0 && task.DownloadedBytes < *task.TotalBytes {
-				detailSub = "剩余 " + formatDownloadETA(float64(*task.TotalBytes-task.DownloadedBytes)/(*task.BytesPerSecond))
-			}
-		case task.Detail != nil && strings.TrimSpace(*task.Detail) != "":
-			detailLabel = "当前"
-			detailVal = strings.TrimSpace(*task.Detail)
-		}
-		metrics = []taskMetric{
-			{"步骤", stepVal, stepSub},
-			{"进度", progressVal, progressSub},
-			{detailLabel, detailVal, detailSub},
-		}
 	case engineIndeterminate:
 		status = engineTaskStatus(task)
 	case task.TotalBytes != nil:
@@ -217,15 +190,7 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 			metrics[1] = taskMetric{"速率", formatRate(*task.BytesPerSecond), ""}
 		}
 	}
-	color := stateColor(c, stateNeutral)
-	switch task.State {
-	case "done":
-		color = stateColor(c, stateSuccess)
-	case "failed":
-		color = stateColor(c, stateDanger)
-	case "downloading":
-		color = stateColor(c, stateActive)
-	}
+	color := downloadStateColor(c, task.State)
 	ui.Column(c.Key(task.TaskId)).Children(func() {
 		taskCard(c, taskCardOptions{
 			kind: kind, name: downloadDisplayName(task), state: stateLabel(task.State), color: color,
@@ -233,16 +198,10 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 			metrics: metrics,
 			status:  status,
 			notice: func() {
-				if task.State == "downloading" {
-					if task.Kind == "polystrata" && task.Percent != nil {
-						ratio := math.Max(0, math.Min(1, *task.Percent/100))
-						progressBar(c, ratio, "安装进度").Height(tokens(c).Density.Tight)
-					} else if task.TotalBytes != nil {
-						progressBar(c, progressValue(task.DownloadedBytes, task.TotalBytes), "下载进度").Height(tokens(c).Density.Tight)
-					}
+				if task.State == "downloading" && task.TotalBytes != nil {
+					progressBar(c, progressValue(task.DownloadedBytes, task.TotalBytes), "下载进度").Height(tokens(c).Density.Tight)
 				}
 				s.downloadErrorView(c, task.Error)
-				s.polystrataRuntimeProxyGuidance(c, task)
 			},
 			actions: func() { s.downloadActions(c, task) },
 			details: func() { s.downloadDetails(c, task) },
@@ -354,19 +313,11 @@ func (s *viewState) downloadDetails(c *ui.Context, task core.DownloadTask) {
 	if task.LogPath != nil && *task.LogPath != "" {
 		logPath := *task.LogPath
 		ui.Text(c, "安装日志："+logPath).Selectable()
-		componentFoldKeyed(c, "download-log-"+task.TaskId, "查看日志尾部", func() {
-			var snippet string
-			if s.preview != nil {
-				snippet = s.preview.downloadLogTail(task.TaskId)
-			} else {
-				snippet = readLogTail(logPath, 4096)
-			}
-			if snippet == "" {
-				ui.Text(c, "暂无可显示的日志内容。").FontSize(tokens(c).Type.Caption).TextColor(tokens(c).Color.FgSecondary)
-				return
-			}
-			ui.Text(c, snippet).Selectable().FontSize(tokens(c).Type.Caption)
-		})
+		if task.Kind != "polystrata" {
+			componentFoldKeyed(c, "download-log-"+task.TaskId, "查看日志尾部", func() {
+				s.renderDownloadLogTail(c, task.TaskId, logPath)
+			})
+		}
 	}
 	if task.Result != nil {
 		ui.Text(c, fmt.Sprintf("大小：%s · SHA-256：%s", formatDownloadBytes(task.Result.Bytes), task.Result.Sha256)).Selectable()

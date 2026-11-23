@@ -258,6 +258,7 @@ type DownloadTask struct {
 	StepTotal          *int            `json:"step_total,omitempty"`
 	Percent            *float64        `json:"percent,omitempty"`
 	Detail             *string         `json:"detail,omitempty"`
+	ModelSource        string          `json:"model_source,omitempty"`
 	LogPath            *string         `json:"log_path,omitempty"`
 	InstallationPath   *string         `json:"installation_path,omitempty"`
 	ModelConfigPath    *string         `json:"model_config_path,omitempty"`

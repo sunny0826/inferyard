@@ -74,6 +74,9 @@ def download_to_stream(
     combined_total=None,
     download_stage="downloading",
     verify_stage="verifying",
+    step=None,
+    step_total=None,
+    detail=None,
 ):
     expected = validate_sha256(expected_sha256)
     digest, size = hashlib.sha256(), 0
@@ -91,17 +94,46 @@ def download_to_stream(
         file_total = parse_content_length(opened.headers)
         reported_total = combined_total if combined_total is not None else file_total
         if emitter is not None:
-            emitter.update(download_stage, base_offset, reported_total)
+            emitter.update(
+                download_stage,
+                base_offset,
+                reported_total,
+                step=step,
+                step_total=step_total,
+                detail=detail,
+            )
         for chunk in opened.iter_raw():
             stream.write(chunk)
             digest.update(chunk)
             size += len(chunk)
             if emitter is not None:
-                emitter.update(download_stage, base_offset + size, reported_total)
+                emitter.update(
+                    download_stage,
+                    base_offset + size,
+                    reported_total,
+                    step=step,
+                    step_total=step_total,
+                    detail=detail,
+                )
         if emitter is not None:
-            emitter.update(download_stage, base_offset + size, reported_total, force=True)
+            emitter.update(
+                download_stage,
+                base_offset + size,
+                reported_total,
+                step=step,
+                step_total=step_total,
+                detail=detail,
+                force=True,
+            )
     if emitter is not None:
-        emitter.update(verify_stage, base_offset + size, reported_total or (base_offset + size))
+        emitter.update(
+            verify_stage,
+            base_offset + size,
+            reported_total or (base_offset + size),
+            step=step,
+            step_total=step_total,
+            detail=detail,
+        )
     actual = digest.hexdigest()
     if expected is not None and actual != expected:
         raise PreparationError(
