@@ -21,9 +21,9 @@ func updateBadgePresentation(st core.UpdateState) (label string, kind stateKind,
 			ver = st.Release.Version
 		}
 		if ver == "" {
-			return "发现新版本", stateActive, lucide.ArrowUpRight, false
+			return "发现新版本", stateActive, lucide.ArrowUp, false
 		}
-		return "新版本 v" + ver, stateActive, lucide.ArrowUpRight, false
+		return "新版本 v" + ver, stateActive, lucide.ArrowUp, false
 	case core.UpdateDownloading:
 		if st.TotalBytes != nil && *st.TotalBytes > 0 && st.DownloadedBytes >= 0 {
 			pct := float64(st.DownloadedBytes) * 100 / float64(*st.TotalBytes)
