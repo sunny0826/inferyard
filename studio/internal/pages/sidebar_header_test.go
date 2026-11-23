@@ -42,6 +42,13 @@ func settingsBox(t *testing.T, tt *ui.Tester) ui.Rect {
 	return r
 }
 
+func TestSidebarOmitsBrandHeader(t *testing.T) {
+	tt := sidebarHeaderState(readyState("reports"))
+	if tt.HasText("InferYard Studio") {
+		t.Fatalf("sidebar should not render brand title: %v", tt.Texts())
+	}
+}
+
 func TestSidebarNewTaskKeepsOneGeometry(t *testing.T) {
 	s := readyState("reports")
 	tt := sidebarHeaderState(s)
