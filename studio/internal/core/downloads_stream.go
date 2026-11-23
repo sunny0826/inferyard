@@ -91,11 +91,14 @@ func (s *Service) applyTransferProgress(d *downloadEntry, ev transferProgressLin
 				d.Task.BytesPerSecond = nil
 			}
 		} else {
-			if ev.TotalBytes == nil && (ev.DownloadedBytes == nil || *ev.DownloadedBytes == 0) {
+			if ev.TotalBytes == nil {
 				d.Task.TotalBytes = nil
-				d.Task.BytesPerSecond = nil
+				if ev.DownloadedBytes == nil || *ev.DownloadedBytes == 0 {
+					d.Task.BytesPerSecond = nil
+				}
 			}
-			if ev.Percent == nil && ev.Detail != nil && strings.HasPrefix(strings.TrimSpace(*ev.Detail), "Step ") {
+			if ev.Percent == nil && ((ev.Detail != nil && strings.HasPrefix(strings.TrimSpace(*ev.Detail), "Step ")) ||
+				(ev.Stage == "downloading_model" && ev.TotalBytes == nil)) {
 				d.Task.Percent = nil
 			}
 		}

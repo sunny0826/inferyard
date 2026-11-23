@@ -260,3 +260,38 @@ def test_parse_setup_line_keeps_step6_downloads_and_sha256_verify_in_phase4():
     assert tmpl_ev["stage"] == "downloading_model"
     assert tmpl_ev["step"] == 4
     assert tmpl_ev["step_total"] == 4
+
+
+def test_parse_setup_line_handles_zero_rounded_total_and_unknown_total_after_verify():
+    buf = io.StringIO()
+    em = ProgressEmitter(enabled=True, stream=buf, min_interval_seconds=0.0)
+    st, step = "setup_engine", 3
+    lines = [
+        "=== Step 5: downloading Qwen3.6 weights ===",
+        "Qwen3.6.gguf: 4.20 / 4.20 GB (100.0%)",
+        "checking Qwen3.6.gguf (SHA-256, 4.20 GB)",
+        "next-shard.gguf: 8.4 MB",
+        "Memory: 32.0 GB",  # non-download label must not hijack back to download
+        "=== Step 6: Configure runtime ===",
+        "chat template: 0.00 / 0.00 GB (100%)",
+    ]
+    for line in lines:
+        st, step = parse_setup_line(line, st, step, em)
+
+    events = [json.loads(line) for line in buf.getvalue().splitlines()]
+    _assert_monotonic_four_steps(events)
+
+    next_ev = next(ev for ev in events if ev.get("detail") == "next-shard.gguf")
+    assert next_ev["stage"] == "downloading_model"
+    assert next_ev["step"] == 4
+    assert next_ev["step_total"] == 4
+    assert next_ev["downloaded_bytes"] == 8_400_000
+    assert next_ev["total_bytes"] is None
+    assert not any(ev.get("detail") == "Memory" for ev in events)
+
+    tmpl_ev = next(ev for ev in events if ev.get("detail") == "chat template")
+    assert tmpl_ev["stage"] == "downloading_model"
+    assert tmpl_ev["step"] == 4
+    assert tmpl_ev["step_total"] == 4
+    assert tmpl_ev["total_bytes"] is None
+    assert tmpl_ev["percent"] == 100.0

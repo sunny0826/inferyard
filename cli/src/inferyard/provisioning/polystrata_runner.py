@@ -26,6 +26,20 @@ _DOWNLOAD_LINE_RE = re.compile(
     r"(GB|GiB|MB|MiB|KB|KiB)\s*\(([0-9]+(?:\.[0-9]+)?)%\)",
     re.IGNORECASE,
 )
+_DOWNLOAD_UNKNOWN_TOTAL_RE = re.compile(
+    r"^\s*(.+?):\s*([0-9]+(?:\.[0-9]+)?)\s*(GB|GiB|MB|MiB|KB|KiB)\s*$",
+    re.IGNORECASE,
+)
+_NON_DOWNLOAD_SIZE_LABELS = (
+    "memory",
+    "ram",
+    "vram",
+    "disk",
+    "free",
+    "available",
+    "total",
+    "size",
+)
 _CMAKE_PCT_RE = re.compile(r"^\[\s*(\d{1,3})%\]\s*(.*)$")
 _NINJA_STEP_RE = re.compile(r"^\[(\d+)/(\d+)\]\s*(.*)$")
 _UNIT_MULTIPLIERS = {
@@ -199,7 +213,8 @@ def parse_setup_line(
         label = dl_match.group(1).strip()
         mult = _UNIT_MULTIPLIERS[dl_match.group(4).lower()]
         have_bytes = int(float(dl_match.group(2)) * mult)
-        total_bytes = max(1, int(float(dl_match.group(3)) * mult))
+        raw_total = int(float(dl_match.group(3)) * mult)
+        total_bytes = raw_total if raw_total > 0 else None
         dl_stage = (
             "downloading_model"
             if (current_stage == "downloading_model" or base_step >= 4)
@@ -216,6 +231,23 @@ def parse_setup_line(
             detail=label,
         )
         return dl_stage, outer_step
+
+    if base_step >= 4:
+        unknown_dl_match = _DOWNLOAD_UNKNOWN_TOTAL_RE.match(stripped)
+        if unknown_dl_match is not None:
+            label = unknown_dl_match.group(1).strip()
+            if label.lower() not in _NON_DOWNLOAD_SIZE_LABELS:
+                mult = _UNIT_MULTIPLIERS[unknown_dl_match.group(3).lower()]
+                have_bytes = int(float(unknown_dl_match.group(2)) * mult)
+                emitter.update(
+                    "downloading_model",
+                    have_bytes,
+                    None,
+                    step=4,
+                    step_total=4,
+                    detail=label,
+                )
+                return "downloading_model", 4
 
     cmake_match = _CMAKE_PCT_RE.match(stripped)
     if cmake_match is not None:

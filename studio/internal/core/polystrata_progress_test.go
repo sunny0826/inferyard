@@ -233,6 +233,39 @@ func TestApplyTransferProgressClearsStaleBytesAcrossSetupSubsteps(t *testing.T) 
 	if d.Task.Percent != nil {
 		t.Fatalf("expected new Step banner to clear stale Percent, got %v", *d.Task.Percent)
 	}
+
+	// 5. Within downloading_model: known total -> zero-rounded total keeps explicit Percent and clears TotalBytes,
+	// and unknown-total download clears stale TotalBytes and stale Percent while keeping DownloadedBytes.
+	s.applyTransferProgress(d, transferProgressLine{
+		Stage:           "downloading_model",
+		Step:            ptr(4),
+		StepTotal:       ptr(4),
+		DownloadedBytes: ptr(int64(4 << 30)),
+		TotalBytes:      ptr(int64(4 << 30)),
+		Percent:         ptr(100.0),
+		Detail:          ptr("Qwen3.6.gguf"),
+	})
+	s.applyTransferProgress(d, transferProgressLine{
+		Stage:           "downloading_model",
+		Step:            ptr(4),
+		StepTotal:       ptr(4),
+		DownloadedBytes: ptr(int64(0)),
+		Percent:         ptr(100.0),
+		Detail:          ptr("chat template"),
+	})
+	if d.Task.TotalBytes != nil || d.Task.Percent == nil || *d.Task.Percent != 100.0 {
+		t.Fatalf("expected TotalBytes=nil and Percent=100 for zero-rounded download, got total=%v pct=%v", d.Task.TotalBytes, d.Task.Percent)
+	}
+	s.applyTransferProgress(d, transferProgressLine{
+		Stage:           "downloading_model",
+		Step:            ptr(4),
+		StepTotal:       ptr(4),
+		DownloadedBytes: ptr(int64(8_400_000)),
+		Detail:          ptr("next-shard.gguf"),
+	})
+	if d.Task.TotalBytes != nil || d.Task.Percent != nil || d.Task.DownloadedBytes != 8_400_000 {
+		t.Fatalf("expected TotalBytes=nil, Percent=nil and DownloadedBytes=8400000 for unknown-total download, got total=%v pct=%v bytes=%d", d.Task.TotalBytes, d.Task.Percent, d.Task.DownloadedBytes)
+	}
 }
 
 func TestRegisterInstallationCheckDoesNotOverwriteInvalidatedCheck(t *testing.T) {

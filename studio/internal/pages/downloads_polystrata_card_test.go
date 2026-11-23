@@ -197,3 +197,38 @@ func TestPolystrataPhaseIndexAndRecoveryDrawerRestoresModelSource(t *testing.T) 
 		t.Fatalf("expected restored ModelSource=modelscope in submitted setup request, got %+v", req)
 	}
 }
+
+func TestPolystrataTaskCardZeroRoundedAndUnknownTotalProgress(t *testing.T) {
+	s := testState()
+	s.downloads = []core.DownloadTask{{
+		TaskId:          "ps-small",
+		Kind:            "polystrata",
+		DisplayName:     "PolyStrata · qwen36 · UD-Q4_K_M",
+		State:           "downloading",
+		Stage:           "downloading_model",
+		Step:            ptr(4),
+		StepTotal:       ptr(4),
+		DownloadedBytes: 0,
+		Percent:         ptr(100.0),
+		Detail:          ptr("chat template"),
+		OutName:         "polystrata",
+	}}
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1120, 2200)
+	tt.Frame()
+
+	if !tt.HasText("100%") || !tt.HasText("chat template") {
+		t.Fatalf("expected 100%% and chat template for zero-rounded download, got %v", tt.Texts())
+	}
+	if tt.HasText("0 B / 1 B") || tt.HasText("0.0%") {
+		t.Fatalf("must not render synthetic 0 B / 1 B for zero-rounded download: %v", tt.Texts())
+	}
+
+	s.downloads[0].DownloadedBytes = 8_400_000
+	s.downloads[0].Percent = nil
+	s.downloads[0].Detail = ptr("next-shard.gguf")
+	tt.Frame()
+	wantBytes := formatDownloadBytes(8_400_000)
+	if !tt.HasText("下载模型") || !tt.HasText(wantBytes) || !tt.HasText("next-shard.gguf") {
+		t.Fatalf("expected unknown-total download card with %q and next-shard.gguf, got %v", wantBytes, tt.Texts())
+	}
+}

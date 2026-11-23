@@ -53,13 +53,17 @@ func (s *viewState) polystrataDownloadTaskCard(c *ui.Context, task core.Download
 	switch {
 	case hasByteProgress:
 		pct := progressValue(task.DownloadedBytes, task.TotalBytes) * 100
-		if pct < 0 {
+		if hasPercent {
+			pct = math.Max(0, math.Min(100, *task.Percent))
+		} else if pct < 0 {
 			pct = 0
 		}
 		progressVal = fmt.Sprintf("%s / %s", formatDownloadBytes(task.DownloadedBytes), formatDownloadBytes(*task.TotalBytes))
 		progressSub = fmt.Sprintf("%.1f%%", pct)
 	case hasPercent:
 		progressVal = fmt.Sprintf("%.0f%%", math.Max(0, math.Min(100, *task.Percent)))
+	case task.DownloadedBytes > 0:
+		progressVal = formatDownloadBytes(task.DownloadedBytes)
 	}
 	metrics := []taskMetric{
 		{"步骤", stepVal, stepSub},
@@ -88,11 +92,15 @@ func (s *viewState) polystrataDownloadTaskCard(c *ui.Context, task core.Download
 						RowLabel: "PolyStrata 安装阶段",
 						BarLabel: "安装阶段进度",
 					})
-					if hasByteProgress {
-						progressBar(c, progressValue(task.DownloadedBytes, task.TotalBytes), "下载进度").Height(t.Density.Tight)
-					} else if hasPercent {
+					if hasPercent {
 						ratio := math.Max(0, math.Min(1, *task.Percent/100))
-						progressBar(c, ratio, "安装进度").Height(t.Density.Tight)
+						barLabel := "安装进度"
+						if hasByteProgress {
+							barLabel = "下载进度"
+						}
+						progressBar(c, ratio, barLabel).Height(t.Density.Tight)
+					} else if hasByteProgress {
+						progressBar(c, progressValue(task.DownloadedBytes, task.TotalBytes), "下载进度").Height(t.Density.Tight)
 					}
 				}
 				if task.Detail != nil && strings.TrimSpace(*task.Detail) != "" {
