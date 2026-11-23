@@ -61,6 +61,7 @@ type registryData struct {
 	modelRoots      []string
 	resultsRoot     *string
 	wsEngines       string
+	psScope         polystrataManagedScope
 	totalModelBytes int64
 	diskFreeBytes   *int64
 }
@@ -199,6 +200,7 @@ func (s *Service) registry() registryData {
 		resultsRoot: u.ResultsRoot,
 		wsEngines:   workspaceEnginesRoot(u, s.paths),
 	}
+	data.psScope = polystrataManagedScopeFor(u, data.wsEngines)
 	models := map[string]int{}
 	var scanned *inferyard.AssetScan
 	if assets.Parsed != nil {
@@ -470,13 +472,17 @@ func (s *Service) Registry() Registry {
 	for _, e := range data.models {
 		m := e.model
 		m.Path = e.path
-		m.Deletable = m.Format != "strata_pack" && isModelDeletable(e.rawPath, e.path, data.modelRoots, data.resultsRoot)
+		if m.Format == "strata_pack" {
+			m.Deletable = isManagedPolystrataModelDeletable(e.rawPath, e.path, data.psScope, data.resultsRoot)
+		} else {
+			m.Deletable = isModelDeletable(e.rawPath, e.path, data.modelRoots, data.resultsRoot)
+		}
 		result.Models = append(result.Models, m)
 	}
 	for _, e := range data.engines {
 		eng := e.engine
 		eng.Path = e.path
-		eng.Deletable = isEngineDeletable(e.rawPath, e.path, eng.Kind, data.wsEngines, data.resultsRoot)
+		eng.Deletable = isEngineAssetDeletable(e.rawPath, e.path, eng.Kind, eng.Family, data.wsEngines, data.resultsRoot, data.engines)
 		result.Engines = append(result.Engines, eng)
 	}
 	if len(result.Engines) > 0 {

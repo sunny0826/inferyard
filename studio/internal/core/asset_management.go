@@ -429,7 +429,38 @@ func (s *Service) DeleteManagedAsset(kind, name string) *ApiError {
 	s.mu.Unlock()
 
 	reg := s.Registry()
-	assetPath, deletable := s.lookupAsset(kind, name)
+	var assetPath string
+	var deletable bool
+	if kind == "engine" {
+		for _, eng := range reg.Engines {
+			if eng.Name != name {
+				continue
+			}
+			if !eng.Deletable {
+				return errAssetNotDeletable()
+			}
+			if eng.Kind == "local_installation" && eng.Family == "polystrata" {
+				return s.deleteManagedPolystrataEngine(u, paths, name, eng)
+			}
+			assetPath, deletable = eng.Path, eng.Deletable
+			break
+		}
+	} else {
+		for _, mod := range reg.Models {
+			if mod.Name != name {
+				continue
+			}
+			if !mod.Deletable {
+				return errAssetNotDeletable()
+			}
+			if mod.Format == "strata_pack" {
+				rawPath := s.findAssetRawPath("model", name, mod.Path)
+				return s.deleteManagedPolystrataModel(u, paths, rawPath, mod.Path)
+			}
+			assetPath, deletable = mod.Path, mod.Deletable
+			break
+		}
+	}
 	if assetPath == "" {
 		return Err("not_found")
 	}
