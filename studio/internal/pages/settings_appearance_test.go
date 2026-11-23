@@ -61,8 +61,45 @@ func TestSettingsAppearanceRendersInStandardAndBoundPathModes(t *testing.T) {
 			t.Fatalf("standard settings missing %q: %v", label, tt.Texts())
 		}
 	}
+	if tt.HasText("选择浅色、深色或跟随系统外观，切换后立即生效。") {
+		t.Fatalf("appearance card should not include verbose filler description: %v", tt.Texts())
+	}
 	if tt.HasText("有未保存修改") {
 		t.Fatalf("appearance section unexpectedly marked dirty: %v", tt.Texts())
+	}
+
+	systemBox, ok := tt.Find("跟随系统")
+	if !ok {
+		t.Fatalf("missing 跟随系统 tile: %v", tt.Texts())
+	}
+	lightBox, ok := tt.Find("浅色")
+	if !ok {
+		t.Fatalf("missing 浅色 tile: %v", tt.Texts())
+	}
+	darkBox, ok := tt.Find("深色")
+	if !ok {
+		t.Fatalf("missing 深色 tile: %v", tt.Texts())
+	}
+	if lightBox.Y != systemBox.Y || darkBox.Y != systemBox.Y {
+		t.Fatalf("theme tiles did not align on one horizontal row: sys=%+v light=%+v dark=%+v", systemBox, lightBox, darkBox)
+	}
+	if !(systemBox.X < lightBox.X && lightBox.X < darkBox.X) {
+		t.Fatalf("theme tiles out of left-to-right order: sys=%+v light=%+v dark=%+v", systemBox, lightBox, darkBox)
+	}
+
+	for _, mode := range []string{core.ThemeSystem, core.ThemeLight, core.ThemeDark} {
+		s.themeMode = mode
+		renderTT := ui.NewTester(func(c *ui.Context) {
+			c.SetTheme(s.themeFor(c))
+			ui.Column(c).Fill().Padding(24).Background(tokens(c).Color.Canvas).Children(func() {
+				s.appearanceSettingsView(c)
+			})
+		}, 900, 220)
+		renderTT.Frame()
+		img := renderTT.Image()
+		if img == nil || img.Bounds().Empty() {
+			t.Fatalf("empty image rendered for theme %q", mode)
+		}
 	}
 
 	t.Setenv("HOME", t.TempDir())
