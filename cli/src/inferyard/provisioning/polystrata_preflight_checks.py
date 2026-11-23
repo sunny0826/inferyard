@@ -2,21 +2,27 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
-from importlib.resources import files
 import os
 from pathlib import Path
 import shutil
 
 from inferyard.contracts.validation import strict_json_loads
+from inferyard.platforms.polystrata_sizing import (
+    DEFAULT_RUNTIME_DISK_BYTES,
+    GGUF_WORK_DISK_BYTES,
+    GIB,
+    MIB,
+    RESUME_RUNTIME_DISK_BYTES,
+    load_starter_catalog,
+    polystrata_fallback_model_disk_bytes,
+    polystrata_min_model_disk_bytes,
+    polystrata_model_disk_bytes,
+)
 from inferyard.provisioning.preparation_io import linked
 
-GIB = 1024**3
-MIB = 1024**2
-_DEFAULT_RUNTIME_DISK_BYTES = 2 * GIB
-_RESUME_RUNTIME_DISK_BYTES = 256 * MIB
-_DEFAULT_MODEL_DISK_BYTES = 12 * GIB
-_GGUF_WORK_DISK_BYTES = 512 * MIB
+_DEFAULT_RUNTIME_DISK_BYTES = DEFAULT_RUNTIME_DISK_BYTES
+_RESUME_RUNTIME_DISK_BYTES = RESUME_RUNTIME_DISK_BYTES
+_GGUF_WORK_DISK_BYTES = GGUF_WORK_DISK_BYTES
 _URL_ENV_VARS = (
     "STRATA_ROCM_INDEX",
     "STRATA_PREBUILT_URL",
@@ -24,15 +30,16 @@ _URL_ENV_VARS = (
     "STRATA_MODELSCOPE_ENDPOINT",
 )
 _DATA_ITEMS = ("models", "packs", "mtp")
+_load_starter_catalog = load_starter_catalog
 
 
-@lru_cache(maxsize=1)
-def _load_starter_catalog() -> dict:
-    raw = files("inferyard").joinpath("data", "starter_catalog.json").read_text(encoding="utf-8")
-    return strict_json_loads(raw)
-
-
-def _matching_catalog_models(family: str | None, model: str | None) -> list[dict]:
+def _matching_catalog_models(
+    family: str | None,
+    model: str | None,
+    *,
+    system: str | None = None,
+    backend: str | None = None,
+) -> list[dict]:
     if not family and not model:
         return []
     models = _load_starter_catalog().get("polystrata_models") or []
@@ -49,27 +56,23 @@ def _matching_catalog_models(family: str | None, model: str | None) -> list[dict
             matches.append(entry)
         elif size_norm and entry_size == size_norm:
             matches.append(entry)
+    if matches and system:
+        sys_matches = [e for e in matches if system in (e.get("platforms") or {})]
+        if sys_matches:
+            matches = sys_matches
+            if backend in ("cuda", "hip", "metal"):
+                backend_matches = [
+                    e for e in matches if backend in ((e.get("platforms") or {}).get(system) or [])
+                ]
+                if backend_matches:
+                    matches = backend_matches
     return matches
 
 
-def _entry_disk_bytes(entry: dict, *, system: str, gguf_path: Path | None) -> int:
-    if gguf_path is not None:
-        if entry.get("model_format") == "strata_pack":
-            pack = int(
-                (entry.get("mac_pack_bytes") if system == "Darwin" else entry.get("arena_bytes"))
-                or 0
-            )
-            return max(_GGUF_WORK_DISK_BYTES, pack + 2 * GIB)
-        return _GGUF_WORK_DISK_BYTES
-    download = int(entry.get("download_bytes") or 0)
-    if entry.get("model_format") == "strata_pack":
-        if system == "Darwin":
-            pack = int(entry.get("mac_pack_bytes") or 0)
-            return download + pack + 6 * GIB
-        arena = int(entry.get("arena_bytes") or 0)
-        return download + arena + 8_000_000_000
-    draft = int((entry.get("gguf_sources") or {}).get("draft_bytes") or 0)
-    return download + draft + 2 * GIB
+def _entry_disk_bytes(
+    entry: dict, *, system: str, gguf_path: Path | None, avx512: bool | None = None
+) -> int:
+    return polystrata_model_disk_bytes(entry, system=system, gguf_path=gguf_path, avx512=avx512)
 
 
 def _existing_ancestor(path: Path) -> Path | None:
@@ -147,6 +150,44 @@ def _existing_resume_model_bytes(
     return total
 
 
+def _estimate_model_disk_bytes(
+    *,
+    system: str,
+    backend: str | None = None,
+    family: str | None,
+    model: str | None,
+    gguf_path: Path | None,
+    resume: bool,
+    data_dir: Path,
+    avx512: bool | None = None,
+) -> tuple[int, bool]:
+    matches = _matching_catalog_models(family, model, system=system, backend=backend)
+    if not matches:
+        if gguf_path is not None:
+            return GGUF_WORK_DISK_BYTES, True
+        if not family and not model:
+            return (
+                polystrata_fallback_model_disk_bytes(
+                    system=system, backend=backend, avx512=avx512
+                ),
+                False,
+            )
+        return polystrata_min_model_disk_bytes(system=system, backend=backend), False
+    best_entry = min(
+        matches,
+        key=lambda e: _entry_disk_bytes(e, system=system, gguf_path=gguf_path, avx512=avx512),
+    )
+    base = _entry_disk_bytes(best_entry, system=system, gguf_path=gguf_path, avx512=avx512)
+    exact = gguf_path is not None or bool(family and model)
+    if resume and gguf_path is None:
+        download_cap = int(best_entry.get("download_bytes") or 0)
+        already = min(
+            download_cap, _existing_resume_model_bytes(data_dir, family, model, best_entry)
+        )
+        return max(GGUF_WORK_DISK_BYTES, base - already), exact
+    return base, exact
+
+
 def _required_model_disk_bytes(
     *,
     system: str,
@@ -155,20 +196,20 @@ def _required_model_disk_bytes(
     gguf_path: Path | None,
     resume: bool,
     data_dir: Path,
+    backend: str | None = None,
+    avx512: bool | None = None,
 ) -> int:
-    matches = _matching_catalog_models(family, model)
-    if not matches:
-        base = _GGUF_WORK_DISK_BYTES if gguf_path is not None else _DEFAULT_MODEL_DISK_BYTES
-        return base
-    best_entry = min(matches, key=lambda e: _entry_disk_bytes(e, system=system, gguf_path=gguf_path))
-    base = _entry_disk_bytes(best_entry, system=system, gguf_path=gguf_path)
-    if resume and gguf_path is None:
-        download_cap = int(best_entry.get("download_bytes") or 0)
-        already = min(
-            download_cap, _existing_resume_model_bytes(data_dir, family, model, best_entry)
-        )
-        return max(_GGUF_WORK_DISK_BYTES, base - already)
-    return base
+    required, _exact = _estimate_model_disk_bytes(
+        system=system,
+        backend=backend,
+        family=family,
+        model=model,
+        gguf_path=gguf_path,
+        resume=resume,
+        data_dir=data_dir,
+        avx512=avx512,
+    )
+    return required
 
 
 def _resolve_macos_gguf_choice(

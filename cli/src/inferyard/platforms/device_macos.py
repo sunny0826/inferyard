@@ -1,5 +1,6 @@
 """Bounded, read-only macOS device queries; persist only public hardware fields."""
 
+from pathlib import Path
 import re
 import subprocess
 
@@ -115,6 +116,16 @@ def displays(text, *, unified_memory):
         return {"status": "unavailable", "reason": "invalid_output", "devices": []}
 
 
+def xcode_clt_installed() -> tuple[bool | None, str | None]:
+    """Read-only check whether Apple Xcode Command Line Tools are installed."""
+    text, reason = query(["/usr/bin/xcode-select", "-p"])
+    if reason is None:
+        return (True, None) if bool(text) and Path(text).is_dir() else (False, "xcode_clt_missing")
+    if reason == "query_failed":
+        return False, "xcode_clt_missing"
+    return None, reason
+
+
 def snapshot():
     values, sources, missing = {}, {}, {}
     fields = {
@@ -176,4 +187,9 @@ def snapshot():
         if reason
         else displays(text, unified_memory=values["apple_silicon"] is True)
     )
+    clt_ok, clt_reason = xcode_clt_installed()
+    values["xcode_clt_installed"] = clt_ok
+    sources["xcode_clt_installed"] = "xcode-select:-p"
+    if clt_ok is None and clt_reason:
+        missing["xcode_clt_installed"] = clt_reason
     return {**values, "sources": sources, "missing": missing}
