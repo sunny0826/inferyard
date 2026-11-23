@@ -364,6 +364,8 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 		}
 		s.historyError, s.reportsError = b.historyError, b.reportsError
 		s.registry = b.registry
+		s.applyPendingPolystrataSelection()
+		s.reconcileSelectedModel()
 	}
 	s.ready, s.progress = b.ready, b.progress.Progress
 	if b.hasPrepLocations {
@@ -377,7 +379,6 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	s.engineState = s.service.Engine()
 	s.checks = s.service.EngineChecks()
 	s.applyUpdateState(b.updateState)
-	s.applyPendingPolystrataSelection()
 	s.adoptDownloadedEngine()
 	s.adoptOnlyModel()
 	s.loaded = true

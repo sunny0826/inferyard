@@ -20,6 +20,18 @@ func (s *viewState) availableTaskAssets() taskAssets {
 	return assets
 }
 
+func (s *viewState) reconcileSelectedModel() {
+	if s.model == "" {
+		return
+	}
+	for _, model := range s.registry.Models {
+		if model.Name == s.model && model.Available {
+			return
+		}
+	}
+	s.model = ""
+}
+
 func (s *viewState) adoptOnlyModel() {
 	if s.model != "" {
 		return

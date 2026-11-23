@@ -13,15 +13,14 @@ import (
 type polystrataSelectionTarget struct {
 	installationPath string
 	modelConfigPath  string
+	initialEngine    string
+	initialModel     string
 }
 
 func cleanMatchPath(p string) string {
 	trimmed := strings.TrimSpace(p)
 	if trimmed == "" {
 		return ""
-	}
-	if resolved, err := filepath.EvalSymlinks(trimmed); err == nil {
-		return filepath.Clean(resolved)
 	}
 	return filepath.Clean(trimmed)
 }
@@ -193,34 +192,40 @@ func (s *viewState) startBenchmarkFromPolystrataTask(task core.DownloadTask) {
 		s.pendingPolystrataSelection = &polystrataSelectionTarget{
 			installationPath: wantInst,
 			modelConfigPath:  wantModel,
+			initialEngine:    s.engine,
+			initialModel:     s.model,
 		}
 		go s.refresh(true)
 	} else {
 		s.pendingPolystrataSelection = nil
 	}
 	if !s.roundWorkActive() && s.running() == nil {
+		s.clearBenchmark()
 		if s.speed != nil {
+			s.speed.current, s.speed.opened = nil, nil
 			s.speed.selected = false
 		}
-		if s.task.stage != "" && s.task.stage != "prepare_candidate" {
-			s.clearBenchmark()
-			s.task.stage = "prepare_candidate"
-		}
+		s.task.stage = "prepare_candidate"
+		s.focusedRun = ""
+		s.resumeSource = nil
+		s.detailMu.Lock()
+		s.requestedDetail = ""
+		s.detailMu.Unlock()
+		s.failure = nil
 	}
 	s.navigateTo("dashboard", "")
 }
 
 func (s *viewState) applyPendingPolystrataSelection() {
-	if s.pendingPolystrataSelection == nil {
+	pending := s.pendingPolystrataSelection
+	if pending == nil {
 		return
 	}
-	engineMatched, modelMatched := s.applyPolystrataSelection(
-		s.pendingPolystrataSelection.installationPath,
-		s.pendingPolystrataSelection.modelConfigPath,
-	)
-	if engineMatched && modelMatched {
-		s.pendingPolystrataSelection = nil
+	s.pendingPolystrataSelection = nil
+	if s.engine != pending.initialEngine || s.model != pending.initialModel {
+		return
 	}
+	_, _ = s.applyPolystrataSelection(pending.installationPath, pending.modelConfigPath)
 }
 
 func (s *viewState) applyPolystrataSelection(wantInst, wantModel string) (bool, bool) {

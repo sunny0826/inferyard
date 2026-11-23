@@ -139,25 +139,22 @@ func registryStorageMetrics(u UserSettings, modelRoots []string, models []regist
 		}
 	}
 	for _, entry := range models {
-		if entry.model.Format != "strata_pack" || entry.model.SizeBytes == nil || *entry.model.SizeBytes <= 0 {
+		if entry.model.Format != "strata_pack" {
 			continue
 		}
-		if len(entry.assetPaths) > 0 {
-			allCounted := true
-			for _, p := range entry.assetPaths {
-				if !countedFiles[p] {
-					allCounted = false
-					break
+		if len(entry.assetFiles) > 0 {
+			for _, f := range entry.assetFiles {
+				if f.size <= 0 || countedFiles[f.path] {
+					continue
 				}
+				countedFiles[f.path] = true
+				total += f.size
 			}
-			if allCounted {
-				continue
-			}
-			for _, p := range entry.assetPaths {
-				countedFiles[p] = true
-			}
+			continue
 		}
-		total += *entry.model.SizeBytes
+		if entry.model.SizeBytes != nil && *entry.model.SizeBytes > 0 {
+			total += *entry.model.SizeBytes
+		}
 	}
 	if total == 0 && scanned != nil && scanned.TotalModelBytes != nil {
 		total = *scanned.TotalModelBytes

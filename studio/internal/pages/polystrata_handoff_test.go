@@ -1,10 +1,12 @@
 package pages
 
 import (
+	"context"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
 )
 
 func TestPolystrataAutoSelectAndDoneTaskCTA(t *testing.T) {
@@ -123,5 +125,123 @@ func TestPolystrataAutoSelectAndDoneTaskCTA(t *testing.T) {
 	ttModels := ui.NewTester(sMissing.modelsView, 1120, 1800)
 	if !ttModels.HasText("不可用：配置文件引用的模型文件缺失") {
 		t.Fatalf("expected localized missing-asset reason on models page: %v", ttModels.Texts())
+	}
+}
+
+func TestPolystrataReconcileIdleResetAndOneShotPendingSelection(t *testing.T) {
+	// 1. Vanished raw .gguf selection is cleared after deduplicating refresh, while still-valid selection stays intact.
+	s := settingsState()
+	s.service = settingsTestService(t, t.TempDir())
+	s.ctx = context.Background()
+	s.discoveryLoaded = true
+	s.engine = "PolyStrata · v0.1.45-poly.10"
+	s.model = "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf"
+
+	batch := refreshBatch{
+		epoch: s.settingsSequence(),
+		full:  true,
+		registry: core.Registry{
+			Engines: []core.EngineAsset{{Name: "PolyStrata · v0.1.45-poly.10", Family: "polystrata", Kind: "local_installation", Path: "/ws/engines/ps/installation.json"}},
+			Models: []core.ModelAsset{
+				{Name: "Qwen3.6-35B-A3B (UD-Q4_K_M)", Format: "strata_pack", Path: "/ws/models/strata-qwen36.json", Available: true},
+				{Name: "valid-other.gguf", Format: "gguf", Path: "/ws/models/valid-other.gguf", Available: true},
+			},
+		},
+		downloads: []core.DownloadTask{{
+			TaskId:           "ps-done",
+			Kind:             "polystrata",
+			State:            "done",
+			InstallationPath: ptr("/ws/engines/ps/installation.json"),
+			ModelConfigPath:  ptr("/ws/models/strata-qwen36.json"),
+		}},
+	}
+	if !s.applyRefreshBatch(batch) {
+		t.Fatal("expected full refresh batch to apply")
+	}
+	if s.model != "Qwen3.6-35B-A3B (UD-Q4_K_M)" {
+		t.Fatalf("expected vanished raw .gguf to reconcile onto installed strata_pack, got %q", s.model)
+	}
+
+	s.model = "valid-other.gguf"
+	if !s.applyRefreshBatch(batch) {
+		t.Fatal("expected second refresh batch to apply")
+	}
+	if s.model != "valid-other.gguf" {
+		t.Fatalf("expected valid user selection to remain untouched, got %q", s.model)
+	}
+
+	// 2. Idle CTA resets completed speed workspace and completed workspace state to prepare_candidate (step 2).
+	sIdle := testState()
+	sIdle.selected = "downloads"
+	sIdle.progress = &inferyard.WorkspaceProgress{DefaultScopeComplete: true}
+	sIdle.speed = &speedWorkspace{
+		selected: true,
+		current:  &speedTask{id: "sp-done", stage: speedDone},
+		opened:   &speedTask{id: "sp-done", stage: speedDone},
+	}
+	sIdle.registry.Engines = batch.registry.Engines
+	sIdle.registry.Models = batch.registry.Models
+	sIdle.checks.Engines = map[string]core.EngineEligibility{
+		"PolyStrata · v0.1.45-poly.10": {State: core.EngineCheckEligible, Family: "polystrata"},
+	}
+	sIdle.startBenchmarkFromPolystrataTask(batch.downloads[0])
+	if sIdle.selected != "dashboard" || sIdle.speed.current != nil || sIdle.speed.opened != nil || sIdle.speed.selected {
+		t.Fatalf("expected CTA to reset completed speed workspace, got selected=%q speed=%+v", sIdle.selected, sIdle.speed)
+	}
+	if sIdle.task.stage != "prepare_candidate" || sIdle.step() != 2 {
+		t.Fatalf("expected CTA to enter prepare_candidate (step 2), got stage=%q step=%d", sIdle.task.stage, sIdle.step())
+	}
+
+	// 3. One-shot pendingPolystrataSelection is cleared on first full refresh even when target model is missing,
+	// and never overwrites subsequent manual engine choices.
+	sPending := settingsState()
+	sPending.service = settingsTestService(t, t.TempDir())
+	sPending.ctx = context.Background()
+	sPending.discoveryLoaded = true
+	sPending.registry.Engines = []core.EngineAsset{
+		{Name: "PolyStrata · v0.1.45-poly.10", Family: "polystrata", Kind: "local_installation", Path: "/ws/engines/ps/installation.json"},
+		{Name: "llama-cpp · local", Family: "llama-cpp", Kind: "local_installation", Path: "/ws/engines/llama/installation.json"},
+	}
+	sPending.pendingPolystrataSelection = &polystrataSelectionTarget{
+		installationPath: "/ws/engines/ps/installation.json",
+		modelConfigPath:  "/ws/models/missing-strata.json",
+		initialEngine:    "llama-cpp · local",
+		initialModel:     "",
+	}
+	sPending.engine = "llama-cpp · local"
+
+	missingBatch := refreshBatch{
+		epoch:    sPending.settingsSequence(),
+		full:     true,
+		registry: sPending.registry,
+	}
+	if !sPending.applyRefreshBatch(missingBatch) {
+		t.Fatal("expected missingBatch to apply")
+	}
+	if sPending.pendingPolystrataSelection != nil {
+		t.Fatalf("expected pendingPolystrataSelection to be consumed in one shot: %+v", sPending.pendingPolystrataSelection)
+	}
+	// User manually picks llama-cpp; another full refresh must not switch engine back.
+	sPending.engine = "llama-cpp · local"
+	if !sPending.applyRefreshBatch(missingBatch) {
+		t.Fatal("expected second missingBatch to apply")
+	}
+	if sPending.engine != "llama-cpp · local" {
+		t.Fatalf("manual engine selection was overwritten after one-shot pending consumed: %q", sPending.engine)
+	}
+
+	// If user manually switches engine BEFORE the pending full refresh lands, pending must not override it either.
+	sPending.pendingPolystrataSelection = &polystrataSelectionTarget{
+		installationPath: "/ws/engines/ps/installation.json",
+		modelConfigPath:  "/ws/models/strata-qwen36.json",
+		initialEngine:    "",
+		initialModel:     "",
+	}
+	sPending.engine = "llama-cpp · local"
+	if !sPending.applyRefreshBatch(missingBatch) {
+		t.Fatal("expected override-guard batch to apply")
+	}
+	if sPending.engine != "llama-cpp · local" || sPending.pendingPolystrataSelection != nil {
+		t.Fatalf("pending selection overrode manual engine or remained pending: engine=%q pending=%+v", sPending.engine, sPending.pendingPolystrataSelection)
 	}
 }

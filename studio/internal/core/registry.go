@@ -48,7 +48,7 @@ type registryEntry struct {
 	path, rawPath, source string
 	installation, family  string
 	receipt, displayName  string
-	assetPaths            []string
+	assetFiles            []assetFileSize
 	model                 ModelAsset
 	engine                EngineAsset
 	modified, downloaded  time.Time
