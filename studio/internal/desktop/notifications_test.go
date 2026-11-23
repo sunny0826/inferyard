@@ -44,6 +44,21 @@ func TestDesktopNotificationMessagesAreLocalizedChinese(t *testing.T) {
 			wantTitle: "模型下载完成",
 		},
 		{
+			name:      "polystrata install done",
+			event:     core.Event{Type: "download.state", Data: mustJSON(map[string]any{"task": map[string]any{"kind": "polystrata", "state": "done", "display_name": "PolyStrata · qwen36", "out_name": "polystrata-1"}})},
+			wantTitle: "PolyStrata 安装完成",
+		},
+		{
+			name:      "polystrata install failed",
+			event:     core.Event{Type: "download.state", Data: mustJSON(map[string]any{"task": map[string]any{"kind": "polystrata", "state": "failed", "display_name": "PolyStrata · qwen36"}})},
+			wantTitle: "PolyStrata 安装失败",
+		},
+		{
+			name:      "polystrata install cancelled",
+			event:     core.Event{Type: "download.state", Data: mustJSON(map[string]any{"task": map[string]any{"kind": "polystrata", "state": "cancelled"}})},
+			wantTitle: "PolyStrata 安装已取消",
+		},
+		{
 			name:      "engine orphaned",
 			event:     core.Event{Type: "engine.state", Data: mustJSON(map[string]any{"engine": map[string]any{"state": "orphaned"}})},
 			wantTitle: "检测到遗留模型服务",

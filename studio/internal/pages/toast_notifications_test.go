@@ -291,3 +291,70 @@ func TestPolystrataDownloadStateNotifications(t *testing.T) {
 		t.Fatalf("failed CTA did not navigate to downloads: %q", s.selected)
 	}
 }
+
+func TestPolystrataDoneNotificationRespectsUnsavedSettingsGuard(t *testing.T) {
+	mustJSON := func(v any) json.RawMessage {
+		raw, err := json.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return raw
+	}
+
+	s := readyState("settings")
+	s.settingsLoaded = true
+	s.cliPath = "/custom/unsaved/inferyard"
+	s.engine = "llama-cpp"
+	s.model = "existing-model"
+	s.registry.Engines = []core.EngineAsset{
+		{Name: "llama-cpp", Family: "llama-cpp", Path: "/opt/engines/llama"},
+		{Name: "polystrata-1", Family: "polystrata", Path: "/opt/engines/ps-1/installation.json"},
+	}
+	s.registry.Models = []core.ModelAsset{
+		{Name: "existing-model", Format: "gguf", Path: "/opt/models/existing.gguf", Available: true},
+		{Name: "qwen36-pack", Format: "strata_pack", Path: "/opt/models/qwen36-strata.json", Available: true},
+	}
+
+	s.ingestCoreEvents([]core.Event{{
+		Type: "download.state",
+		Data: mustJSON(map[string]any{
+			"task": map[string]any{
+				"task_id":           "ps-done-guard",
+				"kind":              "polystrata",
+				"state":             "done",
+				"display_name":      "PolyStrata · qwen36",
+				"installation_path": "/opt/engines/ps-1/installation.json",
+				"model_config_path": "/opt/models/qwen36-strata.json",
+			},
+		}),
+	}})
+	doneItem := s.notifications().items[0]
+
+	doneItem.Primary.OnClick()
+	if !s.settingsLeaveConfirm || s.selected != "settings" {
+		t.Fatalf("expected unsaved-settings confirm dialog while staying on settings: confirm=%v page=%q", s.settingsLeaveConfirm, s.selected)
+	}
+	if s.engine != "llama-cpp" || s.model != "existing-model" || s.pendingPolystrataSelection != nil {
+		t.Fatalf("clicking CTA with unsaved settings mutated selection early: engine=%q model=%q pending=%+v", s.engine, s.model, s.pendingPolystrataSelection)
+	}
+
+	// Simulate clicking "留在设置页".
+	s.settingsLeaveConfirm = false
+	s.pendingNavAction = nil
+	if s.engine != "llama-cpp" || s.model != "existing-model" || s.selected != "settings" {
+		t.Fatalf("staying on settings lost original selection: page=%q engine=%q model=%q", s.selected, s.engine, s.model)
+	}
+
+	// Simulate confirming leave -> switches to dashboard and applies PolyStrata selection.
+	doneItem.Primary.OnClick()
+	if s.pendingNavAction == nil {
+		t.Fatal("expected pendingNavAction to be populated")
+	}
+	action := s.pendingNavAction
+	s.pendingNavAction = nil
+	s.settingsLeaveConfirm = false
+	action()
+	if s.selected != "dashboard" || s.engine != "polystrata-1" || s.model != "qwen36-pack" {
+		t.Fatalf("confirming leave did not apply PolyStrata selection: page=%q engine=%q model=%q", s.selected, s.engine, s.model)
+	}
+}

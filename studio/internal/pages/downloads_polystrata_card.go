@@ -256,38 +256,44 @@ func (s *viewState) polystrataDownloadActions(c *ui.Context, task core.DownloadT
 }
 
 func (s *viewState) startBenchmarkFromPolystrataTask(task core.DownloadTask) {
-	wantInst := cleanMatchPath(emptyText(task.InstallationPath))
-	if wantInst == "" {
-		wantInst = cleanMatchPath(emptyText(task.EnginePath))
-	}
-	wantModel := cleanMatchPath(emptyText(task.ModelConfigPath))
-	engineMatched, modelMatched := s.applyPolystrataSelection(wantInst, wantModel)
-	if (!engineMatched || !modelMatched) && s.service != nil && s.preview == nil {
-		s.pendingPolystrataSelection = &polystrataSelectionTarget{
-			installationPath: wantInst,
-			modelConfigPath:  wantModel,
-			initialEngine:    s.engine,
-			initialModel:     s.model,
+	run := func() {
+		wantInst := cleanMatchPath(emptyText(task.InstallationPath))
+		if wantInst == "" {
+			wantInst = cleanMatchPath(emptyText(task.EnginePath))
 		}
-		go s.refresh(true)
-	} else {
-		s.pendingPolystrataSelection = nil
-	}
-	if !s.roundWorkActive() && s.running() == nil {
-		s.clearBenchmark()
-		if s.speed != nil {
-			s.speed.current, s.speed.opened = nil, nil
-			s.speed.selected = false
+		wantModel := cleanMatchPath(emptyText(task.ModelConfigPath))
+		engineMatched, modelMatched := s.applyPolystrataSelection(wantInst, wantModel)
+		if (!engineMatched || !modelMatched) && s.service != nil && s.preview == nil {
+			s.pendingPolystrataSelection = &polystrataSelectionTarget{
+				installationPath: wantInst,
+				modelConfigPath:  wantModel,
+				initialEngine:    s.engine,
+				initialModel:     s.model,
+			}
+			go s.refresh(true)
+		} else {
+			s.pendingPolystrataSelection = nil
 		}
-		s.task.stage = "prepare_candidate"
-		s.focusedRun = ""
-		s.resumeSource = nil
-		s.detailMu.Lock()
-		s.requestedDetail = ""
-		s.detailMu.Unlock()
-		s.failure = nil
+		if !s.roundWorkActive() && s.running() == nil {
+			s.clearBenchmark()
+			if s.speed != nil {
+				s.speed.current, s.speed.opened = nil, nil
+				s.speed.selected = false
+			}
+			s.task.stage = "prepare_candidate"
+			s.focusedRun = ""
+			s.resumeSource = nil
+			s.detailMu.Lock()
+			s.requestedDetail = ""
+			s.detailMu.Unlock()
+			s.failure = nil
+		}
+		s.navigateToNow("dashboard", "")
 	}
-	s.navigateTo("dashboard", "")
+	if s.guardLeaveSettings("dashboard", run) {
+		return
+	}
+	run()
 }
 
 func (s *viewState) applyPendingPolystrataSelection() {
