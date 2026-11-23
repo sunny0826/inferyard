@@ -266,7 +266,7 @@ func (s *viewState) notificationBell(c *ui.Context) {
 					}
 					ui.Box(c).MinWidth(18).Height(18).Padding(0, 5).Radius(t.Radius.Full).
 						Background(t.Color.Danger.Solid).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-						ui.Text(c, countText).FontSize(11).Bold().FontFeatures("tnum").TextColor(ui.Hex("#ffffff")).SingleLine()
+						ui.Text(c, countText).FontSize(11).Bold().FontFeatures("tnum").TextColor(t.Color.FgOnAccent).SingleLine()
 					})
 				}
 			})

@@ -178,6 +178,7 @@ func previewBase(ctx context.Context) *viewState {
 		},
 		settings: core.SettingsResponse{Settings: settings, Effective: core.EffectiveSettings{
 			WorkspaceRoot: settings.WorkspaceRoot, ResultsRoot: settings.ResultsRoot, ModelsRoot: settings.ModelsRoot,
+			Theme: core.ThemeSystem,
 		}},
 		registry: core.Registry{
 			Models: []core.ModelAsset{

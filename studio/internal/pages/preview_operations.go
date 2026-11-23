@@ -257,9 +257,15 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		return
 	}
 	if p.takeFailure() {
+		if _, hasTheme := patch["theme"]; hasTheme {
+			s.themeMode = previewThemeModeString(p.themeMode)
+			s.syncNativeThemeIfNeeded()
+			s.failurePage = s.selected
+		}
 		s.failure = &core.ApiError{Code: "preview_save_failed", Message: "模拟保存失败，可再次点击保存。"}
 		return
 	}
+	value.Theme = core.NormalizeTheme(value.Theme)
 	s.settings.Settings = value
 	s.settings.Effective = core.EffectiveSettings{
 		WorkspaceRoot:    value.WorkspaceRoot,
@@ -268,8 +274,15 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		InferyardPath:    value.InferyardPath,
 		ExtraModelsRoots: slices.Clone(value.ExtraModelsRoots),
 		DownloadProxy:    value.DownloadProxy,
+		Theme:            value.Theme,
 	}
 	s.syncSavedGroups(patch, s.settingsDraft(), s.settings)
+	if _, hasTheme := patch["theme"]; hasTheme {
+		p.themeMode = previewThemeModeIndex(value.Theme)
+		s.themeMode = value.Theme
+		s.appliedThemeMode = value.Theme
+		p.syncNativeTheme()
+	}
 	s.ready.Workspace.Path, s.ready.Results.Path, s.ready.Models.Path = value.WorkspaceRoot, value.ResultsRoot, value.ModelsRoot
 	if workspaceChanged {
 		p.cancelEvents("environment")

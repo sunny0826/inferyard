@@ -65,6 +65,22 @@ func slicesEqualStrings(a, b []string) bool {
 	return true
 }
 
+func NormalizeTheme(mode string) string {
+	switch strings.TrimSpace(mode) {
+	case ThemeLight:
+		return ThemeLight
+	case ThemeDark:
+		return ThemeDark
+	default:
+		return ThemeSystem
+	}
+}
+
+// Theme returns the normalized persisted UI appearance mode without probing the CLI.
+func (s *Service) Theme() string {
+	return NormalizeTheme(s.userSettings().Theme)
+}
+
 func applySettingsPatchExtra(u *UserSettings, key string, raw json.RawMessage) (bool, *ApiError) {
 	switch key {
 	case "download_proxy":
@@ -81,6 +97,25 @@ func applySettingsPatchExtra(u *UserSettings, key string, raw json.RawMessage) (
 			return true, Err("invalid_request")
 		}
 		u.DownloadProxy = &trimmed
+		return true, nil
+	case "theme":
+		var mode *string
+		if json.Unmarshal(raw, &mode) != nil {
+			return true, Err("invalid_request")
+		}
+		if mode == nil {
+			u.Theme = ThemeSystem
+			return true, nil
+		}
+		trimmed := strings.TrimSpace(*mode)
+		switch trimmed {
+		case "", ThemeSystem:
+			u.Theme = ThemeSystem
+		case ThemeLight, ThemeDark:
+			u.Theme = trimmed
+		default:
+			return true, Err("invalid_request")
+		}
 		return true, nil
 	case "extra_models_roots":
 		var roots []string

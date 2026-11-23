@@ -1,8 +1,10 @@
 package pages
 
 import (
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/theme"
+	"inferyard/studio/internal/core"
 )
 
 type paletteColors struct {
@@ -112,6 +114,36 @@ func studioThemeFor(c *ui.Context, dark bool) *ui.Theme {
 
 func studioTheme(c *ui.Context) *ui.Theme {
 	return studioThemeFor(c, c.Theme().Dark)
+}
+
+func normalizeThemeMode(mode string) string {
+	return core.NormalizeTheme(mode)
+}
+
+func resolveStudioTheme(c *ui.Context, mode string) *ui.Theme {
+	switch normalizeThemeMode(mode) {
+	case core.ThemeLight:
+		return studioThemeFor(c, false)
+	case core.ThemeDark:
+		return studioThemeFor(c, true)
+	default:
+		return studioTheme(c)
+	}
+}
+
+func nativeThemeSource(mode string) mygo.ThemeSource {
+	switch normalizeThemeMode(mode) {
+	case core.ThemeLight:
+		return mygo.ThemeLight
+	case core.ThemeDark:
+		return mygo.ThemeDark
+	default:
+		return mygo.ThemeSystem
+	}
+}
+
+func syncNativeTheme(mode string) {
+	mygo.Theme.SetSource(nativeThemeSource(mode))
 }
 
 func applyPalette(t *ui.Theme, p paletteColors) {
