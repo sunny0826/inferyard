@@ -2,6 +2,7 @@ package pages
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"strings"
 	"time"
@@ -201,11 +202,11 @@ func (s *viewState) updateDialog(c *ui.Context) {
 								s.triggerUpdateApply(true)
 							}
 						} else {
-							if primaryButton(c, "安装并重启").Clicked() {
+							if primaryButton(c, "更新并重启").Clicked() {
 								s.triggerUpdateApply(false)
 							}
 						}
-						if button(c, "稍后安装").Clicked() {
+						if button(c, "稍后").Clicked() {
 							s.updateDialogOpen = false
 						}
 					})
@@ -247,6 +248,63 @@ func (s *viewState) updateDialog(c *ui.Context) {
 	})
 }
 
+func (s *viewState) updateReadyPrompt(c *ui.Context) {
+	st := s.currentUpdateState()
+	if st.State != core.UpdateReadyToApply || st.Release == nil || s.updateDialogOpen {
+		return
+	}
+	ver := strings.TrimPrefix(st.Release.Version, "v")
+	if ver == "" || s.updateReadyPromptDismissedVersion == ver {
+		return
+	}
+	t := tokens(c)
+	ui.Overlay(c, func() {
+		ui.Box(c).Fill().PassThrough().AlignItems(ui.End).Justify(ui.End).Padding(16).Children(func() {
+			card := applyShadow(
+				ui.Column(c.Key("update-ready-prompt")).
+					Width(340).MaxWidthPercent(90).
+					Padding(18).Gap(10).Radius(16).
+					Background(t.Color.Elevated).
+					Border(1, t.Color.BorderDefault),
+				t.Elevation.LG,
+			)
+			card.Children(func() {
+				ui.Text(c, "发现新版本").Bold().FontSize(t.Type.CardTitle).TextColor(t.Color.FgPrimary)
+				ui.Text(c, fmt.Sprintf("版本 %s 已可更新，重启后生效。", ver)).
+					FontSize(t.Type.Body).TextColor(t.Color.FgSecondary)
+				notesBtn := components.Button(c, "", components.ButtonGhost).
+					Padding(2, 0).AlignSelf(ui.Start).Label("查看更新日志")
+				notesBtn.Children(func() {
+					ui.Text(c, "查看更新日志").FontSize(t.Type.Body).
+						TextColor(t.Color.Accent).Underline().UnderlineOffset(2)
+				})
+				if notesBtn.Clicked() {
+					s.updateDialogOpen = true
+				}
+				ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Gap(12).Padding(6, 0, 0, 0).Children(func() {
+					laterBtn := components.Button(c, "", components.ButtonGhost).
+						Padding(8, 12).Radius(10).Label("稍后")
+					laterBtn.Children(func() {
+						ui.Text(c, "稍后").FontSize(t.Type.Body).TextColor(t.Color.FgSecondary)
+					})
+					if laterBtn.Clicked() {
+						s.updateReadyPromptDismissedVersion = ver
+					}
+					restartBtn := components.Button(c, "更新并重启", components.ButtonPrimary).
+						Padding(8, 18).Radius(10)
+					if restartBtn.Clicked() {
+						if s.effectiveUpdateWorkloads().Any() {
+							s.updateDialogOpen = true
+						} else {
+							s.triggerUpdateApply(false)
+						}
+					}
+				})
+			})
+		})
+	})
+}
+
 func (s *viewState) applyUpdateState(next core.UpdateState) {
 	if next.State == "" {
 		return
@@ -257,6 +315,7 @@ func (s *viewState) applyUpdateState(next core.UpdateState) {
 }
 
 func (s *viewState) triggerUpdateCheck() {
+	s.updateReadyPromptDismissedVersion = ""
 	if s.simulate(previewUpdateCheck{}) {
 		return
 	}
@@ -280,6 +339,7 @@ func (s *viewState) triggerUpdateCheck() {
 }
 
 func (s *viewState) triggerUpdateStart() {
+	s.updateReadyPromptDismissedVersion = ""
 	if s.simulate(previewUpdateStart{}) {
 		return
 	}

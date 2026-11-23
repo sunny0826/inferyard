@@ -206,6 +206,7 @@ type viewState struct {
 	settingsEpoch                                                                       uint64
 	updateState                                                                         core.UpdateState
 	updateDialogOpen                                                                    bool
+	updateReadyPromptDismissedVersion                                                   string
 	updateCheckFn                                                                       func(context.Context) (core.UpdateState, error)
 	updateStartFn                                                                       func()
 	updateCancelFn                                                                      func() core.UpdateState
@@ -481,6 +482,7 @@ func (s *viewState) contentView(c *ui.Context) {
 	s.resumeDialog(c)
 	s.settingsDiscardDialog(c)
 	s.updateDialog(c)
+	s.updateReadyPrompt(c)
 	s.studioNotifications(c)
 	studioToasts(c)
 }

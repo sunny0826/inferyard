@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 
 	"inferyard/studio/internal/inferyard"
@@ -153,5 +154,86 @@ func TestUpdateAdmissionFreezeCancelGuardPreApplyVerifyAndWindowsRecovery(t *tes
 	}
 	if _, statErr := os.Stat(errFile); !os.IsNotExist(statErr) {
 		t.Fatalf("error record file was not deleted after consumption: %v", statErr)
+	}
+}
+
+func TestUpdateBackgroundAutoDownloadAndSilentFailureDegradation(t *testing.T) {
+	payload := buildTestTarGz(t, map[string][]byte{
+		"inferyard-studio-v0.10.0-linux-amd64/inferyard-studio": []byte("new-bin"),
+	}, nil)
+	var failAsset atomic.Bool
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/latest":
+			_ = json.NewEncoder(w).Encode(githubReleasePayload{
+				TagName: "v0.10.0",
+				HTMLURL: srv.URL + "/releases/v0.10.0",
+				Assets: []githubReleaseAsset{
+					{Name: "inferyard-studio-v0.10.0-linux-amd64.tar.gz", BrowserDownloadURL: srv.URL + "/asset", Size: int64(len(payload))},
+					{Name: "SHA256SUMS", BrowserDownloadURL: srv.URL + "/SHA256SUMS", Size: 120},
+				},
+			})
+		case "/asset":
+			if failAsset.Load() {
+				w.WriteHeader(http.StatusBadGateway)
+				return
+			}
+			_, _ = w.Write(payload)
+		case "/SHA256SUMS":
+			_, _ = w.Write([]byte(sha256Hex(payload) + "  inferyard-studio-v0.10.0-linux-amd64.tar.gz\n"))
+		}
+	}))
+	defer srv.Close()
+
+	// 1. Background startup check automatically downloads & verifies to ready_to_apply.
+	autoSvc := newUpdateTestService(t, UpdateOptions{
+		APIURL:         srv.URL + "/latest",
+		CurrentVersion: "0.9.9",
+		GOOS:           "linux",
+		GOARCH:         "amd64",
+		InspectTarget:  func() updateInstallTarget { return updateInstallTarget{CanSelfUpdate: true, ExePath: "/opt/inferyard-studio"} },
+	})
+	autoSvc.StartBackgroundUpdateCheck()
+	wait(t, func() bool { return autoSvc.UpdateStatus().State == UpdateReadyToApply })
+	if st := autoSvc.UpdateStatus(); st.Release == nil || st.Release.Version != "0.10.0" {
+		t.Fatalf("unexpected ready state after background auto-download: %+v", st)
+	}
+
+	// 2. Failing background auto-download cleans staging and degrades silently to available (no error state).
+	failAsset.Store(true)
+	failStaging := filepath.Join(t.TempDir(), "fail-staging")
+	failSvc := newUpdateTestService(t, UpdateOptions{
+		APIURL:         srv.URL + "/latest",
+		CurrentVersion: "0.9.9",
+		GOOS:           "linux",
+		GOARCH:         "amd64",
+		StagingRoot:    failStaging,
+		InspectTarget:  func() updateInstallTarget { return updateInstallTarget{CanSelfUpdate: true, ExePath: "/opt/inferyard-studio"} },
+	})
+	_, off, cursor := failSvc.Bus.Subscribe()
+	defer off()
+	sawDownload := false
+	failSvc.StartBackgroundUpdateCheck()
+	wait(t, func() bool {
+		events, _, next := failSvc.Bus.After(cursor)
+		cursor = next
+		for _, e := range events {
+			if e.Type == "update.state" {
+				var p struct {
+					Update UpdateState `json:"update"`
+				}
+				if json.Unmarshal(e.Data, &p) == nil && p.Update.State == UpdateDownloading {
+					sawDownload = true
+				}
+			}
+		}
+		return sawDownload && failSvc.UpdateStatus().State == UpdateAvailable
+	})
+	if st := failSvc.UpdateStatus(); st.ErrorCode != "" || st.ErrorMessage != "" {
+		t.Fatalf("background auto-download failure leaked error: %+v", st)
+	}
+	if entries, _ := os.ReadDir(failStaging); len(entries) != 0 {
+		t.Fatalf("failed auto-download staging not cleaned: %v", entries)
 	}
 }

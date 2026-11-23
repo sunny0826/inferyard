@@ -157,10 +157,10 @@ func TestUpdateDialogActionsActiveWorkloadWarningAndFallback(t *testing.T) {
 	s.tasks = nil
 	s.updateState.State = core.UpdateReadyToApply
 	tt.Frame()
-	if !tt.HasText("安装并重启") {
+	if !tt.HasText("更新并重启") {
 		t.Fatalf("expected idle apply CTA: %v", tt.Texts())
 	}
-	click(t, tt, "安装并重启")
+	click(t, tt, "更新并重启")
 	select {
 	case fn := <-uiCh:
 		fn()
@@ -225,5 +225,69 @@ func TestUpdateStateRejectsStaleSeqCallbacks(t *testing.T) {
 	s.applyUpdateState(core.UpdateState{Seq: 2, State: core.UpdateAvailable, CurrentVersion: "0.0.8", Release: sampleUpdateRelease()})
 	if s.updateState.State != core.UpdateDownloading || s.updateState.Seq != 3 {
 		t.Fatalf("stale seq 2 overwrote seq 3: %+v", s.updateState)
+	}
+}
+
+func TestUpdateReadyPromptCardActionsAndWorkloadGuard(t *testing.T) {
+	s := readyState("reports")
+	uiCh := make(chan func(), 4)
+	s.updateWindow = func(fn func()) { uiCh <- fn }
+	s.updateState = core.UpdateState{
+		Seq:            4,
+		State:          core.UpdateReadyToApply,
+		CurrentVersion: "0.0.8",
+		Release:        sampleUpdateRelease(),
+		CanSelfUpdate:  true,
+	}
+	var applyCalls []bool
+	s.updateApplyFn = func(_ context.Context, confirmStop bool) (core.UpdateState, error) {
+		applyCalls = append(applyCalls, confirmStop)
+		return core.UpdateState{Seq: 5, State: core.UpdateApplying, CurrentVersion: "0.0.8", Release: sampleUpdateRelease()}, nil
+	}
+
+	tt := ui.NewTester(s.contentView, 1120, 800)
+	tt.Frame()
+	for _, want := range []string{"发现新版本", "版本 0.10.0 已可更新，重启后生效。", "查看更新日志", "稍后", "更新并重启"} {
+		if !tt.HasText(want) {
+			t.Fatalf("ready prompt missing %q: %v", want, tt.Texts())
+		}
+	}
+
+	// Clicking "查看更新日志" opens the full update modal and hides the floating card.
+	click(t, tt, "查看更新日志")
+	if !s.updateDialogOpen {
+		t.Fatal("clicking 查看更新日志 did not open update dialog")
+	}
+	s.updateDialogOpen = false
+	tt.Frame()
+
+	// Clicking "稍后" dismisses the floating card for this version while preserving ready state.
+	click(t, tt, "稍后")
+	if s.updateReadyPromptDismissedVersion != "0.10.0" || tt.HasText("版本 0.10.0 已可更新，重启后生效。") {
+		t.Fatalf("稍后 did not dismiss ready card: dismissed=%q texts=%v", s.updateReadyPromptDismissedVersion, tt.Texts())
+	}
+
+	// Active workload prevents silent apply from floating card and opens dialog for confirmation instead.
+	s.updateReadyPromptDismissedVersion = ""
+	s.tasks = []core.RunTask{{TaskId: "r1", State: "running"}}
+	tt.Frame()
+	click(t, tt, "更新并重启")
+	if !s.updateDialogOpen || len(applyCalls) != 0 {
+		t.Fatalf("active workload should open dialog instead of silent apply: dialog=%v calls=%v", s.updateDialogOpen, applyCalls)
+	}
+
+	// When idle, clicking "更新并重启" invokes apply directly.
+	s.tasks = nil
+	s.updateDialogOpen = false
+	tt.Frame()
+	click(t, tt, "更新并重启")
+	select {
+	case fn := <-uiCh:
+		fn()
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for ready prompt apply callback")
+	}
+	if len(applyCalls) != 1 || applyCalls[0] {
+		t.Fatalf("expected single idle apply(false) call, got %v", applyCalls)
 	}
 }

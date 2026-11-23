@@ -62,7 +62,20 @@ func TestPreviewUpdateScenesAndTransitionsStayInMemory(t *testing.T) {
 		t.Fatalf("cancel did not return preview to available: %+v", p.state.updateState)
 	}
 
-	// Scene 3: Error scene renders fallback actions safely in-memory and supports Retry.
+	// Scene 3: Ready-to-apply scene shows floating prompt and transitions cleanly in memory.
+	p.loadScene(previewSceneIndex(t, "更新 · 待重启生效"))
+	tt.Frame()
+	if !tt.HasText("版本 0.10.0 已可更新，重启后生效。") || !tt.HasText("查看更新日志") || !tt.HasText("更新并重启") {
+		t.Fatalf("preview ready-to-apply scene missing floating prompt: %v", tt.Texts())
+	}
+	click(t, tt, "更新并重启")
+	p.advance(600 * time.Millisecond)
+	tt.Frame()
+	if p.state.updateState.State != core.UpdateUpToDate {
+		t.Fatalf("preview ready prompt apply did not finish cleanly: %+v", p.state.updateState)
+	}
+
+	// Scene 4: Error scene renders fallback actions safely in-memory and supports Retry.
 	p.loadScene(previewSceneIndex(t, "更新 · 更新失败"))
 	tt.Frame()
 	if !tt.HasText("打开安装包") || !tt.HasText("打开发布页") || !tt.HasText("重试") {

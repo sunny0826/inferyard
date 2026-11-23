@@ -49,7 +49,7 @@ func parseSHA256Sums(content, targetName string) (string, bool) {
 	return "", false
 }
 
-func (m *updateManager) downloadUpdate(ctx context.Context) (UpdateState, error) {
+func (m *updateManager) downloadUpdate(ctx context.Context, manual bool) (UpdateState, error) {
 	if ctx == nil {
 		if m.service != nil && m.service.ctx != nil {
 			ctx = m.service.ctx
@@ -124,11 +124,11 @@ func (m *updateManager) downloadUpdate(ctx context.Context) (UpdateState, error)
 
 	baseDir, err := m.stagingBaseDir()
 	if err != nil {
-		return m.failDownload(seq, opCtx, "", &updateCheckError{code: "update_staging_failed", message: "创建临时下载目录失败。", cause: err})
+		return m.failDownload(seq, opCtx, "", manual, &updateCheckError{code: "update_staging_failed", message: "创建临时下载目录失败。", cause: err})
 	}
 	stagingDir, err := os.MkdirTemp(baseDir, "update-v"+rel.Version+"-*")
 	if err != nil {
-		return m.failDownload(seq, opCtx, "", &updateCheckError{code: "update_staging_failed", message: "创建临时下载目录失败。", cause: err})
+		return m.failDownload(seq, opCtx, "", manual, &updateCheckError{code: "update_staging_failed", message: "创建临时下载目录失败。", cause: err})
 	}
 
 	m.mu.Lock()
@@ -146,7 +146,7 @@ func (m *updateManager) downloadUpdate(ctx context.Context) (UpdateState, error)
 
 	downloaded, actualSum, dlErr := m.streamDownloadArtifact(opCtx, seq, rel, currentVer, proxy, partPath)
 	if dlErr != nil {
-		return m.failDownload(seq, opCtx, stagingDir, dlErr)
+		return m.failDownload(seq, opCtx, stagingDir, manual, dlErr)
 	}
 
 	m.mu.Lock()
@@ -167,11 +167,11 @@ func (m *updateManager) downloadUpdate(ctx context.Context) (UpdateState, error)
 
 	expectedHex, err := m.verifyArtifactChecksum(opCtx, rel, currentVer, proxy, actualSum)
 	if err != nil {
-		return m.failDownload(seq, opCtx, stagingDir, err)
+		return m.failDownload(seq, opCtx, stagingDir, manual, err)
 	}
 
 	if err := os.Rename(partPath, finalPath); err != nil {
-		return m.failDownload(seq, opCtx, stagingDir, &updateCheckError{
+		return m.failDownload(seq, opCtx, stagingDir, manual, &updateCheckError{
 			code:    "update_staging_failed",
 			message: "整理更新安装包失败，请重试。",
 			cause:   err,
@@ -362,7 +362,7 @@ func sha256File(path string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-func (m *updateManager) failDownload(seq uint64, ctx context.Context, stagingDir string, err error) (UpdateState, error) {
+func (m *updateManager) failDownload(seq uint64, ctx context.Context, stagingDir string, manual bool, err error) (UpdateState, error) {
 	if stagingDir != "" {
 		_ = os.RemoveAll(stagingDir)
 	}
@@ -374,7 +374,7 @@ func (m *updateManager) failDownload(seq uint64, ctx context.Context, stagingDir
 	m.cancel = nil
 	m.removeStagedLocked()
 
-	if errors.Is(err, context.Canceled) || ctx.Err() != nil {
+	if !manual || errors.Is(err, context.Canceled) || ctx.Err() != nil {
 		if m.state.Release != nil {
 			m.state.State = UpdateAvailable
 			if m.state.Release.AssetSize > 0 {

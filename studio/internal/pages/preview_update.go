@@ -64,6 +64,20 @@ func previewUpdateError(s *viewState) {
 	}
 }
 
+func previewUpdateReadyToApply(s *viewState) {
+	rel := previewUpdateRelease()
+	s.updateDialogOpen = false
+	s.updateReadyPromptDismissedVersion = ""
+	s.updateState = core.UpdateState{
+		State:           core.UpdateReadyToApply,
+		CurrentVersion:  "0.0.8",
+		Release:         &rel,
+		DownloadedBytes: rel.AssetSize,
+		TotalBytes:      previewValue(rel.AssetSize),
+		CanSelfUpdate:   true,
+	}
+}
+
 func (p *previewSession) checkUpdate() {
 	s := p.state
 	st := s.currentUpdateState()

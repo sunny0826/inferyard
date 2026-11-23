@@ -111,8 +111,9 @@ type UpdateOptions struct {
 	InspectTarget     func() updateInstallTarget
 	ApplyFunc         func(context.Context, platformApplyPlan) error
 	CommandRunner     func(context.Context, string, ...string) ([]byte, error)
-	RequestQuit       func()
-	SkipRelaunch      bool
+	RequestQuit         func()
+	SkipRelaunch        bool
+	DisableAutoDownload bool
 }
 
 type updateManager struct {
@@ -365,7 +366,11 @@ func (s *Service) StartBackgroundUpdateCheck() {
 				return
 			}
 			m.mu.Unlock()
-			_, _ = m.checkForUpdate(s.ctx, false)
+			st, err := m.checkForUpdate(s.ctx, false)
+			if err == nil && !m.opts.DisableAutoDownload && st.State == UpdateAvailable && st.CanSelfUpdate &&
+				st.Release != nil && st.Release.AssetURL != "" && st.Release.ChecksumsURL != "" {
+				_, _ = m.downloadUpdate(s.ctx, false)
+			}
 		}()
 	})
 }
@@ -381,7 +386,7 @@ func (s *Service) DownloadUpdate(ctx context.Context) (UpdateState, error) {
 	if s == nil || s.updater == nil {
 		return UpdateState{State: UpdateIdle, CurrentVersion: Version}, errors.New("update service unavailable")
 	}
-	return s.updater.downloadUpdate(ctx)
+	return s.updater.downloadUpdate(ctx, true)
 }
 
 func (s *Service) CancelUpdate() UpdateState {
@@ -404,7 +409,7 @@ func (s *Service) StartOneClickUpdate() {
 	}
 	m := s.updater
 	go func() {
-		state, err := m.downloadUpdate(s.ctx)
+		state, err := m.downloadUpdate(s.ctx, true)
 		if err != nil || state.State != UpdateReadyToApply {
 			return
 		}

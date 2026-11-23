@@ -65,6 +65,7 @@ var previewScenes = []struct {
 	{"下载 · PolyStrata 引导安装", previewDownloadsPolystrata},
 	{"更新 · 发现新版本", previewUpdateAvailable},
 	{"更新 · 下载中", previewUpdateDownloading},
+	{"更新 · 待重启生效", previewUpdateReadyToApply},
 	{"更新 · 更新失败", previewUpdateError},
 }
 
