@@ -26,7 +26,11 @@ from polystrata_test_helpers import (
 )
 
 
-def test_happy_path_local_tar_progress_log_sanitization_and_installation(tmp_path: Path):
+def test_happy_path_local_tar_progress_log_sanitization_and_installation(
+    monkeypatch, tmp_path: Path
+):
+    monkeypatch.delenv("NO_PROXY", raising=False)
+    monkeypatch.delenv("no_proxy", raising=False)
     archive = _tar_gz_file(
         tmp_path / "PolyStrata-v0.1.45-poly.10.tar.gz",
         [
@@ -97,6 +101,10 @@ def test_happy_path_local_tar_progress_log_sanitization_and_installation(tmp_pat
     received_env = json.loads((out / "received_env.json").read_text(encoding="utf-8"))
     assert received_env["HTTPS_PROXY"] == "http://127.0.0.1:7890"
     assert received_env["STRATA_SOURCE"] == "modelscope"
+    for key in ("NO_PROXY", "no_proxy"):
+        items = [part.strip() for part in (received_env.get(key) or "").split(",") if part.strip()]
+        assert "modelscope.cn" in items
+        assert ".modelscope.cn" in items
 
     events = [json.loads(line) for line in progress_buf.getvalue().splitlines()]
     stages = [ev["stage"] for ev in events]

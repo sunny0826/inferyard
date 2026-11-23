@@ -30,8 +30,11 @@ from inferyard.provisioning.acquire_errors import classify_os_error, failure_det
 from inferyard.provisioning.engine_source_download import validate_sha256
 from inferyard.provisioning.http_client import validate_proxy_origin
 from inferyard.provisioning.polystrata_archive import (
+    DEFAULT_POLYSTRATA_SOURCE_BYTES,
+    DEFAULT_POLYSTRATA_SOURCE_SHA256,
     DEFAULT_POLYSTRATA_SOURCE_URL,
     INSTALLATION_FILE_NAME,
+    POLYSTRATA_PINNED_COMMIT,
     POLYSTRATA_PINNED_TAG,
     SETUP_LOG_NAME,
     acquire_runtime_tree,
@@ -50,8 +53,11 @@ from inferyard.provisioning.preparation_io import PreparationError, linked, new_
 from inferyard.provisioning.transfer_progress import ProgressEmitter
 
 __all__ = [
+    "DEFAULT_POLYSTRATA_SOURCE_BYTES",
+    "DEFAULT_POLYSTRATA_SOURCE_SHA256",
     "DEFAULT_POLYSTRATA_SOURCE_URL",
     "INSTALLATION_FILE_NAME",
+    "POLYSTRATA_PINNED_COMMIT",
     "POLYSTRATA_PINNED_TAG",
     "SETUP_LOG_NAME",
     "prepare_polystrata",
@@ -268,6 +274,13 @@ def prepare_polystrata(
     """Run managed 4-stage PolyStrata setup: preflight -> runtime -> setup.py -> verify."""
     expected_sha256 = validate_sha256(expected_sha256)
     remote_source, local_archive, kind = resolve_polystrata_source(source)
+    if remote_source is not None and remote_source.url == DEFAULT_POLYSTRATA_SOURCE_URL:
+        if expected_sha256 is not None and expected_sha256 != DEFAULT_POLYSTRATA_SOURCE_SHA256:
+            raise PreparationError(
+                "engine_checksum_mismatch",
+                details=failure_details("verify", "engine_checksum_mismatch"),
+            )
+        expected_sha256 = DEFAULT_POLYSTRATA_SOURCE_SHA256
     gguf_resolved = Path(gguf_path).expanduser().absolute() if gguf_path is not None else None
 
     try:

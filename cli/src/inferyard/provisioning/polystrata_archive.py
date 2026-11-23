@@ -28,8 +28,13 @@ from inferyard.provisioning.transfer_progress import (
 )
 
 POLYSTRATA_PINNED_TAG = "v0.1.45-poly.10"
+POLYSTRATA_PINNED_COMMIT = "3e1642161198c50ff1abed4046f4e4f476099dbb"
 DEFAULT_POLYSTRATA_SOURCE_URL = (
-    f"https://github.com/simplexai-labs/PolyStrata/archive/refs/tags/{POLYSTRATA_PINNED_TAG}.tar.gz"
+    f"https://github.com/simplexai-labs/PolyStrata/archive/{POLYSTRATA_PINNED_COMMIT}.tar.gz"
+)
+DEFAULT_POLYSTRATA_SOURCE_BYTES = 25747544
+DEFAULT_POLYSTRATA_SOURCE_SHA256 = (
+    "aeced362c54ae3534a66646f1befffe4dc62f0f20cc4869c74ccfa2d90384a92"
 )
 SETUP_LOG_NAME = ".inferyard-setup.log"
 INSTALLATION_FILE_NAME = "installation.json"
@@ -479,5 +484,14 @@ def acquire_runtime_tree(
         finally:
             shutil.rmtree(staging, ignore_errors=True)
 
+    emitter.update(
+        "downloading_runtime",
+        0,
+        None,
+        step=2,
+        step_total=4,
+        detail="downloading PolyStrata runtime",
+        force=True,
+    )
     run_with_client(timeout_seconds, client, _download_and_extract, proxy_origin=proxy_origin)
     return False

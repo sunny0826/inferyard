@@ -36,6 +36,34 @@ _UNIT_MULTIPLIERS = {
     "gb": 1_000_000_000,
     "gib": 1024**3,
 }
+_MODELSCOPE_NO_PROXY_HOSTS = ("modelscope.cn", ".modelscope.cn")
+
+
+def _merge_no_proxy(
+    existing_upper: str | None, existing_lower: str | None, additions: tuple[str, ...]
+) -> str:
+    active = existing_lower if existing_lower is not None else existing_upper
+    if active is not None and active.strip() == "*":
+        return "*"
+    merged: list[str] = []
+    seen: set[str] = set()
+    for is_upper, raw in ((True, existing_upper), (False, existing_lower)):
+        if not raw:
+            continue
+        for part in raw.split(","):
+            token = part.strip()
+            if is_upper and existing_lower is not None and token == "*":
+                continue
+            key = token.casefold()
+            if token and key not in seen:
+                seen.add(key)
+                merged.append(token)
+    for host in additions:
+        key = host.casefold()
+        if key not in seen:
+            seen.add(key)
+            merged.append(host)
+    return ",".join(merged)
 
 
 class _SetupCancelled(BaseException):
@@ -292,6 +320,12 @@ def run_setup_process(
         assert validated is not None
         for key in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
             env[key] = validated
+        if (model_source or "").strip().lower() == "modelscope":
+            merged_no_proxy = _merge_no_proxy(
+                env.get("NO_PROXY"), env.get("no_proxy"), _MODELSCOPE_NO_PROXY_HOSTS
+            )
+            env["NO_PROXY"] = merged_no_proxy
+            env["no_proxy"] = merged_no_proxy
 
     log_path = out / SETUP_LOG_NAME
     if os.path.lexists(log_path) and linked(log_path):
