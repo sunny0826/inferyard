@@ -269,6 +269,7 @@ func (s *viewState) settingsDiscardDialog(c *ui.Context) {
 
 func (s *viewState) applySettings(value core.SettingsResponse) {
 	updateForm := !s.settingsLoaded || !s.settingsEdited()
+	cliUntouched := s.settingsLoaded && s.cliPath == emptyText(s.settings.Settings.InferyardPath)
 	if emptyText(s.settings.Effective.WorkspaceRoot) != emptyText(value.Effective.WorkspaceRoot) {
 		s.resetWorkspace()
 	}
@@ -277,17 +278,56 @@ func (s *viewState) applySettings(value core.SettingsResponse) {
 		s.loadSettings(value)
 		s.settingsLoaded = true
 	} else {
+		if cliUntouched {
+			s.cliPath = emptyText(value.Settings.InferyardPath)
+		}
 		s.loadThemeSettings(value)
 	}
 }
 
 func (s *viewState) pathFields(c *ui.Context) {
 	ui.Column(c).Gap(tokens(c).Density.Row).Children(func() {
-		s.pathField(c, "CLI", &s.cliPath, browseCLI).Description("留空自动查找本地 CLI").Error(s.browseError(browseCLI.key, pathError(s.cliPath)))
+		s.pathField(c, "CLI", &s.cliPath, browseCLI).Description(cliPathState(s.cliPath, emptyText(s.settings.Settings.InferyardPath), s.ready.CLI)).Error(s.browseError(browseCLI.key, pathError(s.cliPath)))
 		s.pathField(c, "工作区目录", &s.workspace, browseWorkspace).Description(directoryState(s.workspace, s.ready.Workspace, emptyText(s.settings.Effective.WorkspaceRoot))).Error(s.browseError(browseWorkspace.key, settingsPathError(s.workspace, emptyText(s.settings.Effective.WorkspaceRoot))))
 		s.pathField(c, "结果目录", &s.results, browseResults).Description(directoryState(s.results, s.ready.Results, emptyText(s.settings.Settings.ResultsRoot))).Error(s.browseError(browseResults.key, settingsPathError(s.results, emptyText(s.settings.Settings.ResultsRoot))))
 		s.pathField(c, "模型目录", &s.models, browseModels).Description(directoryState(s.models, s.ready.Models, emptyText(s.settings.Settings.ModelsRoot))).Error(s.browseError(browseModels.key, settingsPathError(s.models, emptyText(s.settings.Settings.ModelsRoot))))
 	})
+}
+
+func cliPathState(value, previous string, cli core.InferyardProbe) string {
+	switch {
+	case value == "" && previous == "":
+		if cli.Status == "outdated" {
+			return cliOutdatedSummary(cli.Version)
+		}
+		if cli.Status == "ok" && emptyText(cli.Version) != "" {
+			return "留空自动查找本地 CLI（当前 " + *cli.Version + "）"
+		}
+		return "留空自动查找本地 CLI"
+	case value == "":
+		return "路径已清空，保存后自动查找本地 CLI"
+	case !samePath(value, previous):
+		return "路径已修改，保存后生效"
+	case cli.Path != nil && !samePath(value, *cli.Path):
+		return "等待检查"
+	}
+	switch cli.Status {
+	case "ok":
+		if emptyText(cli.Version) != "" {
+			return "CLI 可用（版本 " + *cli.Version + "）"
+		}
+		return "CLI 可用"
+	case "outdated":
+		return cliOutdatedSummary(cli.Version)
+	case "not_executable":
+		return "文件不可执行，请检查权限或重新安装"
+	case "version_failed":
+		return "无法读取 CLI 版本，请检查路径或重新安装"
+	case "not_found":
+		return "未找到 CLI 可执行文件"
+	default:
+		return "等待检查"
+	}
 }
 
 func (s *viewState) downloadNamesView(c *ui.Context) {

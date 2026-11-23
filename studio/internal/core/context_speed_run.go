@@ -153,7 +153,7 @@ func (s *Service) ReadContextSpeed(ctx context.Context, id string) (inferyard.Co
 		}
 		p := s.probe(s.userSettings())
 		if p.Status != "ok" {
-			return inferyard.ContextSpeedResult{}, Err("cli_unavailable")
+			return inferyard.ContextSpeedResult{}, cliProbeError(p)
 		}
 		return s.readContextSpeed(ctx, *p.Path, t.ContextSpeed)
 	}

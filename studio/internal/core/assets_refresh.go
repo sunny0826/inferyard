@@ -59,7 +59,9 @@ func (s *Service) RefreshAssets() *ApiError {
 		var snapshot json.RawMessage
 		var parsed *inferyard.AssetScan
 		outdated := false
-		if p.Status != "ok" {
+		if p.Status == "outdated" {
+			outdated = true
+		} else if p.Status != "ok" {
 			failure = Err("cli_unavailable")
 		} else {
 			scanArgs := append([]string{"assets", "scan"}, modelsRootCLIArgs(roots)...)

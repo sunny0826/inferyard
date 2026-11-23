@@ -387,6 +387,9 @@ func prepareEnvironmentSteps(ctx context.Context, readiness func() core.Readines
 		}
 		r = readiness()
 	}
+	if r.CLI.Status == "outdated" {
+		return core.Err("cli_outdated")
+	}
 	if r.CLI.Status != "ok" {
 		return core.Err("cli_unavailable")
 	}
@@ -423,7 +426,9 @@ func (s *viewState) prepareEnvironment() {
 	if s.simulate(previewPrepareEnvironment) {
 		return
 	}
+	s.cliInstallStatus = ""
 	s.guideWorkAs("prepare-env", func() (string, *core.ApiError) {
+		defer s.updateView(func() { s.cliInstallStatus = "" })
 		if paths := s.service.BoundPaths(); paths != nil && !s.service.Readiness().Workspace.Initialized {
 			result, e := s.service.WizardExecute(s.ctx, core.WizardRequest{Command: commandOf([]string{"init", "--out", paths.Workspace})})
 			if e != nil {
@@ -434,7 +439,7 @@ func (s *viewState) prepareEnvironment() {
 			}
 		}
 		e := prepareEnvironmentSteps(s.ctx, s.service.Readiness, func(ctx context.Context) (string, *core.ApiError) {
-			return s.service.InstallCLI(ctx, func(message string) { s.win.Update(func() { s.cliInstallStatus = message }) })
+			return s.service.InstallCLI(ctx, func(message string) { s.updateView(func() { s.cliInstallStatus = message }) })
 		}, func() *core.ApiError { _, e := s.service.Provision(); return e }, s.service.WizardExecute)
 		if e == nil && s.service != nil {
 			_ = s.service.RefreshAssets()

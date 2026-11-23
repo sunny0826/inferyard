@@ -37,7 +37,7 @@ func (s *Service) StartCandidateRuns(req CandidateRunsRequest) ([]RunTask, *ApiE
 	}
 	probe := s.probe(u)
 	if probe.Status != "ok" {
-		return nil, Err("cli_unavailable")
+		return nil, cliProbeError(probe)
 	}
 	group := uuid()
 	entries := []*runEntry{}

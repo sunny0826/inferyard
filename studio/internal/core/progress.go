@@ -2,8 +2,9 @@ package core
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"inferyard/studio/internal/inferyard"
-	"strings"
 )
 
 type ProgressResponse struct {
@@ -16,7 +17,7 @@ func (s *Service) Progress(ctx context.Context) (ProgressResponse, *ApiError) {
 	u := s.userSettings()
 	p := s.probe(u)
 	if p.Status != "ok" {
-		return ProgressResponse{}, Err("cli_unavailable")
+		return ProgressResponse{}, cliProbeError(p)
 	}
 	w := workspaceRoot(u)
 	if w == nil {
@@ -28,7 +29,10 @@ func (s *Service) Progress(ctx context.Context) (ProgressResponse, *ApiError) {
 	}
 	result := ProgressResponse{Status: inferyard.MapExitCode(out.ExitCode), ExitCode: out.ExitCode}
 	if out.ExitCode == inferyard.ExitBlocked {
-		if !strings.Contains(string(out.Stdout), `"command": "progress"`) {
+		var header struct {
+			Command string `json:"command"`
+		}
+		if json.Unmarshal(out.Stdout, &header) != nil || header.Command != "progress" {
 			return result, &ApiError{Code: "cli_outdated", Message: "CLI 版本缺少 progress 命令，请升级 CLI。"}
 		}
 		return result, nil
@@ -38,6 +42,10 @@ func (s *Service) Progress(ctx context.Context) (ProgressResponse, *ApiError) {
 	}
 	value, err := inferyard.ParseProgress(out.Stdout)
 	if err != nil {
+		var verErr inferyard.ProgressVersionError
+		if errors.As(err, &verErr) && verErr.Version > 0 && verErr.Version < 2 {
+			return result, &ApiError{Code: "cli_outdated", Message: "CLI 版本过旧，请升级 CLI。"}
+		}
 		return result, Err("cli_error")
 	}
 	result.Progress = &value

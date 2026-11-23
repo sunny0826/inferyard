@@ -144,6 +144,8 @@ type viewState struct {
 	selected, detailID                                                                  string
 	settings                                                                            core.SettingsResponse
 	ready                                                                               core.Readiness
+	prepLocations                                                                       core.PreparationLocations
+	prepLocationsLoaded                                                                 bool
 	progress                                                                            *inferyard.WorkspaceProgress
 	device                                                                              core.DeviceResponse
 	history                                                                             core.RunHistoryResponse
@@ -267,6 +269,12 @@ func (s *viewState) refresh(full bool) {
 		_, reports, re = s.service.Reports()
 	}
 	ready = s.service.Readiness()
+	var prepLocations core.PreparationLocations
+	var hasPrepLocations bool
+	if ready.CLI.Status != "ok" || !ready.Workspace.Initialized || !ready.Results.Exists || !ready.Models.Exists {
+		prepLocations = s.service.PreparationLocations()
+		hasPrepLocations = true
+	}
 	if ready.CLI.Status == "ok" {
 		progress, pe = s.service.Progress(s.ctx)
 	}
@@ -289,7 +297,7 @@ func (s *viewState) refresh(full bool) {
 			speedTasks: speedTasks, speedHistoryError: speedHistoryError, runProgress: runProgress,
 			id: id, detail: detail, detailError: de, settings: settings,
 			history: history, reports: reports, historyError: he, reportsError: re,
-			ready: ready, progress: progress, progressError: pe, dashboard: dashboard, registry: registry,
+			ready: ready, prepLocations: prepLocations, hasPrepLocations: hasPrepLocations, progress: progress, progressError: pe, dashboard: dashboard, registry: registry,
 			updateState: updateState,
 		}
 		if !s.applyRefreshBatch(batch) {
@@ -320,6 +328,8 @@ type refreshBatch struct {
 	reports                    []core.ReportSummary
 	historyError, reportsError *core.ApiError
 	ready                      core.Readiness
+	prepLocations              core.PreparationLocations
+	hasPrepLocations           bool
 	progress                   core.ProgressResponse
 	progressError              *core.ApiError
 	dashboard                  dashboardSnapshot
@@ -355,6 +365,13 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 		s.registry = b.registry
 	}
 	s.ready, s.progress = b.ready, b.progress.Progress
+	if b.hasPrepLocations {
+		s.prepLocations = b.prepLocations
+		s.prepLocationsLoaded = true
+	} else {
+		s.prepLocations = core.PreparationLocations{}
+		s.prepLocationsLoaded = false
+	}
 	s.applyDashboard(b.dashboard, b.progressError)
 	s.engineState = s.service.Engine()
 	s.checks = s.service.EngineChecks()

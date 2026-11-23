@@ -9,7 +9,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -79,6 +78,7 @@ type Service struct {
 	checkRetry        time.Duration
 	probeMu           sync.Mutex
 	probePath         string
+	probeVersion      string
 	probeSize         int64
 	probeModTime      int64
 	probeCheckedAt    time.Time
@@ -181,7 +181,7 @@ func Err(code string) *ApiError {
 	if code == "output_name_exhausted" {
 		return &ApiError{Code: code, Message: "前 1000 个目录名均已占用，请更换目录名或工作区。"}
 	}
-	messages := map[string]string{"invalid_request": "请求参数无效", "not_found": "未找到资源", "conflict": "操作与当前状态冲突", "cli_blocked": "inferyard 拒绝执行", "internal_error": "服务内部错误", "cli_error": "inferyard 工具或证据错误", "cli_unavailable": "inferyard 不可用"}
+	messages := map[string]string{"invalid_request": "请求参数无效", "not_found": "未找到资源", "conflict": "操作与当前状态冲突", "cli_blocked": "inferyard 拒绝执行", "internal_error": "服务内部错误", "cli_error": "inferyard 工具或证据错误", "cli_unavailable": "inferyard 不可用", "cli_outdated": "CLI 版本过旧，请升级 CLI"}
 	return &ApiError{Code: code, Message: messages[code], Limitations: []string{}}
 }
 func Conflict(reason string) *ApiError {
@@ -230,83 +230,6 @@ func (s *Service) userSettings() UserSettings {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return clone(s.settings)
-}
-
-const probeTTL = 10 * time.Second
-
-func (s *Service) probe(u UserSettings) InferyardProbe {
-	path := str(u.InferyardPath)
-	if s.paths != nil {
-		path = s.paths.CLI
-	}
-	if path == "" {
-		path = "inferyard"
-	}
-	p, e := exec.LookPath(path)
-	if e != nil {
-		status := "not_found"
-		if _, e := os.Stat(path); e == nil {
-			status = "not_executable"
-		}
-		return InferyardProbe{Status: status}
-	}
-	p, _ = filepath.Abs(p)
-	st, statErr := os.Stat(p)
-	if cached, ok := s.cachedProbe(p, st, statErr); ok {
-		return cached
-	}
-	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
-	defer cancel()
-	out, e := s.exec(ctx, p, "--version")
-	if e != nil || out.ExitCode != 0 {
-		return InferyardProbe{Path: &p, Status: "version_failed"}
-	}
-	v, source, e := inferyard.ParseVersion(out.Stdout)
-	if e != nil {
-		return InferyardProbe{Path: &p, Status: "version_failed"}
-	}
-	result := InferyardProbe{Path: &p, Version: &v, Source: source, Status: "ok"}
-	s.rememberProbe(p, st, statErr, result)
-	return result
-}
-
-func (s *Service) cachedProbe(p string, st os.FileInfo, statErr error) (InferyardProbe, bool) {
-	if statErr != nil {
-		return InferyardProbe{}, false
-	}
-	s.probeMu.Lock()
-	defer s.probeMu.Unlock()
-	if s.probeResult.Status != "ok" || s.probePath != p || s.probeSize != st.Size() || s.probeModTime != st.ModTime().UnixNano() {
-		return InferyardProbe{}, false
-	}
-	if time.Since(s.probeCheckedAt) >= probeTTL {
-		return InferyardProbe{}, false
-	}
-	return copyProbe(s.probeResult), true
-}
-
-func (s *Service) rememberProbe(p string, st os.FileInfo, statErr error, result InferyardProbe) {
-	if statErr != nil || result.Status != "ok" {
-		return
-	}
-	s.probeMu.Lock()
-	defer s.probeMu.Unlock()
-	s.probePath = p
-	s.probeSize = st.Size()
-	s.probeModTime = st.ModTime().UnixNano()
-	s.probeCheckedAt = time.Now()
-	s.probeResult = copyProbe(result)
-}
-
-func copyProbe(v InferyardProbe) InferyardProbe {
-	c := InferyardProbe{Source: v.Source, Status: v.Status}
-	if v.Path != nil {
-		c.Path = ptr(*v.Path)
-	}
-	if v.Version != nil {
-		c.Version = ptr(*v.Version)
-	}
-	return c
 }
 func reportsRoot(u UserSettings) *string {
 	if u.ResultsRoot == nil {
@@ -377,6 +300,10 @@ func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResp
 	return s.saveSettings(u)
 }
 func (s *Service) saveSettings(u UserSettings) (SettingsResponse, *ApiError) {
+	return s.persistSettings(u, false)
+}
+
+func (s *Service) persistSettings(u UserSettings, forceCLIRefresh bool) (SettingsResponse, *ApiError) {
 	if s.paths != nil && !s.paths.matches(u) {
 		return SettingsResponse{}, Conflict("paths_bound")
 	}
@@ -411,9 +338,10 @@ func (s *Service) saveSettings(u UserSettings) (SettingsResponse, *ApiError) {
 		return SettingsResponse{}, Err("internal_error")
 	}
 	s.mu.Lock()
+	cliChanged := forceCLIRefresh || str(u.InferyardPath) != str(s.settings.InferyardPath)
 	changed := str(u.ResultsRoot) != str(s.settings.ResultsRoot)
 	modelsChanged := str(u.ModelsRoot) != str(s.settings.ModelsRoot) || !slicesEqualStrings(u.ExtraModelsRoots, s.settings.ExtraModelsRoots)
-	if modelsChanged {
+	if modelsChanged || cliChanged {
 		s.deviceGeneration++
 		s.device.Snapshot = nil
 		s.device.CapturedAt = nil
@@ -430,13 +358,16 @@ func (s *Service) saveSettings(u UserSettings) (SettingsResponse, *ApiError) {
 		s.rebuilding = true
 	}
 	s.mu.Unlock()
+	if cliChanged {
+		s.clearProbeCache()
+	}
 	if workspaceChanged {
 		s.detectEngineOwner()
 	}
 	if changed {
 		go s.rebuild(u)
 	}
-	if modelsChanged && len(allModelsRoots(u)) > 0 {
+	if (modelsChanged || cliChanged) && len(allModelsRoots(u)) > 0 {
 		s.RefreshAssets()
 		s.RefreshDevice()
 	}
@@ -480,7 +411,7 @@ func (s *Service) RefreshDevice() *ApiError {
 		var failure *ApiError
 		var snapshot json.RawMessage
 		if p.Status != "ok" {
-			failure = Err("cli_unavailable")
+			failure = cliProbeError(p)
 		} else {
 			deviceArgs := append([]string{"device-check", "--json"}, modelsRootCLIArgs(roots)...)
 			out, e := s.exec(s.ctx, *p.Path, deviceArgs...)

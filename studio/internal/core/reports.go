@@ -146,7 +146,7 @@ func (s *Service) CreateReport(req CreateReportRequest) (ReportSummary, *ApiErro
 	}
 	p := s.probe(u)
 	if p.Status != "ok" {
-		return ReportSummary{}, Err("cli_unavailable")
+		return ReportSummary{}, cliProbeError(p)
 	}
 	s.reportMu.Lock()
 	defer s.reportMu.Unlock()

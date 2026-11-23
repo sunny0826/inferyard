@@ -29,7 +29,7 @@ func (s *Service) StartContextSpeed(req StartContextSpeedRequest) (RunTask, *Api
 	}
 	p := s.probe(u)
 	if p.Status != "ok" {
-		return RunTask{}, Err("cli_unavailable")
+		return RunTask{}, cliProbeError(p)
 	}
 	id := uuid()
 	ops, e := Resolve(*w, filepath.Join(*w, "context-speed-operations", id))

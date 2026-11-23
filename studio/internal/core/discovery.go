@@ -12,7 +12,7 @@ import (
 func (s *Service) Discover(ctx context.Context) (inferyard.ServiceDiscovery, *ApiError) {
 	p := s.probe(s.userSettings())
 	if p.Status != "ok" {
-		return inferyard.ServiceDiscovery{}, Err("cli_outdated")
+		return inferyard.ServiceDiscovery{}, cliProbeError(p)
 	}
 	out, err := s.exec(ctx, *p.Path, "service", "discover")
 	if err != nil {

@@ -122,7 +122,7 @@ func (s *Service) createModelDownload(req CreateDownloadRequest, requestedSource
 	}
 	p := s.probe(u)
 	if p.Status != "ok" {
-		return DownloadTask{}, Err("cli_unavailable")
+		return DownloadTask{}, cliProbeError(p)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -330,7 +330,7 @@ func (s *Service) CreateEngineDownload(source, outName string) (DownloadTask, *A
 	}
 	p := s.probe(u)
 	if p.Status != "ok" {
-		return DownloadTask{}, Err("cli_unavailable")
+		return DownloadTask{}, cliProbeError(p)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
