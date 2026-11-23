@@ -27,6 +27,7 @@ def execute(request):
             resume=getattr(request, "resume_transfer", False),
             progress_stream=getattr(request, "progress_stream", False),
             timeout_seconds=request.engine_timeout_seconds,
+            venv_python=getattr(request, "polystrata_python", None),
         )
     except PreparationError as exc:
         cause = exc.details.get("failure_cause") if isinstance(exc.details, dict) else None

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -98,6 +99,9 @@ func (c Client) run(ctx context.Context, onStderrLine func(string), args ...stri
 	cmd := exec.Command(path, args...)
 	cmd.Dir = c.Dir
 	prepareProcess(cmd)
+	if extraPaths := PrependedPaths(ctx); len(extraPaths) > 0 {
+		cmd.Env = MergePrependedPath(os.Environ(), extraPaths)
+	}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	var pw *io.PipeWriter

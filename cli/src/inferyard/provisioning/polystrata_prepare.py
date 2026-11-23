@@ -8,7 +8,6 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
-import sys
 import tempfile
 
 from inferyard.config.local_engines.polystrata import (
@@ -29,6 +28,7 @@ from inferyard.platforms.local_engines.detect_polystrata import (
 from inferyard.platforms.platform_io import sync_directory
 from inferyard.provisioning.acquire_errors import classify_os_error, failure_details
 from inferyard.provisioning.engine_source_download import validate_sha256
+from inferyard.provisioning.http_client import validate_proxy_origin
 from inferyard.provisioning.polystrata_archive import (
     DEFAULT_POLYSTRATA_SOURCE_URL,
     INSTALLATION_FILE_NAME,
@@ -38,6 +38,11 @@ from inferyard.provisioning.polystrata_archive import (
     resolve_polystrata_source,
 )
 from inferyard.provisioning.polystrata_preflight import run_polystrata_preflight
+from inferyard.provisioning.polystrata_python import (
+    VenvCreator,
+    build_venv_command,
+    resolve_polystrata_venv_creator,
+)
 from inferyard.provisioning.polystrata_runner import run_setup_process
 from inferyard.provisioning.preparation_io import PreparationError, linked, new_path
 from inferyard.provisioning.transfer_progress import ProgressEmitter
@@ -58,6 +63,10 @@ def _ensure_polystrata_venv(
     timeout_seconds: float,
     venv_creator: Callable[[Path], Path] | None = None,
     venv_python: str | None = None,
+    resolved_creator: VenvCreator | None = None,
+    proxy_origin: str | None = None,
+    env: dict[str, str] | None = None,
+    linux_venv_check: Callable[[str], bool] | None = None,
 ) -> Path:
     venv_dir = out / ".venv"
     if os.path.lexists(venv_dir) and linked(venv_dir):
@@ -70,10 +79,35 @@ def _ensure_polystrata_venv(
         return venv_creator(out)
     if venv_dir.exists():
         shutil.rmtree(venv_dir, ignore_errors=True)
-    creator_py = venv_python or sys.executable
+    creator = resolved_creator
+    if creator is None:
+        creator, blockers = resolve_polystrata_venv_creator(
+            system=system,
+            venv_python=venv_python,
+            env=env,
+            venv_check=linux_venv_check,
+        )
+        if creator is None:
+            primary = blockers[0]["code"] if blockers else "polystrata_python_unsupported"
+            raise PreparationError(
+                primary,
+                code=2,
+                details={**failure_details("setup_engine", primary), "blockers": blockers},
+            )
+    cmd = build_venv_command(creator, venv_dir)
+    run_env = dict(os.environ)
+    if env is not None:
+        run_env.update(env)
+    if proxy_origin:
+        validated = validate_proxy_origin(proxy_origin)
+        assert validated is not None
+        for key in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
+            run_env[key] = validated
     try:
         res = subprocess.run(
-            [creator_py, "-m", "venv", str(venv_dir)],
+            cmd,
+            cwd=str(out) if out.is_dir() else None,
+            env=run_env,
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
@@ -290,12 +324,21 @@ def prepare_polystrata(
     data_path.mkdir(parents=True, exist_ok=True)
 
     # Stage 3: venv + setup.py --yes --no-start
+    resolved_creator = (
+        VenvCreator.from_dict(preflight["venv_creator"])
+        if isinstance(preflight.get("venv_creator"), dict)
+        else None
+    )
     venv_py = _ensure_polystrata_venv(
         out_path,
         system=system,
         timeout_seconds=timeout_seconds,
         venv_creator=venv_creator,
         venv_python=venv_python,
+        resolved_creator=resolved_creator,
+        proxy_origin=proxy_origin,
+        env=env,
+        linux_venv_check=linux_venv_check,
     )
     log_path = run_setup_process(
         out_path,

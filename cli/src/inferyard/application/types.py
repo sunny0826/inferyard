@@ -115,6 +115,7 @@ class CommandRequest:
     polystrata_model: str | None = None
     polystrata_backend: str | None = None
     polystrata_model_source: str | None = None
+    polystrata_python: str | None = None
     gguf_path: Path | None = None
     progress_stream: bool = False
     resume_transfer: bool = False
