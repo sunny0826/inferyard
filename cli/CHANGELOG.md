@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.9
+
+- feat(studio): add automatic update discovery and one-click in-app update (#177)
+- feat(studio): add light/dark theme mode switcher in Settings (#176)
+- refactor(studio): remove logo and title from sidebar (#175)
+
 ## 0.0.8
 
 - feat(release): add fast PR-compliant release workflow and agent skill (#171)
