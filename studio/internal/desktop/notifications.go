@@ -112,13 +112,30 @@ func runStateMessage(data json.RawMessage) (Message, bool) {
 func downloadStateMessage(data json.RawMessage) (Message, bool) {
 	var payload struct {
 		Task struct {
-			Kind    string `json:"kind"`
-			State   string `json:"state"`
-			OutName string `json:"out_name"`
+			Kind        string `json:"kind"`
+			State       string `json:"state"`
+			DisplayName string `json:"display_name"`
+			OutName     string `json:"out_name"`
 		} `json:"task"`
 	}
 	if json.Unmarshal(data, &payload) != nil {
 		return Message{}, false
+	}
+	if payload.Task.Kind == "polystrata" {
+		label := strings.TrimSpace(payload.Task.DisplayName)
+		if label == "" {
+			label = "PolyStrata"
+		}
+		switch payload.Task.State {
+		case "done":
+			return Message{Title: "PolyStrata 安装完成", Body: label + " 已就绪，可打开 Studio 开始测评。"}, true
+		case "failed":
+			return Message{Title: "PolyStrata 安装失败", Body: label + " 安装未完成，请打开 Studio 查看原因并重试。"}, true
+		case "cancelled":
+			return Message{Title: "PolyStrata 安装已取消", Body: label + " 的安装已取消。"}, true
+		default:
+			return Message{}, false
+		}
 	}
 	kind := "模型"
 	if payload.Task.Kind == "engine" {

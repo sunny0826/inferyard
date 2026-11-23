@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"path/filepath"
@@ -52,11 +53,78 @@ func polystrataPhaseIndex(task core.DownloadTask) int {
 	}
 }
 
+func polystrataStateLabel(state string) string {
+	if state == "downloading" {
+		return "安装中"
+	}
+	return stateLabel(state)
+}
+
+func blockerBytesPtr(v any) *int64 {
+	switch n := v.(type) {
+	case int64:
+		if n >= 0 {
+			val := n
+			return &val
+		}
+	case int:
+		if n >= 0 {
+			val := int64(n)
+			return &val
+		}
+	case float64:
+		if !math.IsNaN(n) && !math.IsInf(n, 0) && n >= 0 && n <= math.MaxInt64 {
+			val := int64(n)
+			return &val
+		}
+	case json.Number:
+		if val, err := n.Int64(); err == nil && val >= 0 {
+			return &val
+		}
+		if f, err := n.Float64(); err == nil && !math.IsNaN(f) && !math.IsInf(f, 0) && f >= 0 && f <= math.MaxInt64 {
+			val := int64(f)
+			return &val
+		}
+	}
+	return nil
+}
+
+func preflightBlockerBaseText(item preflightBlockerItem) string {
+	if item.code != "" {
+		if msg, ok := humanKnown(item.code); ok {
+			return msg
+		}
+		if label, ok := deviceLabels[item.code]; ok {
+			return label
+		}
+	}
+	if item.message != "" {
+		return item.message
+	}
+	return item.code
+}
+
+func formatPreflightBlockerText(item preflightBlockerItem) string {
+	base := strings.TrimSpace(preflightBlockerBaseText(item))
+	if item.requiredBytes == nil && item.freeBytes == nil {
+		return base
+	}
+	prefix := strings.TrimSuffix(base, "。")
+	switch {
+	case item.freeBytes != nil && item.requiredBytes != nil:
+		return fmt.Sprintf("%s（可用 %s，至少需要 %s）。", prefix, formatDownloadBytes(*item.freeBytes), formatDownloadBytes(*item.requiredBytes))
+	case item.requiredBytes != nil:
+		return fmt.Sprintf("%s（至少需要 %s）。", prefix, formatDownloadBytes(*item.requiredBytes))
+	default:
+		return fmt.Sprintf("%s（可用 %s）。", prefix, formatDownloadBytes(*item.freeBytes))
+	}
+}
+
 func (s *viewState) polystrataDownloadTaskCard(c *ui.Context, task core.DownloadTask) {
 	t := tokens(c)
 	stageText := downloadStageLabel(task.Stage)
 	if stageText == "" {
-		stageText = stateLabel(task.State)
+		stageText = polystrataStateLabel(task.State)
 	}
 	stepVal, stepSub := stageText, ""
 	if task.Step != nil && task.StepTotal != nil && *task.StepTotal > 0 {
@@ -97,7 +165,7 @@ func (s *viewState) polystrataDownloadTaskCard(c *ui.Context, task core.Download
 	color := downloadStateColor(c, task.State)
 	ui.Column(c.Key(task.TaskId)).Children(func() {
 		taskCard(c, taskCardOptions{
-			kind: "PolyStrata 引导安装", name: downloadDisplayName(task), state: stateLabel(task.State), color: color,
+			kind: "PolyStrata 引导安装", name: downloadDisplayName(task), state: polystrataStateLabel(task.State), color: color,
 			active:  active,
 			metrics: metrics,
 			notice: func() {
@@ -142,8 +210,8 @@ func (s *viewState) polystrataDownloadActions(c *ui.Context, task core.DownloadT
 	pendingHere := s.pendingDestructive.kind == string(destructiveCancelDownload) && s.pendingDestructive.id == task.TaskId
 	if task.State == "downloading" || pendingHere {
 		if s.destructiveAction(c, destructiveOption{
-			kind: destructiveCancelDownload, id: task.TaskId, label: "取消下载", confirmLabel: "确认取消下载",
-			prompt:   "取消本次下载？已下载文件将保留。",
+			kind: destructiveCancelDownload, id: task.TaskId, label: "取消安装", confirmLabel: "确认取消安装",
+			prompt:   "取消本次安装？已下载文件将保留。",
 			disabled: s.busy,
 		}) {
 			if s.simulate(previewCancelDownload{id: task.TaskId}) {
@@ -151,7 +219,7 @@ func (s *viewState) polystrataDownloadActions(c *ui.Context, task core.DownloadT
 			}
 			s.workDownload(func() (string, *core.ApiError) {
 				_, e := s.service.CancelDownload(task.TaskId)
-				return "已请求取消下载", e
+				return "已请求取消安装", e
 			})
 		}
 	}
@@ -165,14 +233,20 @@ func (s *viewState) polystrataDownloadActions(c *ui.Context, task core.DownloadT
 		return
 	}
 	retryDisabled := s.busy || s.downloadRetryActive(task)
+	retryLabel := "重试安装"
+	retryDoneMsg := "已重试 PolyStrata 安装"
+	if task.State == "cancelled" {
+		retryLabel = "继续安装"
+		retryDoneMsg = "已继续 PolyStrata 安装"
+	}
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-		if primaryButton(c, "断点续装").Disabled(retryDisabled).Clicked() {
+		if primaryButton(c, retryLabel).Disabled(retryDisabled).Clicked() {
 			if s.simulate(previewRetryDownload{id: task.TaskId}) {
 				return
 			}
 			s.workDownload(func() (string, *core.ApiError) {
 				_, e := s.service.RetryDownload(task.TaskId)
-				return "已继续 PolyStrata 安装", e
+				return retryDoneMsg, e
 			})
 		}
 		if outlineButton(c, "更换方案或下载源").Disabled(s.busy).Clicked() {
@@ -182,38 +256,44 @@ func (s *viewState) polystrataDownloadActions(c *ui.Context, task core.DownloadT
 }
 
 func (s *viewState) startBenchmarkFromPolystrataTask(task core.DownloadTask) {
-	wantInst := cleanMatchPath(emptyText(task.InstallationPath))
-	if wantInst == "" {
-		wantInst = cleanMatchPath(emptyText(task.EnginePath))
-	}
-	wantModel := cleanMatchPath(emptyText(task.ModelConfigPath))
-	engineMatched, modelMatched := s.applyPolystrataSelection(wantInst, wantModel)
-	if (!engineMatched || !modelMatched) && s.service != nil && s.preview == nil {
-		s.pendingPolystrataSelection = &polystrataSelectionTarget{
-			installationPath: wantInst,
-			modelConfigPath:  wantModel,
-			initialEngine:    s.engine,
-			initialModel:     s.model,
+	run := func() {
+		wantInst := cleanMatchPath(emptyText(task.InstallationPath))
+		if wantInst == "" {
+			wantInst = cleanMatchPath(emptyText(task.EnginePath))
 		}
-		go s.refresh(true)
-	} else {
-		s.pendingPolystrataSelection = nil
-	}
-	if !s.roundWorkActive() && s.running() == nil {
-		s.clearBenchmark()
-		if s.speed != nil {
-			s.speed.current, s.speed.opened = nil, nil
-			s.speed.selected = false
+		wantModel := cleanMatchPath(emptyText(task.ModelConfigPath))
+		engineMatched, modelMatched := s.applyPolystrataSelection(wantInst, wantModel)
+		if (!engineMatched || !modelMatched) && s.service != nil && s.preview == nil {
+			s.pendingPolystrataSelection = &polystrataSelectionTarget{
+				installationPath: wantInst,
+				modelConfigPath:  wantModel,
+				initialEngine:    s.engine,
+				initialModel:     s.model,
+			}
+			go s.refresh(true)
+		} else {
+			s.pendingPolystrataSelection = nil
 		}
-		s.task.stage = "prepare_candidate"
-		s.focusedRun = ""
-		s.resumeSource = nil
-		s.detailMu.Lock()
-		s.requestedDetail = ""
-		s.detailMu.Unlock()
-		s.failure = nil
+		if !s.roundWorkActive() && s.running() == nil {
+			s.clearBenchmark()
+			if s.speed != nil {
+				s.speed.current, s.speed.opened = nil, nil
+				s.speed.selected = false
+			}
+			s.task.stage = "prepare_candidate"
+			s.focusedRun = ""
+			s.resumeSource = nil
+			s.detailMu.Lock()
+			s.requestedDetail = ""
+			s.detailMu.Unlock()
+			s.failure = nil
+		}
+		s.navigateToNow("dashboard", "")
 	}
-	s.navigateTo("dashboard", "")
+	if s.guardLeaveSettings("dashboard", run) {
+		return
+	}
+	run()
 }
 
 func (s *viewState) applyPendingPolystrataSelection() {

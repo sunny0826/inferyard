@@ -288,10 +288,15 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 
 func (s *viewState) downloadDetails(c *ui.Context, task core.DownloadTask) {
 	ui.Text(c, "目录名："+task.OutName).Selectable()
-	ui.Text(c, "文件："+displayName(text(task.FileName)))
-	if task.Kind == "engine" && task.TotalBytes == nil && task.DownloadedBytes == 0 && task.BytesPerSecond == nil {
+	if fileName := strings.TrimSpace(text(task.FileName)); fileName != "" {
+		ui.Text(c, "文件："+displayName(fileName))
+	} else if task.Kind != "polystrata" {
+		ui.Text(c, "文件："+displayName(""))
+	}
+	noBytesYet := task.TotalBytes == nil && task.DownloadedBytes == 0 && task.BytesPerSecond == nil
+	if task.Kind == "engine" && noBytesYet {
 		ui.Text(c, "已下载 — · 速率 —")
-	} else {
+	} else if !(task.Kind == "polystrata" && noBytesYet) {
 		if task.TotalBytes != nil {
 			ui.Text(c, fmt.Sprintf("已下载 %d / %d bytes", task.DownloadedBytes, *task.TotalBytes))
 		} else {
@@ -369,6 +374,9 @@ func downloadFailureStageLabel(stage string) string {
 	case "checksum", "verify":
 		return "校验文件完整性"
 	default:
+		if label := downloadStageLabel(stage); label != "" {
+			return label
+		}
 		return stage
 	}
 }
@@ -377,10 +385,16 @@ func remainingDownloadErrorDetails(details map[string]any) map[string]any {
 	if len(details) == 0 {
 		return nil
 	}
+	failureStage, _ := details["failure_stage"].(string)
 	extra := map[string]any{}
 	for k, v := range details {
 		if k == "failure_cause" || k == "failure_stage" || k == "blockers" {
 			continue
+		}
+		if k == "stage" && failureStage != "" {
+			if stage, ok := v.(string); ok && stage == failureStage {
+				continue
+			}
 		}
 		if k == "reason" {
 			if reason, ok := v.(string); ok && reason != "" {
@@ -398,9 +412,11 @@ func remainingDownloadErrorDetails(details map[string]any) map[string]any {
 }
 
 type preflightBlockerItem struct {
-	code       string
-	message    string
-	fixCommand string
+	code          string
+	message       string
+	fixCommand    string
+	requiredBytes *int64
+	freeBytes     *int64
 }
 
 func extractPreflightBlockers(details map[string]any) []preflightBlockerItem {
@@ -417,9 +433,11 @@ func extractPreflightBlockers(details map[string]any) []preflightBlockerItem {
 			return
 		}
 		out = append(out, preflightBlockerItem{
-			code:       strings.TrimSpace(code),
-			message:    strings.TrimSpace(msg),
-			fixCommand: strings.TrimSpace(fix),
+			code:          strings.TrimSpace(code),
+			message:       strings.TrimSpace(msg),
+			fixCommand:    strings.TrimSpace(fix),
+			requiredBytes: blockerBytesPtr(m["required_bytes"]),
+			freeBytes:     blockerBytesPtr(m["free_bytes"]),
 		})
 	}
 	switch list := raw.(type) {
@@ -442,29 +460,78 @@ func (s *viewState) downloadErrorView(c *ui.Context, e *core.ApiError) {
 		return
 	}
 	t := tokens(c)
-	message := e.Message
+	blockers := extractPreflightBlockers(e.Details)
+	failureStage, _ := e.Details["failure_stage"].(string)
+	failureStage = strings.TrimSpace(failureStage)
+
+	blockerCodes := map[string]bool{}
+	blockerLines := map[string]bool{}
+	for _, b := range blockers {
+		if b.code != "" {
+			blockerCodes[b.code] = true
+		}
+		if base := strings.TrimSpace(preflightBlockerBaseText(b)); base != "" {
+			blockerLines[base] = true
+		}
+		if full := strings.TrimSpace(formatPreflightBlockerText(b)); full != "" {
+			blockerLines[full] = true
+		}
+	}
+
+	message := strings.TrimSpace(e.Message)
 	if message == "" {
-		message = human(e.Code)
+		if e.Code == "cli_blocked" && len(blockers) > 0 && failureStage == "preflight" {
+			message = human("polystrata_preflight_blocked")
+		} else {
+			message = human(e.Code)
+		}
 	}
-	ui.Text(c, message).TextColor(stateColor(c, stateDanger))
-	for _, v := range e.Limitations {
-		ui.Text(c, human(v)).TextColor(stateColor(c, stateDanger))
+	shownLines := map[string]bool{}
+	if message != "" {
+		ui.Text(c, message).TextColor(stateColor(c, stateDanger))
+		shownLines[message] = true
 	}
-	if cause, ok := e.Details["failure_cause"].(string); ok && cause != "" {
-		ui.Text(c, human(cause)).TextColor(stateColor(c, stateDanger))
+	for _, raw := range e.Limitations {
+		v := strings.TrimSpace(raw)
+		if v == "" || blockerCodes[v] {
+			continue
+		}
+		line := strings.TrimSpace(human(v))
+		if line == "" || shownLines[line] || blockerLines[line] {
+			continue
+		}
+		ui.Text(c, line).TextColor(stateColor(c, stateDanger))
+		shownLines[line] = true
 	}
-	if stage, ok := e.Details["failure_stage"].(string); ok && stage != "" {
-		ui.Text(c, "失败阶段："+downloadFailureStageLabel(stage)).
+	if cause, ok := e.Details["failure_cause"].(string); ok {
+		cCode := strings.TrimSpace(cause)
+		if cCode != "" && !blockerCodes[cCode] {
+			line := strings.TrimSpace(human(cCode))
+			if line != "" && !shownLines[line] && !blockerLines[line] {
+				ui.Text(c, line).TextColor(stateColor(c, stateDanger))
+				shownLines[line] = true
+			}
+		}
+	}
+	if failureStage != "" {
+		ui.Text(c, "失败阶段："+downloadFailureStageLabel(failureStage)).
 			FontSize(t.Type.Caption).
 			TextColor(t.Color.FgSecondary)
 	}
-	for i, blocker := range extractPreflightBlockers(e.Details) {
-		idx, item := i, blocker
+	seenBlockers := map[string]bool{}
+	renderIdx := 0
+	for _, blocker := range blockers {
+		item := blocker
+		text := strings.TrimSpace(formatPreflightBlockerText(item))
+		dedupKey := text + "\x00" + item.fixCommand
+		if text == "" || seenBlockers[dedupKey] || (item.fixCommand == "" && shownLines[text]) {
+			continue
+		}
+		seenBlockers[dedupKey] = true
+		shownLines[text] = true
+		idx := renderIdx
+		renderIdx++
 		applyMaterial(c, ui.Column(c.Key(fmt.Sprintf("download-blocker-%d-%s", idx, item.code))).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Inset), materialInset).Children(func() {
-			text := item.message
-			if text == "" {
-				text = item.code
-			}
 			ui.Text(c, text).FontSize(t.Type.Caption).TextColor(stateColor(c, stateDanger))
 			if item.fixCommand != "" {
 				ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {

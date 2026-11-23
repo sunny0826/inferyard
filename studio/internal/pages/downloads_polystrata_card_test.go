@@ -53,9 +53,21 @@ func TestPolystrataTaskCardPhaseBarCompactDetailAndTopLevelLog(t *testing.T) {
 		t.Fatalf("detail must not render in giant metric tile: %v", tt.Texts())
 	}
 
+	if !tt.HasText("安装中") || !tt.HasText("取消安装") {
+		t.Fatalf("expected install-oriented status and cancel label on active PolyStrata card: %v", tt.Texts())
+	}
+	if tt.HasText("下载中") || tt.HasText("取消下载") {
+		t.Fatalf("active PolyStrata card must not use download-oriented labels: %v", tt.Texts())
+	}
+
 	click(t, tt, "查看安装日志")
 	if !tt.HasText("[50%] Linking CXX executable") {
 		t.Fatalf("expected top-level install log content: %v", tt.Texts())
+	}
+
+	click(t, tt, "任务详情")
+	if !tt.HasText("已下载 536870912 / 1073741824 bytes") || tt.HasText("文件：—") {
+		t.Fatalf("unexpected PolyStrata details during model download: %v", tt.Texts())
 	}
 
 	// Stage transition to verifying_installation updates UI without stalling at done.
@@ -69,11 +81,25 @@ func TestPolystrataTaskCardPhaseBarCompactDetailAndTopLevelLog(t *testing.T) {
 	if !tt.HasText("核验安装") || !tt.HasText("注册并核验引擎安装") {
 		t.Fatalf("expected verifying_installation stage and detail: %v", tt.Texts())
 	}
+	if tt.HasText("文件：—") || tt.HasText("已下载 0 bytes") {
+		t.Fatalf("non-transfer PolyStrata details must hide empty file row and zero bytes noise: %v", tt.Texts())
+	}
+
+	click(t, tt, "取消安装")
+	if !tt.HasText("确认取消安装") {
+		t.Fatalf("expected install cancel confirmation label: %v", tt.Texts())
+	}
 }
 
 func TestPolystrataFailedAndCancelledRecoveryActionsOpenDrawerOrResume(t *testing.T) {
-	for _, state := range []string{"failed", "cancelled"} {
-		t.Run(state, func(t *testing.T) {
+	for _, tc := range []struct {
+		state      string
+		wantButton string
+	}{
+		{state: "failed", wantButton: "重试安装"},
+		{state: "cancelled", wantButton: "继续安装"},
+	} {
+		t.Run(tc.state, func(t *testing.T) {
 			s := testState()
 			s.device.Snapshot = json.RawMessage(`{
 				"starter_recommendation": {
@@ -103,10 +129,10 @@ func TestPolystrataFailedAndCancelledRecoveryActionsOpenDrawerOrResume(t *testin
 				}
 			}`)
 			s.downloads = []core.DownloadTask{{
-				TaskId:      "ps-" + state,
+				TaskId:      "ps-" + tc.state,
 				Kind:        "polystrata",
 				DisplayName: "PolyStrata · qwen36 · UD-Q4_K_M",
-				State:       state,
+				State:       tc.state,
 				Stage:       "downloading_model",
 				OutName:     "polystrata",
 			}}
@@ -116,14 +142,14 @@ func TestPolystrataFailedAndCancelledRecoveryActionsOpenDrawerOrResume(t *testin
 			st.hostPlatform = "darwin/arm64"
 			tt := ui.NewTester(s.downloadsPageView, 1120, 2600)
 
-			if !tt.HasText("断点续装") || !tt.HasText("更换方案或下载源") {
-				t.Fatalf("missing PolyStrata recovery actions for %s task: %v", state, tt.Texts())
+			if !tt.HasText(tc.wantButton) || !tt.HasText("更换方案或下载源") {
+				t.Fatalf("missing PolyStrata recovery actions for %s task: %v", tc.state, tt.Texts())
 			}
-			click(t, tt, "断点续装")
+			click(t, tt, tc.wantButton)
 			if len(stub.intents) != 1 {
 				t.Fatalf("expected 1 retry intent, got %#v", stub.intents)
 			}
-			if retry, ok := stub.intents[0].(previewRetryDownload); !ok || retry.id != "ps-"+state {
+			if retry, ok := stub.intents[0].(previewRetryDownload); !ok || retry.id != "ps-"+tc.state {
 				t.Fatalf("unexpected retry intent: %#v", stub.intents[0])
 			}
 

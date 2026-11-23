@@ -274,10 +274,13 @@ func TestPolystrataTaskCardProgressBlockersAndLogTail(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1120, 2200)
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
 	tt.Frame()
-	for _, want := range []string{"PolyStrata 引导安装", "3 / 4", "安装引擎环境", "65%", "Metal 编译", "预检", "获取运行时", "构建环境", "模型与核验", "环境预检未通过", "CMake 3.24+ is required.", "brew install cmake"} {
+	for _, want := range []string{"PolyStrata 引导安装", "安装中", "取消安装", "3 / 4", "安装引擎环境", "65%", "Metal 编译", "预检", "获取运行时", "构建环境", "模型与核验", "环境预检未通过", "缺少 CMake（需 3.24 及以上版本），请先安装。", "brew install cmake"} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing %q in polystrata task cards: %v", want, tt.Texts())
 		}
+	}
+	if tt.HasText("CMake 3.24+ is required.") || tt.HasText("取消下载") || tt.HasText("下载中") {
+		t.Fatalf("unexpected raw English or download-centric copy in polystrata cards: %v", tt.Texts())
 	}
 	click(t, tt, "复制修复命令 · 0")
 	if got := tt.Clipboard(); got != "brew install cmake" {

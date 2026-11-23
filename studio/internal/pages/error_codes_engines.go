@@ -119,11 +119,13 @@ func humanLocalEngineCode(code string) (string, bool) {
 		return "未能核验 NVIDIA 驱动版本。", true
 	case "polystrata_macos_too_old":
 		return "当前 macOS 版本过旧，不支持此操作。", true
-	case "polystrata_xcode_clt_missing":
+	case "polystrata_xcode_clt_missing", "xcode_clt_missing":
 		return "缺少 Xcode Command Line Tools，请先安装。", true
+	case "cmake_missing":
+		return "缺少 CMake（需 3.24 及以上版本），请先安装。", true
 	case "polystrata_build_tools_missing":
 		return "缺少构建工具链，请先安装所需编译依赖。", true
-	case "polystrata_disk_insufficient":
+	case "polystrata_disk_insufficient", "insufficient_disk_space":
 		return "可用磁盘空间不足。", true
 	case "polystrata_gguf_path_missing":
 		return "找不到指定的 GGUF 模型文件。", true

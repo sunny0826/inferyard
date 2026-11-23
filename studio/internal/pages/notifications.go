@@ -315,17 +315,44 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 		}
 	case "download.state":
 		var payload struct {
-			Task struct {
-				TaskId  string `json:"task_id"`
-				Kind    string `json:"kind"`
-				State   string `json:"state"`
-				OutName string `json:"out_name"`
-			} `json:"task"`
+			Task core.DownloadTask `json:"task"`
 		}
 		if json.Unmarshal(event.Data, &payload) != nil {
 			return
 		}
 		task := payload.Task
+		if task.Kind == "polystrata" {
+			label := strings.TrimSpace(task.DisplayName)
+			if label == "" {
+				label = "PolyStrata"
+			}
+			switch task.State {
+			case "done":
+				s.pushNotification(studioNotification{
+					Key:   "dl:" + task.TaskId + ":done",
+					Title: "PolyStrata 安装完成",
+					Body:  label + " 已就绪，可前往任务页开始测评。",
+					Kind:  stateSuccess,
+					Primary: &notificationAction{
+						Label:   "前往测评",
+						OnClick: func() { s.startBenchmarkFromPolystrataTask(task) },
+					},
+				})
+			case "failed":
+				s.pushNotification(studioNotification{
+					Key:           "dl:" + task.TaskId + ":failed",
+					Title:         "PolyStrata 安装失败",
+					Body:          label + " 安装未完成，请查看错误详情后重试。",
+					Kind:          stateDanger,
+					NeedsDecision: true,
+					Primary: &notificationAction{
+						Label:   "查看并重试",
+						OnClick: func() { s.navigateTo("downloads", "") },
+					},
+				})
+			}
+			return
+		}
 		kind := "模型"
 		if task.Kind == "engine" {
 			kind = "引擎"
