@@ -35,7 +35,8 @@ type localCandidateOrigin struct {
 func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidateRequest) ([]CandidateRun, *ApiError) {
 	u := s.userSettings()
 	workspace := workspaceRoot(u)
-	if workspace == nil || u.ResultsRoot == nil || len(req.Bundles) < 1 || len(req.Bundles) > 2 {
+	results := s.resultsRoot(u)
+	if workspace == nil || results == nil || len(req.Bundles) < 1 || len(req.Bundles) > 2 {
 		return nil, Err("invalid_request")
 	}
 	var selected *registryEntry
@@ -118,7 +119,7 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 			return nil, failure
 		}
 		args := []string{"config", "create", "--installation", installation, "--model", model,
-			"--bundle", bundlePath, "--results", *u.ResultsRoot, "--port", port, "--out", output}
+			"--bundle", bundlePath, "--results", *results, "--port", port, "--out", output}
 		if family == "lmstudio" {
 			args = append(args, "--service-pid", strconv.FormatInt(req.ServicePID, 10))
 		}

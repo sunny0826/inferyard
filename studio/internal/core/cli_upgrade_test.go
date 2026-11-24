@@ -366,7 +366,7 @@ func TestUpgradeCLIFastReturnRefreshesStaleOutdatedDeviceError(t *testing.T) {
 		return inferyard.Execution{ExitCode: 4}, nil
 	})
 	s.settings.InferyardPath = ptr(cliPath)
-	s.settings.ModelsRoot = ptr(modelsDir)
+	s.settings.WorkspaceRoot = ptr(modelsDir)
 	s.mu.Lock()
 	s.device.LastError = Err("cli_outdated")
 	s.assets.AssetsError = Err("cli_outdated")

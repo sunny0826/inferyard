@@ -39,16 +39,12 @@ const (
 
 type UserSettings struct {
 	EngineInstallations []string `json:"engine_installations,omitempty"`
-	ModelDownloadName   string   `json:"model_download_name"`
-	EngineDownloadName  string   `json:"engine_download_name"`
 	DownloadProxy       *string  `json:"download_proxy,omitempty"`
 	Theme               string   `json:"theme,omitempty"`
 	Language            string   `json:"language,omitempty"`
 	MinimizeToTray      bool     `json:"minimize_to_tray,omitempty"`
 	WorkspaceRoot       *string  `json:"workspace_root"`
 	InferyardPath       *string  `json:"inferyard_path"`
-	ResultsRoot         *string  `json:"results_root"`
-	ModelsRoot          *string  `json:"models_root"`
 	ExtraModelsRoots    []string `json:"extra_models_roots,omitempty"`
 }
 

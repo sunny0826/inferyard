@@ -144,7 +144,7 @@ func (s *Service) ResolveModelURL(ctx context.Context, rawURL, tokenEnv string) 
 	if !IsResolvableModelURL(rawURL) || (tokenEnv != "" && !envName.MatchString(tokenEnv)) {
 		return inferyard.ModelResolve{}, Err("invalid_request")
 	}
-	u := downloadNameDefaults(s.userSettings())
+	u := s.userSettings()
 	p := s.probe(u)
 	if p.Status != "ok" {
 		return inferyard.ModelResolve{}, cliProbeError(p)
@@ -188,13 +188,14 @@ func (s *Service) CreateOrResolveModelDownload(ctx context.Context, req CreateDo
 	if (req.OutName != "" && !ValidDownloadName(req.OutName)) || !IsResolvableModelURL(req.SourceUrl) || (tokenEnv != "" && !envName.MatchString(tokenEnv)) {
 		return DownloadTask{}, Err("invalid_request")
 	}
-	u := downloadNameDefaults(s.userSettings())
-	if _, apiErr := s.downloadRoot("model", u); apiErr != nil {
+	u := s.userSettings()
+	root, apiErr := s.downloadRoot("model", u)
+	if apiErr != nil {
 		return DownloadTask{}, apiErr
 	}
 	if req.OutName == "" {
 		s.mu.Lock()
-		existing, found := s.activeDownloadLocked("model", req.SourceUrl, "")
+		existing, found := s.activeDownloadLocked("model", root, req.SourceUrl, "")
 		s.mu.Unlock()
 		if found {
 			return existing, nil

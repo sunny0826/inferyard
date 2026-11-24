@@ -12,7 +12,7 @@ import (
 func TestPolystrataUninstallRejectsMigratingPlaintextCredentialRootConfig(t *testing.T) {
 	_, base := isolatedHomeAndBase(t)
 	ws := filepath.Join(base, "ws")
-	modelsRoot := filepath.Join(base, "models")
+	modelsRoot := filepath.Join(ws, "models")
 	dataDir := filepath.Join(modelsRoot, "polystrata-data")
 	packDir := filepath.Join(dataDir, "packs", "cred-pack")
 	mustMkdir(t, ws, packDir)
@@ -71,7 +71,6 @@ func TestPolystrataUninstallRejectsMigratingPlaintextCredentialRootConfig(t *tes
 			s := testService(t, assetTestExec)
 			s.mu.Lock()
 			s.settings.WorkspaceRoot = &ws
-			s.settings.ModelsRoot = &modelsRoot
 			s.settings.EngineInstallations = []string{psInst}
 			s.mu.Unlock()
 

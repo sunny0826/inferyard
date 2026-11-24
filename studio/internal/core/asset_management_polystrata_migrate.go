@@ -31,8 +31,8 @@ func readPolystrataInstallDirs(canonInstPath string) (workDir, dataDir string) {
 	return strings.TrimSpace(decl.WorkingDirectory), strings.TrimSpace(decl.DataDir)
 }
 
-func registeredInstallationProtectedPaths(u UserSettings, wsEnginesRoot string) []string {
-	out := protectedPolystrataDataDirs(u, wsEnginesRoot)
+func registeredInstallationProtectedPaths(u UserSettings, paths *BoundPaths, wsEnginesRoot string) []string {
+	out := protectedPolystrataDataDirs(u, paths, wsEnginesRoot)
 	addPath := func(raw string) {
 		trimmed := strings.TrimSpace(raw)
 		if trimmed == "" || strings.ContainsRune(trimmed, 0) {

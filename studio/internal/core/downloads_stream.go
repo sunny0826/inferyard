@@ -241,13 +241,14 @@ func (s *Service) downloadRoot(kind string, u UserSettings) (string, *ApiError) 
 		}
 		return root, nil
 	}
-	if u.ModelsRoot == nil {
+	models := s.modelsRoot(u)
+	if models == nil {
 		return "", Conflict("settings_incomplete")
 	}
-	if err := os.MkdirAll(*u.ModelsRoot, 0700); err != nil {
+	if err := os.MkdirAll(*models, 0700); err != nil {
 		return "", Err("internal_error")
 	}
-	return *u.ModelsRoot, nil
+	return *models, nil
 }
 
 func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
@@ -279,20 +280,6 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 		copied := *orig.polystrata
 		polystrataCopy = &copied
 	}
-	if kind == "polystrata" {
-		if active, found := s.activePolystrataSetupLocked(); found {
-			if active.retryOf == taskID || samePolystrataRequest(active.polystrata, polystrataCopy) {
-				cloned := clone(active.Task)
-				s.mu.Unlock()
-				return cloned, nil
-			}
-			s.mu.Unlock()
-			return DownloadTask{}, Conflict("polystrata_setup_active")
-		}
-	} else if existing, found := s.activeRetryOrDownloadLocked(taskID, kind, sourceURL); found {
-		s.mu.Unlock()
-		return existing, nil
-	}
 	tokenEnv := orig.tokenEnv
 	prevOutName := orig.Task.OutName
 	prevOutDir := orig.Task.OutDir
@@ -305,7 +292,7 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	}
 	s.mu.Unlock()
 
-	u := downloadNameDefaults(s.userSettings())
+	u := s.userSettings()
 	root, apiErr := s.downloadRoot(kind, u)
 	if apiErr != nil {
 		return DownloadTask{}, apiErr
@@ -322,12 +309,14 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	}
 	if kind == "polystrata" {
 		if active, found := s.activePolystrataSetupLocked(); found {
-			if active.retryOf == taskID || samePolystrataRequest(active.polystrata, polystrataCopy) {
-				return clone(active.Task), nil
+			if (active.retryOf == taskID || samePolystrataRequest(active.polystrata, polystrataCopy)) && filepath.IsAbs(active.Task.OutDir) {
+				if _, err := Resolve(root, active.Task.OutDir); err == nil {
+					return clone(active.Task), nil
+				}
 			}
 			return DownloadTask{}, Conflict("polystrata_setup_active")
 		}
-	} else if existing, found := s.activeRetryOrDownloadLocked(taskID, kind, sourceURL); found {
+	} else if existing, found := s.activeRetryOrDownloadLocked(taskID, kind, root, sourceURL); found {
 		return existing, nil
 	}
 	resolvedPrev, resolveErr := Resolve(root, prevOutDir)
@@ -368,18 +357,21 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 			}
 		}
 	} else {
-		configured := u.ModelDownloadName
-		if kind == "engine" {
-			configured = u.EngineDownloadName
-		}
 		base := "polystrata"
 		if kind != "polystrata" {
-			base = resolveAutoDownloadName(kind, configured, sourceURL)
+			base = resolveAutoDownloadName(kind, sourceURL)
 		}
 		var failure *ApiError
 		outName, outDir, failure = s.downloadOutputLocked(root, "", base)
 		if failure != nil {
 			return DownloadTask{}, failure
+		}
+		if kind == "polystrata" && (polystrataCopy == nil || strings.TrimSpace(polystrataCopy.DataDir) == "") {
+			if models := s.modelsRoot(u); models != nil && strings.TrimSpace(*models) != "" {
+				prevDataDir = filepath.Join(*models, "polystrata-data")
+			} else {
+				prevDataDir = filepath.Join(filepath.Dir(outDir), "PolyStrata-data")
+			}
 		}
 	}
 	if displayName == "" {

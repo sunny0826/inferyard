@@ -91,8 +91,9 @@ func saveSpeedTask(root string, task RunTask) error {
 func (s *Service) ContextSpeedHistory() ([]RunTask, *ApiError) {
 	u := s.userSettings()
 	w := workspaceRoot(u)
+	results := s.resultsRoot(u)
 	rows := []RunTask{}
-	if w == nil || u.ResultsRoot == nil {
+	if w == nil || results == nil {
 		return rows, nil
 	}
 	root, err := Resolve(*w, filepath.Join(*w, "logs", "context-speed-tasks"))
@@ -123,7 +124,7 @@ func (s *Service) ContextSpeedHistory() ([]RunTask, *ApiError) {
 				v := wire.Task
 				valid := true
 				if v.ContextSpeed.Batch != nil {
-					_, e = Resolve(*u.ResultsRoot, v.ContextSpeed.Batch.Path)
+					_, e = Resolve(*results, v.ContextSpeed.Batch.Path)
 					valid = e == nil
 				}
 				if v.ContextSpeed.Plan != nil {
@@ -141,12 +142,12 @@ func (s *Service) ContextSpeedHistory() ([]RunTask, *ApiError) {
 		}
 		rows = append(rows, row)
 	}
-	paths, scanErr := evidence.ContextSpeedBatchPaths(*u.ResultsRoot)
+	paths, scanErr := evidence.ContextSpeedBatchPaths(*results)
 	if scanErr != nil {
 		return rows, Err("task_history_unreadable")
 	}
 	for _, path := range paths {
-		path, err = Resolve(*u.ResultsRoot, path)
+		path, err = Resolve(*results, path)
 		if err != nil {
 			continue
 		}

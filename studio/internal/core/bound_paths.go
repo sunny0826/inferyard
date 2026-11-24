@@ -25,12 +25,11 @@ func (p *BoundPaths) validate() error {
 
 func (p *BoundPaths) bind(u UserSettings) UserSettings {
 	u.InferyardPath, u.WorkspaceRoot = ptr(p.CLI), ptr(p.Workspace)
-	u.ResultsRoot, u.ModelsRoot = ptr(p.Results), ptr(p.Models)
 	return u
 }
 
 func (p *BoundPaths) matches(u UserSettings) bool {
-	return str(u.InferyardPath) == p.CLI && str(u.WorkspaceRoot) == p.Workspace && str(u.ResultsRoot) == p.Results && str(u.ModelsRoot) == p.Models
+	return str(u.InferyardPath) == p.CLI && str(u.WorkspaceRoot) == p.Workspace
 }
 
 func (s *Service) BoundPaths() *BoundPaths {

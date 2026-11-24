@@ -93,7 +93,7 @@ func (s *Service) recoverAfterCLICompatible(u UserSettings) {
 		s.assets = AssetsState{}
 	}
 	s.mu.Unlock()
-	if needRefresh && len(allModelsRoots(u)) > 0 {
+	if needRefresh && len(s.allModelsRoots(u)) > 0 {
 		s.RefreshAssets()
 		s.RefreshDevice()
 	}

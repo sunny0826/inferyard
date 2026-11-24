@@ -69,11 +69,8 @@ func TestAutoNamedDownloadDeduplicatesActiveRequests(t *testing.T) {
 		return result(inferyard.ExitBlocked), nil
 	})
 	root := t.TempDir()
-	models := root + "/models"
 	ws := root + "/ws"
-	_ = os.MkdirAll(models, 0o700)
-	_ = os.MkdirAll(ws, 0o700)
-	s.settings.ModelsRoot = &models
+	_ = os.MkdirAll(ws+"/models", 0o700)
 	s.settings.WorkspaceRoot = &ws
 
 	var wg sync.WaitGroup

@@ -51,8 +51,8 @@ func writeStrataConfigFixture(t *testing.T, path, name string, args []string) st
 func TestDeleteManagedPolystrataEngineVenvExternalAndSafetyGuards(t *testing.T) {
 	_, base := isolatedHomeAndBase(t)
 	ws := filepath.Join(base, "ws")
-	modelsRoot := filepath.Join(base, "models")
-	resultsRoot := filepath.Join(base, "results")
+	modelsRoot := filepath.Join(ws, "models")
+	resultsRoot := filepath.Join(ws, "results")
 	dataDir := filepath.Join(modelsRoot, "polystrata-data")
 	mustMkdir(t, ws, modelsRoot, resultsRoot, dataDir)
 	mustWriteFile(t, filepath.Join(dataDir, "models", "kept.bin"), []byte("kept"), 0o600)
@@ -80,8 +80,6 @@ func TestDeleteManagedPolystrataEngineVenvExternalAndSafetyGuards(t *testing.T) 
 	s := testService(t, assetTestExec)
 	s.mu.Lock()
 	s.settings.WorkspaceRoot = &ws
-	s.settings.ModelsRoot = &modelsRoot
-	s.settings.ResultsRoot = &resultsRoot
 	s.settings.EngineInstallations = []string{managedInst, extInst, noReceiptInst}
 	s.mu.Unlock()
 	s.checkMu.Lock()
@@ -157,7 +155,7 @@ func TestDeleteManagedPolystrataEngineVenvExternalAndSafetyGuards(t *testing.T) 
 func TestDeleteManagedPolystrataEngineRejectsEscapingSymlinkAndEvidence(t *testing.T) {
 	_, base := isolatedHomeAndBase(t)
 	ws := filepath.Join(base, "ws")
-	modelsRoot := filepath.Join(base, "models")
+	modelsRoot := filepath.Join(ws, "models")
 	dataDir := filepath.Join(modelsRoot, "polystrata-data")
 	mustMkdir(t, ws, dataDir)
 
@@ -190,7 +188,6 @@ func TestDeleteManagedPolystrataEngineRejectsEscapingSymlinkAndEvidence(t *testi
 	s := testService(t, assetTestExec)
 	s.mu.Lock()
 	s.settings.WorkspaceRoot = &ws
-	s.settings.ModelsRoot = &modelsRoot
 	s.settings.EngineInstallations = installs
 	s.mu.Unlock()
 
@@ -224,7 +221,7 @@ func TestDeleteManagedPolystrataEngineRejectsEscapingSymlinkAndEvidence(t *testi
 func TestDeleteManagedPolystrataModelsSharedExternalAndBusyGuards(t *testing.T) {
 	_, base := isolatedHomeAndBase(t)
 	ws := filepath.Join(base, "ws")
-	modelsRoot := filepath.Join(base, "models")
+	modelsRoot := filepath.Join(ws, "models")
 	dataDir := filepath.Join(modelsRoot, "polystrata-data")
 	mustMkdir(t, ws, dataDir)
 
@@ -268,7 +265,6 @@ func TestDeleteManagedPolystrataModelsSharedExternalAndBusyGuards(t *testing.T) 
 	s := testService(t, assetTestExec)
 	s.mu.Lock()
 	s.settings.WorkspaceRoot = &ws
-	s.settings.ModelsRoot = &modelsRoot
 	s.settings.EngineInstallations = []string{psInst}
 	s.mu.Unlock()
 

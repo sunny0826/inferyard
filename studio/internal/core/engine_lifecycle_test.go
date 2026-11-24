@@ -56,7 +56,7 @@ func TestOrderedShutdownDrainsRealRunBeforeEngine(t *testing.T) {
 	}
 	engine := pollEngine(t, s, "running")
 	t.Setenv("RUN_ENGINE", engine.Endpoint)
-	cfg := config(t, *s.settings.ResultsRoot, "zh-core")
+	cfg := config(t, *s.resultsRoot(s.settings), "zh-core")
 	tasks, e := s.StartRuns(StartRunsRequest{ConfigPaths: []string{cfg}, AllowSingleBundle: ptr(true)})
 	if e != nil {
 		t.Fatal(e)

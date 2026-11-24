@@ -199,11 +199,11 @@ func (s *Service) registry() registryData {
 	data := registryData{
 		settings:    u,
 		refreshing:  assets.AssetsRefreshing || device.Refreshing,
-		modelRoots:  activeModelRoots(u),
-		resultsRoot: u.ResultsRoot,
+		modelRoots:  activeModelRoots(u, s.paths),
+		resultsRoot: s.resultsRoot(u),
 		wsEngines:   workspaceEnginesRoot(u, s.paths),
 	}
-	data.psScope = polystrataManagedScopeFor(u, data.wsEngines)
+	data.psScope = polystrataManagedScopeFor(u, s.paths, data.wsEngines)
 	models := map[string]int{}
 	var scanned *inferyard.AssetScan
 	if assets.Parsed != nil {
@@ -303,7 +303,7 @@ func (s *Service) registry() registryData {
 	if s.registryRoots != nil {
 		rootsFor = s.registryRoots
 	}
-	roots := rootsFor(str(workspaceRoot(u)))
+	roots := rootsFor(str(u.WorkspaceRoot))
 	data.engines = scanEngineBinaries(roots...)
 	engines := map[string]int{}
 	for i, e := range data.engines {
@@ -314,7 +314,7 @@ func (s *Service) registry() registryData {
 		data.engines[i].path = identity
 		engines[identity] = i
 		source := l10n.TR("core.registry.source.user_engines_dir")
-		if len(roots) > 0 && e.source == roots[0] && str(workspaceRoot(u)) != "" {
+		if len(roots) > 0 && e.source == roots[0] && str(u.WorkspaceRoot) != "" {
 			source = l10n.TR("core.registry.source.workspace_engines_dir")
 		}
 		data.engines[i].source = source
@@ -351,10 +351,11 @@ func (s *Service) registry() registryData {
 				data.engines = append(data.engines, entry)
 			}
 		} else if task.Kind == "model" {
-			if u.ModelsRoot == nil {
+			modelsRoot := s.modelsRoot(u)
+			if modelsRoot == nil {
 				continue
 			}
-			if _, err := Resolve(*u.ModelsRoot, task.OutDir); err != nil {
+			if _, err := Resolve(*modelsRoot, task.OutDir); err != nil {
 				continue
 			}
 			entries, err := os.ReadDir(task.OutDir)
@@ -381,7 +382,7 @@ func (s *Service) registry() registryData {
 			}
 		}
 	}
-	psModels, psScope := scanPolystrataModelConfigs(u.EngineInstallations, defaultManagedPolystrataDataDirs(u, data.wsEngines))
+	psModels, psScope := scanPolystrataModelConfigs(u.EngineInstallations, defaultManagedPolystrataDataDirs(u, s.paths, data.wsEngines))
 	for _, entry := range psModels {
 		if _, found := models[entry.path]; !found {
 			models[entry.path] = len(data.models)
@@ -402,7 +403,7 @@ func (s *Service) registry() registryData {
 	if len(data.engines) > 0 && !data.engines[0].downloaded.IsZero() {
 		data.engines[0].engine.LatestDownload = true
 	}
-	data.totalModelBytes, data.diskFreeBytes = registryStorageMetrics(u, data.modelRoots, data.models, scanned)
+	data.totalModelBytes, data.diskFreeBytes = registryStorageMetrics(u, s.paths, data.modelRoots, data.models, scanned)
 	return data
 }
 
@@ -472,8 +473,8 @@ func (s *Service) Registry() Registry {
 		DiskFreeBytes:   data.diskFreeBytes,
 		ModelRoots:      data.modelRoots,
 	}
-	protectedDataDirs := protectedPolystrataDataDirs(data.settings, data.wsEngines)
-	prot := collectOtherPolystrataProtectedRefs(data.settings, data.wsEngines, "")
+	protectedDataDirs := protectedPolystrataDataDirs(data.settings, s.paths, data.wsEngines)
+	prot := collectOtherPolystrataProtectedRefs(data.settings, s.paths, data.wsEngines, "")
 	for _, e := range data.models {
 		m := e.model
 		m.Path = e.path
@@ -503,7 +504,7 @@ func (s *Service) Registry() Registry {
 	for _, e := range data.engines {
 		eng := e.engine
 		eng.Path = e.path
-		eng.Deletable = isEngineAssetDeletable(data.settings, e.rawPath, e.path, eng.Kind, eng.Family, data.wsEngines, data.resultsRoot, data.engines)
+		eng.Deletable = isEngineAssetDeletable(data.settings, s.paths, e.rawPath, e.path, eng.Kind, eng.Family, data.wsEngines, data.resultsRoot, data.engines)
 		result.Engines = append(result.Engines, eng)
 	}
 	if len(result.Engines) > 0 {

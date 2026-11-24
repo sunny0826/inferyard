@@ -25,7 +25,8 @@ func (s *Service) StartContextSpeed(req StartContextSpeedRequest) (RunTask, *Api
 	defer s.settingsMu.Unlock()
 	u := s.userSettings()
 	w := workspaceRoot(u)
-	if w == nil || u.ResultsRoot == nil {
+	results := s.resultsRoot(u)
+	if w == nil || results == nil {
 		return RunTask{}, Conflict("settings_incomplete")
 	}
 	p := s.probe(u)
@@ -37,7 +38,7 @@ func (s *Service) StartContextSpeed(req StartContextSpeedRequest) (RunTask, *Api
 	if e != nil {
 		return RunTask{}, Err("invalid_request")
 	}
-	batch, e := Resolve(*u.ResultsRoot, filepath.Join(*u.ResultsRoot, "context-speed-"+id))
+	batch, e := Resolve(*results, filepath.Join(*results, "context-speed-"+id))
 	if e != nil {
 		return RunTask{}, Conflict("output_root_outside_results")
 	}

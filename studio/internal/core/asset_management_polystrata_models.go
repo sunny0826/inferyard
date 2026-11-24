@@ -80,7 +80,7 @@ func appendUniqueAssetFile(files *[]assetFileSize, candidate assetFileSize) {
 	*files = append(*files, candidate)
 }
 
-func findOwningPolystrataDecl(u UserSettings, wsEnginesRoot, canonCfgPath string) (string, string) {
+func findOwningPolystrataDecl(u UserSettings, paths *BoundPaths, wsEnginesRoot, canonCfgPath string) (string, string) {
 	cfgDir := filepath.Dir(canonCfgPath)
 	for _, rawInst := range u.EngineInstallations {
 		rawBytes, err := installationBytes(rawInst)
@@ -101,7 +101,7 @@ func findOwningPolystrataDecl(u UserSettings, wsEnginesRoot, canonCfgPath string
 			}
 		}
 	}
-	for _, dd := range defaultManagedPolystrataDataDirs(u, wsEnginesRoot) {
+	for _, dd := range defaultManagedPolystrataDataDirs(u, paths, wsEnginesRoot) {
 		for _, dir := range polystrataConfigSearchDirs("", dd) {
 			if canonDir, cerr := canonical(dir); cerr == nil && sameFileOrPath(canonDir, cfgDir) {
 				return "", dd
@@ -111,7 +111,7 @@ func findOwningPolystrataDecl(u UserSettings, wsEnginesRoot, canonCfgPath string
 	return "", ""
 }
 
-func collectOtherPolystrataProtectedRefs(u UserSettings, wsEnginesRoot, targetCanonCfg string) protectedPolystrataRefs {
+func collectOtherPolystrataProtectedRefs(u UserSettings, paths *BoundPaths, wsEnginesRoot, targetCanonCfg string) protectedPolystrataRefs {
 	prot := protectedPolystrataRefs{}
 	var seenContexts []polystrataCfgContext
 	seenDirs := map[string]bool{}
@@ -215,7 +215,7 @@ func collectOtherPolystrataProtectedRefs(u UserSettings, wsEnginesRoot, targetCa
 			scanDir(dir, decl.WorkingDirectory, decl.DataDir)
 		}
 	}
-	for _, dd := range defaultManagedPolystrataDataDirs(u, wsEnginesRoot) {
+	for _, dd := range defaultManagedPolystrataDataDirs(u, paths, wsEnginesRoot) {
 		for _, dir := range polystrataConfigSearchDirs("", dd) {
 			scanDir(dir, "", dd)
 		}
@@ -278,9 +278,10 @@ func isProtectedPolystrataContainer(canonDir string, managedDataDirs []string) b
 	return false
 }
 
-func planPolystrataModelDelete(u UserSettings, wsEnginesRoot, rawCfgPath, canonCfgPath string) (polystrataModelDeletePlan, *ApiError) {
-	scope := polystrataManagedScopeFor(u, wsEnginesRoot)
-	if !isManagedPolystrataModelDeletable(rawCfgPath, canonCfgPath, scope, u.ResultsRoot) {
+func planPolystrataModelDelete(u UserSettings, paths *BoundPaths, wsEnginesRoot, rawCfgPath, canonCfgPath string) (polystrataModelDeletePlan, *ApiError) {
+	resultsRoot := derivedResultsRoot(u, paths)
+	scope := polystrataManagedScopeFor(u, paths, wsEnginesRoot)
+	if !isManagedPolystrataModelDeletable(rawCfgPath, canonCfgPath, scope, resultsRoot) {
 		return polystrataModelDeletePlan{}, errAssetNotDeletable()
 	}
 	cfgInfo, err := os.Lstat(canonCfgPath)
@@ -294,10 +295,10 @@ func planPolystrataModelDelete(u UserSettings, wsEnginesRoot, rawCfgPath, canonC
 		return polystrataModelDeletePlan{}, errAssetNotDeletable()
 	}
 
-	workDir, dataDir := findOwningPolystrataDecl(u, wsEnginesRoot, canonCfgPath)
+	workDir, dataDir := findOwningPolystrataDecl(u, paths, wsEnginesRoot, canonCfgPath)
 	targetFiles, targetDirs := resolvePolystrataConfigRefsLenient(canonCfgPath, workDir, dataDir)
-	prot := collectOtherPolystrataProtectedRefs(u, wsEnginesRoot, canonCfgPath)
-	protectedPaths := registeredInstallationProtectedPaths(u, wsEnginesRoot)
+	prot := collectOtherPolystrataProtectedRefs(u, paths, wsEnginesRoot, canonCfgPath)
+	protectedPaths := registeredInstallationProtectedPaths(u, paths, wsEnginesRoot)
 
 	plan := polystrataModelDeletePlan{
 		configPath:     canonCfgPath,
@@ -323,7 +324,7 @@ func planPolystrataModelDelete(u UserSettings, wsEnginesRoot, rawCfgPath, canonC
 			plan.preservedShared = true
 			continue
 		}
-		if isSymlinkPath(d) || overlapsResultsRoot(d, u.ResultsRoot) || verifyAssetTreeSafe(d, true) != nil {
+		if isSymlinkPath(d) || overlapsResultsRoot(d, resultsRoot) || verifyAssetTreeSafe(d, true) != nil {
 			return polystrataModelDeletePlan{}, errAssetNotDeletable()
 		}
 		plan.dirs = append(plan.dirs, d)
@@ -345,7 +346,7 @@ func planPolystrataModelDelete(u UserSettings, wsEnginesRoot, rawCfgPath, canonC
 			plan.preservedShared = true
 			continue
 		}
-		if isSymlinkPath(f.path) || overlapsResultsRoot(f.path, u.ResultsRoot) || isSealedEvidenceMarker(filepath.Base(f.path)) {
+		if isSymlinkPath(f.path) || overlapsResultsRoot(f.path, resultsRoot) || isSealedEvidenceMarker(filepath.Base(f.path)) {
 			return polystrataModelDeletePlan{}, errAssetNotDeletable()
 		}
 		plan.files = append(plan.files, f.path)
@@ -441,7 +442,7 @@ func (s *Service) runDeleteManagedPolystrataModel(rawCfgPath, canonCfgPath, expe
 		s.mu.Unlock()
 	}()
 
-	plan, err := planPolystrataModelDelete(u, workspaceEnginesRoot(u, paths), rawCfgPath, canonCfgPath)
+	plan, err := planPolystrataModelDelete(u, paths, workspaceEnginesRoot(u, paths), rawCfgPath, canonCfgPath)
 	if err != nil {
 		return false, err
 	}
@@ -501,7 +502,7 @@ func (s *Service) runDeleteManagedPolystrataModel(rawCfgPath, canonCfgPath, expe
 			pruneDirs = append(pruneDirs, filepath.Dir(entry.orig))
 		}
 	}
-	pruneEmptyPolystrataDataDirs(pruneDirs, plan.dataDirs, plan.protectedPaths, u.ResultsRoot)
+	pruneEmptyPolystrataDataDirs(pruneDirs, plan.dataDirs, plan.protectedPaths, derivedResultsRoot(u, paths))
 
 	s.mu.Lock()
 	for _, orig := range removedOrigs {

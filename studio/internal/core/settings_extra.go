@@ -8,8 +8,8 @@ import (
 	"inferyard/studio/internal/l10n"
 )
 
-func allModelsRoots(u UserSettings) []string {
-	return activeModelRoots(u)
+func (s *Service) allModelsRoots(u UserSettings) []string {
+	return activeModelRoots(u, s.paths)
 }
 
 func modelsRootCLIArgs(roots []string) []string {
@@ -97,7 +97,7 @@ func (s *Service) MinimizeToTray() bool {
 	return s.userSettings().MinimizeToTray
 }
 
-func applySettingsPatchExtra(u *UserSettings, key string, raw json.RawMessage) (bool, *ApiError) {
+func (s *Service) applySettingsPatchExtra(u *UserSettings, key string, raw json.RawMessage) (bool, *ApiError) {
 	switch key {
 	case "download_proxy":
 		var proxy *string
@@ -160,7 +160,7 @@ func applySettingsPatchExtra(u *UserSettings, key string, raw json.RawMessage) (
 		if json.Unmarshal(raw, &roots) != nil || roots == nil {
 			return true, Err("invalid_request")
 		}
-		normalized, err := normalizeExtraModelsRoots(u.ModelsRoot, roots)
+		normalized, err := normalizeExtraModelsRoots(s.modelsRoot(*u), roots)
 		if err != nil {
 			return true, err
 		}
@@ -184,7 +184,7 @@ func (s *Service) AddExtraModelsRoot(dir string) (SettingsResponse, *ApiError) {
 	u := s.userSettings()
 	combined := append([]string(nil), u.ExtraModelsRoots...)
 	combined = append(combined, trimmed)
-	normalized, err := normalizeExtraModelsRoots(u.ModelsRoot, combined)
+	normalized, err := normalizeExtraModelsRoots(s.modelsRoot(u), combined)
 	if err != nil {
 		return SettingsResponse{}, err
 	}

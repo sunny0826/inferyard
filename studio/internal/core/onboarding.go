@@ -141,7 +141,7 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 			args = resourceArg(args, "--preflight", q.PreflightPath)
 		}
 		if value(flags, "--results") == "" {
-			if res := s.userSettings().ResultsRoot; res != nil {
+			if res := s.resultsRoot(s.userSettings()); res != nil {
 				args = resourceArg(args, "--results", *res)
 			}
 		}
@@ -188,10 +188,11 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 	}
 	if args[0] == "device-check" {
 		if value(flags, "--models-root") == "" {
-			if u.ModelsRoot == nil {
+			models := s.modelsRoot(u)
+			if models == nil {
 				return result, Conflict("settings_incomplete")
 			}
-			args = append(args, "--models-root", *u.ModelsRoot)
+			args = append(args, "--models-root", *models)
 		}
 		if flags["--json"] == nil {
 			args = append(args, "--json")
@@ -220,12 +221,6 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 		}
 		workspace, _ := json.Marshal(root)
 		patch := map[string]json.RawMessage{"workspace_root": workspace}
-		if s.userSettings().ResultsRoot == nil {
-			if res := defaultResultsRoot(UserSettings{WorkspaceRoot: &root}); res != nil {
-				results, _ := json.Marshal(*res)
-				patch["results_root"] = results
-			}
-		}
 		if _, e := s.UpdateSettings(patch); e != nil {
 			return result, e
 		}

@@ -95,7 +95,7 @@ func TestDeleteManagedAssetSingleGGUFFolderAndSiblings(t *testing.T) {
 	}
 	s := testService(t, assetTestExecFor(&models))
 	s.mu.Lock()
-	s.settings.ModelsRoot = &modelsRoot
+	s.settings.WorkspaceRoot = &base
 	s.assets.Parsed = &inferyard.AssetScan{Definition: inferyard.AssetScanDefinition, Models: models, Engines: []inferyard.ScannedEngine{}}
 	s.mu.Unlock()
 
@@ -130,8 +130,7 @@ func TestDeleteManagedAssetRefusesBusyWorkspaceAndSafetyViolations(t *testing.T)
 
 	s := testService(t, assetTestExec)
 	s.mu.Lock()
-	s.settings.ModelsRoot = &modelsRoot
-	s.settings.ResultsRoot = &resultsRoot
+	s.settings.WorkspaceRoot = &base
 	s.assets.Parsed = &inferyard.AssetScan{
 		Definition: inferyard.AssetScanDefinition,
 		Models: []inferyard.ScannedModel{
@@ -175,7 +174,7 @@ func TestDeleteManagedAssetRefusesBusyWorkspaceAndSafetyViolations(t *testing.T)
 	overlapModel := filepath.Join(resultsRoot, "nested-model")
 	mustMkdir(t, overlapModel)
 	s.mu.Lock()
-	s.settings.ModelsRoot = &resultsRoot
+	s.settings.ExtraModelsRoots = []string{resultsRoot}
 	raw, _ := json.Marshal(inferyard.AssetScan{
 		Definition: inferyard.AssetScanDefinition,
 		Models:     []inferyard.ScannedModel{{Path: overlapModel, Name: "nested-model", Format: "directory", Available: true}},

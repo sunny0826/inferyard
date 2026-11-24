@@ -116,28 +116,12 @@ func ResolveDownloadDisplayName(kind, sourceURL string) string {
 	return l10n.TR("core.download.kind.model")
 }
 
-func resolveAutoDownloadName(kind, configuredDefault, sourceURL string) string {
-	if kind == "model" && configuredDefault == "model" {
-		return SuggestDownloadSlug("model", sourceURL)
-	}
-	if kind == "engine" && configuredDefault == "engine" {
-		return SuggestDownloadSlug("engine", sourceURL)
-	}
-	return configuredDefault
+func resolveAutoDownloadName(kind, sourceURL string) string {
+	return SuggestDownloadSlug(kind, sourceURL)
 }
 
 func ValidDownloadName(name string) bool {
 	return outputName.MatchString(name) && strings.Trim(name, ".") != ""
-}
-
-func downloadNameDefaults(u UserSettings) UserSettings {
-	if !ValidDownloadName(u.ModelDownloadName) {
-		u.ModelDownloadName = "model"
-	}
-	if !ValidDownloadName(u.EngineDownloadName) {
-		u.EngineDownloadName = "engine"
-	}
-	return u
 }
 
 func (s *Service) downloadOutputLocked(root, explicit, base string) (string, string, *ApiError) {

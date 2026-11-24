@@ -168,17 +168,18 @@ func summarize(r evidence.Run, host string) (RunSummary, *aggregate, error) {
 }
 
 func (s *Service) scan(u UserSettings) (RunHistoryResponse, *ApiError) {
-	h := RunHistoryResponse{ResultsRoot: u.ResultsRoot, ScannedAt: now(), Batches: []BatchSummary{}, StandaloneRuns: []RunSummary{}}
-	if u.ResultsRoot == nil {
+	results := s.resultsRoot(u)
+	h := RunHistoryResponse{ResultsRoot: results, ScannedAt: now(), Batches: []BatchSummary{}, StandaloneRuns: []RunSummary{}}
+	if results == nil {
 		return h, nil
 	}
-	if _, e := os.Stat(*u.ResultsRoot); e != nil {
+	if _, e := os.Stat(*results); e != nil {
 		if os.IsNotExist(e) {
 			return h, nil
 		}
 		return h, Err("internal_error")
 	}
-	scanRoot, resolveErr := canonical(*u.ResultsRoot)
+	scanRoot, resolveErr := canonical(*results)
 	if resolveErr != nil {
 		return h, Err("internal_error")
 	}
@@ -328,7 +329,7 @@ func (s *Service) rebuild(u UserSettings) {
 	h, e := s.scan(u)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if str(s.settings.ResultsRoot) != str(u.ResultsRoot) {
+	if str(s.resultsRoot(s.settings)) != str(s.resultsRoot(u)) {
 		return
 	}
 	if e == nil {
@@ -348,7 +349,7 @@ func (s *Service) History() (RunHistoryResponse, *ApiError) {
 	h, e := s.scan(u)
 	if e == nil {
 		s.mu.Lock()
-		if str(s.settings.ResultsRoot) == str(u.ResultsRoot) {
+		if str(s.resultsRoot(s.settings)) == str(s.resultsRoot(u)) {
 			s.history = h
 		}
 		s.mu.Unlock()

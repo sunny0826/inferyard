@@ -87,8 +87,7 @@ func TestUpdateAdmissionFreezeCancelGuardPreApplyVerifyAndWindowsRecovery(t *tes
 			return &updateCheckError{code: "update_apply_failed", message: "simulated fail"}
 		},
 	})
-	applySvc.settings.ModelsRoot = ptr(t.TempDir())
-	applySvc.settings.ResultsRoot = ptr(t.TempDir())
+	applySvc.settings.WorkspaceRoot = ptr(t.TempDir())
 	applySvc.settings.InferyardPath = ptr(os.Args[0])
 	applySvc.exec = func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
 		if len(args) > 0 && args[0] == "--version" {

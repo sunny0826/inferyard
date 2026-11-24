@@ -56,7 +56,7 @@ func newLocalQueueFixture(t *testing.T, family string) *localQueueFixture {
 	}
 	f := &localQueueFixture{workspace: workspace, results: filepath.Join(workspace, "results"), family: family, endpoint: fmt.Sprintf("http://127.0.0.1:%d", freePort(t)), runStarted: make(chan string, 2)}
 	f.s = testService(t, f.execute)
-	f.s.settings.WorkspaceRoot, f.s.settings.ResultsRoot = &f.workspace, &f.results
+	f.s.settings.WorkspaceRoot = &f.workspace
 	f.s.engineTimeout = 3 * time.Second
 	if family == "lmstudio" {
 		f.s.identityReader = func(pid int64) (int64, error) { return pid * 10, nil }

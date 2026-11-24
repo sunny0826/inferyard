@@ -99,7 +99,8 @@ func (s *Service) StartRuns(req StartRunsRequest) ([]RunTask, *ApiError) {
 		return nil, Err("invalid_request")
 	}
 	u := s.userSettings()
-	if u.ResultsRoot == nil {
+	results := s.resultsRoot(u)
+	if results == nil {
 		return nil, Conflict("settings_incomplete")
 	}
 	p := s.probe(u)
@@ -113,7 +114,7 @@ func (s *Service) StartRuns(req StartRunsRequest) ([]RunTask, *ApiError) {
 		if e != nil {
 			return nil, Err("invalid_request")
 		}
-		root, e = Resolve(*u.ResultsRoot, root)
+		root, e = Resolve(*results, root)
 		if e != nil {
 			return nil, Conflict("output_root_outside_results")
 		}
@@ -156,10 +157,11 @@ func (s *Service) Resume(req ResumeRunRequest) (RunTask, *ApiError) {
 		}
 	}
 	u := s.userSettings()
-	if u.ResultsRoot == nil {
+	results := s.resultsRoot(u)
+	if results == nil {
 		return RunTask{}, Conflict("settings_incomplete")
 	}
-	path, e := Resolve(*u.ResultsRoot, req.FromRun)
+	path, e := Resolve(*results, req.FromRun)
 	if e != nil {
 		return RunTask{}, Err("invalid_request")
 	}

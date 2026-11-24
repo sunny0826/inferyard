@@ -41,11 +41,12 @@ func writeFinishedRun(t *testing.T, root, reason string) {
 
 func TestHistoryTreatsAbnormalStopAfterLastCaseAsIncomplete(t *testing.T) {
 	s := testService(t, nil)
-	root, err := canonical(t.TempDir())
+	ws, err := canonical(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	s.settings.ResultsRoot = &root
+	root := filepath.Join(ws, "results")
+	s.settings.WorkspaceRoot = &ws
 	want := map[string]historyVerdict{
 		"plan_finished":          {"complete", "complete"},
 		"adapter_cleanup_failed": {"incomplete", "partial"},

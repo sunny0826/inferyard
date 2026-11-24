@@ -69,7 +69,7 @@ func TestDeleteManagedAssetInternalAndEscapingSymlinks(t *testing.T) {
 	s := testService(t, execWithEngines)
 	s.mu.Lock()
 	s.settings.WorkspaceRoot = &ws
-	s.settings.ModelsRoot = &modelsRoot
+	s.settings.ExtraModelsRoots = []string{modelsRoot}
 	s.mu.Unlock()
 
 	reg := s.Registry()

@@ -170,10 +170,11 @@ func (s *Service) readContextSpeed(ctx context.Context, binary string, task *Con
 		return fail("batch_not_created")
 	}
 	u := s.userSettings()
-	if u.ResultsRoot == nil {
+	results := s.resultsRoot(u)
+	if results == nil {
 		return fail("settings_incomplete")
 	}
-	path, err := Resolve(*u.ResultsRoot, task.Batch.Path)
+	path, err := Resolve(*results, task.Batch.Path)
 	if err != nil {
 		return fail("output_root_outside_results")
 	}
@@ -203,7 +204,7 @@ func (s *Service) readContextSpeed(ctx context.Context, binary string, task *Con
 	if err != nil || envelope.EvidenceDir == nil {
 		return fail("context_speed_invalid_response")
 	}
-	returned, err := Resolve(*u.ResultsRoot, *envelope.EvidenceDir)
+	returned, err := Resolve(*results, *envelope.EvidenceDir)
 	if err != nil || returned != path {
 		return fail("batch_identity_mismatch")
 	}

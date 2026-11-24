@@ -55,10 +55,11 @@ func (s *Service) speedFrozenIdentity(batch string, task *ContextSpeedTask) {
 func (s *Service) speedExecutionBoundary(t *runEntry) error {
 	u := s.userSettings()
 	w := workspaceRoot(u)
-	if w == nil || u.ResultsRoot == nil || t.Task.ContextSpeed == nil || t.Task.ContextSpeed.Plan == nil {
+	results := s.resultsRoot(u)
+	if w == nil || results == nil || t.Task.ContextSpeed == nil || t.Task.ContextSpeed.Plan == nil {
 		return os.ErrInvalid
 	}
-	root, err := Resolve(*u.ResultsRoot, t.root)
+	root, err := Resolve(*results, t.root)
 	if err != nil || root != t.root {
 		return os.ErrInvalid
 	}

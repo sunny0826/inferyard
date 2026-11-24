@@ -185,8 +185,9 @@ func managedPolystrataInstallDir(rawInstPath, canonInstPath, wsEnginesRoot strin
 	return installDir, true
 }
 
-func defaultManagedPolystrataDataDirs(u UserSettings, wsEnginesRoot string) []string {
+func defaultManagedPolystrataDataDirs(u UserSettings, paths *BoundPaths, wsEnginesRoot string) []string {
 	var out []string
+	resultsRoot := derivedResultsRoot(u, paths)
 	tryAdd := func(parent, name string) {
 		if strings.TrimSpace(parent) == "" {
 			return
@@ -201,7 +202,7 @@ func defaultManagedPolystrataDataDirs(u UserSettings, wsEnginesRoot string) []st
 			return
 		}
 		canonCand, err := canonical(cand)
-		if err != nil || !pathStrictlyInsideDirSameFS(canonCand, canonParent) || overlapsResultsRoot(canonCand, u.ResultsRoot) {
+		if err != nil || !pathStrictlyInsideDirSameFS(canonCand, canonParent) || overlapsResultsRoot(canonCand, resultsRoot) {
 			return
 		}
 		for _, prev := range out {
@@ -211,17 +212,18 @@ func defaultManagedPolystrataDataDirs(u UserSettings, wsEnginesRoot string) []st
 		}
 		out = append(out, canonCand)
 	}
-	if u.ModelsRoot != nil {
-		tryAdd(*u.ModelsRoot, "polystrata-data")
+	if models := derivedModelsRoot(u, paths); models != nil {
+		tryAdd(*models, "polystrata-data")
 	}
 	tryAdd(wsEnginesRoot, "PolyStrata-data")
 	tryAdd(wsEnginesRoot, "polystrata-data")
 	return out
 }
 
-func polystrataManagedScopeFor(u UserSettings, wsEnginesRoot string) polystrataManagedScope {
+func polystrataManagedScopeFor(u UserSettings, paths *BoundPaths, wsEnginesRoot string) polystrataManagedScope {
+	resultsRoot := derivedResultsRoot(u, paths)
 	scope := polystrataManagedScope{
-		dataDirs: defaultManagedPolystrataDataDirs(u, wsEnginesRoot),
+		dataDirs: defaultManagedPolystrataDataDirs(u, paths, wsEnginesRoot),
 	}
 	appendUnique := func(list *[]string, cand string) {
 		for _, prev := range *list {
@@ -250,7 +252,7 @@ func polystrataManagedScopeFor(u UserSettings, wsEnginesRoot string) polystrataM
 		if err != nil {
 			continue
 		}
-		installDir, ok := managedPolystrataInstallDir(rawInst, canonInst, wsEnginesRoot, u.ResultsRoot)
+		installDir, ok := managedPolystrataInstallDir(rawInst, canonInst, wsEnginesRoot, resultsRoot)
 		if !ok {
 			continue
 		}
@@ -264,7 +266,7 @@ func polystrataManagedScopeFor(u UserSettings, wsEnginesRoot string) polystrataM
 			continue
 		}
 		canonDD, err := canonical(dd)
-		if err != nil || !filepath.IsAbs(canonDD) || overlapsResultsRoot(canonDD, u.ResultsRoot) {
+		if err != nil || !filepath.IsAbs(canonDD) || overlapsResultsRoot(canonDD, resultsRoot) {
 			continue
 		}
 		if pathStrictlyInsideDirSameFS(canonDD, installDir) {
@@ -281,7 +283,7 @@ func isManagedPolystrataModelDeletable(rawPath, canonPath string, scope polystra
 	return pathStrictlyInsideAnySameFS(canonPath, scope.installDirs) || pathStrictlyInsideAnySameFS(canonPath, scope.dataDirs)
 }
 
-func isEngineAssetDeletable(u UserSettings, rawPath, canonPath, kind, family, wsEnginesRoot string, resultsRoot *string, engines []registryEntry) bool {
+func isEngineAssetDeletable(u UserSettings, paths *BoundPaths, rawPath, canonPath, kind, family, wsEnginesRoot string, resultsRoot *string, engines []registryEntry) bool {
 	if kind != "local_installation" {
 		return isEngineDeletable(rawPath, canonPath, kind, wsEnginesRoot, resultsRoot)
 	}
@@ -292,7 +294,7 @@ func isEngineAssetDeletable(u UserSettings, rawPath, canonPath, kind, family, ws
 	if !ok {
 		return false
 	}
-	return !polystrataInstallHasExternalDependents(u, wsEnginesRoot, canonPath, installDir, engines)
+	return !polystrataInstallHasExternalDependents(u, paths, wsEnginesRoot, canonPath, installDir, engines)
 }
 
 func otherEngineSharesInstallDir(installDir, selfCanonPath string, engines []registryEntry) bool {
@@ -492,19 +494,20 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 		return false, Err("not_found")
 	}
 	wsEngines := workspaceEnginesRoot(u, paths)
-	installDir, ok := managedPolystrataInstallDir(rawPath, eng.Path, wsEngines, u.ResultsRoot)
+	resultsRoot := derivedResultsRoot(u, paths)
+	installDir, ok := managedPolystrataInstallDir(rawPath, eng.Path, wsEngines, resultsRoot)
 	if !ok {
 		return false, errAssetNotDeletable()
 	}
 	data := s.registry()
-	if polystrataInstallHasExternalDependents(u, wsEngines, eng.Path, installDir, data.engines) {
+	if polystrataInstallHasExternalDependents(u, paths, wsEngines, eng.Path, installDir, data.engines) {
 		return false, errAssetNotDeletable()
 	}
-	if err := verifyPolystrataRuntimeTreeSafe(installDir, u.ResultsRoot); err != nil {
+	if err := verifyPolystrataRuntimeTreeSafe(installDir, resultsRoot); err != nil {
 		return false, errAssetNotDeletable()
 	}
 	declWorkDir, declDataDir := readPolystrataInstallDirs(eng.Path)
-	migPlans, migErr := snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir, defaultManagedPolystrataDataDirs(u, wsEngines))
+	migPlans, migErr := snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir, defaultManagedPolystrataDataDirs(u, paths, wsEngines))
 	if migErr != nil {
 		if apiErr, ok := polystrataCredentialApiError(migErr); ok {
 			return false, apiErr

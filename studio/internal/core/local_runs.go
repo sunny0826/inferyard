@@ -32,7 +32,8 @@ func (s *Service) StartCandidateRuns(req CandidateRunsRequest) ([]RunTask, *ApiE
 		return nil, Err("invalid_request")
 	}
 	u := s.userSettings()
-	if u.ResultsRoot == nil {
+	results := s.resultsRoot(u)
+	if results == nil {
 		return nil, Conflict("settings_incomplete")
 	}
 	probe := s.probe(u)
@@ -69,7 +70,7 @@ func (s *Service) StartCandidateRuns(req CandidateRunsRequest) ([]RunTask, *ApiE
 		if err != nil || bundle != candidate.Bundle || seen[bundle] {
 			return nil, Err("invalid_request")
 		}
-		root, err = Resolve(*u.ResultsRoot, root)
+		root, err = Resolve(*results, root)
 		if err != nil {
 			return nil, Conflict("output_root_outside_results")
 		}

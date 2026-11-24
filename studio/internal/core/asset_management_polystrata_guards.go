@@ -308,7 +308,7 @@ func survivingPolystrataConfigDependsOnInstallDir(cfgPath, declWorkDir, declData
 	return !sameAssetFileSets(files, postLenFiles) || !samePathSets(dirs, postLenDirs)
 }
 
-func polystrataInstallHasExternalDependents(u UserSettings, wsEnginesRoot, canonInstPath, installDir string, engines []registryEntry) bool {
+func polystrataInstallHasExternalDependents(u UserSettings, paths *BoundPaths, wsEnginesRoot, canonInstPath, installDir string, engines []registryEntry) bool {
 	if otherEngineSharesInstallDir(installDir, canonInstPath, engines) {
 		return true
 	}
@@ -426,7 +426,7 @@ func polystrataInstallHasExternalDependents(u UserSettings, wsEnginesRoot, canon
 			}
 		}
 	}
-	managedDataDirs := defaultManagedPolystrataDataDirs(u, wsEnginesRoot)
+	managedDataDirs := defaultManagedPolystrataDataDirs(u, paths, wsEnginesRoot)
 	for _, dd := range managedDataDirs {
 		for _, dir := range polystrataConfigSearchDirs("", dd) {
 			if checkSurvivingDir(dir, "", dd, false) {

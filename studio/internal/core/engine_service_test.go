@@ -79,7 +79,7 @@ func engineService(t *testing.T, workspace string) *Service {
 
 func engineServiceCtx(t *testing.T, ctx context.Context, workspace string) *Service {
 	t.Helper()
-	raw := []byte(`{"workspace_root": ` + strconv.Quote(workspace) + `, "results_root": ` + strconv.Quote(filepath.Join(workspace, "results")) + `}`)
+	raw := []byte(`{"workspace_root": ` + strconv.Quote(workspace) + `}`)
 	settings := filepath.Join(t.TempDir(), "settings.json")
 	if err := os.WriteFile(settings, raw, 0o600); err != nil {
 		t.Fatal(err)

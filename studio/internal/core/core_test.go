@@ -68,8 +68,9 @@ func TestQueueCancellationAndExitMapping(t *testing.T) {
 		<-ctx.Done()
 		return result(130), ctx.Err()
 	})
-	root := t.TempDir()
-	s.settings.ResultsRoot = &root
+	ws := t.TempDir()
+	root := filepath.Join(ws, "results")
+	s.settings.WorkspaceRoot = &ws
 	tasks, e := s.StartRuns(StartRunsRequest{ConfigPaths: []string{config(t, root, "a"), config(t, root, "b")}})
 	if e != nil {
 		t.Fatal(e)
@@ -104,8 +105,9 @@ func TestQueueCancellationAndExitMapping(t *testing.T) {
 				}
 				return result(code), nil
 			})
-			root := t.TempDir()
-			s.settings.ResultsRoot = &root
+			ws := t.TempDir()
+			root := filepath.Join(ws, "results")
+			s.settings.WorkspaceRoot = &ws
 			ts, e := s.StartRuns(StartRunsRequest{ConfigPaths: []string{config(t, root, "a")}, AllowSingleBundle: ptr(true)})
 			if e != nil {
 				t.Fatal(e)
@@ -162,8 +164,8 @@ func TestParallelDownloadsAndProgress(t *testing.T) {
 		}
 		return inferyard.Execution{ExitCode: 0, Stdout: []byte(`{"command":"model","status":"complete","completeness":"complete","details":{"bytes":4,"sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}`)}, nil
 	})
-	root := t.TempDir()
-	s.settings.ModelsRoot = &root
+	ws := t.TempDir()
+	s.settings.WorkspaceRoot = &ws
 	source := "https://huggingface.co/o/r/blob/0123456789012345678901234567890123456789/model.gguf"
 	a, e := s.CreateModelDownload(CreateDownloadRequest{source, "a"}, "")
 	if e != nil {
@@ -216,7 +218,8 @@ func TestReportCreationAndResumeValidation(t *testing.T) {
 		writeStudioReport(t, dir, "fixture-run", args[2])
 		return result(0), nil
 	})
-	root := t.TempDir()
+	ws := t.TempDir()
+	root := filepath.Join(ws, "results")
 	run := filepath.Join(root, "run")
 	os.MkdirAll(run, 0700)
 	for _, name := range []string{"inputs.json", "events.jsonl"} {
@@ -226,7 +229,7 @@ func TestReportCreationAndResumeValidation(t *testing.T) {
 		}
 		os.WriteFile(filepath.Join(run, name), raw, 0600)
 	}
-	s.settings.ResultsRoot = &root
+	s.settings.WorkspaceRoot = &ws
 	if _, e := s.Resume(ResumeRunRequest{FromRun: run}); e == nil || e.Details["reason"] != "not_resumable" {
 		t.Fatal(e)
 	}
@@ -299,8 +302,9 @@ func TestTwoConfigsExecuteInArrayOrder(t *testing.T) {
 		}
 		return result(0), nil
 	})
-	root := t.TempDir()
-	s.settings.ResultsRoot = &root
+	ws := t.TempDir()
+	root := filepath.Join(ws, "results")
+	s.settings.WorkspaceRoot = &ws
 	a, b := config(t, root, "a"), config(t, root, "b")
 	tasks, e := s.StartRuns(StartRunsRequest{ConfigPaths: []string{a, b}})
 	if e != nil {

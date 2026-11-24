@@ -45,7 +45,7 @@ func (s *Service) RefreshAssets() *ApiError {
 		return Conflict("refresh_in_progress")
 	}
 	u := clone(s.settings)
-	roots := allModelsRoots(u)
+	roots := s.allModelsRoots(u)
 	if len(roots) == 0 {
 		s.mu.Unlock()
 		return Conflict("settings_incomplete")

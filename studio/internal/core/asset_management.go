@@ -24,7 +24,7 @@ func (s *Service) extraModelsRoots() []string {
 	return extraModelsRootsOf(s.userSettings())
 }
 
-func activeModelRoots(u UserSettings) []string {
+func activeModelRoots(u UserSettings, paths *BoundPaths) []string {
 	roots := []string{}
 	seen := map[string]bool{}
 	add := func(raw string) {
@@ -43,8 +43,8 @@ func activeModelRoots(u UserSettings) []string {
 		seen[key] = true
 		roots = append(roots, clean)
 	}
-	if u.ModelsRoot != nil {
-		add(*u.ModelsRoot)
+	if m := derivedModelsRoot(u, paths); m != nil {
+		add(*m)
 	}
 	for _, extra := range extraModelsRootsOf(u) {
 		add(extra)
@@ -56,8 +56,8 @@ func workspaceEnginesRoot(u UserSettings, paths *BoundPaths) string {
 	if paths != nil && strings.TrimSpace(paths.Engines) != "" {
 		return filepath.Clean(paths.Engines)
 	}
-	if w := workspaceRoot(u); w != nil && strings.TrimSpace(*w) != "" {
-		return filepath.Join(filepath.Clean(*w), "engines")
+	if u.WorkspaceRoot != nil && strings.TrimSpace(*u.WorkspaceRoot) != "" {
+		return filepath.Join(filepath.Clean(*u.WorkspaceRoot), "engines")
 	}
 	return ""
 }
@@ -125,7 +125,7 @@ func isEngineDeletable(rawPath, canonPath, kind, wsEnginesRoot string, resultsRo
 	return !overlapsResultsRoot(canonPath, resultsRoot)
 }
 
-func registryStorageMetrics(u UserSettings, modelRoots []string, models []registryEntry, scanned *inferyard.AssetScan) (int64, *int64) {
+func registryStorageMetrics(u UserSettings, paths *BoundPaths, modelRoots []string, models []registryEntry, scanned *inferyard.AssetScan) (int64, *int64) {
 	var total int64
 	countedFiles := map[string]bool{}
 	for _, entry := range models {
@@ -167,8 +167,9 @@ func registryStorageMetrics(u UserSettings, modelRoots []string, models []regist
 	if total == 0 && scanned != nil && scanned.TotalModelBytes != nil {
 		total = *scanned.TotalModelBytes
 	}
-	if u.ModelsRoot != nil && strings.TrimSpace(*u.ModelsRoot) != "" {
-		if free := DiskFreeBytesForPath(*u.ModelsRoot); free != nil {
+	primaryModels := derivedModelsRoot(u, paths)
+	if primaryModels != nil && strings.TrimSpace(*primaryModels) != "" {
+		if free := DiskFreeBytesForPath(*primaryModels); free != nil {
 			return total, free
 		}
 	}
@@ -180,8 +181,8 @@ func registryStorageMetrics(u UserSettings, modelRoots []string, models []regist
 	if scanned != nil {
 		var fallback *int64
 		primaryCanon := ""
-		if u.ModelsRoot != nil && strings.TrimSpace(*u.ModelsRoot) != "" {
-			if c, err := canonical(*u.ModelsRoot); err == nil {
+		if primaryModels != nil && strings.TrimSpace(*primaryModels) != "" {
+			if c, err := canonical(*primaryModels); err == nil {
 				primaryCanon = c
 			}
 		}
@@ -496,10 +497,10 @@ func (s *Service) deleteManagedAssetInternal(kind, name, expectedTargetPath, exp
 	var protectedDataDirs []string
 	var prot protectedPolystrataRefs
 	if kind == "model" {
-		allowedRoots = activeModelRoots(u)
+		allowedRoots = activeModelRoots(u, paths)
 		wsEngines := workspaceEnginesRoot(u, paths)
-		protectedDataDirs = protectedPolystrataDataDirs(u, wsEngines)
-		prot = collectOtherPolystrataProtectedRefs(u, wsEngines, "")
+		protectedDataDirs = protectedPolystrataDataDirs(u, paths, wsEngines)
+		prot = collectOtherPolystrataProtectedRefs(u, paths, wsEngines, "")
 	} else if wsEngines := workspaceEnginesRoot(u, paths); wsEngines != "" {
 		allowedRoots = []string{wsEngines}
 	}
@@ -532,7 +533,7 @@ func (s *Service) deleteManagedAssetInternal(kind, name, expectedTargetPath, exp
 	if _, ok := strictlyInsideAnyRoot(canonDelete, allowedRoots); !ok {
 		return errAssetNotDeletable()
 	}
-	if overlapsResultsRoot(canonDelete, u.ResultsRoot) {
+	if overlapsResultsRoot(canonDelete, derivedResultsRoot(u, paths)) {
 		return errAssetNotDeletable()
 	}
 	if err := verifyAssetTreeSafe(canonDelete, targetInfo.IsDir()); err != nil {

@@ -227,7 +227,7 @@ func polystrataModelDeleteFingerprint(plan polystrataModelDeletePlan) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func polystrataInstallKeepsExternalData(u UserSettings, wsEnginesRoot, canonInstPath, installDir string) bool {
+func polystrataInstallKeepsExternalData(u UserSettings, paths *BoundPaths, wsEnginesRoot, canonInstPath, installDir string) bool {
 	dd := ""
 	if rawBytes, err := installationBytes(canonInstPath); err == nil {
 		var decl struct {
@@ -247,7 +247,7 @@ func polystrataInstallKeepsExternalData(u UserSettings, wsEnginesRoot, canonInst
 	if err != nil || pathWithinDirSameFS(installDir, canonDD) {
 		return false
 	}
-	for _, managedDD := range defaultManagedPolystrataDataDirs(u, wsEnginesRoot) {
+	for _, managedDD := range defaultManagedPolystrataDataDirs(u, paths, wsEnginesRoot) {
 		if sameFileOrPath(canonDD, managedDD) && dirDiskUsageNoSymlinks(canonDD) > 0 {
 			return true
 		}
@@ -255,8 +255,8 @@ func polystrataInstallKeepsExternalData(u UserSettings, wsEnginesRoot, canonInst
 	return false
 }
 
-func protectedPolystrataDataDirs(u UserSettings, wsEnginesRoot string) []string {
-	out := defaultManagedPolystrataDataDirs(u, wsEnginesRoot)
+func protectedPolystrataDataDirs(u UserSettings, paths *BoundPaths, wsEnginesRoot string) []string {
+	out := defaultManagedPolystrataDataDirs(u, paths, wsEnginesRoot)
 	addDir := func(raw string) {
 		trimmed := strings.TrimSpace(raw)
 		if trimmed == "" || isSymlinkPath(trimmed) {
@@ -352,19 +352,20 @@ func (s *Service) inspectDeleteEngineAsset(u UserSettings, paths *BoundPaths, re
 		if eng.Kind == "local_installation" && eng.Family == "polystrata" {
 			rawPath := s.findAssetRawPath("engine", name, eng.Path)
 			wsEngines := workspaceEnginesRoot(u, paths)
-			installDir, ok := managedPolystrataInstallDir(rawPath, eng.Path, wsEngines, u.ResultsRoot)
+			resultsRoot := derivedResultsRoot(u, paths)
+			installDir, ok := managedPolystrataInstallDir(rawPath, eng.Path, wsEngines, resultsRoot)
 			if !ok {
 				return AssetDeleteInfo{}, errAssetNotDeletable()
 			}
 			data := s.registry()
-			if polystrataInstallHasExternalDependents(u, wsEngines, eng.Path, installDir, data.engines) {
+			if polystrataInstallHasExternalDependents(u, paths, wsEngines, eng.Path, installDir, data.engines) {
 				return AssetDeleteInfo{}, errAssetNotDeletable()
 			}
-			if verifyPolystrataRuntimeTreeSafe(installDir, u.ResultsRoot) != nil {
+			if verifyPolystrataRuntimeTreeSafe(installDir, resultsRoot) != nil {
 				return AssetDeleteInfo{}, errAssetNotDeletable()
 			}
 			declWorkDir, declDataDir := readPolystrataInstallDirs(eng.Path)
-			migPlans, migErr := snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir, defaultManagedPolystrataDataDirs(u, wsEngines))
+			migPlans, migErr := snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir, defaultManagedPolystrataDataDirs(u, paths, wsEngines))
 			if migErr != nil {
 				if apiErr, ok := polystrataCredentialApiError(migErr); ok {
 					return AssetDeleteInfo{}, apiErr
@@ -380,7 +381,7 @@ func (s *Service) inspectDeleteEngineAsset(u UserSettings, paths *BoundPaths, re
 				Fingerprint:      polystrataEngineDeleteFingerprint(installDir, eng.Path, migPlans),
 				ReclaimableBytes: ptr(reclaimableDiskBytes([]string{installDir}, nil)),
 				Scope:            "polystrata_engine",
-				KeepsModelData:   polystrataInstallKeepsExternalData(u, wsEngines, eng.Path, installDir),
+				KeepsModelData:   polystrataInstallKeepsExternalData(u, paths, wsEngines, eng.Path, installDir),
 			}, nil
 		}
 		target := eng.Path
@@ -419,7 +420,7 @@ func (s *Service) inspectDeleteModelAsset(u UserSettings, paths *BoundPaths, reg
 		}
 		if m.Format == "strata_pack" {
 			rawPath := s.findAssetRawPath("model", name, m.Path)
-			plan, err := planPolystrataModelDelete(u, workspaceEnginesRoot(u, paths), rawPath, m.Path)
+			plan, err := planPolystrataModelDelete(u, paths, workspaceEnginesRoot(u, paths), rawPath, m.Path)
 			if err != nil {
 				return AssetDeleteInfo{}, err
 			}
@@ -441,12 +442,12 @@ func (s *Service) inspectDeleteModelAsset(u UserSettings, paths *BoundPaths, reg
 		target := m.Path
 		sizePtr := clone(m.SizeBytes)
 		wsEngines := workspaceEnginesRoot(u, paths)
-		protectedDataDirs := protectedPolystrataDataDirs(u, wsEngines)
-		prot := collectOtherPolystrataProtectedRefs(u, wsEngines, "")
+		protectedDataDirs := protectedPolystrataDataDirs(u, paths, wsEngines)
+		prot := collectOtherPolystrataProtectedRefs(u, paths, wsEngines, "")
 		targetIsDir := m.Format == "directory"
 		if info, err := os.Lstat(m.Path); err == nil {
 			targetIsDir = info.IsDir()
-			if matchedRoot, ok := strictlyInsideAnyRoot(m.Path, activeModelRoots(u)); ok {
+			if matchedRoot, ok := strictlyInsideAnyRoot(m.Path, activeModelRoots(u, paths)); ok {
 				target = resolveStandardModelDeleteTarget(m.Path, matchedRoot, targetIsDir, protectedDataDirs)
 			}
 			if tInfo, tErr := os.Lstat(target); tErr == nil {

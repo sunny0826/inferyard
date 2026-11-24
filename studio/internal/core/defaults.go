@@ -2,7 +2,6 @@ package core
 
 import (
 	"net/url"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -33,12 +32,8 @@ func isEngineArchive(base string) bool {
 }
 
 func EngineRoots(workspace string) []string {
-	roots := []string{}
-	if workspace != "" {
-		roots = append(roots, filepath.Join(workspace, "engines"))
+	if workspace == "" {
+		return []string{}
 	}
-	if home, err := os.UserHomeDir(); err == nil {
-		roots = append(roots, filepath.Join(home, ".inferyard", "engine"))
-	}
-	return roots
+	return []string{filepath.Join(workspace, "engines")}
 }

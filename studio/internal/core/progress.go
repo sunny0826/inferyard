@@ -26,10 +26,10 @@ func (s *Service) Progress(ctx context.Context) (ProgressResponse, *ApiError) {
 		return ProgressResponse{}, Conflict("settings_incomplete")
 	}
 	args := []string{"progress", "--workspace", *w}
-	if u.ResultsRoot != nil && !sameDirPath(*u.ResultsRoot, filepath.Join(*w, "results")) {
-		args = append(args, "--results", *u.ResultsRoot)
+	if res := s.resultsRoot(u); res != nil && !sameDirPath(*res, filepath.Join(*w, "results")) {
+		args = append(args, "--results", *res)
 	}
-	if rp := reportsRoot(u); rp != nil && !sameDirPath(*rp, filepath.Join(*w, "reports")) {
+	if rp := s.reportsRoot(u); rp != nil && !sameDirPath(*rp, filepath.Join(*w, "reports")) {
 		args = append(args, "--reports", *rp)
 	}
 	out, err := s.exec(ctx, *p.Path, args...)

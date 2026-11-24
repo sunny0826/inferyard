@@ -72,10 +72,18 @@ func validDirectorySource(source string) bool {
 	return ok && len(p) >= 4 && p[2] == "tree" && (len(p) == 4 || !strings.HasSuffix(p[len(p)-1], ".gguf"))
 }
 
-func (s *Service) activeDownloadLocked(kind, sourceURL, requestedSource string) (DownloadTask, bool) {
+func (s *Service) activeDownloadLocked(kind, root, sourceURL, requestedSource string) (DownloadTask, bool) {
 	for _, d := range s.downloads {
 		if d.Task.Kind != kind || d.Task.State != "downloading" {
 			continue
+		}
+		if root != "" {
+			if !filepath.IsAbs(d.Task.OutDir) {
+				continue
+			}
+			if _, err := Resolve(root, d.Task.OutDir); err != nil {
+				continue
+			}
 		}
 		for _, want := range []string{sourceURL, requestedSource} {
 			if want == "" {
@@ -89,17 +97,27 @@ func (s *Service) activeDownloadLocked(kind, sourceURL, requestedSource string) 
 	return DownloadTask{}, false
 }
 
-func (s *Service) activeRetryOrDownloadLocked(retryOf, kind, sourceURL string) (DownloadTask, bool) {
+func (s *Service) activeRetryOrDownloadLocked(retryOf, kind, root, sourceURL string) (DownloadTask, bool) {
+	inRoot := func(d *downloadEntry) bool {
+		if root == "" {
+			return true
+		}
+		if !filepath.IsAbs(d.Task.OutDir) {
+			return false
+		}
+		_, err := Resolve(root, d.Task.OutDir)
+		return err == nil
+	}
 	if retryOf != "" {
 		for _, d := range s.downloads {
-			if d.Task.State == "downloading" && d.retryOf == retryOf {
+			if d.Task.State == "downloading" && d.retryOf == retryOf && inRoot(d) {
 				return clone(d.Task), true
 			}
 		}
 	}
 	if sourceURL != "" {
 		for _, d := range s.downloads {
-			if d.Task.Kind == kind && d.Task.State == "downloading" && d.Task.SourceUrl == sourceURL {
+			if d.Task.Kind == kind && d.Task.State == "downloading" && d.Task.SourceUrl == sourceURL && inRoot(d) {
 				return clone(d.Task), true
 			}
 		}
@@ -115,7 +133,7 @@ func (s *Service) createModelDownload(req CreateDownloadRequest, requestedSource
 	if (req.OutName != "" && !ValidDownloadName(req.OutName)) || (!validSource(req.SourceUrl) && !validDirectorySource(req.SourceUrl)) || (tokenEnv != "" && !envName.MatchString(tokenEnv)) {
 		return DownloadTask{}, Err("invalid_request")
 	}
-	u := downloadNameDefaults(s.userSettings())
+	u := s.userSettings()
 	root, apiErr := s.downloadRoot("model", u)
 	if apiErr != nil {
 		return DownloadTask{}, apiErr
@@ -130,11 +148,11 @@ func (s *Service) createModelDownload(req CreateDownloadRequest, requestedSource
 		return DownloadTask{}, apiErr
 	}
 	if req.OutName == "" {
-		if existing, found := s.activeDownloadLocked("model", req.SourceUrl, requestedSource); found {
+		if existing, found := s.activeDownloadLocked("model", root, req.SourceUrl, requestedSource); found {
 			return existing, nil
 		}
 	}
-	base := resolveAutoDownloadName("model", u.ModelDownloadName, req.SourceUrl)
+	base := resolveAutoDownloadName("model", req.SourceUrl)
 	name, dir, failure := s.downloadOutputLocked(root, req.OutName, base)
 	if failure != nil {
 		return DownloadTask{}, failure
@@ -323,7 +341,7 @@ func (s *Service) CreateEngineDownload(source, outName string) (DownloadTask, *A
 	if !validEngineSource(source) || (outName != "" && !ValidDownloadName(outName)) {
 		return DownloadTask{}, Err("invalid_request")
 	}
-	u := downloadNameDefaults(s.userSettings())
+	u := s.userSettings()
 	root, apiErr := s.downloadRoot("engine", u)
 	if apiErr != nil {
 		return DownloadTask{}, apiErr
@@ -338,11 +356,11 @@ func (s *Service) CreateEngineDownload(source, outName string) (DownloadTask, *A
 		return DownloadTask{}, apiErr
 	}
 	if outName == "" {
-		if existing, found := s.activeDownloadLocked("engine", source, ""); found {
+		if existing, found := s.activeDownloadLocked("engine", root, source, ""); found {
 			return existing, nil
 		}
 	}
-	base := resolveAutoDownloadName("engine", u.EngineDownloadName, source)
+	base := resolveAutoDownloadName("engine", source)
 	outName, dir, failure := s.downloadOutputLocked(root, outName, base)
 	if failure != nil {
 		return DownloadTask{}, failure

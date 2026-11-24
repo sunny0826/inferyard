@@ -77,7 +77,7 @@ func reportSummary(path string) (ReportSummary, error) {
 	return r, nil
 }
 func (s *Service) Reports() (*string, []ReportSummary, *ApiError) {
-	root := reportsRoot(s.userSettings())
+	root := s.reportsRoot(s.userSettings())
 	out := []ReportSummary{}
 	if root == nil {
 		return nil, out, nil
@@ -108,7 +108,8 @@ func (s *Service) CreateReport(req CreateReportRequest) (ReportSummary, *ApiErro
 		return ReportSummary{}, Err("invalid_request")
 	}
 	u := s.userSettings()
-	if u.ResultsRoot == nil {
+	results := s.resultsRoot(u)
+	if results == nil {
 		return ReportSummary{}, Conflict("settings_incomplete")
 	}
 	paths := []string{}
@@ -117,7 +118,7 @@ func (s *Service) CreateReport(req CreateReportRequest) (ReportSummary, *ApiErro
 		if !filepath.IsAbs(p) {
 			return ReportSummary{}, Err("invalid_request")
 		}
-		p, e := Resolve(*u.ResultsRoot, p)
+		p, e := Resolve(*results, p)
 		if e != nil || seen[p] {
 			return ReportSummary{}, Err("invalid_request")
 		}
@@ -152,7 +153,7 @@ func (s *Service) CreateReport(req CreateReportRequest) (ReportSummary, *ApiErro
 	}
 	s.reportMu.Lock()
 	defer s.reportMu.Unlock()
-	root := *reportsRoot(u)
+	root := *s.reportsRoot(u)
 	if e := os.MkdirAll(root, 0700); e != nil {
 		return ReportSummary{}, Err("internal_error")
 	}
@@ -189,7 +190,7 @@ func (s *Service) CreateReport(req CreateReportRequest) (ReportSummary, *ApiErro
 }
 
 func (s *Service) ReportFile(relative string) (string, *ApiError) {
-	root := reportsRoot(s.userSettings())
+	root := s.reportsRoot(s.userSettings())
 	if root == nil {
 		return "", Err("not_found")
 	}
@@ -221,7 +222,7 @@ func (s *Service) ReportFile(relative string) (string, *ApiError) {
 
 func (s *Service) ReportIndex(reference string) (*ReportIndex, *ApiError) {
 	if filepath.IsAbs(reference) {
-		root := reportsRoot(s.userSettings())
+		root := s.reportsRoot(s.userSettings())
 		if root == nil {
 			return nil, Err("not_found")
 		}

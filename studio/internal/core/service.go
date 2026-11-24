@@ -143,7 +143,6 @@ func New(ctx context.Context, o Options) (*Service, error) {
 	} else if !os.IsNotExist(err) {
 		return nil, err
 	}
-	s.settings = downloadNameDefaults(s.settings)
 	s.paths = o.Paths
 	if s.paths != nil {
 		s.settings = s.paths.bind(s.settings)
@@ -160,7 +159,7 @@ func New(ctx context.Context, o Options) (*Service, error) {
 		case <-s.shutdownDone:
 		}
 	}()
-	if s.settings.ModelsRoot != nil {
+	if s.modelsRoot(s.settings) != nil {
 		s.RefreshAssets()
 		s.RefreshDevice()
 	}
@@ -256,12 +255,6 @@ func (s *Service) userSettings() UserSettings {
 	defer s.mu.Unlock()
 	return clone(s.settings)
 }
-func reportsRoot(u UserSettings) *string {
-	if u.ResultsRoot == nil {
-		return nil
-	}
-	return ptr(filepath.Join(filepath.Dir(*u.ResultsRoot), "reports"))
-}
 func (s *Service) Settings() SettingsResponse {
 	u := s.userSettings()
 	p := s.probe(u)
@@ -270,58 +263,54 @@ func (s *Service) Settings() SettingsResponse {
 		InferyardPath:    p.Path,
 		InferyardVersion: p.Version,
 		InferyardStatus:  p.Status,
-		ResultsRoot:      u.ResultsRoot,
-		ModelsRoot:       u.ModelsRoot,
+		ResultsRoot:      s.resultsRoot(u),
+		ModelsRoot:       s.modelsRoot(u),
 		ExtraModelsRoots: append([]string(nil), u.ExtraModelsRoots...),
 		DownloadProxy:    u.DownloadProxy,
 		Theme:            NormalizeTheme(u.Theme),
 		Language:         NormalizeLanguage(u.Language),
 		MinimizeToTray:   u.MinimizeToTray,
-		ReportsRoot:      reportsRoot(u),
+		ReportsRoot:      s.reportsRoot(u),
 	}}
 }
 func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResponse, *ApiError) {
 	s.settingsMu.Lock()
 	defer s.settingsMu.Unlock()
-	u := s.userSettings()
-	for k, v := range patch {
-		if s.paths != nil && k != "model_download_name" && k != "engine_download_name" && k != "download_proxy" && k != "theme" && k != "language" && k != "minimize_to_tray" {
-			return SettingsResponse{}, Conflict("paths_bound")
-		}
-		if handled, apiErr := applySettingsPatchExtra(&u, k, v); handled {
-			if apiErr != nil {
-				return SettingsResponse{}, apiErr
-			}
-			continue
-		}
-		if k == "model_download_name" || k == "engine_download_name" {
-			var name string
-			if json.Unmarshal(v, &name) != nil || !ValidDownloadName(name) {
-				return SettingsResponse{}, Err("invalid_request")
-			}
-			if k == "model_download_name" {
-				u.ModelDownloadName = name
-			} else {
-				u.EngineDownloadName = name
-			}
-			continue
-		}
-		if k != "inferyard_path" && k != "results_root" && k != "models_root" && k != "workspace_root" {
+	for k := range patch {
+		if k != "inferyard_path" && k != "workspace_root" && k != "download_proxy" && k != "theme" && k != "language" && k != "minimize_to_tray" && k != "extra_models_roots" {
 			return SettingsResponse{}, Err("invalid_request")
+		}
+	}
+	if s.paths != nil {
+		for k := range patch {
+			if k != "download_proxy" && k != "theme" && k != "language" && k != "minimize_to_tray" {
+				return SettingsResponse{}, Conflict("paths_bound")
+			}
+		}
+	}
+	u := s.userSettings()
+	for _, k := range []string{"workspace_root", "inferyard_path"} {
+		v, ok := patch[k]
+		if !ok {
+			continue
 		}
 		var p *string
 		if json.Unmarshal(v, &p) != nil || (p == nil && k != "inferyard_path") || (p != nil && (!filepath.IsAbs(*p) || strings.ContainsRune(*p, 0))) {
 			return SettingsResponse{}, Err("invalid_request")
 		}
-		switch k {
-		case "workspace_root":
+		if k == "workspace_root" {
 			u.WorkspaceRoot = p
-		case "inferyard_path":
+		} else {
 			u.InferyardPath = p
-		case "results_root":
-			u.ResultsRoot = p
-		case "models_root":
-			u.ModelsRoot = p
+		}
+	}
+	for _, k := range []string{"extra_models_roots", "download_proxy", "theme", "language", "minimize_to_tray"} {
+		v, ok := patch[k]
+		if !ok {
+			continue
+		}
+		if _, apiErr := s.applySettingsPatchExtra(&u, k, v); apiErr != nil {
+			return SettingsResponse{}, apiErr
 		}
 	}
 	return s.saveSettings(u)
@@ -366,8 +355,8 @@ func (s *Service) persistSettings(u UserSettings, forceCLIRefresh bool) (Setting
 	}
 	s.mu.Lock()
 	cliChanged := forceCLIRefresh || str(u.InferyardPath) != str(s.settings.InferyardPath)
-	changed := str(u.ResultsRoot) != str(s.settings.ResultsRoot)
-	modelsChanged := str(u.ModelsRoot) != str(s.settings.ModelsRoot) || !slicesEqualStrings(u.ExtraModelsRoots, s.settings.ExtraModelsRoots)
+	changed := str(s.resultsRoot(u)) != str(s.resultsRoot(s.settings))
+	modelsChanged := str(s.modelsRoot(u)) != str(s.modelsRoot(s.settings)) || !slicesEqualStrings(u.ExtraModelsRoots, s.settings.ExtraModelsRoots)
 	if modelsChanged || cliChanged {
 		s.deviceGeneration++
 		s.device.Snapshot = nil
@@ -383,6 +372,7 @@ func (s *Service) persistSettings(u UserSettings, forceCLIRefresh bool) (Setting
 	s.settings = u
 	if changed {
 		s.rebuilding = true
+		s.history = RunHistoryResponse{ResultsRoot: s.resultsRoot(u), ScannedAt: now(), Batches: []BatchSummary{}, StandaloneRuns: []RunSummary{}}
 	}
 	s.mu.Unlock()
 	if cliChanged {
@@ -397,7 +387,7 @@ func (s *Service) persistSettings(u UserSettings, forceCLIRefresh bool) (Setting
 	if changed {
 		go s.rebuild(u)
 	}
-	if (modelsChanged || cliChanged) && len(allModelsRoots(u)) > 0 {
+	if (modelsChanged || cliChanged) && len(s.allModelsRoots(u)) > 0 {
 		s.RefreshAssets()
 		s.RefreshDevice()
 	}
@@ -428,7 +418,7 @@ func (s *Service) RefreshDevice() *ApiError {
 		return Conflict("refresh_in_progress")
 	}
 	u := clone(s.settings)
-	roots := allModelsRoots(u)
+	roots := s.allModelsRoots(u)
 	if len(roots) == 0 {
 		s.mu.Unlock()
 		return Conflict("settings_incomplete")

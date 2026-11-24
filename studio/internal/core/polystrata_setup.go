@@ -106,7 +106,7 @@ func (s *Service) CreatePolystrataSetup(req PolystrataSetupRequest) (DownloadTas
 	if failure := validatePolystrataSetupRequest(req); failure != nil {
 		return DownloadTask{}, failure
 	}
-	u := downloadNameDefaults(s.userSettings())
+	u := s.userSettings()
 	root, apiErr := s.downloadRoot("engine", u)
 	if apiErr != nil {
 		return DownloadTask{}, apiErr
@@ -121,8 +121,10 @@ func (s *Service) CreatePolystrataSetup(req PolystrataSetupRequest) (DownloadTas
 		return DownloadTask{}, apiErr
 	}
 	if active, found := s.activePolystrataSetupLocked(); found {
-		if samePolystrataRequest(active.polystrata, &req) {
-			return clone(active.Task), nil
+		if samePolystrataRequest(active.polystrata, &req) && filepath.IsAbs(active.Task.OutDir) {
+			if _, err := Resolve(root, active.Task.OutDir); err == nil {
+				return clone(active.Task), nil
+			}
 		}
 		return DownloadTask{}, Conflict("polystrata_setup_active")
 	}
@@ -151,8 +153,8 @@ func (s *Service) CreatePolystrataSetup(req PolystrataSetupRequest) (DownloadTas
 		}
 	}
 	if dataDir == "" {
-		if u.ModelsRoot != nil && strings.TrimSpace(*u.ModelsRoot) != "" {
-			dataDir = filepath.Join(*u.ModelsRoot, "polystrata-data")
+		if models := s.modelsRoot(u); models != nil && strings.TrimSpace(*models) != "" {
+			dataDir = filepath.Join(*models, "polystrata-data")
 		} else {
 			dataDir = filepath.Join(filepath.Dir(outDir), "PolyStrata-data")
 		}
