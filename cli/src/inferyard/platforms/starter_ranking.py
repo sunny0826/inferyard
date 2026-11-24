@@ -81,11 +81,15 @@ def select_polystrata_alternatives(
     chosen_dl = int(chosen.get("estimated_download_bytes") or 0)
     picked: list[dict] = []
     picked_ids: set[str] = set()
+    picked_families: set[str] = {chosen_family} if isinstance(chosen_family, str) else set()
 
     def _add(item: dict | None) -> None:
         if item is not None and item["model_id"] not in picked_ids and len(picked) < limit:
             picked.append(item)
             picked_ids.add(item["model_id"])
+            fam = item.get("family")
+            if isinstance(fam, str) and fam:
+                picked_families.add(fam)
 
     # Slot 1: balanced alternative (prefer distinct family, or a non-tight fit if chosen is tight).
     if chosen_core == "strata":
@@ -114,18 +118,32 @@ def select_polystrata_alternatives(
         )
     _add(balanced)
 
-    # Slot 2: lightweight alternative (strata-poly on strata hosts, or clearly smaller download).
+    # Slot 2: lightweight alternative (strata-poly on strata hosts, preferring unseen families).
     if len(picked) < limit:
         pool = [item for item in remaining if item["model_id"] not in picked_ids]
-        if chosen_core != "strata-poly":
-            lightweight = _pick_first(pool, lambda x: x.get("engine_core") == "strata-poly")
+        has_strata_poly = chosen_core == "strata-poly" or any(
+            item.get("engine_core") == "strata-poly" for item in picked
+        )
+        if not has_strata_poly:
+            lightweight = _pick_first(
+                pool,
+                lambda x: x.get("engine_core") == "strata-poly"
+                and x.get("family") not in picked_families,
+            ) or _pick_first(pool, lambda x: x.get("engine_core") == "strata-poly")
         else:
+            ref_dl = min(
+                [chosen_dl, *(int(item.get("estimated_download_bytes") or 0) for item in picked)]
+            )
             smaller = [
-                item for item in pool if int(item.get("estimated_download_bytes") or 0) < chosen_dl
+                item for item in pool if int(item.get("estimated_download_bytes") or 0) < ref_dl
             ]
-            if smaller:
+            unseen_smaller = [item for item in smaller if item.get("family") not in picked_families]
+            light_pool = unseen_smaller or smaller or [
+                item for item in pool if item.get("family") not in picked_families
+            ]
+            if light_pool:
                 lightweight = min(
-                    smaller,
+                    light_pool,
                     key=lambda x: (
                         0 if x.get("fit_level") == "fits" else 1,
                         int(x.get("estimated_download_bytes") or 0),

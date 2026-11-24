@@ -2,6 +2,9 @@ package pages
 
 import (
 	"fmt"
+	"net/url"
+	"path"
+	"path/filepath"
 	"strings"
 
 	"inferyard/studio/internal/core"
@@ -241,7 +244,9 @@ func (s *viewState) starterHardwareSummary(rec core.StarterRecommendation) strin
 				parts = append(parts, "内存 "+mem)
 			}
 		}
-		if rec.DiskFreeBytes == nil {
+		_, hasModelsDiskKey := hw["models_disk_free_bytes"]
+		modelsDiskMissing := hw.object("missing")["models_disk_free_bytes"] != nil
+		if rec.DiskFreeBytes == nil && !hasModelsDiskKey && !modelsDiskMissing {
 			if disk := deviceBytes(hw["disk_free_bytes"]); disk != "" && disk != "缺测" {
 				parts = append(parts, "可用磁盘 "+disk)
 			}
@@ -260,17 +265,28 @@ func (s *viewState) isStarterOptionInstalled(opt starterOption) bool {
 		}
 		fam := strings.ToLower(strings.TrimSpace(opt.Family))
 		size := strings.ToLower(strings.TrimSpace(opt.Size))
+		availableStrataPaths := map[string]bool{}
 		for _, m := range s.registry.Models {
 			if !m.Available || m.Format != "strata_pack" {
 				continue
+			}
+			if cleaned := cleanMatchPath(m.Path); cleaned != "" {
+				availableStrataPaths[cleaned] = true
 			}
 			hay := strings.ToLower(m.Name + " " + m.Path)
 			if fam != "" && size != "" && strings.Contains(hay, fam) && strings.Contains(hay, size) {
 				return true
 			}
 		}
+		if len(availableStrataPaths) == 0 {
+			return false
+		}
 		for _, task := range s.downloads {
-			if task.Kind != "polystrata" || task.State != "done" {
+			if task.Kind != "polystrata" || task.State != "done" || task.ModelConfigPath == nil {
+				continue
+			}
+			cfgPath := cleanMatchPath(*task.ModelConfigPath)
+			if cfgPath == "" || !availableStrataPaths[cfgPath] {
 				continue
 			}
 			hay := strings.ToLower(task.DisplayName)
@@ -280,11 +296,38 @@ func (s *viewState) isStarterOptionInstalled(opt starterOption) bool {
 		}
 		return false
 	}
-	if !s.isEngineFamilyInstalled("llama-cpp") {
+	return s.isEngineFamilyInstalled("llama-cpp") && s.isStarterModelInstalled(opt)
+}
+
+func (s *viewState) isStarterModelInstalled(opt starterOption) bool {
+	if opt.Engine == "polystrata" {
+		return s.isStarterOptionInstalled(opt)
+	}
+	entry, ok := core.CatalogEntryByID(opt.ModelID)
+	if !ok {
 		return false
 	}
-	if entry, ok := core.CatalogEntryByID(opt.ModelID); ok {
-		return s.isModelEntryDownloaded(entry)
+	if s.isModelEntryDownloaded(entry) {
+		return true
+	}
+	wantFile := ""
+	if u, err := url.Parse(strings.TrimSpace(entry.URL)); err == nil {
+		base := strings.TrimSpace(path.Base(u.Path))
+		if strings.HasSuffix(strings.ToLower(base), ".gguf") {
+			wantFile = strings.ToLower(base)
+		}
+	}
+	if wantFile == "" {
+		return false
+	}
+	for _, m := range s.registry.Models {
+		if !m.Available {
+			continue
+		}
+		if strings.EqualFold(strings.TrimSpace(m.Name), wantFile) ||
+			strings.EqualFold(filepath.Base(strings.TrimSpace(m.Path)), wantFile) {
+			return true
+		}
 	}
 	return false
 }
@@ -386,9 +429,9 @@ func starterModelURLForOption(opt starterOption, modelSource string) string {
 	return modelURL
 }
 
-func (s *viewState) hasUnresolvedPolystrataTask() bool {
+func (s *viewState) hasUnresolvedDownloadTask() bool {
 	for i, task := range s.downloads {
-		if task.Kind != "polystrata" || (task.State != "failed" && task.State != "cancelled") {
+		if task.State != "failed" && task.State != "cancelled" {
 			continue
 		}
 		if !s.downloadResolved(task, i) {
@@ -407,7 +450,7 @@ func (s *viewState) hasStarterContent(rec core.StarterRecommendation) bool {
 
 func (s *viewState) starterDefaultCollapsed() bool {
 	assets := s.availableTaskAssets()
-	return assets.engine || assets.model || s.downloadActive("engine") || s.downloadActive("model") || s.downloadActive("polystrata") || s.hasUnresolvedPolystrataTask()
+	return assets.engine || assets.model || s.downloadActive("engine") || s.downloadActive("model") || s.downloadActive("polystrata") || s.hasUnresolvedDownloadTask()
 }
 
 func (s *viewState) starterPanelExpanded() bool {
@@ -439,32 +482,50 @@ func (s *viewState) openDownloadsWithStarterExpanded() {
 	s.selected = "downloads"
 }
 
-func (s *viewState) startStarterOption(opt starterOption, fromDashboard bool) {
+func (s *viewState) startStarterOption(opt starterOption, navigateToDownloads bool) {
 	st := s.ensureDownloadsUI()
 	switch opt.Engine {
 	case "polystrata":
-		if fromDashboard {
+		if navigateToDownloads {
 			s.setStarterPanelExpanded(false)
 			s.selected = "downloads"
 		}
 		s.acquirePolystrataSetup(polystrataRequestForOption(opt, st.polystrataModelSource))
 	default:
+		engineInstalled := s.isEngineFamilyInstalled("llama-cpp")
+		modelInstalled := s.isStarterModelInstalled(opt)
+		if engineInstalled && modelInstalled {
+			return
+		}
 		hostPlatform := s.downloadsHostPlatform()
 		engineURL := starterLlamaCppEngineURL(hostPlatform, opt.Backend)
 		modelURL := starterModelURLForOption(opt, st.modelSource)
-		if engineURL != "" && modelURL != "" {
-			if fromDashboard {
+		switch {
+		case engineInstalled && modelURL != "":
+			if navigateToDownloads {
+				s.setStarterPanelExpanded(false)
+				s.selected = "downloads"
+			}
+			s.acquireModelSource(modelURL, "")
+		case modelInstalled && engineURL != "":
+			if navigateToDownloads {
+				s.setStarterPanelExpanded(false)
+				s.selected = "downloads"
+			}
+			s.acquireEngine(engineURL, "")
+		case !engineInstalled && !modelInstalled && engineURL != "" && modelURL != "":
+			if navigateToDownloads {
 				s.setStarterPanelExpanded(false)
 				s.selected = "downloads"
 			}
 			s.acquireStarterBundle(engineURL, modelURL)
-			return
+		default:
+			if navigateToDownloads {
+				s.selected = "downloads"
+			}
+			relID, buildID := starterLlamaCppDrawerTarget(s.engineCatalogRegistry(), hostPlatform, opt.Backend)
+			st.openEngineDrawer("llama-cpp", relID, hostPlatform, buildID)
 		}
-		if fromDashboard {
-			s.selected = "downloads"
-		}
-		relID, buildID := starterLlamaCppDrawerTarget(s.engineCatalogRegistry(), hostPlatform, opt.Backend)
-		st.openEngineDrawer("llama-cpp", relID, hostPlatform, buildID)
 	}
 }
 

@@ -256,16 +256,10 @@ func (s *viewState) deviceRecommendationCard(c *ui.Context, rec core.StarterReco
 			deviceRow(c, "提示", strings.Join(notes, "；"))
 		}
 		opts := starterOptions(rec)
+		st := s.ensureDownloadsUI()
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			if len(opts) > 0 && !s.downloadActive("polystrata") {
-				top := opts[0]
-				ctaLabel := "一键安装推荐方案"
-				if top.Engine != "polystrata" {
-					ctaLabel = "下载推荐组合"
-				}
-				if primaryButton(c, ctaLabel).Disabled(s.busy).Clicked() {
-					s.startStarterOption(top, true)
-				}
+			if len(opts) > 0 {
+				s.starterPrimaryCTA(c, st, opts[0], true)
 			}
 			button(c, "查看全部推荐").OnClick(func() {
 				s.openDownloadsWithStarterExpanded()

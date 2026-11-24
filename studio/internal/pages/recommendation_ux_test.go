@@ -228,11 +228,177 @@ func TestDeviceRecommendationDirectInstallAndDrawerUsesFullPolystrataModels(t *t
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
 	tt.Frame()
 
-	click(t, tt, "一键安装推荐方案")
+	click(t, tt, "一键安装 PolyStrata")
 	if s.selected != "downloads" {
 		t.Fatalf("expected device direct install to switch to downloads, got %q", s.selected)
 	}
 	if len(stub.intents) != 1 {
 		t.Fatalf("expected 1 setup intent from device page, got %#v", stub.intents)
 	}
+}
+
+func TestRecommendationReviewRegressions(t *testing.T) {
+	// 1. Existing llama.cpp engine + missing model must download only the model (not re-download engine)
+	t.Run("existing_llama_cpp_engine_downloads_only_missing_model", func(t *testing.T) {
+		s := testState()
+		s.selected = "downloads"
+		s.device.Snapshot = json.RawMessage(testRichRecommendationSnapshot)
+		s.registry.Engines = []core.EngineAsset{{Name: "llama-server", Family: "llama-cpp"}}
+		s.registry.Models = nil
+		stub := &resolvePreviewStub{}
+		s.preview = stub
+		st := s.ensureDownloadsUI()
+		st.hostPlatform = "darwin/arm64"
+		s.setStarterPanelExpanded(true)
+
+		tt := ui.NewTester(s.downloadsPageView, 1120, 2600)
+		tt.SetPreferences(ui.Preferences{ReduceMotion: true})
+		tt.Frame()
+
+		click(t, tt, "选择推荐方案 · model-qwen3-0.6b-q8")
+		if !tt.HasText("下载推荐模型") || tt.HasText("下载推荐组合") {
+			t.Fatalf("expected model-only CTA when llama.cpp engine already installed: %v", tt.Texts())
+		}
+		click(t, tt, "下载推荐模型")
+		if len(stub.intents) != 1 {
+			t.Fatalf("expected exactly 1 model download intent, got %#v", stub.intents)
+		}
+		dl, ok := stub.intents[0].(previewDownload)
+		if !ok || dl.kind != "model" {
+			t.Fatalf("expected model download intent, got %#v", stub.intents[0])
+		}
+
+		// Once the model is also present, CTA becomes disabled "已就绪"
+		s.registry.Models = []core.ModelAsset{{Name: "Qwen3-0.6B-Q8_0.gguf", Format: "gguf", Available: true}}
+		tt.Frame()
+		if !tt.HasText("已就绪") || tt.HasText("下载推荐模型") {
+			t.Fatalf("expected ready state when both engine and model installed: %v", tt.Texts())
+		}
+	})
+
+	// 2. Uninstalling a PolyStrata model clears the "已安装" badge even when a done task remains in history
+	t.Run("uninstalled_polystrata_model_clears_installed_badge", func(t *testing.T) {
+		s := testState()
+		s.selected = "downloads"
+		s.device.Snapshot = json.RawMessage(testRichRecommendationSnapshot)
+		cfgPath := "/tmp/engines/polystrata/strata-qwen36.json"
+		s.registry.Engines = []core.EngineAsset{{Name: "PolyStrata · local", Family: "polystrata"}}
+		s.registry.Models = []core.ModelAsset{{Name: "strata-qwen36.json", Format: "strata_pack", Path: cfgPath, Available: true}}
+		s.downloads = []core.DownloadTask{{
+			TaskId:          "ps-done",
+			Kind:            "polystrata",
+			DisplayName:     "PolyStrata · qwen36 · UD-Q4_K_M",
+			State:           "done",
+			ModelConfigPath: &cfgPath,
+		}}
+		st := s.ensureDownloadsUI()
+		st.hostPlatform = "darwin/arm64"
+		s.setStarterPanelExpanded(true)
+
+		tt := ui.NewTester(s.downloadsPageView, 1120, 2600)
+		tt.SetPreferences(ui.Preferences{ReduceMotion: true})
+		tt.Frame()
+		opts := starterOptions(s.starterRecommendation())
+		if !s.isStarterOptionInstalled(opts[0]) || !tt.HasText("已就绪") {
+			t.Fatalf("expected installed/ready state while strata model is present: %v", tt.Texts())
+		}
+
+		// Uninstall the model while keeping engine + done task history
+		s.registry.Models = nil
+		tt.Frame()
+		if s.isStarterOptionInstalled(opts[0]) || tt.HasText("已就绪") || !tt.HasText("安装所选 PolyStrata 模型") {
+			t.Fatalf("installed/ready state must clear after PolyStrata model is uninstalled: %v", tt.Texts())
+		}
+	})
+
+	// 3. Linux device page exposes drawer action + independent model download for llama.cpp fallback
+	t.Run("linux_device_page_uses_platform_aware_llama_cpp_actions", func(t *testing.T) {
+		s := testState()
+		s.selected = "device"
+		s.device.Snapshot = json.RawMessage(`{
+			"hardware": {"platform": "Linux", "memory_total_bytes": 17179869184, "disk_free_bytes": 88046829568},
+			"starter_recommendation": {
+				"definition": "starter-recommendation.v1",
+				"status": "recommended",
+				"engine": "llama-cpp",
+				"backend": "cpu",
+				"model_id": "model-qwen3-4b-q4km",
+				"model_title": "Qwen3-4B-Q4_K_M（GGUF）",
+				"model_format": "gguf",
+				"fit_level": "fits",
+				"tier": "best",
+				"recommended_context": 8192,
+				"estimated_download_bytes": 2497280256,
+				"estimated_ram_bytes": 6442450944,
+				"reason": "fallback_llama_cpp_no_compatible_polystrata_gpu"
+			}
+		}`)
+		stub := &resolvePreviewStub{}
+		s.preview = stub
+		st := s.ensureDownloadsUI()
+		st.hostPlatform = "linux/amd64"
+
+		tt := ui.NewTester(s.deviceView, 1120, 1800)
+		tt.SetPreferences(ui.Preferences{ReduceMotion: true})
+		tt.Frame()
+
+		if !tt.HasText("查看引擎获取方式") || !tt.HasText("下载推荐模型") || tt.HasText("下载推荐组合") {
+			t.Fatalf("expected Linux-aware actions on device page: %v", tt.Texts())
+		}
+		click(t, tt, "下载推荐模型")
+		if len(stub.intents) != 1 || stub.intents[0].(previewDownload).kind != "model" {
+			t.Fatalf("expected direct model download intent on Linux device page, got %#v", stub.intents)
+		}
+	})
+
+	// 4. Failed regular engine/model download collapses recommendation panel by default
+	t.Run("regular_failed_download_collapses_starter_panel_by_default", func(t *testing.T) {
+		s := testState()
+		s.selected = "downloads"
+		s.device.Snapshot = json.RawMessage(testRichRecommendationSnapshot)
+		s.downloads = []core.DownloadTask{{
+			TaskId:    "model-failed",
+			Kind:      "model",
+			State:     "failed",
+			OutName:   "failed-model",
+			SourceUrl: "https://example.invalid/model.gguf",
+			Error:     core.Err("download_failed"),
+		}}
+		st := s.ensureDownloadsUI()
+		st.hostPlatform = "darwin/arm64"
+
+		tt := ui.NewTester(s.downloadsPageView, 1120, 2600)
+		tt.SetPreferences(ui.Preferences{ReduceMotion: true})
+		tt.Frame()
+
+		if s.starterPanelExpanded() || !tt.HasText("展开推荐方案") {
+			t.Fatalf("expected starter panel collapsed by default while unresolved model failure exists: %v", tt.Texts())
+		}
+	})
+
+	// 5. Missing models_disk_free_bytes must not fall back to displaying workspace disk_free_bytes
+	t.Run("missing_models_disk_omits_workspace_disk_in_summary", func(t *testing.T) {
+		s := testState()
+		s.device.Snapshot = json.RawMessage(`{
+			"hardware": {
+				"platform": "Linux",
+				"memory_total_bytes": 34359738368,
+				"disk_free_bytes": 128849018880,
+				"models_disk_free_bytes": null,
+				"missing": {"models_disk_free_bytes": "multiple_models_roots_unselected"}
+			},
+			"starter_recommendation": {
+				"definition": "starter-recommendation.v1",
+				"status": "blocked",
+				"disk_free_bytes": null,
+				"reason": "disk_space_unavailable",
+				"notes": ["multiple_models_roots_unselected"]
+			}
+		}`)
+		rec := s.starterRecommendation()
+		summary := s.starterHardwareSummary(rec)
+		if summary != "内存 32.00 GiB" {
+			t.Fatalf("expected summary to omit workspace disk when models_disk_free_bytes is missing, got %q", summary)
+		}
+	})
 }

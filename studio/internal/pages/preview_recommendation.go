@@ -85,17 +85,17 @@ const previewSnapshotMac48 = `{
 		"status": "recommended",
 		"engine": "polystrata",
 		"backend": "metal",
-		"model_id": "polystrata-qwen36-ud-q4-k-m",
-		"model_title": "Qwen3.6-35B-A3B (UD-Q4_K_M)",
-		"family": "qwen36",
-		"size": "UD-Q4_K_M",
-		"engine_core": "strata-poly",
-		"model_format": "gguf",
-		"fit_level": "fits",
+		"model_id": "polystrata-qwen38-coder-iq1-m",
+		"model_title": "Qwen3.8-Flash-Next Coder (IQ1_M)",
+		"family": "coder",
+		"size": "IQ1_M",
+		"engine_core": "strata",
+		"model_format": "strata_pack",
+		"fit_level": "tight",
 		"tier": "best",
 		"recommended_context": 32768,
-		"estimated_download_bytes": 22663387424,
-		"estimated_ram_bytes": 28700000000,
+		"estimated_download_bytes": 58400000000,
+		"estimated_ram_bytes": 37000000000,
 		"disk_free_bytes": 171798691840,
 		"reason": "polystrata_hardware_fit",
 		"gpu": {"name": "Apple M4 Pro", "vendor": "apple", "arch_family": "Apple Silicon", "unified_memory_bytes": 51539607552},
@@ -104,17 +104,17 @@ const previewSnapshotMac48 = `{
 			{
 				"engine": "polystrata",
 				"backend": "metal",
-				"model_id": "polystrata-lfm25-ud-q4-k-xl",
-				"model_title": "LFM2.5-24B-A2B (UD-Q4_K_XL)",
-				"family": "lfm25",
-				"size": "UD-Q4_K_XL",
+				"model_id": "polystrata-qwen36-ud-q4-k-m",
+				"model_title": "Qwen3.6-35B-A3B (UD-Q4_K_M)",
+				"family": "qwen36",
+				"size": "UD-Q4_K_M",
 				"engine_core": "strata-poly",
 				"model_format": "gguf",
 				"fit_level": "fits",
 				"tier": "balanced",
 				"recommended_context": 32768,
-				"estimated_download_bytes": 14876901632,
-				"estimated_ram_bytes": 20900000000
+				"estimated_download_bytes": 22663387424,
+				"estimated_ram_bytes": 28700000000
 			},
 			{
 				"engine": "polystrata",
@@ -145,10 +145,11 @@ const previewSnapshotMac48 = `{
 			}
 		],
 		"polystrata_models": [
-			{"engine": "polystrata", "backend": "metal", "model_id": "polystrata-qwen36-ud-q4-k-m", "model_title": "Qwen3.6-35B-A3B (UD-Q4_K_M)", "family": "qwen36", "size": "UD-Q4_K_M", "engine_core": "strata-poly", "model_format": "gguf", "fit_level": "fits", "tier": "best", "recommended_context": 32768, "estimated_download_bytes": 22663387424, "estimated_ram_bytes": 28700000000},
+			{"engine": "polystrata", "backend": "metal", "model_id": "polystrata-qwen38-coder-iq1-m", "model_title": "Qwen3.8-Flash-Next Coder (IQ1_M)", "family": "coder", "size": "IQ1_M", "engine_core": "strata", "model_format": "strata_pack", "fit_level": "tight", "tier": "best", "recommended_context": 32768, "estimated_download_bytes": 58400000000, "estimated_ram_bytes": 37000000000},
+			{"engine": "polystrata", "backend": "metal", "model_id": "polystrata-qwen36-ud-q4-k-m", "model_title": "Qwen3.6-35B-A3B (UD-Q4_K_M)", "family": "qwen36", "size": "UD-Q4_K_M", "engine_core": "strata-poly", "model_format": "gguf", "fit_level": "fits", "tier": "balanced", "recommended_context": 32768, "estimated_download_bytes": 22663387424, "estimated_ram_bytes": 28700000000},
 			{"engine": "polystrata", "backend": "metal", "model_id": "polystrata-qwen36-ud-q3-k-m", "model_title": "Qwen3.6-35B-A3B (UD-Q3_K_M)", "family": "qwen36", "size": "UD-Q3_K_M", "engine_core": "strata-poly", "model_format": "gguf", "fit_level": "fits", "recommended_context": 32768, "estimated_download_bytes": 17104402720, "estimated_ram_bytes": 23100000000},
 			{"engine": "polystrata", "backend": "metal", "model_id": "polystrata-qwen36-ud-q2-k-xl", "model_title": "Qwen3.6-35B-A3B (UD-Q2_K_XL)", "family": "qwen36", "size": "UD-Q2_K_XL", "engine_core": "strata-poly", "model_format": "gguf", "fit_level": "fits", "recommended_context": 32768, "estimated_download_bytes": 12574128416, "estimated_ram_bytes": 18600000000},
-			{"engine": "polystrata", "backend": "metal", "model_id": "polystrata-lfm25-ud-q4-k-xl", "model_title": "LFM2.5-24B-A2B (UD-Q4_K_XL)", "family": "lfm25", "size": "UD-Q4_K_XL", "engine_core": "strata-poly", "model_format": "gguf", "fit_level": "fits", "tier": "balanced", "recommended_context": 32768, "estimated_download_bytes": 14876901632, "estimated_ram_bytes": 20900000000},
+			{"engine": "polystrata", "backend": "metal", "model_id": "polystrata-lfm25-ud-q4-k-xl", "model_title": "LFM2.5-24B-A2B (UD-Q4_K_XL)", "family": "lfm25", "size": "UD-Q4_K_XL", "engine_core": "strata-poly", "model_format": "gguf", "fit_level": "fits", "recommended_context": 32768, "estimated_download_bytes": 14876901632, "estimated_ram_bytes": 20900000000},
 			{"engine": "polystrata", "backend": "metal", "model_id": "polystrata-lfm25-ud-q3-k-xl", "model_title": "LFM2.5-24B-A2B (UD-Q3_K_XL)", "family": "lfm25", "size": "UD-Q3_K_XL", "engine_core": "strata-poly", "model_format": "gguf", "fit_level": "fits", "tier": "lightweight", "recommended_context": 32768, "estimated_download_bytes": 10947100928, "estimated_ram_bytes": 17000000000}
 		]
 	}
@@ -301,17 +302,17 @@ const previewSnapshotRTX4070 = `{
 			{
 				"engine": "polystrata",
 				"backend": "cuda",
-				"model_id": "polystrata-qwen36-ud-q3-k-m",
-				"model_title": "Qwen3.6-35B-A3B (UD-Q3_K_M)",
-				"family": "qwen36",
-				"size": "UD-Q3_K_M",
+				"model_id": "polystrata-flint-ud-q3-k-xl",
+				"model_title": "Flint 40B-A2.5B (UD-Q3_K_XL)",
+				"family": "flint",
+				"size": "UD-Q3_K_XL",
 				"engine_core": "strata-poly",
 				"model_format": "gguf",
-				"fit_level": "fits",
+				"fit_level": "tight",
 				"tier": "balanced",
 				"recommended_context": 32768,
-				"estimated_download_bytes": 17104402720,
-				"estimated_ram_bytes": 21100000000
+				"estimated_download_bytes": 18494977472,
+				"estimated_ram_bytes": 21994478643
 			},
 			{
 				"engine": "polystrata",
@@ -343,7 +344,8 @@ const previewSnapshotRTX4070 = `{
 		],
 		"polystrata_models": [
 			{"engine": "polystrata", "backend": "cuda", "model_id": "polystrata-qwen36-ud-q4-k-m", "model_title": "Qwen3.6-35B-A3B (UD-Q4_K_M)", "family": "qwen36", "size": "UD-Q4_K_M", "engine_core": "strata-poly", "model_format": "gguf", "fit_level": "tight", "tier": "best", "recommended_context": 32768, "estimated_download_bytes": 22663387424, "estimated_ram_bytes": 26600000000},
-			{"engine": "polystrata", "backend": "cuda", "model_id": "polystrata-qwen36-ud-q3-k-m", "model_title": "Qwen3.6-35B-A3B (UD-Q3_K_M)", "family": "qwen36", "size": "UD-Q3_K_M", "engine_core": "strata-poly", "model_format": "gguf", "fit_level": "fits", "tier": "balanced", "recommended_context": 32768, "estimated_download_bytes": 17104402720, "estimated_ram_bytes": 21100000000},
+			{"engine": "polystrata", "backend": "cuda", "model_id": "polystrata-qwen36-ud-q3-k-m", "model_title": "Qwen3.6-35B-A3B (UD-Q3_K_M)", "family": "qwen36", "size": "UD-Q3_K_M", "engine_core": "strata-poly", "model_format": "gguf", "fit_level": "tight", "recommended_context": 32768, "estimated_download_bytes": 17104402720, "estimated_ram_bytes": 21100000000},
+			{"engine": "polystrata", "backend": "cuda", "model_id": "polystrata-flint-ud-q3-k-xl", "model_title": "Flint 40B-A2.5B (UD-Q3_K_XL)", "family": "flint", "size": "UD-Q3_K_XL", "engine_core": "strata-poly", "model_format": "gguf", "fit_level": "tight", "tier": "balanced", "recommended_context": 32768, "estimated_download_bytes": 18494977472, "estimated_ram_bytes": 21994478643},
 			{"engine": "polystrata", "backend": "cuda", "model_id": "polystrata-gemma4-ud-q3-k-m", "model_title": "Gemma 4 26B-A4B (UD-Q3_K_M)", "family": "gemma4", "size": "UD-Q3_K_M", "engine_core": "strata-poly", "model_format": "gguf", "fit_level": "fits", "recommended_context": 32768, "estimated_download_bytes": 13190264704, "estimated_ram_bytes": 17700000000},
 			{"engine": "polystrata", "backend": "cuda", "model_id": "polystrata-lfm25-ud-q3-k-xl", "model_title": "LFM2.5-24B-A2B (UD-Q3_K_XL)", "family": "lfm25", "size": "UD-Q3_K_XL", "engine_core": "strata-poly", "model_format": "gguf", "fit_level": "fits", "tier": "lightweight", "recommended_context": 32768, "estimated_download_bytes": 10947100928, "estimated_ram_bytes": 15800000000}
 		]
@@ -419,7 +421,7 @@ const previewSnapshotBlockedDisk = `{
 		"apple_silicon": true,
 		"memory_total_bytes": 17179869184,
 		"memory_available_bytes": 9771050598,
-		"disk_free_bytes": 1288490188,
+		"disk_free_bytes": 536870912,
 		"ac_online": true,
 		"gpu": {
 			"status": "observed",
@@ -429,7 +431,7 @@ const previewSnapshotBlockedDisk = `{
 	"starter_recommendation": {
 		"definition": "starter-recommendation.v1",
 		"status": "blocked",
-		"disk_free_bytes": 1288490188,
+		"disk_free_bytes": 536870912,
 		"reason": "insufficient_disk_space",
 		"notes": []
 	}

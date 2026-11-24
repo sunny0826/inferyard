@@ -319,11 +319,15 @@ func starterTileMetric(c *ui.Context, label, value string) {
 	})
 }
 
-func (s *viewState) starterPrimaryCTA(c *ui.Context, st *downloadsUIState, chosen starterOption, fromDashboard bool) {
+func (s *viewState) starterPrimaryCTA(c *ui.Context, st *downloadsUIState, chosen starterOption, navigateToDownloads bool) {
 	switch chosen.Engine {
 	case "polystrata":
 		if s.downloadActive("polystrata") {
 			button(c, "安装中…").Disabled(true)
+			return
+		}
+		if s.isStarterOptionInstalled(chosen) {
+			button(c, "已就绪").Disabled(true)
 			return
 		}
 		label := "一键安装 PolyStrata"
@@ -331,30 +335,44 @@ func (s *viewState) starterPrimaryCTA(c *ui.Context, st *downloadsUIState, chose
 			label = "安装所选 PolyStrata 模型"
 		}
 		if primaryButton(c, label).Disabled(s.busy).Clicked() {
-			s.startStarterOption(chosen, fromDashboard)
+			s.startStarterOption(chosen, navigateToDownloads)
 		}
 	default:
+		engineInstalled := s.isEngineFamilyInstalled("llama-cpp")
+		modelInstalled := s.isStarterModelInstalled(chosen)
+		if engineInstalled && modelInstalled {
+			button(c, "已就绪").Disabled(true)
+			return
+		}
 		hostPlatform := s.downloadsHostPlatform()
 		engineURL := starterLlamaCppEngineURL(hostPlatform, chosen.Backend)
 		modelURL := starterModelURLForOption(chosen, st.modelSource)
 		switch {
-		case engineURL != "" && modelURL != "":
+		case engineInstalled && modelURL != "":
+			if primaryButton(c, "下载推荐模型").Disabled(s.busy).Clicked() {
+				s.startStarterOption(chosen, navigateToDownloads)
+			}
+		case modelInstalled && engineURL != "":
+			if primaryButton(c, "下载推荐引擎").Disabled(s.busy).Clicked() {
+				s.startStarterOption(chosen, navigateToDownloads)
+			}
+		case !engineInstalled && !modelInstalled && engineURL != "" && modelURL != "":
 			if primaryButton(c, "下载推荐组合").Disabled(s.busy).Clicked() {
-				s.startStarterOption(chosen, fromDashboard)
+				s.startStarterOption(chosen, navigateToDownloads)
 			}
 		default:
 			t := tokens(c)
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 				primaryButton(c, "查看引擎获取方式").OnClick(func() {
-					if fromDashboard {
+					if navigateToDownloads {
 						s.selected = "downloads"
 					}
 					relID, buildID := starterLlamaCppDrawerTarget(s.engineCatalogRegistry(), hostPlatform, chosen.Backend)
 					st.openEngineDrawer("llama-cpp", relID, hostPlatform, buildID)
 				})
-				if modelURL != "" {
+				if !modelInstalled && modelURL != "" {
 					outlineButton(c, "下载推荐模型").Disabled(s.busy).OnClick(func() {
-						if fromDashboard {
+						if navigateToDownloads {
 							s.setStarterPanelExpanded(false)
 							s.selected = "downloads"
 						}

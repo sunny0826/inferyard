@@ -72,10 +72,12 @@ def test_mac_48gb_and_36gb_diversify_and_grade_metal_headroom():
     assert rec_48["fit_level"] == "tight"
     assert rec_48["tier"] == "best"
     poly_alts = [alt for alt in rec_48["alternatives"] if alt["engine"] == "polystrata"]
-    assert any(
-        alt["model_id"] == "polystrata-qwen36-ud-q4-k-m" and alt["fit_level"] == "fits"
-        for alt in poly_alts
-    )
+    assert len(poly_alts) == 2
+    assert poly_alts[0]["model_id"] == "polystrata-qwen36-ud-q4-k-m"
+    assert poly_alts[0]["fit_level"] == "fits"
+    # Second slot must pick a distinct lightweight family (lfm25) instead of duplicating qwen36
+    assert poly_alts[1]["family"] == "lfm25"
+    assert poly_alts[1]["fit_level"] == "fits"
     assert len(rec_48["polystrata_models"]) >= 5
 
     # On 36 GiB unified memory (~28.99 GB budget), Qwen3.6 Q4 (28.7 GB) is >85% budget -> tight,
