@@ -211,7 +211,7 @@ type viewState struct {
 	engineStartToastID                                                                  string
 	failure                                                                             *core.ApiError
 	failurePage                                                                         string
-	workspace, cliPath, results, models                                                 string
+	workspace                                                                           string
 	bindingStale                                                                        bool
 	task                                                                                benchmarkTask
 	selectedBundles                                                                     map[string]bool
@@ -233,7 +233,7 @@ type viewState struct {
 	engineFailureCleared                                                                string
 	localUsedPIDs                                                                       map[int64]bool
 	localPendingPIDs                                                                    map[string]int64
-	modelName, tokenEnv, engineName, downloadProxy                                      string
+	tokenEnv, downloadProxy                                                             string
 	themeMode, appliedThemeMode                                                         string
 	themeSaving                                                                         bool
 	themeMu                                                                             sync.Mutex

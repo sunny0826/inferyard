@@ -51,17 +51,7 @@ func resumeErrors(endpoint, pid string) (string, string) {
 }
 
 func (s *viewState) validateSettings() bool {
-	for _, value := range []string{s.cliPath, s.workspace, s.results, s.models} {
-		if pathError(value) != "" {
-			return false
-		}
-	}
-	for _, entry := range [][2]string{{s.workspace, emptyText(s.settings.Effective.WorkspaceRoot)}, {s.results, emptyText(s.settings.Settings.ResultsRoot)}, {s.models, emptyText(s.settings.Settings.ModelsRoot)}} {
-		if entry[0] == "" && entry[1] != "" {
-			return false
-		}
-	}
-	return true
+	return settingsPathError(s.workspace, emptyText(s.settings.Effective.WorkspaceRoot)) == ""
 }
 
 func settingsPathError(value, previous string) string {

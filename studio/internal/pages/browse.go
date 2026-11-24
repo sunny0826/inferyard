@@ -25,13 +25,10 @@ func (spec browseSpec) dialogTitle() string {
 }
 
 var (
-	browseCLI           = browseSpec{key: "cli", titleKey: "browse.title.cli"}
 	browseInstallation  = browseSpec{key: "installation", titleKey: "browse.title.installation", extensions: []string{"json"}}
 	browseExecutable    = browseSpec{key: "engine-exec", titleKey: "browse.title.executable"}
 	browseModelsRootDir = browseSpec{key: "engine-models-root", titleKey: "browse.title.models_root_dir", folder: true}
 	browseWorkspace     = browseSpec{key: "workspace", titleKey: "browse.title.workspace", folder: true}
-	browseResults       = browseSpec{key: "results", titleKey: "browse.title.results", folder: true}
-	browseModels        = browseSpec{key: "models", titleKey: "browse.title.models", folder: true}
 )
 
 func (s *viewState) pathField(c *ui.Context, label string, value *string, spec browseSpec) ui.Element {

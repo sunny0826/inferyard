@@ -235,16 +235,10 @@ func (p *previewSession) browse(key string) {
 	}
 	var current *string
 	switch key {
-	case browseCLI.key:
-		current = &s.cliPath
 	case browseInstallation.key:
 		current = &s.installationPath
 	case browseWorkspace.key:
 		current = &s.workspace
-	case browseResults.key:
-		current = &s.results
-	case browseModels.key:
-		current = &s.models
 	default:
 		s.failure = &core.ApiError{Code: "preview_unsupported", Message: l10n.TR("preview.notice.unsupported")}
 		return
@@ -289,11 +283,18 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 	}
 	value.Theme = core.NormalizeTheme(value.Theme)
 	value.Language = core.NormalizeLanguage(value.Language)
+	var resultsRoot, modelsRoot, reportsRoot *string
+	if ws := emptyText(value.WorkspaceRoot); ws != "" {
+		resultsRoot = previewValue(filepath.Join(ws, "results"))
+		modelsRoot = previewValue(filepath.Join(ws, "models"))
+		reportsRoot = previewValue(filepath.Join(ws, "reports"))
+	}
 	s.settings.Settings = value
 	s.settings.Effective = core.EffectiveSettings{
 		WorkspaceRoot:    value.WorkspaceRoot,
-		ResultsRoot:      value.ResultsRoot,
-		ModelsRoot:       value.ModelsRoot,
+		ResultsRoot:      resultsRoot,
+		ModelsRoot:       modelsRoot,
+		ReportsRoot:      reportsRoot,
 		InferyardPath:    value.InferyardPath,
 		ExtraModelsRoots: slices.Clone(value.ExtraModelsRoots),
 		DownloadProxy:    value.DownloadProxy,
@@ -318,12 +319,29 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		s.minimizeToTray = value.MinimizeToTray
 		_ = s.syncMinimizeToTrayIfNeeded()
 	}
-	s.ready.Workspace.Path, s.ready.Results.Path, s.ready.Models.Path = value.WorkspaceRoot, value.ResultsRoot, value.ModelsRoot
+	s.ready.Workspace.Path, s.ready.Results.Path, s.ready.Models.Path = value.WorkspaceRoot, resultsRoot, modelsRoot
 	if workspaceChanged {
 		p.cancelEvents("environment")
-		p.resetTask(s.model, s.engine)
+		p.resetTask("", "")
 		s.progress, s.task.stage = nil, ""
 		s.ready.Workspace.Initialized = false
+		var roots []string
+		if modelsRoot != nil {
+			roots = append(roots, *modelsRoot)
+		}
+		roots = append(roots, value.ExtraModelsRoots...)
+		s.registry.ModelRoots = roots
+		s.registry.Models = nil
+		s.registry.Engines = nil
+		s.registry.DefaultEngine = ""
+		s.registry.TotalModelBytes = 0
+		s.checks.Engines = nil
+		s.history = core.RunHistoryResponse{
+			ResultsRoot:    resultsRoot,
+			Batches:        []core.BatchSummary{},
+			StandaloneRuns: []core.RunSummary{},
+		}
+		s.reports = nil
 		s.reportsTab = reportsTabList
 		s.closeOpenedReport()
 	}

@@ -26,12 +26,13 @@
   - `readiness.go` / `service.go` / `bound_paths.go` / `defaults.go`：提供统一的感知 `s.paths` 的派生方法（`resultsRoot`、`modelsRoot`、`reportsRoot`、`enginesRoot`、`activeModelRoots`）；`EngineRoots` 移除 `~/.inferyard/engine` 回退；`Provision()` 仅保存 `WorkspaceRoot` 并创建 `<workspace>/{results,models,engines}`；`UpdateSettings` 拒绝 4 个已移除字段（含 `s.paths != nil` 路径）；修正 `persistSettings` 首次落盘变更判定。
   - 全量替换 `core` 中对 `u.ResultsRoot`/`u.ModelsRoot`/`ModelDownloadName`/`EngineDownloadName` 的直接访问：`download_names.go`、`downloads.go`、`downloads_stream.go`、`polystrata_setup.go`、`onboarding.go`、`aggregate.go`、`runs.go`、`reports.go`、`progress.go`、`registry.go`、`asset_management*.go`、`settings_extra.go`、`context_speed_identity.go`、`context_speed_prepare.go`、`context_speed_run.go`、`context_speed_store.go`、`local_candidates.go`、`local_runs.go`。
   - 更新 `studio/internal/core/*_test.go`（含 `readiness_test.go` 调整为先 `init` 后 `Provision()`），新增统一派生、旧字段忽略、旧 patch 拒绝、首次落盘触发刷新与切换工作区联动单测；运行 `go test ./internal/core/...`。
-- [ ] **T02：重构 Studio 设置页 UI、Preview、i18n 与页面单测（`studio/internal/pages` + `l10n`）**
+- [!] **T02：重构 Studio 设置页 UI、Preview、i18n 与页面单测（`studio/internal/pages` + `l10n`）**
   - `preparation.go` / `window.go` / `form_validation.go` / `browse.go`：移除“路径设置”卡片与“下载目录名”卡片（含 `BoundPaths` 分支）；非 `BoundPaths` 模式下仅保留并开放“工作区目录”卡片；清理 `cliPath`/`results`/`models`/`modelName`/`engineName` 与 `browseCLI`/`browseResults`/`browseModels` 等废弃代码。
   - `models_management.go`：将读取 `s.settings.Settings.ModelsRoot` 改为 `s.settings.Effective.ModelsRoot`，保留 `browse.title.models` 供模型页附加目录选择使用。
   - `studio/internal/l10n/locales/settings/{zh-Hans,en}.json`（及受影响 locale）：更新工作区目录卡片与未保存离开弹窗文案，清理已废弃的 `settings.paths.*`、`settings.cli.*`、`settings.download_names.*` key，确保中英文一致且无硬编码中文。
   - `preview_fixtures.go` / `preview_operations.go` / `preview_benchmark.go` / `preview_downloads.go`：适配统一工作区目录模型与默认下载目录名。
   - 更新 `studio/internal/pages/*_test.go`，运行 `mise run test:studio` 与 `mise run test:studio:preview`。
+  - 未解决问题（第 5 轮 Reviewer 打回）：`studio/internal/pages/models_management.go:69` 的 `isExtraModelRoot` 已无生产调用方（页面已改为调用 `isExtraModelRootDir`），仅 `studio/internal/pages/settings_save_test.go:189` 仍调用旧函数，待删除死代码并将测试断言改为调用 `isExtraModelRootDir`。
 - [ ] **T03：更新 E2E / UI 测试、文档与全链路验证及节点 (d) 终审**
   - 更新 `studio/tests/e2e/env.go`、`studio/tests/e2e/chain_test.go`、`studio/tests/ui/run_release.py`、`studio/tests/ui/test_run_release.py`、`studio/tests/ui/ReleaseUITests.swift`（及 `PreviewUITests.swift` 如下载名变更）。
   - 检查并更新受影响文档：`studio/README.md`、`README.md`、`README.zh-CN.md`。

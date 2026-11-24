@@ -28,8 +28,8 @@ func newModelsPolystrataDeleteService(t *testing.T) (*core.Service, string, stri
 		t.Fatal(err)
 	}
 	ws := filepath.Join(base, "ws")
-	modelsRoot := filepath.Join(base, "models")
-	resultsRoot := filepath.Join(base, "results")
+	modelsRoot := filepath.Join(ws, "models")
+	resultsRoot := filepath.Join(ws, "results")
 	dataDir := filepath.Join(modelsRoot, "polystrata-data")
 	managedDir := filepath.Join(ws, "engines", "polystrata-ui")
 	extDir := filepath.Join(base, "external-ps")
@@ -85,8 +85,6 @@ func newModelsPolystrataDeleteService(t *testing.T) (*core.Service, string, stri
 	rawSettings, _ := json.Marshal(core.UserSettings{
 		InferyardPath:       ptr(os.Args[0]),
 		WorkspaceRoot:       &ws,
-		ModelsRoot:          &modelsRoot,
-		ResultsRoot:         &resultsRoot,
 		EngineInstallations: []string{managedInst, extInst},
 	})
 	if err := os.WriteFile(settingsPath, rawSettings, 0o600); err != nil {

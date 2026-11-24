@@ -64,23 +64,22 @@ func TestPrepareEnvironmentUsesDefaultWorkspaceAndResultsWithoutTimestamp(t *tes
 		t.Fatalf("prepareEnvironmentSteps failed: %+v", apiErr)
 	}
 
-	wantBase := filepath.Join(home, ".inferyard")
-	wantWorkspace := filepath.Join(wantBase, "workspace")
-	wantResults := filepath.Join(wantBase, "results")
-	wantModels := filepath.Join(wantBase, "models")
+	wantWorkspace := filepath.Join(home, ".inferyard", "workspace")
+	wantResults := filepath.Join(wantWorkspace, "results")
+	wantModels := filepath.Join(wantWorkspace, "models")
 
 	if initOut != wantWorkspace {
 		t.Fatalf("init --out = %q, want %q", initOut, wantWorkspace)
 	}
-	saved := service.Settings().Settings
-	if emptyText(saved.WorkspaceRoot) != wantWorkspace {
-		t.Fatalf("WorkspaceRoot = %q, want %q", emptyText(saved.WorkspaceRoot), wantWorkspace)
+	resp := service.Settings()
+	if emptyText(resp.Settings.WorkspaceRoot) != wantWorkspace {
+		t.Fatalf("WorkspaceRoot = %q, want %q", emptyText(resp.Settings.WorkspaceRoot), wantWorkspace)
 	}
-	if emptyText(saved.ResultsRoot) != wantResults {
-		t.Fatalf("ResultsRoot = %q, want %q", emptyText(saved.ResultsRoot), wantResults)
+	if emptyText(resp.Effective.ResultsRoot) != wantResults {
+		t.Fatalf("ResultsRoot = %q, want %q", emptyText(resp.Effective.ResultsRoot), wantResults)
 	}
-	if emptyText(saved.ModelsRoot) != wantModels {
-		t.Fatalf("ModelsRoot = %q, want %q", emptyText(saved.ModelsRoot), wantModels)
+	if emptyText(resp.Effective.ModelsRoot) != wantModels {
+		t.Fatalf("ModelsRoot = %q, want %q", emptyText(resp.Effective.ModelsRoot), wantModels)
 	}
 }
 
@@ -158,8 +157,6 @@ func TestPrepareEnvironmentCustomNestedDirsDoNotCreateTimestampWorkspace(t *test
 	if _, apiErr := service.UpdateSettings(map[string]json.RawMessage{
 		"inferyard_path": mustJSON(exe),
 		"workspace_root": mustJSON(wantWorkspace),
-		"results_root":   mustJSON(wantResults),
-		"models_root":    mustJSON(wantModels),
 	}); apiErr != nil {
 		t.Fatal(apiErr)
 	}
@@ -183,15 +180,15 @@ func TestPrepareEnvironmentCustomNestedDirsDoNotCreateTimestampWorkspace(t *test
 	if initOut != wantWorkspace {
 		t.Fatalf("init --out = %q, want %q", initOut, wantWorkspace)
 	}
-	saved := service.Settings().Settings
-	if emptyText(saved.WorkspaceRoot) != wantWorkspace {
-		t.Fatalf("WorkspaceRoot = %q, want %q", emptyText(saved.WorkspaceRoot), wantWorkspace)
+	resp := service.Settings()
+	if emptyText(resp.Settings.WorkspaceRoot) != wantWorkspace {
+		t.Fatalf("WorkspaceRoot = %q, want %q", emptyText(resp.Settings.WorkspaceRoot), wantWorkspace)
 	}
-	if emptyText(saved.ResultsRoot) != wantResults {
-		t.Fatalf("ResultsRoot = %q, want %q", emptyText(saved.ResultsRoot), wantResults)
+	if emptyText(resp.Effective.ResultsRoot) != wantResults {
+		t.Fatalf("ResultsRoot = %q, want %q", emptyText(resp.Effective.ResultsRoot), wantResults)
 	}
-	if emptyText(saved.ModelsRoot) != wantModels {
-		t.Fatalf("ModelsRoot = %q, want %q", emptyText(saved.ModelsRoot), wantModels)
+	if emptyText(resp.Effective.ModelsRoot) != wantModels {
+		t.Fatalf("ModelsRoot = %q, want %q", emptyText(resp.Effective.ModelsRoot), wantModels)
 	}
 }
 
@@ -208,9 +205,9 @@ func TestPrepareEnvironmentCustomWorkspaceWithDefaultResultsMatchesPreview(t *te
 		t.Fatal(err)
 	}
 	wantWorkspace := filepath.Join(customBase, "bench")
-	wantResults := filepath.Join(home, ".inferyard", "results")
-	wantModels := filepath.Join(home, ".inferyard", "models")
-	wantReports := filepath.Join(home, ".inferyard", "reports")
+	wantResults := filepath.Join(wantWorkspace, "results")
+	wantModels := filepath.Join(wantWorkspace, "models")
+	wantReports := filepath.Join(wantWorkspace, "reports")
 
 	exe, err := os.Executable()
 	if err != nil {
@@ -269,11 +266,11 @@ func TestPrepareEnvironmentCustomWorkspaceWithDefaultResultsMatchesPreview(t *te
 	if emptyText(resp.Settings.WorkspaceRoot) != wantWorkspace {
 		t.Fatalf("WorkspaceRoot = %q, want %q", emptyText(resp.Settings.WorkspaceRoot), wantWorkspace)
 	}
-	if emptyText(resp.Settings.ResultsRoot) != wantResults {
-		t.Fatalf("ResultsRoot = %q, want %q", emptyText(resp.Settings.ResultsRoot), wantResults)
+	if emptyText(resp.Effective.ResultsRoot) != wantResults {
+		t.Fatalf("ResultsRoot = %q, want %q", emptyText(resp.Effective.ResultsRoot), wantResults)
 	}
-	if emptyText(resp.Settings.ModelsRoot) != wantModels {
-		t.Fatalf("ModelsRoot = %q, want %q", emptyText(resp.Settings.ModelsRoot), wantModels)
+	if emptyText(resp.Effective.ModelsRoot) != wantModels {
+		t.Fatalf("ModelsRoot = %q, want %q", emptyText(resp.Effective.ModelsRoot), wantModels)
 	}
 	if emptyText(resp.Effective.ReportsRoot) != wantReports {
 		t.Fatalf("ReportsRoot = %q, want %q", emptyText(resp.Effective.ReportsRoot), wantReports)

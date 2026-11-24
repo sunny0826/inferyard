@@ -15,8 +15,7 @@ import (
 
 var environmentName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
-func validName(s string) bool { return core.ValidDownloadName(s) }
-func quote(s string) string   { return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'" }
+func quote(s string) string { return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'" }
 
 func (s *viewState) modelsView(c *ui.Context) {
 	t := tokens(c)

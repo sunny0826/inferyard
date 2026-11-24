@@ -28,22 +28,35 @@ func settingsTestService(t *testing.T, root string) *core.Service {
 	return service
 }
 
+func TestSettingsViewExposesOnlyWorkspaceDirectory(t *testing.T) {
+	s := settingsState()
+	tt := settingsTester(s)
+	if _, ok := tt.Find("工作区目录"); !ok {
+		t.Fatal("settings page must show 工作区目录")
+	}
+	for _, removed := range []string{"路径设置", "结果目录", "模型目录", "下载目录名", "模型下载目录名", "引擎下载目录名"} {
+		if _, ok := tt.Find(removed); ok {
+			t.Fatalf("settings page must not show removed UI text %q", removed)
+		}
+	}
+}
+
 func TestStaleRefreshBatchDoesNotRevertSave(t *testing.T) {
 	s := settingsState()
 	stale := refreshBatch{epoch: s.settingsSequence()}
 	stale.settings = core.SettingsResponse{
-		Settings:  core.UserSettings{WorkspaceRoot: ptr("/saved/workspace"), ResultsRoot: ptr("/saved/results"), ModelsRoot: ptr("/saved/models"), ModelDownloadName: "saved-model", EngineDownloadName: "saved-engine"},
+		Settings:  core.UserSettings{WorkspaceRoot: ptr("/saved/workspace")},
 		Effective: core.EffectiveSettings{WorkspaceRoot: ptr("/saved/workspace")},
 	}
 	stale.ready.Workspace = core.DirectoryReadiness{Path: ptr("/saved/workspace"), Exists: true, Initialized: true}
 	s.ready.Workspace = core.DirectoryReadiness{Path: ptr("/next/workspace"), Exists: true}
-	s.workspace, s.modelName = "/next/workspace", "next-model"
+	s.workspace, s.downloadProxy = "/next/workspace", "http://127.0.0.1:7890"
 	patch := map[string]json.RawMessage{}
 	patch["workspace_root"], _ = json.Marshal(s.workspace)
-	patch["model_download_name"], _ = json.Marshal(s.modelName)
+	patch["download_proxy"], _ = json.Marshal(s.downloadProxy)
 	s.syncSavedGroups(patch, s.settingsDraft(), core.SettingsResponse{
-		Settings:  core.UserSettings{WorkspaceRoot: ptr("/next/workspace"), ResultsRoot: ptr("/saved/results"), ModelsRoot: ptr("/saved/models"), ModelDownloadName: "next-model", EngineDownloadName: "saved-engine"},
-		Effective: core.EffectiveSettings{WorkspaceRoot: ptr("/next/workspace")},
+		Settings:  core.UserSettings{WorkspaceRoot: ptr("/next/workspace"), DownloadProxy: ptr("http://127.0.0.1:7890")},
+		Effective: core.EffectiveSettings{WorkspaceRoot: ptr("/next/workspace"), DownloadProxy: ptr("http://127.0.0.1:7890")},
 	})
 
 	if s.applyRefreshBatch(stale) {
@@ -52,8 +65,8 @@ func TestStaleRefreshBatchDoesNotRevertSave(t *testing.T) {
 	if s.workspace != "/next/workspace" {
 		t.Fatalf("stale batch reverted the saved workspace: %q", s.workspace)
 	}
-	if s.modelName != "next-model" {
-		t.Fatalf("stale batch reverted the saved name: %q", s.modelName)
+	if s.downloadProxy != "http://127.0.0.1:7890" {
+		t.Fatalf("stale batch reverted the saved proxy: %q", s.downloadProxy)
 	}
 	if root := emptyText(s.settings.Effective.WorkspaceRoot); root != "/next/workspace" {
 		t.Fatalf("stale batch reverted the baseline: %q", root)
@@ -86,8 +99,7 @@ func TestSettingsSaveKeepsOtherGroupDraft(t *testing.T) {
 	root := t.TempDir()
 	settings := filepath.Join(root, "settings.json")
 	raw, _ := json.Marshal(core.UserSettings{
-		WorkspaceRoot: ptr(filepath.Join(root, "workspace")), ResultsRoot: ptr(filepath.Join(root, "results")),
-		ModelsRoot: ptr(filepath.Join(root, "models")), ModelDownloadName: "saved-model", EngineDownloadName: "saved-engine",
+		WorkspaceRoot: ptr(filepath.Join(root, "workspace")),
 	})
 	if err := os.WriteFile(settings, raw, 0600); err != nil {
 		t.Fatal(err)
@@ -103,78 +115,124 @@ func TestSettingsSaveKeepsOtherGroupDraft(t *testing.T) {
 	s := settingsState()
 	s.service = service
 	s.settings = service.Settings()
-	s.loadPathSettings(s.settings)
-	s.loadDownloadNames(s.settings)
+	s.loadWorkspaceSettings(s.settings)
+	s.loadProxySettings(s.settings)
 	s.settingsLoaded = true
 	workspace := filepath.Join(root, "draft-workspace")
-	s.workspace, s.modelName = workspace, "draft-model"
+	s.workspace, s.downloadProxy = workspace, "http://127.0.0.1:7890"
 
 	patch := map[string]json.RawMessage{}
 	patch["workspace_root"], _ = json.Marshal(workspace)
-	if _, e := s.persistSettings(patch, s.settingsDraft(), "设置已保存。"); e != nil {
+	if _, e := s.persistSettings(patch, s.settingsDraft(), "工作区目录已保存"); e != nil {
 		t.Fatal(e)
 	}
 	if s.workspace != workspace {
-		t.Fatalf("saved path not shown: %q", s.workspace)
+		t.Fatalf("saved workspace not shown: %q", s.workspace)
 	}
-	if s.modelName != "draft-model" {
-		t.Fatalf("path save wiped the download-name draft: %q", s.modelName)
+	if s.downloadProxy != "http://127.0.0.1:7890" {
+		t.Fatalf("workspace save wiped the proxy draft: %q", s.downloadProxy)
 	}
 
 	next := filepath.Join(root, "later-workspace")
 	s.workspace = next
-	names := map[string]json.RawMessage{}
-	names["model_download_name"], _ = json.Marshal("saved-again")
-	if _, e := s.persistSettings(names, s.settingsDraft(), "下载目录名已保存。"); e != nil {
+	proxyPatch := map[string]json.RawMessage{}
+	proxyPatch["download_proxy"], _ = json.Marshal("http://127.0.0.1:7890")
+	if _, e := s.persistSettings(proxyPatch, s.settingsDraft(), "代理设置已保存"); e != nil {
 		t.Fatal(e)
 	}
-	if s.modelName != "saved-again" {
-		t.Fatalf("saved name not shown: %q", s.modelName)
+	if s.downloadProxy != "http://127.0.0.1:7890" {
+		t.Fatalf("saved proxy not shown: %q", s.downloadProxy)
 	}
 	if s.workspace != next {
-		t.Fatalf("name save wiped the path draft: %q", s.workspace)
+		t.Fatalf("proxy save wiped the workspace draft: %q", s.workspace)
 	}
 }
 
 func TestSettingsSavePreservesTypingDuringSave(t *testing.T) {
 	s := settingsState()
-	s.workspace, s.results = "/submitted/workspace", "/submitted/results"
+	s.workspace = "/submitted/workspace"
 	submitted := s.settingsDraft()
 	s.workspace = "/typed/during-save"
 	patch := map[string]json.RawMessage{}
 	patch["workspace_root"], _ = json.Marshal(submitted.workspace)
-	patch["results_root"], _ = json.Marshal(submitted.results)
 	s.syncSavedGroups(patch, submitted, core.SettingsResponse{
-		Settings:  core.UserSettings{WorkspaceRoot: ptr(submitted.workspace), ResultsRoot: ptr(submitted.results)},
-		Effective: core.EffectiveSettings{WorkspaceRoot: ptr(submitted.workspace), ResultsRoot: ptr(submitted.results)},
+		Settings:  core.UserSettings{WorkspaceRoot: ptr(submitted.workspace)},
+		Effective: core.EffectiveSettings{WorkspaceRoot: ptr(submitted.workspace)},
 	})
 	if s.workspace != "/typed/during-save" {
 		t.Fatalf("post-submit typing was overwritten: %q", s.workspace)
 	}
-	if s.results != "/submitted/results" {
-		t.Fatalf("untouched field was not synced: %q", s.results)
-	}
-	if !s.pathsEdited() || !s.canSavePaths() {
+	if !s.workspaceEdited() || !s.canSaveWorkspace() {
 		t.Fatal("newer draft did not keep the card dirty and Save enabled")
 	}
+}
 
-	names := settingsState()
-	names.modelName, names.engineName = "submitted-model", "submitted-engine"
-	submitted = names.settingsDraft()
-	names.modelName = "typed-model"
-	namePatch := map[string]json.RawMessage{}
-	namePatch["model_download_name"], _ = json.Marshal(submitted.modelName)
-	namePatch["engine_download_name"], _ = json.Marshal(submitted.engineName)
-	names.syncSavedGroups(namePatch, submitted, core.SettingsResponse{Settings: core.UserSettings{
-		ModelDownloadName: submitted.modelName, EngineDownloadName: submitted.engineName,
-	}})
-	if names.modelName != "typed-model" {
-		t.Fatalf("post-submit name typing was overwritten: %q", names.modelName)
+func TestFirstRunDefaultWorkspaceCanSaveAndWorkspaceIsolation(t *testing.T) {
+	// Finding 2: First-run default workspace (Settings.WorkspaceRoot == nil) can be saved without false unsaved dirty state.
+	s := testState()
+	s.selected = "settings"
+	defaultWS := filepath.Join(t.TempDir(), "default-ws")
+	s.settings = core.SettingsResponse{
+		Settings:  core.UserSettings{},
+		Effective: core.EffectiveSettings{WorkspaceRoot: ptr(defaultWS)},
 	}
-	if names.engineName != "submitted-engine" {
-		t.Fatalf("untouched name was not synced: %q", names.engineName)
+	s.loadSettings(s.settings)
+	s.settingsLoaded = true
+	if s.workspaceEdited() || s.settingsUnsaved() {
+		t.Fatal("first-run prefilled default workspace must not mark settings dirty/unsaved")
 	}
-	if !names.canSaveDownloadNames() {
-		t.Fatal("newer name draft did not keep Save enabled")
+	if !s.canSaveWorkspace() {
+		t.Fatal("first-run prefilled default workspace must allow saving")
+	}
+
+	// Finding 7: When Effective.ModelsRoot is empty, index-0 extra model root must still be removable.
+	if !isExtraModelRoot("/extra/models", "") {
+		t.Fatal("isExtraModelRoot must treat extra root as removable when primaryRoot is empty")
+	}
+
+	// Finding 4: Active download in wsA must not mark wsB catalog/retry buttons as downloading.
+	wsA := filepath.Join(t.TempDir(), "ws-a")
+	wsB := filepath.Join(t.TempDir(), "ws-b")
+	s.settings.Effective.WorkspaceRoot = ptr(wsB)
+	s.settings.Effective.ModelsRoot = ptr(filepath.Join(wsB, "models"))
+	src := "https://huggingface.co/o/r/blob/0123456789012345678901234567890123456789/model.gguf"
+	s.downloads = []core.DownloadTask{
+		{TaskId: "dl-a", Kind: "model", State: "downloading", SourceUrl: src, OutDir: filepath.Join(wsA, "models", "model")},
+		{TaskId: "dl-b-fail", Kind: "model", State: "failed", SourceUrl: src, OutDir: filepath.Join(wsB, "models", "model")},
+	}
+	if s.isModelEntryDownloading(core.CatalogEntry{URL: src}) {
+		t.Fatal("wsA active model download disabled wsB model entry")
+	}
+	if s.downloadRetryActive(s.downloads[1]) {
+		t.Fatal("wsA active model download blocked wsB retry")
+	}
+
+	// Finding 1: Configured existing empty dir initializes in place without rewriting workspace_root.
+	existingWS := t.TempDir()
+	var gotInitCmd string
+	initialized := false
+	err := prepareEnvironmentSteps(
+		context.Background(),
+		func() core.Readiness {
+			return core.Readiness{
+				CLI:       core.InferyardProbe{Status: "ok"},
+				Workspace: core.DirectoryReadiness{Path: ptr(existingWS), Configured: true, Exists: true, Initialized: initialized},
+				Results:   core.DirectoryReadiness{Path: ptr(filepath.Join(existingWS, "results")), Configured: true, Exists: initialized},
+				Models:    core.DirectoryReadiness{Path: ptr(filepath.Join(existingWS, "models")), Configured: true, Exists: initialized},
+			}
+		},
+		nil,
+		func() *core.ApiError { return nil },
+		func(_ context.Context, req core.WizardRequest) (core.WizardResult, *core.ApiError) {
+			gotInitCmd = req.Command
+			initialized = true
+			return core.WizardResult{ExitCode: 0}, nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("expected existing empty workspace to initialize in place, got %+v", err)
+	}
+	if gotInitCmd != commandOf([]string{"init", "--out", existingWS}) {
+		t.Fatalf("prepareEnvironmentSteps rewrote configured workspace: %q", gotInitCmd)
 	}
 }

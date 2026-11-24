@@ -1,19 +1,50 @@
 """Export a reviewed corpus and deliberately unbound platform examples."""
 
+import os
+import stat
+from pathlib import Path
+
 from inferyard.config.bundle import require_review
 from inferyard.contracts.bundle import DEFAULT_BUNDLES
+from inferyard.platforms.output_tree import anchored
 from inferyard.provisioning.community_resources import BUNDLES, resource_bytes
 from inferyard.provisioning.preparation_io import (
     NewDirectory,
     PreparationError,
     base_details,
     finish,
-    new_path,
+    linked,
     require_platform,
     sha256,
 )
 from inferyard.contracts.validation import strict_json_loads
 from inferyard.errors import ContractError
+
+_MANAGED_WORKSPACE_SUBDIRS = frozenset({"models", "engines", "results", "reports"})
+
+
+def _prepare_workspace_output(raw_out):
+    out = Path(raw_out).absolute()
+    if not os.path.lexists(out):
+        return NewDirectory(out)
+    if linked(out) or not stat.S_ISDIR(out.lstat().st_mode):
+        raise PreparationError("output_exists")
+    for entry in os.scandir(out):
+        if (
+            entry.name not in _MANAGED_WORKSPACE_SUBDIRS
+            or linked(Path(entry.path))
+            or not entry.is_dir(follow_symlinks=False)
+        ):
+            raise PreparationError("output_exists")
+    parent = out.parent.resolve(strict=True)
+    if not parent.is_dir():
+        raise NotADirectoryError(parent)
+    resolved = parent / out.name
+    output = NewDirectory.__new__(NewDirectory)
+    output.path = resolved
+    with NewDirectory.errors(), anchored(resolved, create=False) as (tree, handle):
+        output.identity = tree.identity(handle)
+    return output
 
 
 def _load_bundle(name):
@@ -33,13 +64,12 @@ def _load_bundle(name):
 
 def initialize(request):
     require_platform(("Linux", "x64"), ("Windows", "x64"), ("Darwin", "arm64"))
-    new_path(request.out)
     names = (request.community_bundle,) if request.community_bundle else DEFAULT_BUNDLES
     bundles = {name: _load_bundle(name) for name in names}
     templates = {
         p: resource_bytes(f"configs/{p}.example.toml") for p in ("linux", "macos", "windows")
     }
-    output = NewDirectory(request.out)
+    output = _prepare_workspace_output(request.out)
     roadmap = resource_bytes("README.md").decode().replace("{{WORKSPACE}}", str(output.path))
     output.write("README.md", roadmap.encode())
     for name, raw in bundles.items():

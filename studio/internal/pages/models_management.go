@@ -52,6 +52,10 @@ func modelsStorageSummaryText(reg core.Registry) string {
 	return l10n.TRf("models.storage.summary", "used", used, "free", free)
 }
 
+func samePreviewPath(a, b string) bool {
+	return filepath.Clean(strings.TrimSpace(a)) == filepath.Clean(strings.TrimSpace(b))
+}
+
 func sameModelRoot(a, b string) bool {
 	ca, cb := filepath.Clean(strings.TrimSpace(a)), filepath.Clean(strings.TrimSpace(b))
 	if ca == cb {
@@ -62,18 +66,28 @@ func sameModelRoot(a, b string) bool {
 	return errA == nil && errB == nil && ea == eb
 }
 
-func isExtraModelRoot(idx int, dir, primaryRoot string) bool {
-	if strings.TrimSpace(primaryRoot) != "" {
-		return !sameModelRoot(dir, primaryRoot)
+func isExtraModelRoot(dir, primaryRoot string) bool {
+	if strings.TrimSpace(primaryRoot) == "" {
+		return true
 	}
-	return idx > 0
+	return !sameModelRoot(dir, primaryRoot)
+}
+
+func (s *viewState) isExtraModelRootDir(dir, primaryRoot string) bool {
+	if strings.TrimSpace(primaryRoot) == "" {
+		return true
+	}
+	if s.preview != nil {
+		return !samePreviewPath(dir, primaryRoot)
+	}
+	return !sameModelRoot(dir, primaryRoot)
 }
 
 func (s *viewState) suggestedModelDirs() []core.SuggestedModelDir {
 	if s.preview != nil {
 		cand := core.SuggestedModelDir{Label: "LM Studio", Path: "/preview/.lmstudio/models"}
 		for _, root := range s.registry.ModelRoots {
-			if sameModelRoot(root, cand.Path) {
+			if samePreviewPath(root, cand.Path) {
 				return nil
 			}
 		}
@@ -91,8 +105,14 @@ func (s *viewState) addExtraModelsRoot(dir string) {
 		return
 	}
 	if s.preview != nil {
-		if !slices.ContainsFunc(s.registry.ModelRoots, func(r string) bool { return sameModelRoot(r, dir) }) {
+		if !slices.ContainsFunc(s.registry.ModelRoots, func(r string) bool { return samePreviewPath(r, dir) }) {
 			s.registry.ModelRoots = append(s.registry.ModelRoots, dir)
+		}
+		primaryRoot := emptyText(s.settings.Effective.ModelsRoot)
+		if (primaryRoot == "" || !samePreviewPath(dir, primaryRoot)) &&
+			!slices.ContainsFunc(s.settings.Settings.ExtraModelsRoots, func(r string) bool { return samePreviewPath(r, dir) }) {
+			s.settings.Settings.ExtraModelsRoots = append(s.settings.Settings.ExtraModelsRoots, dir)
+			s.settings.Effective.ExtraModelsRoots = slices.Clone(s.settings.Settings.ExtraModelsRoots)
 		}
 		s.enqueueStatusToast(l10n.TRf("models.roots.toast.added_preview", "dir", dir))
 		return
@@ -135,8 +155,12 @@ func (s *viewState) removeExtraModelsRoot(dir string) {
 	}
 	if s.preview != nil {
 		s.registry.ModelRoots = slices.DeleteFunc(s.registry.ModelRoots, func(r string) bool {
-			return sameModelRoot(r, dir)
+			return samePreviewPath(r, dir)
 		})
+		s.settings.Settings.ExtraModelsRoots = slices.DeleteFunc(s.settings.Settings.ExtraModelsRoots, func(r string) bool {
+			return samePreviewPath(r, dir)
+		})
+		s.settings.Effective.ExtraModelsRoots = slices.Clone(s.settings.Settings.ExtraModelsRoots)
 		s.enqueueStatusToast(l10n.TRf("models.roots.toast.removed_preview", "dir", dir))
 		return
 	}
@@ -185,7 +209,7 @@ func (s *viewState) pickExtraModelsRoot(defaultPath string) {
 	}
 	options := mygo.OpenDialogOptions{
 		Parent:            s.win,
-		Title:             browseModels.dialogTitle(),
+		Title:             l10n.TR("browse.title.models"),
 		DefaultPath:       defaultPath,
 		Directory:         true,
 		CreateDirectories: true,
@@ -299,7 +323,7 @@ func (s *viewState) modelsPageActions(c *ui.Context, wizardOpen *bool) {
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
 		button(c, tr(c, "models.action.download_more")).OnClick(func() { s.selected = "downloads" })
 		button(c, tr(c, "models.action.add_model_dir")).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
-			s.pickExtraModelsRoot(emptyText(s.settings.Settings.ModelsRoot))
+			s.pickExtraModelsRoot(emptyText(s.settings.Effective.ModelsRoot))
 		})
 		engineLabel := tr(c, "engine.wizard.title")
 		if *wizardOpen {
@@ -316,15 +340,15 @@ func (s *viewState) modelStorageAndRootsView(c *ui.Context) {
 	t := tokens(c)
 	ui.Column(c).FillWidth().Gap(t.Density.Tight).Children(func() {
 		ui.Text(c, modelsStorageSummaryText(s.registry)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-		primaryRoot := emptyText(s.settings.Settings.ModelsRoot)
+		primaryRoot := emptyText(s.settings.Effective.ModelsRoot)
 		if len(s.registry.ModelRoots) > 0 {
 			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Hairline).Padding(t.Density.Tight), materialSunken).Children(func() {
-				for idx, rawDir := range s.registry.ModelRoots {
+				for _, rawDir := range s.registry.ModelRoots {
 					dir := rawDir
 					c.Key("model-root-" + dir)
 					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 						ui.Text(c, dir).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine()
-						if isExtraModelRoot(idx, dir, primaryRoot) {
+						if s.isExtraModelRootDir(dir, primaryRoot) {
 							sizedButton(c, components.ButtonGhost, sizeSM, tr(c, "models.roots.remove")).
 								Label(trf(c, "models.roots.remove_label", "dir", dir)).
 								Disabled(s.busy).

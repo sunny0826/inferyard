@@ -231,7 +231,7 @@ func (s *viewState) isEngineSourceDownloading(sourceURL string) bool {
 		return false
 	}
 	for _, task := range s.downloads {
-		if task.Kind == "engine" && task.State == "downloading" && task.SourceUrl == sourceURL {
+		if task.Kind == "engine" && task.State == "downloading" && task.SourceUrl == sourceURL && s.downloadTaskInCurrentWorkspace(task) {
 			return true
 		}
 	}
@@ -246,7 +246,7 @@ func (s *viewState) isEngineFamilyDownloading(fam core.EngineFamilyCatalog) bool
 		if fam.ID == "polystrata" && task.Kind == "polystrata" {
 			return true
 		}
-		if task.Kind != "engine" {
+		if task.Kind != "engine" || !s.downloadTaskInCurrentWorkspace(task) {
 			continue
 		}
 		for _, rel := range fam.Releases {

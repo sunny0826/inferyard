@@ -547,4 +547,24 @@ func TestWorkspaceSwitchIsolationAndOrdering(t *testing.T) {
 	if _, apiErr := psSvc.RetryDownload("ps-failed-b"); apiErr == nil || apiErr.Code != "conflict" || apiErr.Details["reason"] != "polystrata_setup_active" {
 		t.Fatalf("cross-workspace RetryDownload(polystrata) = %+v, want polystrata_setup_active", apiErr)
 	}
+
+	// canInitWorkspaceDir accepts non-existent, empty, or managed-subdir-only dirs, and rejects stray files.
+	emptyDir := t.TempDir()
+	if !canInitWorkspaceDir(emptyDir) {
+		t.Fatalf("expected empty existing dir %q to be allowed for init", emptyDir)
+	}
+	managedDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(managedDir, "models"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if !canInitWorkspaceDir(managedDir) {
+		t.Fatalf("expected dir with managed models subdir %q to be allowed for init", managedDir)
+	}
+	strayDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(strayDir, "notes.txt"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if canInitWorkspaceDir(strayDir) {
+		t.Fatalf("expected dir with stray user file %q to be rejected for init", strayDir)
+	}
 }

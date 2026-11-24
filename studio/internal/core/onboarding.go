@@ -179,7 +179,11 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 		if !filepath.IsAbs(out) {
 			return result, Err("invalid_request")
 		}
-		if _, err := os.Lstat(out); !os.IsNotExist(err) {
+		if args[0] == "init" {
+			if !canInitWorkspaceDir(out) {
+				return result, Conflict("output_exists")
+			}
+		} else if _, err := os.Lstat(out); !os.IsNotExist(err) {
 			return result, Conflict("output_exists")
 		}
 		if err := os.MkdirAll(filepath.Dir(out), 0700); err != nil {
@@ -238,6 +242,31 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 }
 
 var fixedReason = regexp.MustCompile(`^[a-z][a-z0-9_]{0,127}$`)
+
+func canInitWorkspaceDir(out string) bool {
+	info, err := os.Lstat(out)
+	if os.IsNotExist(err) {
+		return true
+	}
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+		return false
+	}
+	entries, err := os.ReadDir(out)
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		switch entry.Name() {
+		case "models", "engines", "results", "reports":
+			if entry.Type()&os.ModeSymlink != 0 || !entry.IsDir() {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
+}
 
 func resourceArg(args []string, flag, value string) []string {
 	for i, a := range args {

@@ -74,10 +74,14 @@ func settingsState() *viewState {
 	s.selected = "settings"
 	s.settings = core.SettingsResponse{
 		Settings: core.UserSettings{
-			WorkspaceRoot: ptr("/saved/workspace"), ResultsRoot: ptr("/saved/results"),
-			ModelsRoot: ptr("/saved/models"), ModelDownloadName: "saved-model", EngineDownloadName: "saved-engine",
+			WorkspaceRoot: ptr("/saved/workspace"),
 		},
-		Effective: core.EffectiveSettings{WorkspaceRoot: ptr("/saved/workspace")},
+		Effective: core.EffectiveSettings{
+			WorkspaceRoot: ptr("/saved/workspace"),
+			ResultsRoot:   ptr("/saved/workspace/results"),
+			ModelsRoot:    ptr("/saved/workspace/models"),
+			ReportsRoot:   ptr("/saved/workspace/reports"),
+		},
 	}
 	s.loadSettings(s.settings)
 	s.settingsLoaded = true

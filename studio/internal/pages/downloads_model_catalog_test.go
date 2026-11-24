@@ -34,8 +34,8 @@ func testDownloadService(
 	t.Helper()
 	root := t.TempDir()
 	ws := filepath.Join(root, "ws")
-	models := filepath.Join(root, "models")
-	results := filepath.Join(root, "results")
+	models := filepath.Join(ws, "models")
+	results := filepath.Join(ws, "results")
 	for _, dir := range []string{ws, models, results} {
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			t.Fatal(err)
@@ -44,8 +44,6 @@ func testDownloadService(
 	settingsPath := filepath.Join(root, "settings.json")
 	rawSettings, _ := json.Marshal(core.UserSettings{
 		WorkspaceRoot: ptr(ws),
-		ModelsRoot:    ptr(models),
-		ResultsRoot:   ptr(results),
 		InferyardPath: ptr(os.Args[0]),
 	})
 	if err := os.WriteFile(settingsPath, rawSettings, 0o600); err != nil {

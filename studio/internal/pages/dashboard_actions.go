@@ -2,7 +2,6 @@ package pages
 
 import (
 	"context"
-	"fmt"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
@@ -10,12 +9,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 )
 
-func fresh(root, name string) string {
-	return filepath.Join(root, fmt.Sprintf("%s-%d", name, time.Now().UnixNano()))
-}
 func (w *viewState) active() *inferyard.BundleProgress {
 	if w.progress != nil {
 		for i := range w.progress.Bundles {
@@ -64,13 +59,6 @@ func activeRunTask(tasks []core.RunTask) *core.RunTask {
 
 func (w *viewState) running() *core.RunTask {
 	return activeRunTask(w.tasks)
-}
-
-func suggestInitDir(path string, exists, initialized bool) string {
-	if exists && !initialized && path != "" {
-		return fresh(path, "workspace")
-	}
-	return path
 }
 
 func executeMessage(r core.WizardResult) string {
@@ -404,7 +392,7 @@ func prepareEnvironmentSteps(ctx context.Context, readiness func() core.Readines
 		return core.Err("cli_unavailable")
 	}
 	if !r.Workspace.Initialized {
-		out := suggestInitDir(emptyText(r.Workspace.Path), r.Workspace.Exists, r.Workspace.Initialized)
+		out := emptyText(r.Workspace.Path)
 		if pathError(out) != "" {
 			return core.Err("invalid_request")
 		}

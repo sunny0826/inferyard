@@ -143,9 +143,6 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 	if reason != "" {
 		noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: reason})
 	}
-	if s.eligibility(s.engine).Reason == "cli_outdated" {
-		button(c, tr(c, "speed.action.open_cli_settings")).OnClick(func() { s.selected = "settings" })
-	}
 	if primaryButton(c, tr(c, "speed.action.start")).Disabled(reason != "").AlignSelf(ui.Start).Clicked() {
 		s.startSpeed()
 	}

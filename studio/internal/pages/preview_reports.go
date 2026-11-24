@@ -3,6 +3,7 @@
 package pages
 
 import (
+	"path/filepath"
 	"slices"
 
 	"inferyard/studio/internal/core"
@@ -101,7 +102,11 @@ func (p *previewSession) createReport(paths []string) string {
 	s := p.state
 	id := p.nextID("report")
 	index := &core.ReportIndex{}
-	summary := core.ReportSummary{ReportId: id, Path: "/preview/reports/" + id, ModifiedAt: previewValue(p.timestamp())}
+	reportsRoot := emptyText(s.settings.Effective.ReportsRoot)
+	if reportsRoot == "" {
+		reportsRoot = "/preview/reports"
+	}
+	summary := core.ReportSummary{ReportId: id, Path: filepath.Join(reportsRoot, id), ModifiedAt: previewValue(p.timestamp())}
 	for _, history := range s.historyRuns() {
 		if !slices.Contains(paths, history.Path) {
 			continue

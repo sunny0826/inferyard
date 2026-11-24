@@ -30,9 +30,7 @@ func TestSettingsDraftSavePreservesUpgradedCLIPath(t *testing.T) {
 		}
 	}
 	ws := filepath.Join(root, "ws")
-	oldResults := filepath.Join(root, "results-old")
-	newResults := filepath.Join(root, "results-new")
-	modelsDir := filepath.Join(root, "models")
+	newResults := filepath.Join(root, "ws-new")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
@@ -60,8 +58,6 @@ func TestSettingsDraftSavePreservesUpgradedCLIPath(t *testing.T) {
 	for k, v := range map[string]string{
 		"inferyard_path": oldCLI,
 		"workspace_root": ws,
-		"results_root":   oldResults,
-		"models_root":    modelsDir,
 	} {
 		initPatch[k], _ = json.Marshal(v)
 	}
@@ -77,10 +73,10 @@ func TestSettingsDraftSavePreservesUpgradedCLIPath(t *testing.T) {
 	s.updateWindow = func(fn func()) { updates <- fn }
 	s.applySettings(svc.Settings())
 
-	// User has an unsaved results_root draft while clicking "升级 CLI".
-	s.results = newResults
-	if !s.settingsEdited() || !s.canSavePaths() {
-		t.Fatalf("expected results draft to enable save: edited=%v canSave=%v", s.settingsEdited(), s.canSavePaths())
+	// User has an unsaved workspace_root draft while CLI upgrades in background.
+	s.workspace = newResults
+	if !s.settingsEdited() || !s.canSaveWorkspace() {
+		t.Fatalf("expected workspace draft to enable save: edited=%v canSave=%v", s.settingsEdited(), s.canSaveWorkspace())
 	}
 
 	upgradedPatch, _ := json.Marshal(newCLI)
@@ -90,11 +86,8 @@ func TestSettingsDraftSavePreservesUpgradedCLIPath(t *testing.T) {
 	}
 	s.applySettings(upgradedSettings)
 
-	if s.results != newResults {
-		t.Fatalf("applySettings overwrote unsaved results draft: got %q want %q", s.results, newResults)
-	}
-	if s.cliPath != newCLI {
-		t.Fatalf("applySettings did not sync untouched cliPath to upgraded CLI: got %q want %q", s.cliPath, newCLI)
+	if s.workspace != newResults {
+		t.Fatalf("applySettings overwrote unsaved workspace draft: got %q want %q", s.workspace, newResults)
 	}
 
 	tt := settingsTester(&s)
@@ -111,11 +104,11 @@ func TestSettingsDraftSavePreservesUpgradedCLIPath(t *testing.T) {
 	}
 
 	saved := svc.Settings().Settings
-	if saved.ResultsRoot == nil || *saved.ResultsRoot != newResults {
-		t.Fatalf("saved ResultsRoot = %v, want %q", saved.ResultsRoot, newResults)
+	if saved.WorkspaceRoot == nil || *saved.WorkspaceRoot != newResults {
+		t.Fatalf("saved WorkspaceRoot = %v, want %q", saved.WorkspaceRoot, newResults)
 	}
 	if saved.InferyardPath == nil || *saved.InferyardPath != newCLI {
-		t.Fatalf("saving results draft reverted InferyardPath to %v, want %q", saved.InferyardPath, newCLI)
+		t.Fatalf("saving workspace draft reverted InferyardPath to %v, want %q", saved.InferyardPath, newCLI)
 	}
 }
 
@@ -184,12 +177,12 @@ func TestAutoCLIUpgradeBannerOnlyShowsOnFailure(t *testing.T) {
 		TargetVersion: "0.0.12",
 		Error: &core.ApiError{
 			Code:    "cli_upgrade_failed",
-			Message: "CLI 自动升级失败，可重试或在设置中手动指定路径。",
+			Message: "CLI 自动升级失败，请重试或按安装指南手动升级。",
 			Details: map[string]any{"output_tail": "error: Failed to fetch from PyPI"},
 		},
 	})
 	tt.Frame()
-	if !tt.HasText("CLI 自动升级失败，可重试或在设置中手动指定路径。") || !tt.HasText("重试") || !tt.HasText("前往设置") {
+	if !tt.HasText("CLI 自动升级失败，请重试或按安装指南手动升级。") || !tt.HasText("重试") || !tt.HasText("前往设置") {
 		t.Fatalf("expected CLI upgrade failure banner with actions, got %v", tt.Texts())
 	}
 
@@ -215,7 +208,7 @@ func TestAutoCLIUpgradeBannerOnlyShowsOnFailure(t *testing.T) {
 	s.selected = "reports"
 	tt.SetLocale("en")
 	tt.Frame()
-	if !tt.HasText("Automatic CLI upgrade failed. Retry or specify the path manually in Settings.") {
+	if !tt.HasText("Automatic CLI upgrade failed. Retry or follow the manual upgrade guide.") {
 		t.Fatalf("expected clean English message after locale switch, got %v", tt.Texts())
 	}
 	if tt.HasText("Automatic CLI upgrade failed: CLI") {

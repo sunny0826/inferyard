@@ -54,7 +54,7 @@ func (s *viewState) applyDashboard(v dashboardSnapshot, e *core.ApiError) {
 		s.refreshFailure = human(e.Code)
 	}
 	if s.initDir == "" {
-		s.initDir = suggestInitDir(emptyText(s.ready.Workspace.Path), s.ready.Workspace.Exists, s.ready.Workspace.Initialized)
+		s.initDir = emptyText(s.ready.Workspace.Path)
 	}
 	if v.candidate != s.candidate {
 		s.process = ""

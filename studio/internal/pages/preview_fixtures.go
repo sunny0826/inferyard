@@ -151,6 +151,16 @@ func previewDownloadsPolystrataModel(s *viewState) {
 
 func previewDownloadsActiveAndFailed(s *viewState) {
 	s.selected = "downloads"
+	ws := emptyText(s.settings.Effective.WorkspaceRoot)
+	modelsRoot := emptyText(s.settings.Effective.ModelsRoot)
+	engineOutDir := "/preview/engines/preview-engine"
+	if ws != "" {
+		engineOutDir = filepath.Join(ws, "engines", "preview-engine")
+	}
+	modelOutDir := "/preview/models/preview-model"
+	if modelsRoot != "" {
+		modelOutDir = filepath.Join(modelsRoot, "preview-model")
+	}
 	engineTotal := int64(11517506)
 	s.downloads = []core.DownloadTask{
 		{
@@ -161,7 +171,7 @@ func previewDownloadsActiveAndFailed(s *viewState) {
 			Stage:           "downloading",
 			SourceUrl:       core.DefaultEngineURL(),
 			OutName:         "preview-engine",
-			OutDir:          "/preview/engines/preview-engine",
+			OutDir:          engineOutDir,
 			DownloadedBytes: engineTotal * 3 / 5,
 			TotalBytes:      previewValue(engineTotal),
 			BytesPerSecond:  previewValue(18.5 * 1024 * 1024),
@@ -172,7 +182,7 @@ func previewDownloadsActiveAndFailed(s *viewState) {
 			Kind:      "model",
 			State:     "failed",
 			OutName:   "preview-model",
-			OutDir:    "/preview/models/preview-model",
+			OutDir:    modelOutDir,
 			SourceUrl: "https://example.invalid/preview.gguf",
 			Error:     core.Err("download_failed"),
 		},
@@ -204,7 +214,10 @@ func previewValue[T any](value T) *T { return &value }
 func previewBase(ctx context.Context) *viewState {
 	root := filepath.Join(os.TempDir(), "inferyard-ui-preview")
 	model, engine := "Preview-Model-Q4.gguf", "preview-engine · llama-server"
-	settings := core.UserSettings{WorkspaceRoot: previewValue(root), ResultsRoot: previewValue(filepath.Join(root, "results")), ModelsRoot: previewValue(filepath.Join(root, "models"))}
+	settings := core.UserSettings{WorkspaceRoot: previewValue(root)}
+	resultsRoot := previewValue(filepath.Join(root, "results"))
+	modelsRoot := previewValue(filepath.Join(root, "models"))
+	reportsRoot := previewValue(filepath.Join(root, "reports"))
 	s := &viewState{
 		speed: &speedWorkspace{context: inferyard.ContextSpeed64K},
 		ctx:   ctx, selected: "dashboard", loaded: true, settingsLoaded: true,
@@ -213,11 +226,11 @@ func previewBase(ctx context.Context) *viewState {
 		ready: core.Readiness{
 			CLI:       core.InferyardProbe{Status: "ok", Version: previewValue("preview")},
 			Workspace: core.DirectoryReadiness{Path: settings.WorkspaceRoot, Exists: true, Initialized: true},
-			Results:   core.DirectoryReadiness{Path: settings.ResultsRoot, Exists: true},
-			Models:    core.DirectoryReadiness{Path: settings.ModelsRoot, Exists: true},
+			Results:   core.DirectoryReadiness{Path: resultsRoot, Exists: true},
+			Models:    core.DirectoryReadiness{Path: modelsRoot, Exists: true},
 		},
 		settings: core.SettingsResponse{Settings: settings, Effective: core.EffectiveSettings{
-			WorkspaceRoot: settings.WorkspaceRoot, ResultsRoot: settings.ResultsRoot, ModelsRoot: settings.ModelsRoot,
+			WorkspaceRoot: settings.WorkspaceRoot, ResultsRoot: resultsRoot, ModelsRoot: modelsRoot, ReportsRoot: reportsRoot,
 			Theme: core.ThemeSystem,
 		}},
 		registry: core.Registry{

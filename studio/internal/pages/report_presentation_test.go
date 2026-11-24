@@ -25,7 +25,6 @@ func reportFixture(t *testing.T) []byte {
 func reportFixtureService(t *testing.T) (*core.Service, string) {
 	t.Helper()
 	root := t.TempDir()
-	results := filepath.Join(root, "results")
 	dir := filepath.Join(root, "reports", "summary-1")
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		t.Fatal(err)
@@ -34,7 +33,8 @@ func reportFixtureService(t *testing.T) (*core.Service, string) {
 		t.Fatal(err)
 	}
 	settings := filepath.Join(root, "settings.json")
-	raw, _ := json.Marshal(core.UserSettings{ResultsRoot: &results})
+	noCLI := filepath.Join(root, "no-cli")
+	raw, _ := json.Marshal(core.UserSettings{WorkspaceRoot: &root, InferyardPath: &noCLI})
 	if err := os.WriteFile(settings, raw, 0600); err != nil {
 		t.Fatal(err)
 	}

@@ -15,27 +15,43 @@ import (
 	"inferyard/studio/internal/l10n"
 )
 
+func previewTaskInRoot(outRoot string, task core.DownloadTask) bool {
+	if outRoot == "" || task.OutDir == "" {
+		return true
+	}
+	if !filepath.IsAbs(task.OutDir) {
+		return false
+	}
+	rel, err := filepath.Rel(filepath.Clean(outRoot), filepath.Clean(task.OutDir))
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
 func (p *previewSession) startDownload(op previewDownload) {
 	s := p.state
+	outRoot := emptyText(s.settings.Effective.ModelsRoot)
+	if op.kind == "engine" {
+		if ws := emptyText(s.settings.Effective.WorkspaceRoot); ws != "" {
+			outRoot = filepath.Join(ws, "engines")
+		} else {
+			outRoot = ""
+		}
+	}
 	if op.name == "" && op.source != "" {
 		for _, task := range s.downloads {
-			if task.Kind == op.kind && task.State == "downloading" && task.SourceUrl == op.source {
+			if task.Kind == op.kind && task.State == "downloading" && task.SourceUrl == op.source && previewTaskInRoot(outRoot, task) {
 				return
 			}
 		}
 	}
 	name := op.name
 	if name == "" {
-		name = defaultDownloadName(s.settings.Settings.ModelDownloadName, "model")
-		if op.kind == "engine" {
-			name = defaultDownloadName(s.settings.Settings.EngineDownloadName, "engine")
-		}
+		name = core.SuggestDownloadSlug(op.kind, op.source)
 	}
 	base := name
 	for suffix := 2; ; suffix++ {
 		used := false
 		for _, task := range s.downloads {
-			used = used || task.OutName == name
+			used = used || (task.OutName == name && previewTaskInRoot(outRoot, task))
 		}
 		if !used {
 			break
@@ -48,7 +64,7 @@ func (p *previewSession) startDownload(op previewDownload) {
 	if op.kind == "engine" {
 		filename = "llama-server"
 	}
-	task := core.DownloadTask{TaskId: id, Kind: op.kind, State: "downloading", SourceUrl: op.source, OutName: name, OutDir: filepath.Join(s.models, name), FileName: previewValue(filename), StartedAt: p.timestamp()}
+	task := core.DownloadTask{TaskId: id, Kind: op.kind, State: "downloading", SourceUrl: op.source, OutName: name, OutDir: filepath.Join(outRoot, name), FileName: previewValue(filename), StartedAt: p.timestamp()}
 	s.downloads = append([]core.DownloadTask{task}, s.downloads...)
 	p.tickDownload(id, p.takeFailure(), 0)
 	p.noticeKey = "preview.notice.download_started"
@@ -70,7 +86,7 @@ func (p *previewSession) startPolystrataSetup(req core.PolystrataSetupRequest) {
 		parts = append(parts, strings.TrimSpace(req.Model))
 	}
 	outName := "polystrata-" + id
-	outDir := filepath.Join(s.workspace, "engines", outName)
+	outDir := filepath.Join(emptyText(s.settings.Effective.WorkspaceRoot), "engines", outName)
 	task := core.DownloadTask{
 		TaskId:      id,
 		Kind:        "polystrata",
@@ -172,6 +188,17 @@ func (p *previewSession) tickDownload(id string, fail bool, tick int) {
 
 func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 	s := p.state
+	outRoot := emptyText(s.settings.Effective.ModelsRoot)
+	if task.Kind == "engine" || task.Kind == "polystrata" {
+		if ws := emptyText(s.settings.Effective.WorkspaceRoot); ws != "" {
+			outRoot = filepath.Join(ws, "engines")
+		} else {
+			outRoot = ""
+		}
+	}
+	if !previewTaskInRoot(outRoot, *task) {
+		return
+	}
 	if task.Kind == "polystrata" {
 		engName := "PolyStrata · v0.1.45-poly.10"
 		instPath := emptyText(task.InstallationPath)

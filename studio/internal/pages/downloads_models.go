@@ -340,7 +340,7 @@ func (s *viewState) isModelEntryDownloaded(entry core.CatalogEntry) bool {
 
 func (s *viewState) isModelEntryDownloading(entry core.CatalogEntry) bool {
 	for _, task := range s.downloads {
-		if task.State == "downloading" && modelTaskMatchesEntry(task, entry) {
+		if task.State == "downloading" && modelTaskMatchesEntry(task, entry) && s.downloadTaskInCurrentWorkspace(task) {
 			return true
 		}
 	}

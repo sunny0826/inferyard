@@ -125,7 +125,7 @@ func TestDashboardPreparationFreezesSelectedModel(t *testing.T) {
 			}
 			binary, _ := os.Executable()
 			models := filepath.Dir(a)
-			raw, _ := json.Marshal(core.UserSettings{InferyardPath: &binary, WorkspaceRoot: &root, ModelsRoot: &models})
+			raw, _ := json.Marshal(core.UserSettings{InferyardPath: &binary, WorkspaceRoot: &root, ExtraModelsRoots: []string{models}})
 			settings := filepath.Join(root, "settings.json")
 			write(settings, raw)
 			ctx, cancel := context.WithCancel(context.Background())

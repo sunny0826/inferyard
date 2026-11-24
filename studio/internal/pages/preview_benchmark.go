@@ -86,7 +86,7 @@ func (p *previewSession) startRun(bundleIndex int, op previewBenchmark, ids []st
 	bundle := op.bundles[bundleIndex]
 	s.task.stage, s.progress.NextAction = "run", "run"
 	id := ids[bundleIndex]
-	path := filepath.Join(s.results, id)
+	path := filepath.Join(emptyText(s.settings.Effective.ResultsRoot), id)
 	task := p.details[id].Task
 	task.State, task.Queued = "running", false
 	task.RunId, task.RunPath, task.StartedAt = previewValue(id), previewValue(path), previewValue(p.timestamp())

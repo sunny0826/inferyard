@@ -14,7 +14,6 @@ import (
 
 func TestReportViewReadsStudioJSONOnly(t *testing.T) {
 	root := t.TempDir()
-	results := filepath.Join(root, "results")
 	fixture := string(reportFixture(t))
 	for _, id := range []string{"good", "bad"} {
 		dir := filepath.Join(root, "reports", id)
@@ -39,7 +38,8 @@ func TestReportViewReadsStudioJSONOnly(t *testing.T) {
 		}
 	}
 	settings := filepath.Join(root, "settings.json")
-	raw, _ := json.Marshal(core.UserSettings{ResultsRoot: &results})
+	noCLI := filepath.Join(root, "no-cli")
+	raw, _ := json.Marshal(core.UserSettings{WorkspaceRoot: &root, InferyardPath: &noCLI})
 	if e := os.WriteFile(settings, raw, 0600); e != nil {
 		t.Fatal(e)
 	}

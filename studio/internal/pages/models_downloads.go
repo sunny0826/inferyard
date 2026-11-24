@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -228,6 +229,34 @@ func downloadTaskSamePinnedSource(a, b core.DownloadTask) bool {
 	return a.Kind == b.Kind && a.SourceUrl != "" && a.SourceUrl == b.SourceUrl
 }
 
+func (s *viewState) downloadTaskInCurrentWorkspace(task core.DownloadTask) bool {
+	if task.Kind == "polystrata" {
+		return true
+	}
+	root := emptyText(s.settings.Effective.ModelsRoot)
+	if task.Kind == "engine" {
+		if s.service != nil && s.service.BoundPaths() != nil {
+			root = s.service.BoundPaths().Engines
+		} else if ws := emptyText(s.settings.Effective.WorkspaceRoot); ws != "" {
+			root = filepath.Join(ws, "engines")
+		} else {
+			root = ""
+		}
+	}
+	if root == "" || task.OutDir == "" {
+		return true
+	}
+	if !filepath.IsAbs(task.OutDir) {
+		return false
+	}
+	if s.preview != nil {
+		rel, err := filepath.Rel(filepath.Clean(root), filepath.Clean(task.OutDir))
+		return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+	}
+	_, err := core.Resolve(root, task.OutDir)
+	return err == nil
+}
+
 func (s *viewState) downloadRetryActive(task core.DownloadTask) bool {
 	for _, other := range s.downloads {
 		if other.TaskId == task.TaskId || other.State != "downloading" {
@@ -236,7 +265,7 @@ func (s *viewState) downloadRetryActive(task core.DownloadTask) bool {
 		if task.Kind == "polystrata" && other.Kind == "polystrata" {
 			return true
 		}
-		if downloadTaskSamePinnedSource(task, other) {
+		if downloadTaskSamePinnedSource(task, other) && s.downloadTaskInCurrentWorkspace(other) {
 			return true
 		}
 	}

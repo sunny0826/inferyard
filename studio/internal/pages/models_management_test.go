@@ -77,8 +77,7 @@ func newIsolatedModelService(
 	settingsPath := filepath.Join(base, "settings.json")
 	raw, _ := json.Marshal(core.UserSettings{
 		InferyardPath: ptr(os.Args[0]),
-		ModelsRoot:    &modelsRoot,
-		ResultsRoot:   &resultsRoot,
+		WorkspaceRoot: &base,
 	})
 	if err := os.WriteFile(settingsPath, raw, 0o600); err != nil {
 		t.Fatal(err)

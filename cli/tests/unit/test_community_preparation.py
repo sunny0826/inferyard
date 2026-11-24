@@ -39,3 +39,25 @@ def test_init_preserves_authoritative_bytes_and_review(tmp_path, capsys, name):
     code, again = invoke(capsys, ["init", "--out", str(out)])
     assert code == 2 and again["limitations"] == ["output_exists"]
     assert (out / f"bundles/{name}.json").read_bytes() == source
+
+
+def test_init_accepts_existing_empty_or_managed_subdirs_and_rejects_stray_files(tmp_path, capsys):
+    empty_ws = tmp_path / "picked-empty"
+    empty_ws.mkdir()
+    code, result = invoke(capsys, ["init", "--out", str(empty_ws), "--bundle", "zh-smoke"])
+    assert code == 0 and result["status"] == "prepared"
+    assert (empty_ws / "preparation.json").is_file()
+
+    pre_ws = tmp_path / "with-models"
+    (pre_ws / "models").mkdir(parents=True)
+    (pre_ws / "models" / "demo.gguf").write_bytes(b"gguf")
+    code, result = invoke(capsys, ["init", "--out", str(pre_ws), "--bundle", "zh-smoke"])
+    assert code == 0 and result["status"] == "prepared"
+    assert (pre_ws / "models" / "demo.gguf").read_bytes() == b"gguf"
+
+    stray_ws = tmp_path / "non-empty-user-dir"
+    stray_ws.mkdir()
+    (stray_ws / "notes.txt").write_text("keep", encoding="utf-8")
+    code, blocked = invoke(capsys, ["init", "--out", str(stray_ws), "--bundle", "zh-smoke"])
+    assert code == 2 and blocked["limitations"] == ["output_exists"]
+    assert not (stray_ws / "preparation.json").exists()
