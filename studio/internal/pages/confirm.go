@@ -76,7 +76,7 @@ func (s *viewState) destructiveActionWithTrigger(c *ui.Context, option destructi
 		open = s.pendingDestructive == request
 	}
 	confirmed := false
-	components.Popover(c, trigger, &open, func(panel ui.Element) {
+	studioPopover(c, trigger, &open, func(panel ui.Element) {
 		if alignRight {
 			panel.AttachTo(trigger, ui.AnchorBottomRight, ui.AnchorTopRight)
 		}
@@ -130,7 +130,7 @@ func (s *viewState) destructiveRequestFor(option destructiveOption) destructiveR
 func (s *viewState) destructiveDialogModal(c *ui.Context, option destructiveOption) bool {
 	request := s.destructiveRequestFor(option)
 	open := s.pendingDestructive == request
-	result := components.AlertDialog(c, &open, components.AlertDialogOptions{
+	result := studioAlertDialog(c, &open, components.AlertDialogOptions{
 		DialogOptions: components.DialogOptions{Label: option.label},
 		Title:         option.label,
 		Message:       option.prompt,

@@ -141,28 +141,29 @@ type statusPanelOptions struct {
 func statusPanelParts(c *ui.Context, o statusPanelOptions, content func(close func())) {
 	c.Key(o.key)
 	ui.Column(c).Children(func() {
-		t := c.Theme()
+		theme := c.Theme()
+		t := tokens(c)
 		anchor := components.Button(c, "", components.ButtonGhost).
-			Padding(t.Space(.75), t.Space(1.5)).Radius(t.Space(4.5)).
+			Padding(t.Density.Tight, t.Density.Row).Radius(t.Radius.Full).
 			Label(o.label)
 		local := ui.Local(anchor, "status-panel", func() statusPanelState { return statusPanelState{} })
 		anchor.Children(func() {
-			ui.Row(c).AlignItems(ui.Center).Gap(t.Space(.75)).Children(func() {
-				el := components.Icon(c, o.icon).Size(t.Space(4.5), t.Space(4.5)).TextColor(o.color)
+			ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+				el := components.Icon(c, o.icon).Size(theme.Space(4.5), theme.Space(4.5)).TextColor(o.color)
 				if o.animated && !c.Preferences().ReduceMotion {
 					phase := el.Loop("status-activity", 1400*time.Millisecond, ui.Linear)
 					el.Opacity(.65 + .35*float32((math.Sin(float64(phase)*2*math.Pi)+1)/2))
 				}
-				ui.Text(c, o.visible).FontSize(tokens(c).Type.Caption).SingleLine().TextColor(o.color)
+				ui.Text(c, o.visible).FontSize(t.Type.Caption).SingleLine().TextColor(o.color)
 			})
 		})
 		if anchor.Clicked() {
 			local.open = !local.open
 		}
-		components.Popover(c, anchor, &local.open, func(panel ui.Element) {
+		studioPopover(c, anchor, &local.open, func(panel ui.Element) {
 			width := o.width
 			if width <= 0 {
-				width = t.Space(78)
+				width = theme.Space(78)
 			}
 			panel.AttachTo(anchor, ui.AnchorBottomRight, ui.AnchorTopRight).
 				Width(width).MaxWidthPercent(100).Label(o.label + "面板")

@@ -152,7 +152,7 @@ func spacingTokensFor(t *ui.Theme) spacingTokens {
 		Row:      t.Space(2),
 		Inset:    t.Space(2),
 		Tight:    t.Space(1),
-		Hairline: t.Space(.5),
+		Hairline: t.Space(1),
 	}
 }
 
@@ -182,9 +182,9 @@ func surfaceTokensFor(t *ui.Theme) (radiusTokens, cardTokens, metricTokens) {
 	radius := radiusTokens{
 		None:     0,
 		XS:       t.Space(1),
-		SM:       t.Space(1.5),
-		MD:       t.Space(2),
-		LG:       floatingRadius,
+		SM:       t.Space(2),
+		MD:       t.Space(3),
+		LG:       t.Space(4),
 		XL:       cardRadius,
 		XXL:      modalRadius,
 		Full:     9999,
