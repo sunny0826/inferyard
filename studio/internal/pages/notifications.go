@@ -10,31 +10,52 @@ import (
 	"inferyard/studio/internal/l10n"
 )
 
+const (
+	maxVisibleScreenNotifications       = 3
+	defaultNotificationScreenDuration   = 6 * time.Second
+	attentionNotificationScreenDuration = 8 * time.Second
+	pausedNotificationMinRemaining      = 500 * time.Millisecond
+)
+
 type notificationAction struct {
 	Label   string
 	OnClick func()
 }
 
 type studioNotification struct {
-	ID              string
-	Key             string
-	Title           string
-	Body            string
-	Kind            stateKind
-	CreatedAt       time.Time
-	NeedsDecision   bool
-	VisibleOnScreen bool
-	Handled         bool
-	Read            bool
-	Announced       bool
-	Secondary       *notificationAction
-	Primary         *notificationAction
+	ID               string
+	Key              string
+	Title            string
+	Body             string
+	Kind             stateKind
+	CreatedAt        time.Time
+	AutoDismissAfter time.Duration
+	NeedsDecision    bool
+	VisibleOnScreen  bool
+	Handled          bool
+	Read             bool
+	Announced        bool
+	Secondary        *notificationAction
+	Primary          *notificationAction
+	screenElapsed    time.Duration
+	screenLastTick   time.Time
+}
+
+func (n *studioNotification) screenDuration() time.Duration {
+	if n.AutoDismissAfter > 0 {
+		return n.AutoDismissAfter
+	}
+	if n.NeedsDecision || n.Kind == stateDanger || n.Kind == stateWarning {
+		return attentionNotificationScreenDuration
+	}
+	return defaultNotificationScreenDuration
 }
 
 type notificationCenter struct {
 	items           []*studioNotification
 	nextID          uint64
 	tappedExpanded  bool
+	screenPaused    bool
 	bellOpen        bool
 	lastWindowTitle string
 }
@@ -58,12 +79,15 @@ func (s *viewState) pushNotification(n studioNotification) {
 				existing.Body = n.Body
 				existing.Kind = n.Kind
 				existing.CreatedAt = n.CreatedAt
+				existing.AutoDismissAfter = n.AutoDismissAfter
 				existing.NeedsDecision = n.NeedsDecision
 				existing.Primary = n.Primary
 				existing.Secondary = n.Secondary
 				existing.VisibleOnScreen = true
 				existing.Read = false
 				existing.Announced = false
+				existing.screenElapsed = 0
+				existing.screenLastTick = time.Time{}
 				s.syncWindowTitle()
 				return
 			}
@@ -74,6 +98,8 @@ func (s *viewState) pushNotification(n studioNotification) {
 		n.ID = fmt.Sprintf("notif-%d", nc.nextID)
 	}
 	n.VisibleOnScreen = true
+	n.screenElapsed = 0
+	n.screenLastTick = time.Time{}
 	nc.items = append([]*studioNotification{&n}, nc.items...)
 	if len(nc.items) > 40 {
 		nc.items = nc.items[:40]
@@ -86,6 +112,7 @@ func (s *viewState) dismissNotificationFromScreen(id string) {
 	for _, item := range nc.items {
 		if item.ID == id {
 			item.VisibleOnScreen = false
+			item.screenLastTick = time.Time{}
 			if !item.NeedsDecision {
 				item.Read = true
 				item.Handled = true
@@ -101,6 +128,7 @@ func (s *viewState) handleNotification(id string) {
 	for _, item := range nc.items {
 		if item.ID == id {
 			item.VisibleOnScreen = false
+			item.screenLastTick = time.Time{}
 			item.Read = true
 			item.Handled = true
 			break
@@ -114,6 +142,7 @@ func (s *viewState) clearScreenNotifications() {
 	for _, item := range nc.items {
 		if item.VisibleOnScreen {
 			item.VisibleOnScreen = false
+			item.screenLastTick = time.Time{}
 			if !item.NeedsDecision {
 				item.Read = true
 				item.Handled = true
@@ -121,6 +150,7 @@ func (s *viewState) clearScreenNotifications() {
 		}
 	}
 	nc.tappedExpanded = false
+	nc.screenPaused = false
 	s.syncWindowTitle()
 }
 
@@ -132,8 +162,83 @@ func (s *viewState) markAllNotificationsRead() {
 			item.Handled = true
 		}
 		item.VisibleOnScreen = false
+		item.screenLastTick = time.Time{}
 	}
+	nc.tappedExpanded = false
+	nc.screenPaused = false
 	s.syncWindowTitle()
+}
+
+func (nc *notificationCenter) advanceScreenTimers(now time.Time, maxVisible int, paused bool) time.Duration {
+	if maxVisible <= 0 {
+		maxVisible = maxVisibleScreenNotifications
+	}
+	screen := nc.screenItems()
+	if len(screen) == 0 {
+		nc.tappedExpanded = false
+		nc.screenPaused = false
+		return 0
+	}
+	visible := screen
+	if len(visible) > maxVisible {
+		visible = visible[:maxVisible]
+	}
+	if paused {
+		for _, item := range visible {
+			if !nc.screenPaused && !item.screenLastTick.IsZero() {
+				if delta := now.Sub(item.screenLastTick); delta > 0 {
+					item.screenElapsed += delta
+					if dur := item.screenDuration(); item.screenElapsed >= dur {
+						item.screenElapsed = max(0, dur-pausedNotificationMinRemaining)
+					}
+				}
+			}
+			item.screenLastTick = time.Time{}
+		}
+		nc.screenPaused = true
+		return 0
+	}
+
+	nc.screenPaused = false
+	for _, item := range visible {
+		if item.screenLastTick.IsZero() {
+			item.screenLastTick = now
+		} else {
+			if delta := now.Sub(item.screenLastTick); delta > 0 {
+				item.screenElapsed += delta
+			}
+			item.screenLastTick = now
+		}
+		if item.screenElapsed >= item.screenDuration() {
+			item.VisibleOnScreen = false
+			item.screenLastTick = time.Time{}
+		}
+	}
+
+	remainingScreen := nc.screenItems()
+	if len(remainingScreen) == 0 {
+		nc.tappedExpanded = false
+		return 0
+	}
+	if len(remainingScreen) > maxVisible {
+		remainingScreen = remainingScreen[:maxVisible]
+	}
+	var nextWake time.Duration
+	for _, item := range remainingScreen {
+		if item.screenLastTick.IsZero() {
+			item.screenLastTick = now
+		}
+		rem := item.screenDuration() - item.screenElapsed
+		if rem <= 0 {
+			item.VisibleOnScreen = false
+			item.screenLastTick = time.Time{}
+			continue
+		}
+		if nextWake == 0 || rem < nextWake {
+			nextWake = rem
+		}
+	}
+	return nextWake
 }
 
 func (nc *notificationCenter) screenItems() []*studioNotification {

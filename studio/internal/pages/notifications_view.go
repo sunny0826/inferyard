@@ -31,14 +31,6 @@ func (s *viewState) studioNotifications(c *ui.Context) {
 	s.announceNotifications(c)
 	nc := s.notifications()
 	screen := nc.screenItems()
-	if len(screen) == 0 {
-		nc.tappedExpanded = false
-		return
-	}
-	visible := screen
-	if len(visible) > 3 {
-		visible = visible[:3]
-	}
 
 	t := tokens(c)
 	reduced := c.Preferences().ReduceMotion
@@ -46,16 +38,48 @@ func (s *viewState) studioNotifications(c *ui.Context) {
 	width, _ := c.Size()
 	cardWidth := min(float32(344), max(240, width-32))
 
+	if len(screen) == 0 {
+		nc.tappedExpanded = false
+		nc.screenPaused = false
+		ui.Overlay(c, func() {
+			ui.Box(c).Fill().PassThrough().AlignItems(ui.End).Justify(ui.Start).Padding(topInset, 16, 16, 16).Children(func() {
+				ui.Box(c.Key("studio-notif-stack")).Width(cardWidth).Height(0).PassThrough()
+			})
+		})
+		return
+	}
+
 	anim := ui.Animation{Duration: 380 * time.Millisecond, Ease: notifStackEase}
 	if reduced {
 		anim = ui.Animation{Duration: 150 * time.Millisecond, Ease: ui.EaseOut}
+	}
+	now := c.Now()
+	if now.IsZero() {
+		now = time.Now()
 	}
 
 	ui.Overlay(c, func() {
 		ui.Box(c).Fill().PassThrough().AlignItems(ui.End).Justify(ui.Start).Padding(topInset, 16, 16, 16).Children(func() {
 			stack := ui.Box(c.Key("studio-notif-stack")).Width(cardWidth)
-			expanded := stack.Hovered() || stack.FocusWithin() || nc.tappedExpanded
+			paused := stack.Hovered() || stack.FocusWithin()
+			if nextWake := nc.advanceScreenTimers(now, maxVisibleScreenNotifications, paused); nextWake > 0 {
+				c.After(nextWake)
+			}
+			screen = nc.screenItems()
+			if len(screen) == 0 {
+				nc.tappedExpanded = false
+				stack.Height(0).PassThrough()
+				return
+			}
+			visible := screen
+			if len(visible) > maxVisibleScreenNotifications {
+				visible = visible[:maxVisibleScreenNotifications]
+			}
 			n := len(visible)
+			if n <= 1 {
+				nc.tappedExpanded = false
+			}
+			expanded := paused || nc.tappedExpanded
 			heights := make([]float32, n)
 			roots := make([]ui.Element, n)
 
@@ -63,7 +87,7 @@ func (s *viewState) studioNotifications(c *ui.Context) {
 				// Render oldest first so newest (index 0) sits in front.
 				for i := n - 1; i >= 0; i-- {
 					item := visible[i]
-					roots[i] = s.notificationStackCard(c, item, i, expanded, reduced, func(h float32) {
+					roots[i] = s.notificationStackCard(c, item, i, n > 1, expanded, reduced, func(h float32) {
 						heights[i] = h
 					})
 				}
@@ -116,7 +140,7 @@ func (s *viewState) studioNotifications(c *ui.Context) {
 	})
 }
 
-func (s *viewState) notificationStackCard(c *ui.Context, item *studioNotification, depth int, expanded, reduced bool, recordHeight func(float32)) ui.Element {
+func (s *viewState) notificationStackCard(c *ui.Context, item *studioNotification, depth int, canExpand, expanded, reduced bool, recordHeight func(float32)) ui.Element {
 	t := tokens(c)
 	enter := &ui.Motion{Y: -56, Blur: 4, Opacity: 0}
 	exit := &ui.Motion{X: 48, Opacity: 0}
@@ -156,10 +180,9 @@ func (s *viewState) notificationStackCard(c *ui.Context, item *studioNotificatio
 		s.dismissNotificationFromScreen(item.ID)
 	}
 
-	showClose := root.Hovered() || root.FocusWithin()
 	root.Children(func() {
 		body := ui.Column(c).FillWidth().Padding(t.Card.Padding).Gap(t.Density.Row)
-		if !expanded && depth == 0 {
+		if canExpand && !expanded && depth == 0 {
 			body.OnClick(func() {
 				s.notifications().tappedExpanded = !s.notifications().tappedExpanded
 			})
@@ -169,19 +192,6 @@ func (s *viewState) notificationStackCard(c *ui.Context, item *studioNotificatio
 		})
 		if h := body.LayoutBounds().H; h > 0 {
 			recordHeight(h)
-		}
-		if showClose {
-			closeBtn := components.Button(c, "", components.ButtonGhost).
-				Absolute().Top(t.Density.Row).Left(t.Density.Row).Size(24, 24).Padding(0).Radius(t.Radius.Full).
-				Background(t.Color.Surface).Border(1, t.Color.BorderDefault).
-				Label(trf(c, "notif.dismiss_title", "title", item.Title))
-			closeBtn.Children(func() {
-				components.Icon(c, lucide.X).Size(12, 12).TextColor(t.Color.FgSecondary).Role(ui.RoleNone)
-			})
-			components.Tooltip(c, closeBtn, tr(c, "notif.dismiss"))
-			if closeBtn.Clicked() {
-				s.dismissNotificationFromScreen(item.ID)
-			}
 		}
 	})
 	return root
@@ -199,7 +209,21 @@ func (s *viewState) notificationCardInner(c *ui.Context, item *studioNotificatio
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
 			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, item.Title).Bold().FontSize(14).FixedLineHeight(20).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine()
-				ui.Text(c, relativeNotificationTimeFor(contextLocale(c), item.CreatedAt)).FontSize(12).TextColor(t.Color.FgTertiary).SingleLine().Shrink(0)
+				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Shrink(0).Children(func() {
+					ui.Text(c, relativeNotificationTimeFor(contextLocale(c), item.CreatedAt)).FontSize(12).TextColor(t.Color.FgTertiary).SingleLine().Shrink(0)
+					if onScreen {
+						closeBtn := components.Button(c, "", components.ButtonGhost).
+							Size(24, 24).Padding(0).Radius(t.Radius.Full).Shrink(0).
+							Label(trf(c, "notif.dismiss_title", "title", item.Title))
+						closeBtn.Children(func() {
+							components.Icon(c, lucide.X).Size(12, 12).TextColor(t.Color.FgSecondary).Role(ui.RoleNone)
+						})
+						components.Tooltip(c, closeBtn, tr(c, "notif.dismiss"))
+						if closeBtn.Clicked() {
+							s.dismissNotificationFromScreen(item.ID)
+						}
+					}
+				})
 			})
 			if item.Body != "" {
 				ui.Text(c, item.Body).FontSize(13).FixedLineHeight(20).TextColor(t.Color.FgSecondary).MaxLines(3)
