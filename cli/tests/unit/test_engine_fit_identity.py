@@ -1,11 +1,8 @@
-import hashlib
 import os
-from pathlib import Path
 
 import pytest
 
-from inferyard.errors import PreflightError, UnsupportedFormat
-from inferyard.contracts.validation import json_bytes
+from inferyard.errors import PreflightError
 from inferyard.platforms import engine_fit as fit
 
 
@@ -47,7 +44,7 @@ def service(tmp_path):
     (directory / "fd/5").symlink_to("socket:[456]")
     (directory / "net/tcp").write_text(
         "sl local_address rem_address st tx_queue rx_queue tr tm->when retrnsmt uid timeout inode\n"
-        "0: 0100007F:1F90 00000000:0000 0A 00000000:00000000 00:00000000 00000000 1000 0 456\n"
+        "0: 0100007F:1F90 00000000:0000 0A 00000000:00000000 00000000 00000000 1000 0 456\n"
     )
     return proc, directory, model
 

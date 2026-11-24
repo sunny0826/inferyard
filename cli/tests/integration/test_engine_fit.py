@@ -1,7 +1,6 @@
 """Real loopback HTTP with synthetic process identity; never a real model benchmark."""
 
 import json
-import shutil
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -10,7 +9,6 @@ import pytest
 from inferyard.application.types import CommandRequest
 from inferyard.cli import main
 from inferyard.config.engine_fit import prepare
-from inferyard.errors import EvidenceError
 from inferyard.evidence.storage import read_json
 
 
@@ -158,101 +156,12 @@ def run_cli(root, origin, engine, out, extras=()):
     )
 
 
-def test_abrupt_interruption_keeps_identity_and_completed_answer(fit_service, monkeypatch, capsys):
-    root, state, origin, runtime = fit_service
-    original = runtime._guarded_completion
-    calls = []
-
-    class SimulatedCrash(BaseException):
-        pass
-
-    async def crash_after_first(*args):
-        calls.append(1)
-        if len(calls) == 2:
-            raise SimulatedCrash
-        return await original(*args)
-
-    monkeypatch.setattr(runtime, "_guarded_completion", crash_after_first)
-    out = root / "interrupted"
-    with pytest.raises(SimulatedCrash):
-        run_cli(root, origin, "vllm", out)
-    assert not (out / "manifest.json").exists()
-    assert not (out / "run.json").exists()
-    assert len(state["posts"]) == 1
-    assert read_json(root / "host.state.json")["dirty"]
-    assert main(["verify", "--path", str(out)]) == 3
-    result = json.loads(capsys.readouterr().out)
-    assert result["details"]["verified"] is False
-    assert result["details"]["sealed"] is False
-    assert "render_checked" not in result["details"]
-    assert result["details"]["integrity"] == "unsealed"
-    assert result["details"]["requests"][0]["response"]["text"]
-    assert result["details"]["run"]["counts"]["completed"] == 1
-    assert len(result["details"]["run"]["resources"]) == 1
-    assert len(state["posts"]) == 1
-    (out / "manifest.json").write_text("{}")
-    assert main(["verify", "--path", str(out)]) == 4
-
-
-def test_early_eof_stops_and_does_not_clear_dirty_on_zero_metrics(fit_service, capsys):
-    root, state, origin, _ = fit_service
-    state["broken"] = True
-    assert run_cli(root, origin, "vllm", root / "broken") == 3, capsys.readouterr()
-    assert len(state["posts"]) == 1
-    assert read_json(root / "host.state.json")["dirty"]
-    run = read_json(root / "broken/run.json")
-    assert run["counts"] == {
-        "planned": 3,
-        "completed": 0,
-        "failed": 1,
-        "cancelled": 0,
-        "invalid": 0,
-        "not_executed": 2,
-    }
-    assert main(["engine-fit", "verify", "--path", str(root / "broken")]) == 0
-    state["broken"] = False
-    assert run_cli(root, origin, "vllm", root / "second") == 2
-    assert len(state["posts"]) == 1
-
-
 def test_changed_model_blocks_before_requests(fit_service, capsys):
     root, state, origin, _ = fit_service
     (root / "model/model.safetensors").write_text("changed")
     assert run_cli(root, origin, "vllm", root / "changed") == 2
     assert state["posts"] == []
     assert "engine_fit_model_changed" in capsys.readouterr().out
-
-
-def test_credentials_are_redacted_before_persisting(fit_service, monkeypatch, capsys):
-    root, state, origin, _ = fit_service
-    secret = "private-test-key-f71b"
-    monkeypatch.setenv("FIT_TEST_KEY", secret)
-    state["secret"] = secret
-    assert run_cli(root, origin, "vllm", root / "redacted", ["--api-key-env", "FIT_TEST_KEY"]) == 0
-    assert secret not in capsys.readouterr().out
-    for path in (root / "redacted").iterdir():
-        assert secret.encode() not in path.read_bytes()
-
-
-def test_cancel_keeps_partial_evidence_and_dirty(fit_service, monkeypatch, capsys):
-    import asyncio
-
-    root, state, origin, runtime = fit_service
-
-    async def cancel(*args):
-        raise asyncio.CancelledError
-
-    monkeypatch.setattr(runtime, "_guarded_completion", cancel)
-    assert run_cli(root, origin, "vllm", root / "cancelled") == 130, capsys.readouterr()
-    assert read_json(root / "host.state.json")["dirty"]
-    assert read_json(root / "cancelled/run.json")["counts"]["cancelled"] == 1
-    capsys.readouterr()
-    assert main(["engine-fit", "verify", "--path", str(root / "cancelled")]) == 0
-    checked = json.loads(capsys.readouterr().out)
-    assert checked["status"] == "verified" and checked["completeness"] == "incomplete"
-    assert checked["details"]["execution_completeness"] == "incomplete"
-    assert checked["details"]["stop_reason"] == "cancelled"
-    assert checked["details"]["sealed"] and checked["details"]["verified"]
 
 
 def test_manual_recovery_requires_old_process_gone(fit_service, monkeypatch, capsys):

@@ -2,17 +2,11 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.analysis.inter_token_observations import inter_token_observations
 from inferyard.analysis.public_metrics import project_metrics
 from inferyard.analysis.public_metrics_check import validate_metrics
-from inferyard.analysis.throughput_observations import ThroughputInput, throughput_observations
-from inferyard.errors import EvidenceError
 from inferyard.contracts.validation import json_bytes
+from inferyard.errors import EvidenceError
 from inferyard.reporting.public_package import number
-
-type JsonScalar = str | int | float | bool | None
-type JsonNode = JsonScalar | list[JsonNode] | dict[str, JsonNode]
-type JsonObject = dict[str, JsonNode]
 
 
 def test_redaction_preserves_distinct_missing_reasons_sources_zero_and_counts():
@@ -77,64 +71,3 @@ def test_redaction_preserves_distinct_missing_reasons_sources_zero_and_counts():
             altered["observations"][0][key] = value
         with pytest.raises(EvidenceError, match="metrics_inconsistent"):
             validate_metrics(altered)
-
-
-RUN = {
-    "run_id": "run-1",
-    "trial_id": "trial-1",
-    "definition_versions": {
-        "measurement": "phase2.v1",
-        "scoring": "phase2.v1",
-        "comparison": "phase2.v1",
-    },
-}
-EVIDENCE = [{"path": "events.jsonl", "sha256": "a" * 64}]
-THRESHOLDS = {"quality_state": "pass", "e2e_latency_ms_max": 500}
-
-
-def request(index: int, **kwargs: JsonNode) -> JsonObject:
-    row = {
-        "case_id": f"case-{index}",
-        "category": "qa",
-        "request_id": f"request-{index}",
-        "execution_state": "completed",
-        "quality_state": "pass",
-        "t_send_ns": index * 1_000_000_000,
-        "t_terminal_ns": (index + 1) * 1_000_000_000,
-        "completion_tokens": 10,
-        "token_source": "endpoint.usage",
-        "token_scope": "completion_tokens",
-        "arrival_capture": None,
-        "block_arrivals": [],
-    }
-    row.update(kwargs)
-    return row
-
-
-def reduced_observations() -> list[JsonObject]:
-    goodput = throughput_observations(
-        ThroughputInput(
-            run=RUN,
-            workload_id="workload-1",
-            evidence=EVIDENCE,
-            complete=True,
-            thresholds=THRESHOLDS,
-        ),
-        [
-            request(0, t_send_ns=0, t_terminal_ns=None),
-            request(1, quality_state="unscorable", t_send_ns=1_000_000_000, t_terminal_ns=1_100_000_000),
-        ],
-    )
-    intervals = inter_token_observations(
-        RUN,
-        "workload-1",
-        [
-            request(2),
-            request(3, arrival_capture={"streaming": False}),
-            request(4, arrival_capture={"streaming": True}, block_arrivals=[{"index": 1, "monotonic_ns": 0}]),
-            request(5, execution_state="failed"),
-        ],
-        EVIDENCE,
-        complete=True,
-    )
-    return goodput + intervals

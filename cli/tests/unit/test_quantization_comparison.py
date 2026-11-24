@@ -4,10 +4,9 @@ import json
 import pytest
 
 from inferyard.analysis.comparison import compare_trials
-from inferyard.analysis.quantization_comparison import qualification
 from tests.integration.test_lineage_records import encoded
-from tests.unit.test_comparison import trial
 from tests.unit.lineage_files_helpers import fixture
+from tests.unit.test_performance_comparison import trial
 
 
 def pair(tmp_path):

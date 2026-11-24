@@ -1,16 +1,10 @@
 """Versioned native evidence must not reinterpret Linux fields or SMC units."""
 
-import shutil
-from copy import deepcopy
-
 import pytest
 
 from inferyard.contracts.json_digest import digest
-from inferyard.errors import EvidenceError, PreflightError
-from inferyard.analysis.engine_fit_seal import seal_run
-from inferyard.reporting.engine_fit import compare, verify
-from inferyard.analysis.engine_fit_validation import validate_run
-from tests.unit.test_engine_fit_report import _data, _idle
+from inferyard.errors import PreflightError
+from tests.unit.test_engine_fit_report import _data
 from tests.unit.test_engine_fit_report import plan as _plan_fixture
 
 

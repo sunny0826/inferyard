@@ -1,10 +1,7 @@
 import importlib
-import json
-import sys
 from pathlib import Path
 
 import pytest
-from inferyard.errors import EvidenceError
 
 
 @pytest.fixture

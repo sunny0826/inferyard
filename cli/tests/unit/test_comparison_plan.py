@@ -1,21 +1,11 @@
-"""Engine comparison plan freezing and its constrained frozen shape (ADR 057b)."""
+"""Shared comparison-plan fixture helpers imported by integration and unit tests."""
 
-import hashlib
 import tomllib
 from pathlib import Path
 
-import pytest
-
-from inferyard.contracts.bundle import DEFAULT_BUNDLES, content_hash
-from inferyard.contracts.comparison_types import JSONRecord
-from inferyard.config.comparison_plan import (
-    comparison_slots,
-    freeze,
-    validate_comparison_plan,
-)
-from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.config.toml_writer import render
-from inferyard.errors import ContractError
+from inferyard.contracts.bundle import content_hash
+from inferyard.contracts.comparison_types import JSONRecord
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 ANSWER_POLICY = {
@@ -186,6 +176,7 @@ def write_config(root: Path, name: str, spec: JSONRecord) -> Path:
     path.write_text(render(base))
     return path
 
+
 def comparison_inputs(
     tmp_path: Path,
     *,
@@ -199,9 +190,7 @@ def comparison_inputs(
     core = bundle_document("core", [instruction_case(), extraction_case()])
     pelican = bundle_document("pelican", [svg_case()])
     documents = {"core": core, "pelican": pelican}
-    bundle_paths = {
-        key: write_bundle(root, key, documents[key]) for key in bundles
-    }
+    bundle_paths = {key: write_bundle(root, key, documents[key]) for key in bundles}
     left = [
         write_config(
             root,
@@ -230,58 +219,3 @@ def comparison_inputs(
     ]
     specs = [str(path) for path in bundle_paths.values()]
     return left, right, specs
-
-
-def test_default_product_bundles_are_used_when_no_bundle_is_declared(tmp_path: Path) -> None:
-    from inferyard.provisioning.community_resources import resource_bytes
-
-    root = tmp_path / "inputs"
-    root.mkdir()
-    paths, documents = {}, {}
-    for name in DEFAULT_BUNDLES:
-        raw = resource_bytes(f"bundles/{name}.json")
-        path = root / f"{name}.json"
-        path.write_bytes(raw)
-        paths[name] = path
-    import json
-
-    documents = {name: json.loads(path.read_text()) for name, path in paths.items()}
-    left, right = [], []
-    for name in DEFAULT_BUNDLES:
-        key = "core" if name == "zh-core" else "pelican"
-        max_tokens = 512 if key == "core" else 4096
-        left.append(
-            write_config(
-                root,
-                f"left-{key}",
-                {
-                    "bundle_path": paths[name],
-                    "bundle": documents[name],
-                    "family": "llama-cpp",
-                    "max_tokens": max_tokens,
-                },
-            )
-        )
-        right.append(
-            write_config(
-                root,
-                f"right-{key}",
-                {
-                    "bundle_path": paths[name],
-                    "bundle": documents[name],
-                    "family": "lmstudio",
-                    "max_tokens": max_tokens,
-                },
-            )
-        )
-    plan = freeze(left, right, destination=tmp_path / "plan")
-    assert {slot.bundle_key for slot in comparison_slots(plan)} == {"core", "pelican"}
-    assert len(plan["trials"]) == 12
-
-
-def test_explicit_single_bundle_freezes_six_slots(tmp_path: Path) -> None:
-    left, right, specs = comparison_inputs(tmp_path, bundles=("core",))
-    plan = freeze(left, right, [specs[0]], destination=tmp_path / "plan")
-    slots = comparison_slots(plan)
-    assert len(slots) == 6
-    assert {slot.bundle_key for slot in slots} == {"core"}

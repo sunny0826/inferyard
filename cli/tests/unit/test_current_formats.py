@@ -2,22 +2,29 @@
 
 import hashlib
 import json
+from dataclasses import replace
 
 import pytest
 
+from inferyard.application.reporting import execute as compare
 from inferyard.application.types import CommandRequest
 from inferyard.cli import main
-from inferyard.contracts.validation import json_bytes
-from inferyard.errors import EvidenceError, UnsupportedFormat
-from inferyard.application.reporting import execute as compare
-from inferyard.reporting.public_package import verify_public, write_public
-from inferyard.reporting.studio_report import write_studio_report
-from tests.unit.legacy_presentation_helpers import legacy_layout
-from tests.unit.test_verification import source_fixture as fixture_run
+from inferyard.config.loader import load_config
+from inferyard.contracts.validation import Document, json_bytes
+from inferyard.reporting.public_package import write_public
+from tests.helpers import fixture_run as base_fixture_run
 
 
-def directory_files(root):
-    return {p.name for p in root.iterdir()}
+def fixture_run(root, **kwargs):
+    def portable_config(path):
+        loaded = load_config(path)
+        config = loaded.config.to_dict()
+        config["engine"]["startup_args"] = ["-m", config["model"]["local_path"]]
+        return replace(loaded, config=Document.parse("config", config))
+
+    with pytest.MonkeyPatch.context() as patched:
+        patched.setattr("tests.helpers.load_config", portable_config)
+        return base_fixture_run(root, **kwargs)
 
 
 def rewrite_source(root, name, change):

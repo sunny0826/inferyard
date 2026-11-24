@@ -1,36 +1,16 @@
 """Offline verification retains dedicated semantics and refuses weak fallbacks."""
 
 import hashlib
-import json
-import os
-import socket
-import subprocess
 from dataclasses import replace
-from importlib import import_module
-from pathlib import Path
 
 import pytest
 
-from inferyard import cli
-from inferyard.application.types import CommandRequest, CommandResult
+from inferyard.application.types import CommandRequest
 from inferyard.application.verification import execute
 from inferyard.config.loader import load_config
-from inferyard.contracts.validation import Document, json_bytes
-from inferyard.errors import ContractError, EvidenceError
-from inferyard.evidence.storage import read_json
-from tests.helpers import fixture_run, symlink_or_skip
-
-
-def marker(root, kind, filename):
-    value = {}
-    if kind == "overhead":
-        value = {
-            "protocol_sha256": "a" * 64,
-            "status": "incomplete",
-            "passed": False,
-            "limitations": ["four_completed_runs_required"],
-        }
-    (root / filename).write_bytes(json_bytes(value))
+from inferyard.contracts.validation import Document
+from inferyard.errors import EvidenceError
+from tests.helpers import fixture_run
 
 
 def digest_tree(root):
@@ -51,6 +31,42 @@ def source_fixture(root, **kwargs):
     with pytest.MonkeyPatch.context() as patched:
         patched.setattr("tests.helpers.load_config", portable_config)
         return fixture_run(root, **kwargs)
+
+
+def _extension_spec():
+    return {
+        "schema_version": 3,
+        "definition": "closed_concurrency.v1",
+        "case_ids": ["a", "b", "c", "d"],
+        "concurrency": 2,
+        "server_slots": 4,
+        "timeout_seconds": 1,
+        "drain_timeout_seconds": 0.1,
+        "max_wall_seconds": 3,
+        "latency_limit_ms": 100,
+        "require_quality": True,
+        "max_dispatch_delay_ns": 1_000_000_000,
+        "max_client_cpu_fraction": 0.5,
+    }
+
+
+def _extension_rows():
+    return [
+        dict(
+            case_id=c,
+            request_id=c,
+            slot_id=i % 2,
+            send_ns=1 + i // 2 * 100,
+            end_ns=101 + i // 2 * 100,
+            drain_end_ns=101 + i // 2 * 100,
+            state="completed",
+            protocol_complete=True,
+            quality_pass=i != 3,
+            idle_confirmed=True,
+            dispatch_delay_ns=1,
+        )
+        for i, c in enumerate(_extension_spec()["case_ids"])
+    ]
 
 
 def make_artifact(tmp_path, kind):
@@ -79,9 +95,10 @@ def make_artifact(tmp_path, kind):
         compare(CommandRequest("compare", left=root, right=right, out=out))
     elif kind == "extension":
         from inferyard.extensions.extension_evidence import save_packet
-        from tests.unit.test_closed_concurrency import rows, spec
 
-        out, _ = save_packet(out, {"spec": spec(), "rows": rows(), "evidence_kind": "fixture"})
+        out, _ = save_packet(
+            out, {"spec": _extension_spec(), "rows": _extension_rows(), "evidence_kind": "fixture"}
+        )
     return root, out
 
 
@@ -103,12 +120,3 @@ def test_real_payload_corruption_is_rejected(tmp_path, kind, filename):
     with pytest.raises(EvidenceError):
         execute(CommandRequest("verify", run=out))
     assert before == digest_tree(tmp_path)
-
-
-def loaded_source(root):
-    loaded = load_config(Path(__file__).parents[1] / "fixtures/config/valid.toml")
-    return replace(
-        loaded,
-        config=Document.parse("config", read_json(root / "config.frozen.json")),
-        bundle=Document.parse("bundle", read_json(root / "bundle.json")),
-    )

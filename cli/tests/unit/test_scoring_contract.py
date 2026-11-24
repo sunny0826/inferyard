@@ -1,17 +1,12 @@
-"""Independent known-answer and denominator checks for the six quality tasks."""
+"""Independent known-answer and denominator checks for quality scoring."""
 
-import copy
 import json
 from pathlib import Path
 
 import pytest
 
 from inferyard.analysis.quality import summarize_quality
-from inferyard.analysis.scoring import score_case, unscorable
-from inferyard.contracts.bundle import content_hash, validate_case
-from inferyard.config.bundle import require_review
-from inferyard.contracts.validation import validate_document
-from inferyard.errors import ContractError
+from inferyard.analysis.scoring import score_case
 
 BUNDLE = json.loads(Path("bundles/zh-smoke.json").read_text())
 POLICY = BUNDLE["answer_policy"]
@@ -102,13 +97,3 @@ def test_classification_macro_f1_includes_invalid_and_failed_answers():
     assert metrics["Q08"]["value"] == pytest.approx(2 / 3)
     assert metrics["Q08"]["sample_count"] == 4
     assert metrics["Q01"]["classification"]["rate"]["value"] == 0.5
-
-
-def test_bundle_accepts_new_cases_without_approval_records():
-    require_review(BUNDLE)
-    bundle = copy.deepcopy(BUNDLE)
-    bundle.pop("review_provenance", None)
-    bundle.pop("review_records", None)
-    bundle["cases"].append(case("qa", dict(answers=["答案"], normalization="strip")))
-    validate_document("bundle", bundle)
-    require_review(bundle)

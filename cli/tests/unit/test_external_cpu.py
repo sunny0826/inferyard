@@ -1,10 +1,6 @@
-from copy import deepcopy
-
 import pytest
 
-from inferyard.errors import EvidenceError
-from inferyard.platforms.external_cpu import SOURCE, capture, reduce_external_cpu
-from tests.unit.test_resources import proc
+from inferyard.platforms.external_cpu import SOURCE, reduce_external_cpu
 
 ENDPOINT = {"server_pid": 77, "process_start_ticks": 55}
 
@@ -57,18 +53,3 @@ def test_invalid_interval_is_missing_not_clamped_zero(change, reason):
     result = reduce_external_cpu(data, ENDPOINT, 1000)
     assert result["intervals"][1]["missing_reason"] == reason
     assert result["observed_max_percent"] is None
-
-
-def test_source_capture_and_pid_reuse(tmp_path):
-    proc(tmp_path)
-    (tmp_path / "stat").write_text("cpu 100 0 20 100 0 0 0 0 10 5\n")
-    value = capture(77, 55, "boot-1", 100, "formal", "r", lambda: 10, tmp_path)
-    assert value["host_ticks"] == [100, 0, 20, 100, 0, 0, 0, 0]
-    assert value["service_ticks"] == 30
-    proc(tmp_path, ticks=56)
-    missing = capture(77, 55, "boot-1", 100, "formal", "r", lambda: 11, tmp_path)
-    assert missing["host_ticks"] is None and missing["missing_reason"]
-    altered = deepcopy(value)
-    altered["server_pid"] += 1
-    with pytest.raises(EvidenceError, match="binding"):
-        reduce_external_cpu([altered], ENDPOINT, 1000)

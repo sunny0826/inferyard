@@ -1,11 +1,9 @@
 """Discovery uses fixture process tables and HTTP transports, never model services."""
 
 import json
-from types import SimpleNamespace
 
 import httpx
 import jsonschema
-import psutil
 import pytest
 
 from inferyard import cli
@@ -74,21 +72,6 @@ def test_models_and_multiple_owners_including_dual_stack(monkeypatch, capsys):
             assert endpoint["ambiguous_listener"] is True
     assert "http://[::1]:8888/v1/models" in calls
     assert "not-persisted" not in json.dumps(result)
-
-
-def proc_fixture(root, *, with_owner=True):
-    (root / "net").mkdir()
-    (root / "net/tcp").write_text(
-        "header\n0: 0100007F:22B8 00000000:0000 0A 0 0 0 0 0 123\n"
-        "1: 0100000A:22B9 00000000:0000 0A 0 0 0 0 0 456\n"
-    )
-    (root / "net/tcp6").write_text("header\n")
-    if with_owner:
-        directory = root / "42"
-        (directory / "fd").mkdir(parents=True)
-        (directory / "stat").write_text("42 (arbitrary engine) " + " ".join(["0"] * 19 + ["12345"]))
-        (directory / "exe").symlink_to("/fixture/arbitrary-engine-name")
-        (directory / "fd/3").symlink_to("socket:[123]")
 
 
 @pytest.mark.parametrize(

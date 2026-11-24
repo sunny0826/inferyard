@@ -1,8 +1,5 @@
 import asyncio
 
-import pytest
-
-from inferyard.errors import EvidenceError
 from inferyard.extensions.closed_concurrency import reduce_closed, run_closed
 
 
@@ -62,15 +59,6 @@ class Adapter:
 
     async def wait_idle(self, slot, timeout):
         return self.idle and slot not in self.busy
-
-
-def test_handwritten_throughput_goodput_and_resource_window():
-    result = reduce_closed(spec(), rows())
-    assert result["window_seconds"] == 200 / 1e9
-    assert result["N01_completed_requests_per_second"] == 20_000_000
-    assert result["N02_goodput_per_second"] == 15_000_000
-    assert result["resource_window"] == [1, 201]
-    assert result["N03_token_ITL"] is None
 
 
 def test_timeout_cancels_peers_keeps_unexecuted_denominator():

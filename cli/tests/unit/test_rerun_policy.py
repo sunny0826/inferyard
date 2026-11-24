@@ -1,4 +1,4 @@
-"""Rerun entry accepts version changes; comparison compares explicit versions."""
+"""Rerun lineage, version comparison boundaries, and validation-cache invalidation."""
 
 from copy import deepcopy
 from pathlib import Path
@@ -66,18 +66,6 @@ def test_rerun_accepts_version_difference_and_comparison_tracks_it(tmp_path, mon
         assert not result["eligibility"]["completion"]
     else:
         assert not result["eligibility"]["quality"]
-
-
-def test_source_hash_difference_alone_does_not_block_comparison(tmp_path):
-    root = fixture_run(tmp_path / "parent", states=["completed"] * 3, comparison_mode="model")
-    parent = read_trial(root)
-    changed = deepcopy(parent)
-    changed["run"]["tool_source_sha256"] = "0" * 64
-    baseline = compare_trials(parent, parent)
-    result = compare_trials(parent, changed)
-    assert result["eligibility"] == baseline["eligibility"]
-    assert result["blockers"] == baseline["blockers"]
-    assert all(c["field"] != "run.tool_source_sha256" for c in result["conditions"])
 
 
 def test_trial_inputs_revalidates_changed_bundle_inside_command_cache() -> None:

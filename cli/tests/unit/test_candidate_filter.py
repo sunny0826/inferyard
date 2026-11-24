@@ -2,8 +2,7 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.analysis.candidate_filter import evaluate_candidate, validate_spec
-from inferyard.errors import EvidenceError
+from inferyard.analysis.candidate_filter import evaluate_candidate
 
 
 def fixture():
@@ -64,22 +63,3 @@ def test_unknown_and_incomparable_never_pass(change, reason):
     result = evaluate_candidate(data, comparison, [constraint])
     assert not result["matched"] and result["status"] == "unknown"
     assert result["constraints"][0]["reason"] == reason
-
-
-def performance_fixture():
-    constraint, data, comparison = fixture()
-    constraint.update(
-        metric_id="L03", statistic="p50", unit="ms", source="client", operator="<=", threshold=100
-    )
-    metric = data["summary"]["metric_observations"][0]
-    metric.update({k: constraint[k] for k in ("metric_id", "statistic", "unit", "source")})
-    metric.update(value=90, comparison_eligible=False)
-    comparison["eligibility"]["performance"] = True
-    row = {k: metric[k] for k in ("metric_id", "statistic", "unit", "source")}
-    row.update(category="qa", case_id=None, right=90, eligible=True)
-    comparison["performance_analysis"] = {
-        "prerequisites_eligible": True,
-        "blockers": [],
-        "differences": [row],
-    }
-    return constraint, data, comparison

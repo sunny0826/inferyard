@@ -1,18 +1,10 @@
-import errno
 import json
-from pathlib import Path
 
 import pytest
 
-from inferyard.errors import EvidenceError, UnsupportedFormat
 from inferyard.contracts.redaction import Redactor
-from inferyard.evidence.storage import (
-    EvidenceStore,
-    atomic_bytes,
-    local_file,
-    read_jsonl,
-    verify_manifest,
-)
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import EvidenceStore, verify_manifest
 
 
 @pytest.mark.parametrize(
@@ -55,18 +47,3 @@ def test_no_overwrite_and_manifest_classification(tmp_path):
         verify_manifest(store.path)
     with pytest.raises(FileExistsError):
         EvidenceStore(tmp_path, run_id="first")
-
-
-def make_journal(root):
-    from inferyard.analysis.scoring import ScoringContext
-    from inferyard.config.loader import load_config
-    from inferyard.config.single_plan import compile_single_plan
-    from inferyard.evidence.journal import TrialJournal
-
-    loaded = load_config(Path(__file__).parents[1] / "fixtures/config/valid.toml")
-    config, bundle = loaded.config.to_dict(), loaded.bundle.to_dict()
-    plan = compile_single_plan(config, bundle)
-    return TrialJournal(
-        root, plan, plan["trials"][0]["trial_id"], config, bundle,
-        scoring_context=ScoringContext(),
-    )

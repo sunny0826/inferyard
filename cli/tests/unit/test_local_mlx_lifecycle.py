@@ -4,7 +4,6 @@ import json
 import socket
 import struct
 import threading
-from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 

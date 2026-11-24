@@ -1,40 +1,17 @@
-"""Consumer regressions from fresh public synthetic originals; no model requests."""
-
-from copy import deepcopy
+"""Layout-v2 evidence integrity regressions; no live model requests."""
 
 import pytest
 
-from inferyard.adapters.prism import BUILD
 from inferyard.adapters.requests import request_body
+from inferyard.analysis.ledger import read_trial
 from inferyard.analysis.overhead_environment import environment_record
-from inferyard.contracts.plan_math import plan_hash
-from inferyard.errors import EvidenceError
-from inferyard.evidence.fixed_output import verify_execution
-from inferyard.analysis.ledger import read_run_projection, read_trial
-from inferyard.evidence.request_snapshots import messages_sha256, snapshot_filename
 from inferyard.contracts.validation import json_bytes
+from inferyard.errors import EvidenceError
+from inferyard.evidence.request_snapshots import messages_sha256, snapshot_filename
 from inferyard.evidence.storage import read_json, read_jsonl, sha256_file
-from inferyard.evidence.token_budgets import DEFINITION, planned_inputs, read_budgets
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from tests.evidence_layout_helpers import digest, pack_layout2, seal_layout
 from tests.helpers import fixture_run
-from tests.lab_service import lab_config
-
-
-def bind_frozen_config(root, config):
-    inputs = read_json(root / "inputs.json")
-    documents = inputs["documents"]
-    documents["config"]["payload"] = config
-    config_hash = digest(config)
-    documents["selection"]["payload"]["config_sha256"] = config_hash
-    plan = documents["plan"]["payload"]
-    plan["experiment"]["workloads"][0]["config"]["sha256"] = config_hash
-    plan["plan_sha256"] = plan_hash(plan)
-    documents["run"]["payload"]["plan_sha256"] = plan["plan_sha256"]
-    for member in documents.values():
-        member["sha256"] = digest(member["payload"])
-    (root / "inputs.json").write_bytes(json_bytes(inputs))
-    seal_layout(root, documents["run"]["payload"])
 
 
 def reseal_legacy(root):
@@ -47,7 +24,7 @@ def reseal_legacy(root):
     (root / "manifest.json").write_bytes(json_bytes(manifest))
 
 
-def synthetic_pair(tmp_path, *, collector=False, tokens=False):
+def synthetic_pair(tmp_path):
     old = fixture_run(tmp_path / "old", states=["completed", "failed", "completed"])
     config = read_json(old / "config.frozen.json")
     bundle = read_json(old / "bundle.json")
@@ -73,45 +50,8 @@ def synthetic_pair(tmp_path, *, collector=False, tokens=False):
     for sample in samples:
         sample["request_id"] = renamed[sample["request_id"]]
     (old / "memory.jsonl").write_bytes(b"".join(map(json_bytes, samples)))
-    if collector:
-        (old / "collector.json").write_bytes(json_bytes({"collector": "synthetic-resource.v1"}))
-    if tokens:
-        (old / "service.props.json").write_bytes(json_bytes({"build_info": BUILD}))
-        selected = read_json(old / "selection.json")["case_ids"]
-        budgets = {
-            "definition": DEFINITION,
-            "entries": [
-                {
-                    "phase": phase,
-                    "case_id": cid,
-                    "budget": {
-                        "input_tokens": 17,
-                        "output_budget": config["generation"]["max_tokens"],
-                        "template_prompt_sha256": "a" * 64,
-                        "source": "apply-template+tokenize:add_special,parse_special",
-                        "verification": "verified",
-                    },
-                }
-                for phase, cid in planned_inputs(config, selected)
-            ],
-        }
-        (old / "token-budgets.v2.json").write_bytes(json_bytes(budgets))
     reseal_legacy(old)
     return old, pack_layout2(old, tmp_path / "new")
-
-
-def without_refs(value):
-    if isinstance(value, dict):
-        return {key: without_refs(item) for key, item in value.items() if key != "evidence_refs"}
-    if isinstance(value, list):
-        return [without_refs(item) for item in value]
-    return value
-
-
-def all_refs(summary):
-    for observation in summary["metric_observations"]:
-        yield from observation["evidence_refs"]
-    yield from summary["measurement_context"]["evidence_refs"]
 
 
 def test_missing_end_record_does_not_inherit_start_or_container_existence(tmp_path):

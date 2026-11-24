@@ -1,10 +1,7 @@
-"""F01 input validation; no model, process or network needed."""
-
-from pathlib import Path
+"""Endpoint boundary validation; no model, process or network needed."""
 
 import pytest
 
-from inferyard.config.loader import load_config
 from inferyard.contracts.endpoint import validate_endpoint
 from inferyard.errors import ContractError
 

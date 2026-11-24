@@ -7,8 +7,10 @@ import (
 )
 
 func TestContextSpeedZeroBatchExcludedFromOrdinaryHistory(t *testing.T) {
-	s := speedService(t, &speedFixture{})
-	batch := filepath.Join(*s.settings.ResultsRoot, "zero-speed")
+	s := testService(t, nil)
+	root := t.TempDir()
+	s.settings.ResultsRoot = &root
+	batch := filepath.Join(root, "zero-speed")
 	if err := os.MkdirAll(filepath.Join(batch, "frozen-plan"), 0700); err != nil {
 		t.Fatal(err)
 	}

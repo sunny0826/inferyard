@@ -1,4 +1,4 @@
-"""Internal engine-comparison.v2 run set, handoff chain and history stop (ADR 057c)."""
+"""Internal engine-comparison.v2 run set, handoff chain and history stop."""
 
 from collections.abc import Callable
 from copy import deepcopy
@@ -6,30 +6,20 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.analysis.comparison_history import (
     HISTORY_CANCELLED,
     HISTORY_FAILED,
-    HISTORY_IDENTITY_ERROR,
     HISTORY_INCOMPLETE,
 )
 from inferyard.analysis.engine_comparison_v2 import (
-    HANDOFF_BROKEN,
-    HANDOFF_MISSING,
-    HANDOFF_SLOT_MISMATCH,
-    PLANNED_RUN_MISSING,
-    RUN_PLAN_MISMATCH,
     SERVICE_IDENTITY_INVALID,
     SERVICE_IDENTITY_MISSING,
     SERVICE_NOT_REPLACED,
-    UNPLANNED_TRIAL,
-    bundle_comparisons,
-    comparison_history_stop,
     evaluate_comparison,
 )
 from inferyard.config.comparison_plan import Slot, comparison_slots, freeze
+from inferyard.contracts.comparison_types import JSONRecord
 from tests.unit.test_comparison_plan import comparison_inputs
-from tests.unit.test_engine_blocks import block, request
 
 
 def plan_with_slots(tmp_path: Path) -> tuple[JSONRecord, tuple[Slot, ...]]:
@@ -55,7 +45,7 @@ def synthetic_runs(plan: JSONRecord, *, same_plan: bool = True) -> list[JSONReco
         identifier = run_id(slot)
         entries.append(
             {
-                "path": tmp_path_path(slot),
+                "path": f"/runs/{slot.trial_id}",
                 "run": {
                     "run_id": identifier,
                     "trial_id": slot.trial_id,
@@ -85,10 +75,6 @@ def synthetic_runs(plan: JSONRecord, *, same_plan: bool = True) -> list[JSONReco
         )
         previous = identifier
     return entries
-
-
-def tmp_path_path(slot: Slot) -> str:
-    return f"/runs/{slot.trial_id}"
 
 
 def reasons(document: JSONRecord) -> list[str]:
@@ -130,27 +116,6 @@ def test_terminal_history_blocks_further_slots(
     assert expected in reasons(document)
     assert document["history_stop"]["reason"] == expected
     assert document["eligible"] is False
-
-
-def bundle_block_data(slots: tuple[Slot, ...]) -> dict[str, JSONRecord]:
-    data = {}
-    for key, right_ms in (("core", 800), ("pelican", 1200)):
-        for slot in (item for item in slots if item.bundle_key == key):
-            data[run_id(slot)] = block_row(slot, key, right_ms)
-    return data
-
-
-def block_row(slot: Slot, key: str, right_ms: int) -> JSONRecord:
-    order = slot.block - 1
-    family = "llama-cpp" if slot.side == "a" else "lmstudio"
-    row = block(family, order, e2e_ms=right_ms if slot.side == "b" else 1000)
-    row["run"].update(run_id=run_id(slot), trial_id=slot.trial_id)
-    row["plan"]["trials"] = [{"trial_id": slot.trial_id, "workload_id": "w"}]
-    row["selection"].update(bundle_sha256=key, case_ids=["case"])
-    row["requests"] = [
-        request(index, e2e_ms=right_ms if slot.side == "b" else 1000) for index in range(2)
-    ]
-    return row
 
 
 @pytest.mark.parametrize(

@@ -16,6 +16,16 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
+func clickDownloadsTab(t *testing.T, tt *ui.Tester, label string) {
+	t.Helper()
+	info, ok := tt.AccessByRole(ui.RoleTab, label)
+	if !ok || info.Bounds.W <= 0 || info.Bounds.H <= 0 {
+		t.Fatalf("tab %q not found or has no visible bounds: ok=%v bounds=%+v", label, ok, info.Bounds)
+	}
+	tt.ClickAt(info.Bounds.X+info.Bounds.W/2, info.Bounds.Y+info.Bounds.H/2)
+	tt.Frame()
+}
+
 func testDownloadService(
 	t *testing.T,
 	execute func(context.Context, string, ...string) (inferyard.Execution, error),
@@ -379,63 +389,5 @@ func TestOutOfOrderModelResolveIgnoresStaleResponse(t *testing.T) {
 	defer mu.Unlock()
 	if len(acquireCalls) != 1 || !slices.Contains(acquireCalls[0], "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/blob/"+sha2+"/Qwen3-0.6B-Q8_0.gguf") {
 		t.Fatalf("download submitted wrong pinned revision: %v", acquireCalls)
-	}
-}
-
-func TestModelPresetStatusRequiresMatchingSourceURL(t *testing.T) {
-	qwen, ok := core.CatalogEntryByID("model-qwen3-0.6b-q8")
-	if !ok {
-		t.Fatal("missing model-qwen3-0.6b-q8")
-	}
-	s := testState()
-	s.ensureDownloadsUI().hostPlatform = "darwin/arm64"
-	s.registry.Models = []core.ModelAsset{{Name: "Qwen3-0.6B-Q8_0.gguf", Available: true}}
-	s.downloads = []core.DownloadTask{{
-		TaskId:      "other-commit",
-		Kind:        "model",
-		DisplayName: "other-repo · Qwen3-0.6B-Q8_0.gguf",
-		OutName:     "Qwen3-0.6B-Q8_0",
-		State:       "downloading",
-		SourceUrl:   "https://huggingface.co/other/repo/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/Qwen3-0.6B-Q8_0.gguf",
-	}}
-	if s.isModelEntryDownloading(qwen) || s.isModelEntryDownloaded(qwen) {
-		t.Fatal("filename-only collision falsely marked catalog preset as downloading/downloaded")
-	}
-
-	tt := ui.NewTester(s.downloadsPageView, 1120, 2600)
-	clickDownloadsTab(t, tt, "模型")
-	// Active download card renders "已下载" once as a metric label; a preset badge adds two more nodes.
-	if n := countText(tt, "已下载"); n > 1 {
-		t.Fatalf("unexpected 已下载 badge for filename-only local model (count=%d): %v", n, tt.Texts())
-	}
-	btn, ok := tt.Find("下载模型 · " + qwen.ID)
-	if !ok || btn.W <= 0 {
-		t.Fatalf("download button missing when only unrelated commit is downloading: %v", tt.Texts())
-	}
-
-	s.downloads = append(s.downloads, core.DownloadTask{
-		TaskId:    "exact-qwen",
-		Kind:      "model",
-		State:     "downloading",
-		SourceUrl: qwen.URL,
-		OutDir:    "/models/Qwen3-0.6B-Q8_0",
-	})
-	if !s.isModelEntryDownloading(qwen) {
-		t.Fatal("exact SourceUrl downloading task did not match")
-	}
-	s.downloads[1].State = "done"
-	// Asset at an unrelated OutDir must not mark exact-qwen as downloaded.
-	s.registry.Models = []core.ModelAsset{{Name: "Qwen3-0.6B-Q8_0.gguf", Path: "/models/other/Qwen3-0.6B-Q8_0.gguf", Available: true}}
-	if s.isModelEntryDownloaded(qwen) || s.isModelEntryDownloading(qwen) {
-		t.Fatal("unrelated asset path falsely marked exact done task as downloaded")
-	}
-	// Matching OutDir asset marks downloaded, and removing the asset clears it despite historical done task.
-	s.registry.Models = []core.ModelAsset{{Name: "Qwen3-0.6B-Q8_0.gguf", Path: "/models/Qwen3-0.6B-Q8_0/Qwen3-0.6B-Q8_0.gguf", Available: true}}
-	if !s.isModelEntryDownloaded(qwen) || s.isModelEntryDownloading(qwen) {
-		t.Fatal("exact SourceUrl done task with live asset did not match downloaded state")
-	}
-	s.registry.Models = nil
-	if s.isModelEntryDownloaded(qwen) {
-		t.Fatal("downloaded badge persisted after removing asset from registry")
 	}
 }

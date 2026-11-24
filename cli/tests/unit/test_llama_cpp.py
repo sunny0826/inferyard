@@ -1,15 +1,14 @@
-"""Fail closed on upstream release, effective settings and template evidence."""
+"""Fail closed on upstream release, cache protocol and slots endpoint evidence."""
 
 import asyncio
-from copy import deepcopy
+import hashlib
 
 import httpx
 import pytest
 
 from inferyard.adapters.llama_cpp import BUILD, COMPONENT, LlamaCppAdapter
-from inferyard.adapters.prism import ResponseState
 from inferyard.config.loader import load_config, validate_runtime_config
-from inferyard.errors import ContractError, PreflightError
+from inferyard.errors import PreflightError
 
 
 def inputs(config_path):
@@ -32,12 +31,6 @@ def inputs(config_path):
     ]
     validate_runtime_config(config)
     return config
-
-
-def slot(config):
-    params = dict(config["generation"])
-    params["n_predict"] = params["max_tokens"]
-    return [{"id": 0, "is_processing": False, "params": params}]
 
 
 @pytest.mark.parametrize("mutation", ["release", "cache", "build", "slots_endpoint"])
@@ -65,8 +58,6 @@ def test_upstream_identity_cannot_inherit_prism_qualification(config_path, mutat
         if mutation == "cache":
             adapter.cache_protocol = "prism_prefix_reuse.v1"
         if mutation == "slots_endpoint":
-            import hashlib
-
             template = "upstream-fixture"
             props["chat_template"] = template
             config["model"]["template_sha256"] = hashlib.sha256(template.encode()).hexdigest()

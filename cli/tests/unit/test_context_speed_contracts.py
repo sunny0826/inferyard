@@ -1,13 +1,11 @@
 """Shared context speed wire contract regressions."""
 
-from copy import deepcopy
 from pathlib import Path
 
 import pytest
 
-from inferyard.contracts.engine_timing import engine_rates
-from inferyard.contracts.context_speed import validate_response, validate_result_bindings
-from inferyard.contracts.validation import strict_json_loads, validate_document
+from inferyard.contracts.context_speed import validate_response
+from inferyard.contracts.validation import strict_json_loads
 from inferyard.errors import ContractError
 
 GOLDEN = (

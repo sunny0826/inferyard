@@ -3,24 +3,16 @@
 import copy
 import hashlib
 import json
-import subprocess
 import zipfile
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
 from inferyard.application.types import CommandRequest
-from inferyard.provisioning import preparation_io
+from inferyard.provisioning import preparation_io, runtime_verification, windows_runtime_prepare
 from inferyard.provisioning.preparation_io import PreparationError, json_bytes
-from inferyard.provisioning import runtime_verification, windows_runtime_prepare
-from inferyard.provisioning.runtime_archive import member_records, zip_entries
-from inferyard.provisioning.runtime_profiles import (
-    PROFILES,
-    load_profile,
-    output_files,
-    profile_header,
-)
+from inferyard.provisioning.runtime_archive import member_records
+from inferyard.provisioning.runtime_profiles import PROFILES, output_files, profile_header
 
 
 @pytest.fixture
@@ -88,7 +80,7 @@ def synthetic_runtime(tmp_path, monkeypatch):
     ],
 )
 def test_receipt_cannot_authorize_changed_assets(synthetic_runtime, change):
-    request, profile = synthetic_runtime
+    request, _ = synthetic_runtime
     result = windows_runtime_prepare.prepare(request)
     path = Path(result["receipt"])
     receipt = json.loads(path.read_text())

@@ -1,7 +1,7 @@
 
 import pytest
 
-from inferyard.analysis.cache_observations import cache_series, observe
+from inferyard.analysis.cache_observations import observe
 from inferyard.contracts.engine_timing import capture_timings
 
 

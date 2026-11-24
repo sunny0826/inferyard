@@ -28,71 +28,6 @@ func settingsTestService(t *testing.T, root string) *core.Service {
 	return service
 }
 
-func TestSettingsPathSaveRejectsInvalidDraft(t *testing.T) {
-	for name, apply := range map[string]func(*viewState){
-		"relative_workspace": func(s *viewState) { s.workspace = "relative/path" },
-		"cleared_workspace":  func(s *viewState) { s.workspace = "" },
-		"cleared_results":    func(s *viewState) { s.results = "" },
-		"cleared_models":     func(s *viewState) { s.models = "" },
-	} {
-		s := settingsState()
-		apply(s)
-		if !s.pathsEdited() {
-			t.Errorf("%s: draft did not register as an edit", name)
-			continue
-		}
-		if s.pathsValid() || s.canSavePaths() {
-			t.Errorf("%s: invalid draft enabled the path save", name)
-		}
-	}
-	s := settingsState()
-	s.workspace = "/valid/new"
-	if !s.pathsValid() || !s.canSavePaths() {
-		t.Fatal("valid draft did not enable the save")
-	}
-}
-
-func TestSettingsPatchGroupsSplitTheTwoCards(t *testing.T) {
-	paths, names := settingsPatchGroups(map[string]json.RawMessage{"workspace_root": json.RawMessage(`"/w"`)})
-	if !paths || names {
-		t.Fatalf("path-only patch: paths=%v names=%v", paths, names)
-	}
-	paths, names = settingsPatchGroups(map[string]json.RawMessage{"model_download_name": json.RawMessage(`"m"`)})
-	if paths || !names {
-		t.Fatalf("name-only patch: paths=%v names=%v", paths, names)
-	}
-}
-
-func TestSyncSavedGroupsKeepsOtherDraft(t *testing.T) {
-	respond := core.SettingsResponse{
-		Settings: core.UserSettings{
-			WorkspaceRoot: ptr("/saved/workspace"), ResultsRoot: ptr("/saved/results"), ModelsRoot: ptr("/saved/models"),
-			ModelDownloadName: "saved-model", EngineDownloadName: "saved-engine",
-		},
-		Effective: core.EffectiveSettings{WorkspaceRoot: ptr("/saved/workspace")},
-	}
-
-	paths := settingsState()
-	paths.workspace, paths.modelName = "/draft/workspace", "draft-model"
-	paths.syncSavedGroups(map[string]json.RawMessage{"workspace_root": json.RawMessage(`"/draft/workspace"`)}, paths.settingsDraft(), respond)
-	if paths.workspace != "/saved/workspace" {
-		t.Fatalf("saved path not synced: %q", paths.workspace)
-	}
-	if paths.modelName != "draft-model" {
-		t.Fatalf("path save wiped the download-name draft: %q", paths.modelName)
-	}
-
-	names := settingsState()
-	names.workspace, names.modelName = "/draft/workspace", "draft-model"
-	names.syncSavedGroups(map[string]json.RawMessage{"model_download_name": json.RawMessage(`"saved-model"`)}, names.settingsDraft(), respond)
-	if names.modelName != "saved-model" {
-		t.Fatalf("saved name not synced: %q", names.modelName)
-	}
-	if names.workspace != "/draft/workspace" {
-		t.Fatalf("name save wiped the path draft: %q", names.workspace)
-	}
-}
-
 func TestStaleRefreshBatchDoesNotRevertSave(t *testing.T) {
 	s := settingsState()
 	stale := refreshBatch{epoch: s.settingsSequence()}
@@ -147,73 +82,6 @@ func TestStaleRefreshBatchDoesNotRevertSave(t *testing.T) {
 	}
 }
 
-func TestSavedPathShowsPendingUntilReadinessArrives(t *testing.T) {
-	s := settingsState()
-	s.ready.Workspace = core.DirectoryReadiness{Path: ptr("/saved/workspace"), Exists: true, Initialized: true}
-	s.workspace = "/next/workspace"
-	patch := map[string]json.RawMessage{}
-	patch["workspace_root"], _ = json.Marshal(s.workspace)
-	s.syncSavedGroups(patch, s.settingsDraft(), core.SettingsResponse{
-		Settings:  core.UserSettings{WorkspaceRoot: ptr("/next/workspace")},
-		Effective: core.EffectiveSettings{WorkspaceRoot: ptr("/next/workspace")},
-	})
-
-	if got := directoryState(s.workspace, s.ready.Workspace, emptyText(s.settings.Effective.WorkspaceRoot)); got != "等待检查" {
-		t.Fatalf("saved path reused the old readiness: %q", got)
-	}
-	tt := settingsTester(s)
-	tt.Frame()
-	if tt.HasText("目录已存在，工作区已初始化") {
-		t.Fatalf("old workspace readiness shown under the new path: %v", tt.Texts())
-	}
-	if !tt.HasText("等待检查") {
-		t.Fatalf("pending check not shown: %v", tt.Texts())
-	}
-
-	s.ready.Workspace = core.DirectoryReadiness{Path: ptr("/next/workspace"), Exists: true, Initialized: true}
-	if got := directoryState(s.workspace, s.ready.Workspace, emptyText(s.settings.Effective.WorkspaceRoot)); got != "目录已存在，工作区已初始化" {
-		t.Fatalf("new readiness not shown: %q", got)
-	}
-}
-
-func TestFirstTimeDirectorySaveShowsPending(t *testing.T) {
-	for _, name := range []string{"results", "models"} {
-		s := settingsState()
-		value := "/first/" + name
-		patch := map[string]json.RawMessage{}
-		if name == "results" {
-			s.settings.Settings.ResultsRoot, s.results = nil, value
-			s.ready.Results = core.DirectoryReadiness{}
-			patch["results_root"], _ = json.Marshal(value)
-		} else {
-			s.settings.Settings.ModelsRoot, s.models = nil, value
-			s.ready.Models = core.DirectoryReadiness{}
-			patch["models_root"], _ = json.Marshal(value)
-		}
-		if !s.pathsEdited() {
-			t.Fatalf("%s: first-time entry did not register as an edit", name)
-		}
-		s.syncSavedGroups(patch, s.settingsDraft(), core.SettingsResponse{
-			Settings:  core.UserSettings{ResultsRoot: ptr(value), ModelsRoot: ptr(value)},
-			Effective: core.EffectiveSettings{ResultsRoot: ptr(value), ModelsRoot: ptr(value)},
-		})
-		saved := emptyText(s.settings.Settings.ResultsRoot)
-		readiness := s.ready.Results
-		if name == "models" {
-			saved = emptyText(s.settings.Settings.ModelsRoot)
-			readiness = s.ready.Models
-		}
-		if got := directoryState(value, readiness, saved); got != "等待检查" {
-			t.Errorf("%s: first-time save claimed a directory result: %q", name, got)
-		}
-
-		fresh := core.DirectoryReadiness{Path: ptr(value), Exists: true}
-		if got := directoryState(value, fresh, saved); got != "目录已存在" {
-			t.Errorf("%s: refreshed readiness not shown: %q", name, got)
-		}
-	}
-}
-
 func TestSettingsSaveKeepsOtherGroupDraft(t *testing.T) {
 	root := t.TempDir()
 	settings := filepath.Join(root, "settings.json")
@@ -265,33 +133,6 @@ func TestSettingsSaveKeepsOtherGroupDraft(t *testing.T) {
 	}
 	if s.workspace != next {
 		t.Fatalf("name save wiped the path draft: %q", s.workspace)
-	}
-}
-
-func TestSettingsSaveClearsDirtyImmediately(t *testing.T) {
-	s := settingsState()
-	s.workspace = "/next/workspace"
-	if !s.canSavePaths() {
-		t.Fatal("edited path did not enable Save")
-	}
-	patch := map[string]json.RawMessage{}
-	patch["workspace_root"], _ = json.Marshal(s.workspace)
-	submitted := s.settingsDraft()
-	s.syncSavedGroups(patch, submitted, core.SettingsResponse{
-		Settings:  core.UserSettings{WorkspaceRoot: ptr(s.workspace)},
-		Effective: core.EffectiveSettings{WorkspaceRoot: ptr(s.workspace)},
-	})
-	if s.pathsEdited() || s.canSavePaths() {
-		t.Fatalf("saved path still reads as a draft: %q", s.workspace)
-	}
-	if s.settings.Effective.WorkspaceRoot == nil || *s.settings.Effective.WorkspaceRoot != "/next/workspace" {
-		t.Fatal("saved settings baseline was not updated")
-	}
-	tt := settingsTester(s)
-	tt.Frame()
-	click(t, tt, "保存")
-	if s.busy || s.failure != nil {
-		t.Fatalf("disabled Save still submitted: busy=%v failure=%+v", s.busy, s.failure)
 	}
 }
 

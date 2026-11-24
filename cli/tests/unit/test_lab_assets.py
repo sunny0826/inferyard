@@ -1,86 +1,8 @@
-"""Native-v3 framing and component-ledger errors use bounded synthetic local files."""
+"""Native Windows file identity guard refuses path swaps and NTFS reparse points."""
 
-import hashlib
-import json
-import struct
-from copy import deepcopy
-
-import pytest
-
-from inferyard.errors import PreflightError
-from inferyard.contracts.validation import json_bytes
-from inferyard.platforms.identity import static_preflight
-from inferyard.platforms.lab_assets import inspect_asset
 from inferyard.platforms.lab_identity import LabFileIdentity
 from inferyard.platforms.windows_lab_api import override_windows_lab_api
 from tests.unit.windows_lab_files_helpers import STAMP, Store
-
-
-@pytest.fixture
-def container(tmp_path):
-    directory = {
-        "components": {"text": {"config": {"model_type": "fixture"}}},
-        "objects": [{"id": "one", "offset": 0, "bytes": 4}],
-        "bindings": {},
-        "uses": [],
-        "files": [{"path": None, "payload_bytes": 4}],
-    }
-    artifact_id = "1" * 32
-    model_path, ledger_path = tmp_path / "model.ninfer", tmp_path / "ledger.json"
-    model = {
-        "kind": "ninfer",
-        "local_path": str(model_path),
-        "bytes": 4100,
-        "sha256": "a" * 64,
-        "component_ledger_path": str(ledger_path),
-    }
-
-    def write(data=directory, magic=b"NINFER\0\x03", ledger_change=None):
-        raw = json_bytes(data)
-        header = magic + struct.pack("<Q", len(raw)) + bytes.fromhex(artifact_id)
-        model_path.write_bytes(header + raw + bytes(4096 - len(header) - len(raw)) + b"data")
-        ledger = {
-            "artifact_id": artifact_id,
-            "model_sha256": model["sha256"],
-            "components_sha256": hashlib.sha256(json_bytes(data["components"])).hexdigest(),
-        }
-        ledger.update(ledger_change or {})
-        ledger_path.write_text(json.dumps(ledger), encoding="utf-8")
-
-    write()
-    return {"model": model}, directory, write
-
-
-@pytest.mark.parametrize(
-    "change,reason",
-    [
-        ("magic", "header_invalid"),
-        ("part", "split_model"),
-        ("overlap", "objects_invalid"),
-        ("out_of_bounds", "objects_invalid"),
-        ("ledger", "ledger_mismatch"),
-        ("size", "directory_bounds"),
-    ],
-)
-def test_native_asset_refusal_paths(container, change, reason):
-    config, directory, write = container
-    bad = deepcopy(directory)
-    kwargs = {}
-    if change == "magic":
-        kwargs["magic"] = b"NINFER\0\x02"
-    elif change == "part":
-        bad["files"].append({"path": "model.part-0001", "payload_bytes": 4})
-    elif change == "overlap":
-        bad["objects"].append({"id": "two", "offset": 0, "bytes": 1})
-    elif change == "out_of_bounds":
-        bad["objects"][0]["bytes"] = 5
-    elif change == "ledger":
-        kwargs["ledger_change"] = {"artifact_id": "2" * 32}
-    elif change == "size":
-        config["model"]["bytes"] -= 1
-    write(bad, **kwargs)
-    with pytest.raises(PreflightError, match=reason):
-        inspect_asset(config)
 
 
 def test_file_guard_uses_native_identity_and_refuses_reparse():

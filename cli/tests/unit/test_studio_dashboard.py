@@ -1,10 +1,7 @@
 """Studio cards reduce saved evidence only; missing and multiple sources stay explicit."""
 
-from copy import deepcopy
-
 from inferyard.analysis.comparison_input import comparison_input
 from inferyard.reporting.studio_dashboard import dashboard_view
-from inferyard.reporting.studio_profile import profile_view
 from inferyard.reporting.studio_resources import memory_view
 from tests.helpers import fixture_run
 

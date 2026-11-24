@@ -2,14 +2,11 @@
 
 from copy import deepcopy
 
-import pytest
-
 from inferyard.analysis.comparison import compare_trials
-from inferyard.analysis.environment import assess_environment
-from inferyard.analysis.resource_metrics import reduce_resources, select_samples
-from inferyard.analysis.ledger import read_trial
-from inferyard.platforms.telemetry import read_rss, sample_memory
 from inferyard.analysis.comparison_input import comparison_input
+from inferyard.analysis.environment import assess_environment
+from inferyard.analysis.ledger import read_trial
+from inferyard.analysis.resource_metrics import reduce_resources
 from tests.helpers import fixture_run
 
 

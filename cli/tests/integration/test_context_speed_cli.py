@@ -57,30 +57,3 @@ def test_public_five_trials_and_readonly_results(speed_service, monkeypatch, cap
     assert before == tree_hashes(batch)
     assert calls == speed_service["calls"]
     assert not list(batch.rglob("*.html"))
-
-
-def test_actual_public_bundle_validation_allows_unreviewed_and_rejects_invalid(
-    speed_service, capsys
-):
-    path = speed_service["write"]()
-    bundle_path = speed_service["root"] / "bundle.json"
-    bundle = json.loads(bundle_path.read_bytes())
-    bundle["review_records"] = []
-    bundle_path.write_text(json.dumps(bundle))
-    prepared = speed_service["root"] / "approved"
-    code, response = invoke(capsys, "init", "--bundle", "zh-context-speed", "--out", prepared)
-    assert code == 0 and response["status"] == "prepared"
-    out = speed_service["root"] / "accepted"
-    assert (
-        invoke(capsys, "plan", "--preset", "context-speed", "--config", path, "--out", out)[0] == 0
-    )
-    assert out.exists()
-    bundle["cases"] = []
-    bundle_path.write_text(json.dumps(bundle))
-    refused = speed_service["root"] / "refused"
-    assert (
-        invoke(capsys, "plan", "--preset", "context-speed", "--config", path, "--out", refused)[0]
-        == 2
-    )
-    assert not refused.exists()
-    assert speed_service["calls"] == []

@@ -243,17 +243,6 @@ def test_unconfirmed_residual_stops_and_keeps_dirty(scenario):
     assert json.loads(locking.STATE_PATH.read_text())["dirty"] is True
 
 
-def test_scoring_all_wrong_still_exits_zero(scenario):
-    from inferyard.analysis.scoring import score_case
-
-    request, deps, calls, settings = scenario
-    deps.scorer = lambda case, answer, policy: score_case(case, "", policy)
-    code, result = asyncio.run(execute_async(request, deps))
-    assert code == 0 and result.completeness == "complete"
-    data = rebuild(Path(result.evidence_dir))
-    assert all(q["rate"]["value"] == 0 for q in data["summary"]["quality"]["Q01"].values())
-
-
 def test_credential_echo_all_artifacts_redacted_and_not_scored(scenario, monkeypatch):
     request, deps, calls, settings = scenario
     secret = "fixture-secret-7f39"

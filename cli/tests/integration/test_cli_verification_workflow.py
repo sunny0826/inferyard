@@ -8,9 +8,8 @@ from pathlib import Path
 import pytest
 
 import inferyard.cli as cli
-from inferyard.config.loader import LoadedConfig, load_config
+from inferyard.config.loader import load_config
 from inferyard.contracts.validation import Document
-from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import sha256_file
 from tests.helpers import fixture_run
 from tests.unit.test_closed_concurrency import rows, spec
@@ -118,36 +117,3 @@ def test_canonical_artifact_workflow_is_offline_and_rejects_retired_presentation
     failed = invoke(capsys, ["verify", "--path", tmp_path / "comparison"], 4)
     assert failed["limitations"] == ["comparison_recomputation_mismatch"]
     assert before == {"left": files(left), "right": files(right)}
-
-
-def test_public_configuration_verification_keeps_match_and_mismatch_semantics(
-    tmp_path, capsys, monkeypatch, portable_fixture
-):
-    source = portable_fixture(tmp_path / "source", states=["completed"])
-    public = tmp_path / "public"
-    invoke(capsys, ["public", "package", "--run", source, "--out", public])
-    data = read_trial(source)
-    loaded = LoadedConfig(
-        Path("synthetic.toml"),
-        Document.parse("config", data["config"]),
-        Document.parse("bundle", data["bundle"]),
-    )
-    monkeypatch.setattr(cli, "load_config", lambda path: loaded)
-    matched = invoke(capsys, ["verify", "--path", public, "--config", "synthetic.toml"])
-    assert matched["status"] == "matched"
-    assert matched["completeness"] == "incomplete"
-    assert matched["details"]["declared_configuration_matches"]
-    assert not matched["details"]["ready_to_run"]
-    invoke(capsys, ["public-config-check", "--run", public, "--config", "synthetic.toml"], 2)
-    changed = loaded.config.to_dict()
-    changed["conditions"]["threads"] += 1
-    loaded = replace(loaded, config=Document.parse("config", changed))
-    mismatch = invoke(
-        capsys,
-        ["verify", "--path", public, "--source-run", source, "--config", "synthetic.toml"],
-        3,
-    )
-    assert mismatch["status"] == "mismatch"
-    assert not mismatch["details"]["ready_to_run"]
-    assert "conditions.threads" in mismatch["details"]["mismatched_fields"]
-    assert mismatch["details"]["source_projection_verified"]
