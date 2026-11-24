@@ -5,7 +5,7 @@ from pathlib import Path
 
 from inferyard.config.bundle import require_review
 from inferyard.config.community_assets import model_template
-from inferyard.platforms.model_asset_manifest import model_asset_manifest
+from inferyard.platforms.local_engines.model_snapshot import snapshot as model_snapshot
 from inferyard.config.loader import load_config
 from inferyard.provisioning.preparation_io import (
     NewDirectory,
@@ -136,7 +136,7 @@ def create(request):
         backend = "metal"
         served = request.served_model or "inferyard-local-model"
 
-    assets = model_asset_manifest(model)
+    assets, _ = model_snapshot(model)
     display_name, raw_template = template(model, fallback_tokenizer=fallback_tokenizer)
     bundle = read_json(request.bundle_path)
     require_review(bundle)
@@ -236,7 +236,7 @@ def create(request):
     validate_document("config", config)
     content = render(config)
     if (
-        assets != model_asset_manifest(model)
+        assets != model_snapshot(model)[0]
         or template(model, fallback_tokenizer=fallback_tokenizer)[1] != raw_template
     ):
         raise PreparationError("local_engine_model_assets_changed")

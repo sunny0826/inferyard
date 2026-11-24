@@ -85,7 +85,7 @@ func readConfig(path string) (string, string, string, error) {
 	if json.Unmarshal(bundleRaw, &frozenBundle) != nil || frozenBundle.ID == "" {
 		return "", "", "", os.ErrInvalid
 	}
-	return path, root, frozenBundle.ID, nil
+	return path, root, inferyard.CanonicalBundleName(frozenBundle.ID), nil
 }
 func (s *Service) StartRuns(req StartRunsRequest) ([]RunTask, *ApiError) {
 	s.settingsMu.Lock()
