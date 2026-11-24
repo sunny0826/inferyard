@@ -12,7 +12,6 @@ import (
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/components/chart"
 	"inferyard/studio/internal/core"
-	"inferyard/studio/internal/l10n"
 )
 
 type resourceSeries struct {
@@ -75,13 +74,6 @@ func resourceLineData(series resourceSeries, color ui.Color) chart.Data {
 	}
 	data.Series = []chart.Series{{ID: series.id, Label: series.source.Name, Color: color, Values: values}}
 	return data
-}
-
-func sourceLabel(source core.ResourceSource) string {
-	if source.Name == "" {
-		return l10n.TR("chart.source.unrecorded")
-	}
-	return source.Name
 }
 
 func sourceLabelFor(c *ui.Context, source core.ResourceSource) string {
@@ -171,12 +163,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 					Detail: func(c *ui.Context, selection chart.Selection) {
 						ui.Column(c).Children(func() {
 							if selection.Index >= 0 && selection.Index < len(chosen.points) {
-								point := chosen.points[selection.Index]
-								value := number(point.Value)
-								if point.MissingReason != nil {
-									value = trf(c, "chart.resource.missing_reason", "reason", *point.MissingReason)
-								}
-								ui.Text(c, formatTimestampUTC(point.Utc)+" · "+value+" "+chosen.source.Unit).Selectable()
+								ui.Text(c, formatResourceDetail(c, chosen.points[selection.Index])).Selectable()
 							}
 						})
 					},
@@ -244,7 +231,7 @@ func (s *viewState) resourceTable(c *ui.Context, samples []core.ResourceSample) 
 	start := s.resourceTablePage * pageSize
 	samples = samples[start:min(start+pageSize, len(samples))]
 	cols := []ui.TableColumn{
-		{Title: tr(c, "chart.table.col_utc"), Width: 220},
+		{Title: tr(c, "chart.table.col_time"), Width: 220},
 		{Title: tr(c, "chart.table.col_source"), Width: 250},
 		{Title: tr(c, "chart.table.col_value"), Width: 140},
 		{Title: tr(c, "chart.table.col_unit"), Width: 80},
@@ -254,13 +241,52 @@ func (s *viewState) resourceTable(c *ui.Context, samples []core.ResourceSample) 
 	s.samplesTable.Key = func(i int) any { return samples[i].Seq }
 	pageTable(c, &s.samplesTable, tableLabel, cols, len(samples), func(row, col int) {
 		p := samples[row]
-		value := number(p.Value)
-		if p.Value != nil && p.Source.Unit == "bytes" {
-			value = fmt.Sprintf("%.0f", *p.Value)
-		}
-		values := []string{formatTimestampUTC(p.Utc), sourceLabelFor(c, p.Source), value, p.Source.Unit, emptyText(p.MissingReason)}
+		value, unit := formatResourceSample(c, p)
+		values := []string{formatTimestamp(p.Utc), sourceLabelFor(c, p.Source), value, unit, emptyText(p.MissingReason)}
 		ui.Text(c, values[col]).Selectable()
 	}).Height(180).Label(tableLabel)
+}
+
+func resourceDisplayUnit(unit string) string {
+	switch unit {
+	case "bytes":
+		return "GiB"
+	case "celsius":
+		return "°C"
+	default:
+		return unit
+	}
+}
+
+func formatResourceSample(c *ui.Context, sample core.ResourceSample) (value, unit string) {
+	unit = resourceDisplayUnit(sample.Source.Unit)
+	if !finite(sample.Value) || sample.MissingReason != nil {
+		return tr(c, "common.missing"), unit
+	}
+	v := *sample.Value
+	if sample.Source.Unit == "bytes" {
+		v /= 1073741824
+	}
+	rounded := math.Round(v*100) / 100
+	if rounded == 0 {
+		rounded = 0
+	}
+	return fmt.Sprintf("%.2f", rounded), unit
+}
+
+func formatResourceDetail(c *ui.Context, sample core.ResourceSample) string {
+	stamp := formatTimestamp(sample.Utc)
+	if sample.MissingReason != nil {
+		return stamp + " · " + trf(c, "chart.resource.missing_reason", "reason", *sample.MissingReason)
+	}
+	value, unit := formatResourceSample(c, sample)
+	if !finite(sample.Value) {
+		return stamp + " · " + value
+	}
+	if unit == "%" || unit == "" {
+		return stamp + " · " + value + unit
+	}
+	return stamp + " · " + value + " " + unit
 }
 
 func chartHasValues(data chart.Data) bool {
