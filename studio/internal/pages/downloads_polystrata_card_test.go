@@ -33,7 +33,7 @@ func TestPolystrataTaskCardPhaseBarCompactDetailAndTopLevelLog(t *testing.T) {
 		OutName:         "polystrata",
 		LogPath:         ptr(logPath),
 	}}
-	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1120, 2200)
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).FillWidth().Children(func() { s.downloadsView(c) }) }, 1120, 2200)
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
 	tt.Frame()
 
@@ -241,7 +241,7 @@ func TestPolystrataTaskCardZeroRoundedAndUnknownTotalProgress(t *testing.T) {
 		Detail:          ptr("chat template"),
 		OutName:         "polystrata",
 	}}
-	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1120, 2200)
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).FillWidth().Children(func() { s.downloadsView(c) }) }, 1120, 2200)
 	tt.Frame()
 
 	if !tt.HasText("100%") || !tt.HasText("chat template") {
@@ -282,7 +282,7 @@ func TestPolystrataHeaderCancelFlowAndLogToggleEmptyState(t *testing.T) {
 		OutName:         "polystrata-qwen",
 		LogPath:         ptr(emptyLog),
 	}}
-	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1120, 2200)
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).FillWidth().Children(func() { s.downloadsView(c) }) }, 1120, 2200)
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
 	tt.Frame()
 
