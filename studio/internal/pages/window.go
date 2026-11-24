@@ -327,7 +327,7 @@ func (s *viewState) refresh(full bool) {
 		prepLocations = s.service.PreparationLocations()
 		hasPrepLocations = true
 	}
-	if ready.CLI.Status == "ok" {
+	if ready.CLI.Status == "ok" && ready.Workspace.Initialized {
 		progress, pe = s.service.Progress(s.ctx)
 	}
 	dashboard = s.readDashboard(progress.Progress)

@@ -45,9 +45,17 @@ def _is_polystrata_macos_telemetry_probe(family, parent, root_pid, arguments, ex
     )
 
 
-def _check_worker_env(observed_env, environment, *, allowed_extras, expected_lib_dirs, expected_cfg_env):
+def check_worker_env(
+    observed_env,
+    environment,
+    *,
+    allowed_extras=None,
+    expected_lib_dirs=(),
+    expected_cfg_env=None,
+    check_lib_dirs=True,
+):
     check_environment(observed_env, environment, allowed_extras=allowed_extras)
-    if expected_lib_dirs:
+    if check_lib_dirs and expected_lib_dirs:
         actual_parts = observed_env.get("LD_LIBRARY_PATH", "").split(os.pathsep)
         if actual_parts[: len(expected_lib_dirs)] != list(expected_lib_dirs):
             raise PreflightError("local_engine_environment_override")
@@ -59,7 +67,7 @@ def _check_worker_env(observed_env, environment, *, allowed_extras, expected_lib
             ):
                 raise PreflightError("local_engine_environment_override")
     for key, expected_val in (expected_cfg_env or {}).items():
-        if key == "LD_LIBRARY_PATH" and expected_lib_dirs:
+        if key == "LD_LIBRARY_PATH" and check_lib_dirs and expected_lib_dirs:
             continue
         if observed_env.get(key) != expected_val:
             raise PreflightError("local_engine_environment_override")
@@ -170,7 +178,7 @@ def _observe_workers_once(
             ignored_probes.add(child)
             continue
         observed_environment = process.environ()
-        _check_worker_env(
+        check_worker_env(
             observed_environment,
             environment,
             allowed_extras=allowed_extras,
@@ -233,7 +241,7 @@ def _observe_workers_once(
         raise PreflightError("local_engine_worker_tree_changed")
     for child, (parent, state, children) in states.items():
         process = psutil.Process(child)
-        _check_worker_env(
+        check_worker_env(
             process.environ(),
             environment,
             allowed_extras=allowed_extras,

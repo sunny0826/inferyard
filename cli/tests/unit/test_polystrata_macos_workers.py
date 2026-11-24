@@ -180,9 +180,13 @@ def test_polystrata_still_rejects_rogue_ioreg_args_and_non_polystrata_rejects_io
 ) -> None:
     strata_bin = tmp_path / "strata"
     strata_bin.write_bytes(b"fake-strata-binary")
+    fake_ioreg = tmp_path / "ioreg"
+    fake_ioreg.write_bytes(b"fake-ioreg-binary")
+    fake_ioreg_resolved = fake_ioreg.resolve()
+    monkeypatch.setattr(workers, "_POLYSTRATA_MACOS_TELEMETRY_EXE", fake_ioreg_resolved)
     runtime_files = [hash_file(strata_bin)]
 
-    # Rogue args on /usr/sbin/ioreg must not be ignored even for polystrata.
+    # Rogue args on telemetry executable must not be ignored even for polystrata.
     fake_psutil = _make_fake_env(
         monkeypatch,
         root_pid=100,
@@ -192,7 +196,7 @@ def test_polystrata_still_rejects_rogue_ioreg_args_and_non_polystrata_rejects_io
                 "ppid": 100,
                 "start": 1002,
                 "args": ["ioreg", "-l"],
-                "exe": Path("/usr/sbin/ioreg"),
+                "exe": fake_ioreg_resolved,
                 "cwd": tmp_path,
                 "env": {"PYTHONDONTWRITEBYTECODE": "1"},
             },
@@ -217,7 +221,7 @@ def test_polystrata_still_rejects_rogue_ioreg_args_and_non_polystrata_rejects_io
                 "ppid": 100,
                 "start": 1002,
                 "args": ["ioreg", "-l", "-w0", "-r", "-c", "IOAccelerator"],
-                "exe": Path("/usr/sbin/ioreg"),
+                "exe": fake_ioreg_resolved,
                 "cwd": tmp_path,
                 "env": {"PYTHONDONTWRITEBYTECODE": "1"},
             },

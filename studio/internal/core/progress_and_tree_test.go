@@ -12,8 +12,9 @@ import (
 
 func TestProgressBlockedSurfacesLimitationCode(t *testing.T) {
 	workspace := t.TempDir()
+	cliPath := fakeCLIFile(t)
 	settingsPath := filepath.Join(t.TempDir(), "settings.json")
-	raw, _ := json.Marshal(UserSettings{WorkspaceRoot: &workspace})
+	raw, _ := json.Marshal(UserSettings{WorkspaceRoot: &workspace, InferyardPath: &cliPath})
 	if err := os.WriteFile(settingsPath, raw, 0600); err != nil {
 		t.Fatal(err)
 	}

@@ -18,7 +18,11 @@ from inferyard.platforms.identity import (
 from inferyard.platforms.local_engines.assets import JsonObject, assets, bound_json
 from inferyard.platforms.local_engines.installation import check_family_platform, darwin
 from inferyard.platforms.local_engines.startup import check_environment, validate_startup
-from inferyard.platforms.local_engines.workers import mapped_closure, observe_workers
+from inferyard.platforms.local_engines.workers import (
+    check_worker_env,
+    mapped_closure,
+    observe_workers,
+)
 from inferyard.platforms.macos_identity import _listener_identity
 from inferyard.platforms.macos_process import lsof_records, mapped_file
 
@@ -328,20 +332,14 @@ def _observe_workers_cross_platform(
         parent = child_proc.ppid()
         start, _, raw, executable, cwd = _psutil_process_state(child, psutil)
         observed_env = child_proc.environ()
-        check_environment(observed_env, environment, allowed_extras=allowed_extras)
-        if expected_lib_dirs and platform.system() != "Windows":
-            actual_parts = observed_env.get("LD_LIBRARY_PATH", "").split(os.pathsep)
-            if actual_parts[: len(expected_lib_dirs)] != expected_lib_dirs:
-                raise PreflightError("local_engine_environment_override")
-            if "LD_LIBRARY_PATH" in expected_cfg_env:
-                suffix = expected_cfg_env["LD_LIBRARY_PATH"].split(os.pathsep)
-                if actual_parts[len(expected_lib_dirs) : len(expected_lib_dirs) + len(suffix)] != suffix:
-                    raise PreflightError("local_engine_environment_override")
-        for key, expected_val in expected_cfg_env.items():
-            if key == "LD_LIBRARY_PATH" and expected_lib_dirs and platform.system() != "Windows":
-                continue
-            if observed_env.get(key) != expected_val:
-                raise PreflightError("local_engine_environment_override")
+        check_worker_env(
+            observed_env,
+            environment,
+            allowed_extras=allowed_extras,
+            expected_lib_dirs=expected_lib_dirs,
+            expected_cfg_env=expected_cfg_env,
+            check_lib_dirs=platform.system() != "Windows",
+        )
         identity = hash_file(executable)
         if not any(
             item.path == identity.path and item.sha256 == identity.sha256
