@@ -18,6 +18,9 @@ func (s *viewState) guardLeaveSettings(targetPage string, action func()) bool {
 }
 
 func (s *viewState) navigateToNow(page, detail string) {
+	if page != "reports" && s.openedReport != nil {
+		s.openedReport.releaseSVGStage()
+	}
 	s.pendingDestructive = destructiveRequest{}
 	s.selected, s.detailID = page, detail
 	s.promptPage = page

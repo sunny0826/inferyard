@@ -46,6 +46,7 @@
   "preview.scene.rec_rtx5090_tiers": "Recommendation · RTX 5090 32G (Multiple Tiers)",
   "preview.scene.report_long_missing": "Report · Long Table & Missing Data",
   "preview.scene.report_read_failed": "Report · Read Failed",
+  "preview.scene.report_svg_pelican": "Report · Animated Pelican SVG",
   "preview.scene.reset": "Reset Scene",
   "preview.scene.resources_cpu_sensors": "Resources · CPU & Multi-Sensor Temps",
   "preview.scene.resources_dense_missing": "Resources · Dense Sampling & Missing Data",

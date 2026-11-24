@@ -14,6 +14,10 @@ type reportViewState struct {
 	index                *core.ReportIndex
 	failure              *core.ApiError
 	run                  int
+	svgIndex             int
+	svgStage             svgStageView
+	svgLoadedKey         string
+	svgStageErr          bool
 	categories, requests pageTableState
 }
 
@@ -31,6 +35,7 @@ func (s *viewState) openReport(reference string) {
 	if s.speed != nil {
 		s.speed.opened = nil
 	}
+	s.closeOpenedReport()
 	index, e := s.readReport(reference)
 	s.openedReport = &reportViewState{reference: reference, index: index, failure: e}
 	s.selected = "reports"
@@ -38,7 +43,8 @@ func (s *viewState) openReport(reference string) {
 
 func (s *viewState) reportBackLink(c *ui.Context) {
 	button(c, tr(c, "reports.detail.back")).OnClick(func() {
-		s.openedReport, s.reportsTab = nil, reportsTabList
+		s.closeOpenedReport()
+		s.reportsTab = reportsTabList
 	})
 }
 
@@ -73,6 +79,7 @@ func (s *viewState) reportView(c *ui.Context) {
 		statusBadge(c, tr(c, "reports.detail.diagnostic_badge"), stateColor(c, stateWarning))
 	}
 	reportMetrics(c, run)
+	s.reportSVGSection(c, report, run)
 	reportSummaryGrid(c,
 		func(c *ui.Context) { reportThroughput(c, run) },
 		func(c *ui.Context) { reportOutputIntervals(c, run) },
@@ -151,6 +158,8 @@ func (r *reportViewState) runPicker(c *ui.Context) {
 		})
 		if selectRun.Trigger.Changed() {
 			r.categories, r.requests = pageTableState{}, pageTableState{}
+			r.svgIndex = 0
+			r.releaseSVGStage()
 		}
 	})
 }

@@ -46,6 +46,7 @@
   "preview.scene.rec_rtx5090_tiers": "推荐 · RTX 5090 32G（多样性档位）",
   "preview.scene.report_long_missing": "报告 · 长表与缺测",
   "preview.scene.report_read_failed": "报告 · 读取失败",
+  "preview.scene.report_svg_pelican": "报告 · 鹈鹕 SVG 动图",
   "preview.scene.reset": "重置场景",
   "preview.scene.resources_cpu_sensors": "资源 · CPU 与多路温度",
   "preview.scene.resources_dense_missing": "资源 · 密集采样与缺测",

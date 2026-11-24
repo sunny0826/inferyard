@@ -324,7 +324,8 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		p.resetTask(s.model, s.engine)
 		s.progress, s.task.stage = nil, ""
 		s.ready.Workspace.Initialized = false
-		s.reportsTab, s.openedReport = reportsTabList, nil
+		s.reportsTab = reportsTabList
+		s.closeOpenedReport()
 	}
 	p.noticeKey = "preview.notice.settings_saved"
 }

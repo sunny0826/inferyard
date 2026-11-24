@@ -27,7 +27,8 @@ func (s *viewState) resetWorkspace() {
 	s.reportDialogOpen, s.reportDiscardConfirm = false, false
 	s.resumeDiscardConfirm = false
 	s.settingsLeaveConfirm, s.pendingNavAction = false, nil
-	s.reportsTab, s.openedReport = reportsTabList, nil
+	s.reportsTab = reportsTabList
+	s.closeOpenedReport()
 	s.denied = map[string]bool{}
 }
 
@@ -103,6 +104,9 @@ func (s *viewState) newBenchmark() {
 		s.requestedDetail = ""
 		s.detailMu.Unlock()
 		s.failure = nil
+		if s.openedReport != nil {
+			s.openedReport.releaseSVGStage()
+		}
 		s.selected = "dashboard"
 	}
 	if s.service == nil && s.cancelRound == nil {

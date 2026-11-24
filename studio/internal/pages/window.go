@@ -84,7 +84,20 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 		}
 		go s.refresh(true)
 	})
+	offHide := w.OnHide(func() {
+		if s.openedReport != nil {
+			s.openedReport.releaseSVGStage()
+		}
+	})
+	offShow := w.OnShow(func() {
+		if s.selected == "reports" && s.openedReport != nil {
+			w.Invalidate()
+		}
+	})
 	w.OnClosed(func() {
+		offHide()
+		offShow()
+		s.closeOpenedReport()
 		offLocale()
 		cancel()
 		s.waitMinimizeToTrayPersist()
@@ -170,6 +183,7 @@ type viewState struct {
 	service                                                                             *core.Service
 	win                                                                                 *mygo.Window
 	openedReport                                                                        *reportViewState
+	newSVGStage                                                                         func() (svgStageView, error)
 	reportsTab                                                                          int
 	refreshMu                                                                           sync.Mutex
 	detailMu                                                                            sync.Mutex
@@ -518,6 +532,9 @@ func (s *viewState) view(c *ui.Context) {
 }
 
 func (s *viewState) contentView(c *ui.Context) {
+	if s.selected != "reports" && s.openedReport != nil && s.openedReport.svgStage != nil {
+		s.openedReport.releaseSVGStage()
+	}
 	s.consumeFeedback(c)
 	s.dropStaleStopPrompt()
 	s.clearPromptOnNavigation()

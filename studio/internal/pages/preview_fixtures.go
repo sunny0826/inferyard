@@ -61,6 +61,7 @@ var previewScenes = []struct {
 	{"preview.scene.resources_dense_missing", previewDenseResources},
 	{"preview.scene.resources_cpu_sensors", previewMultiSensorResources},
 	{"preview.scene.report_long_missing", func(s *viewState) { s.openReport("long-report") }},
+	{"preview.scene.report_svg_pelican", func(s *viewState) { s.openReport("pelican-report") }},
 	{"preview.scene.report_read_failed", func(s *viewState) { s.openReport("broken-report") }},
 	{"preview.scene.downloads_active_failed", previewDownloadsActiveAndFailed},
 	{"preview.scene.downloads_polystrata_setup", previewDownloadsPolystrata},
@@ -305,6 +306,32 @@ func previewReportFixture(reference string) *core.ReportIndex {
 	index, err := inferyard.ParseStudioReport(previewReportJSON)
 	if err != nil {
 		panic("invalid bundled UI preview report: " + err.Error())
+	}
+	if reference == "pelican-report" {
+		run := &index.Runs[0]
+		run.Source.RunID = "pelican-preview-run"
+		run.Facets.BundleLabel = inferyard.DefaultBundlePelican + " · 1.0.0"
+		zero := core.ReportCounts{Numerator: previewValue(int64(0)), Denominator: previewValue(int64(0)), Excluded: previewValue(int64(0))}
+		run.Dashboard.Quality = core.ReportQuality{StudioCounts: zero, Complete: false, Reason: previewValue("quality_incomplete_or_not_applicable")}
+		run.Dashboard.Categories = []core.ReportCategory{}
+		latency := 2480.0
+		run.Requests = []core.ReportRequest{{
+			CaseID:        "svg-pelican-01",
+			CategoryLabel: "svg",
+			State:         "completed",
+			Quality:       previewValue("not_applicable"),
+			LatencyMS:     &latency,
+		}}
+		run.Summary.CompletionRate = core.ReportCounts{Numerator: previewValue(int64(1)), Denominator: previewValue(int64(1)), Excluded: previewValue(int64(0))}
+		run.Dashboard.Latency = core.ReportLatency{
+			SampleCount: previewValue(int64(1)),
+			Excluded:    previewValue(int64(0)),
+			Min:         &latency,
+			P50:         &latency,
+			Max:         &latency,
+		}
+		run.SVGOutputs = previewPelicanOutputs()
+		return &index
 	}
 	if reference == "long-report" {
 		run := &index.Runs[0]

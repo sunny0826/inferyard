@@ -21,7 +21,7 @@
   - 未解决问题（第 5 轮 Reviewer 打回）：
     1. 首行说明文字后紧跟外层 `<svg>` 且首行内含 `<title>Pelican</title>` 文本节点时，`chain_start` 被文本清空导致丢弃外层 `viewBox` 与 `<title>`、只导出第二行内层 `<svg>`（`cli/src/inferyard/reporting/svg_extract.py:189`）。
     2. 说明文字中单独提及未闭合 `<g>`（如 `I use a <g> for each wheel.\n<svg><g><circle/></g></svg>`）时，`_rewind_doc_start` 误将正文中的 `</g>` 当成说明里 `<g>` 的闭合标签而回退到错误位置导致判为 `malformed`（`cli/src/inferyard/reporting/svg_extract.py:198`）。
-- [ ] **T02：Studio 报告详情页 SVG 动图渲染、生命周期管理、i18n 与 Preview**
+- [x] **T02：Studio 报告详情页 SVG 动图渲染、生命周期管理、i18n 与 Preview**
   - 新增 `studio/internal/pages/report_svg.go`：基于 `mygo.WebView` 沙箱播放 SVG 动图（Go 端再次校验字节上限、仅拼接 base64 至 `<img>`、单 WebView 承载、多条 SVG 时支持切换）；展示题面 prompt、解析状态、字节/耗时元信息及原生 `ui.Text` 源码折叠区；无窗口或 WebView 创建失败时降级展示说明与源码；对不含 `svg_outputs` 的旧 SVG 报告展示重新生成提示。
   - 接入 `report_view.go`、`window.go`（关闭窗口时销毁 WebView）、`window_navigation.go`（离开报告页时销毁 WebView）。
   - 同步更新 `studio/internal/l10n/locales/reports/{zh-Hans,en}.json`（禁止硬编码 UI 字符串）。

@@ -336,7 +336,8 @@ func (p *previewSession) resetTask(model, engine string) {
 		s.clearBenchmark()
 		s.failure, s.busy = nil, false
 		s.selected, s.detailID, s.focusedRun = "dashboard", "", ""
-		s.detail, s.resumeSource, s.runProgress, s.openedReport = nil, nil, nil, nil
+		s.detail, s.resumeSource, s.runProgress = nil, nil, nil
+		s.closeOpenedReport()
 		s.model, s.engine = model, engine
 		if stopLocalService || s.engineState.State == "starting" || s.engineState.State == "stopping" {
 			s.engineState = core.EngineState{State: "stopped"}

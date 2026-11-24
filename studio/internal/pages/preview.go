@@ -46,7 +46,24 @@ func NewPreview(ctx context.Context) {
 	shell := sidebar.NewShell(p.shellOptions())
 	p.win = shell.Window()
 	p.state.win = p.win
-	p.win.OnClosed(cancel)
+	offHide := p.win.OnHide(func() {
+		if p.state != nil && p.state.openedReport != nil {
+			p.state.openedReport.releaseSVGStage()
+		}
+	})
+	offShow := p.win.OnShow(func() {
+		if p.state != nil && p.state.selected == "reports" && p.state.openedReport != nil {
+			p.win.Invalidate()
+		}
+	})
+	p.win.OnClosed(func() {
+		offHide()
+		offShow()
+		if p.state != nil {
+			p.state.closeOpenedReport()
+		}
+		cancel()
+	})
 	go p.runClock()
 }
 
@@ -156,6 +173,9 @@ func (p *previewSession) shellOptions() sidebar.ShellOptions {
 }
 
 func (p *previewSession) loadScene(index int) {
+	if p.state != nil {
+		p.state.closeOpenedReport()
+	}
 	p.scene, p.noticeKey = index, ""
 	p.generation++
 	p.jobs, p.clock, p.lastTick = nil, 0, time.Now()

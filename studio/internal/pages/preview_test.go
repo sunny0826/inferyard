@@ -187,3 +187,54 @@ func TestPreviewThemeSwitcherSyncsWithSidebarAndStaysInMemory(t *testing.T) {
 		t.Fatalf("preview mode wrote real files: %v", files)
 	}
 }
+
+func TestPreviewCreateReportCancelledPelicanDoesNotFabricateOKSVG(t *testing.T) {
+	p := newPreviewSession(context.Background())
+	s := p.state
+	runPath := "/preview/results/pelican-cancelled"
+	bundle := "zh-svg-pelican"
+	s.history.StandaloneRuns = append(s.history.StandaloneRuns, core.RunSummary{
+		RunId:  "pelican-cancelled",
+		Path:   runPath,
+		Bundle: &bundle,
+		Status: "cancelled",
+	})
+	p.details["pelican-cancelled"] = &core.RunTaskDetail{
+		Task: core.RunTask{TaskId: "pelican-cancelled", State: "cancelled", Bundle: &bundle},
+		Progress: &core.RunProgress{
+			Done:  0,
+			Total: previewValue(int64(1)),
+			Cases: []core.CaseProgress{{
+				CaseId:   "svg-pelican-01",
+				Category: previewValue("svg"),
+				State:    "cancelled",
+			}},
+		},
+	}
+	id := p.createReport([]string{runPath})
+	report, err := p.report(id)
+	if err != nil || len(report.Runs) != 1 || len(report.Runs[0].SVGOutputs) != 1 {
+		t.Fatalf("unexpected cancelled pelican preview report: report=%+v err=%v", report, err)
+	}
+	got := report.Runs[0].SVGOutputs[0]
+	if got.Status != "not_found" || got.SVG != nil || got.Bytes != 0 {
+		t.Fatalf("cancelled pelican run must not fabricate ok SVG, got %+v", got)
+	}
+
+	// Completed history entry without matching SVG request details must not fabricate ok SVG either.
+	noDetailPath := "/preview/results/pelican-no-detail"
+	s.history.StandaloneRuns = append(s.history.StandaloneRuns, core.RunSummary{
+		RunId:  "pelican-no-detail",
+		Path:   noDetailPath,
+		Bundle: &bundle,
+		Status: "complete",
+	})
+	noDetailID := p.createReport([]string{noDetailPath})
+	noDetailReport, err := p.report(noDetailID)
+	if err != nil || len(noDetailReport.Runs) != 1 {
+		t.Fatalf("unexpected no-detail pelican preview report: report=%+v err=%v", noDetailReport, err)
+	}
+	if len(noDetailReport.Runs[0].SVGOutputs) != 0 {
+		t.Fatalf("run without svg request details must not fabricate SVG outputs, got %+v", noDetailReport.Runs[0].SVGOutputs)
+	}
+}

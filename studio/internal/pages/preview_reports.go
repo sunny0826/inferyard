@@ -10,6 +10,66 @@ import (
 	"inferyard/studio/internal/l10n"
 )
 
+const previewPelicanSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" width="360" height="220">` +
+	`<rect width="360" height="220" fill="#f8fafc"/>` +
+	`<line x1="20" y1="184" x2="340" y2="184" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round"/>` +
+	`<g fill="none" stroke="#1e293b" stroke-width="4">` +
+	`<g transform="translate(115 150)"><circle r="30"/><line x1="-26" y1="0" x2="26" y2="0" stroke-width="2"/><line x1="0" y1="-26" x2="0" y2="26" stroke-width="2"/>` +
+	`<animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="1.4s" repeatCount="indefinite" additive="sum"/></g>` +
+	`<g transform="translate(245 150)"><circle r="30"/><line x1="-26" y1="0" x2="26" y2="0" stroke-width="2"/><line x1="0" y1="-26" x2="0" y2="26" stroke-width="2"/>` +
+	`<animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="1.4s" repeatCount="indefinite" additive="sum"/></g>` +
+	`<path d="M115 150 L168 150 L215 102 L145 102 Z M215 102 L245 150 M205 90 L230 90" stroke-linejoin="round" stroke-linecap="round"/>` +
+	`</g>` +
+	`<g><animateTransform attributeName="transform" type="translate" values="0 0;0 -4;0 0" dur="0.7s" repeatCount="indefinite"/>` +
+	`<ellipse cx="165" cy="94" rx="28" ry="18" fill="#ffffff" stroke="#334155" stroke-width="3"/>` +
+	`<path d="M150 92 Q132 76 146 72 Q165 78 176 92" fill="#e2e8f0" stroke="#334155" stroke-width="2.5">` +
+	`<animateTransform attributeName="transform" type="rotate" values="0 160 90;-14 160 90;0 160 90" dur="0.7s" repeatCount="indefinite"/></path>` +
+	`<path d="M184 86 Q196 66 202 58" fill="none" stroke="#334155" stroke-width="6" stroke-linecap="round"/>` +
+	`<circle cx="204" cy="54" r="11" fill="#ffffff" stroke="#334155" stroke-width="3"/>` +
+	`<circle cx="208" cy="51" r="2" fill="#0f172a"/>` +
+	`<path d="M214 52 L252 57 Q234 72 213 61 Z" fill="#f59e0b" stroke="#b45309" stroke-width="2"/>` +
+	`</g></svg>`
+
+func previewPelicanOutputs() []core.ReportSVGOutput {
+	svg := previewPelicanSVG
+	return []core.ReportSVGOutput{{
+		CaseID: "svg-pelican-01",
+		Prompt: "Generate an animated SVG of a pelican riding a bicycle",
+		Status: "ok",
+		SVG:    &svg,
+		Bytes:  int64(len(svg)),
+	}}
+}
+
+func previewPelicanOutputsForRun(run core.ReportRun) []core.ReportSVGOutput {
+	const prompt = "Generate an animated SVG of a pelican riding a bicycle"
+	var outputs []core.ReportSVGOutput
+	for _, req := range run.Requests {
+		if req.CategoryLabel != svgCategoryLabel {
+			continue
+		}
+		if req.State == "completed" {
+			svg := previewPelicanSVG
+			outputs = append(outputs, core.ReportSVGOutput{
+				CaseID: req.CaseID,
+				Prompt: prompt,
+				Status: "ok",
+				SVG:    &svg,
+				Bytes:  int64(len(svg)),
+			})
+		} else {
+			outputs = append(outputs, core.ReportSVGOutput{
+				CaseID: req.CaseID,
+				Prompt: prompt,
+				Status: "not_found",
+				SVG:    nil,
+				Bytes:  0,
+			})
+		}
+	}
+	return outputs
+}
+
 func (p *previewSession) report(reference string) (*core.ReportIndex, *core.ApiError) {
 	if index := p.indexes[reference]; index != nil {
 		return index, nil
@@ -18,7 +78,7 @@ func (p *previewSession) report(reference string) (*core.ReportIndex, *core.ApiE
 		p.reportReadFailed = true
 		return nil, &core.ApiError{Code: "report_unreadable", Message: l10n.TR("preview.report.read_failed")}
 	}
-	if reference != "preview-report" && reference != "long-report" && reference != "broken-report" {
+	if reference != "preview-report" && reference != "long-report" && reference != "pelican-report" && reference != "broken-report" {
 		return nil, core.Err("not_found")
 	}
 	return previewReportFixture(reference), nil
@@ -57,6 +117,9 @@ func (p *previewSession) createReport(paths []string) string {
 		if detail := p.details[history.RunId]; detail != nil && detail.Progress != nil {
 			applyPreviewProgress(&run, detail, emptyText(history.Bundle), history.Sealed)
 			previewReportMetrics(&run, detail)
+		}
+		if emptyText(history.Bundle) == inferyard.DefaultBundlePelican {
+			run.SVGOutputs = previewPelicanOutputsForRun(run)
 		}
 		index.Runs = append(index.Runs, run)
 		summary.RunIds = append(summary.RunIds, history.RunId)

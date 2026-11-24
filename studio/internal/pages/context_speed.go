@@ -286,7 +286,7 @@ func (s *viewState) newSpeedTask(r *speedTask) {
 }
 
 func (s *viewState) openSpeed(id string) {
-	s.openedReport = nil
+	s.closeOpenedReport()
 	s.selected = "reports"
 	if s.simulate(previewSpeedRead{id: id}) {
 		return
