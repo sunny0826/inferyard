@@ -22,7 +22,7 @@ xattr -dr com.apple.quarantine /Applications/InferYard\ Studio.app
 | View | What it provides |
 | --- | --- |
 | **Tasks** | Environment setup & automatic CLI upgrade, **New Task** launcher for standard bundles & **Long-Context Speed** (`zh-context-speed`: 64K / 128K / 256K), local service lifecycle & PID-verified binding, engine status card with direct Web UI link, live **Resource Curves**, in-app notification inbox & OS notifications |
-| **Reports** | Model-grouped `studio.json` **Benchmark Reports**, quality/latency/throughput/resource breakdowns, **Long-Context Speed** results, and **Run History** table |
+| **Reports** | Model-grouped `studio.json` **Benchmark Reports**, sandboxed animated SVG showcase (with source view), quality/latency/throughput/resource breakdowns, **Long-Context Speed** results, and **Run History** table |
 | **Models** | Multi-root model directory management, local engine setup wizard (**Models → Configure Local Engine**), and safe uninstall & disk cleanup for Studio-installed PolyStrata runtimes and downloaded models |
 | **Downloads** | Hardware-aware starter recommendations (guided PolyStrata 4-stage setup/recovery or `llama.cpp` fallback), extensible multi-engine catalog (`PolyStrata`, `llama.cpp`, `mlx-lm`, `vLLM`, `SGLang`, `LM Studio`), Hugging Face & ModelScope mirrors, custom URL resolution (`model resolve`), multi-shard GGUF and directory model downloads with streaming progress and resume |
 | **Device** | Read-only hardware readiness inspection (`device-check`), CPU/GPU/memory summary, and starter recommendation details |

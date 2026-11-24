@@ -27,7 +27,7 @@
   - 同步更新 `studio/internal/l10n/locales/reports/{zh-Hans,en}.json`（禁止硬编码 UI 字符串）。
   - 更新 Preview（`preview_reports.go` / `preview_fixtures.go` / `preview_i18n_test.go`）提供含真实 SMIL/CSS 动画鹈鹕 SVG 的报告预览场景。
   - 补充 Studio UI/preview 单测并运行 `mise run test:studio` 与 `mise run test:studio:preview`。
-- [ ] **T03：全链路验证、文档同步检查与节点 (d) 全局终审**
+- [x] **T03：全链路验证、文档同步检查与节点 (d) 全局终审**
   - 运行 CLI 全量测试 / ruff / schema-check，以及 `mise run test:studio`、`mise run test:studio:preview`、`mise run test:studio:e2e`。
   - 检查并按需同步受影响文档（`README.md` / `README.zh-CN.md` / `studio/README.md`）。
   - 向常驻 `advisor` 发起节点 (d) 全局终审，完成最终三份交付。

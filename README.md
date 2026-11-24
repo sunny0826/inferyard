@@ -61,7 +61,7 @@ Results stay on your machine. Frozen rules score the quality tasks.
 | Task set | What it contains |
 | --- | --- |
 | `zh-core` | 120 Chinese tasks: instruction following, extraction, grounded Q&A, math and logic, classification, and structured output (20 each) |
-| `zh-svg-pelican` | 1 SVG drawing task. The raw run retains the generated output without a quality score |
+| `zh-svg-pelican` | 1 animated SVG drawing task. Raw evidence retains the generated output and Studio renders an animated preview without a quality score |
 | `zh-smoke` | 40 tasks (instruction following and extraction) for a quick check |
 | `zh-context-speed` | 3 fixed prompts for 64K / 128K / 256K context settings that measure prefill and decode speed without a quality score |
 
