@@ -29,7 +29,7 @@ var navigation = []struct {
 }
 
 type WindowHooks struct {
-	BindTray func(win *mygo.Window, initialEnabled bool) func(bool)
+	BindTray func(win *mygo.Window) func(bool) error
 }
 
 func New(ctx context.Context, service *core.Service, page string, hooks ...WindowHooks) func(core.Event) bool {
@@ -51,7 +51,7 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 		themeMode:             initialTheme,
 		appliedThemeMode:      initialTheme,
 		minimizeToTray:        initialMinimizeToTray,
-		appliedMinimizeToTray: initialMinimizeToTray,
+		appliedMinimizeToTray: false,
 		settings: core.SettingsResponse{
 			Settings:  core.UserSettings{Theme: initialTheme, MinimizeToTray: initialMinimizeToTray},
 			Effective: core.EffectiveSettings{Theme: initialTheme, MinimizeToTray: initialMinimizeToTray},
@@ -63,9 +63,15 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 	w := shell.Window()
 	s.win = w
 	if len(hooks) > 0 && hooks[0].BindTray != nil {
-		s.applyMinimizeToTray = hooks[0].BindTray(w, initialMinimizeToTray)
+		s.applyMinimizeToTray = hooks[0].BindTray(w)
+		_ = s.syncMinimizeToTrayIfNeeded()
+	} else {
+		s.appliedMinimizeToTray = initialMinimizeToTray
 	}
-	w.OnClosed(cancel)
+	w.OnClosed(func() {
+		cancel()
+		s.waitMinimizeToTrayPersist()
+	})
 	wake, off, cursor := service.Bus.Subscribe()
 	go func() {
 		defer off()
@@ -208,12 +214,14 @@ type viewState struct {
 	applyNativeTheme                                                                    func(string)
 	persistTheme                                                                        func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
 	minimizeToTray, appliedMinimizeToTray                                               bool
+	trayUnavailable                                                                     bool
 	minimizeToTraySaving                                                                bool
 	minimizeToTrayMu                                                                    sync.Mutex
 	minimizeToTrayWanted                                                                bool
 	minimizeToTrayWantedSeq                                                             uint64
 	minimizeToTrayWorkerRunning                                                         bool
-	applyMinimizeToTray                                                                 func(bool)
+	minimizeToTrayWorkerDone                                                            chan struct{}
+	applyMinimizeToTray                                                                 func(bool) error
 	persistMinimizeToTray                                                               func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
 	historyTable                                                                        pageTableState
 	downloadsUI                                                                         *downloadsUIState

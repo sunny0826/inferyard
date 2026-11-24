@@ -100,12 +100,16 @@ func TestTrayControllerToggleAndCloseToTray(t *testing.T) {
 		t.Fatal("close should not hide when minimize-to-tray is disabled")
 	}
 
-	c.SetEnabled(true)
+	if err := c.SetEnabled(true); err != nil {
+		t.Fatalf("enable tray failed: %v", err)
+	}
 	if len(h.icons) != 1 {
 		t.Fatalf("expected 1 tray icon after enable, got %d", len(h.icons))
 	}
 	// Idempotent enable should not create duplicate tray icons.
-	c.SetEnabled(true)
+	if err := c.SetEnabled(true); err != nil {
+		t.Fatalf("idempotent enable failed: %v", err)
+	}
 	if len(h.icons) != 1 {
 		t.Fatalf("expected idempotent enable to keep 1 tray icon, got %d", len(h.icons))
 	}
@@ -184,8 +188,11 @@ func TestTrayControllerQuitLifecycleAndCleanup(t *testing.T) {
 func TestTrayControllerCreateFailureDoesNotStrandWindow(t *testing.T) {
 	h, hooks := newFakeTrayHarness()
 	h.createErr = errors.New("appindicator missing")
-	c := newTrayController(hooks, true)
+	c := newTrayController(hooks, false)
 
+	if err := c.SetEnabled(true); err == nil {
+		t.Fatal("expected SetEnabled(true) to return tray creation error")
+	}
 	if h.logs != 1 {
 		t.Fatalf("expected tray creation error to be logged once, got %d", h.logs)
 	}
@@ -193,10 +200,11 @@ func TestTrayControllerCreateFailureDoesNotStrandWindow(t *testing.T) {
 		t.Fatal("must not hide window on close when tray creation failed")
 	}
 
-	// Recovering later (e.g. toggling off and on) succeeds once backend is available.
+	// Recovering later succeeds directly on retry.
 	h.createErr = nil
-	c.SetEnabled(false)
-	c.SetEnabled(true)
+	if err := c.SetEnabled(true); err != nil {
+		t.Fatalf("expected retry enable to succeed, got %v", err)
+	}
 	if len(h.icons) != 1 || !h.shouldHide() {
 		t.Fatalf("expected retry enable to create tray and allow close-to-tray: icons=%d", len(h.icons))
 	}

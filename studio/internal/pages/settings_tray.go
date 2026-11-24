@@ -8,22 +8,32 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-func (s *viewState) syncMinimizeToTrayIfNeeded() {
+func (s *viewState) syncMinimizeToTrayIfNeeded() error {
 	if s.appliedMinimizeToTray == s.minimizeToTray {
-		return
+		return nil
+	}
+	if s.applyMinimizeToTray != nil {
+		if err := s.applyMinimizeToTray(s.minimizeToTray); err != nil {
+			s.minimizeToTray = s.appliedMinimizeToTray
+			s.trayUnavailable = true
+			return err
+		}
+		s.trayUnavailable = false
 	}
 	s.appliedMinimizeToTray = s.minimizeToTray
-	if s.applyMinimizeToTray != nil {
-		s.applyMinimizeToTray(s.minimizeToTray)
-	}
+	return nil
 }
 
 func (s *viewState) loadTraySettings(v core.SettingsResponse) {
 	if s.minimizeToTraySaving {
 		return
 	}
+	if v.Settings.MinimizeToTray && s.trayUnavailable {
+		s.minimizeToTray = false
+		return
+	}
 	s.minimizeToTray = v.Settings.MinimizeToTray
-	s.syncMinimizeToTrayIfNeeded()
+	_ = s.syncMinimizeToTrayIfNeeded()
 }
 
 func (s *viewState) traySettingsView(c *ui.Context) {
@@ -53,8 +63,17 @@ func (s *viewState) changeMinimizeToTray(enabled bool) {
 	if enabled == s.minimizeToTray {
 		return
 	}
+	if s.applyMinimizeToTray != nil {
+		if err := s.applyMinimizeToTray(enabled); err != nil {
+			s.trayUnavailable = true
+			s.failure = &core.ApiError{Code: "tray_unavailable", Message: "当前桌面环境不支持系统托盘。"}
+			s.failurePage = s.selected
+			return
+		}
+		s.trayUnavailable = false
+	}
 	s.minimizeToTray = enabled
-	s.syncMinimizeToTrayIfNeeded()
+	s.appliedMinimizeToTray = enabled
 	raw, _ := json.Marshal(enabled)
 	patch := map[string]json.RawMessage{"minimize_to_tray": raw}
 	if s.simulate(previewSettings{patch: patch}) {
@@ -74,11 +93,23 @@ func (s *viewState) changeMinimizeToTray(enabled bool) {
 	s.minimizeToTrayWantedSeq++
 	s.minimizeToTrayWanted = enabled
 	startWorker := !s.minimizeToTrayWorkerRunning
-	s.minimizeToTrayWorkerRunning = true
+	if startWorker {
+		s.minimizeToTrayWorkerRunning = true
+		s.minimizeToTrayWorkerDone = make(chan struct{})
+	}
 	s.minimizeToTrayMu.Unlock()
 
 	if startWorker {
 		go s.runMinimizeToTrayPersistWorker(update)
+	}
+}
+
+func (s *viewState) waitMinimizeToTrayPersist() {
+	s.minimizeToTrayMu.Lock()
+	done := s.minimizeToTrayWorkerDone
+	s.minimizeToTrayMu.Unlock()
+	if done != nil {
+		<-done
 	}
 }
 
@@ -89,13 +120,6 @@ func (s *viewState) runMinimizeToTrayPersistWorker(update func(map[string]json.R
 		enabled := s.minimizeToTrayWanted
 		seq := s.minimizeToTrayWantedSeq
 		s.minimizeToTrayMu.Unlock()
-
-		if s.ctx != nil && s.ctx.Err() != nil {
-			s.minimizeToTrayMu.Lock()
-			s.minimizeToTrayWorkerRunning = false
-			s.minimizeToTrayMu.Unlock()
-			return
-		}
 
 		raw, _ := json.Marshal(enabled)
 		value, apiErr := update(map[string]json.RawMessage{"minimize_to_tray": raw})
@@ -108,13 +132,18 @@ func (s *viewState) runMinimizeToTrayPersistWorker(update func(map[string]json.R
 		latest := seq == s.minimizeToTrayWantedSeq
 		if latest {
 			s.minimizeToTrayWorkerRunning = false
-		}
-		s.minimizeToTrayMu.Unlock()
-
-		if latest {
-			s.runOnUI(func() { s.finishMinimizeToTrayPersist(seq, lastSaved, value, apiErr) })
+			done := s.minimizeToTrayWorkerDone
+			s.minimizeToTrayWorkerDone = nil
+			s.minimizeToTrayMu.Unlock()
+			if s.ctx == nil || s.ctx.Err() == nil {
+				s.runOnUI(func() { s.finishMinimizeToTrayPersist(seq, lastSaved, value, apiErr) })
+			}
+			if done != nil {
+				close(done)
+			}
 			return
 		}
+		s.minimizeToTrayMu.Unlock()
 	}
 }
 
@@ -130,13 +159,13 @@ func (s *viewState) finishMinimizeToTrayPersist(seq uint64, lastSaved *core.Sett
 	s.minimizeToTraySaving = false
 	if apiErr != nil {
 		s.minimizeToTray = s.settings.Settings.MinimizeToTray
-		s.syncMinimizeToTrayIfNeeded()
+		_ = s.syncMinimizeToTrayIfNeeded()
 		s.failure = apiErr
 		s.failurePage = s.selected
 		return
 	}
 	s.minimizeToTray = value.Settings.MinimizeToTray
-	s.syncMinimizeToTrayIfNeeded()
+	_ = s.syncMinimizeToTrayIfNeeded()
 	if s.failurePage == "settings" {
 		s.failure = nil
 		s.failurePage = ""

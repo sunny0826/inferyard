@@ -274,7 +274,7 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		}
 		if _, hasTray := patch["minimize_to_tray"]; hasTray {
 			s.minimizeToTray = s.settings.Settings.MinimizeToTray
-			s.syncMinimizeToTrayIfNeeded()
+			_ = s.syncMinimizeToTrayIfNeeded()
 			s.failurePage = s.selected
 		}
 		s.failure = &core.ApiError{Code: "preview_save_failed", Message: "模拟保存失败，可再次点击保存。"}
@@ -301,7 +301,7 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 	}
 	if _, hasTray := patch["minimize_to_tray"]; hasTray {
 		s.minimizeToTray = value.MinimizeToTray
-		s.syncMinimizeToTrayIfNeeded()
+		_ = s.syncMinimizeToTrayIfNeeded()
 	}
 	s.ready.Workspace.Path, s.ready.Results.Path, s.ready.Models.Path = value.WorkspaceRoot, value.ResultsRoot, value.ModelsRoot
 	if workspaceChanged {

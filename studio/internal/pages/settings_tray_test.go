@@ -3,11 +3,14 @@ package pages
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
 )
 
 func TestSettingsTraySwitchTogglesAndPersists(t *testing.T) {
@@ -21,10 +24,11 @@ func TestSettingsTraySwitchTogglesAndPersists(t *testing.T) {
 	var mu sync.Mutex
 	var applied []bool
 	uiQueue := make(chan func(), 4)
-	s.applyMinimizeToTray = func(v bool) {
+	s.applyMinimizeToTray = func(v bool) error {
 		mu.Lock()
 		applied = append(applied, v)
 		mu.Unlock()
+		return nil
 	}
 	s.updateWindow = func(fn func()) {
 		uiQueue <- fn
@@ -61,6 +65,34 @@ func TestSettingsTraySwitchTogglesAndPersists(t *testing.T) {
 	}
 }
 
+func TestSettingsTrayUnavailableRevertsWithoutPersisting(t *testing.T) {
+	service := settingsTestService(t, t.TempDir())
+	s := settingsState()
+	s.ctx = context.Background()
+	s.service = service
+	s.settings = service.Settings()
+	s.loadSettings(s.settings)
+
+	s.applyMinimizeToTray = func(bool) error {
+		return errors.New("appindicator missing")
+	}
+
+	tt := settingsTester(s)
+	tt.Frame()
+	click(t, tt, "最小化到系统托盘")
+	tt.Frame()
+
+	if s.minimizeToTray {
+		t.Fatal("expected switch to remain off when tray creation fails")
+	}
+	if service.MinimizeToTray() {
+		t.Fatal("expected minimize_to_tray not persisted when tray creation fails")
+	}
+	if s.failure == nil || s.failure.Code != "tray_unavailable" || s.failurePage != "settings" {
+		t.Fatalf("expected tray_unavailable failure on settings page, got failure=%+v page=%q", s.failure, s.failurePage)
+	}
+}
+
 func TestSettingsTrayRollbackOnPersistError(t *testing.T) {
 	s := settingsState()
 	s.ctx = context.Background()
@@ -68,10 +100,11 @@ func TestSettingsTrayRollbackOnPersistError(t *testing.T) {
 	var mu sync.Mutex
 	var applied []bool
 	uiQueue := make(chan func(), 2)
-	s.applyMinimizeToTray = func(v bool) {
+	s.applyMinimizeToTray = func(v bool) error {
 		mu.Lock()
 		applied = append(applied, v)
 		mu.Unlock()
+		return nil
 	}
 	s.persistMinimizeToTray = func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError) {
 		return core.SettingsResponse{}, core.Err("internal_error")
@@ -133,15 +166,16 @@ func TestSettingsTrayRapidTogglesCoalesceToLatest(t *testing.T) {
 
 	s.changeMinimizeToTray(true)
 	<-firstStarted
-	// Toggle off then on while the first write is still in flight.
+	// Toggle false -> true -> false while the first write is still in flight.
 	s.changeMinimizeToTray(false)
 	s.changeMinimizeToTray(true)
-	// Refresh with old value while saving must not overwrite pending choice.
+	s.changeMinimizeToTray(false)
+	// Refresh with stale value while saving must not overwrite pending choice.
 	s.loadTraySettings(core.SettingsResponse{
-		Settings:  core.UserSettings{MinimizeToTray: false},
-		Effective: core.EffectiveSettings{MinimizeToTray: false},
+		Settings:  core.UserSettings{MinimizeToTray: true},
+		Effective: core.EffectiveSettings{MinimizeToTray: true},
 	})
-	if !s.minimizeToTray {
+	if s.minimizeToTray {
 		t.Fatal("loadTraySettings must not overwrite state while save is in flight")
 	}
 	close(releaseFirst)
@@ -152,13 +186,65 @@ func TestSettingsTrayRapidTogglesCoalesceToLatest(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("timed out waiting for coalesced save")
 	}
-	if !s.minimizeToTray || !s.settings.Settings.MinimizeToTray {
-		t.Fatalf("expected final minimizeToTray=true, got state=%v saved=%v", s.minimizeToTray, s.settings.Settings.MinimizeToTray)
+	if s.minimizeToTray || s.settings.Settings.MinimizeToTray {
+		t.Fatalf("expected final minimizeToTray=false, got state=%v saved=%v", s.minimizeToTray, s.settings.Settings.MinimizeToTray)
 	}
 	mu.Lock()
 	gotCalls := append([]bool(nil), calls...)
 	mu.Unlock()
-	if len(gotCalls) != 2 || !gotCalls[0] || !gotCalls[1] {
-		t.Fatalf("expected coalesced calls [true true], got %v", gotCalls)
+	if len(gotCalls) >= 4 || len(gotCalls) == 0 || gotCalls[len(gotCalls)-1] != false {
+		t.Fatalf("expected coalesced writes ending with false, got %v", gotCalls)
+	}
+}
+
+func TestSettingsTrayCloseFlushesPendingToggleAfterCancel(t *testing.T) {
+	root := t.TempDir()
+	settingsPath := filepath.Join(root, "settings.json")
+	execFn := func(context.Context, string, ...string) (inferyard.Execution, error) {
+		return inferyard.Execution{Stdout: []byte(`{"command":"probe","status":"ok"}`)}, nil
+	}
+	service, err := core.New(context.Background(), core.Options{SettingsPath: settingsPath, Execute: execFn})
+	if err != nil {
+		t.Fatalf("core.New: %v", err)
+	}
+	defer func() { _ = service.Shutdown(context.Background()) }()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	s := settingsState()
+	s.ctx = ctx
+	s.service = service
+	s.settings = service.Settings()
+	s.loadSettings(s.settings)
+
+	firstStarted := make(chan struct{})
+	releaseFirst := make(chan struct{})
+	var firstOnce sync.Once
+	s.persistMinimizeToTray = func(patch map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError) {
+		resp, apiErr := service.UpdateSettings(patch)
+		firstOnce.Do(func() {
+			close(firstStarted)
+			<-releaseFirst
+		})
+		return resp, apiErr
+	}
+
+	// Enable, wait until the first write (true) is in flight, then disable and immediately close.
+	s.changeMinimizeToTray(true)
+	<-firstStarted
+	s.changeMinimizeToTray(false)
+	cancel()
+	close(releaseFirst)
+	s.waitMinimizeToTrayPersist()
+
+	if service.MinimizeToTray() {
+		t.Fatal("expected service MinimizeToTray to be false after close flush")
+	}
+	reloaded, err := core.New(context.Background(), core.Options{SettingsPath: settingsPath, Execute: execFn})
+	if err != nil {
+		t.Fatalf("reload core.New: %v", err)
+	}
+	defer func() { _ = reloaded.Shutdown(context.Background()) }()
+	if reloaded.MinimizeToTray() {
+		t.Fatal("expected reloaded settings.json MinimizeToTray to be false after close flush")
 	}
 }

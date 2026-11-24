@@ -1,6 +1,7 @@
 package desktop
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/egoist/mygo"
@@ -141,20 +142,20 @@ func newTrayController(hooks trayHooks, initialEnabled bool) *TrayController {
 	}
 	c.offs = offs
 	if initialEnabled {
-		c.SetEnabled(true)
+		_ = c.SetEnabled(true)
 	}
 	return c
 }
 
 // SetEnabled enables or disables minimize-to-tray and reconciles the tray icon.
-func (c *TrayController) SetEnabled(enabled bool) {
+func (c *TrayController) SetEnabled(enabled bool) error {
 	if c == nil {
-		return
+		return nil
 	}
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
-		return
+		return nil
 	}
 	c.enabled = enabled
 	if !enabled {
@@ -167,33 +168,49 @@ func (c *TrayController) SetEnabled(enabled bool) {
 			}
 			oldTray.Destroy()
 		}
-		return
+		return nil
 	}
-	if c.tray != nil || c.hooks.createTray == nil {
+	if c.tray != nil {
 		c.mu.Unlock()
-		return
+		return nil
+	}
+	if c.hooks.createTray == nil {
+		c.enabled = false
+		c.mu.Unlock()
+		return errors.New("tray unavailable")
 	}
 	c.mu.Unlock()
 
 	created, err := c.hooks.createTray(c.RestoreWindow, c.quit)
 	if err != nil {
+		c.mu.Lock()
+		if c.tray == nil {
+			c.enabled = false
+		}
+		c.mu.Unlock()
 		if c.hooks.logf != nil {
 			c.hooks.logf("Studio tray: %v", err)
 		}
-		return
+		return err
 	}
 	if created == nil {
-		return
+		c.mu.Lock()
+		if c.tray == nil {
+			c.enabled = false
+		}
+		c.mu.Unlock()
+		return errors.New("tray unavailable")
 	}
 
 	c.mu.Lock()
 	if c.closed || !c.enabled || c.tray != nil {
 		c.mu.Unlock()
 		created.Destroy()
-		return
+		return nil
 	}
 	c.tray = created
 	c.mu.Unlock()
+	return nil
 }
 
 // RestoreWindow brings the window back from hidden or minimized state and focuses it.

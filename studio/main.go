@@ -74,13 +74,12 @@ func runMain() (exitCode int) {
 	}
 	runApp(ctx, func() {
 		suppress := pages.New(ctx, service, "", pages.WindowHooks{
-			BindTray: func(win *mygo.Window, initialEnabled bool) func(bool) {
+			BindTray: func(win *mygo.Window) func(bool) error {
 				tray := desktop.NewTrayController(desktop.TrayConfig{
-					Window:         win,
-					IconPNG:        appIconPNG,
-					ToolTip:        win.Title(),
-					InitialEnabled: initialEnabled,
-					Logf:           log.Printf,
+					Window:  win,
+					IconPNG: appIconPNG,
+					ToolTip: win.Title(),
+					Logf:    log.Printf,
 				})
 				return tray.SetEnabled
 			},
