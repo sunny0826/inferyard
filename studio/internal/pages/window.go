@@ -308,12 +308,9 @@ func (s *viewState) refresh(full bool) {
 	var he, re, pe *core.ApiError
 	var dashboard dashboardSnapshot
 	var runProgress *core.RunProgress
-	for _, task := range tasks {
-		if !terminal(task.State) {
-			if d, e := s.service.RunDetail(task.TaskId); e == nil {
-				runProgress = d.Progress
-			}
-			break
+	if active := activeRunTask(tasks); active != nil {
+		if d, e := s.service.RunDetail(active.TaskId); e == nil {
+			runProgress = d.Progress
 		}
 	}
 	settings = s.service.Settings()

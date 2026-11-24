@@ -39,6 +39,11 @@ func (a *aggregate) resources(records []evidence.Record) []ResourceSample {
 		if point.MissingReason != nil {
 			point.Value = nil
 		}
+		if point.Phase == "baseline" && a.Progress.Done == 0 && a.Progress.CurrentCaseId == nil && a.stop == nil {
+			if prev := str(a.Progress.Phase); prev != "formal" && prev != "finalizing" {
+				a.Progress.Phase = ptr("baseline")
+			}
+		}
 		points = append(points, point)
 	}
 	return points

@@ -131,9 +131,11 @@ def mapped_closure(rows, runtime_files, executable, *, pid=None):
 
                 if pid is None:
                     raise PreflightError("local_engine_mapping_unverified")
-                if permissions is None:
-                    permissions = mapping_permissions.observe(pid)
-                mapping_permissions.require_non_executable(permissions, path)
+                if not mapping_permissions.cached_non_executable(pid, stamp, path):
+                    if permissions is None:
+                        permissions = mapping_permissions.observe(pid)
+                    mapping_permissions.require_non_executable(permissions, path)
+                    mapping_permissions.remember_non_executable(pid, stamp, path)
             elif native_image:
                 raise PreflightError("local_engine_mapping_outside_runtime")
             continue

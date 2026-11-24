@@ -318,11 +318,19 @@ func (w *viewState) runView(c *ui.Context) {
 	if task := w.running(); task != nil {
 		value := -1.0
 		label := tr(c, "dashboard.run.waiting_progress")
+		if task.PreparationStage != "" {
+			label = taskLabelFor(contextLocale(c), *task)
+		}
 		var done, total int64
 		if p := w.runProgress; p != nil && p.Total != nil && *p.Total > 0 {
-			value = progressValue(p.Done, p.Total)
 			done, total = p.Done, *p.Total
+			if p.Done > 0 || p.CurrentCaseId != nil {
+				value = progressValue(p.Done, p.Total)
+			}
 			label = trf(c, "dashboard.run.cases_progress", "done", p.Done, "total", *p.Total)
+			if phase := emptyText(p.Phase); phase != "" && p.Done == 0 && p.CurrentCaseId == nil {
+				label += " · " + stateLabelFor(contextLocale(c), phase)
+			}
 		}
 		progressBar(c, value, tr(c, "dashboard.run.progress_bar_label"))
 		if task.State == "cancelling" {
