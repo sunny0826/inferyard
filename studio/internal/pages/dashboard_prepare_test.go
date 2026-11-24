@@ -115,3 +115,82 @@ func TestFinishBenchmarkReportWritesToExternalReportsRoot(t *testing.T) {
 		t.Fatalf("report out = %q, want %q", gotReport, wantReport)
 	}
 }
+
+func TestPrepareEnvironmentCustomNestedDirsDoNotCreateTimestampWorkspace(t *testing.T) {
+	base, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantWorkspace := filepath.Join(base, "bench")
+	wantResults := filepath.Join(wantWorkspace, "results")
+	wantModels := filepath.Join(wantWorkspace, "models")
+
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var initOut string
+	service, err := core.New(context.Background(), core.Options{
+		SettingsPath:  filepath.Join(t.TempDir(), "settings.json"),
+		HostStatePath: filepath.Join(t.TempDir(), "host.json"),
+		Execute: func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
+			if len(args) > 0 && args[0] == "--version" {
+				return inferyard.Execution{Stdout: []byte("inferyard 9.9.9")}, nil
+			}
+			if len(args) >= 3 && args[0] == "init" && args[1] == "--out" {
+				initOut = args[2]
+				_ = os.MkdirAll(filepath.Join(initOut, "results"), 0700)
+				_ = os.WriteFile(filepath.Join(initOut, "preparation.json"), []byte(`{"kind":"community_init.v1"}`), 0600)
+				return inferyard.Execution{}, nil
+			}
+			return inferyard.Execution{}, nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer service.Shutdown(context.Background())
+
+	mustJSON := func(v any) json.RawMessage {
+		raw, _ := json.Marshal(v)
+		return raw
+	}
+	if _, apiErr := service.UpdateSettings(map[string]json.RawMessage{
+		"inferyard_path": mustJSON(exe),
+		"workspace_root": mustJSON(wantWorkspace),
+		"results_root":   mustJSON(wantResults),
+		"models_root":    mustJSON(wantModels),
+	}); apiErr != nil {
+		t.Fatal(apiErr)
+	}
+
+	apiErr := prepareEnvironmentSteps(
+		context.Background(),
+		service.Readiness,
+		func(context.Context) (string, *core.ApiError) {
+			t.Fatal("CLI already ok; install should not be called")
+			return "", nil
+		},
+		func() *core.ApiError {
+			_, e := service.Provision()
+			return e
+		},
+		service.WizardExecute,
+	)
+	if apiErr != nil {
+		t.Fatalf("prepareEnvironmentSteps failed: %+v", apiErr)
+	}
+	if initOut != wantWorkspace {
+		t.Fatalf("init --out = %q, want %q", initOut, wantWorkspace)
+	}
+	saved := service.Settings().Settings
+	if emptyText(saved.WorkspaceRoot) != wantWorkspace {
+		t.Fatalf("WorkspaceRoot = %q, want %q", emptyText(saved.WorkspaceRoot), wantWorkspace)
+	}
+	if emptyText(saved.ResultsRoot) != wantResults {
+		t.Fatalf("ResultsRoot = %q, want %q", emptyText(saved.ResultsRoot), wantResults)
+	}
+	if emptyText(saved.ModelsRoot) != wantModels {
+		t.Fatalf("ModelsRoot = %q, want %q", emptyText(saved.ModelsRoot), wantModels)
+	}
+}

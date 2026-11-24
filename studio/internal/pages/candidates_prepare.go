@@ -258,7 +258,7 @@ func finishBenchmarkReport(ctx context.Context, backend benchmarkBackend, worksp
 	announce("report")
 	var out string
 	if reportsRoot != "" {
-		out, e = core.NextOutputInDir(reportsRoot, "summary")
+		out, e = core.NextOutput(reportsRoot, "", "summary")
 	} else {
 		out, e = core.NextOutput(workspace, "reports", "summary")
 	}

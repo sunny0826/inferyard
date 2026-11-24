@@ -5,10 +5,15 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"inferyard/studio/internal/inferyard"
 )
+
+func quoteWizardArg(arg string) string {
+	return "'" + strings.ReplaceAll(arg, "'", `'\''`) + "'"
+}
 
 func setTestHome(t *testing.T, home string) {
 	t.Helper()
@@ -137,7 +142,7 @@ func TestWizardInitPreservesConfiguredResultsAndConfigCreateInjectsResults(t *te
 	if _, apiErr := s.Provision(); apiErr != nil {
 		t.Fatal(apiErr)
 	}
-	if _, apiErr := s.WizardExecute(context.Background(), WizardRequest{Command: "inferyard init --out " + wantWorkspace}); apiErr != nil {
+	if _, apiErr := s.WizardExecute(context.Background(), WizardRequest{Command: "inferyard init --out " + quoteWizardArg(wantWorkspace)}); apiErr != nil {
 		t.Fatalf("WizardExecute init: %+v", apiErr)
 	}
 	got := s.Settings().Settings
@@ -151,7 +156,7 @@ func TestWizardInitPreservesConfiguredResultsAndConfigCreateInjectsResults(t *te
 	// config create without --results must inject configured ResultsRoot.
 	candOut := filepath.Join(wantWorkspace, "candidates", "zh-core-1")
 	if _, apiErr := s.WizardExecute(context.Background(), WizardRequest{
-		Command: "inferyard config create --workspace " + wantWorkspace + " --bundle zh-core --out " + candOut,
+		Command: "inferyard config create --workspace " + quoteWizardArg(wantWorkspace) + " --bundle zh-core --out " + quoteWizardArg(candOut),
 	}); apiErr != nil {
 		t.Fatalf("WizardExecute config create: %+v", apiErr)
 	}

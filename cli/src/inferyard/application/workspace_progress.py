@@ -186,6 +186,45 @@ def resume_command(path, data, bound):
     )
 
 
+def _path_in_workspace(workspace, raw):
+    if not isinstance(raw, str) or not raw:
+        return False
+    candidate = Path(raw)
+    if not candidate.is_absolute():
+        return False
+    try:
+        return candidate.resolve().is_relative_to(workspace)
+    except OSError:
+        return False
+
+
+def plan_belongs_to_workspace(workspace, plan):
+    bindings = plan.get("runtime_bindings") if isinstance(plan, dict) else None
+    if isinstance(bindings, list) and bindings:
+        return any(
+            isinstance(item, dict) and _path_in_workspace(workspace, item.get("source_directory"))
+            for item in bindings
+        )
+    return False
+
+
+def run_belongs_to_workspace(workspace, bundle_path, data):
+    if plan_belongs_to_workspace(workspace, data.get("plan")):
+        return True
+    config = data.get("config")
+    if isinstance(config, dict):
+        bundle_cfg = config.get("bundle")
+        if isinstance(bundle_cfg, dict):
+            raw = bundle_cfg.get("path")
+            if isinstance(raw, str) and raw and Path(raw).is_absolute():
+                try:
+                    resolved = Path(raw).resolve()
+                    return resolved == bundle_path or resolved.is_relative_to(workspace)
+                except OSError:
+                    return False
+    return False
+
+
 def bundle_state(
     workspace,
     name,
@@ -212,10 +251,13 @@ def bundle_state(
     }
     bound_path = latest(bound_paths)
     bound = bound_paths.get(bound_path)
+    external_results = results_root is not None and results_root != workspace / "results"
     matching = [
         (path, data, state)
         for path, data, state in runs
-        if data["bundle"] == bundle and not data["run"]["diagnostic"]
+        if data["bundle"] == bundle
+        and not data["run"]["diagnostic"]
+        and (not external_results or run_belongs_to_workspace(workspace, bundle_path, data))
     ]
     states = [state for _, _, state in matching]
     report_runs = None

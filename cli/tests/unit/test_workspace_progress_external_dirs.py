@@ -120,6 +120,7 @@ def test_progress_reads_runs_and_suggests_report_in_external_roots(
         metadata["manifest"] = {"sealed": True}
         return {
             "bundle": bundle,
+            "config": {"bundle": {"path": str(bundle_path.resolve())}},
             "run": {"diagnostic": False, "plan_sha256": "a" * 64, "trial_id": "t1"},
             "plan": {"trials": [{"trial_id": "t1"}]},
             "summary": {"completeness": "complete"},
@@ -137,3 +138,49 @@ def test_progress_reads_runs_and_suggests_report_in_external_roots(
     assert state["next_action"] == "report"
     tokens = shlex.split(state["next_command"])
     assert Path(tokens[tokens.index("--out") + 1]).resolve() == (reports / "summary-1").resolve()
+
+    # A second workspace sharing the same external results directory must not
+    # inherit workspace A's completed run before running its own bound config.
+    workspace_b = base / "workspace-b"
+    initialize(SimpleNamespace(out=workspace_b, community_bundle="zh-core"))
+    _write_json(
+        workspace_b / "preflight" / "device-1" / "device-preflight.json",
+        {
+            "kind": "device_preflight.v1",
+            "schema_version": 3,
+            "hardware": {"platform": "Darwin"},
+            "recommendation": {"status": "recommended"},
+        },
+    )
+    bundle_b = workspace_b / "bundles" / "zh-core.json"
+    cand_b = workspace_b / "candidates" / "zh-core-1"
+    cand_b_file = cand_b / "candidate.toml"
+    cand_b.mkdir(parents=True)
+    cand_b_file.write_text("# cand b\n", encoding="utf-8")
+    _write_json(
+        cand_b / "preparation.json",
+        {
+            "kind": "config_candidate.v1",
+            "schema_version": 3,
+            "candidate": str(cand_b_file),
+            "bundle": str(bundle_b),
+        },
+    )
+    bound_b = workspace_b / "bound" / "zh-core-1"
+    bound_b_cfg = bound_b / "config.toml"
+    bound_b.mkdir(parents=True)
+    bound_b_cfg.write_text("# bound b\n", encoding="utf-8")
+    _write_json(
+        bound_b / "preparation.json",
+        {
+            "kind": "config_binding.v1",
+            "schema_version": 3,
+            "candidate": str(cand_b_file),
+            "config": str(bound_b_cfg),
+        },
+    )
+
+    state_b = inspect_workspace(workspace_b, results_root=results, reports_root=reports)
+    assert state_b["bundles"][0]["phase"] == "run_missing"
+    assert state_b["next_action"] == "run"
+    assert state_b["bundles"][0]["runs"] == []

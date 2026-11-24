@@ -189,24 +189,6 @@ func NextOutput(workspace, category, prefix string) (string, *ApiError) {
 	return "", Err("output_name_exhausted")
 }
 
-func NextOutputInDir(dir, prefix string) (string, *ApiError) {
-	if dir == "" || !ValidDownloadName(prefix) {
-		return "", Err("invalid_request")
-	}
-	for i := 1; i <= 1000; i++ {
-		path, err := Resolve(dir, prefix+"-"+strconv.Itoa(i))
-		if err != nil {
-			return "", Err("invalid_request")
-		}
-		if _, err = os.Lstat(path); os.IsNotExist(err) {
-			return path, nil
-		} else if err != nil {
-			return "", Err("internal_error")
-		}
-	}
-	return "", Err("output_name_exhausted")
-}
-
 func scopedSGLangInstallation(workspace, path, key string) (string, *ApiError) {
 	raw, err := installationBytes(path)
 	if err != nil || "installation|"+fmt.Sprintf("%x", sha256.Sum256(raw)) != key {
