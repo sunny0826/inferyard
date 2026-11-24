@@ -96,9 +96,22 @@ func (s *viewState) adoptOnlyModel() {
 			return
 		}
 	}
+	selectedEngPath := ""
+	if localEng := s.localEngine(); localEng != nil && localEng.Family == "polystrata" {
+		selectedEngPath = cleanMatchPath(localEng.Path)
+	}
 	for _, task := range s.downloads {
 		if task.Kind != "polystrata" || task.State != "done" || task.ModelConfigPath == nil {
 			continue
+		}
+		if selectedEngPath != "" {
+			taskInst := cleanMatchPath(emptyText(task.InstallationPath))
+			if taskInst == "" {
+				taskInst = cleanMatchPath(emptyText(task.EnginePath))
+			}
+			if taskInst != "" && taskInst != selectedEngPath {
+				continue
+			}
 		}
 		wantPath := cleanMatchPath(*task.ModelConfigPath)
 		if wantPath == "" {

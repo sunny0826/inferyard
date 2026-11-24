@@ -129,6 +129,14 @@ func TestAdoptPairsLatestPolystrataDownloadAndColocatedConfig(t *testing.T) {
 		t.Fatalf("expected newest completed polystrata pair (%q, %q), got (%q, %q)", newEngName, newModName, s.engine, s.model)
 	}
 
+	// When user selects oldEngName and clears model, adoptOnlyModel picks oldModName even though newTask is first.
+	s.engine = oldEngName
+	s.model = ""
+	s.adoptOnlyModel()
+	if s.model != oldModName {
+		t.Fatalf("expected model matching selected engine %q (%q), got %q", oldEngName, oldModName, s.model)
+	}
+
 	// After restart (empty downloads), co-located strata-*.json in the selected engine's dir wins.
 	s.downloads = nil
 	s.engine = ""
