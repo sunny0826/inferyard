@@ -104,15 +104,15 @@ The table describes implementation scope. Automated native desktop UI verificati
 
 ## Acknowledgments
 
-InferYard builds on the work of the local LLM inference and desktop tooling communities. Special thanks to:
+Thanks to the following projects:
 
-- **[PolyStrata](https://github.com/simplexai-labs/PolyStrata)** — the local inference engine recommended by default in Studio across Apple Silicon (Metal), NVIDIA CUDA, and AMD ROCm hardware.
-- **[llama.cpp](https://github.com/ggml-org/llama.cpp)** (and **[PrismML-Eng/llama.cpp](https://github.com/PrismML-Eng/llama.cpp)**) — foundational GGUF inference runtime and cross-platform builds.
-- **[mlx-lm](https://github.com/ml-explore/mlx-lm)** — Apple Silicon MLX inference runtime.
-- **[vLLM](https://github.com/vllm-project/vllm)** (and **[vllm-metal](https://github.com/vllm-project/vllm-metal)**) — high-throughput LLM serving engine.
-- **[SGLang](https://github.com/sgl-project/sglang)** — fast LLM serving and structured-generation runtime.
-- **[LM Studio](https://lmstudio.ai)** — local model ecosystem and desktop inference server integration.
-- **[MyGo](https://github.com/egoist/mygo)**, **[onevra](https://github.com/oneo-me/onevra)**, and **[uv](https://github.com/astral-sh/uv)** — powering InferYard Studio's native desktop UI and zero-friction Python CLI distribution.
+- [PolyStrata](https://github.com/simplexai-labs/PolyStrata)
+- [llama.cpp](https://github.com/ggml-org/llama.cpp) / [PrismML-Eng/llama.cpp](https://github.com/PrismML-Eng/llama.cpp)
+- [mlx-lm](https://github.com/ml-explore/mlx-lm)
+- [vLLM](https://github.com/vllm-project/vllm) / [vllm-metal](https://github.com/vllm-project/vllm-metal)
+- [SGLang](https://github.com/sgl-project/sglang)
+- [LM Studio](https://lmstudio.ai)
+- [MyGo](https://github.com/egoist/mygo) / [onevra](https://github.com/oneo-me/onevra)
 
 ## License
 

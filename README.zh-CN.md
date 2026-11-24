@@ -81,15 +81,15 @@
 
 ## 致谢
 
-InferYard 的实现离不开本地大模型推理引擎与桌面工具链社区的持续建设，特别感谢以下项目：
+感谢以下项目：
 
-- **[PolyStrata](https://github.com/simplexai-labs/PolyStrata)** — Studio 在 Apple Silicon（Metal）、NVIDIA CUDA 与 AMD ROCm 硬件上默认推荐的本地推理引擎。
-- **[llama.cpp](https://github.com/ggml-org/llama.cpp)**（及 **[PrismML-Eng/llama.cpp](https://github.com/PrismML-Eng/llama.cpp)**）— 基础 GGUF 推理运行时与跨平台构建。
-- **[mlx-lm](https://github.com/ml-explore/mlx-lm)** — Apple Silicon 平台的 MLX 推理运行时。
-- **[vLLM](https://github.com/vllm-project/vllm)**（及 **[vllm-metal](https://github.com/vllm-project/vllm-metal)**）— 高吞吐大模型推理服务引擎。
-- **[SGLang](https://github.com/sgl-project/sglang)** — 高性能推理与结构化生成引擎。
-- **[LM Studio](https://lmstudio.ai)** — 本地模型生态与桌面推理服务集成支持。
-- **[MyGo](https://github.com/egoist/mygo)**、**[onevra](https://github.com/oneo-me/onevra)** 与 **[uv](https://github.com/astral-sh/uv)** — 支撑 InferYard Studio 原生桌面界面与轻量 Python CLI 分发。
+- [PolyStrata](https://github.com/simplexai-labs/PolyStrata)
+- [llama.cpp](https://github.com/ggml-org/llama.cpp) / [PrismML-Eng/llama.cpp](https://github.com/PrismML-Eng/llama.cpp)
+- [mlx-lm](https://github.com/ml-explore/mlx-lm)
+- [vLLM](https://github.com/vllm-project/vllm) / [vllm-metal](https://github.com/vllm-project/vllm-metal)
+- [SGLang](https://github.com/sgl-project/sglang)
+- [LM Studio](https://lmstudio.ai)
+- [MyGo](https://github.com/egoist/mygo) / [onevra](https://github.com/oneo-me/onevra)
 
 ## 许可证
 
