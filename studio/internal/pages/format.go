@@ -41,13 +41,3 @@ func formatTimestamp(raw string) string {
 	}
 	return raw
 }
-
-func formatTimestampUTC(raw string) string {
-	if raw == "" {
-		return ""
-	}
-	if parsed, err := time.Parse(time.RFC3339Nano, raw); err == nil {
-		return parsed.UTC().Format("2006-01-02T15:04:05Z")
-	}
-	return raw
-}

@@ -6,7 +6,6 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
-	"inferyard/studio/internal/l10n"
 )
 
 func reportNumber[T ~float64 | ~int64](value *T) string {
@@ -196,16 +195,11 @@ func reportOutputIntervals(c *ui.Context, run core.ReportRun) {
 			ui.Text(c, tr(c, "reports.metrics.not_measured")).TextColor(c.Theme().TextMuted)
 			return
 		}
-		deviceRow(c, tr(c, "reports.intervals.median"), reportMilliseconds("", intervals.P50, ""))
+		deviceRow(c, tr(c, "reports.intervals.median"), reportMilliseconds(intervals.P50))
 		deviceRow(c, "P95", reportIntervalP95For(c, intervals))
 		if reason := reportIntervalReasonFor(c, intervals.Reason); reason != "" {
 			ui.Text(c, reason).TextColor(c.Theme().TextMuted)
 		}
-		componentFoldKeyed(c, "interval-details", tr(c, "reports.intervals.details_fold"), func() {
-			deviceRow(c, tr(c, "reports.intervals.interval_count_label"), trf(c, "reports.intervals.interval_count_value", "count", intervals.IntervalCount))
-			deviceRow(c, tr(c, "reports.intervals.request_count_label"), trf(c, "reports.intervals.request_count_value", "count", intervals.RequestCount))
-			deviceRow(c, tr(c, "reports.intervals.min_max"), reportMilliseconds("min", intervals.Min, "")+" · "+reportMilliseconds("max", intervals.Max, ""))
-		})
 	})
 }
 
@@ -220,28 +214,18 @@ func reportIntervalP95For(c *ui.Context, intervals *core.ReportOutputBlockInterv
 		}
 		return "—"
 	}
-	value := reportMilliseconds("", intervals.P95, "")
+	value := reportMilliseconds(intervals.P95)
 	if intervals.IntervalCount >= 20 && intervals.IntervalCount < 100 {
 		return trf(c, "reports.intervals.p95_with_n", "value", value, "count", intervals.IntervalCount)
 	}
 	return value
 }
 
-func reportMilliseconds(label string, value *float64, missing string) string {
-	if label != "" {
-		label += " "
-	}
+func reportMilliseconds(value *float64) string {
 	if value == nil {
-		return label + "—" + missing
+		return "—"
 	}
-	return fmt.Sprintf("%s%.2f ms", label, *value)
-}
-
-func reportP95Reason(reason *string) string {
-	if emptyText(reason) == "insufficient_samples" {
-		return l10n.TRf("reports.intervals.p95_insufficient_value", "value", "")
-	}
-	return ""
+	return fmt.Sprintf("%.2f ms", *value)
 }
 
 func reportIntervalReason(reason *string) string {

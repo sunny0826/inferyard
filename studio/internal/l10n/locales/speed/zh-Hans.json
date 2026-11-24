@@ -57,8 +57,6 @@
   "speed.result.title": "长上下文速度 · 结果",
   "speed.result.valid_median": "有效 5/5 · 中位数",
   "speed.result.valid_partial": "有效 {valid}/5 · 未形成完整汇总",
-  "speed.select.conditions_body": "并发 1 · 固定输入 · 关闭输入缓存与投机解码",
-  "speed.select.conditions_title": "测评条件",
   "speed.select.context_tier": "上下文档位",
   "speed.select.spec_summary": "{bundle} · {samples} 次测量 · 每次输出 256 tokens",
   "speed.stage.binding": "连接并核验服务",

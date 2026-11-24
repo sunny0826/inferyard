@@ -206,7 +206,6 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 				s.downloadErrorView(c, task.Error)
 			},
 			actions: func() { s.downloadActions(c, task) },
-			details: func() { s.downloadDetails(c, task) },
 		})
 	})
 }
@@ -286,52 +285,6 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 			return l10n.TR("downloads.toast.recreated"), e
 		})
 	})
-}
-
-func (s *viewState) downloadDetails(c *ui.Context, task core.DownloadTask) {
-	ui.Text(c, trf(c, "downloads.detail.out_name", "name", task.OutName)).Selectable()
-	if fileName := strings.TrimSpace(text(task.FileName)); fileName != "" {
-		ui.Text(c, trf(c, "downloads.detail.file", "name", displayName(fileName)))
-	} else if task.Kind != "polystrata" {
-		ui.Text(c, trf(c, "downloads.detail.file", "name", displayName("")))
-	}
-	noBytesYet := task.TotalBytes == nil && task.DownloadedBytes == 0 && task.BytesPerSecond == nil
-	if task.Kind == "engine" && noBytesYet {
-		ui.Text(c, tr(c, "downloads.detail.pending_bytes"))
-	} else if !(task.Kind == "polystrata" && noBytesYet) {
-		if task.TotalBytes != nil {
-			ui.Text(c, trf(c, "downloads.detail.bytes_of_total", "downloaded", strconv.FormatInt(task.DownloadedBytes, 10), "total", strconv.FormatInt(*task.TotalBytes, 10)))
-		} else {
-			ui.Text(c, trf(c, "downloads.detail.bytes_only", "downloaded", strconv.FormatInt(task.DownloadedBytes, 10)))
-		}
-		if task.BytesPerSecond != nil {
-			ui.Text(c, trf(c, "downloads.detail.rate_bps", "rate", groupedInt(int64(*task.BytesPerSecond))))
-		}
-	}
-	if task.EnginePath != nil {
-		ui.Text(c, trf(c, "downloads.detail.engine", "name", displayName(*task.EnginePath))).Selectable()
-	}
-	if task.InstallationPath != nil && *task.InstallationPath != "" {
-		ui.Text(c, trf(c, "downloads.detail.installation", "path", *task.InstallationPath)).Selectable()
-	}
-	if task.ModelConfigPath != nil && *task.ModelConfigPath != "" {
-		ui.Text(c, trf(c, "downloads.detail.model_config", "path", *task.ModelConfigPath)).Selectable()
-	}
-	if task.LogPath != nil && *task.LogPath != "" {
-		logPath := *task.LogPath
-		ui.Text(c, trf(c, "downloads.detail.install_log", "path", logPath)).Selectable()
-		if task.Kind != "polystrata" {
-			componentFoldKeyed(c, "download-log-"+task.TaskId, tr(c, "downloads.detail.view_log_tail"), func() {
-				s.renderDownloadLogTail(c, task.TaskId, logPath)
-			})
-		}
-	}
-	if task.Result != nil {
-		ui.Text(c, trf(c, "downloads.detail.size_sha256", "size", formatDownloadBytes(task.Result.Bytes), "sha256", task.Result.Sha256)).Selectable()
-	}
-	if task.Error != nil {
-		ui.Text(c, trf(c, "downloads.detail.error_code", "code", task.Error.Code)).Selectable()
-	}
 }
 
 func readLogTail(path string, maxBytes int64) string {

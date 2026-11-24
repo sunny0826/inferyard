@@ -204,9 +204,3 @@ func componentFoldKeyed(c *ui.Context, key, title string, fn func()) {
 	open := ui.Local(container, "open", func() bool { return false })
 	container.Children(func() { components.Collapsible(c, title, open, components.CollapsibleOptions{}, fn) })
 }
-
-func componentFoldOpen(c *ui.Context, key, title string, fn func()) {
-	container := ui.Column(c.Key(key))
-	open := ui.Local(container, "open", func() bool { return true })
-	container.Children(func() { components.Collapsible(c, title, open, components.CollapsibleOptions{}, fn) })
-}
