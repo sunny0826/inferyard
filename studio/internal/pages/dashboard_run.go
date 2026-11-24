@@ -8,6 +8,7 @@ import (
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 	"path/filepath"
 	"strings"
 	"time"
@@ -34,9 +35,9 @@ func (w *viewState) engineChoices() ([]components.NativeSelectOption[string], bo
 	revoked := false
 	if w.engine != "" && !listed {
 		el := w.eligibility(w.engine)
-		suffix := " · 核验中…"
+		suffix := l10n.TR("dashboard.engine.checking_suffix")
 		if el.State == core.EngineCheckIneligible {
-			suffix = " · 不可用，请重新选择"
+			suffix = l10n.TR("dashboard.engine.ineligible_suffix")
 			revoked = true
 		}
 		options = append(options, components.NativeSelectOption[string]{Value: w.engine, Label: w.engine + suffix, Disabled: true})
@@ -54,7 +55,7 @@ func (w *viewState) candidateFields(c *ui.Context) {
 	w.adoptDownloadedEngine()
 	w.adoptOnlyModel()
 
-	modelOptions := []components.NativeSelectOption[string]{{Value: "", Label: "请选择模型"}}
+	modelOptions := []components.NativeSelectOption[string]{{Value: "", Label: tr(c, "dashboard.candidate.select_model")}}
 	for _, m := range w.registry.Models {
 		if m.Available {
 			modelOptions = append(modelOptions, components.NativeSelectOption[string]{Value: m.Name, Label: modelLabel(m) + w.incompatibleModelSuffix(m), Disabled: !w.compatibleModel(m)})
@@ -64,12 +65,12 @@ func (w *viewState) candidateFields(c *ui.Context) {
 	engineOptions, revoked, hasEligible := w.engineChoices()
 	engineHint := ""
 	if !w.checks.Supported {
-		engineHint = "当前 CLI 过旧，暂无法核验引擎。"
+		engineHint = tr(c, "dashboard.candidate.cli_outdated_hint")
 	}
-	selectField(c, termCandidateEngine, engineHint, &w.engine, engineOptions)
-	selectField(c, "测评模型", "", &w.model, modelOptions)
+	selectField(c, tr(c, "dashboard.candidate.engine"), engineHint, &w.engine, engineOptions)
+	selectField(c, tr(c, "dashboard.candidate.model"), "", &w.model, modelOptions)
 	if w.checks.Checking > 0 {
-		ui.Text(c, fmt.Sprintf("正在核验 %d 个引擎…", w.checks.Checking)).TextColor(c.Theme().TextMuted)
+		ui.Text(c, trf(c, "dashboard.candidate.verifying_engines", "count", w.checks.Checking)).TextColor(c.Theme().TextMuted)
 	}
 
 	if meta := w.modelMetadata(w.model); meta != "" {
@@ -95,24 +96,24 @@ func (w *viewState) candidateFields(c *ui.Context) {
 	if revoked {
 		el := w.eligibility(w.engine)
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-			statusBadge(c, "当前选择不可用", stateColor(c, stateWarning))
-			ui.Text(c, w.engine+" · "+human(el.Reason)+"，请在上方重新选择。")
+			statusBadge(c, tr(c, "dashboard.candidate.revoked_badge"), stateColor(c, stateWarning))
+			ui.Text(c, trf(c, "dashboard.candidate.revoked_reason", "engine", w.engine, "reason", human(el.Reason)))
 		})
-		button(c, "查看已安装引擎").AlignSelf(ui.Start).OnClick(func() { w.selected = "models" })
+		button(c, tr(c, "dashboard.candidate.view_engines")).AlignSelf(ui.Start).OnClick(func() { w.selected = "models" })
 		createDisabled = true
 	} else if !hasEligible {
 		if w.checks.Checking == 0 {
-			ui.Text(c, "暂无可用引擎。")
+			ui.Text(c, tr(c, "dashboard.candidate.no_engines"))
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-				button(c, "到下载页").OnClick(func() { w.selected = "downloads" })
-				button(c, "注册已有引擎").OnClick(func() { w.selected = "settings" })
+				button(c, tr(c, "onboarding.assets.go_downloads")).OnClick(func() { w.selected = "downloads" })
+				button(c, tr(c, "dashboard.candidate.register_engine")).OnClick(func() { w.selected = "settings" })
 			})
 		}
 		createDisabled = true
 	}
 	if w.model == "" && len(modelOptions) == 1 {
-		ui.Text(c, "暂无可用模型。")
-		button(c, "下载模型").OnClick(func() { w.selected = "downloads" })
+		ui.Text(c, tr(c, "dashboard.candidate.no_models"))
+		button(c, tr(c, "dashboard.candidate.download_model")).OnClick(func() { w.selected = "downloads" })
 	}
 	if w.engineState.State == "orphaned" {
 		w.stopOrphanButton(c)
@@ -121,10 +122,10 @@ func (w *viewState) candidateFields(c *ui.Context) {
 		noticeBanner(c, noticeBannerOptions{
 			Kind:    stateWarning,
 			Size:    bannerCompact,
-			Message: "当前使用电池供电，macOS 测评需接通电源后开始。",
+			Message: tr(c, "dashboard.candidate.macos_battery_warning"),
 		})
 	}
-	if primaryButton(c, termStartBenchmark).AlignSelf(ui.Start).Disabled(createDisabled).Clicked() {
+	if primaryButton(c, tr(c, "dashboard.candidate.start")).AlignSelf(ui.Start).Disabled(createDisabled).Clicked() {
 		w.startBenchmark()
 	}
 }
@@ -151,7 +152,7 @@ func failureView(c *ui.Context, title string, e *core.ApiError, next string) {
 	if e != nil {
 		errorView(c, e)
 	} else {
-		noticeBanner(c, noticeBannerOptions{Kind: stateDanger, Size: bannerCompact, Message: "操作失败，无详细原因。"})
+		noticeBanner(c, noticeBannerOptions{Kind: stateDanger, Size: bannerCompact, Message: tr(c, "dashboard.failure.no_detail")})
 	}
 	if next != "" {
 		ui.Text(c, next).TextColor(tokens(c).Color.FgSecondary)
@@ -162,9 +163,9 @@ func (w *viewState) engineLogDiagnosticsView(c *ui.Context) {
 	t := tokens(c)
 	logPath := w.engineState.LogPath
 	ui.Column(c.Key("engine-log-diagnostics")).FillWidth().Gap(t.Density.Tight).Children(func() {
-		componentFoldKeyed(c, "engine-log-tail", "查看引擎日志尾部", func() {
+		componentFoldKeyed(c, "engine-log-tail", tr(c, "dashboard.engine_log.tail_fold"), func() {
 			if w.preview != nil {
-				ui.Text(c, "预览模式无本地日志。").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				ui.Text(c, tr(c, "dashboard.engine_log.preview_none")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 				return
 			}
 			var tail string
@@ -175,21 +176,21 @@ func (w *viewState) engineLogDiagnosticsView(c *ui.Context) {
 				tail, err = core.ReadLogTail(logPath, 20)
 			}
 			if err != nil {
-				ui.Text(c, "无法读取引擎日志："+err.Error()).FontSize(t.Type.Caption).TextColor(stateColor(c, stateDanger))
+				ui.Text(c, trf(c, "dashboard.engine_log.read_failed", "error", err.Error())).FontSize(t.Type.Caption).TextColor(stateColor(c, stateDanger))
 				return
 			}
 			if tail == "" {
-				ui.Text(c, "引擎日志文件暂无内容。").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				ui.Text(c, tr(c, "dashboard.engine_log.empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 				return
 			}
 			applyMaterial(c, ui.Scroll(c.Key("engine-log-tail-scroll")).FillWidth().MaxHeight(260), materialSunken).
-				Label("引擎日志尾部").Children(func() {
+				Label(tr(c, "dashboard.engine_log.tail_label")).Children(func() {
 				ui.Column(c).FillWidth().Padding(t.Density.Inset).Children(func() {
 					ui.Text(c, tail).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Selectable()
 				})
 			})
 		})
-		outlineButton(c, "打开日志文件").OnClick(func() {
+		outlineButton(c, tr(c, "dashboard.engine_log.open_button")).OnClick(func() {
 			if w.preview != nil {
 				return
 			}
@@ -200,7 +201,7 @@ func (w *viewState) engineLogDiagnosticsView(c *ui.Context) {
 				}
 			}
 			if err := openLogPathFunc(target); err != nil {
-				w.failure = &core.ApiError{Code: "io_error", Message: "无法打开日志文件：" + err.Error()}
+				w.failure = &core.ApiError{Code: "io_error", Message: l10n.TRf("dashboard.engine_log.open_failed", "error", err.Error())}
 				w.failurePage = w.selected
 			}
 		})
@@ -208,49 +209,49 @@ func (w *viewState) engineLogDiagnosticsView(c *ui.Context) {
 }
 
 func (w *viewState) serviceView(c *ui.Context) {
-	heading(c, "启动模型服务并绑定", 3)
+	heading(c, tr(c, "dashboard.service.heading"), 3)
 	if w.bindingStale {
-		noticeBanner(c, noticeBannerOptions{Kind: stateDanger, Size: bannerCompact, Message: "旧绑定已失效，请重启服务并重新绑定"})
+		noticeBanner(c, noticeBannerOptions{Kind: stateDanger, Size: bannerCompact, Message: tr(c, "dashboard.service.binding_stale")})
 	}
 	if w.stepFailed() {
-		title := "模型服务失败"
+		title := tr(c, "dashboard.service.failed_title")
 		if w.step() == 3 {
-			title = "连接并核验服务失败"
+			title = tr(c, "dashboard.service.bind_failed_title")
 		}
 		failureView(c, title, w.activeTaskFailure(),
-			"可重启服务，或在下方连接已有本机服务。")
+			tr(c, "dashboard.service.failed_hint"))
 	}
 	if (w.stepFailed() || w.engineState.State == "failed") && w.engineState.LogPath != "" {
 		w.engineLogDiagnosticsView(c)
 	}
 	switch w.engineState.State {
 	case "orphaned":
-		noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: "遗留引擎：请先处理上次 Studio 留下的服务或无效记录。"})
+		noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: tr(c, "dashboard.service.orphaned_notice")})
 		errorView(c, w.engineState.Error)
 		w.stopOrphanButton(c)
 	case "starting":
 		host := ui.Column(c.Key("engine-starting")).FillWidth().Gap(tokens(c).Density.Tight)
 		showBar, elapsed := delayedElapsed(c, host, "engine-starting", true)
 		host.Children(func() {
-			ui.Text(c, fmt.Sprintf("正在启动（PID %d）——模型加载可能需要几分钟…", w.engineState.Pid))
+			ui.Text(c, trf(c, "dashboard.service.starting", "pid", w.engineState.Pid))
 			if showBar {
-				progressBar(c, -1, "模型服务启动进度")
+				progressBar(c, -1, tr(c, "dashboard.service.starting_progress"))
 				if elapsed >= loadingSlowThreshold {
-					ui.Text(c, "模型加载耗时较长，可先切换其他页面，右上角状态会持续更新。").TextColor(tokens(c).Color.FgSecondary)
+					ui.Text(c, tr(c, "dashboard.service.starting_slow")).TextColor(tokens(c).Color.FgSecondary)
 				}
 			}
 		})
 	case "running":
-		badge(c, fmt.Sprintf("运行中 · PID %d · %s", w.engineState.Pid, w.engineState.Endpoint), stateSuccess, badgeOptions{Style: badgeDot})
+		badge(c, trf(c, "dashboard.service.running_badge", "pid", w.engineState.Pid, "endpoint", w.engineState.Endpoint), stateSuccess, badgeOptions{Style: badgeDot})
 	case "stopping":
-		badge(c, "正在停止服务…", stateWarning, badgeOptions{Style: badgeDot})
+		badge(c, tr(c, "dashboard.service.stopping_badge"), stateWarning, badgeOptions{Style: badgeDot})
 	}
 	candidateReady := w.candidate != "" || w.task.start.candidate != ""
 	if !candidateReady {
-		ui.Text(c, "请先创建测评配置，再启动服务。")
+		ui.Text(c, tr(c, "dashboard.service.need_candidate"))
 	}
 	if w.running() != nil {
-		ui.Text(c, "测评运行期间不能停止或重新连接服务。")
+		ui.Text(c, tr(c, "dashboard.service.locked_during_run"))
 	}
 	startable := w.engineState.State == "" || w.engineState.State == "stopped" || w.engineState.State == "failed"
 	ui.Row(c).Wrap().Gap(tokens(c).Density.CardGap).Children(func() {
@@ -258,14 +259,14 @@ func (w *viewState) serviceView(c *ui.Context) {
 		if startable {
 			startButton = primaryButton
 		}
-		label := "启动服务"
+		label := tr(c, "dashboard.service.start_button")
 		if startButton(c, label).AlignSelf(ui.Start).Disabled(w.busy || !candidateReady || !startable || w.running() != nil).Clicked() {
 			w.startEngine()
 		}
 		if w.engineState.State == "running" && w.failure != nil {
-			label := "重新连接失败的测评题集"
+			label := tr(c, "dashboard.service.rebind_failed_button")
 			if b := w.bindTarget(); b != nil && b.BoundPath != nil {
-				label = "重新连接"
+				label = tr(c, "dashboard.service.rebind_button")
 			}
 			if primaryButton(c, label).AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil).Clicked() {
 				if w.task.stage == "bind" {
@@ -287,18 +288,18 @@ func (w *viewState) serviceView(c *ui.Context) {
 	})
 
 	if w.binding {
-		ui.Text(c, displayName(w.bindingBundle)+" · 绑定中…")
+		ui.Text(c, trf(c, "dashboard.service.binding_bundle", "bundle", displayName(w.bindingBundle)))
 	}
-	componentFoldKeyed(c, "bind-discovered-services", "连接已有本机服务", func() { w.discoveryBody(c, true) })
-	componentFold(c, "高级：手动连接", func() {
-		heading(c, "连接已有进程", 3)
+	componentFoldKeyed(c, "bind-discovered-services", tr(c, "dashboard.service.connect_existing_fold"), func() { w.discoveryBody(c, true) })
+	componentFold(c, tr(c, "dashboard.service.manual_fold"), func() {
+		heading(c, tr(c, "dashboard.service.manual_heading"), 3)
 		options := []string{}
 		for _, p := range w.processes {
 			options = append(options, fmt.Sprintf("%d · %s", p.PID, p.Name))
 		}
-		searchableSelectField(c, "已启动的本机进程", "", "输入 PID 或进程名搜索…", "未找到匹配 %q 的本机进程", &w.process, options)
-		field(c, "服务地址", &w.bindEndpoint).Description("本机 http 或 https URL").Error(urlError(w.bindEndpoint))
-		if secondaryActionButton(c, "连接并核验进程", w.binding).AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
+		searchableSelectField(c, tr(c, "dashboard.service.manual_process"), "", tr(c, "dashboard.service.manual_process_placeholder"), tr(c, "dashboard.service.manual_process_empty"), &w.process, options)
+		field(c, tr(c, "dashboard.service.manual_endpoint"), &w.bindEndpoint).Description(tr(c, "dashboard.service.manual_endpoint_desc")).Error(urlError(w.bindEndpoint))
+		if secondaryActionButton(c, tr(c, "dashboard.service.manual_connect_button"), w.binding).AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
 			if urlError(w.bindEndpoint) != "" {
 				return
 			}
@@ -310,22 +311,22 @@ func (w *viewState) serviceView(c *ui.Context) {
 	})
 }
 func (w *viewState) runView(c *ui.Context) {
-	heading(c, "运行当前测评题集", 3)
+	heading(c, tr(c, "dashboard.run.heading"), 3)
 	if w.stepFailed() && w.running() == nil && !w.serviceCardVisible() {
-		failureView(c, "运行未完成", w.activeTaskFailure(), "已完成题集会保留，仅重试未完成项。")
+		failureView(c, tr(c, "dashboard.run.incomplete_title"), w.activeTaskFailure(), tr(c, "dashboard.retry.completed_kept"))
 	}
 	if task := w.running(); task != nil {
 		value := -1.0
-		label := "正在运行，等待进度…"
+		label := tr(c, "dashboard.run.waiting_progress")
 		var done, total int64
 		if p := w.runProgress; p != nil && p.Total != nil && *p.Total > 0 {
 			value = progressValue(p.Done, p.Total)
 			done, total = p.Done, *p.Total
-			label = fmt.Sprintf("%d / %d 题", p.Done, *p.Total)
+			label = trf(c, "dashboard.run.cases_progress", "done", p.Done, "total", *p.Total)
 		}
-		progressBar(c, value, "当前测评题集运行进度")
+		progressBar(c, value, tr(c, "dashboard.run.progress_bar_label"))
 		if task.State == "cancelling" {
-			ui.Text(c, "取消中／等待安全收尾。")
+			ui.Text(c, tr(c, "dashboard.run.cancelling_notice"))
 		}
 		row := ui.Row(c.Key("run-eta-" + task.TaskId)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row)
 		eta := ""
@@ -339,7 +340,9 @@ func (w *viewState) runView(c *ui.Context) {
 			}
 		})
 		id := task.TaskId
-		ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() { button(c, "查看实时详情").AlignSelf(ui.Start).OnClick(func() { w.selectTask(id) }) })
+		ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
+			button(c, tr(c, "dashboard.run.view_live_detail")).AlignSelf(ui.Start).OnClick(func() { w.selectTask(id) })
+		})
 		if w.cancelRunGate(c, id, task.State) {
 			if w.task.stage != "" {
 				w.newBenchmark()
@@ -350,14 +353,14 @@ func (w *viewState) runView(c *ui.Context) {
 			}
 			w.guideWork(func() (string, *core.ApiError) {
 				_, e := w.cancelRunTask(id)
-				return "已请求取消，等待安全收尾", e
+				return l10n.TR("dashboard.toast.cancel_requested"), e
 			})
 		}
 		return
 	}
 	for _, task := range w.tasks {
 		if task.State == "failed" || task.State == "cancelled" {
-			ui.Text(c, "上次运行未完成，请检查停止原因后重试。")
+			ui.Text(c, tr(c, "dashboard.run.last_incomplete"))
 			break
 		}
 	}
@@ -371,9 +374,9 @@ func (w *viewState) runView(c *ui.Context) {
 	if blockedPlan(*b) {
 		return
 	}
-	label := "开始运行"
+	label := tr(c, "dashboard.run.start_button")
 	if b.NextAction == "resume" {
-		label = "继续未完成的运行"
+		label = tr(c, "dashboard.run.resume_button")
 	}
 	if primaryButton(c, label).AlignSelf(ui.Start).Disabled(w.busy || !w.runServiceReady(*b)).Clicked() {
 		if w.simulate(previewStartRun{bundle: b.Bundle}) {
@@ -386,7 +389,7 @@ func (w *viewState) runView(c *ui.Context) {
 		w.guideWork(func() (string, *core.ApiError) {
 			defer cancel()
 			e := executeExistingBundle(ctx, bundle, workspace, state, w.service.WizardExecute)
-			return "运行已加入队列", e
+			return l10n.TR("dashboard.toast.run_queued"), e
 		})
 	}
 
@@ -406,10 +409,10 @@ func (w *viewState) modelMetadata(name string) string {
 		}
 		parts := []string{}
 		if m.Architecture != "" {
-			parts = append(parts, "架构 "+m.Architecture)
+			parts = append(parts, l10n.TRf("dashboard.model_meta.arch", "arch", m.Architecture))
 		}
 		if m.SizeBytes != nil {
-			parts = append(parts, fmt.Sprintf("约 %.1f GiB", float64(*m.SizeBytes)/(1<<30)))
+			parts = append(parts, l10n.TRf("dashboard.model_meta.size_gib", "gib", fmt.Sprintf("%.1f", float64(*m.SizeBytes)/(1<<30))))
 		}
 		return strings.Join(parts, " · ")
 	}
@@ -419,9 +422,9 @@ func (w *viewState) modelMetadata(name string) string {
 func bundleDescription(bundle string) string {
 	switch bundle {
 	case inferyard.DefaultBundleCore:
-		return "中文基础能力"
+		return l10n.TR("dashboard.bundle.desc_core")
 	case inferyard.DefaultBundlePelican:
-		return "SVG 绘图专项"
+		return l10n.TR("dashboard.bundle.desc_pelican")
 	default:
 		return ""
 	}
@@ -433,7 +436,7 @@ func (s *viewState) bundleSelection(c *ui.Context) {
 		return
 	}
 	t := tokens(c)
-	ui.Field(c, termBundle, func() {
+	ui.Field(c, tr(c, "dashboard.candidate.bundle"), func() {
 		ui.Column(c).Gap(t.Density.Tight).Children(func() {
 			for _, b := range s.progress.Bundles {
 				checked := s.selectedBundles[b.Bundle]
@@ -449,7 +452,7 @@ func (s *viewState) bundleSelection(c *ui.Context) {
 		})
 	})
 	if len(s.checkedBundles()) == 0 {
-		ui.Text(c, "至少选择一个测评题集。")
+		ui.Text(c, tr(c, "dashboard.candidate.select_bundle_required"))
 	}
 }
 

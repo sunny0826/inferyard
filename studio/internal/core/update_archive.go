@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	"inferyard/studio/internal/l10n"
 	"io"
 	"os"
 	"path/filepath"
@@ -124,7 +125,7 @@ func applyLinuxExtracted(extractedRoot, exePath string) error {
 	if err := checkDirWritable(targetDir); err != nil {
 		return &updateCheckError{
 			code:    "update_path_unwritable",
-			message: "当前安装目录没有写入权限，可打开安装包手动更新或前往发布页下载。",
+			message: l10n.TR("core.update.err.linux_dir_unwritable"),
 			cause:   err,
 		}
 	}
@@ -132,7 +133,7 @@ func applyLinuxExtracted(extractedRoot, exePath string) error {
 	if err := atomicCopyFile(srcExe, exePath, 0o755); err != nil {
 		return &updateCheckError{
 			code:    "update_apply_failed",
-			message: "替换可执行文件失败，原有安装保持不变。",
+			message: l10n.TR("core.update.err.linux_replace_binary_failed"),
 			cause:   err,
 		}
 	}

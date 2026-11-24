@@ -1,6 +1,7 @@
 package core
 
 import (
+	"inferyard/studio/internal/l10n"
 	"runtime"
 	"strings"
 )
@@ -59,7 +60,7 @@ func (e CatalogEntry) RunsOnCurrentPlatform() bool {
 
 func CatalogForPlatform(platform string) []CatalogEntry {
 	var entries []CatalogEntry
-	for _, entry := range catalogEntries {
+	for _, entry := range catalogEntries() {
 		if entry.Platform == "any" || entry.Platform == platform {
 			entries = append(entries, entry)
 		}
@@ -68,13 +69,11 @@ func CatalogForPlatform(platform string) []CatalogEntry {
 }
 
 func Catalog() []CatalogEntry {
-	out := make([]CatalogEntry, len(catalogEntries))
-	copy(out, catalogEntries)
-	return out
+	return catalogEntries()
 }
 
 func CatalogEntryByID(id string) (CatalogEntry, bool) {
-	for _, entry := range catalogEntries {
+	for _, entry := range catalogEntries() {
 		if entry.ID == id {
 			return entry, true
 		}
@@ -86,7 +85,7 @@ func CatalogEntryByURL(url string) (CatalogEntry, bool) {
 	if url == "" {
 		return CatalogEntry{}, false
 	}
-	for _, entry := range catalogEntries {
+	for _, entry := range catalogEntries() {
 		if entry.URL == url || (entry.MirrorURL != "" && entry.MirrorURL == url) {
 			return entry, true
 		}
@@ -96,7 +95,7 @@ func CatalogEntryByURL(url string) (CatalogEntry, bool) {
 
 func CatalogEngineForPlatform(goos, goarch string) string {
 	wanted := goos + "/" + goarch
-	for _, entry := range catalogEntries {
+	for _, entry := range catalogEntries() {
 		if entry.Kind != CatalogEngine || !entry.Downloadable() {
 			continue
 		}
@@ -117,7 +116,7 @@ func CurrentPlatform() string {
 
 func PlatformLabel(platform string) string {
 	if platform == "any" {
-		return "任意平台"
+		return l10n.TR("core.catalog.platform.any")
 	}
 	parts := strings.SplitN(platform, "/", 2)
 	if len(parts) != 2 {
@@ -148,7 +147,7 @@ func (e CatalogEntry) DisplayName() string {
 
 func (e CatalogEntry) SharesTitle() bool {
 	count := 0
-	for _, other := range catalogEntries {
+	for _, other := range catalogEntries() {
 		if other.Kind == e.Kind && other.Title == e.Title {
 			count++
 		}

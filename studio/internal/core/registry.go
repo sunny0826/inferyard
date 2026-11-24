@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -211,7 +212,7 @@ func (s *Service) registry() registryData {
 		if parsed, err := inferyard.ParseAssetScan(assets.Snapshot); err == nil {
 			scanned = &parsed
 		} else {
-			data.modelError = &ApiError{Code: "cli_error", Message: "模型资产快照无法读取，请点击刷新重试。"}
+			data.modelError = &ApiError{Code: "cli_error", Message: l10n.TR("core.registry.err.asset_snapshot_unreadable")}
 		}
 	}
 	if scanned != nil {
@@ -224,9 +225,9 @@ func (s *Service) registry() registryData {
 			if _, found := models[path]; found {
 				continue
 			}
-			source := "本地模型"
+			source := l10n.TR("core.registry.source.local_model")
 			if model.Format == "directory" {
-				source = "模型目录"
+				source = l10n.TR("core.registry.source.model_directory")
 			}
 			models[path] = len(data.models)
 			data.models = append(data.models, registryEntry{
@@ -261,7 +262,7 @@ func (s *Service) registry() registryData {
 		}
 		parseErr := json.Unmarshal(device.Snapshot, &snapshot)
 		if len(device.Snapshot) > 0 && parseErr != nil {
-			data.modelError = &ApiError{Code: "cli_error", Message: "设备快照无法读取，请到设备页刷新。"}
+			data.modelError = &ApiError{Code: "cli_error", Message: l10n.TR("core.registry.err.device_snapshot_unreadable")}
 		}
 		if parseErr == nil {
 			for _, model := range snapshot.Models {
@@ -279,7 +280,7 @@ func (s *Service) registry() registryData {
 					reason = "chat_template_unavailable"
 				}
 				models[path] = len(data.models)
-				data.models = append(data.models, registryEntry{path: path, rawPath: model.Path, source: "设备快照", model: ModelAsset{
+				data.models = append(data.models, registryEntry{path: path, rawPath: model.Path, source: l10n.TR("core.registry.source.device_snapshot"), model: ModelAsset{
 					Name: filepath.Base(path), Format: "gguf", SizeBytes: model.SizeBytes, Architecture: model.Architecture,
 					ContextLength: model.ContextLength, Available: available, Reason: reason,
 				}})
@@ -312,9 +313,9 @@ func (s *Service) registry() registryData {
 		}
 		data.engines[i].path = identity
 		engines[identity] = i
-		source := "用户引擎目录"
+		source := l10n.TR("core.registry.source.user_engines_dir")
 		if len(roots) > 0 && e.source == roots[0] && str(workspaceRoot(u)) != "" {
-			source = "工作区引擎目录"
+			source = l10n.TR("core.registry.source.workspace_engines_dir")
 		}
 		data.engines[i].source = source
 	}
@@ -342,7 +343,7 @@ func (s *Service) registry() registryData {
 				continue
 			}
 			completed, _ := time.Parse(time.RFC3339Nano, str(task.FinishedAt))
-			entry := registryEntry{path: path, rawPath: str(task.EnginePath), source: "引擎下载 · " + filepath.Base(task.OutDir), receipt: engineReceipt(path), displayName: engineReadableName(path, filepath.Base(task.OutDir), task.SourceUrl), modified: info.ModTime(), downloaded: completed}
+			entry := registryEntry{path: path, rawPath: str(task.EnginePath), source: l10n.TRf("core.registry.source.engine_download", "dir", filepath.Base(task.OutDir)), receipt: engineReceipt(path), displayName: engineReadableName(path, filepath.Base(task.OutDir), task.SourceUrl), modified: info.ModTime(), downloaded: completed}
 			if i, found := engines[path]; found {
 				data.engines[i] = entry
 			} else {
@@ -376,7 +377,7 @@ func (s *Service) registry() registryData {
 					continue
 				}
 				models[path] = len(data.models)
-				data.models = append(data.models, registryEntry{path: path, source: "模型下载", model: ModelAsset{Name: filepath.Base(path), Format: "gguf", SizeBytes: ptr(info.Size()), Available: true}})
+				data.models = append(data.models, registryEntry{path: path, source: l10n.TR("core.registry.source.model_download"), model: ModelAsset{Name: filepath.Base(path), Format: "gguf", SizeBytes: ptr(info.Size()), Available: true}})
 			}
 		}
 	}

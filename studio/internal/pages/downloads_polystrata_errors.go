@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func polystrataRuntimeNetworkFailure(task core.DownloadTask) bool {
@@ -30,9 +31,9 @@ func polystrataRuntimeProxyHint(task core.DownloadTask, proxyConfigured bool) st
 		return ""
 	}
 	if !proxyConfigured {
-		return "下载 PolyStrata 运行时（GitHub）连接失败或超时。若处于受限网络环境，请前往「设置 → 下载代理」配置代理后重试（选择 ModelScope 模型源时模型下载仍会直连）。"
+		return l10n.TR("downloads.polystrata.proxy_hint.unconfigured")
 	}
-	return "下载 PolyStrata 运行时连接失败或超时，请检查「设置 → 下载代理」配置是否可用后重试。"
+	return l10n.TR("downloads.polystrata.proxy_hint.configured")
 }
 
 func (s *viewState) polystrataRuntimeProxyGuidance(c *ui.Context, task core.DownloadTask) {
@@ -44,7 +45,7 @@ func (s *viewState) polystrataRuntimeProxyGuidance(c *ui.Context, task core.Down
 	t := tokens(c)
 	applyMaterial(c, ui.Column(c.Key("polystrata-proxy-guidance-"+task.TaskId)).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Inset), materialInset).Children(func() {
 		ui.Text(c, hint).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-		outlineButton(c, "前往设置代理").Label("前往设置代理 · " + task.TaskId).OnClick(func() {
+		outlineButton(c, tr(c, "downloads.polystrata.proxy_hint.action")).Label(trf(c, "downloads.polystrata.proxy_hint.action_label", "taskId", task.TaskId)).OnClick(func() {
 			s.selected = "settings"
 		})
 	})

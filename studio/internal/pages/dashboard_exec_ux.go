@@ -1,9 +1,8 @@
 package pages
 
 import (
-	"fmt"
-
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func localBackendLabel(family string) string {
@@ -11,9 +10,9 @@ func localBackendLabel(family string) string {
 	case "polystrata":
 		return "PolyStrata"
 	case "llama-cpp":
-		return "llama.cpp（Metal 加速）"
+		return l10n.TR("dashboard.exec.backend_llamacpp_metal")
 	case "mlx-lm":
-		return "MLX（Metal 加速）"
+		return l10n.TR("dashboard.exec.backend_mlx_metal")
 	case "vllm":
 		return "vLLM"
 	case "sglang":
@@ -24,7 +23,7 @@ func localBackendLabel(family string) string {
 		if family != "" {
 			return family
 		}
-		return "本地引擎"
+		return l10n.TR("dashboard.exec.backend_local_default")
 	}
 }
 
@@ -49,11 +48,11 @@ func prismBackendLabel(w *viewState) string {
 	if el, ok := w.checks.Engines[w.engine]; ok {
 		switch el.Mode {
 		case "metal":
-			return "Metal 加速"
+			return l10n.TR("dashboard.exec.accel_metal")
 		case "cuda":
-			return "CUDA 加速"
+			return l10n.TR("dashboard.exec.accel_cuda")
 		case "hip":
-			return "HIP (ROCm) 加速"
+			return l10n.TR("dashboard.exec.accel_hip")
 		case "cpu":
 			return "CPU"
 		}
@@ -70,7 +69,7 @@ func prismBackendLabel(w *viewState) string {
 		if platform == "" || platform == "Darwin" {
 			for _, item := range hw.object("gpu").list("devices") {
 				if deviceItem(item).flag("metal_supported") {
-					return "Metal 加速"
+					return l10n.TR("dashboard.exec.accel_metal")
 				}
 			}
 		}
@@ -79,7 +78,7 @@ func prismBackendLabel(w *viewState) string {
 		}
 	}
 	if el, ok := w.checks.Engines[w.engine]; ok && el.Modes != nil && el.Modes["metal"] {
-		return "Metal 加速"
+		return l10n.TR("dashboard.exec.accel_metal")
 	}
 	return "CPU"
 }
@@ -89,13 +88,13 @@ func polystrataBackendLabel(w *viewState) string {
 		if el, ok := w.checks.Engines[w.engine]; ok {
 			switch el.Mode {
 			case "hip":
-				return "PolyStrata（HIP (ROCm) 加速）"
+				return l10n.TR("dashboard.exec.polystrata_hip")
 			case "cuda":
-				return "PolyStrata（CUDA 加速）"
+				return l10n.TR("dashboard.exec.polystrata_cuda")
 			case "metal":
-				return "PolyStrata（Metal 加速）"
+				return l10n.TR("dashboard.exec.polystrata_metal")
 			case "cpu":
-				return "PolyStrata（CPU）"
+				return l10n.TR("dashboard.exec.polystrata_cpu")
 			}
 		}
 	}
@@ -108,14 +107,14 @@ func launchSummaryLine(w *viewState) string {
 	}
 	if e := w.localEngine(); e != nil {
 		if e.Family == "lmstudio" {
-			return fmt.Sprintf("运行条件：%s · 上下文 8192 · 使用外部服务地址", localBackendLabel(e.Family))
+			return l10n.TRf("dashboard.exec.summary_lmstudio", "backend", localBackendLabel(e.Family))
 		}
 		if e.Family == "polystrata" {
-			return fmt.Sprintf("运行条件：%s", polystrataBackendLabel(w))
+			return l10n.TRf("dashboard.exec.summary_polystrata", "backend", polystrataBackendLabel(w))
 		}
-		return fmt.Sprintf("运行条件：%s · 上下文 8192", localBackendLabel(e.Family))
+		return l10n.TRf("dashboard.exec.summary_local", "backend", localBackendLabel(e.Family))
 	}
-	return fmt.Sprintf("运行条件：%s · 上下文 %d · 关闭思考模式", prismBackendLabel(w), prismContextSize(w.selectedModel()))
+	return l10n.TRf("dashboard.exec.summary_prism", "backend", prismBackendLabel(w), "context", prismContextSize(w.selectedModel()))
 }
 
 func (w *viewState) incompatibleModelSuffix(model core.ModelAsset) string {
@@ -125,19 +124,19 @@ func (w *viewState) incompatibleModelSuffix(model core.ModelAsset) string {
 	if e := w.localEngine(); e != nil {
 		switch e.Family {
 		case "mlx-lm", "vllm", "sglang":
-			return "（需目录模型）"
+			return l10n.TR("dashboard.exec.compat_dir")
 		case "polystrata":
 			if model.Format == "gguf" && model.Architecture != "" {
-				return "（PolyStrata 暂不支持此架构）"
+				return l10n.TR("dashboard.exec.compat_polystrata_arch")
 			}
-			return "（需 GGUF 或 PolyStrata 配置）"
+			return l10n.TR("dashboard.exec.compat_polystrata_format")
 		case "llama-cpp", "lmstudio":
-			return "（需 GGUF）"
+			return l10n.TR("dashboard.exec.compat_gguf")
 		default:
 			return ""
 		}
 	}
-	return "（需 GGUF）"
+	return l10n.TR("dashboard.exec.compat_gguf")
 }
 
 func lmStudioHandoffNotice(w *viewState) string {
@@ -148,5 +147,5 @@ func lmStudioHandoffNotice(w *viewState) string {
 	if e == nil || e.Family != "lmstudio" || len(w.checkedBundles()) <= 1 {
 		return ""
 	}
-	return "选择多个题集时，LM Studio 会在第一套题集完成后暂停，需重启一次后台服务并重新绑定 PID 后继续。"
+	return l10n.TR("dashboard.exec.lmstudio_handoff")
 }

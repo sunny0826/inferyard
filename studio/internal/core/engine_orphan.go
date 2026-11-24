@@ -1,6 +1,7 @@
 package core
 
 import (
+	"inferyard/studio/internal/l10n"
 	"os"
 	"runtime"
 	"syscall"
@@ -46,7 +47,7 @@ func (s *Service) StopOrphanEngine() (EngineState, *ApiError) {
 }
 
 func orphanIdentityError() *ApiError {
-	return &ApiError{Code: "service_identity_unreadable", Message: "无法确认遗留引擎进程树的启动标识，所有权记录已保留；未终止身份不明的进程。"}
+	return &ApiError{Code: "service_identity_unreadable", Message: l10n.TR("core.engine.err.orphan_tree_identity_unreadable")}
 }
 func (s *Service) orphanIdentity(e *orphanEngine) (bool, error) {
 	return s.ownedTreeAlive(&e.owner, e.path)
@@ -72,7 +73,7 @@ func (s *Service) stopOrphan(e *orphanEngine) {
 				if identityErr == nil && !same {
 					break
 				}
-				failure = &ApiError{Code: "engine_stop_failed", Message: "遗留引擎停止失败，所有权记录已保留。"}
+				failure = &ApiError{Code: "engine_stop_failed", Message: l10n.TR("core.engine.err.orphan_stop_failed")}
 				break
 			}
 			same, err = s.waitOrphan(e)
@@ -84,7 +85,7 @@ func (s *Service) stopOrphan(e *orphanEngine) {
 				break
 			}
 			if sig == os.Kill {
-				failure = &ApiError{Code: "engine_stop_failed", Message: "遗留引擎仍未退出，所有权记录已保留。"}
+				failure = &ApiError{Code: "engine_stop_failed", Message: l10n.TR("core.engine.err.orphan_still_running")}
 			}
 		}
 	}
@@ -138,7 +139,7 @@ func (s *Service) signalOwnedPID(pid int64, sig os.Signal) error {
 
 func (s *Service) clearOrphanLocked(e *orphanEngine) *ApiError {
 	if err := removeEngineOwner(e.path, e.owner); err != nil {
-		return &ApiError{Code: "engine_owner_remove_failed", Message: "无法清除遗留服务记录；可重试仅删除记录（不终止进程）。"}
+		return &ApiError{Code: "engine_owner_remove_failed", Message: l10n.TR("core.engine.err.owner_remove_failed")}
 	}
 	if s.orphan == e {
 		s.orphan = nil

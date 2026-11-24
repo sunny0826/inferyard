@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 type notificationAction struct {
@@ -227,17 +228,17 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 			s.lastManualReportID = ""
 			return
 		}
-		body := "新测评报告已生成，可随时打开查看。"
+		body := l10n.TR("notif.report_created.body")
 		if reportID != "" {
-			body = "测评报告 " + reportID + " 已生成，可随时打开查看。"
+			body = l10n.TRf("notif.report_created.body_id", "id", reportID)
 		}
 		s.pushNotification(studioNotification{
 			Key:   "report:" + reportID,
-			Title: "报告已生成",
+			Title: l10n.TR("notif.report_created.title"),
 			Body:  body,
 			Kind:  stateSuccess,
 			Primary: &notificationAction{
-				Label: "查看报告",
+				Label: l10n.TR("notif.action.view_report"),
 				OnClick: func() {
 					if reportID != "" {
 						s.openReport(reportID)
@@ -263,21 +264,21 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 		if !terminal(task.State) {
 			return
 		}
-		name := "测评任务"
+		name := l10n.TR("notif.run.name_default")
 		if task.Kind == "context_speed" {
-			name = "长上下文专项"
+			name = l10n.TR("notif.run.name_context_speed")
 		} else if task.Bundle != nil && strings.TrimSpace(*task.Bundle) != "" {
-			name = "测评题集 " + *task.Bundle
+			name = l10n.TRf("notif.run.name_bundle", "bundle", *task.Bundle)
 		}
 		switch task.State {
 		case "done":
 			s.pushNotification(studioNotification{
 				Key:   "run:" + task.TaskId + ":done",
-				Title: name + "已完成",
-				Body:  "结果已保存，可查看实时详情或生成报告。",
+				Title: l10n.TRf("notif.run.done.title", "name", name),
+				Body:  l10n.TR("notif.run.done.body"),
 				Kind:  stateSuccess,
 				Primary: &notificationAction{
-					Label: "查看详情",
+					Label: l10n.TR("notif.action.view_details"),
 					OnClick: func() {
 						if task.Kind == "context_speed" {
 							s.openSpeed(task.TaskId)
@@ -291,12 +292,12 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 		case "failed":
 			s.pushNotification(studioNotification{
 				Key:           "run:" + task.TaskId + ":failed",
-				Title:         name + "失败",
-				Body:          "运行未正常完成，请检查停止原因与错误详情后重试。",
+				Title:         l10n.TRf("notif.run.failed.title", "name", name),
+				Body:          l10n.TR("notif.run.failed.body"),
 				Kind:          stateDanger,
 				NeedsDecision: true,
 				Primary: &notificationAction{
-					Label: "前往排查",
+					Label: l10n.TR("notif.action.troubleshoot"),
 					OnClick: func() {
 						s.navigateTo("dashboard", "")
 						if task.Kind != "context_speed" {
@@ -308,8 +309,8 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 		case "cancelled":
 			s.pushNotification(studioNotification{
 				Key:   "run:" + task.TaskId + ":cancelled",
-				Title: name + "已取消",
-				Body:  "已完成进度与结果已保留。",
+				Title: l10n.TRf("notif.run.cancelled.title", "name", name),
+				Body:  l10n.TR("notif.run.cancelled.body"),
 				Kind:  stateInfo,
 			})
 		}
@@ -330,58 +331,58 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 			case "done":
 				s.pushNotification(studioNotification{
 					Key:   "dl:" + task.TaskId + ":done",
-					Title: "PolyStrata 安装完成",
-					Body:  label + " 已就绪，可前往任务页开始测评。",
+					Title: l10n.TR("notif.download.polystrata.done.title"),
+					Body:  l10n.TRf("notif.download.polystrata.done.body", "label", label),
 					Kind:  stateSuccess,
 					Primary: &notificationAction{
-						Label:   "前往测评",
+						Label:   l10n.TR("notif.action.go_benchmark"),
 						OnClick: func() { s.startBenchmarkFromPolystrataTask(task) },
 					},
 				})
 			case "failed":
 				s.pushNotification(studioNotification{
 					Key:           "dl:" + task.TaskId + ":failed",
-					Title:         "PolyStrata 安装失败",
-					Body:          label + " 安装未完成，请查看错误详情后重试。",
+					Title:         l10n.TR("notif.download.polystrata.failed.title"),
+					Body:          l10n.TRf("notif.download.polystrata.failed.body", "label", label),
 					Kind:          stateDanger,
 					NeedsDecision: true,
 					Primary: &notificationAction{
-						Label:   "查看并重试",
+						Label:   l10n.TR("notif.action.view_and_retry"),
 						OnClick: func() { s.navigateTo("downloads", "") },
 					},
 				})
 			}
 			return
 		}
-		kind := "模型"
+		kind := l10n.TR("notif.download.kind_model")
 		if task.Kind == "engine" {
-			kind = "引擎"
+			kind = l10n.TR("notif.download.kind_engine")
 		}
 		target := kind
 		if strings.TrimSpace(task.OutName) != "" {
-			target = kind + " " + task.OutName
+			target = l10n.TRf("notif.download.target", "kind", kind, "name", task.OutName)
 		}
 		switch task.State {
 		case "done":
 			s.pushNotification(studioNotification{
 				Key:   "dl:" + task.TaskId + ":done",
-				Title: kind + "下载完成",
-				Body:  target + " 已就绪，可返回任务页开始测评。",
+				Title: l10n.TRf("notif.download.done.title", "kind", kind),
+				Body:  l10n.TRf("notif.download.done.body", "target", target),
 				Kind:  stateSuccess,
 				Primary: &notificationAction{
-					Label:   "前往下载",
+					Label:   l10n.TR("notif.action.go_downloads"),
 					OnClick: func() { s.navigateTo("downloads", "") },
 				},
 			})
 		case "failed":
 			s.pushNotification(studioNotification{
 				Key:           "dl:" + task.TaskId + ":failed",
-				Title:         kind + "下载失败",
-				Body:          target + " 下载失败，请检查网络或来源后重新创建任务。",
+				Title:         l10n.TRf("notif.download.failed.title", "kind", kind),
+				Body:          l10n.TRf("notif.download.failed.body", "target", target),
 				Kind:          stateDanger,
 				NeedsDecision: true,
 				Primary: &notificationAction{
-					Label:   "查看并重试",
+					Label:   l10n.TR("notif.action.view_and_retry"),
 					OnClick: func() { s.navigateTo("downloads", "") },
 				},
 			})
@@ -398,7 +399,7 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 		switch payload.Engine.State {
 		case "running":
 			if s.engineStartToastID != "" {
-				s.resolveProgressToast(s.engineStartToastID, "引擎已就绪", "", nil)
+				s.resolveProgressToast(s.engineStartToastID, l10n.TR("notif.engine.ready"), "", nil)
 				s.engineStartToastID = ""
 			}
 		case "failed":
@@ -408,24 +409,24 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 			}
 			s.pushNotification(studioNotification{
 				Key:           "engine:failed",
-				Title:         "托管引擎异常退出",
-				Body:          "模型服务未正常保持运行，请检查引擎状态并重新启动。",
+				Title:         l10n.TR("notif.engine.failed.title"),
+				Body:          l10n.TR("notif.engine.failed.body"),
 				Kind:          stateDanger,
 				NeedsDecision: true,
 				Primary: &notificationAction{
-					Label:   "前往任务",
+					Label:   l10n.TR("notif.action.go_tasks"),
 					OnClick: func() { s.navigateTo("dashboard", "") },
 				},
 			})
 		case "orphaned":
 			s.pushNotification(studioNotification{
 				Key:           "engine:orphaned",
-				Title:         "检测到遗留模型服务",
-				Body:          "上次运行的托管服务或记录尚未清理，请先处理后再继续测评。",
+				Title:         l10n.TR("notif.engine.orphaned.title"),
+				Body:          l10n.TR("notif.engine.orphaned.body"),
 				Kind:          stateWarning,
 				NeedsDecision: true,
 				Primary: &notificationAction{
-					Label:   "前往处理",
+					Label:   l10n.TR("notif.action.resolve"),
 					OnClick: func() { s.navigateTo("dashboard", "") },
 				},
 			})
@@ -449,12 +450,12 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 		if payload.Engine != "" && payload.Engine == s.engine && payload.Eligibility.State == core.EngineCheckIneligible {
 			s.pushNotification(studioNotification{
 				Key:           "engine-check:" + payload.Engine,
-				Title:         "当前所选引擎不可用",
-				Body:          payload.Engine + " 未通过核验：" + human(payload.Eligibility.Reason) + "。",
+				Title:         l10n.TR("notif.engine_check.ineligible.title"),
+				Body:          l10n.TRf("notif.engine_check.ineligible.body", "engine", payload.Engine, "reason", human(payload.Eligibility.Reason)),
 				Kind:          stateWarning,
 				NeedsDecision: true,
 				Primary: &notificationAction{
-					Label:   "查看引擎",
+					Label:   l10n.TR("notif.action.view_engines"),
 					OnClick: func() { s.navigateTo("models", "") },
 				},
 			})

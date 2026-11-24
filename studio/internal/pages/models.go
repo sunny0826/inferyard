@@ -3,12 +3,14 @@ package pages
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 var environmentName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
@@ -26,24 +28,24 @@ func (s *viewState) modelsView(c *ui.Context) {
 		s.wizardOpenRequested = false
 	}
 	host.Children(func() {
-		s.header(c, "模型")
+		s.header(c, tr(c, "models.page.title"))
 		s.modelsPageActions(c, wizardOpen)
 		if *wizardOpen {
-			card(c, "注册本地引擎", func() {
+			card(c, tr(c, "models.wizard.card_title"), func() {
 				s.localEngineWizardView(c)
-				button(c, "收起").OnClick(func() { *wizardOpen = false })
+				button(c, tr(c, "models.action.collapse")).OnClick(func() { *wizardOpen = false })
 			})
 		}
-		card(c, "已安装的模型", func() {
+		card(c, tr(c, "models.section.installed_models"), func() {
 			errorView(c, s.registry.ModelError)
 			s.modelStorageAndRootsView(c)
 			if len(s.registry.Models) == 0 {
 				emptyGuideCard(c, emptyGuideOptions{
 					Icon:    lucide.Layers,
-					Title:   "尚未发现本地模型。",
+					Title:   tr(c, "models.empty.no_models"),
 					Surface: emptySunken,
 					Action: func() {
-						button(c, "到下载页").OnClick(func() { s.selected = "downloads" })
+						button(c, tr(c, "models.action.go_downloads")).OnClick(func() { s.selected = "downloads" })
 					},
 				})
 				return
@@ -60,16 +62,16 @@ func (s *viewState) modelsView(c *ui.Context) {
 				}
 			})
 		})
-		card(c, "已安装的引擎", func() {
+		card(c, tr(c, "models.section.installed_engines"), func() {
 			if len(s.registry.Engines) == 0 {
 				emptyGuideCard(c, emptyGuideOptions{
 					Icon:    lucide.Cpu,
-					Title:   "尚未发现可用引擎。",
+					Title:   tr(c, "models.empty.no_engines"),
 					Surface: emptySunken,
 					Action: func() {
 						ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
-							button(c, "前往下载").OnClick(func() { s.selected = "downloads" })
-							button(c, "配置本地引擎").OnClick(func() { *wizardOpen = true })
+							button(c, tr(c, "models.action.goto_downloads")).OnClick(func() { s.selected = "downloads" })
+							button(c, tr(c, "models.action.configure_local_engine")).OnClick(func() { *wizardOpen = true })
 						})
 					},
 				})
@@ -88,7 +90,7 @@ func (s *viewState) modelsView(c *ui.Context) {
 				}
 			})
 		})
-		card(c, "本机运行的服务", func() {
+		card(c, tr(c, "engine.discovery.heading"), func() {
 			if len(s.registry.Models) == 0 || len(s.registry.Engines) == 0 {
 				s.managedServiceView(c)
 				return
@@ -103,8 +105,8 @@ func modelTaskAction(c *ui.Context, s *viewState, model core.ModelAsset) {
 	if !model.Available {
 		return
 	}
-	label := "用此模型测评"
-	hint := "测评进行中，请在任务页取消后再新建任务"
+	label := tr(c, "models.action.benchmark_with_model")
+	hint := tr(c, "models.action.benchmark_blocked_hint")
 	blocked := s.busy || s.roundWorkActive()
 	if blocked {
 		wrap := ui.Box(c)
@@ -127,20 +129,20 @@ func modelDetails(model core.ModelAsset) string {
 		parts = append(parts, model.Format)
 	}
 	if model.Architecture != "" {
-		parts = append(parts, "架构 "+model.Architecture)
+		parts = append(parts, l10n.TRf("models.detail.arch", "arch", model.Architecture))
 	}
 	if model.SizeBytes != nil {
-		parts = append(parts, fmt.Sprintf("约 %.1f GiB", float64(*model.SizeBytes)/(1<<30)))
+		parts = append(parts, l10n.TRf("models.detail.approx_gib", "gib", fmt.Sprintf("%.1f", float64(*model.SizeBytes)/(1<<30))))
 	}
 	if model.ContextLength != nil {
-		parts = append(parts, fmt.Sprintf("上下文 %d tokens", *model.ContextLength))
+		parts = append(parts, l10n.TRf("models.detail.context_tokens", "tokens", strconv.FormatInt(*model.ContextLength, 10)))
 	}
 	if !model.Available {
 		reason := deviceLabel(model.Reason)
 		if reason == "" {
 			reason = model.Reason
 		}
-		parts = append(parts, "不可用："+reason)
+		parts = append(parts, l10n.TRf("models.detail.unavailable_reason", "reason", reason))
 	}
 	if len(parts) == 0 {
 		return ""
@@ -151,13 +153,13 @@ func modelDetails(model core.ModelAsset) string {
 func (s *viewState) engineBadgeState(engine core.EngineAsset) (string, stateKind) {
 	switch s.eligibility(engine.Name).State {
 	case core.EngineCheckEligible:
-		return "已核验", stateSuccess
+		return l10n.TR("engine.badge.eligible"), stateSuccess
 	case core.EngineCheckChecking:
-		return "核验中", stateActive
+		return l10n.TR("engine.badge.checking"), stateActive
 	case core.EngineCheckIneligible:
-		return "不可用", stateDanger
+		return l10n.TR("engine.badge.ineligible"), stateDanger
 	default:
-		return "未核验", stateNeutral
+		return l10n.TR("engine.badge.unknown"), stateNeutral
 	}
 }
 
@@ -167,7 +169,7 @@ func (s *viewState) engineStateLine(engine core.EngineAsset) string {
 		parts = append(parts, engine.Family)
 	}
 	if engine.Kind == "local_installation" {
-		parts = append(parts, "安装声明")
+		parts = append(parts, l10n.TR("engine.detail.installation_decl"))
 	}
 	if engine.Source != "" {
 		parts = append(parts, engine.Source)
@@ -175,22 +177,22 @@ func (s *viewState) engineStateLine(engine core.EngineAsset) string {
 	el := s.eligibility(engine.Name)
 	switch el.State {
 	case core.EngineCheckEligible:
-		parts = append(parts, "版本已核验")
+		parts = append(parts, l10n.TR("engine.detail.verified"))
 	case core.EngineCheckChecking:
-		parts = append(parts, "核验中…")
+		parts = append(parts, l10n.TR("engine.detail.checking"))
 	case core.EngineCheckIneligible:
-		reason := "不可用：" + human(el.Reason)
 		if el.Release != "" {
-			reason += "（需要 " + el.Release + "）"
+			parts = append(parts, l10n.TRf("engine.detail.ineligible_release", "reason", human(el.Reason), "release", el.Release))
+		} else {
+			parts = append(parts, l10n.TRf("engine.detail.ineligible", "reason", human(el.Reason)))
 		}
-		parts = append(parts, reason)
 	default:
 		if !s.checks.Supported {
-			parts = append(parts, "未核验（CLI 过旧）")
+			parts = append(parts, l10n.TR("engine.detail.unverified_cli_old"))
 		} else if el.Reason != "" {
-			parts = append(parts, "未核验："+human(el.Reason))
+			parts = append(parts, l10n.TRf("engine.detail.unverified_reason", "reason", human(el.Reason)))
 		} else {
-			parts = append(parts, "未核验")
+			parts = append(parts, l10n.TR("engine.badge.unknown"))
 		}
 	}
 	return joinParts(parts)
@@ -209,7 +211,7 @@ func joinParts(parts []string) string {
 
 func (s *viewState) engineFit() string {
 	if !s.checks.Supported && len(s.registry.Engines) > 0 {
-		return "当前 CLI 过旧，暂无法核验引擎。"
+		return l10n.TR("engine.fit.cli_outdated")
 	}
 	eligible, ineligible := 0, 0
 	for _, e := range s.registry.Engines {
@@ -221,9 +223,9 @@ func (s *viewState) engineFit() string {
 		}
 	}
 	if s.checks.Checking > 0 {
-		return fmt.Sprintf("核验中…（%d 个可用 · %d 个不可用）", eligible, ineligible)
+		return l10n.TRf("engine.fit.checking", "eligible", strconv.Itoa(eligible), "ineligible", strconv.Itoa(ineligible))
 	}
-	return fmt.Sprintf("%d 个可用 · %d 个不可用", eligible, ineligible)
+	return l10n.TRf("engine.fit.summary", "eligible", strconv.Itoa(eligible), "ineligible", strconv.Itoa(ineligible))
 }
 
 func (s *viewState) refreshAssetsAction() {

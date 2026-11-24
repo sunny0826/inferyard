@@ -1,19 +1,19 @@
 package pages
 
 import (
-	"fmt"
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func (s *viewState) detailView(c *ui.Context) {
-	s.header(c, "运行详情")
-	if button(c, "← 返回任务").Clicked() {
+	s.header(c, tr(c, "detail.title"))
+	if button(c, tr(c, "detail.back_dashboard")).Clicked() {
 		s.detailID = ""
 	}
 	errorView(c, s.detailError)
 	if s.detailError != nil {
-		button(c, "重试读取详情").OnClick(func() { s.selectTask(s.detailID) })
+		button(c, tr(c, "detail.retry_load")).OnClick(func() { s.selectTask(s.detailID) })
 		if s.detail == nil {
 			return
 		}
@@ -32,11 +32,11 @@ func (s *viewState) detailView(c *ui.Context) {
 	t := d.Task
 	card(c, text(t.Bundle)+" · "+t.TaskId, func() {
 		statusBadge(c, taskLabel(t), runColor(c, t))
-		ui.Text(c, "运行目录："+displayName(text(t.RunPath))).Selectable()
+		ui.Text(c, trf(c, "detail.run_dir", "path", displayName(text(t.RunPath)))).Selectable()
 		errorView(c, t.Error)
 		wholeRound := s.task.stage != ""
 		cancelOption := destructiveOption{
-			kind: destructiveCancelRun, id: t.TaskId, label: "取消任务", confirmLabel: "确认取消任务",
+			kind: destructiveCancelRun, id: t.TaskId, label: tr(c, "detail.cancel.label"), confirmLabel: tr(c, "detail.cancel.confirm"),
 			prompt:   cancelRunPrompt(wholeRound),
 			disabled: (s.busy && s.task.stage == "") || terminal(t.State) || t.State == "cancelling",
 		}
@@ -57,19 +57,19 @@ func (s *viewState) detailView(c *ui.Context) {
 			}
 			s.work(func() (string, *core.ApiError) {
 				_, e := s.cancelRunTask(id)
-				return "已请求取消，等待安全收尾", e
+				return l10n.TR("dashboard.toast.cancel_requested"), e
 			})
 		}
-		componentFoldKeyed(c, "detail-raw-run", "原始字段", func() { detailRawFields(c, t) })
+		componentFoldKeyed(c, "detail-raw-run", tr(c, "detail.raw_fields_fold"), func() { detailRawFields(c, t) })
 	})
-	card(c, "实时进度", func() { s.detailProgress(c, d) })
+	card(c, tr(c, "detail.live_progress_card"), func() { s.detailProgress(c, d) })
 	s.resourceView(c, d.Resources)
 }
 
 func detailRawFields(c *ui.Context, t core.RunTask) {
-	ui.Text(c, "原始状态："+t.State).Selectable()
-	ui.Text(c, "任务类型："+t.Kind).Selectable()
-	ui.Text(c, "运行 ID："+text(t.RunId)).Selectable()
+	ui.Text(c, trf(c, "detail.raw.state", "state", t.State)).Selectable()
+	ui.Text(c, trf(c, "detail.raw.kind", "kind", t.Kind)).Selectable()
+	ui.Text(c, trf(c, "detail.raw.run_id", "id", text(t.RunId))).Selectable()
 	if t.Exit != nil {
 		kvview(c, "kv-exit", t.Exit)
 	}
@@ -78,7 +78,7 @@ func detailRawFields(c *ui.Context, t core.RunTask) {
 func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 	p := d.Progress
 	if p == nil {
-		ui.Text(c, "等待题目与进度数据…")
+		ui.Text(c, tr(c, "detail.waiting_progress"))
 		return
 	}
 	headline := progressHeadline(p)
@@ -94,22 +94,30 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 	} else {
 		ui.Text(c, headline)
 	}
-	progressBar(c, progressValue(p.Done, p.Total), "运行题目进度")
-	ui.Text(c, fmt.Sprintf("当前题：%s", text(p.CurrentCaseId)))
-	columns := []ui.TableColumn{{Title: "题目", Width: 180}, {Title: "状态", Width: 160}, {Title: "类别", Width: 100}, {Title: "质量", Width: 100}, {Title: "耗时", Width: 100}, {Title: "错误类别", Width: 160}}
+	progressBar(c, progressValue(p.Done, p.Total), tr(c, "detail.progress_bar_label"))
+	ui.Text(c, trf(c, "detail.current_case", "case_id", text(p.CurrentCaseId)))
+	columns := []ui.TableColumn{
+		{Title: tr(c, "detail.col.case"), Width: 180},
+		{Title: tr(c, "detail.col.status"), Width: 160},
+		{Title: tr(c, "detail.col.category"), Width: 100},
+		{Title: tr(c, "detail.col.quality"), Width: 100},
+		{Title: tr(c, "detail.col.duration"), Width: 100},
+		{Title: tr(c, "detail.col.error_category"), Width: 160},
+	}
 	s.casesTable.Key = func(i int) any { return p.Cases[i].CaseId }
-	pageTable(c, &s.casesTable, "题目进度表", columns, len(p.Cases), func(row, col int) {
+	tableLabel := tr(c, "detail.cases_table_label")
+	pageTable(c, &s.casesTable, tableLabel, columns, len(p.Cases), func(row, col int) {
 		item := p.Cases[row]
 		values := []string{item.CaseId, stateLabel(item.State), optionalText(item.Category), caseQuality(item), formatDurationMs(item.DurationMs), caseErrorCategory(item)}
 		ui.Text(c, values[col]).Selectable()
-	}).Height(240).Label("题目进度表")
-	componentFoldKeyed(c, "detail-raw-progress", "原始字段", func() {
-		ui.Text(c, fmt.Sprintf("阶段：%s · 序号：%d · 当前题：%s", optionalText(p.Phase), p.LastSeq, text(p.CurrentCaseId))).Selectable()
+	}).Height(240).Label(tableLabel)
+	componentFoldKeyed(c, "detail-raw-progress", tr(c, "detail.raw_fields_fold"), func() {
+		ui.Text(c, trf(c, "detail.raw.progress_line", "phase", optionalText(p.Phase), "seq", p.LastSeq, "case_id", text(p.CurrentCaseId))).Selectable()
 	})
 }
 
 func progressHeadline(p *core.RunProgress) string {
-	label := fmt.Sprintf("%d / %s 题", p.Done, progressTotal(p.Total))
+	label := l10n.TRf("detail.headline_cases", "done", p.Done, "total", progressTotal(p.Total))
 	if phase := emptyText(p.Phase); phase != "" {
 		return stateLabel(phase) + " · " + label
 	}
@@ -118,7 +126,7 @@ func progressHeadline(p *core.RunProgress) string {
 
 func caseQuality(item core.CaseProgress) string {
 	if item.QualityState == nil || *item.QualityState == "" {
-		return "缺测"
+		return l10n.TR("detail.missing_value")
 	}
 	return reportQuality(item.QualityState)
 }
@@ -128,14 +136,14 @@ func caseErrorCategory(item core.CaseProgress) string {
 		return *item.ErrorCategory
 	}
 	if item.State == "failed" {
-		return "缺测"
+		return l10n.TR("detail.missing_value")
 	}
 	return "—"
 }
 
 func optionalText(value *string) string {
 	if value == nil || *value == "" {
-		return "缺测"
+		return l10n.TR("detail.missing_value")
 	}
 	return *value
 }

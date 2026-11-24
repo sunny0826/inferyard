@@ -7,6 +7,7 @@ import (
 
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 )
 
 func (p *previewSession) report(reference string) (*core.ReportIndex, *core.ApiError) {
@@ -15,7 +16,7 @@ func (p *previewSession) report(reference string) (*core.ReportIndex, *core.ApiE
 	}
 	if reference == "broken-report" && !p.reportReadFailed {
 		p.reportReadFailed = true
-		return nil, &core.ApiError{Code: "report_unreadable", Message: "模拟读取失败，可重新读取。"}
+		return nil, &core.ApiError{Code: "report_unreadable", Message: l10n.TR("preview.report.read_failed")}
 	}
 	if reference != "preview-report" && reference != "long-report" && reference != "broken-report" {
 		return nil, core.Err("not_found")
@@ -103,7 +104,7 @@ func previewReportQuality(score core.RunScore, total int64, bundle string, seale
 	if !complete {
 		quality.Reason = previewValue("quality_incomplete_or_not_applicable")
 	}
-	return quality, []core.ReportCategory{{ID: "math", Label: "模拟分类", Rate: counts}}
+	return quality, []core.ReportCategory{{ID: "math", Label: l10n.TR("preview.fixture.category"), Rate: counts}}
 }
 
 func previewReportMetrics(run *core.ReportRun, detail *core.RunTaskDetail) {

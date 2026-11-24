@@ -9,12 +9,13 @@ import (
 	"time"
 
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func (p *previewSession) dispatch(intent previewIntent) {
 	intent.previewIntent()
 	s := p.state
-	s.failure, p.notice = nil, ""
+	s.failure, p.noticeKey = nil, ""
 	switch op := intent.(type) {
 	case previewManagedEngine:
 		p.startService(false, op.candidate)
@@ -97,7 +98,7 @@ func (p *previewSession) createReportLater(paths []string) {
 			return
 		}
 		p.createReport(paths)
-		p.notice = "模拟报告已生成。"
+		p.noticeKey = "preview.notice.report_created"
 	})
 }
 
@@ -152,7 +153,7 @@ func (p *previewSession) dispatchStep(op previewStep) {
 			if s.progress != nil && s.progress.DevicePreflight.Status == "blocked" {
 				s.progress.DevicePreflight.Status, s.progress.NextAction = "ok", "prepare_candidate"
 			}
-			p.notice = "模拟设备信息已更新。"
+			p.noticeKey = "preview.notice.device_refreshed"
 		})
 	case previewRefreshDiscovery:
 		fail := p.takeFailure()
@@ -170,11 +171,11 @@ func (p *previewSession) dispatchStep(op previewStep) {
 		p.after("reload", 400*time.Millisecond, func() {
 			s.refreshing, s.refreshFailure = false, ""
 			if fail {
-				s.refreshFailure = "模拟刷新失败，可重试。"
+				s.refreshFailure = l10n.TR("preview.error.refresh_failed")
 				return
 			}
 			s.historyError, s.reportsError = nil, nil
-			p.notice = "模拟页面数据已刷新。"
+			p.noticeKey = "preview.notice.page_refreshed"
 		})
 	default:
 		p.showNotice()
@@ -187,7 +188,7 @@ func (p *previewSession) prepareEnvironment() {
 		return
 	}
 	fail := p.takeFailure()
-	s.busy, s.cliInstallStatus = true, "正在模拟准备环境…"
+	s.busy, s.cliInstallStatus = true, l10n.TR("preview.status.preparing_env")
 	p.after("environment", 600*time.Millisecond, func() {
 		s.busy, s.cliInstallStatus = false, ""
 		if fail {
@@ -221,7 +222,7 @@ func (p *previewSession) checkDevice() {
 		}
 		s.progress.NextAction, s.progress.DevicePreflight.Status = "prepare_candidate", "ok"
 		s.progress.DevicePreflight.Path = previewValue(filepath.Join(s.workspace, "preflight"))
-		p.notice = "模拟环境与设备检查已完成。"
+		p.noticeKey = "preview.notice.env_device_checked"
 	})
 }
 
@@ -244,7 +245,7 @@ func (p *previewSession) browse(key string) {
 	case browseModels.key:
 		current = &s.models
 	default:
-		s.failure = &core.ApiError{Code: "preview_unsupported", Message: previewNotice}
+		s.failure = &core.ApiError{Code: "preview_unsupported", Message: l10n.TR("preview.notice.unsupported")}
 		return
 	}
 	*current = browseChoice(root, key, *current)
@@ -272,15 +273,21 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 			s.syncNativeThemeIfNeeded()
 			s.failurePage = s.selected
 		}
+		if _, hasLang := patch["language"]; hasLang {
+			s.languageMode = previewLanguageModeString(p.languageMode)
+			s.syncNativeLocaleIfNeeded()
+			s.failurePage = s.selected
+		}
 		if _, hasTray := patch["minimize_to_tray"]; hasTray {
 			s.minimizeToTray = s.settings.Settings.MinimizeToTray
 			_ = s.syncMinimizeToTrayIfNeeded()
 			s.failurePage = s.selected
 		}
-		s.failure = &core.ApiError{Code: "preview_save_failed", Message: "模拟保存失败，可再次点击保存。"}
+		s.failure = &core.ApiError{Code: "preview_save_failed", Message: l10n.TR("preview.error.save_failed")}
 		return
 	}
 	value.Theme = core.NormalizeTheme(value.Theme)
+	value.Language = core.NormalizeLanguage(value.Language)
 	s.settings.Settings = value
 	s.settings.Effective = core.EffectiveSettings{
 		WorkspaceRoot:    value.WorkspaceRoot,
@@ -290,6 +297,7 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		ExtraModelsRoots: slices.Clone(value.ExtraModelsRoots),
 		DownloadProxy:    value.DownloadProxy,
 		Theme:            value.Theme,
+		Language:         value.Language,
 		MinimizeToTray:   value.MinimizeToTray,
 	}
 	s.syncSavedGroups(patch, s.settingsDraft(), s.settings)
@@ -298,6 +306,12 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		s.themeMode = value.Theme
 		s.appliedThemeMode = value.Theme
 		p.syncNativeTheme()
+	}
+	if _, hasLang := patch["language"]; hasLang {
+		p.languageMode = previewLanguageModeIndex(value.Language)
+		s.languageMode = value.Language
+		s.appliedLanguageMode = value.Language
+		p.syncNativeLanguage()
 	}
 	if _, hasTray := patch["minimize_to_tray"]; hasTray {
 		s.minimizeToTray = value.MinimizeToTray
@@ -311,7 +325,7 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		s.ready.Workspace.Initialized = false
 		s.reportsTab, s.openedReport = reportsTabList, nil
 	}
-	p.notice = "设置已保存到本次模拟会话。"
+	p.noticeKey = "preview.notice.settings_saved"
 }
 
 func (p *previewSession) previewEngineMetadata(state string, pid int64, local bool, candidate string) core.EngineState {

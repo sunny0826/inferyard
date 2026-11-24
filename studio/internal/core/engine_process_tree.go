@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"inferyard/studio/internal/l10n"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -309,7 +310,7 @@ func (s *Service) terminateOwnedTree(owner *engineOwner, path string) *ApiError 
 			time.Sleep(25 * time.Millisecond)
 		}
 	}
-	return &ApiError{Code: "engine_stop_failed", Message: "引擎进程树尚未完全退出，所有权记录已保留。"}
+	return &ApiError{Code: "engine_stop_failed", Message: l10n.TR("core.engine.err.tree_stop_failed")}
 }
 
 func (s *Service) finishEngineTree(e *engineEntry) *ApiError {

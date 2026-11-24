@@ -8,10 +8,12 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func (s *viewState) loadSettings(v core.SettingsResponse) {
 	s.loadThemeSettings(v)
+	s.loadLanguageSettings(v)
 	s.loadTraySettings(v)
 	s.loadPathSettings(v)
 	s.loadDownloadNames(v)
@@ -136,18 +138,19 @@ func (s *viewState) persistSettings(patch map[string]json.RawMessage, submitted 
 	return message, e
 }
 func (s *viewState) settingsView(c *ui.Context) {
-	s.header(c, "设置")
+	s.header(c, tr(c, "nav.settings"))
 	s.appearanceSettingsView(c)
+	s.languageSettingsView(c)
 	s.traySettingsView(c)
 	if s.service != nil && s.service.BoundPaths() != nil {
 		p := s.service.BoundPaths()
-		card(c, "开发环境 · 固定路径", func() {
-			keyValueRow(c, "来源", p.Source, false)
+		card(c, tr(c, "settings.dev_paths.title"), func() {
+			keyValueRow(c, tr(c, "settings.dev_paths.source"), p.Source, false)
 			keyValueRow(c, "CLI", p.CLI, false)
-			keyValueRow(c, "工作区", p.Workspace, false)
-			keyValueRow(c, "结果", p.Results, false)
-			keyValueRow(c, "模型", p.Models, false)
-			keyValueRow(c, "引擎", p.Engines, false)
+			keyValueRow(c, tr(c, "settings.dev_paths.workspace"), p.Workspace, false)
+			keyValueRow(c, tr(c, "settings.dev_paths.results"), p.Results, false)
+			keyValueRow(c, tr(c, "settings.dev_paths.models"), p.Models, false)
+			keyValueRow(c, tr(c, "settings.dev_paths.engines"), p.Engines, false)
 		})
 		s.localInstallationsView(c)
 		s.downloadNamesView(c)
@@ -156,14 +159,14 @@ func (s *viewState) settingsView(c *ui.Context) {
 		return
 	}
 	settingsFormSection(c, settingsFormOptions{
-		Title:       "路径设置",
-		Description: "新建工作区请手动输入完整路径；保存后在任务页点击「准备环境」创建。",
+		Title:       tr(c, "settings.paths.title"),
+		Description: tr(c, "settings.paths.description"),
 		Dirty:       s.pathsEdited(),
 		Fields: func() {
 			s.pathFields(c)
 		},
 		Actions: func() {
-			if primaryActionButton(c, "保存", s.actionBusy("save-paths")).Disabled(!s.canSavePaths()).Clicked() {
+			if primaryActionButton(c, tr(c, "common.save"), s.actionBusy("save-paths")).Disabled(!s.canSavePaths()).Clicked() {
 				if !s.validateSettings() {
 					return
 				}
@@ -181,7 +184,8 @@ func (s *viewState) settingsView(c *ui.Context) {
 					return
 				}
 				submitted := s.settingsDraft()
-				s.workAs("save-paths", func() (string, *core.ApiError) { return s.persistSettings(patch, submitted, "设置已保存") })
+				savedMsg := tr(c, "settings.paths.saved")
+				s.workAs("save-paths", func() (string, *core.ApiError) { return s.persistSettings(patch, submitted, savedMsg) })
 			}
 		},
 	})
@@ -250,11 +254,11 @@ func (s *viewState) settingsUnsaved() bool {
 func (s *viewState) settingsDiscardDialog(c *ui.Context) {
 	c.Key("settings-discard-dialog")
 	result := components.AlertDialog(c, &s.settingsLeaveConfirm, components.AlertDialogOptions{
-		DialogOptions: components.DialogOptions{Label: "放弃未保存的设置"},
-		Title:         "放弃未保存的设置？",
-		Message:       "路径或下载目录名有尚未保存的修改，离开后将恢复为已保存的设置。",
-		ConfirmLabel:  "放弃修改并离开",
-		CancelLabel:   "留在设置页",
+		DialogOptions: components.DialogOptions{Label: tr(c, "settings.discard.label")},
+		Title:         tr(c, "settings.discard.title"),
+		Message:       tr(c, "settings.discard.message"),
+		ConfirmLabel:  tr(c, "settings.discard.confirm"),
+		CancelLabel:   tr(c, "settings.discard.cancel"),
 	})
 	switch result {
 	case components.DialogConfirmed:
@@ -284,68 +288,75 @@ func (s *viewState) applySettings(value core.SettingsResponse) {
 			s.cliPath = emptyText(value.Settings.InferyardPath)
 		}
 		s.loadThemeSettings(value)
+		s.loadLanguageSettings(value)
 		s.loadTraySettings(value)
 	}
 }
 
 func (s *viewState) pathFields(c *ui.Context) {
+	loc := contextLocale(c)
 	ui.Column(c).Gap(tokens(c).Density.Row).Children(func() {
-		s.pathField(c, "CLI", &s.cliPath, browseCLI).Description(cliPathState(s.cliPath, emptyText(s.settings.Settings.InferyardPath), s.ready.CLI)).Error(s.browseError(browseCLI.key, pathError(s.cliPath)))
-		s.pathField(c, "工作区目录", &s.workspace, browseWorkspace).Description(directoryState(s.workspace, s.ready.Workspace, emptyText(s.settings.Effective.WorkspaceRoot))).Error(s.browseError(browseWorkspace.key, settingsPathError(s.workspace, emptyText(s.settings.Effective.WorkspaceRoot))))
-		s.pathField(c, "结果目录", &s.results, browseResults).Description(directoryState(s.results, s.ready.Results, emptyText(s.settings.Settings.ResultsRoot))).Error(s.browseError(browseResults.key, settingsPathError(s.results, emptyText(s.settings.Settings.ResultsRoot))))
-		s.pathField(c, "模型目录", &s.models, browseModels).Description(directoryState(s.models, s.ready.Models, emptyText(s.settings.Settings.ModelsRoot))).Error(s.browseError(browseModels.key, settingsPathError(s.models, emptyText(s.settings.Settings.ModelsRoot))))
+		s.pathField(c, "CLI", &s.cliPath, browseCLI).Description(cliPathStateFor(loc, s.cliPath, emptyText(s.settings.Settings.InferyardPath), s.ready.CLI)).Error(s.browseError(browseCLI.key, pathError(s.cliPath)))
+		s.pathField(c, tr(c, "settings.paths.workspace_label"), &s.workspace, browseWorkspace).Description(directoryStateFor(loc, s.workspace, s.ready.Workspace, emptyText(s.settings.Effective.WorkspaceRoot))).Error(s.browseError(browseWorkspace.key, settingsPathError(s.workspace, emptyText(s.settings.Effective.WorkspaceRoot))))
+		s.pathField(c, tr(c, "settings.paths.results_label"), &s.results, browseResults).Description(directoryStateFor(loc, s.results, s.ready.Results, emptyText(s.settings.Settings.ResultsRoot))).Error(s.browseError(browseResults.key, settingsPathError(s.results, emptyText(s.settings.Settings.ResultsRoot))))
+		s.pathField(c, tr(c, "settings.paths.models_label"), &s.models, browseModels).Description(directoryStateFor(loc, s.models, s.ready.Models, emptyText(s.settings.Settings.ModelsRoot))).Error(s.browseError(browseModels.key, settingsPathError(s.models, emptyText(s.settings.Settings.ModelsRoot))))
 	})
 }
 
 func cliPathState(value, previous string, cli core.InferyardProbe) string {
+	return cliPathStateFor("", value, previous, cli)
+}
+
+func cliPathStateFor(locale, value, previous string, cli core.InferyardProbe) string {
 	switch {
 	case value == "" && previous == "":
 		if cli.Status == "outdated" {
 			return cliOutdatedSummary(cli.Version)
 		}
 		if cli.Status == "ok" && emptyText(cli.Version) != "" {
-			return "留空自动查找本地 CLI（当前 " + *cli.Version + "）"
+			return l10n.Tf(locale, "settings.cli.auto_current", "version", *cli.Version)
 		}
-		return "留空自动查找本地 CLI"
+		return l10n.T(locale, "settings.cli.auto")
 	case value == "":
-		return "路径已清空，保存后自动查找本地 CLI"
+		return l10n.T(locale, "settings.cli.cleared")
 	case !samePath(value, previous):
-		return "路径已修改，保存后生效"
+		return l10n.T(locale, "settings.paths.modified_pending_save")
 	case cli.Path != nil && !samePath(value, *cli.Path):
-		return "等待检查"
+		return l10n.T(locale, "settings.paths.pending_check")
 	}
 	switch cli.Status {
 	case "ok":
 		if emptyText(cli.Version) != "" {
-			return "CLI 可用（版本 " + *cli.Version + "）"
+			return l10n.Tf(locale, "settings.cli.ok_version", "version", *cli.Version)
 		}
-		return "CLI 可用"
+		return l10n.T(locale, "settings.cli.ok")
 	case "outdated":
 		return cliOutdatedSummary(cli.Version)
 	case "not_executable":
-		return "文件不可执行，请检查权限或重新安装"
+		return l10n.T(locale, "settings.cli.not_executable")
 	case "version_failed":
-		return "无法读取 CLI 版本，请检查路径或重新安装"
+		return l10n.T(locale, "settings.cli.version_failed")
 	case "not_found":
-		return "未找到 CLI 可执行文件"
+		return l10n.T(locale, "settings.cli.not_found")
 	default:
-		return "等待检查"
+		return l10n.T(locale, "settings.paths.pending_check")
 	}
 }
 
 func (s *viewState) downloadNamesView(c *ui.Context) {
+	loc := contextLocale(c)
 	settingsFormSection(c, settingsFormOptions{
-		Title:       "下载目录名",
-		Description: "仅限字母、数字、.、_、-，默认 model / engine",
+		Title:       tr(c, "settings.download_names.title"),
+		Description: tr(c, "settings.download_names.description"),
 		Dirty:       s.downloadNamesEdited(),
 		Fields: func() {
 			ui.Column(c).Gap(tokens(c).Density.Row).Children(func() {
-				field(c, "模型下载目录名", &s.modelName).Error(downloadNameError(s.modelName))
-				field(c, "引擎下载目录名", &s.engineName).Error(downloadNameError(s.engineName))
+				field(c, tr(c, "settings.download_names.model_label"), &s.modelName).Error(downloadNameErrorFor(loc, s.modelName))
+				field(c, tr(c, "settings.download_names.engine_label"), &s.engineName).Error(downloadNameErrorFor(loc, s.engineName))
 			})
 		},
 		Actions: func() {
-			if primaryActionButton(c, "保存下载目录名", s.actionBusy("save-download-names")).Disabled(!s.canSaveDownloadNames()).Clicked() {
+			if primaryActionButton(c, tr(c, "settings.download_names.save"), s.actionBusy("save-download-names")).Disabled(!s.canSaveDownloadNames()).Clicked() {
 				patch := map[string]json.RawMessage{}
 				patch["model_download_name"], _ = json.Marshal(s.modelName)
 				patch["engine_download_name"], _ = json.Marshal(s.engineName)
@@ -353,17 +364,18 @@ func (s *viewState) downloadNamesView(c *ui.Context) {
 					return
 				}
 				submitted := s.settingsDraft()
+				savedMsg := tr(c, "settings.download_names.saved")
 				s.workAs("save-download-names", func() (string, *core.ApiError) {
-					return s.persistSettings(patch, submitted, "下载目录名已保存")
+					return s.persistSettings(patch, submitted, savedMsg)
 				})
 			}
-			button(c, "恢复默认值").Disabled(s.busy).OnClick(func() {
+			button(c, tr(c, "settings.download_names.reset")).Disabled(s.busy).OnClick(func() {
 				prevModel, prevEngine := s.modelName, s.engineName
 				if prevModel == "model" && prevEngine == "engine" {
 					return
 				}
 				s.modelName, s.engineName = "model", "engine"
-				s.enqueueActionToast("undo-download-names", "已恢复默认目录名", "撤销", "已恢复原目录名", 6*time.Second, func() {
+				s.enqueueActionToast("undo-download-names", tr(c, "settings.download_names.restored_default"), tr(c, "common.undo"), tr(c, "settings.download_names.restored_previous"), 6*time.Second, func() {
 					s.modelName, s.engineName = prevModel, prevEngine
 				})
 			})
@@ -372,8 +384,12 @@ func (s *viewState) downloadNamesView(c *ui.Context) {
 }
 
 func downloadNameError(name string) string {
+	return downloadNameErrorFor("", name)
+}
+
+func downloadNameErrorFor(locale, name string) string {
 	if !validName(name) {
-		return "请输入有效目录名，不能为空或全为点。"
+		return l10n.T(locale, "settings.download_names.invalid")
 	}
 	return ""
 }
@@ -386,22 +402,26 @@ func defaultDownloadName(name, fallback string) string {
 }
 
 func directoryState(value string, readiness core.DirectoryReadiness, previous string) string {
+	return directoryStateFor("", value, readiness, previous)
+}
+
+func directoryStateFor(locale, value string, readiness core.DirectoryReadiness, previous string) string {
 	switch {
 	case value == "" && previous == "":
-		return "尚未配置，保存时使用默认值"
+		return l10n.T(locale, "settings.dir.unconfigured")
 	case value == "":
-		return "当前为空；已配置的目录不能清空"
+		return l10n.T(locale, "settings.dir.empty_configured")
 	}
-	state := "路径已修改，保存后生效"
+	state := l10n.T(locale, "settings.paths.modified_pending_save")
 	if samePath(value, previous) {
 		if readiness.Path == nil || !samePath(value, *readiness.Path) {
-			return "等待检查"
+			return l10n.T(locale, "settings.paths.pending_check")
 		}
-		state = "目录不存在"
+		state = l10n.T(locale, "settings.dir.not_exists")
 		if readiness.Exists {
-			state = "目录已存在"
+			state = l10n.T(locale, "settings.dir.exists")
 			if readiness.Initialized {
-				state = "目录已存在，工作区已初始化"
+				state = l10n.T(locale, "settings.dir.initialized")
 			}
 		}
 	}

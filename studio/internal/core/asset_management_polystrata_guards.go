@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"inferyard/studio/internal/l10n"
 	"os"
 	"path/filepath"
 	"slices"
@@ -48,7 +49,7 @@ func polystrataCredentialApiError(err error) (*ApiError, bool) {
 		return nil, false
 	}
 	apiErr := errAssetNotDeletable()
-	apiErr.Message = fmt.Sprintf("配置「%s」的 %s 字段包含明文凭据，无法安全迁移并保留到模型目录，请改用环境变量引用后再卸载。", credErr.configName, credErr.field)
+	apiErr.Message = l10n.TRf("core.asset.err.polystrata_plaintext_credential", "config", credErr.configName, "field", credErr.field)
 	return apiErr, true
 }
 

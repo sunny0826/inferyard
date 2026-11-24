@@ -1,13 +1,13 @@
 package pages
 
 import (
-	"fmt"
 	"math"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
+	"inferyard/studio/internal/l10n"
 )
 
 const (
@@ -129,7 +129,7 @@ func actionButton(c *ui.Context, variant components.ButtonVariant, label string,
 	b.Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(theme.Space(1.5)).Children(func() {
 			if showSpinner {
-				components.Spinner(c, components.SpinnerRing).Size(14, 14).Label(label + "处理中")
+				components.Spinner(c, components.SpinnerRing).Size(14, 14).Label(trf(c, "common.loading.action_busy", "label", label))
 			}
 			ui.Text(c, label).SingleLine()
 		})
@@ -157,14 +157,14 @@ func skeletonCard(c *ui.Context, title string, lines int, label string) {
 }
 
 func pageLoadingSkeleton(c *ui.Context) {
-	skeletonCard(c, "", 3, "正在加载主要内容")
-	skeletonCard(c, "", 4, "正在加载详细内容")
+	skeletonCard(c, "", 3, tr(c, "common.loading.primary_content"))
+	skeletonCard(c, "", 4, tr(c, "common.loading.detail_content"))
 }
 
 func detailLoadingSkeleton(c *ui.Context) {
-	skeletonCard(c, "任务概要", 3, "正在加载任务概要")
-	skeletonCard(c, "实时进度", 4, "正在加载题目进度")
-	skeletonCard(c, "资源曲线", 3, "正在加载资源采样")
+	skeletonCard(c, tr(c, "common.loading.task_summary_title"), 3, tr(c, "common.loading.task_summary_label"))
+	skeletonCard(c, tr(c, "common.loading.live_progress_title"), 4, tr(c, "common.loading.case_progress_label"))
+	skeletonCard(c, tr(c, "common.loading.resource_chart_title"), 3, tr(c, "common.loading.resource_samples_label"))
 }
 
 type etaTracker struct {
@@ -182,7 +182,7 @@ func formatETA(c *ui.Context, host ui.Element, key string, done, total int64) st
 		}
 		if total > 0 && done < total {
 			c.After(time.Second)
-			return "估算中…"
+			return tr(c, "common.eta.estimating")
 		}
 		return ""
 	}
@@ -192,32 +192,36 @@ func formatETA(c *ui.Context, host ui.Element, key string, done, total int64) st
 	elapsed := now.Sub(state.startedAt)
 	if elapsed < time.Second {
 		c.After(time.Second - elapsed)
-		return "估算中…"
+		return tr(c, "common.eta.estimating")
 	}
 	remaining := time.Duration(float64(elapsed) * float64(total-done) / float64(done))
-	return "约剩余 " + formatRemainingDuration(remaining)
+	return trf(c, "common.eta.remaining", "duration", formatRemainingDurationFor(contextLocale(c), remaining))
 }
 
 func formatRemainingDuration(d time.Duration) string {
+	return formatRemainingDurationFor("", d)
+}
+
+func formatRemainingDurationFor(locale string, d time.Duration) string {
 	if d < time.Second {
-		return "不足 1 秒"
+		return l10n.T(locale, "common.duration.under_second")
 	}
 	secs := int64(math.Round(d.Seconds()))
 	if secs < 60 {
-		return fmt.Sprintf("%d 秒", secs)
+		return l10n.Tf(locale, "common.duration.seconds", "seconds", secs)
 	}
 	mins := secs / 60
 	remSecs := secs % 60
 	if mins < 60 {
 		if remSecs == 0 {
-			return fmt.Sprintf("%d 分", mins)
+			return l10n.Tf(locale, "common.duration.minutes", "minutes", mins)
 		}
-		return fmt.Sprintf("%d 分 %d 秒", mins, remSecs)
+		return l10n.Tf(locale, "common.duration.minutes_seconds", "minutes", mins, "seconds", remSecs)
 	}
 	hours := mins / 60
 	remMins := mins % 60
 	if remMins == 0 {
-		return fmt.Sprintf("%d 小时", hours)
+		return l10n.Tf(locale, "common.duration.hours", "hours", hours)
 	}
-	return fmt.Sprintf("%d 小时 %d 分", hours, remMins)
+	return l10n.Tf(locale, "common.duration.hours_minutes", "hours", hours, "minutes", remMins)
 }

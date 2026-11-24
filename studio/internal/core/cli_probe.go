@@ -2,8 +2,8 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -106,11 +106,11 @@ func cliOutdatedError(cliVersion *string) *ApiError {
 	} else {
 		req = ""
 	}
-	msg := "CLI 版本过旧，请升级 CLI。"
+	msg := l10n.TR("core.cli.err.outdated")
 	if cur != "" && req != "" {
-		msg = fmt.Sprintf("CLI 版本过旧（当前 %s，需要 %s），请升级 CLI。", cur, req)
+		msg = l10n.TRf("core.cli.err.outdated_with_required", "current", cur, "required", req)
 	} else if cur != "" {
-		msg = fmt.Sprintf("CLI 版本过旧（当前 %s），请升级 CLI。", cur)
+		msg = l10n.TRf("core.cli.err.outdated_with_current", "current", cur)
 	}
 	var outDetails map[string]any
 	if len(details) > 0 {

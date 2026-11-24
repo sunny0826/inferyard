@@ -259,9 +259,9 @@ func (s *viewState) polystrataDrawerSetupSection(c *ui.Context, st *downloadsUIS
 	t := tokens(c)
 	rec := s.starterRecommendation()
 	installed := s.isEngineFamilyInstalled("polystrata")
-	sectionHeading := "安装配置"
+	sectionHeading := tr(c, "downloads.polystrata.drawer.heading_install")
 	if installed {
-		sectionHeading = "新增模型配置"
+		sectionHeading = tr(c, "downloads.polystrata.drawer.heading_add_model")
 	}
 	heading(c, sectionHeading, 3)
 
@@ -269,10 +269,10 @@ func (s *viewState) polystrataDrawerSetupSection(c *ui.Context, st *downloadsUIS
 	if len(options) == 0 {
 		msg := strings.TrimSpace(deviceLabel(rec.Reason))
 		if msg == "" {
-			msg = "当前设备硬件暂不满足 PolyStrata 运行条件。"
+			msg = tr(c, "downloads.polystrata.drawer.hw_unmet")
 		}
 		if notes := localizedDeviceNotes(rec.Notes); len(notes) > 0 {
-			msg += "（" + strings.Join(notes, "；") + "）"
+			msg = trf(c, "downloads.polystrata.drawer.msg_with_notes", "message", msg, "notes", strings.Join(notes, tr(c, "downloads.punctuation.semicolon")))
 		}
 		noticeBanner(c, noticeBannerOptions{
 			Kind:    stateWarning,
@@ -283,17 +283,17 @@ func (s *viewState) polystrataDrawerSetupSection(c *ui.Context, st *downloadsUIS
 	}
 
 	if !rec.FromSnapshot {
-		ui.Text(c, deviceLabel("device_snapshot_unavailable")+"，以下为当前平台可选模型。").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		ui.Text(c, trf(c, "downloads.polystrata.drawer.snapshot_fallback", "reason", deviceLabel("device_snapshot_unavailable"))).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 	}
 
 	chosenID := selected.ModelID
 	ui.Box(c.Key("polystrata-drawer-model-select")).Children(func() {
 		sel := components.Select(c, &chosenID)
-		sel.Trigger.Label("选择模型").Value(polystrataDrawerOptionSummary(selected)).Children(func() {
+		sel.Trigger.Label(tr(c, "downloads.polystrata.drawer.select_model")).Value(polystrataDrawerOptionSummary(selected)).Children(func() {
 			ui.Text(c, polystrataDrawerOptionSummary(selected)).SingleLine()
 		})
 		sel.Popup(func(ui.Element) {
-			components.ScrollView(c, components.ScrollViewOptions{}).Label("PolyStrata 模型列表").MaxHeight(240).Children(func() {
+			components.ScrollView(c, components.ScrollViewOptions{}).Label(tr(c, "downloads.polystrata.drawer.model_list")).MaxHeight(240).Children(func() {
 				for _, candidate := range options {
 					itemLabel := polystrataDrawerOptionSummary(candidate)
 					sel.Item(candidate.ModelID).Label(itemLabel).Children(func() {
@@ -321,19 +321,19 @@ func (s *viewState) polystrataDrawerSetupSection(c *ui.Context, st *downloadsUIS
 				badge(c, ctx, stateNeutral, badgeOptions{Style: badgeSoft, Size: sizeSM})
 			}
 			if selected.EstimatedDownloadBytes > 0 {
-				badge(c, "预计下载 "+formatDownloadBytes(selected.EstimatedDownloadBytes), stateNeutral, badgeOptions{Style: badgeSoft, Size: sizeSM})
+				badge(c, trf(c, "downloads.starter.est_download_badge", "size", formatDownloadBytes(selected.EstimatedDownloadBytes)), stateNeutral, badgeOptions{Style: badgeSoft, Size: sizeSM})
 			}
 			if selected.EstimatedRAMBytes > 0 {
-				badge(c, "预计内存 "+formatDownloadBytes(selected.EstimatedRAMBytes), stateNeutral, badgeOptions{Style: badgeSoft, Size: sizeSM})
+				badge(c, trf(c, "downloads.starter.est_ram_badge", "size", formatDownloadBytes(selected.EstimatedRAMBytes)), stateNeutral, badgeOptions{Style: badgeSoft, Size: sizeSM})
 			}
 		})
 	})
 
 	ui.Row(c.Key("polystrata-drawer-source-row")).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		ui.Text(c, "模型下载源").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		ui.Text(c, tr(c, "downloads.starter.model_source")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		prev := st.polystrataModelSource
-		segmentedControl(c, "PolyStrata 抽屉模型源", &st.polystrataModelSource, []components.NativeSelectOption[string]{
-			{Value: "auto", Label: "自动"},
+		segmentedControl(c, tr(c, "downloads.polystrata.drawer.source_control_label"), &st.polystrataModelSource, []components.NativeSelectOption[string]{
+			{Value: "auto", Label: tr(c, "downloads.source.auto")},
 			{Value: "modelscope", Label: "ModelScope"},
 			{Value: "huggingface", Label: "HuggingFace"},
 		})
@@ -342,6 +342,6 @@ func (s *viewState) polystrataDrawerSetupSection(c *ui.Context, st *downloadsUIS
 		}
 	})
 
-	ui.Text(c, "如需复用本地已有 GGUF 权重，可使用下方命令附加 --gguf-path 参数。").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+	ui.Text(c, tr(c, "downloads.polystrata.drawer.gguf_reuse_hint")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 	return selected, true
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"inferyard/studio/internal/l10n"
 	"io"
 	"net/http"
 	"net/url"
@@ -147,11 +148,11 @@ func (m *updateManager) httpClient(proxyRaw string, timeout time.Duration) (*htt
 	tr := &http.Transport{Proxy: http.ProxyFromEnvironment}
 	if trimmed := strings.TrimSpace(proxyRaw); trimmed != "" {
 		if !ValidateDownloadProxy(trimmed) {
-			return nil, &updateCheckError{code: "update_invalid_proxy", message: "下载代理配置无效，请在设置中检查后重试。"}
+			return nil, &updateCheckError{code: "update_invalid_proxy", message: l10n.TR("core.update.err.invalid_proxy")}
 		}
 		proxyURL, err := url.Parse(trimmed)
 		if err != nil {
-			return nil, &updateCheckError{code: "update_invalid_proxy", message: "下载代理配置无效，请在设置中检查后重试。", cause: err}
+			return nil, &updateCheckError{code: "update_invalid_proxy", message: l10n.TR("core.update.err.invalid_proxy"), cause: err}
 		}
 		tr.Proxy = http.ProxyURL(proxyURL)
 	}
@@ -177,7 +178,7 @@ func (m *updateManager) checkForUpdate(ctx context.Context, manual bool) (Update
 		if !manual {
 			return snap, nil
 		}
-		return snap, &updateCheckError{code: "update_busy", message: "更新正在处理中，请稍候。"}
+		return snap, &updateCheckError{code: "update_busy", message: l10n.TR("core.update.err.busy")}
 	}
 	switch m.state.State {
 	case UpdateDownloading, UpdateVerifying, UpdateApplying:
@@ -186,7 +187,7 @@ func (m *updateManager) checkForUpdate(ctx context.Context, manual bool) (Update
 		if !manual {
 			return snap, nil
 		}
-		return snap, &updateCheckError{code: "update_busy", message: "更新正在处理中，请稍候。"}
+		return snap, &updateCheckError{code: "update_busy", message: l10n.TR("core.update.err.busy")}
 	case UpdateChecking:
 		if !manual {
 			snap := m.cloneStateLocked()
@@ -267,7 +268,7 @@ func (m *updateManager) checkForUpdate(ctx context.Context, manual bool) (Update
 			return m.cloneStateLocked(), checkErr
 		}
 		var ce *updateCheckError
-		code, msg := "update_check_failed", "检查更新失败，请稍后重试。"
+		code, msg := "update_check_failed", l10n.TR("core.update.err.check_failed")
 		if errors.As(checkErr, &ce) {
 			code, msg = ce.code, ce.message
 		}
@@ -315,7 +316,7 @@ func (m *updateManager) checkForUpdate(ctx context.Context, manual bool) (Update
 		m.state.SelfUpdateBlock = target.BlockMessage
 		if m.state.CanSelfUpdate && (rel.AssetURL == "" || rel.ChecksumsURL == "") {
 			m.state.CanSelfUpdate = false
-			m.state.SelfUpdateBlock = "当前发布未提供适用安装包或校验文件，请前往发布页下载。"
+			m.state.SelfUpdateBlock = l10n.TR("core.update.err.no_compatible_asset")
 		}
 		m.publishLocked()
 		return m.cloneStateLocked(), nil
@@ -336,7 +337,7 @@ func (m *updateManager) checkForUpdate(ctx context.Context, manual bool) (Update
 	m.state.SelfUpdateBlock = target.BlockMessage
 	if m.state.CanSelfUpdate && (rel.AssetURL == "" || rel.ChecksumsURL == "") {
 		m.state.CanSelfUpdate = false
-		m.state.SelfUpdateBlock = "当前发布未提供适用安装包或校验文件，请前往发布页下载。"
+		m.state.SelfUpdateBlock = l10n.TR("core.update.err.no_compatible_asset")
 	}
 	m.publishLocked()
 	return m.cloneStateLocked(), nil
@@ -347,13 +348,13 @@ func (m *updateManager) fetchLatestRelease(ctx context.Context, currentVerRaw, p
 	if !ok {
 		return UpdateRelease{}, false, &updateCheckError{
 			code:    "update_version_invalid",
-			message: fmt.Sprintf("当前版本 %q 无法进行版本比较。", currentVerRaw),
+			message: l10n.TRf("core.update.err.version_invalid", "version", strconv.Quote(currentVerRaw)),
 		}
 	}
 	if !validateUpdateURL(m.opts.APIURL, m.opts.AllowInsecureHTTP) {
 		return UpdateRelease{}, false, &updateCheckError{
 			code:    "update_invalid_url",
-			message: "更新检查地址无效。",
+			message: l10n.TR("core.update.err.invalid_url"),
 		}
 	}
 	client, err := m.httpClient(proxyRaw, m.opts.CheckTimeout)
@@ -362,7 +363,7 @@ func (m *updateManager) fetchLatestRelease(ctx context.Context, currentVerRaw, p
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, m.opts.APIURL, nil)
 	if err != nil {
-		return UpdateRelease{}, false, &updateCheckError{code: "update_check_failed", message: "创建更新检查请求失败。", cause: err}
+		return UpdateRelease{}, false, &updateCheckError{code: "update_check_failed", message: l10n.TR("core.update.err.check_request_failed"), cause: err}
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("User-Agent", "InferYard-Studio/"+currentVer.string())
@@ -373,9 +374,9 @@ func (m *updateManager) fetchLatestRelease(ctx context.Context, currentVerRaw, p
 			return UpdateRelease{}, false, err
 		}
 		if errors.Is(err, context.DeadlineExceeded) {
-			return UpdateRelease{}, false, &updateCheckError{code: "update_timeout", message: "检查更新超时，请稍后重试。", cause: err}
+			return UpdateRelease{}, false, &updateCheckError{code: "update_timeout", message: l10n.TR("core.update.err.check_timeout"), cause: err}
 		}
-		return UpdateRelease{}, false, &updateCheckError{code: "update_network_error", message: "无法连接更新服务，请检查网络或代理设置。", cause: err}
+		return UpdateRelease{}, false, &updateCheckError{code: "update_network_error", message: l10n.TR("core.update.err.network_error"), cause: err}
 	}
 	defer resp.Body.Close()
 
@@ -385,22 +386,22 @@ func (m *updateManager) fetchLatestRelease(ctx context.Context, currentVerRaw, p
 	if resp.StatusCode == http.StatusTooManyRequests ||
 		(resp.StatusCode == http.StatusForbidden &&
 			(resp.Header.Get("X-RateLimit-Remaining") == "0" || strings.TrimSpace(resp.Header.Get("Retry-After")) != "")) {
-		return UpdateRelease{}, false, &updateCheckError{code: "update_rate_limited", message: "GitHub 接口请求受限，请稍后再试。"}
+		return UpdateRelease{}, false, &updateCheckError{code: "update_rate_limited", message: l10n.TR("core.update.err.rate_limited")}
 	}
 	if resp.StatusCode != http.StatusOK {
 		return UpdateRelease{}, false, &updateCheckError{
 			code:    "update_check_failed",
-			message: fmt.Sprintf("更新服务返回异常状态（HTTP %d），请稍后重试。", resp.StatusCode),
+			message: l10n.TRf("core.update.err.check_http_status", "status", strconv.Itoa(resp.StatusCode)),
 		}
 	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if err != nil {
-		return UpdateRelease{}, false, &updateCheckError{code: "update_network_error", message: "读取版本信息失败，请重试。", cause: err}
+		return UpdateRelease{}, false, &updateCheckError{code: "update_network_error", message: l10n.TR("core.update.err.read_release_failed"), cause: err}
 	}
 	var payload githubReleasePayload
 	if err := json.Unmarshal(body, &payload); err != nil {
-		return UpdateRelease{}, false, &updateCheckError{code: "update_parse_failed", message: "解析更新信息失败，请稍后重试。", cause: err}
+		return UpdateRelease{}, false, &updateCheckError{code: "update_parse_failed", message: l10n.TR("core.update.err.parse_failed"), cause: err}
 	}
 	if payload.Draft || payload.Prerelease {
 		return UpdateRelease{}, false, nil

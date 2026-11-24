@@ -89,11 +89,11 @@ func drawer(c *ui.Context, open *bool, options drawerOptions, build func(panel u
 						heading(c, options.Title, 2).Grow(1)
 						closeBtn := components.Button(c, "", components.ButtonGhost).
 							Size(28, 28).Padding(0).Radius(t.Radius.Control).
-							Label("关闭" + options.Title)
+							Label(trf(c, "common.drawer.close_title", "title", options.Title))
 						closeBtn.Children(func() {
 							components.Icon(c, lucide.X).Size(16, 16).TextColor(t.Color.FgSecondary).Role(ui.RoleNone)
 						})
-						components.Tooltip(c, closeBtn, "关闭")
+						components.Tooltip(c, closeBtn, tr(c, "common.close"))
 						if closeBtn.Clicked() {
 							requestClose()
 						}

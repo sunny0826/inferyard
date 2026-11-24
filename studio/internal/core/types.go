@@ -1,6 +1,9 @@
 package core
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"inferyard/studio/internal/l10n"
+)
 
 type ApiError struct {
 	Code        string         `json:"code"`
@@ -28,6 +31,10 @@ const (
 	ThemeSystem = "system"
 	ThemeLight  = "light"
 	ThemeDark   = "dark"
+
+	LanguageSystem = "system"
+	LanguageEn     = "en"
+	LanguageZhHans = "zh-Hans"
 )
 
 type UserSettings struct {
@@ -36,6 +43,7 @@ type UserSettings struct {
 	EngineDownloadName  string   `json:"engine_download_name"`
 	DownloadProxy       *string  `json:"download_proxy,omitempty"`
 	Theme               string   `json:"theme,omitempty"`
+	Language            string   `json:"language,omitempty"`
 	MinimizeToTray      bool     `json:"minimize_to_tray,omitempty"`
 	WorkspaceRoot       *string  `json:"workspace_root"`
 	InferyardPath       *string  `json:"inferyard_path"`
@@ -54,6 +62,7 @@ type EffectiveSettings struct {
 	ExtraModelsRoots []string `json:"extra_models_roots,omitempty"`
 	DownloadProxy    *string  `json:"download_proxy,omitempty"`
 	Theme            string   `json:"theme"`
+	Language         string   `json:"language"`
 	MinimizeToTray   bool     `json:"minimize_to_tray"`
 	ReportsRoot      *string  `json:"reports_root"`
 }
@@ -84,11 +93,11 @@ func (s RunScore) RateGap() string {
 	case s.Rate != nil:
 		return ""
 	case s.Unscorable > 0:
-		return "不可评分"
+		return l10n.TR("core.score.gap.unscorable")
 	case s.Missing > 0:
-		return "缺评分"
+		return l10n.TR("core.score.gap.missing")
 	}
-	return "运行不完整"
+	return l10n.TR("core.score.gap.incomplete")
 }
 
 type RunSummary struct {

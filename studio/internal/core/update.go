@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	"inferyard/studio/internal/l10n"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -250,7 +251,7 @@ func (m *updateManager) inspectTarget() updateInstallTarget {
 		return updateInstallTarget{
 			CanSelfUpdate: false,
 			BlockCode:     "update_dev_mode",
-			BlockMessage:  "开发环境不支持应用内自更新，请从发布页下载安装包。",
+			BlockMessage:  l10n.TR("core.update.err.dev_mode"),
 		}
 	}
 	exePath, err := m.opts.ExecutablePath()
@@ -258,7 +259,7 @@ func (m *updateManager) inspectTarget() updateInstallTarget {
 		return updateInstallTarget{
 			CanSelfUpdate: false,
 			BlockCode:     "update_executable_unknown",
-			BlockMessage:  "无法定位当前安装路径，请前往发布页手动更新。",
+			BlockMessage:  l10n.TR("core.update.err.executable_unknown"),
 		}
 	}
 	return inspectPlatformInstallTarget(exePath)

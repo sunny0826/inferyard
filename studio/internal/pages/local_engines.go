@@ -1,13 +1,13 @@
 package pages
 
 import (
-	"fmt"
 	"slices"
 	"strconv"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 var polystrataSupportedGGUFArchs = []string{
@@ -79,7 +79,7 @@ func (s *viewState) compatibleModel(model core.ModelAsset) bool {
 func modelLabel(model core.ModelAsset) string {
 	switch model.Format {
 	case "directory":
-		return model.Name + " · 目录模型"
+		return l10n.TRf("models.label.directory", "name", model.Name)
 	case "gguf":
 		return model.Name + " · GGUF"
 	case "strata_pack":
@@ -91,16 +91,16 @@ func modelLabel(model core.ModelAsset) string {
 func (s *viewState) localSelectionError() string {
 	for _, model := range s.registry.Models {
 		if model.Name == s.model && !s.compatibleModel(model) {
-			return "模型格式与所选引擎不匹配，请重新选择。"
+			return l10n.TR("engine.local.error.format_mismatch")
 		}
 	}
 	if e := s.localEngine(); e != nil {
 		if s.eligibility(e.Name).State != core.EngineCheckEligible {
-			return "请等待安装声明核验通过。"
+			return l10n.TR("engine.local.error.wait_verification")
 		}
 		if e.Family == "lmstudio" {
 			if pid, err := strconv.ParseInt(s.localPID, 10, 64); err != nil || pid <= 0 || urlError(s.localEndpoint) != "" || s.localEndpoint == "" {
-				return "请填写已启动的 LM Studio 后台进程 PID 与本机服务地址。"
+				return l10n.TR("engine.local.error.lmstudio_required")
 			}
 		}
 	}
@@ -207,12 +207,12 @@ func (s *viewState) localSelectionInvalid(pid int64, err error) bool {
 
 func (s *viewState) localServicePicker(c *ui.Context, pidLabel, endpointLabel string) {
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-		refreshButton(c, "刷新服务列表", s.discovering).Disabled(s.discovering).OnClick(s.refreshDiscovery)
+		refreshButton(c, tr(c, "engine.discovery.refresh"), s.discovering).Disabled(s.discovering).OnClick(s.refreshDiscovery)
 	})
 	if choices := s.localServiceChoices(); len(choices) > 0 {
-		ui.Text(c, "已发现的本机服务（点击填入 PID 与服务地址）：").TextColor(c.Theme().TextMuted)
+		ui.Text(c, tr(c, "engine.local.discovered_hint")).TextColor(c.Theme().TextMuted)
 		for _, choice := range choices {
-			label := fmt.Sprintf("PID %d · %s · %d 个模型", choice.pid, choice.endpoint, choice.models)
+			label := trf(c, "engine.local.service_choice", "pid", strconv.FormatInt(choice.pid, 10), "endpoint", choice.endpoint, "count", strconv.Itoa(choice.models))
 			if name := displayName(choice.name); name != "" {
 				label += " · " + name
 			}
@@ -220,13 +220,13 @@ func (s *viewState) localServicePicker(c *ui.Context, pidLabel, endpointLabel st
 		}
 	}
 	field(c, pidLabel, &s.localPID).MaxWidth(360)
-	field(c, endpointLabel, &s.localEndpoint).MaxWidth(360).Description("例如 http://127.0.0.1:1234")
+	field(c, endpointLabel, &s.localEndpoint).MaxWidth(360).Description(tr(c, "engine.local.endpoint_example"))
 }
 
 func (s *viewState) localSelectionView(c *ui.Context) {
 	if e := s.localEngine(); e != nil && e.Family == "lmstudio" {
-		ui.Text(c, "请先在 LM Studio 启动后台服务并加载所选模型，再填写后台 PID 与地址。")
-		s.localServicePicker(c, "LM Studio 后台 PID", "LM Studio 服务地址")
+		ui.Text(c, tr(c, "engine.local.lmstudio_prompt"))
+		s.localServicePicker(c, tr(c, "engine.local.lmstudio_pid"), tr(c, "engine.local.lmstudio_endpoint"))
 	}
 	if reason := s.localSelectionError(); reason != "" {
 		noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: reason})
@@ -234,16 +234,16 @@ func (s *viewState) localSelectionView(c *ui.Context) {
 }
 
 func (s *viewState) localInstallationsView(c *ui.Context) {
-	card(c, "已有本地引擎", func() {
+	card(c, tr(c, "engine.local.card_title"), func() {
 		s.localEngineWizardView(c)
-		componentFold(c, "高级：直接导入已有 installation.json", func() {
-			componentFold(c, "installation.json 字段说明", func() {
-				ui.Text(c, "声明 definition 为 local-engine-installation.v1，填写 family、executable、working_directory、runtime_roots 与 environment 绝对路径。")
+		componentFold(c, tr(c, "engine.local.import_fold"), func() {
+			componentFold(c, tr(c, "engine.local.schema_fold"), func() {
+				ui.Text(c, tr(c, "engine.local.schema_desc"))
 			})
-			s.pathField(c, "安装声明 JSON 路径", &s.installationPath, browseInstallation).
+			s.pathField(c, tr(c, "engine.local.json_path_label"), &s.installationPath, browseInstallation).
 				Error(s.browseError(browseInstallation.key, pathError(s.installationPath)))
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-				if primaryActionButton(c, "导入并注册", s.actionBusy("install-register")).Disabled(s.busy || s.installationPath == "" || pathError(s.installationPath) != "").Clicked() {
+				if primaryActionButton(c, tr(c, "engine.local.import_register"), s.actionBusy("install-register")).Disabled(s.busy || s.installationPath == "" || pathError(s.installationPath) != "").Clicked() {
 					s.changeInstallation("register", s.installationPath)
 				}
 			})
@@ -252,7 +252,7 @@ func (s *viewState) localInstallationsView(c *ui.Context) {
 			path := path
 			ui.Row(c.Key(path)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 				ui.Text(c, path)
-				if dangerButton(c, "移除注册").AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
+				if dangerButton(c, tr(c, "engine.local.remove_registration")).AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
 					s.removeInstallationWithUndo(path)
 				}
 			})
@@ -271,7 +271,7 @@ func (s *viewState) removeInstallationWithUndo(path string) {
 		_, err := s.service.RemoveEngineInstallation(path)
 		if err == nil {
 			removedPath := path
-			s.enqueueActionToast("undo-remove-installation", "已移除引擎注册", "撤销", "已恢复引擎注册", 6*time.Second, func() {
+			s.enqueueActionToast("undo-remove-installation", l10n.TR("engine.local.toast.removed"), l10n.TR("engine.local.toast.undo"), l10n.TR("engine.local.toast.restored"), 6*time.Second, func() {
 				s.changeInstallation("register", removedPath)
 			})
 		}
@@ -289,17 +289,17 @@ func (s *viewState) changeInstallation(action, path string) {
 	}
 	s.workAs(key, func() (string, *core.ApiError) {
 		var err *core.ApiError
-		message := "本地引擎列表已更新"
+		message := l10n.TR("engine.local.toast.updated")
 		switch action {
 		case "register":
 			_, err = s.service.RegisterEngineInstallation(s.ctx, path)
-			message = "已注册本地引擎"
+			message = l10n.TR("engine.local.toast.registered")
 		case "remove":
 			_, err = s.service.RemoveEngineInstallation(path)
-			message = "已移除引擎注册"
+			message = l10n.TR("engine.local.toast.removed")
 		case "recheck":
 			s.service.InvalidateEngineChecks()
-			message = "已开始重新核验引擎"
+			message = l10n.TR("engine.local.toast.recheck_started")
 		default:
 			err = core.Err("invalid_request")
 		}
@@ -315,21 +315,21 @@ func (s *viewState) awaitingLocalServiceView(c *ui.Context) {
 		if s.localBindingTask != task.TaskId {
 			s.localBindingTask, s.localPID, s.handoffFailure = task.TaskId, "", nil
 		}
-		card(c, "连接下一测评题集的 LM Studio 服务", func() {
-			ui.Text(c, emptyText(task.Bundle)+" · 请重启 LM Studio 后台服务并加载同一模型。")
+		card(c, tr(c, "engine.local.handoff.title"), func() {
+			ui.Text(c, trf(c, "engine.local.handoff.prompt", "bundle", emptyText(task.Bundle)))
 			if s.handoffFailure != nil {
-				failureView(c, "连接此测评题集失败", s.handoffFailure, "服务就绪后可用同一 PID 重试。")
+				failureView(c, tr(c, "engine.local.handoff.failed_title"), s.handoffFailure, tr(c, "engine.local.handoff.retry_hint"))
 			}
-			s.localServicePicker(c, "新的后台 PID", "本机服务地址")
+			s.localServicePicker(c, tr(c, "engine.local.handoff.new_pid"), tr(c, "engine.local.handoff.endpoint"))
 			pid, err := strconv.ParseInt(s.localPID, 10, 64)
 			if err == nil && pid > 0 && s.localPIDUsed(pid) {
 				noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: human("local_engine_service_reused")})
 			}
-			button(c, "连接并继续此测评题集").Disabled(s.localSelectionInvalid(pid, err)).OnClick(func() {
+			button(c, tr(c, "engine.local.handoff.connect_continue")).Disabled(s.localSelectionInvalid(pid, err)).OnClick(func() {
 				s.connectHandoffService(task.TaskId, pid)
 			})
 		})
-		ui.Text(c, fmt.Sprintf("等待服务 · %s", task.TaskId)).TextColor(c.Theme().TextMuted)
+		ui.Text(c, trf(c, "engine.local.handoff.waiting", "taskId", task.TaskId)).TextColor(c.Theme().TextMuted)
 	}
 }
 

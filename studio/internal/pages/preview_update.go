@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 const previewUpdateVersion = "0.10.0"
@@ -58,7 +59,7 @@ func previewUpdateError(s *viewState) {
 		CurrentVersion: "0.0.8",
 		Release:        &rel,
 		ErrorCode:      "update_path_unwritable",
-		ErrorMessage:   "当前应用所在目录没有写入权限，可打开安装包手动安装或前往发布页下载。",
+		ErrorMessage:   l10n.TR("preview.update.error.app_dir_unwritable"),
 		FallbackPath:   "/preview/updates/" + rel.AssetName,
 		CanSelfUpdate:  false,
 	}
@@ -96,7 +97,7 @@ func (p *previewSession) checkUpdate() {
 		if fail {
 			s.updateState.State = core.UpdateError
 			s.updateState.ErrorCode = "update_network_error"
-			s.updateState.ErrorMessage = "无法连接更新服务，请检查网络或代理设置。"
+			s.updateState.ErrorMessage = l10n.TR("preview.update.error.network")
 			return
 		}
 		rel := previewUpdateRelease()
@@ -161,7 +162,7 @@ func (p *previewSession) tickUpdateDownload(fail bool, step int, oneClick bool) 
 				s.updateState.State = core.UpdateError
 				s.updateState.DownloadedBytes = 0
 				s.updateState.ErrorCode = "update_checksum_mismatch"
-				s.updateState.ErrorMessage = "安装包 SHA-256 校验未通过，已删除损坏文件。"
+				s.updateState.ErrorMessage = l10n.TR("preview.update.error.checksum_mismatch")
 				s.updateState.FallbackPath = ""
 				return
 			}
@@ -217,7 +218,7 @@ func (p *previewSession) applyUpdate(confirmStop bool) {
 		if fail {
 			s.updateState.State = core.UpdateError
 			s.updateState.ErrorCode = "update_path_unwritable"
-			s.updateState.ErrorMessage = "当前安装目录没有写入权限，可打开安装包手动安装或前往发布页下载。"
+			s.updateState.ErrorMessage = l10n.TR("preview.update.error.install_dir_unwritable")
 			s.updateState.FallbackPath = "/preview/updates/" + s.updateState.Release.AssetName
 			s.updateState.CanSelfUpdate = false
 			s.updateDialogOpen = true
@@ -230,7 +231,7 @@ func (p *previewSession) applyUpdate(confirmStop bool) {
 			CanSelfUpdate:  true,
 		}
 		s.updateDialogOpen = false
-		s.enqueueStatusToast("模拟更新已完成并重启到 v" + ver)
+		s.enqueueStatusToast(l10n.TRf("preview.update.toast.completed", "version", ver))
 	})
 }
 

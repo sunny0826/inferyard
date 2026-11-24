@@ -7,6 +7,7 @@ import (
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 type engineHeaderActionOptions struct {
@@ -67,11 +68,11 @@ func engineHeaderActionButton(c *ui.Context, opts engineHeaderActionOptions) ui.
 	hovered := !b.IsDisabled() && (b.Hovered() || b.Pressed())
 	if hovered {
 		if opts.action == "stop" {
-			labelText = "停止"
+			labelText = tr(c, "engine.action.stop_short")
 		} else if opts.kind == stateDanger {
-			labelText = "重试"
+			labelText = tr(c, "engine.action.retry_short")
 		} else {
-			labelText = "开启"
+			labelText = tr(c, "engine.action.start_short")
 		}
 	}
 
@@ -140,7 +141,7 @@ func engineHeaderActionButton(c *ui.Context, opts engineHeaderActionOptions) ui.
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.Center).Gap(theme.Space(1.5)).Children(func() {
 			switch {
 			case showSpinner:
-				components.Spinner(c, components.SpinnerRing).Size(12, 12).TextColor(iconFg).Label(opts.actionLabel + "处理中")
+				components.Spinner(c, components.SpinnerRing).Size(12, 12).TextColor(iconFg).Label(trf(c, "engine.action.in_progress", "action", opts.actionLabel))
 			case opts.action == "stop" && b.IsDisabled():
 				ui.Box(c).Size(6, 6).Radius(t.Radius.Full).Background(iconFg)
 			case opts.action == "stop":
@@ -163,15 +164,15 @@ func (s *viewState) openEngineWebUI(c *ui.Context, rawURL string) {
 		return
 	}
 	if s.preview != nil {
-		s.enqueueStatusToast("已在浏览器打开引擎界面（模拟）")
+		s.enqueueStatusToast(tr(c, "engine.toast.webui_opened_preview"))
 		return
 	}
 	c.OpenURLThen(u, func(err error) {
 		if err != nil {
-			s.enqueueStatusToast("无法打开引擎网页")
+			s.enqueueStatusToast(l10n.TR("engine.toast.webui_open_failed"))
 			return
 		}
-		s.enqueueStatusToast("已在浏览器打开引擎界面")
+		s.enqueueStatusToast(l10n.TR("engine.toast.webui_opened"))
 	})
 }
 
@@ -181,21 +182,21 @@ func (s *viewState) copyEngineEndpoint(c *ui.Context, rawURL string) {
 		return
 	}
 	if s.preview != nil {
-		s.enqueueStatusToast("已复制服务地址（模拟）")
+		s.enqueueStatusToast(tr(c, "engine.toast.endpoint_copied_preview"))
 		return
 	}
 	c.WriteClipboardThen(u, func(err error) {
 		if err != nil {
-			s.enqueueStatusToast("复制服务地址失败")
+			s.enqueueStatusToast(l10n.TR("engine.toast.endpoint_copy_failed"))
 			return
 		}
-		s.enqueueStatusToast("已复制服务地址")
+		s.enqueueStatusToast(l10n.TR("engine.toast.endpoint_copied"))
 	})
 }
 
 func (s *viewState) openEngineCardLog(logPath string) {
 	if s.preview != nil {
-		s.enqueueStatusToast("模拟模式无本地日志文件")
+		s.enqueueStatusToast(l10n.TR("engine.toast.no_log_preview"))
 		return
 	}
 	target := logPath
@@ -205,7 +206,7 @@ func (s *viewState) openEngineCardLog(logPath string) {
 		}
 	}
 	if err := openLogPathFunc(target); err != nil {
-		s.failure = &core.ApiError{Code: "io_error", Message: "无法打开日志文件：" + err.Error()}
+		s.failure = &core.ApiError{Code: "io_error", Message: l10n.TRf("engine.error.open_log_failed", "error", err.Error())}
 		s.failurePage = s.selected
 	}
 }
@@ -233,7 +234,7 @@ func (s *viewState) startManagedEngine() {
 	}
 	const toastID = "start-managed-engine"
 	s.engineStartToastID = toastID
-	s.enqueueProgressToast(toastID, "正在开启引擎…")
+	s.enqueueProgressToast(toastID, l10n.TR("engine.toast.starting"))
 	s.guideWorkAs("start-engine", func() (string, *core.ApiError) {
 		state, e := s.service.StartEngine(candidate)
 		if e != nil {
@@ -243,7 +244,7 @@ func (s *viewState) startManagedEngine() {
 		}
 		if state.State == "running" {
 			s.engineStartToastID = ""
-			s.resolveProgressToast(toastID, "引擎已就绪", "", nil)
+			s.resolveProgressToast(toastID, l10n.TR("engine.toast.ready"), "", nil)
 		}
 		return "", nil
 	})

@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"inferyard/studio/internal/l10n"
 	"net"
 	"net/url"
 	"os"
@@ -36,7 +37,7 @@ func (s *Service) persistEngineOwner(e *engineEntry, workspace string) *ApiError
 	e.owner, e.ownerPath = owner, ownerPath(workspace)
 	ticks, err := s.processTicks(e.state.Pid)
 	if err != nil || ticks <= 0 {
-		return &ApiError{Code: "service_identity_unreadable", Message: "无法读取引擎启动标识，已中止启动。"}
+		return &ApiError{Code: "service_identity_unreadable", Message: l10n.TR("core.engine.err.start_identity_unreadable")}
 	}
 	owner.StartTicks = ticks
 	e.owner = owner
@@ -47,7 +48,7 @@ func (s *Service) persistEngineOwner(e *engineEntry, workspace string) *ApiError
 	e.state.StartTicks = ticks
 	path := ownerPath(workspace)
 	if err := writeEngineOwner(path, owner); err != nil {
-		return &ApiError{Code: "engine_owner_write_failed", Message: "无法保存服务记录，已中止启动。"}
+		return &ApiError{Code: "engine_owner_write_failed", Message: l10n.TR("core.engine.err.owner_write_failed")}
 	}
 	e.ownerPath = path
 	e.owner = owner
@@ -162,16 +163,16 @@ func (s *Service) detectEngineOwnerLocked() {
 	var owner engineOwner
 	var failure *ApiError
 	if err != nil || json.Unmarshal(raw, &owner) != nil || !validOwner(owner) {
-		failure = &ApiError{Code: "engine_owner_invalid", Message: "遗留服务记录无法读取；可仅删除记录（不终止进程）。"}
+		failure = &ApiError{Code: "engine_owner_invalid", Message: l10n.TR("core.engine.err.owner_invalid")}
 	} else {
 		same, err := s.ownedTreeAlive(&owner, path)
 		if err == nil && !same {
 			if err := removeEngineOwner(path, owner); err == nil {
 				return
 			}
-			failure = &ApiError{Code: "engine_owner_remove_failed", Message: "无法清除遗留服务记录；可重试仅删除记录（不终止进程）。"}
+			failure = &ApiError{Code: "engine_owner_remove_failed", Message: l10n.TR("core.engine.err.owner_remove_failed")}
 		} else if err != nil {
-			failure = &ApiError{Code: "service_identity_unreadable", Message: "无法确认遗留引擎的启动标识；可仅删除记录（不终止进程）。"}
+			failure = &ApiError{Code: "service_identity_unreadable", Message: l10n.TR("core.engine.err.orphan_identity_unreadable")}
 		}
 	}
 	state := EngineState{State: "orphaned", Pid: owner.PID, StartTicks: owner.StartTicks, Local: owner.Local, Endpoint: owner.Endpoint, LogPath: owner.LogFile, Candidate: owner.Candidate, Error: failure}

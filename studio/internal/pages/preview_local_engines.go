@@ -11,6 +11,7 @@ import (
 
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 )
 
 type previewLocalTask struct {
@@ -34,12 +35,12 @@ func previewLocalEngines(s *viewState) {
 	s.settings.Settings.EngineInstallations = nil
 	s.checks = core.EngineCheckOverview{Supported: true, Engines: map[string]core.EngineEligibility{}}
 	for _, family := range []string{"polystrata", "llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio"} {
-		name := family + " · 模拟安装"
-		s.registry.Engines = append(s.registry.Engines, core.EngineAsset{Name: name, Family: family, Kind: "local_installation", Source: "模拟安装声明"})
+		name := l10n.TRf("preview.engine.local_name", "family", family)
+		s.registry.Engines = append(s.registry.Engines, core.EngineAsset{Name: name, Family: family, Kind: "local_installation", Source: l10n.TR("preview.source.local_manifest")})
 		s.checks.Engines[name] = core.EngineEligibility{State: core.EngineCheckEligible, Family: family, VerificationScope: "installation", Version: "preview"}
 		s.settings.Settings.EngineInstallations = append(s.settings.Settings.EngineInstallations, "/preview/"+family+".json")
 	}
-	s.model, s.engine = "local-weights", "mlx-lm · 模拟安装"
+	s.model, s.engine = "local-weights", l10n.TRf("preview.engine.local_name", "family", "mlx-lm")
 	s.engineState = core.EngineState{State: "stopped"}
 	s.downloads, s.tasks = nil, nil
 }
@@ -67,12 +68,12 @@ func (p *previewSession) installation(op previewInstallation) {
 			}
 		}
 		if family == "" {
-			s.failure = &core.ApiError{Code: "preview_installation_fixture_required", Message: "模拟注册请使用文件名含 polystrata、llama-cpp、mlx-lm、vllm、sglang 或 lmstudio 的 JSON 路径。"}
+			s.failure = &core.ApiError{Code: "preview_installation_fixture_required", Message: l10n.TR("preview.local.fixture_required")}
 			return
 		}
 		name := family + " · " + filepath.Base(op.path)
 		s.settings.Settings.EngineInstallations = append(s.settings.Settings.EngineInstallations, op.path)
-		s.registry.Engines = append(s.registry.Engines, core.EngineAsset{Name: name, Family: family, Kind: "local_installation", Source: "模拟安装声明"})
+		s.registry.Engines = append(s.registry.Engines, core.EngineAsset{Name: name, Family: family, Kind: "local_installation", Source: l10n.TR("preview.source.local_manifest")})
 		if s.checks.Engines == nil {
 			s.checks.Engines = map[string]core.EngineEligibility{}
 		}
@@ -90,7 +91,7 @@ func (p *previewSession) installation(op previewInstallation) {
 		p.showNotice()
 		return
 	}
-	p.notice = "模拟引擎列表已更新。"
+	p.noticeKey = "preview.notice.engines_updated"
 }
 
 func (p *previewSession) beginLocalBenchmark(op previewBenchmark, retry bool) {

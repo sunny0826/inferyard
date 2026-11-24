@@ -1,9 +1,9 @@
 package pages
 
-const (
-	termBenchmarkStage  = "配置测评"
-	termStartBenchmark  = "开始测评"
-	termCandidateEngine = "引擎"
-	termBundle          = "测评题集"
-	termSealed          = "证据已收尾"
-)
+import "github.com/egoist/mygo/ui"
+
+func termBenchmarkStageText(c *ui.Context) string  { return tr(c, "common.term.benchmark_stage") }
+func termStartBenchmarkText(c *ui.Context) string  { return tr(c, "common.term.start_benchmark") }
+func termCandidateEngineText(c *ui.Context) string { return tr(c, "common.term.candidate_engine") }
+func termBundleText(c *ui.Context) string          { return tr(c, "common.term.bundle") }
+func termSealedText(c *ui.Context) string          { return tr(c, "common.term.sealed") }

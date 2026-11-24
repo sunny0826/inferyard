@@ -1,89 +1,118 @@
 package pages
 
-import "strings"
+import (
+	"strings"
 
-var deviceLabels = map[string]string{
-	"metal":                                   "Metal 加速",
-	"cuda":                                    "CUDA 加速",
-	"hip":                                     "HIP (ROCm) 加速",
-	"cpu":                                     "CPU",
-	"polystrata":                              "PolyStrata",
-	"llama-cpp":                               "llama.cpp",
-	"fits":                                    "推荐适配",
-	"tight":                                   "紧凑适配",
-	"fallback":                                "轻量回退",
-	"tier_best":                               "首选推荐",
-	"tier_balanced":                           "均衡备选",
-	"tier_lightweight":                        "轻量快速",
-	"tier_fallback":                           "通用轻量",
-	"blocked":                                 "暂不可运行",
-	"recommended":                             "已推荐",
-	"device_snapshot_unavailable":             "尚未采集设备快照",
-	"rocm_smi_not_found":                      "未检测到 rocm-smi",
-	"unsupported_gpu":                         "未发现支持的加速 GPU",
-	"insufficient_memory":                     "可用内存不足",
-	"insufficient_disk":                       "可用磁盘空间不足",
-	"insufficient_disk_space":                 "可用磁盘空间不足",
-	"disk_space_unavailable":                  "磁盘可用空间缺测",
-	"disk_usage_unavailable":                  "磁盘可用空间缺测",
-	"unsupported_platform":                    "当前平台暂不支持",
-	"unified_memory_fit_estimate":             "统一内存容量估算可容纳",
-	"gpu_and_memory_fit_estimate":             "GPU 与内存容量估算可容纳",
-	"host_memory_fit_estimate":                "主机内存容量估算可容纳",
-	"host_memory_unavailable":                 "可用内存缺测，无法估算模型容量",
-	"insufficient_host_memory":                "主机可用内存不足",
-	"no_local_model":                          "未发现本地 GGUF 模型",
-	"invalid_or_unreadable_gguf":              "模型不存在、不可读或 GGUF 元数据无效",
-	"chat_template_unavailable":               "模型缺少聊天模板",
-	"insufficient_output_disk":                "输出位置可用磁盘不足 5 GiB",
-	"output_disk_unavailable":                 "输出位置磁盘容量缺测",
-	"nvidia_smi_not_found":                    "未检测到 nvidia-smi",
-	"nvidia_driver_query_failed":              "NVIDIA 驱动查询失败",
-	"probe_timeout":                           "系统查询超时",
-	"memory_estimates_require_live_preflight": "内存容量为估算值",
-	"runtime_backend_and_model_compatibility_require_verification":        "后端与模型兼容性待运行验证",
-	"accelerator_execution_requires_verified_backend_and_service_binding": "需绑定已验证服务后启用加速",
-	"shared_host_memory":                  "共享系统内存",
-	"not_measured":                        "未测量",
-	"not_reported":                        "未报告",
-	"live_preflight_required":             "需先完成实时预检",
-	"provide_local_gguf":                  "提供本地 GGUF 模型",
-	"resolve_blocker":                     "解决阻断项",
-	"configure_and_bind_existing_service": "绑定已有的模型服务",
-	"unavailable":                         "不可用",
-	"polystrata_hardware_fit":             "硬件适配 PolyStrata",
-	"fallback_llama_cpp_no_compatible_polystrata_gpu":     "当前 GPU 不满足 PolyStrata 要求，已切换为 llama.cpp",
-	"fallback_llama_cpp_insufficient_ram_for_polystrata":  "当前内存不足以运行 PolyStrata 模型，已切换为 llama.cpp",
-	"fallback_llama_cpp_insufficient_disk_for_polystrata": "当前磁盘空间不足以安装 PolyStrata，已切换为 llama.cpp",
-	"fallback_llama_cpp_insufficient_vram_for_polystrata": "当前显存不足以运行 PolyStrata 模型，已切换为 llama.cpp",
-	"apple_silicon_required":                              "需要 Apple Silicon 芯片",
-	"macos_version_below_15":                              "需要 macOS 15 或更高版本",
-	"macos_version_unverified":                            "macOS 版本未检测到",
-	"metal_not_supported":                                 "当前设备不支持 Metal",
-	"nvidia_driver_too_old":                               "NVIDIA 驱动版本过低",
-	"nvidia_driver_version_unverified":                    "NVIDIA 驱动版本未检测到",
-	"nvidia_compute_capability_unsupported":               "NVIDIA GPU 算力架构不受支持",
-	"nvidia_compute_capability_unverified":                "NVIDIA GPU 算力未检测到",
-	"nvidia_vram_unverified":                              "NVIDIA 显存容量未检测到",
-	"amd_vram_unverified":                                 "AMD 显存容量未检测到",
-	"amd_arch_unsupported":                                "AMD GPU 架构不受支持",
-	"host_available_memory_tight":                         "当前可用内存偏紧，建议先关闭占用较大的程序",
-	"windows_page_file_low":                               "Windows 页面文件偏小，建议不低于 16 GiB",
-	"cpu_missing_avx2_experimental_build":                 "CPU 缺少 AVX2，将使用兼容构建",
-	"total_memory_unverified":                             "系统总内存未检测到",
-	"multiple_models_roots_unselected":                    "检测到多个模型目录，待确认目标目录",
-	"xcode_clt_missing":                                   "缺少 Xcode Command Line Tools（构建 PolyStrata 所需）",
-	"polystrata_config_model_missing":                     "配置文件引用的模型文件缺失",
+	"github.com/egoist/mygo/ui"
+	"inferyard/studio/internal/l10n"
+)
+
+var deviceLabelKeys = map[string]string{
+	"metal":                       "device.label.metal",
+	"cuda":                        "device.label.cuda",
+	"hip":                         "device.label.hip",
+	"cpu":                         "device.label.cpu",
+	"polystrata":                  "device.label.polystrata",
+	"llama-cpp":                   "device.label.llama_cpp",
+	"fits":                        "device.label.fits",
+	"tight":                       "device.label.tight",
+	"fallback":                    "device.label.fallback",
+	"tier_best":                   "device.label.tier_best",
+	"tier_balanced":               "device.label.tier_balanced",
+	"tier_lightweight":            "device.label.tier_lightweight",
+	"tier_fallback":               "device.label.tier_fallback",
+	"blocked":                     "device.label.blocked",
+	"recommended":                 "device.label.recommended",
+	"device_snapshot_unavailable": "device.label.device_snapshot_unavailable",
+	"rocm_smi_not_found":          "device.label.rocm_smi_not_found",
+	"unsupported_gpu":             "device.label.unsupported_gpu",
+	"insufficient_memory":         "device.label.insufficient_memory",
+	"insufficient_disk":           "device.label.insufficient_disk",
+	"insufficient_disk_space":     "device.label.insufficient_disk",
+	"disk_space_unavailable":      "device.label.disk_space_unavailable",
+	"disk_usage_unavailable":      "device.label.disk_space_unavailable",
+	"unsupported_platform":        "device.label.unsupported_platform",
+	"unified_memory_fit_estimate": "device.label.unified_memory_fit_estimate",
+	"gpu_and_memory_fit_estimate": "device.label.gpu_and_memory_fit_estimate",
+	"host_memory_fit_estimate":    "device.label.host_memory_fit_estimate",
+	"host_memory_unavailable":     "device.label.host_memory_unavailable",
+	"insufficient_host_memory":    "device.label.insufficient_host_memory",
+	"no_local_model":              "device.label.no_local_model",
+	"invalid_or_unreadable_gguf":  "device.label.invalid_or_unreadable_gguf",
+	"chat_template_unavailable":   "device.label.chat_template_unavailable",
+	"insufficient_output_disk":    "device.label.insufficient_output_disk",
+	"output_disk_unavailable":     "device.label.output_disk_unavailable",
+	"nvidia_smi_not_found":        "device.label.nvidia_smi_not_found",
+	"nvidia_driver_query_failed":  "device.label.nvidia_driver_query_failed",
+	"probe_timeout":               "device.label.probe_timeout",
+	"memory_estimates_require_live_preflight":                             "device.label.memory_estimates_require_live_preflight",
+	"runtime_backend_and_model_compatibility_require_verification":        "device.label.runtime_backend_and_model_compatibility_require_verification",
+	"accelerator_execution_requires_verified_backend_and_service_binding": "device.label.accelerator_execution_requires_verified_backend_and_service_binding",
+	"shared_host_memory":                  "device.label.shared_host_memory",
+	"not_measured":                        "device.label.not_measured",
+	"not_reported":                        "device.label.not_reported",
+	"live_preflight_required":             "device.label.live_preflight_required",
+	"provide_local_gguf":                  "device.label.provide_local_gguf",
+	"resolve_blocker":                     "device.label.resolve_blocker",
+	"configure_and_bind_existing_service": "device.label.configure_and_bind_existing_service",
+	"unavailable":                         "device.label.unavailable",
+	"polystrata_hardware_fit":             "device.label.polystrata_hardware_fit",
+	"fallback_llama_cpp_no_compatible_polystrata_gpu":     "device.label.fallback_llama_cpp_no_compatible_polystrata_gpu",
+	"fallback_llama_cpp_insufficient_ram_for_polystrata":  "device.label.fallback_llama_cpp_insufficient_ram_for_polystrata",
+	"fallback_llama_cpp_insufficient_disk_for_polystrata": "device.label.fallback_llama_cpp_insufficient_disk_for_polystrata",
+	"fallback_llama_cpp_insufficient_vram_for_polystrata": "device.label.fallback_llama_cpp_insufficient_vram_for_polystrata",
+	"apple_silicon_required":                              "device.label.apple_silicon_required",
+	"macos_version_below_15":                              "device.label.macos_version_below_15",
+	"macos_version_unverified":                            "device.label.macos_version_unverified",
+	"metal_not_supported":                                 "device.label.metal_not_supported",
+	"nvidia_driver_too_old":                               "device.label.nvidia_driver_too_old",
+	"nvidia_driver_version_unverified":                    "device.label.nvidia_driver_version_unverified",
+	"nvidia_compute_capability_unsupported":               "device.label.nvidia_compute_capability_unsupported",
+	"nvidia_compute_capability_unverified":                "device.label.nvidia_compute_capability_unverified",
+	"nvidia_vram_unverified":                              "device.label.nvidia_vram_unverified",
+	"amd_vram_unverified":                                 "device.label.amd_vram_unverified",
+	"amd_arch_unsupported":                                "device.label.amd_arch_unsupported",
+	"host_available_memory_tight":                         "device.label.host_available_memory_tight",
+	"windows_page_file_low":                               "device.label.windows_page_file_low",
+	"cpu_missing_avx2_experimental_build":                 "device.label.cpu_missing_avx2_experimental_build",
+	"total_memory_unverified":                             "device.label.total_memory_unverified",
+	"multiple_models_roots_unselected":                    "device.label.multiple_models_roots_unselected",
+	"xcode_clt_missing":                                   "device.label.xcode_clt_missing",
+	"polystrata_config_model_missing":                     "device.label.polystrata_config_model_missing",
+}
+
+func deviceLabelKnown(value string) (string, bool) {
+	if key, ok := deviceLabelKeys[value]; ok {
+		return l10n.TR(key), true
+	}
+	return "", false
 }
 
 func deviceLabel(value string) string {
-	if label, ok := deviceLabels[value]; ok {
-		return label
+	if key, ok := deviceLabelKeys[value]; ok {
+		return l10n.TR(key)
+	}
+	return value
+}
+
+func deviceLabelFor(c *ui.Context, value string) string {
+	if key, ok := deviceLabelKeys[value]; ok {
+		return tr(c, key)
 	}
 	return value
 }
 
 func localizedDeviceNotes(notes []string) []string {
+	return localizedDeviceNotesWith(notes, deviceLabel)
+}
+
+func localizedDeviceNotesFor(c *ui.Context, notes []string) []string {
+	return localizedDeviceNotesWith(notes, func(value string) string {
+		return deviceLabelFor(c, value)
+	})
+}
+
+func localizedDeviceNotesWith(notes []string, lookup func(string) string) []string {
 	if len(notes) == 0 {
 		return nil
 	}
@@ -95,7 +124,7 @@ func localizedDeviceNotes(notes []string) []string {
 			continue
 		}
 		seen[key] = true
-		label := strings.TrimSpace(deviceLabel(key))
+		label := strings.TrimSpace(lookup(key))
 		if label != "" {
 			out = append(out, label)
 		}

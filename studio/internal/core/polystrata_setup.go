@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 	"os"
 	"path/filepath"
 	"slices"
@@ -384,7 +385,7 @@ func (s *Service) runPolystrataSetup(ctx context.Context, binary string, d *down
 				Stage:     "verifying_installation",
 				Step:      ptr(4),
 				StepTotal: ptr(4),
-				Detail:    ptr("注册并核验引擎安装"),
+				Detail:    ptr(l10n.TR("core.polystrata.setup.verifying_installation")),
 			})
 			_, regErr := s.RegisterEngineInstallation(ctx, details.InstallationPath)
 			s.mu.Lock()

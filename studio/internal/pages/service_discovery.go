@@ -52,40 +52,40 @@ func (s *viewState) managedServiceView(c *ui.Context) {
 	state := s.engineState
 	switch {
 	case s.managedServiceActive():
-		heading(c, "Studio 启动的服务", 3)
-		ui.Text(c, "状态："+stateLabel(state.State))
+		heading(c, tr(c, "engine.service.managed_heading"), 3)
+		ui.Text(c, trf(c, "engine.service.state_line", "state", stateLabel(state.State)))
 	case state.State == "orphaned":
-		heading(c, "遗留服务记录", 3)
+		heading(c, tr(c, "engine.service.orphan_heading"), 3)
 		noticeBanner(c, noticeBannerOptions{
 			Kind:    stateWarning,
 			Size:    bannerCompact,
-			Message: "上次 Studio 留下的服务或记录，运行状态未确认。",
+			Message: tr(c, "engine.service.orphan_notice"),
 		})
 	default:
-		ui.Text(c, "暂无 Studio 启动的活动服务。").TextColor(tokens(c).Color.FgSecondary)
+		ui.Text(c, tr(c, "engine.service.none_managed")).TextColor(tokens(c).Color.FgSecondary)
 		return
 	}
 	if state.Candidate != "" {
-		keyValueRow(c, "测评配置", displayName(state.Candidate), false)
+		keyValueRow(c, tr(c, "engine.service.candidate_label"), displayName(state.Candidate), false)
 	}
 	if state.Pid > 0 {
 		keyValueRow(c, "PID", fmt.Sprintf("%d", state.Pid), true)
 	}
 	if state.Endpoint != "" {
-		keyValueRow(c, "服务地址", loopbackEndpoint(state.Endpoint), false)
+		keyValueRow(c, tr(c, "engine.service.endpoint_label"), loopbackEndpoint(state.Endpoint), false)
 	}
 }
 
 func (s *viewState) discoveryView(c *ui.Context, bindable bool) {
 	if bindable {
-		heading(c, "本机运行的服务", 3)
+		heading(c, tr(c, "engine.discovery.heading"), 3)
 	}
 	s.discoveryBody(c, bindable)
 }
 
 func (s *viewState) discoveryBody(c *ui.Context, bindable bool) {
 	s.managedServiceView(c)
-	refreshButton(c, "刷新服务列表", s.discovering).Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)
+	refreshButton(c, tr(c, "engine.discovery.refresh"), s.discovering).Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)
 	errorView(c, s.discoveryError)
 	if s.discoveryError == nil {
 		for _, code := range s.discovery.Limitations {
@@ -101,7 +101,7 @@ func (s *viewState) discoveryBody(c *ui.Context, bindable bool) {
 		}
 	}
 	if compatible > 0 {
-		componentFold(c, "待确认的兼容接口", func() {
+		componentFold(c, tr(c, "engine.discovery.compatible_fold"), func() {
 			for _, service := range s.discovery.Services {
 				for _, endpoint := range service.Endpoints {
 					if endpoint.Models != nil && !s.managedEndpoint(service, endpoint) {
@@ -111,14 +111,14 @@ func (s *viewState) discoveryBody(c *ui.Context, bindable bool) {
 			}
 		})
 	} else if s.discoveryError == nil && !s.discovering {
-		message := "尚未读取本机服务。"
+		message := tr(c, "engine.discovery.not_loaded")
 		if s.discoveryLoaded {
-			message = "未发现提供模型目录的兼容接口。"
+			message = tr(c, "engine.discovery.none_found")
 			if s.managedServiceActive() {
-				message = "未发现其他提供模型目录的兼容接口。"
+				message = tr(c, "engine.discovery.none_other_found")
 			}
 			if s.discovery.Status == "partial" || len(s.discovery.Limitations) > 0 {
-				message = "扫描不完整，兼容接口列表可能有遗漏。"
+				message = tr(c, "engine.discovery.partial")
 			}
 		}
 		ui.Text(c, message)
@@ -130,23 +130,23 @@ func (s *viewState) compatibleEndpointView(c *ui.Context, service inferyard.Disc
 		heading(c, displayName(service.ProcessName), 3)
 		ui.Text(c, fmt.Sprintf("PID %d · %s", service.PID, endpoint.URL))
 		if endpoint.Health == nil {
-			ui.Text(c, "健康检查：缺测")
+			ui.Text(c, tr(c, "engine.discovery.health_missing"))
 		} else {
-			ui.Text(c, "健康检查："+*endpoint.Health)
+			ui.Text(c, trf(c, "engine.discovery.health_value", "status", *endpoint.Health))
 		}
 		if endpoint.AmbiguousListener {
-			warningBanner(c, "多个进程监听同一端口，归属存在歧义")
+			warningBanner(c, tr(c, "engine.discovery.ambiguous_listener"))
 		}
 		if endpoint.Reason != nil {
 			ui.Text(c, human(*endpoint.Reason))
 		}
-		componentFold(c, fmt.Sprintf("模型目录（%d）", len(endpoint.Models)), func() {
+		componentFold(c, trf(c, "engine.discovery.model_catalog_count", "count", fmt.Sprintf("%d", len(endpoint.Models))), func() {
 			for _, model := range endpoint.Models {
 				ui.Text(c, displayName(model))
 			}
 		})
 		if bindable {
-			button(c, "绑定").Disabled(s.busy || s.discovering || !s.bindingPhase()).OnClick(func() {
+			button(c, tr(c, "engine.discovery.bind")).Disabled(s.busy || s.discovering || !s.bindingPhase()).OnClick(func() {
 				s.bindDiscovered(service.PID, endpoint.URL)
 			})
 		}

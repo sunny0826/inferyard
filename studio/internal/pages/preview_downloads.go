@@ -12,6 +12,7 @@ import (
 
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 )
 
 func (p *previewSession) startDownload(op previewDownload) {
@@ -50,7 +51,7 @@ func (p *previewSession) startDownload(op previewDownload) {
 	task := core.DownloadTask{TaskId: id, Kind: op.kind, State: "downloading", SourceUrl: op.source, OutName: name, OutDir: filepath.Join(s.models, name), FileName: previewValue(filename), StartedAt: p.timestamp()}
 	s.downloads = append([]core.DownloadTask{task}, s.downloads...)
 	p.tickDownload(id, p.takeFailure(), 0)
-	p.notice = "模拟下载已开始。"
+	p.noticeKey = "preview.notice.download_started"
 }
 
 func (p *previewSession) startPolystrataSetup(req core.PolystrataSetupRequest) {
@@ -79,7 +80,7 @@ func (p *previewSession) startPolystrataSetup(req core.PolystrataSetupRequest) {
 		Step:        previewValue(1),
 		StepTotal:   previewValue(4),
 		Percent:     previewValue(10.0),
-		Detail:      previewValue("检查环境"),
+		Detail:      previewValue(l10n.TR("preview.polystrata.stage.preflight")),
 		ModelSource: strings.TrimSpace(req.ModelSource),
 		SourceUrl:   "https://github.com/simplexai-labs/PolyStrata/archive/3e1642161198c50ff1abed4046f4e4f476099dbb.tar.gz",
 		OutName:     outName,
@@ -93,7 +94,7 @@ func (p *previewSession) startPolystrataSetup(req core.PolystrataSetupRequest) {
 	}
 	p.polystrataReqs[id] = req
 	p.tickPolystrataSetup(id, p.takeFailure(), 0)
-	p.notice = "模拟 PolyStrata 引导安装已开始。"
+	p.noticeKey = "preview.notice.polystrata_started"
 }
 
 func (p *previewSession) tickPolystrataSetup(id string, fail bool, tick int) {
@@ -109,7 +110,7 @@ func (p *previewSession) tickPolystrataSetup(id string, fail bool, tick int) {
 				apiErr.Details = map[string]any{
 					"blockers": []map[string]any{{
 						"code":        "xcode_clt_missing",
-						"message":     "需要安装 Xcode Command Line Tools 才能构建 PolyStrata。",
+						"message":     l10n.TR("preview.polystrata.blocker.xcode_clt"),
 						"fix_command": "xcode-select --install",
 					}},
 				}
@@ -122,10 +123,10 @@ func (p *previewSession) tickPolystrataSetup(id string, fail bool, tick int) {
 				task.Detail = previewValue("PolyStrata v0.1.45-poly.10")
 			case 1:
 				task.Stage, task.Step, task.Percent = "setup_engine", previewValue(3), previewValue(65.0)
-				task.Detail = previewValue("编译 Metal 核心")
+				task.Detail = previewValue(l10n.TR("preview.polystrata.stage.build_metal"))
 			case 2:
 				task.Stage, task.Step, task.Percent = "downloading_model", previewValue(4), previewValue(90.0)
-				task.Detail = previewValue("下载推荐模型")
+				task.Detail = previewValue(l10n.TR("preview.polystrata.stage.download_model"))
 			default:
 				instPath := filepath.Join(task.OutDir, "installation.json")
 				cfgPath := filepath.Join(task.OutDir, "strata-preview.json")
@@ -175,8 +176,9 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 		engName := "PolyStrata · v0.1.45-poly.10"
 		instPath := emptyText(task.InstallationPath)
 		existing := false
+		guidedSource := l10n.TR("preview.source.guided_install")
 		for _, eng := range s.registry.Engines {
-			if eng.Family == "polystrata" && (eng.Path == instPath || eng.Source == "模拟引导安装") {
+			if eng.Family == "polystrata" && (eng.Path == instPath || eng.Source == guidedSource) {
 				engName = eng.Name
 				existing = true
 				break
@@ -184,7 +186,7 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 		}
 		if !existing {
 			s.registry.Engines = append(s.registry.Engines, core.EngineAsset{
-				Name: engName, Family: "polystrata", Kind: "local_installation", Source: "模拟引导安装",
+				Name: engName, Family: "polystrata", Kind: "local_installation", Source: guidedSource,
 				Path: instPath, Deletable: true,
 			})
 		}
@@ -227,7 +229,7 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 				return
 			}
 		}
-		s.registry.Engines = append(s.registry.Engines, core.EngineAsset{Name: name, Family: "llama-cpp", Source: "模拟下载"})
+		s.registry.Engines = append(s.registry.Engines, core.EngineAsset{Name: name, Family: "llama-cpp", Source: l10n.TR("preview.source.download")})
 		s.registry.DefaultEngine = name
 		if s.checks.Engines == nil {
 			s.checks.Engines = map[string]core.EngineEligibility{}
@@ -279,13 +281,13 @@ func (p *previewSession) tickPolystrataModelPreview(id string) {
 func (p *previewSession) downloadLogTail(taskID string) string {
 	if taskID == "preview-polystrata-model-live" {
 		return strings.Join([]string{
-			"07:31:02 [1/4 preflight] Apple Silicon · Xcode CLT / CMake 3.31 就绪",
-			"07:31:04 [1/4 preflight] 磁盘可用 218.4 GiB >= 需要 42.0 GiB",
-			"07:31:05 [2/4 runtime] 下载 PolyStrata v0.1.45-poly.10 运行时归档",
-			"07:31:18 [2/4 runtime] 解压并校验 SHA-256 完成",
-			"07:31:19 [3/4 setup_engine] 构建 Metal 推理后端（ninja -j10）",
-			"07:33:41 [3/4 setup_engine] polystrata-server 构建就绪",
-			"07:33:42 [4/4 download] 拉取模型分片（2 个文件，共 35.04 GiB）",
+			l10n.TR("preview.polystrata.log.line1"),
+			l10n.TR("preview.polystrata.log.line2"),
+			l10n.TR("preview.polystrata.log.line3"),
+			l10n.TR("preview.polystrata.log.line4"),
+			l10n.TR("preview.polystrata.log.line5"),
+			l10n.TR("preview.polystrata.log.line6"),
+			l10n.TR("preview.polystrata.log.line7"),
 			"07:36:35 [download] Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf 4.15 / 35.04 GiB (21.46 MiB/s)",
 		}, "\n")
 	}
@@ -320,7 +322,7 @@ func (p *previewSession) cancelDownload(id string) {
 		if task.TaskId == id && task.State == "downloading" {
 			p.cancelEvents("download/" + id)
 			task.State, task.FinishedAt = "cancelled", previewValue(p.timestamp())
-			p.notice = "模拟下载已取消。"
+			p.noticeKey = "preview.notice.download_cancelled"
 			return
 		}
 	}

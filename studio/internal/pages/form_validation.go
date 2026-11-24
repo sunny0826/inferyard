@@ -5,11 +5,13 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"inferyard/studio/internal/l10n"
 )
 
 func pathError(value string) string {
 	if value != "" && (!filepath.IsAbs(value) || strings.ContainsRune(value, 0)) {
-		return "请输入有效的绝对路径。"
+		return l10n.TR("common.validation.abs_path")
 	}
 	return ""
 }
@@ -20,14 +22,14 @@ func urlError(value string) string {
 	}
 	u, err := url.Parse(strings.TrimSpace(value))
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return "请输入完整的 http 或 https URL。"
+		return l10n.TR("common.validation.http_url")
 	}
 	return ""
 }
 
 func tokenNameError(value string) string {
 	if value != "" && !environmentName.MatchString(value) {
-		return "只接受环境变量名，请勿输入明文 token。"
+		return l10n.TR("common.validation.env_var_name")
 	}
 	return ""
 }
@@ -35,13 +37,14 @@ func tokenNameError(value string) string {
 func resumeErrors(endpoint, pid string) (string, string) {
 	endpoint, pid = strings.TrimSpace(endpoint), strings.TrimSpace(pid)
 	if (endpoint == "") != (pid == "") {
-		return "服务地址与 PID 需同时填写或同时留空。", "服务地址与 PID 需同时填写或同时留空。"
+		msg := l10n.TR("common.validation.endpoint_pid_pair")
+		return msg, msg
 	}
 	pe := ""
 	if pid != "" {
 		n, err := strconv.ParseInt(pid, 10, 64)
 		if err != nil || n <= 0 {
-			pe = "PID 必须为正整数。"
+			pe = l10n.TR("common.validation.pid_positive_int")
 		}
 	}
 	return urlError(endpoint), pe
@@ -63,7 +66,7 @@ func (s *viewState) validateSettings() bool {
 
 func settingsPathError(value, previous string) string {
 	if value == "" && previous != "" {
-		return "已配置的目录不能为空。"
+		return l10n.TR("common.validation.configured_dir_required")
 	}
 	return pathError(value)
 }

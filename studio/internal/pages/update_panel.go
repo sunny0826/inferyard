@@ -3,7 +3,6 @@ package pages
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math"
 	"strings"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 var openUpdatePathFunc = core.OpenPathInOS
@@ -44,7 +44,7 @@ func (s *viewState) effectiveUpdateWorkloads() core.UpdateActiveWorkloads {
 
 func (s *viewState) updateHeaderBadge(c *ui.Context) {
 	st := s.currentUpdateState()
-	label, kind, icon, animated := updateBadgePresentation(st)
+	label, kind, icon, animated := updateBadgePresentationFor(contextLocale(c), st)
 	if label == "" {
 		return
 	}
@@ -72,9 +72,9 @@ func (s *viewState) updateHeaderBadge(c *ui.Context) {
 func (s *viewState) updateSettingsView(c *ui.Context) {
 	st := s.currentUpdateState()
 	t := tokens(c)
-	card(c, "软件更新", func() {
-		keyValueRow(c, "当前版本", "v"+strings.TrimPrefix(st.CurrentVersion, "v"), true)
-		statusText, statusKind := updateSettingsStatus(st)
+	card(c, tr(c, "update.title"), func() {
+		keyValueRow(c, tr(c, "update.current_version"), "v"+strings.TrimPrefix(st.CurrentVersion, "v"), true)
+		statusText, statusKind := updateSettingsStatusFor(contextLocale(c), st)
 		if statusText != "" {
 			ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 				ui.Text(c, statusText).FontSize(t.Type.Caption).TextColor(stateColor(c, statusKind))
@@ -83,12 +83,12 @@ func (s *viewState) updateSettingsView(c *ui.Context) {
 		checkingOrBusy := st.State == core.UpdateChecking || st.State == core.UpdateDownloading ||
 			st.State == core.UpdateVerifying || st.State == core.UpdateApplying
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			if button(c, "检查更新").Disabled(checkingOrBusy).Clicked() {
+			if button(c, tr(c, "update.action.check")).Disabled(checkingOrBusy).Clicked() {
 				s.updateDialogOpen = true
 				s.triggerUpdateCheck()
 			}
 			if st.Release != nil || st.State == core.UpdateReadyToApply || st.State == core.UpdateError {
-				if outlineButton(c, "查看更新").Clicked() {
+				if outlineButton(c, tr(c, "update.action.view")).Clicked() {
 					s.updateDialogOpen = true
 				}
 			}
@@ -99,16 +99,17 @@ func (s *viewState) updateSettingsView(c *ui.Context) {
 func (s *viewState) updateDialog(c *ui.Context) {
 	st := s.currentUpdateState()
 	t := tokens(c)
+	loc := contextLocale(c)
 	c.Key("update-dialog")
 	studioDialog(c, &s.updateDialogOpen, components.DialogOptions{
-		Label:                "软件更新",
+		Label:                tr(c, "update.title"),
 		DisableBackdropClose: st.State == core.UpdateApplying,
 		DisableEscapeClose:   st.State == core.UpdateApplying,
 	}, func(panel ui.Element) {
 		panel.Width(c.Theme().Space(125)).MaxWidthPercent(92).Children(func() {
 			ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
 				ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-					heading(c, "软件更新", 2).Grow(1)
+					heading(c, tr(c, "update.title"), 2).Grow(1)
 					if st.Release != nil {
 						badge(c, "v"+strings.TrimPrefix(st.CurrentVersion, "v")+" → v"+st.Release.Version, stateActive, badgeOptions{Size: sizeSM})
 					} else {
@@ -117,7 +118,7 @@ func (s *viewState) updateDialog(c *ui.Context) {
 				})
 
 				if st.Release != nil {
-					notes := summarizeReleaseNotes(st.Release.Notes)
+					notes := summarizeReleaseNotesFor(loc, st.Release.Notes)
 					ui.Scroll(c.Key("update-release-notes")).FillWidth().MaxHeight(160).
 						Padding(t.Density.Row).Radius(t.Radius.Inset).
 						Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).
@@ -132,29 +133,29 @@ func (s *viewState) updateDialog(c *ui.Context) {
 						Kind:    stateWarning,
 						Size:    bannerCompact,
 						Icon:    lucide.TriangleAlert,
-						Message: formatUpdateWorkloadWarning(workloads),
+						Message: formatUpdateWorkloadWarningFor(loc, workloads),
 					})
 				}
 
 				switch st.State {
 				case core.UpdateIdle, core.UpdateUpToDate:
-					msg := "点击检查是否有新版本可用。"
+					msg := tr(c, "update.dialog.idle_msg")
 					if st.State == core.UpdateUpToDate {
-						msg = "当前已是最新版本。"
+						msg = tr(c, "update.dialog.up_to_date_msg")
 					}
 					ui.Text(c, msg).TextColor(t.Color.FgSecondary)
 					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-						if primaryButton(c, "检查更新").Clicked() {
+						if primaryButton(c, tr(c, "update.action.check")).Clicked() {
 							s.triggerUpdateCheck()
 						}
-						if button(c, "关闭").Clicked() {
+						if button(c, tr(c, "common.close")).Clicked() {
 							s.updateDialogOpen = false
 						}
 					})
 				case core.UpdateChecking:
-					progressBar(c, -1, "检查更新进度")
-					ui.Text(c, "正在检查新版本…").TextColor(t.Color.FgSecondary)
-					if button(c, "关闭").Clicked() {
+					progressBar(c, -1, tr(c, "update.progress.checking"))
+					ui.Text(c, tr(c, "update.dialog.checking_msg")).TextColor(t.Color.FgSecondary)
+					if button(c, tr(c, "common.close")).Clicked() {
 						s.updateDialogOpen = false
 					}
 				case core.UpdateAvailable:
@@ -167,58 +168,58 @@ func (s *viewState) updateDialog(c *ui.Context) {
 					}
 					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 						if st.CanSelfUpdate && st.Release != nil && st.Release.AssetURL != "" && st.Release.ChecksumsURL != "" {
-							if primaryButton(c, "立即更新").Clicked() {
+							if primaryButton(c, tr(c, "update.action.update_now")).Clicked() {
 								s.triggerUpdateStart()
 							}
 						}
 						if st.Release != nil && st.Release.ReleaseURL != "" {
-							if outlineButton(c, "打开发布页").Clicked() {
+							if outlineButton(c, tr(c, "update.action.open_release")).Clicked() {
 								s.openUpdateURL(c, st.Release.ReleaseURL)
 							}
 						}
-						if button(c, "关闭").Clicked() {
+						if button(c, tr(c, "common.close")).Clicked() {
 							s.updateDialogOpen = false
 						}
 					})
 				case core.UpdateDownloading:
-					progressBar(c, progressValue(st.DownloadedBytes, st.TotalBytes), "更新下载进度")
+					progressBar(c, progressValue(st.DownloadedBytes, st.TotalBytes), tr(c, "update.progress.downloading"))
 					ui.Text(c, formatUpdateProgress(st)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-						if button(c, "取消下载").Clicked() {
+						if button(c, tr(c, "update.action.cancel_download")).Clicked() {
 							s.triggerUpdateCancel()
 						}
-						if button(c, "关闭").Clicked() {
+						if button(c, tr(c, "common.close")).Clicked() {
 							s.updateDialogOpen = false
 						}
 					})
 				case core.UpdateVerifying:
-					progressBar(c, -1, "校验更新安装包")
-					ui.Text(c, "正在校验 SHA-256 校验和…").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-					if button(c, "取消").Clicked() {
+					progressBar(c, -1, tr(c, "update.progress.verifying"))
+					ui.Text(c, tr(c, "update.dialog.verifying_msg")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+					if button(c, tr(c, "common.cancel")).Clicked() {
 						s.triggerUpdateCancel()
 					}
 				case core.UpdateReadyToApply:
 					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 						if workloads.Any() {
-							if dangerButton(c, "停止任务并安装").Clicked() {
+							if dangerButton(c, tr(c, "update.action.stop_and_install")).Clicked() {
 								s.triggerUpdateApply(true)
 							}
 						} else {
-							if primaryButton(c, "更新并重启").Clicked() {
+							if primaryButton(c, tr(c, "update.action.update_and_restart")).Clicked() {
 								s.triggerUpdateApply(false)
 							}
 						}
-						if button(c, "稍后").Clicked() {
+						if button(c, tr(c, "update.action.later")).Clicked() {
 							s.dismissUpdateReadyPrompt(st)
 						}
 					})
 				case core.UpdateApplying:
-					progressBar(c, -1, "安装更新进度")
-					ui.Text(c, "正在安装更新并准备重启…").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+					progressBar(c, -1, tr(c, "update.progress.applying"))
+					ui.Text(c, tr(c, "update.status.applying")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 				case core.UpdateError:
 					errMsg := st.ErrorMessage
 					if errMsg == "" {
-						errMsg = "更新失败，请重试或前往发布页下载。"
+						errMsg = tr(c, "update.dialog.error_fallback")
 					}
 					noticeBanner(c, noticeBannerOptions{
 						Kind:    stateDanger,
@@ -227,20 +228,20 @@ func (s *viewState) updateDialog(c *ui.Context) {
 						Message: errMsg,
 					})
 					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-						if primaryButton(c, "重试").Clicked() {
+						if primaryButton(c, tr(c, "common.retry")).Clicked() {
 							s.triggerUpdateRetry()
 						}
 						if st.FallbackPath != "" {
-							if outlineButton(c, "打开安装包").Clicked() {
+							if outlineButton(c, tr(c, "update.action.open_package")).Clicked() {
 								s.openUpdatePath(st.FallbackPath)
 							}
 						}
 						if st.Release != nil && st.Release.ReleaseURL != "" {
-							if outlineButton(c, "打开发布页").Clicked() {
+							if outlineButton(c, tr(c, "update.action.open_release")).Clicked() {
 								s.openUpdateURL(c, st.Release.ReleaseURL)
 							}
 						}
-						if button(c, "关闭").Clicked() {
+						if button(c, tr(c, "common.close")).Clicked() {
 							s.updateDialogOpen = false
 						}
 					})
@@ -273,28 +274,30 @@ func (s *viewState) updateReadyPrompt(c *ui.Context) {
 				t.Elevation.LG,
 			)
 			card.Children(func() {
-				ui.Text(c, "发现新版本").Bold().FontSize(t.Type.CardTitle).TextColor(t.Color.FgPrimary)
-				ui.Text(c, fmt.Sprintf("版本 %s 已可更新，重启后生效。", ver)).
+				ui.Text(c, tr(c, "update.badge.available")).Bold().FontSize(t.Type.CardTitle).TextColor(t.Color.FgPrimary)
+				ui.Text(c, trf(c, "update.prompt.ready_body", "version", ver)).
 					FontSize(t.Type.Body).TextColor(t.Color.FgSecondary)
+				notesLabel := tr(c, "update.prompt.view_changelog")
 				notesBtn := components.Button(c, "", components.ButtonGhost).
-					Padding(0).Radius(promptBtnRadius).AlignSelf(ui.Start).Label("查看更新日志")
+					Padding(0).Radius(promptBtnRadius).AlignSelf(ui.Start).Label(notesLabel)
 				notesBtn.Children(func() {
-					ui.Text(c, "查看更新日志").FontSize(t.Type.Body).
+					ui.Text(c, notesLabel).FontSize(t.Type.Body).
 						TextColor(t.Color.Accent).Underline().UnderlineOffset(2)
 				})
 				if notesBtn.Clicked() {
 					s.updateDialogOpen = true
 				}
 				ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Gap(t.Density.Stack).Padding(t.Density.Row, 0, 0, 0).Children(func() {
+					laterLabel := tr(c, "update.action.later")
 					laterBtn := components.Button(c, "", components.ButtonGhost).
-						Padding(t.Density.Row, t.Density.Stack).Radius(promptBtnRadius).Label("稍后")
+						Padding(t.Density.Row, t.Density.Stack).Radius(promptBtnRadius).Label(laterLabel)
 					laterBtn.Children(func() {
-						ui.Text(c, "稍后").FontSize(t.Type.Body).TextColor(t.Color.FgSecondary)
+						ui.Text(c, laterLabel).FontSize(t.Type.Body).TextColor(t.Color.FgSecondary)
 					})
 					if laterBtn.Clicked() {
 						s.dismissUpdateReadyPrompt(st)
 					}
-					restartBtn := components.Button(c, "更新并重启", components.ButtonPrimary).
+					restartBtn := components.Button(c, tr(c, "update.action.update_and_restart"), components.ButtonPrimary).
 						Padding(t.Density.Row, t.Density.Section).Radius(promptBtnRadius)
 					if restartBtn.Clicked() {
 						if s.effectiveUpdateWorkloads().Any() {
@@ -421,15 +424,15 @@ func (s *viewState) openUpdateURL(c *ui.Context, rawURL string) {
 		return
 	}
 	if s.preview != nil {
-		s.enqueueStatusToast("已在浏览器打开发布页（模拟）")
+		s.enqueueStatusToast(tr(c, "update.toast.release_opened_preview"))
 		return
 	}
 	c.OpenURLThen(rawURL, func(err error) {
 		if err != nil {
-			s.enqueueStatusToast("无法打开发布页")
+			s.enqueueStatusToast(l10n.TR("update.toast.release_open_failed"))
 			return
 		}
-		s.enqueueStatusToast("已在浏览器打开发布页")
+		s.enqueueStatusToast(l10n.TR("update.toast.release_opened"))
 	})
 }
 
@@ -438,12 +441,12 @@ func (s *viewState) openUpdatePath(path string) {
 		return
 	}
 	if s.preview != nil {
-		s.enqueueStatusToast("已打开安装包（模拟）")
+		s.enqueueStatusToast(l10n.TR("update.toast.package_opened_preview"))
 		return
 	}
 	if err := openUpdatePathFunc(path); err != nil {
-		s.enqueueStatusToast("无法打开安装包")
+		s.enqueueStatusToast(l10n.TR("update.toast.package_open_failed"))
 		return
 	}
-	s.enqueueStatusToast("已打开安装包")
+	s.enqueueStatusToast(l10n.TR("update.toast.package_opened"))
 }

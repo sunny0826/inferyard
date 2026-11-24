@@ -1,6 +1,7 @@
 package core
 
 import (
+	"inferyard/studio/internal/l10n"
 	"slices"
 	"sort"
 	"strings"
@@ -287,13 +288,13 @@ func (b EnginePlatformBuild) CanDirectDownloadOn(currentPlatform string) bool {
 func ChannelLabel(ch ReleaseChannel) string {
 	switch ch {
 	case ReleaseStable:
-		return "正式版"
+		return l10n.TR("core.engine_catalog.channel.stable")
 	case ReleaseLatest:
-		return "最新版"
+		return l10n.TR("core.engine_catalog.channel.latest")
 	case ReleasePreRelease:
-		return "预发布"
+		return l10n.TR("core.engine_catalog.channel.prerelease")
 	case ReleaseSnapshot:
-		return "快照版"
+		return l10n.TR("core.engine_catalog.channel.snapshot")
 	default:
 		return string(ch)
 	}
@@ -302,13 +303,13 @@ func ChannelLabel(ch ReleaseChannel) string {
 func AcquireModeLabel(mode EngineAcquireMode) string {
 	switch mode {
 	case EngineAcquireDirect:
-		return "应用内下载"
+		return l10n.TR("core.engine_catalog.acquire.direct")
 	case EngineAcquireManagedSetup:
-		return "应用内引导安装"
+		return l10n.TR("core.engine_catalog.acquire.managed_setup")
 	case EngineAcquireManualArchive:
-		return "手动安装"
+		return l10n.TR("core.engine_catalog.acquire.manual_archive")
 	case EngineAcquireExternalPage:
-		return "官网下载"
+		return l10n.TR("core.engine_catalog.acquire.external_page")
 	default:
 		return string(mode)
 	}
@@ -319,7 +320,7 @@ func ModelFormatLabel(format string) string {
 	case "gguf":
 		return "GGUF"
 	case "directory":
-		return "目录模型"
+		return l10n.TR("core.engine_catalog.model_format.directory")
 	default:
 		return format
 	}

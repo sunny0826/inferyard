@@ -10,6 +10,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 type pendingAssetDelete struct {
@@ -44,11 +45,11 @@ func compactAssetBytes(bytes int64) string {
 
 func modelsStorageSummaryText(reg core.Registry) string {
 	used := compactAssetBytes(reg.TotalModelBytes)
-	free := "缺测"
+	free := l10n.TR("models.storage.missing")
 	if reg.DiskFreeBytes != nil {
 		free = compactAssetBytes(*reg.DiskFreeBytes)
 	}
-	return "总占用 " + used + " · 可用磁盘空间 " + free
+	return l10n.TRf("models.storage.summary", "used", used, "free", free)
 }
 
 func sameModelRoot(a, b string) bool {
@@ -93,7 +94,7 @@ func (s *viewState) addExtraModelsRoot(dir string) {
 		if !slices.ContainsFunc(s.registry.ModelRoots, func(r string) bool { return sameModelRoot(r, dir) }) {
 			s.registry.ModelRoots = append(s.registry.ModelRoots, dir)
 		}
-		s.enqueueStatusToast("已模拟添加模型目录：" + dir)
+		s.enqueueStatusToast(l10n.TRf("models.roots.toast.added_preview", "dir", dir))
 		return
 	}
 	if s.service == nil {
@@ -111,7 +112,7 @@ func (s *viewState) addExtraModelsRoot(dir string) {
 					s.registry.ModelRoots = append(s.registry.ModelRoots, dir)
 				}
 			})
-			return "已记录目录：" + dir, nil
+			return l10n.TRf("models.roots.toast.added", "dir", dir), nil
 		})
 		return
 	}
@@ -124,7 +125,7 @@ func (s *viewState) addExtraModelsRoot(dir string) {
 	if !slices.ContainsFunc(s.registry.ModelRoots, func(r string) bool { return sameModelRoot(r, dir) }) {
 		s.registry.ModelRoots = append(s.registry.ModelRoots, dir)
 	}
-	s.enqueueStatusToast("已记录目录：" + dir)
+	s.enqueueStatusToast(l10n.TRf("models.roots.toast.added", "dir", dir))
 }
 
 func (s *viewState) removeExtraModelsRoot(dir string) {
@@ -136,7 +137,7 @@ func (s *viewState) removeExtraModelsRoot(dir string) {
 		s.registry.ModelRoots = slices.DeleteFunc(s.registry.ModelRoots, func(r string) bool {
 			return sameModelRoot(r, dir)
 		})
-		s.enqueueStatusToast("已模拟移除模型目录：" + dir)
+		s.enqueueStatusToast(l10n.TRf("models.roots.toast.removed_preview", "dir", dir))
 		return
 	}
 	if s.service == nil {
@@ -154,7 +155,7 @@ func (s *viewState) removeExtraModelsRoot(dir string) {
 					return sameModelRoot(r, dir)
 				})
 			})
-			return "已移除目录：" + dir, nil
+			return l10n.TRf("models.roots.toast.removed", "dir", dir), nil
 		})
 		return
 	}
@@ -167,7 +168,7 @@ func (s *viewState) removeExtraModelsRoot(dir string) {
 	s.registry.ModelRoots = slices.DeleteFunc(s.registry.ModelRoots, func(r string) bool {
 		return sameModelRoot(r, dir)
 	})
-	s.enqueueStatusToast("已移除目录：" + dir)
+	s.enqueueStatusToast(l10n.TRf("models.roots.toast.removed", "dir", dir))
 }
 
 func (s *viewState) pickExtraModelsRoot(defaultPath string) {
@@ -184,7 +185,7 @@ func (s *viewState) pickExtraModelsRoot(defaultPath string) {
 	}
 	options := mygo.OpenDialogOptions{
 		Parent:            s.win,
-		Title:             browseModels.title,
+		Title:             browseModels.dialogTitle(),
 		DefaultPath:       defaultPath,
 		Directory:         true,
 		CreateDirectories: true,
@@ -192,7 +193,7 @@ func (s *viewState) pickExtraModelsRoot(defaultPath string) {
 	apply := func(paths []string, err error) {
 		switch {
 		case err != nil:
-			s.enqueueStatusToast(browseFailureMessage)
+			s.enqueueStatusToast(browseFailureText())
 		case len(paths) > 0 && strings.TrimSpace(paths[0]) != "":
 			s.addExtraModelsRoot(paths[0])
 		}
@@ -215,7 +216,7 @@ var revealAssetFunc = func(s *core.Service, kind, name string) *core.ApiError {
 
 func (s *viewState) revealAsset(kind, name string) {
 	if s.preview != nil {
-		s.enqueueStatusToast("模拟打开目录：" + name)
+		s.enqueueStatusToast(l10n.TRf("models.asset.toast.reveal_preview", "name", name))
 		return
 	}
 	if s.service == nil {
@@ -257,7 +258,7 @@ func (s *viewState) deleteManagedAssetVerified(kind, name, expectedPath, expecte
 				s.engine = ""
 			}
 		}
-		s.enqueueStatusToast("已模拟删除：" + name)
+		s.enqueueStatusToast(l10n.TRf("models.asset.toast.deleted_preview", "name", name))
 		return
 	}
 	if s.service == nil {
@@ -274,7 +275,7 @@ func (s *viewState) deleteManagedAssetVerified(kind, name, expectedPath, expecte
 			if err := execDelete(); err != nil {
 				return "", err
 			}
-			return "已删除：" + name, nil
+			return l10n.TRf("models.asset.toast.deleted", "name", name), nil
 		})
 		return
 	}
@@ -290,22 +291,22 @@ func (s *viewState) deleteManagedAssetVerified(kind, name, expectedPath, expecte
 	} else if kind == "engine" && s.engine == name {
 		s.engine = ""
 	}
-	s.enqueueStatusToast("已删除：" + name)
+	s.enqueueStatusToast(l10n.TRf("models.asset.toast.deleted", "name", name))
 }
 
 func (s *viewState) modelsPageActions(c *ui.Context, wizardOpen *bool) {
 	t := tokens(c)
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
-		button(c, "下载更多").OnClick(func() { s.selected = "downloads" })
-		button(c, "添加模型目录").Disabled(s.busy || !s.canBrowse()).OnClick(func() {
+		button(c, tr(c, "models.action.download_more")).OnClick(func() { s.selected = "downloads" })
+		button(c, tr(c, "models.action.add_model_dir")).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
 			s.pickExtraModelsRoot(emptyText(s.settings.Settings.ModelsRoot))
 		})
-		engineLabel := "添加本地引擎"
+		engineLabel := tr(c, "engine.wizard.title")
 		if *wizardOpen {
-			engineLabel = "收起添加引擎"
+			engineLabel = tr(c, "models.action.collapse_add_engine")
 		}
 		button(c, engineLabel).OnClick(func() { *wizardOpen = !*wizardOpen })
-		refreshButton(c, "刷新", s.registry.Refreshing || s.refreshing).
+		refreshButton(c, tr(c, "models.action.refresh"), s.registry.Refreshing || s.refreshing).
 			Disabled(s.registry.Refreshing || s.busy).
 			OnClick(s.refreshAssetsAction)
 	})
@@ -324,12 +325,12 @@ func (s *viewState) modelStorageAndRootsView(c *ui.Context) {
 					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 						ui.Text(c, dir).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine()
 						if isExtraModelRoot(idx, dir, primaryRoot) {
-							sizedButton(c, components.ButtonGhost, sizeSM, "移除").
-								Label("移除目录 · " + dir).
+							sizedButton(c, components.ButtonGhost, sizeSM, tr(c, "models.roots.remove")).
+								Label(trf(c, "models.roots.remove_label", "dir", dir)).
 								Disabled(s.busy).
 								OnClick(func() { s.removeExtraModelsRoot(dir) })
 						} else {
-							ui.Text(c, "主目录").FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary).SingleLine()
+							ui.Text(c, tr(c, "models.roots.primary")).FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary).SingleLine()
 						}
 					})
 				}
@@ -337,11 +338,11 @@ func (s *viewState) modelStorageAndRootsView(c *ui.Context) {
 		}
 		if suggestions := s.suggestedModelDirs(); len(suggestions) > 0 {
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-				ui.Text(c, "本机常见目录：").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				ui.Text(c, tr(c, "models.roots.suggested")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 				for _, item := range suggestions {
 					dir := item
 					sizedButton(c, components.ButtonOutline, sizeSM, "+ "+dir.Label).
-						Label("添加常见目录 · " + dir.Label).
+						Label(trf(c, "models.roots.add_suggested_label", "label", dir.Label)).
 						Description(dir.Path).
 						Disabled(s.busy).
 						OnClick(func() { s.addExtraModelsRoot(dir.Path) })
@@ -355,7 +356,7 @@ func (s *viewState) modelRowTrailing(c *ui.Context, m core.ModelAsset, pending *
 	t := tokens(c)
 	ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 		if !m.Available {
-			badge(c, "不可用", stateWarning, badgeOptions{Style: badgeDot, Size: sizeSM})
+			badge(c, tr(c, "models.badge.unavailable"), stateWarning, badgeOptions{Style: badgeDot, Size: sizeSM})
 		}
 		modelTaskAction(c, s, m)
 		s.assetRowActions(c, "model", m.Name, m.Path, m.Format, "", m.SizeBytes, m.Deletable, pending)
@@ -373,12 +374,12 @@ func (s *viewState) engineRowTrailing(c *ui.Context, eng core.EngineAsset, pendi
 
 func (s *viewState) assetRowActions(c *ui.Context, kind, name, path, format, family string, sizeBytes *int64, deletable bool, pending *pendingAssetDelete) {
 	if path != "" || s.preview != nil {
-		button(c, "打开目录").Label("打开目录 · " + name).Disabled(s.busy).OnClick(func() {
+		button(c, tr(c, "models.action.open_dir")).Label(trf(c, "models.action.open_dir_label", "name", name)).Disabled(s.busy).OnClick(func() {
 			s.revealAsset(kind, name)
 		})
 	}
 	if deletable {
-		if dangerButton(c, "删除").Label("删除 · " + name).Disabled(s.busy || pending.inspecting).Clicked() {
+		if dangerButton(c, tr(c, "models.action.delete")).Label(trf(c, "models.action.delete_label", "name", name)).Disabled(s.busy || pending.inspecting).Clicked() {
 			s.openDeleteConfirm(pending, kind, name, path, format, family, sizeBytes)
 		}
 	}
@@ -485,53 +486,54 @@ func applyDeleteInfo(p *pendingAssetDelete, info core.AssetDeleteInfo) {
 func assetDeleteConfirmMessage(p pendingAssetDelete) string {
 	sizeClause := ""
 	if p.reclaimableBytes != nil {
-		sizeClause = fmt.Sprintf("，预计释放 %s", compactAssetBytes(*p.reclaimableBytes))
+		sizeClause = l10n.TRf("models.delete.clause.size", "size", compactAssetBytes(*p.reclaimableBytes))
 	}
 	pathClause := ""
 	if p.path != "" {
-		pathClause = fmt.Sprintf("（%s）", p.path)
+		pathClause = l10n.TRf("models.delete.clause.path", "path", p.path)
 	}
 	switch p.scope {
 	case "polystrata_engine":
-		msg := fmt.Sprintf("将卸载并移除 PolyStrata 托管运行时「%s」%s%s，并移除本地引擎注册，此操作不可撤销。", p.name, pathClause, sizeClause)
+		parts := []string{l10n.TRf("models.delete.confirm.polystrata_engine", "name", p.name, "pathClause", pathClause, "sizeClause", sizeClause)}
 		if p.keepsModelData {
-			msg += " 已下载的模型包（polystrata-data）将保留，可在模型列表中单独删除。"
+			parts = append(parts, l10n.TR("models.delete.note.keeps_model_data"))
 		}
-		return msg
+		return strings.Join(parts, " ")
 	case "polystrata_model":
-		msg := fmt.Sprintf("将删除 PolyStrata 模型「%s」的配置及未被引用的托管模型权重%s，此操作不可撤销。", p.name, sizeClause)
+		parts := []string{l10n.TRf("models.delete.confirm.polystrata_model", "name", p.name, "sizeClause", sizeClause)}
 		if p.preservedShared {
-			msg += " 仍在使用的共享权重将被保留。"
+			parts = append(parts, l10n.TR("models.delete.note.preserved_shared"))
 		}
 		if p.preservedExternal {
-			msg += " 托管目录外的外部权重文件不会被删除。"
+			parts = append(parts, l10n.TR("models.delete.note.preserved_external_managed"))
 		}
-		return msg
+		return strings.Join(parts, " ")
 	case "polystrata_model_config_only":
-		msg := fmt.Sprintf("将仅删除 PolyStrata 模型配置「%s」%s，此操作不可撤销。", p.name, sizeClause)
+		parts := []string{l10n.TRf("models.delete.confirm.polystrata_model_config_only", "name", p.name, "sizeClause", sizeClause)}
 		if p.preservedShared {
-			msg += " 仍在使用的共享权重将被保留。"
+			parts = append(parts, l10n.TR("models.delete.note.preserved_shared"))
 		}
 		if p.preservedExternal {
-			msg += " 外部权重文件不会被删除。"
+			parts = append(parts, l10n.TR("models.delete.note.preserved_external"))
 		}
-		return msg
+		return strings.Join(parts, " ")
 	default:
 		if p.reclaimableBytes != nil {
-			return fmt.Sprintf("将从磁盘删除「%s」%s%s，此操作不可撤销。", p.name, pathClause, sizeClause)
+			return l10n.TRf("models.delete.confirm.standard_sized", "name", p.name, "pathClause", pathClause, "sizeClause", sizeClause)
 		}
-		return fmt.Sprintf("将从磁盘删除「%s」%s以释放空间，此操作不可撤销。", p.name, pathClause)
+		return l10n.TRf("models.delete.confirm.standard", "name", p.name, "pathClause", pathClause)
 	}
 }
 
 func (s *viewState) assetDeleteDialog(c *ui.Context, pending *pendingAssetDelete) {
 	c.Key("asset-delete-dialog")
+	title := tr(c, "models.delete.dialog_title")
 	result := components.AlertDialog(c, &pending.open, components.AlertDialogOptions{
-		DialogOptions: components.DialogOptions{Label: "删除以释放空间"},
-		Title:         "删除以释放空间",
+		DialogOptions: components.DialogOptions{Label: title},
+		Title:         title,
 		Message:       assetDeleteConfirmMessage(*pending),
-		ConfirmLabel:  "确认删除",
-		CancelLabel:   "取消",
+		ConfirmLabel:  tr(c, "models.delete.confirm_button"),
+		CancelLabel:   tr(c, "models.delete.cancel_button"),
 	})
 	switch result {
 	case components.DialogConfirmed:

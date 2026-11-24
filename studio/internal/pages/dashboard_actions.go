@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -65,9 +66,9 @@ func suggestInitDir(path string, exists, initialized bool) string {
 
 func executeMessage(r core.WizardResult) string {
 	if len(r.Tasks) > 0 {
-		return "运行已开始，证据收尾完成后进入下一步。"
+		return l10n.TR("dashboard.toast.run_started")
 	}
-	return "操作完成，已更新工作区进度。"
+	return l10n.TR("dashboard.toast.action_done")
 }
 func (w *viewState) baseCommand() []string {
 	if w.progress == nil {
@@ -185,7 +186,7 @@ func (w *viewState) startEngine() {
 			return "", core.Err("cancelled")
 		}
 		if bundle.NextAction == "resume" || blockedPlan(bundle) {
-			return "服务已就绪", nil
+			return l10n.TR("dashboard.toast.service_ready"), nil
 		}
 		command, _, e := benchmarkBindCommand(workspace, bundle, state)
 		if e != nil {
@@ -198,7 +199,7 @@ func (w *viewState) startEngine() {
 		if r.ExitCode != 0 {
 			return "", wizardFailure(r)
 		}
-		return "服务已启动并重新绑定", nil
+		return l10n.TR("dashboard.toast.service_started_bound"), nil
 	})
 }
 func (w *viewState) stopEngine() {
@@ -207,7 +208,7 @@ func (w *viewState) stopEngine() {
 	}
 	w.guideWork(func() (string, *core.ApiError) {
 		_, e := w.stopEngineCall()
-		return "已请求停止服务", e
+		return l10n.TR("dashboard.toast.stop_requested"), e
 	})
 }
 func setArg(args []string, flag, value string) []string {
@@ -268,7 +269,7 @@ func (w *viewState) executeBindingFor(target, command string, e *core.ApiError) 
 			return "", e
 		}
 		w.updateView(w.clearRecoveredBinding)
-		return "绑定完成", nil
+		return l10n.TR("dashboard.toast.bind_done"), nil
 	})
 }
 
@@ -445,7 +446,7 @@ func (s *viewState) prepareEnvironment() {
 			_ = s.service.RefreshAssets()
 			_ = s.service.RefreshDevice()
 		}
-		return "环境已准备", e
+		return l10n.TR("dashboard.toast.env_ready"), e
 	})
 }
 func (s *viewState) checkWorkspaceDevice() {
@@ -470,7 +471,7 @@ func (s *viewState) checkWorkspaceDevice() {
 		if r.ExitCode != 0 {
 			return "", wizardFailure(r)
 		}
-		return "设备检查完成", nil
+		return l10n.TR("dashboard.toast.device_check_done"), nil
 	})
 }
 func (s *viewState) taskBundles() []inferyard.BundleProgress {

@@ -9,6 +9,7 @@ import (
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 )
 
 func stateBanner(c *ui.Context, kind stateKind, icon func() *ui.SVG, fn func(foreground ui.Color)) {
@@ -37,23 +38,23 @@ func errorView(c *ui.Context, e *core.ApiError) {
 func conflictReasonLabel(reason string) string {
 	switch reason {
 	case "not_resumable":
-		return "当前运行不可续测；请用「新任务」重新测评。"
+		return l10n.TR("common.conflict.not_resumable")
 	case "run_active", "engine_active":
-		return "已有任务或服务在运行，请先取消并等待收尾后重试。"
+		return l10n.TR("common.conflict.run_or_engine_active")
 	case "engine_stopping":
-		return "引擎正在停止，请等待回收后再运行。"
+		return l10n.TR("common.conflict.engine_stopping")
 	case "engine_orphaned":
-		return "存在遗留服务记录，请先在任务页处理后再运行。"
+		return l10n.TR("common.conflict.engine_orphaned")
 	case "settings_incomplete":
-		return "目录配置缺项，请先在设置中补全路径。"
+		return l10n.TR("common.conflict.settings_incomplete")
 	case "output_exists":
-		return "输出目录已存在，请选择新目录。"
+		return l10n.TR("common.conflict.output_exists")
 	case "invalid_state":
-		return "当前状态不支持该操作，请刷新进度后重试。"
+		return l10n.TR("common.conflict.invalid_state")
 	case "polystrata_setup_active":
-		return "已有 PolyStrata 安装任务正在进行，请等待完成或取消后重试。"
+		return l10n.TR("common.conflict.polystrata_setup_active")
 	case "update_applying":
-		return "正在安装软件更新，请稍后再发起任务。"
+		return l10n.TR("common.conflict.update_applying")
 	default:
 		return ""
 	}
@@ -67,35 +68,84 @@ func warningBanner(c *ui.Context, message string) {
 		ui.Text(c, message).Role(ui.RoleStatus).TextColor(foreground)
 	})
 }
+
+var taskPrepStageKeys = map[string]string{
+	"awaiting_service":  "common.task.prep.awaiting_service",
+	"switching_service": "common.task.prep.switching_service",
+	"starting_engine":   "common.task.prep.starting_engine",
+	"binding":           "common.task.prep.binding",
+}
+
 func taskLabel(t core.RunTask) string {
+	return taskLabelFor("", t)
+}
+
+func taskLabelFor(locale string, t core.RunTask) string {
 	if !terminal(t.State) && t.PreparationStage != "" {
-		if label, ok := map[string]string{"awaiting_service": "等待连接 LM Studio", "switching_service": "正在切换测评题集服务", "starting_engine": "正在启动测评题集服务", "binding": "正在核验服务连接"}[t.PreparationStage]; ok {
-			return label
+		if key, ok := taskPrepStageKeys[t.PreparationStage]; ok {
+			return l10n.T(locale, key)
 		}
 	}
 	if t.Exit != nil {
 		switch t.Exit.ExitCode {
 		case inferyard.ExitComplete:
-			return "成功"
+			return l10n.T(locale, "common.task.exit.complete")
 		case inferyard.ExitBlocked:
-			return "输入 / 预检阻断"
+			return l10n.T(locale, "common.task.exit.blocked")
 		case inferyard.ExitIncomplete:
-			return "运行不完整"
+			return l10n.T(locale, "common.task.exit.incomplete")
 		case inferyard.ExitToolError:
-			return "工具 / 证据错误"
+			return l10n.T(locale, "common.task.exit.tool_error")
 		case inferyard.ExitCancelled:
-			return "已取消"
+			return l10n.T(locale, "common.task.exit.cancelled")
 		}
 	}
 	if t.State == "starting" && t.Queued {
-		return "排队中"
+		return l10n.T(locale, "common.task.queued")
 	}
-	return stateLabel(t.State)
+	return stateLabelFor(locale, t.State)
 }
+
+var stateLabelKeys = map[string]string{
+	"orphaned":          "common.state.orphaned",
+	"":                  "common.missing",
+	"stopped":           "common.state.stopped",
+	"stopping":          "common.state.stopping",
+	"starting":          "common.state.starting",
+	"running":           "common.state.running",
+	"cancelling":        "common.state.cancelling",
+	"done":              "common.state.done",
+	"failed":            "common.state.failed",
+	"cancelled":         "common.state.cancelled",
+	"downloading":       "common.state.downloading",
+	"complete":          "common.state.complete",
+	"partial":           "common.state.partial",
+	"dirty":             "common.state.dirty",
+	"pending":           "common.state.pending",
+	"completed":         "common.state.completed",
+	"invalid":           "common.state.invalid",
+	"probe":             "common.state.probe",
+	"warmup":            "common.state.warmup",
+	"baseline":          "common.state.baseline",
+	"formal":            "common.state.formal",
+	"scoring":           "common.state.scoring",
+	"residual":          "common.state.residual",
+	"finalizing":        "common.state.finalizing",
+	"candidate_missing": "common.state.candidate_missing",
+	"bound_missing":     "common.state.bound_missing",
+	"run_missing":       "common.state.run_missing",
+	"run_incomplete":    "common.state.run_incomplete",
+	"run_complete":      "common.state.run_complete",
+	"preflight_missing": "common.state.preflight_missing",
+}
+
 func stateLabel(v string) string {
-	labels := map[string]string{"orphaned": "遗留引擎", "": "缺测", "stopped": "已停止", "stopping": "停止中", "starting": "启动中", "running": "运行中", "cancelling": "取消中", "done": "已结束", "failed": "失败", "cancelled": "已取消", "downloading": "下载中", "complete": "完整", "partial": "不完整", "dirty": "未排空", "pending": "待执行", "completed": "已完成", "invalid": "无效", "probe": "探测", "warmup": "预热", "baseline": "基线", "formal": "正式运行", "scoring": "评分", "residual": "残留检测", "finalizing": "收尾", "candidate_missing": "待创建测评配置", "bound_missing": "待连接服务", "run_missing": "待运行", "run_incomplete": "运行未完成", "run_complete": "证据已收尾", "preflight_missing": "待检查设备"}
-	if label, ok := labels[v]; ok {
-		return label
+	return stateLabelFor("", v)
+}
+
+func stateLabelFor(locale, v string) string {
+	if key, ok := stateLabelKeys[v]; ok {
+		return l10n.T(locale, key)
 	}
 	return v
 }
@@ -120,7 +170,7 @@ func (s *viewState) historyRuns() []core.RunSummary {
 }
 func number[T ~int64 | ~float64](v *T) string {
 	if v == nil {
-		return "缺测"
+		return l10n.TR("common.missing")
 	}
 	return fmt.Sprint(*v)
 }

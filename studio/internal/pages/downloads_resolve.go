@@ -7,6 +7,7 @@ import (
 
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 )
 
 type modelResolveOutcome struct {
@@ -62,7 +63,7 @@ func customModelURLError(value string) string {
 		return err
 	}
 	if !core.IsSupportedModelURL(trimmed) {
-		return "请输入 HuggingFace 或 ModelScope 的 .gguf 或 /tree 目录地址（支持 /blob、/resolve、/tree）。"
+		return l10n.TR("downloads.validation.model_url")
 	}
 	return ""
 }
@@ -80,7 +81,7 @@ func (s *viewState) acquireStarterBundle(engineURL, modelURL string) {
 		if _, e := s.service.CreateOrResolveModelDownload(s.ctx, core.CreateDownloadRequest{SourceUrl: modelURL}, ""); e != nil {
 			return "", e
 		}
-		return "已将推荐引擎与模型加入下载队列", nil
+		return l10n.TR("downloads.toast.starter_queued"), nil
 	})
 }
 
@@ -90,7 +91,7 @@ func (s *viewState) acquirePolystrataSetup(req core.PolystrataSetupRequest) {
 	}
 	s.workDownload(func() (string, *core.ApiError) {
 		_, e := s.service.CreatePolystrataSetup(req)
-		return "已开始 PolyStrata 引导安装", e
+		return l10n.TR("downloads.toast.polystrata_started"), e
 	})
 }
 
@@ -105,7 +106,7 @@ func (s *viewState) triggerModelResolve(st *modelResolveState, source, tokenEnv 
 		return
 	}
 	if s.service == nil {
-		st.errText = "后端服务尚未就绪，无法解析地址。"
+		st.errText = l10n.TR("downloads.resolve.service_not_ready")
 		return
 	}
 	parent := s.ctx
@@ -131,7 +132,7 @@ func (s *viewState) triggerModelResolve(st *modelResolveState, source, tokenEnv 
 				msg = human(apiErr.Code)
 			}
 			if cause, ok := apiErr.Details["failure_cause"].(string); ok && cause != "" {
-				msg += "：" + human(cause)
+				msg = l10n.TRf("downloads.resolve.error_with_cause", "message", msg, "cause", human(cause))
 			}
 			outcome.errText = msg
 		} else {

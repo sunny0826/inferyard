@@ -3,24 +3,27 @@ package pages
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func (s *viewState) downloadsEngineDrawer(c *ui.Context) {
 	st := s.ensureDownloadsUI()
 	c.Key("downloads-engine-detail-drawer")
+	drawerTitle := tr(c, "downloads.engine_drawer.title")
 	if !st.engineDrawerOpen {
-		drawer(c, &st.engineDrawerOpen, drawerOptions{Label: "引擎详情", Title: "引擎详情"}, nil)
+		drawer(c, &st.engineDrawerOpen, drawerOptions{Label: drawerTitle, Title: drawerTitle}, nil)
 		return
 	}
 	family, ok := s.engineCatalogRegistry().FamilyByID(st.engineDrawerFamilyID)
 	if !ok || len(family.Releases) == 0 {
 		st.engineDrawerOpen = false
-		drawer(c, &st.engineDrawerOpen, drawerOptions{Label: "引擎详情", Title: "引擎详情"}, nil)
+		drawer(c, &st.engineDrawerOpen, drawerOptions{Label: drawerTitle, Title: drawerTitle}, nil)
 		return
 	}
 
@@ -34,7 +37,7 @@ func (s *viewState) downloadsEngineDrawer(c *ui.Context) {
 	build := pickEngineBuildForID(st.selectedBuild[family.ID], builds)
 
 	drawer(c, &st.engineDrawerOpen, drawerOptions{
-		Label: "引擎详情",
+		Label: drawerTitle,
 		Title: family.Name,
 		Width: c.Theme().Space(145),
 	}, func(ui.Element) {
@@ -66,7 +69,7 @@ func (s *viewState) engineDrawerConfigSection(
 	ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
 		if showStableToggle {
 			prev := st.drawerStableOnly
-			components.Checkbox(c, &st.drawerStableOnly, "仅正式版")
+			components.Checkbox(c, &st.drawerStableOnly, tr(c, "downloads.engine_drawer.stable_only"))
 			if st.drawerStableOnly != prev {
 				nextReleases := filterEngineReleases(family.Releases, st.drawerStableOnly)
 				nextRel := resolveEngineRelease(st.selectedRelease[family.ID], nextReleases)
@@ -80,11 +83,11 @@ func (s *viewState) engineDrawerConfigSection(
 			ui.Box(c.Key("downloads-drawer-ver-" + family.ID)).Children(func() {
 				chosenID := rel.ID
 				sel := components.Select(c, &chosenID)
-				sel.Trigger.Label("切换版本").Value(rel.Version + " · " + rel.Distribution).Children(func() {
+				sel.Trigger.Label(tr(c, "downloads.engine_drawer.select_version")).Value(rel.Version + " · " + rel.Distribution).Children(func() {
 					ui.Text(c, rel.Version+" · "+rel.Distribution).SingleLine()
 				})
 				sel.Popup(func(ui.Element) {
-					components.ScrollView(c, components.ScrollViewOptions{}).Label("版本列表").MaxHeight(220).Children(func() {
+					components.ScrollView(c, components.ScrollViewOptions{}).Label(tr(c, "downloads.engine_drawer.version_list")).MaxHeight(220).Children(func() {
 						for _, candidate := range releases {
 							itemLabel := engineReleaseOptionLabel(candidate)
 							sel.Item(candidate.ID).Label(itemLabel).Children(func() {
@@ -103,11 +106,11 @@ func (s *viewState) engineDrawerConfigSection(
 			ui.Box(c.Key("downloads-drawer-plat-" + family.ID)).Children(func() {
 				chosenPlat := activePlatform
 				sel := components.Select(c, &chosenPlat)
-				sel.Trigger.Label("选择平台").Value(core.PlatformLabel(activePlatform)).Children(func() {
+				sel.Trigger.Label(tr(c, "downloads.engine_drawer.select_platform")).Value(core.PlatformLabel(activePlatform)).Children(func() {
 					ui.Text(c, core.PlatformLabel(activePlatform)).SingleLine()
 				})
 				sel.Popup(func(ui.Element) {
-					components.ScrollView(c, components.ScrollViewOptions{}).Label("平台列表").MaxHeight(220).Children(func() {
+					components.ScrollView(c, components.ScrollViewOptions{}).Label(tr(c, "downloads.engine_drawer.platform_list")).MaxHeight(220).Children(func() {
 						for _, plat := range platforms {
 							platLabel := core.PlatformLabel(plat)
 							sel.Item(plat).Label(platLabel).Children(func() {
@@ -132,27 +135,27 @@ func (s *viewState) engineDrawerConfigSection(
 				opts = append(opts, components.NativeSelectOption[string]{Value: candidate.ID, Label: label})
 			}
 			chosenBuild := build.ID
-			segmentedControl(c, "选择变体", &chosenBuild, opts)
+			segmentedControl(c, tr(c, "downloads.engine_drawer.select_variant"), &chosenBuild, opts)
 			if chosenBuild != build.ID {
 				st.selectedBuild[family.ID] = chosenBuild
 			}
 		}
 
-		keyValueRow(c, "版本状态", core.ChannelLabel(rel.Channel), false)
-		keyValueRow(c, "发行来源", rel.Distribution, false)
-		keyValueRow(c, "目标平台", core.PlatformLabel(build.Platform), false)
+		keyValueRow(c, tr(c, "downloads.engine_drawer.field.channel"), core.ChannelLabel(rel.Channel), false)
+		keyValueRow(c, tr(c, "downloads.engine_drawer.field.distribution"), rel.Distribution, false)
+		keyValueRow(c, tr(c, "downloads.engine_drawer.field.platform"), core.PlatformLabel(build.Platform), false)
 		if build.Variant != "" {
-			keyValueRow(c, "构建变体", build.Variant, false)
+			keyValueRow(c, tr(c, "downloads.engine_drawer.field.variant"), build.Variant, false)
 		}
-		keyValueRow(c, "获取方式", core.AcquireModeLabel(build.AcquireMode), false)
+		keyValueRow(c, tr(c, "downloads.engine_drawer.field.acquire_mode"), core.AcquireModeLabel(build.AcquireMode), false)
 		if total := build.TotalBytes(); total > 0 {
-			keyValueRow(c, "总大小", catalogHumanSize(total), true)
+			keyValueRow(c, tr(c, "downloads.engine_drawer.field.total_size"), catalogHumanSize(total), true)
 		}
 		if build.Platform != "any" && build.Platform != hostPlatform {
 			noticeBanner(c, noticeBannerOptions{
 				Kind:    stateWarning,
 				Size:    bannerCompact,
-				Message: "当前所选平台与本机（" + core.PlatformLabel(hostPlatform) + "）不同，无法在本机直接运行。",
+				Message: trf(c, "downloads.engine_drawer.platform_mismatch", "platform", core.PlatformLabel(hostPlatform)),
 			})
 		}
 	})
@@ -160,9 +163,9 @@ func (s *viewState) engineDrawerConfigSection(
 
 func (s *viewState) engineDrawerArtifactsSection(c *ui.Context, build core.EnginePlatformBuild) {
 	t := tokens(c)
-	sectionTitle := "下载文件"
+	sectionTitle := tr(c, "downloads.engine_drawer.section.files")
 	if len(build.Artifacts) == 1 && build.Artifacts[0].Role == "release_page" {
-		sectionTitle = "下载地址"
+		sectionTitle = tr(c, "downloads.engine_drawer.section.urls")
 	}
 	heading(c, sectionTitle, 3)
 
@@ -181,22 +184,23 @@ func (s *viewState) engineDrawerArtifactsSection(c *ui.Context, build core.Engin
 			})
 			ui.Text(c, artifact.URL).Selectable().FontSize(t.Type.Caption)
 			if artifact.Role != "release_page" {
-				shaLine := "SHA-256：未提供"
+				shaLine := tr(c, "downloads.engine_drawer.sha256_missing")
 				if sha := strings.TrimSpace(artifact.SHA256); sha != "" {
-					shaLine = "SHA-256：" + sha
+					shaLine = trf(c, "downloads.engine_drawer.sha256_value", "sha256", sha)
 				}
 				ui.Text(c, shaLine).Selectable().FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			}
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-				outlineButton(c, "复制地址").Label(fmt.Sprintf("复制地址 · %s · %d", build.ID, index)).OnClick(func() {
-					s.copyDownloadText(c, "下载地址", artifact.URL)
+				indexStr := strconv.Itoa(index)
+				outlineButton(c, tr(c, "downloads.action.copy_url")).Label(trf(c, "downloads.engine_drawer.copy_url_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
+					s.copyDownloadText(c, tr(c, "downloads.engine_drawer.section.urls"), artifact.URL)
 				})
 				if sha := strings.TrimSpace(artifact.SHA256); sha != "" {
-					outlineButton(c, "复制 SHA-256").Label(fmt.Sprintf("复制 SHA-256 · %s · %d", build.ID, index)).OnClick(func() {
+					outlineButton(c, tr(c, "downloads.action.copy_sha256")).Label(trf(c, "downloads.engine_drawer.copy_sha256_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
 						s.copyDownloadText(c, "SHA-256", sha)
 					})
 				}
-				outlineButton(c, "打开链接").Label(fmt.Sprintf("打开链接 · %s · %d", build.ID, index)).OnClick(func() {
+				outlineButton(c, tr(c, "downloads.action.open_link")).Label(trf(c, "downloads.engine_drawer.open_link_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
 					s.openDownloadURL(c, title, artifact.URL)
 				})
 			})
@@ -226,15 +230,15 @@ func (s *viewState) engineDrawerInstallSection(
 		}
 	}
 	if note != "" || cmd != "" {
-		heading(c, "安装说明", 3)
+		heading(c, tr(c, "downloads.engine_drawer.section.instructions"), 3)
 		if note != "" {
 			ui.Text(c, note).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		}
 		if cmd != "" {
 			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Inset), materialInset).Children(func() {
 				ui.Text(c, cmd).Selectable().FontSize(t.Type.Caption)
-				outlineButton(c, "复制命令").OnClick(func() {
-					s.copyDownloadText(c, "安装命令", cmd)
+				outlineButton(c, tr(c, "downloads.action.copy_cmd")).OnClick(func() {
+					s.copyDownloadText(c, tr(c, "downloads.copy_subject.install_cmd"), cmd)
 				})
 			})
 		}
@@ -244,13 +248,13 @@ func (s *viewState) engineDrawerInstallSection(
 		switch {
 		case build.AcquireMode == core.EngineAcquireManagedSetup && (build.Platform == hostPlatform || build.Platform == "any"):
 			if s.downloadActive("polystrata") {
-				button(c, "安装中…").Label("安装此版本 · " + family.ID).Disabled(true)
+				button(c, tr(c, "downloads.action.installing")).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(true)
 			} else {
-				confirmLabel := "开始安装 PolyStrata"
+				confirmLabel := tr(c, "downloads.engine_drawer.install_polystrata")
 				if s.isEngineFamilyInstalled(family.ID) {
-					confirmLabel = "安装所选模型"
+					confirmLabel = tr(c, "downloads.engine_drawer.install_selected_model")
 				}
-				primaryButton(c, confirmLabel).Label("安装此版本 · " + family.ID).Disabled(s.busy || !hasPolystrataOpt).OnClick(func() {
+				primaryButton(c, confirmLabel).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(s.busy || !hasPolystrataOpt).OnClick(func() {
 					if !hasPolystrataOpt {
 						return
 					}
@@ -261,25 +265,25 @@ func (s *viewState) engineDrawerInstallSection(
 			}
 		case build.CanDirectDownloadOn(hostPlatform):
 			if s.isEngineSourceDownloading(build.PrimaryURL()) {
-				button(c, "安装中…").Label("安装此版本 · " + family.ID).Disabled(true)
+				button(c, tr(c, "downloads.action.installing")).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(true)
 			} else {
-				primaryButton(c, "安装此版本").Label("安装此版本 · " + family.ID).Disabled(s.busy).OnClick(func() {
+				primaryButton(c, tr(c, "downloads.engine_drawer.install_version")).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(s.busy).OnClick(func() {
 					s.acquireEngine(build.PrimaryURL(), "")
 				})
 			}
 		case build.PrimaryURL() != "":
-			primaryButton(c, "打开下载页").Label("打开下载页 · " + family.ID).OnClick(func() {
+			primaryButton(c, tr(c, "downloads.action.open_download_page")).Label(trf(c, "downloads.action.open_download_page_label", "id", family.ID)).OnClick(func() {
 				s.openDownloadURL(c, family.Name, build.PrimaryURL())
 			})
 		}
 		if family.SupportsWizard {
-			outlineButton(c, "注册本地引擎").Label("注册本地引擎 · " + family.ID).OnClick(func() {
+			outlineButton(c, tr(c, "downloads.engine_drawer.register_local")).Label(trf(c, "downloads.engine_drawer.register_local_label", "id", family.ID)).OnClick(func() {
 				st.engineDrawerOpen = false
 				s.openLocalEngineWizard(family.ID)
 			})
 		}
 		if relURL := engineReleaseLink(family, rel); relURL != "" && relURL != build.PrimaryURL() {
-			ghostButton(c, "打开发布页").OnClick(func() {
+			ghostButton(c, tr(c, "downloads.engine_drawer.open_release_page")).OnClick(func() {
 				s.openDownloadURL(c, family.Name+" "+rel.Version, relURL)
 			})
 		}
@@ -351,7 +355,7 @@ func pickEngineBuildForID(wantID string, builds []core.EnginePlatformBuild) core
 func engineReleaseOptionLabel(rel core.EngineRelease) string {
 	label := rel.Version + " · " + rel.Distribution + " · " + core.ChannelLabel(rel.Channel)
 	if rel.Recommended {
-		label += " · 推荐"
+		return l10n.TRf("downloads.engine_drawer.release_recommended", "label", label)
 	}
 	return label
 }
