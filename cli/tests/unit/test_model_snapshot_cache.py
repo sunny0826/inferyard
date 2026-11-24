@@ -188,6 +188,8 @@ def test_windows_native_change_time_invalidates_disk_cache_when_mtime_preserved(
         st = target.stat()
         return (1, "ab" * 16, 0x20, st.st_size, 50, st.st_mtime_ns, change_time[0])
 
+    fixed_stat = model_snapshot.file_stamp(model.stat())
+    monkeypatch.setattr(model_snapshot, "file_stamp", lambda _st: fixed_stat)
     monkeypatch.setattr(model_snapshot, "_native_stamp", fake_native_stamp)
 
     calls = 0
@@ -261,4 +263,3 @@ def test_disk_cache_evicts_oldest_entries_to_stay_within_byte_limit(
     model_snapshot._CACHE.clear()
     model_snapshot.snapshot(model_a)
     assert _isolated_model_cache.read_bytes() == before_raw
-
