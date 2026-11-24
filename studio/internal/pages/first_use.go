@@ -96,8 +96,7 @@ func (s *viewState) adoptOnlyModel() {
 			return
 		}
 	}
-	for i := len(s.downloads) - 1; i >= 0; i-- {
-		task := s.downloads[i]
+	for _, task := range s.downloads {
 		if task.Kind != "polystrata" || task.State != "done" || task.ModelConfigPath == nil {
 			continue
 		}

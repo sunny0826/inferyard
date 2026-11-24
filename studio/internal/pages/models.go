@@ -251,8 +251,7 @@ func (s *viewState) adoptDownloadedEngine() {
 	if s.engine != "" {
 		return
 	}
-	for i := len(s.downloads) - 1; i >= 0; i-- {
-		task := s.downloads[i]
+	for _, task := range s.downloads {
 		if task.State != "done" || (task.Kind != "polystrata" && task.Kind != "engine") {
 			continue
 		}

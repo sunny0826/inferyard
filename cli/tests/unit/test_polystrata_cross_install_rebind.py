@@ -11,7 +11,8 @@ import pytest
 
 from inferyard.config.loader import load_config
 from inferyard.config.local_engines.candidate import create as create_candidate
-from inferyard.contracts.validation import json_bytes
+from inferyard.contracts.validation import json_bytes, validate_document
+from inferyard.errors import ContractError
 from inferyard.platforms.local_engines import installation, workers
 from inferyard.platforms.local_engines.assets import assets as verify_assets
 from inferyard.platforms.local_engines.detect import build_installation
@@ -322,3 +323,141 @@ def test_migrated_config_after_uninstall_rebinds_and_missing_role_fails_fast(
                 results_dir=tmp_path / "results-missing",
             )
         )
+
+
+def test_legacy_top_level_pack_key_with_args_lib_dirs_backend_conflict_and_temp_bounds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setattr(installation, "_FILE_CACHE", {})
+    monkeypatch.setattr("platform.system", lambda: "Linux")
+    monkeypatch.setattr("platform.machine", lambda: "x86_64")
+    monkeypatch.setattr(
+        "inferyard.config.local_engines.candidate.environment_snapshot",
+        lambda: {"ac_online": None},
+    )
+
+    data_dir = tmp_path / "models" / "polystrata-data"
+    pack_dir = data_dir / "packs" / "q2_0"
+    tok_dir = pack_dir / "tokenizer"
+    tok_dir.mkdir(parents=True)
+    (tok_dir / "vocab.json").write_text("{}", encoding="utf-8")
+    (tok_dir / "chat_template.jinja").write_text("{{ messages }}", encoding="utf-8")
+    (pack_dir / "pack.bin").write_bytes(b"pack-data")
+
+    def _make_linux_install(root: Path, backend: str, rel_libs: list[str]) -> tuple[Path, Path]:
+        root.mkdir(parents=True, exist_ok=True)
+        (root / "serve").mkdir(exist_ok=True)
+        (root / "serve" / "server.py").write_text("print('strata server')\n", encoding="utf-8")
+        (root / "setup.py").write_text("print('setup')\n", encoding="utf-8")
+        venv = root / ".venv"
+        venv.mkdir(exist_ok=True)
+        (venv / "pyvenv.cfg").write_text("home = /usr/bin\n", encoding="utf-8")
+        py_exe = venv / "bin" / "python"
+        py_exe.parent.mkdir(parents=True, exist_ok=True)
+        py_exe.write_bytes(b"#!/bin/sh\n")
+        py_exe.chmod(0o755)
+        eng_dir = root / "engine"
+        eng_dir.mkdir(exist_ok=True)
+        for rel in rel_libs:
+            (eng_dir / rel).mkdir(parents=True, exist_ok=True)
+        (eng_dir / "BUILD.json").write_text(
+            json.dumps({"backend": backend, "lib_dirs": rel_libs}), encoding="utf-8"
+        )
+        sbin = eng_dir / "strata"
+        sbin.write_bytes(b"linux-strata-" + backend.encode("utf-8"))
+        sbin.chmod(0o755)
+        inst_path = root / "installation.json"
+        inst_path.write_bytes(json_bytes(build_installation("polystrata", py_exe, data_dir=data_dir)))
+        return inst_path, sbin
+
+    inst_hip, strata_hip = _make_linux_install(tmp_path / "hip-inst", "hip", ["rocm-libs"])
+    _, strata_other = _make_linux_install(tmp_path / "other-hip", "hip", ["old-libs"])
+    ext_lib = tmp_path / "external-toolkit-lib"
+    ext_lib.mkdir()
+
+    # Legacy top-level pack_dir + args list + tokenizer_dir + lib_dirs rebind must pass verify_assets().
+    legacy_cfg = strata_other.parent.parent / "strata-legacy.json"
+    legacy_cfg.write_text(
+        json.dumps(
+            {
+                "exe": str(strata_other),
+                "pack_dir": "packs/q2_0",
+                "tokenizer_dir": "packs/q2_0/tokenizer",
+                "args": ["--max-context", "16384"],
+                "cwd": str(strata_other.parent.parent),
+                "backend": "hip",
+                "lib_dirs": [
+                    str(strata_other.parent / "old-libs"),
+                    str(ext_lib),
+                ],
+                "model_name": "legacy-pack",
+            }
+        ),
+        encoding="utf-8",
+    )
+    bundle = _write_bundle(tmp_path / "bundle.json")
+    details = create_candidate(
+        _candidate_request(
+            inst_path=inst_hip,
+            model_path=legacy_cfg,
+            bundle_path=bundle,
+            out_dir=tmp_path / "cand-legacy",
+            results_dir=tmp_path / "results-legacy",
+        )
+    )
+    loaded_cfg = load_config(details["candidate"]).config.to_dict()
+    verify_assets(loaded_cfg)
+    derived = json.loads(Path(details["polystrata_config"]).read_text(encoding="utf-8"))
+    assert derived["pack_dir"] == str(pack_dir.resolve())
+    assert derived["tokenizer"] == str(tok_dir.resolve())
+    assert derived["lib_dirs"] == [
+        str((strata_hip.parent / "rocm-libs").resolve()),
+        str(ext_lib.resolve()),
+    ]
+    assert loaded_cfg["engine"]["backend"] == "hip"
+    assert loaded_cfg["safety"]["max_temperature_celsius"] == 85
+
+    # Non-Metal candidate must reject max_temperature_celsius > 85; Metal accepts 100 and rejects 101.
+    bad_non_metal = json.loads(json.dumps(loaded_cfg))
+    bad_non_metal["safety"]["max_temperature_celsius"] = 86
+    with pytest.raises(ContractError):
+        validate_document("config", bad_non_metal)
+
+    metal_ok = json.loads(json.dumps(loaded_cfg))
+    metal_ok["engine"]["backend"] = "metal"
+    metal_ok["safety"]["require_temperature"] = True
+    metal_ok["safety"]["max_temperature_celsius"] = 100
+    validate_document("config", metal_ok)
+
+    metal_bad = json.loads(json.dumps(metal_ok))
+    metal_bad["safety"]["max_temperature_celsius"] = 101
+    with pytest.raises(ContractError):
+        validate_document("config", metal_bad)
+
+    # Explicit CUDA config rebound onto HIP installation must fail fast with polystrata_backend_unsupported.
+    cuda_cfg = strata_other.parent.parent / "strata-cuda.json"
+    cuda_cfg.write_text(
+        json.dumps(
+            {
+                "exe": str(strata_other),
+                "args": ["--pack", str(pack_dir), "--max-context", "16384"],
+                "cwd": str(strata_other.parent.parent),
+                "tokenizer": str(tok_dir),
+                "backend": "cuda",
+                "model_name": "cuda-pack",
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(PreparationError, match="polystrata_backend_unsupported"):
+        create_candidate(
+            _candidate_request(
+                inst_path=inst_hip,
+                model_path=cuda_cfg,
+                bundle_path=bundle,
+                out_dir=tmp_path / "cand-conflict",
+                results_dir=tmp_path / "results-conflict",
+            )
+        )
+

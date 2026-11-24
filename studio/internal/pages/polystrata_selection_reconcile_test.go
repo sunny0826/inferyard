@@ -117,9 +117,10 @@ func TestAdoptPairsLatestPolystrataDownloadAndColocatedConfig(t *testing.T) {
 			newEngName: {State: core.EngineCheckEligible, Family: "polystrata"},
 		},
 	}
+	// Service.Downloads() orders tasks newest-first.
 	s.downloads = []core.DownloadTask{
-		{Kind: "polystrata", State: "done", InstallationPath: ptr(oldInst), ModelConfigPath: ptr(oldCfg)},
 		{Kind: "polystrata", State: "done", InstallationPath: ptr(newInst), ModelConfigPath: ptr(newCfg)},
+		{Kind: "polystrata", State: "done", InstallationPath: ptr(oldInst), ModelConfigPath: ptr(oldCfg)},
 	}
 
 	s.adoptDownloadedEngine()

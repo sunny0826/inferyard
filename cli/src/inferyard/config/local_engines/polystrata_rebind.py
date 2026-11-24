@@ -9,6 +9,7 @@ from pathlib import Path
 from inferyard.platforms.local_engines.detect_polystrata import (
     _is_usable_binary,
     find_polystrata_engine_binaries,
+    read_build_backend,
 )
 from inferyard.provisioning.preparation_io import PreparationError
 
@@ -261,6 +262,17 @@ def rebind_or_keep_polystrata_config(
         resolve_ref=resolve_ref,
         system=system,
     )
+    if exe_rebound and isinstance(payload.get("backend"), str) and payload["backend"].strip():
+        src_backend = payload["backend"].strip().lower()
+        if src_backend == "rocm":
+            src_backend = "hip"
+        expected_backend = (
+            "metal"
+            if system == "Darwin"
+            else read_build_backend(inst_root, engine_dir=target_exe.parent)
+        )
+        if expected_backend is not None and src_backend != expected_backend:
+            raise PreparationError("polystrata_backend_unsupported")
     rebound_vision, vision_rebound = _rebind_vision(
         payload,
         target_exe,
@@ -317,12 +329,14 @@ def rebind_or_keep_polystrata_config(
         derived["args"] = new_args
     else:
         derived["context"] = resolved_context
-        if model_flag and model_flag.startswith("key:"):
-            derived[model_flag[4:]] = str(model_asset)
+    if model_flag and model_flag.startswith("key:"):
+        derived[model_flag[4:]] = str(model_asset)
     for key in (*legacy_model_keys, *tokenizer_keys):
-        val = derived.get(key)
+        val = payload.get(key)
         if isinstance(val, str) and val.strip():
             resolved = resolve_ref(val.strip(), orig_bases)
             if resolved is not None:
                 derived[key] = str(resolved)
+                if key in tokenizer_keys and "tokenizer" not in derived:
+                    derived["tokenizer"] = str(resolved)
     return out_dir / "strata-candidate.json", derived, target_exe
