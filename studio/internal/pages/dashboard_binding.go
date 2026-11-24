@@ -6,6 +6,7 @@ import (
 
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 )
 
 type bindingJob struct {
@@ -59,7 +60,7 @@ func (s *viewState) bindDiscovered(pid int64, endpoint string) {
 		if e != nil {
 			return "", e
 		}
-		return "全部待连接的测评题集已连接并核验，可开始运行。", nil
+		return l10n.TR("dashboard.toast.all_bundles_bound"), nil
 	})
 }
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func (s *viewState) loadProxySettings(v core.SettingsResponse) {
@@ -25,12 +26,16 @@ func (s *viewState) canSaveProxy() bool {
 }
 
 func downloadProxyError(raw string) string {
+	return downloadProxyErrorFor("", raw)
+}
+
+func downloadProxyErrorFor(locale, raw string) string {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
 		return ""
 	}
 	if !core.ValidateDownloadProxy(trimmed) {
-		return "请输入形如 http://127.0.0.1:7890 的代理源站（不含路径、查询或凭据）。"
+		return l10n.T(locale, "settings.proxy.invalid")
 	}
 	return ""
 }
@@ -45,17 +50,18 @@ func (s *viewState) syncSavedProxy(patch map[string]json.RawMessage, submitted s
 }
 
 func (s *viewState) proxySettingsView(c *ui.Context) {
+	loc := contextLocale(c)
 	settingsFormSection(c, settingsFormOptions{
-		Title:       "网络与代理",
-		Description: "仅用于模型解析与资源下载",
+		Title:       tr(c, "settings.proxy.title"),
+		Description: tr(c, "settings.proxy.description"),
 		Dirty:       s.proxyEdited(),
 		Fields: func() {
-			field(c, "下载代理地址（可选）", &s.downloadProxy).
+			field(c, tr(c, "settings.proxy.url_label"), &s.downloadProxy).
 				Placeholder("http://127.0.0.1:7890").
-				Error(downloadProxyError(s.downloadProxy))
+				Error(downloadProxyErrorFor(loc, s.downloadProxy))
 		},
 		Actions: func() {
-			if primaryActionButton(c, "保存代理设置", s.actionBusy("save-proxy")).Disabled(!s.canSaveProxy()).Clicked() {
+			if primaryActionButton(c, tr(c, "settings.proxy.save"), s.actionBusy("save-proxy")).Disabled(!s.canSaveProxy()).Clicked() {
 				trimmed := strings.TrimSpace(s.downloadProxy)
 				var value any
 				if trimmed != "" {
@@ -67,11 +73,12 @@ func (s *viewState) proxySettingsView(c *ui.Context) {
 					return
 				}
 				submitted := s.settingsDraft()
+				savedMsg := tr(c, "settings.proxy.saved")
 				s.workAs("save-proxy", func() (string, *core.ApiError) {
-					return s.persistSettings(patch, submitted, "代理设置已保存")
+					return s.persistSettings(patch, submitted, savedMsg)
 				})
 			}
-			button(c, "清空代理").Disabled(s.busy || (strings.TrimSpace(s.downloadProxy) == "" && s.settings.Settings.DownloadProxy == nil)).OnClick(func() {
+			button(c, tr(c, "settings.proxy.clear")).Disabled(s.busy || (strings.TrimSpace(s.downloadProxy) == "" && s.settings.Settings.DownloadProxy == nil)).OnClick(func() {
 				s.downloadProxy = ""
 				if s.settings.Settings.DownloadProxy == nil {
 					return
@@ -81,8 +88,9 @@ func (s *viewState) proxySettingsView(c *ui.Context) {
 					return
 				}
 				submitted := s.settingsDraft()
+				clearedMsg := tr(c, "settings.proxy.cleared")
 				s.workAs("save-proxy", func() (string, *core.ApiError) {
-					return s.persistSettings(patch, submitted, "已清空下载代理")
+					return s.persistSettings(patch, submitted, clearedMsg)
 				})
 			})
 		},

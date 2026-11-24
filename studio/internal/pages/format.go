@@ -3,11 +3,13 @@ package pages
 import (
 	"fmt"
 	"time"
+
+	"inferyard/studio/internal/l10n"
 )
 
 func formatBytes(value *int64) string {
 	if value == nil {
-		return "缺测"
+		return l10n.TR("common.missing")
 	}
 	v := *value
 	switch {
@@ -22,7 +24,7 @@ func formatBytes(value *int64) string {
 
 func formatDurationMs(value *float64) string {
 	if value == nil {
-		return "缺测"
+		return l10n.TR("common.missing")
 	}
 	if *value < 1000 {
 		return fmt.Sprintf("%.0f ms", *value)

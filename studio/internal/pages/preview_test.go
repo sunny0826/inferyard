@@ -12,7 +12,12 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
+
+func previewSceneZhLabel(labelKey string) string {
+	return l10n.T(l10n.LanguageZhHans, labelKey)
+}
 
 func previewTester(p *previewSession, width, height int) *ui.Tester {
 	return ui.NewTester(func(c *ui.Context) {
@@ -27,7 +32,7 @@ func previewTester(p *previewSession, width, height int) *ui.Tester {
 func previewSceneIndex(t *testing.T, label string) int {
 	t.Helper()
 	for i, scene := range previewScenes {
-		if scene.label == label {
+		if previewSceneZhLabel(scene.labelKey) == label {
 			return i
 		}
 	}
@@ -60,7 +65,7 @@ func TestPreviewOutOfBandActionsStayInMemory(t *testing.T) {
 }
 
 func TestPreviewScenesAllLoadAndSaveSettingsPreservesProxy(t *testing.T) {
-	if len(previewScenes) == 0 || previewScenes[0].label != "任务 · 准备" {
+	if len(previewScenes) == 0 || previewSceneZhLabel(previewScenes[0].labelKey) != "任务 · 准备" {
 		t.Fatalf("previewScenes[0] must be 任务 · 准备, got %+v", previewScenes)
 	}
 
@@ -68,8 +73,9 @@ func TestPreviewScenesAllLoadAndSaveSettingsPreservesProxy(t *testing.T) {
 	tt := previewTester(p, 1120, 2200)
 	for i, scene := range previewScenes {
 		p.loadScene(i)
-		if scene.label != "下载 · 进行中与失败" && scene.label != "下载 · PolyStrata 引导安装" && scene.label != "下载 · PolyStrata 模型下载" && len(p.state.downloads) != 0 {
-			t.Fatalf("scene %q unexpectedly seeded %d downloads", scene.label, len(p.state.downloads))
+		label := previewSceneZhLabel(scene.labelKey)
+		if label != "下载 · 进行中与失败" && label != "下载 · PolyStrata 引导安装" && label != "下载 · PolyStrata 模型下载" && len(p.state.downloads) != 0 {
+			t.Fatalf("scene %q unexpectedly seeded %d downloads", label, len(p.state.downloads))
 		}
 		p.themeMode = 1
 		tt.Frame()

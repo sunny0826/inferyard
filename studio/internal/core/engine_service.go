@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"inferyard/studio/internal/l10n"
 	"io"
 	"net"
 	"net/http"
@@ -93,7 +94,7 @@ func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
 		return EngineState{}, workspaceBusyError()
 	}
 	if s.orphan != nil {
-		return clone(s.orphan.state), &ApiError{Code: "engine_orphaned", Message: "请先处理遗留服务或无效记录，再启动引擎。"}
+		return clone(s.orphan.state), &ApiError{Code: "engine_orphaned", Message: l10n.TR("core.engine.err.handle_orphan_first")}
 	}
 	if s.engine != nil && (s.engine.state.State == "starting" || s.engine.state.State == "running" || s.engine.state.State == "stopping") {
 		if s.engine.state.Candidate != candidate {
@@ -108,7 +109,7 @@ func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
 	endpoint := "http://" + net.JoinHostPort(host, strconv.Itoa(port))
 	listen, err := net.Listen("tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
-		return EngineState{}, &ApiError{Code: "engine_port_in_use", Message: "端口已被占用：该端口可能已有模型服务。请先停止它，或改用「绑定已有进程」。"}
+		return EngineState{}, &ApiError{Code: "engine_port_in_use", Message: l10n.TR("core.engine.err.port_in_use")}
 	}
 	_ = listen.Close()
 	logDir := filepath.Join(*w, "logs")
@@ -128,7 +129,7 @@ func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
 	cmd.Stdout, cmd.Stderr = logFile, logFile
 	if err := cmd.Start(); err != nil {
 		_ = logFile.Close()
-		return EngineState{}, &ApiError{Code: "engine_start_failed", Message: "引擎进程启动失败，请检查文件权限与运行环境。"}
+		return EngineState{}, &ApiError{Code: "engine_start_failed", Message: l10n.TR("core.engine.err.start_failed")}
 	}
 	executable := ""
 	if startup.Path != "" {
@@ -223,7 +224,7 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 			state, err = "failed", treeErr
 			s.orphan = &orphanEngine{owner: e.owner, path: e.ownerPath, state: EngineState{State: "orphaned", Pid: e.owner.PID, StartTicks: e.owner.StartTicks, Local: e.owner.Local, Endpoint: e.owner.Endpoint, Candidate: e.owner.Candidate, Error: err}}
 		} else if removeErr := removeEngineOwner(e.ownerPath, e.owner); removeErr != nil {
-			state, err = "failed", &ApiError{Code: "engine_owner_remove_failed", Message: "引擎已退出，但遗留服务记录未能清除；可仅删除记录（不终止进程）。"}
+			state, err = "failed", &ApiError{Code: "engine_owner_remove_failed", Message: l10n.TR("core.engine.err.exited_owner_remove_failed")}
 			s.orphan = &orphanEngine{owner: e.owner, path: e.ownerPath, state: EngineState{State: "orphaned", Error: err}}
 		}
 		e.state.State, e.state.Error = state, err
@@ -242,7 +243,7 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 			if stopping {
 				finish("stopped", nil)
 			} else {
-				finish("failed", &ApiError{Code: "engine_exited", Message: "引擎进程已退出，请检查日志后手动重启并重新绑定。"})
+				finish("failed", &ApiError{Code: "engine_exited", Message: l10n.TR("core.engine.err.exited")})
 			}
 			return
 		case <-treeTicker.C:
@@ -276,7 +277,7 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 			s.mu.Unlock()
 			if timedOut {
 				s.terminateEngine(e, waitCh)
-				finish("failed", &ApiError{Code: "engine_start_timeout", Message: "引擎启动超时（模型加载未完成），请检查引擎日志。"})
+				finish("failed", &ApiError{Code: "engine_start_timeout", Message: l10n.TR("core.engine.err.start_timeout")})
 				return
 			}
 		}

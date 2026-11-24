@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 	"io"
 	"os"
 	"os/exec"
@@ -105,7 +106,7 @@ func installationEntries(paths []string) []registryEntry {
 			installation: path,
 			family:       family,
 			displayName:  displayName,
-			source:       "本地安装声明",
+			source:       l10n.TR("core.registry.source.local_installation"),
 		})
 	}
 	return entries
@@ -227,7 +228,7 @@ func (s *Service) DetectLocalEngines(ctx context.Context) (inferyard.EngineDetec
 		}
 		return inferyard.EngineDetectResult{}, &ApiError{
 			Code:    "engine_detect_error",
-			Message: "本地引擎探测失败，请检查环境或 CLI 状态后重试。",
+			Message: l10n.TR("core.local_engine.err.detect_failed"),
 		}
 	}
 	if out.ExitCode == inferyard.ExitBlocked {
@@ -246,7 +247,7 @@ func (s *Service) DetectLocalEngines(ctx context.Context) (inferyard.EngineDetec
 	if err != nil {
 		return inferyard.EngineDetectResult{}, &ApiError{
 			Code:    "engine_detect_invalid_response",
-			Message: "CLI 本地引擎探测结果格式无效，请升级 CLI 后重试。",
+			Message: l10n.TR("core.local_engine.err.detect_invalid_response"),
 		}
 	}
 	return result, nil
@@ -327,13 +328,13 @@ func (s *Service) InitAndRegisterLocalEngine(ctx context.Context, req InitLocalE
 		if modelsRoot == "" || !filepath.IsAbs(modelsRoot) || strings.ContainsRune(modelsRoot, 0) {
 			return SettingsResponse{}, &ApiError{
 				Code:    "local_engine_models_root_required_for_lmstudio_only",
-				Message: "LM Studio 需要填写模型目录的绝对路径。",
+				Message: l10n.TR("core.local_engine.err.lmstudio_models_root_required"),
 			}
 		}
 	} else if modelsRoot != "" {
 		return SettingsResponse{}, &ApiError{
 			Code:    "local_engine_models_root_required_for_lmstudio_only",
-			Message: "仅 LM Studio 安装声明需要指定模型目录。",
+			Message: l10n.TR("core.local_engine.err.models_root_lmstudio_only"),
 		}
 	}
 	dataDir := strings.TrimSpace(req.DataDir)
@@ -341,7 +342,7 @@ func (s *Service) InitAndRegisterLocalEngine(ctx context.Context, req InitLocalE
 		if family != "polystrata" {
 			return SettingsResponse{}, &ApiError{
 				Code:    "local_engine_data_dir_polystrata_only",
-				Message: "仅 PolyStrata 安装声明支持指定数据目录。",
+				Message: l10n.TR("core.local_engine.err.data_dir_polystrata_only"),
 			}
 		}
 		if !filepath.IsAbs(dataDir) || strings.ContainsRune(dataDir, 0) {
@@ -416,7 +417,7 @@ func (s *Service) InitAndRegisterLocalEngine(ctx context.Context, req InitLocalE
 	if err != nil {
 		return SettingsResponse{}, &ApiError{
 			Code:    "engine_init_invalid_response",
-			Message: "CLI 安装声明生成结果格式无效，请升级 CLI 后重试。",
+			Message: l10n.TR("core.local_engine.err.init_invalid_response"),
 		}
 	}
 	return s.RegisterEngineInstallation(ctx, parsed.Out)

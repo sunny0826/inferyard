@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"inferyard/studio/internal/l10n"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -27,7 +28,7 @@ type AssetDeleteInfo struct {
 
 func deleteTargetChangedError() *ApiError {
 	err := Conflict("delete_target_changed")
-	err.Message = "待删除资源或其关联文件已发生变化，请关闭后重新确认。"
+	err.Message = l10n.TR("core.asset.err.delete_target_changed")
 	return err
 }
 
@@ -369,7 +370,7 @@ func (s *Service) inspectDeleteEngineAsset(u UserSettings, paths *BoundPaths, re
 					return AssetDeleteInfo{}, apiErr
 				}
 				apiErr := Err("internal_error")
-				apiErr.Message = fmt.Sprintf("无法读取或校验待迁移配置：%v", migErr)
+				apiErr.Message = l10n.TRf("core.asset.err.migration_config_read_failed", "err", migErr.Error())
 				return AssetDeleteInfo{}, apiErr
 			}
 			return AssetDeleteInfo{

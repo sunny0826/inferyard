@@ -15,6 +15,7 @@ final class PreviewUITests: XCTestCase {
         }
         app = XCUIApplication()
         app.launchArguments = ["--debug-ui"]
+        app.launchEnvironment["MYGO_LOCALE"] = "zh-Hans"
         app.launch()
         expectExists(app.windows["InferYard Studio · UI 调试"], timeout: 10)
         positionPreviewWindowForCapture(app.windows["InferYard Studio · UI 调试"])

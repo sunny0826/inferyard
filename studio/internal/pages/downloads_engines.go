@@ -1,11 +1,12 @@
 package pages
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func (s *viewState) downloadsEnginesTab(c *ui.Context) {
@@ -30,11 +31,11 @@ func (s *viewState) downloadsEnginesTab(c *ui.Context) {
 	ui.Column(c.Key("downloads-engines-tab")).FillWidth().Gap(t.Density.Section).Children(func() {
 		applyMaterial(c, ui.Column(c).MinWidth(0).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
 			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				ui.Row(c).Grow(1).MinWidth(0).Children(func() { heading(c, "引擎", 2) })
-				outlineButton(c, "关联已有引擎").OnClick(func() { s.openLocalEngineWizard("") })
+				ui.Row(c).Grow(1).MinWidth(0).Children(func() { heading(c, tr(c, "downloads.kind.engine"), 2) })
+				outlineButton(c, tr(c, "downloads.engines.link_existing")).OnClick(func() { s.openLocalEngineWizard("") })
 			})
 			if len(managed) == 0 {
-				ui.Text(c, "当前平台暂无可用引擎。").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				ui.Text(c, tr(c, "downloads.engines.none_available")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			}
 			for i, fam := range managed {
 				if i > 0 {
@@ -48,7 +49,7 @@ func (s *viewState) downloadsEnginesTab(c *ui.Context) {
 		})
 
 		if len(externalApps) > 0 {
-			card(c, "外部应用", func() {
+			card(c, tr(c, "downloads.engines.external_apps"), func() {
 				for i, fam := range externalApps {
 					if i > 0 {
 						ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
@@ -62,7 +63,7 @@ func (s *viewState) downloadsEnginesTab(c *ui.Context) {
 		}
 
 		if len(otherPlatform) > 0 {
-			componentFoldKeyed(c, "downloads-other-platform-engines", fmt.Sprintf("其他平台引擎（%d）", len(otherPlatform)), func() {
+			componentFoldKeyed(c, "downloads-other-platform-engines", trf(c, "downloads.engines.other_platform_fold", "count", strconv.Itoa(len(otherPlatform))), func() {
 				for i, fam := range otherPlatform {
 					if i > 0 {
 						ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
@@ -72,13 +73,13 @@ func (s *viewState) downloadsEnginesTab(c *ui.Context) {
 			})
 		}
 
-		componentFoldKeyed(c, "downloads-custom-engine-url", "自定义引擎地址", func() {
+		componentFoldKeyed(c, "downloads-custom-engine-url", tr(c, "downloads.engines.custom_url_fold"), func() {
 			ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
-				field(c, "引擎归档 URL", &st.customEngineURL).
+				field(c, tr(c, "downloads.engines.custom_url_label"), &st.customEngineURL).
 					Error(downloadURLError(st.customEngineURL))
 				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 					trimmed := strings.TrimSpace(st.customEngineURL)
-					button(c, "下载并验证").Disabled(s.busy || trimmed == "" || downloadURLError(trimmed) != "").OnClick(func() {
+					button(c, tr(c, "downloads.engines.download_verify")).Disabled(s.busy || trimmed == "" || downloadURLError(trimmed) != "").OnClick(func() {
 						s.acquireEngine(trimmed, "")
 					})
 				})
@@ -99,9 +100,9 @@ func (s *viewState) engineFamilyRow(c *ui.Context, fam core.EngineFamilyCatalog,
 				ui.Text(c, fam.Name).Bold()
 				badge(c, core.ModelFormatLabel(fam.ModelFormat), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
 				if installed {
-					badge(c, "已安装", stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
+					badge(c, tr(c, "downloads.badge.installed"), stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
 				} else if installing {
-					badge(c, "安装中", stateActive, badgeOptions{Style: badgeSoft, Size: sizeSM})
+					badge(c, tr(c, "downloads.badge.installing"), stateActive, badgeOptions{Style: badgeSoft, Size: sizeSM})
 				}
 			})
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
@@ -117,7 +118,7 @@ func (s *viewState) engineFamilyRow(c *ui.Context, fam core.EngineFamilyCatalog,
 			})
 		})
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-			outlineButton(c, "版本与地址").Label("版本与地址 · " + fam.ID).OnClick(func() {
+			outlineButton(c, tr(c, "downloads.engines.versions_urls")).Label(trf(c, "downloads.engines.versions_urls_label", "id", fam.ID)).OnClick(func() {
 				if fam.ID == "polystrata" {
 					s.openPolystrataConfigDrawer(fam.ID, rel.ID, build.Platform, build.ID)
 					return
@@ -127,26 +128,26 @@ func (s *viewState) engineFamilyRow(c *ui.Context, fam core.EngineFamilyCatalog,
 			switch {
 			case build.AcquireMode == core.EngineAcquireManagedSetup && (build.Platform == hostPlatform || build.Platform == "any"):
 				if s.downloadActive("polystrata") {
-					button(c, "安装中…").Label("安装 · " + fam.ID).Disabled(true)
+					button(c, tr(c, "downloads.action.installing")).Label(trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(true)
 				} else {
-					actionLabel := "配置并安装"
+					actionLabel := tr(c, "downloads.engines.configure_install")
 					if installed {
-						actionLabel = "安装新模型"
+						actionLabel = tr(c, "downloads.engines.install_new_model")
 					}
-					s.downloadAction(c, "engine", actionLabel).Label("安装 · " + fam.ID).Disabled(s.busy).OnClick(func() {
+					s.downloadAction(c, "engine", actionLabel).Label(trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(s.busy).OnClick(func() {
 						s.openPolystrataConfigDrawer(fam.ID, rel.ID, build.Platform, build.ID)
 					})
 				}
 			case build.CanDirectDownloadOn(hostPlatform):
 				if s.isEngineSourceDownloading(build.PrimaryURL()) {
-					button(c, "安装中…").Label("安装 · " + fam.ID).Disabled(true)
+					button(c, tr(c, "downloads.action.installing")).Label(trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(true)
 				} else {
-					s.downloadAction(c, "engine", "安装").Label("安装 · " + fam.ID).Disabled(s.busy).OnClick(func() {
+					s.downloadAction(c, "engine", tr(c, "downloads.engines.install")).Label(trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(s.busy).OnClick(func() {
 						s.acquireEngine(build.PrimaryURL(), "")
 					})
 				}
 			case build.PrimaryURL() != "":
-				button(c, "打开下载页").Label("打开下载页 · " + fam.ID).OnClick(func() {
+				button(c, tr(c, "downloads.action.open_download_page")).Label(trf(c, "downloads.action.open_download_page_label", "id", fam.ID)).OnClick(func() {
 					s.openDownloadURL(c, fam.Name, build.PrimaryURL())
 				})
 			}
@@ -164,7 +165,7 @@ func (s *viewState) externalEngineAppRow(c *ui.Context, fam core.EngineFamilyCat
 				ui.Text(c, fam.Name).Bold()
 				badge(c, core.ModelFormatLabel(fam.ModelFormat), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
 				if installed {
-					badge(c, "已关联", stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
+					badge(c, tr(c, "downloads.badge.linked"), stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
 				}
 			})
 			metaParts := []string{rel.Distribution, rel.Version}
@@ -174,10 +175,10 @@ func (s *viewState) externalEngineAppRow(c *ui.Context, fam core.EngineFamilyCat
 			ui.Text(c, joinParts(metaParts)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		})
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-			outlineButton(c, "打开官网").Label("打开官网 · " + fam.ID).OnClick(func() {
+			outlineButton(c, tr(c, "downloads.engines.open_website")).Label(trf(c, "downloads.engines.open_website_label", "id", fam.ID)).OnClick(func() {
 				s.openDownloadURL(c, fam.Name, build.PrimaryURL())
 			})
-			button(c, "关联").Label("关联 · " + fam.ID).OnClick(func() {
+			button(c, tr(c, "downloads.engines.link")).Label(trf(c, "downloads.engines.link_label", "id", fam.ID)).OnClick(func() {
 				s.openLocalEngineWizard(fam.ID)
 			})
 		})
@@ -205,9 +206,9 @@ func (s *viewState) otherPlatformEngineRow(c *ui.Context, fam core.EngineFamilyC
 				ui.Text(c, fam.Name).Bold()
 				badge(c, core.ModelFormatLabel(fam.ModelFormat), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
 			})
-			ui.Text(c, "支持平台："+enginePlatformSummary(rel)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			ui.Text(c, trf(c, "downloads.platform.supported_line", "platforms", enginePlatformSummary(rel))).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		})
-		outlineButton(c, "版本与地址").Label("版本与地址 · " + fam.ID).OnClick(func() {
+		outlineButton(c, tr(c, "downloads.engines.versions_urls")).Label(trf(c, "downloads.engines.versions_urls_label", "id", fam.ID)).OnClick(func() {
 			st.openEngineDrawer(fam.ID, rel.ID, firstPlatform, firstBuild.ID)
 		})
 	})
@@ -268,5 +269,5 @@ func enginePlatformSummary(rel core.EngineRelease) string {
 	for _, plat := range platforms {
 		labels = append(labels, core.PlatformLabel(plat))
 	}
-	return strings.Join(labels, "、")
+	return strings.Join(labels, l10n.TR("downloads.list.separator"))
 }

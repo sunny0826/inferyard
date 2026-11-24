@@ -1,12 +1,12 @@
 # Native preview UI e2e
 
-Builds Studio with `ui_debug` and drives one native macOS `--debug-ui` window via XCUITest against simulated data (no model service, downloads, or user settings writes).
+Builds Studio with `ui_debug` and drives one native macOS `--debug-ui` window via XCUITest against simulated data (no model service, downloads, or user settings writes). Tests pin `MYGO_LOCALE=zh-Hans` by default in the launch environment so accessibility label matching remains deterministic regardless of the host macOS locale.
 
 From the repository root (requires an unlocked, logged-in macOS desktop session with full Xcode):
 
 ```sh
 mise run test:studio-ui       # Daily: 3 core workflows
-mise run test:studio-ui:full  # Full: all 12 workflows (also run by CI)
+mise run test:studio-ui:full  # Full: all 7 workflows (3 daily + 4 full-only; also run by CI)
 ```
 
 Watch for the macOS automation authorization prompt on first launch and keep the desktop unlocked throughout the run. Artifacts (`run.json`, `xcodebuild.log`, `Results.xcresult`) are written to a new `studio/build/ui-e2e/run-*` directory.

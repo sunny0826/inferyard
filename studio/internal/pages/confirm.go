@@ -4,6 +4,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 type destructiveKind string
@@ -44,11 +45,11 @@ type destructiveOption struct {
 	disabled     bool
 }
 
-func destructiveDismissLabel(option destructiveOption) string {
+func destructiveDismissLabel(c *ui.Context, option destructiveOption) string {
 	if option.dismissLabel != "" {
 		return option.dismissLabel
 	}
-	return "暂不操作"
+	return tr(c, "common.confirm.dismiss")
 }
 
 func (s *viewState) destructiveAction(c *ui.Context, option destructiveOption) bool {
@@ -89,7 +90,7 @@ func (s *viewState) destructiveActionWithTrigger(c *ui.Context, option destructi
 						confirmed = true
 						open = false
 					}
-					if button(c, destructiveDismissLabel(option)).AlignSelf(ui.Start).Clicked() {
+					if button(c, destructiveDismissLabel(c, option)).AlignSelf(ui.Start).Clicked() {
 						open = false
 					}
 				})
@@ -135,7 +136,7 @@ func (s *viewState) destructiveDialogModal(c *ui.Context, option destructiveOpti
 		Title:         option.label,
 		Message:       option.prompt,
 		ConfirmLabel:  option.confirmLabel,
-		CancelLabel:   destructiveDismissLabel(option),
+		CancelLabel:   destructiveDismissLabel(c, option),
 	})
 	if !open && s.pendingDestructive == request {
 		s.pendingDestructive = destructiveRequest{}
@@ -197,18 +198,22 @@ func (s *viewState) engineStoppable() bool {
 }
 
 func cancelRunPrompt(lastRound bool) string {
+	return cancelRunPromptFor("", lastRound)
+}
+
+func cancelRunPromptFor(locale string, lastRound bool) string {
 	if lastRound {
-		return "将取消本轮所有未结束的运行并等待安全收尾，已完成的进度会保留。"
+		return l10n.T(locale, "common.confirm.cancel_run.round_prompt")
 	}
-	return "将取消当前测评题集的运行并等待安全收尾，已完成的进度会保留。"
+	return l10n.T(locale, "common.confirm.cancel_run.bundle_prompt")
 }
 
 func (w *viewState) cancelRunGate(c *ui.Context, id, state string) bool {
 	wholeRound := w.task.stage != ""
 	option := destructiveOption{
-		kind: destructiveCancelRun, id: id, label: "取消运行", confirmLabel: "确认取消运行",
-		dismissLabel: "保持运行",
-		prompt:       cancelRunPrompt(wholeRound),
+		kind: destructiveCancelRun, id: id, label: tr(c, "common.confirm.cancel_run.label"), confirmLabel: tr(c, "common.confirm.cancel_run.confirm"),
+		dismissLabel: tr(c, "common.confirm.cancel_run.dismiss"),
+		prompt:       cancelRunPromptFor(contextLocale(c), wholeRound),
 		disabled:     (w.busy && w.task.stage == "") || state == "cancelling",
 	}
 	if wholeRound {
@@ -219,9 +224,9 @@ func (w *viewState) cancelRunGate(c *ui.Context, id, state string) bool {
 
 func (w *viewState) stopEngineGate(c *ui.Context) bool {
 	return w.destructiveDialog(c, destructiveOption{
-		kind: destructiveStopEngine, label: "停止服务", confirmLabel: "确认停止服务",
-		dismissLabel: "保持服务运行",
-		prompt:       "将停止 Studio 启动的模型服务；正在加载的模型会中断，之后需要重新启动并绑定。",
+		kind: destructiveStopEngine, label: tr(c, "common.confirm.stop_engine.label"), confirmLabel: tr(c, "common.confirm.stop_engine.confirm"),
+		dismissLabel: tr(c, "common.confirm.stop_engine.dismiss"),
+		prompt:       tr(c, "common.confirm.stop_engine.prompt"),
 		disabled:     w.busy || w.running() != nil,
 	})
 }

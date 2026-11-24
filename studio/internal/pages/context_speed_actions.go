@@ -5,6 +5,7 @@ import (
 
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 )
 
 func (s *viewState) startSpeed() {
@@ -33,14 +34,16 @@ func (s *viewState) cancelSpeed() {
 		return
 	}
 	id := s.speed.current.id
-	s.work(func() (string, *core.ApiError) { return "已请求取消专项测评", cancelSpeedFlow(s.service, id) })
+	s.work(func() (string, *core.ApiError) {
+		return l10n.TR("speed.toast.cancel_requested"), cancelSpeedFlow(s.service, id)
+	})
 }
 
 func speedFromTask(t core.RunTask) *speedTask {
 	v := t.ContextSpeed
 	r := &speedTask{id: t.TaskId, stage: speedFailed}
 	if v == nil {
-		r.reason = "专项任务记录损坏"
+		r.reason = l10n.TR("speed.error.record_corrupted")
 		return r
 	}
 	r.model, r.engine, r.context = v.Model, v.Engine, v.Context
@@ -52,10 +55,10 @@ func speedFromTask(t core.RunTask) *speedTask {
 		r.engine = v.DisplayEngine
 	}
 	if r.model == "" {
-		r.model = "模型名称缺失"
+		r.model = l10n.TR("speed.error.model_missing")
 	}
 	if r.engine == "" {
-		r.engine = "引擎名称缺失"
+		r.engine = l10n.TR("speed.error.engine_missing")
 	}
 	stages := map[string]speedStage{"preparing": speedPreparing, "binding": speedBinding, "planning": speedPlanning, "queued": speedQueued, "measuring": speedMeasuring, "reading": speedReading, "done": speedDone, "failed": speedFailed, "cancelled": speedCancelled}
 	if stage, ok := stages[v.Stage]; ok {
@@ -82,7 +85,7 @@ func speedFromTask(t core.RunTask) *speedTask {
 			r.reason = t.Error.Code
 		}
 		if len(t.Error.Limitations) > 0 {
-			r.reason += " · " + strings.Join(t.Error.Limitations, "、")
+			r.reason += " · " + strings.Join(t.Error.Limitations, l10n.TR("speed.list_sep"))
 		}
 	}
 	return r
@@ -117,10 +120,10 @@ func applySpeedResult(task *speedTask, result inferyard.ContextSpeedResult) {
 	if task.stage != speedCancelled && result.Execution.Counts.NotExecuted+result.Execution.Counts.Cancelled+result.Execution.Counts.Invalid > 0 {
 		task.stage = speedPartial
 	}
-	task.reason = strings.Join(result.Measurement.Reasons, "、")
+	task.reason = strings.Join(result.Measurement.Reasons, l10n.TR("speed.list_sep"))
 	for _, sample := range result.Samples {
 		c := sample.Columns
-		projected := speedSample{seconds: c.Time.Value, prefill: c.Prefill.Value, decode: c.Decode.Value, reason: strings.Join(sample.Measurement.Reasons, "、")}
+		projected := speedSample{seconds: c.Time.Value, prefill: c.Prefill.Value, decode: c.Decode.Value, reason: strings.Join(sample.Measurement.Reasons, l10n.TR("speed.list_sep"))}
 		if c.Context.Value != nil {
 			n := int(*c.Context.Value)
 			projected.context = &n
@@ -148,7 +151,13 @@ func applySpeedResult(task *speedTask, result inferyard.ContextSpeedResult) {
 }
 
 func speedMissingLabels(c inferyard.SpeedColumns) string {
-	labels := []string{"上下文", "输入长度", "输入处理", "Prefill", "Decode"}
+	labels := []string{
+		l10n.TR("speed.metric.context"),
+		l10n.TR("speed.metric.prompt_length"),
+		l10n.TR("speed.metric.input_time"),
+		"Prefill",
+		"Decode",
+	}
 	reasons := []*string{c.Context.MissingReason, c.PromptLength.MissingReason, c.Time.MissingReason, c.Prefill.MissingReason, c.Decode.MissingReason}
 	var missing []string
 	for i, reason := range reasons {
@@ -156,5 +165,5 @@ func speedMissingLabels(c inferyard.SpeedColumns) string {
 			missing = append(missing, labels[i]+": "+*reason)
 		}
 	}
-	return strings.Join(missing, "；")
+	return strings.Join(missing, l10n.TR("speed.missing_sep"))
 }

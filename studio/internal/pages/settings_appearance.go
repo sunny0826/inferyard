@@ -11,15 +11,15 @@ import (
 )
 
 type appearanceOption struct {
-	value string
-	label string
-	icon  func() *ui.SVG
+	value    string
+	labelKey string
+	icon     func() *ui.SVG
 }
 
 var appearanceOptions = []appearanceOption{
-	{value: core.ThemeSystem, label: "跟随系统", icon: lucide.Monitor},
-	{value: core.ThemeLight, label: "浅色", icon: lucide.Sun},
-	{value: core.ThemeDark, label: "深色", icon: lucide.Moon},
+	{value: core.ThemeSystem, labelKey: "settings.appearance.system", icon: lucide.Monitor},
+	{value: core.ThemeLight, labelKey: "settings.appearance.light", icon: lucide.Sun},
+	{value: core.ThemeDark, labelKey: "settings.appearance.dark", icon: lucide.Moon},
 }
 
 func themeFromSettings(v core.SettingsResponse) string {
@@ -73,18 +73,18 @@ func (s *viewState) appearanceSettingsView(c *ui.Context) {
 	applyMaterial(c, ui.Column(c).FillWidth().MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).
 		Children(func() {
 			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				heading(c, "外观", 2).Grow(1)
+				heading(c, tr(c, "settings.appearance.heading"), 2).Grow(1)
 				if selected == core.ThemeSystem {
-					current := "当前：浅色"
+					current := tr(c, "settings.appearance.current_light")
 					if c.Theme().Dark {
-						current = "当前：深色"
+						current = tr(c, "settings.appearance.current_dark")
 					}
 					ui.Text(c, current).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
 				}
 			})
 
 			seg := ui.SegmentedBase(c, &idx, len(appearanceOptions))
-			seg.Track.FillWidth().Gap(t.Density.CardGap).AlignItems(ui.Stretch).Label("外观模式").
+			seg.Track.FillWidth().Gap(t.Density.CardGap).AlignItems(ui.Stretch).Label(tr(c, "settings.appearance.mode_label")).
 				Children(func() {
 					for i, opt := range appearanceOptions {
 						s.appearanceOptionTile(c, seg.Segment(i), opt, i == idx)
@@ -99,6 +99,7 @@ func (s *viewState) appearanceSettingsView(c *ui.Context) {
 
 func (s *viewState) appearanceOptionTile(c *ui.Context, item ui.Element, opt appearanceOption, active bool) {
 	t := tokens(c)
+	optLabel := tr(c, opt.labelKey)
 	bg := t.Color.Sunken
 	border := t.Color.BorderSubtle
 	if c.Preferences().HighContrast {
@@ -116,7 +117,7 @@ func (s *viewState) appearanceOptionTile(c *ui.Context, item ui.Element, opt app
 	}
 
 	item.MinWidth(0).Padding(t.Density.Row).Radius(t.Radius.Floating).
-		Background(bg).Border(1.5, border).Label(opt.label)
+		Background(bg).Border(1.5, border).Label(optLabel)
 	if active {
 		applyShadow(item, t.Elevation.XS)
 	}
@@ -131,7 +132,7 @@ func (s *viewState) appearanceOptionTile(c *ui.Context, item ui.Element, opt app
 			appearancePreviewThumb(c, opt.value, t.Color.BorderDefault)
 			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(6).Padding(0, 2).Children(func() {
 				components.Icon(c, opt.icon).Size(14, 14).TextColor(iconColor)
-				label := ui.Text(c, opt.label).SingleLine()
+				label := ui.Text(c, optLabel).SingleLine()
 				if active {
 					label.Bold().TextColor(t.Color.FgPrimary)
 				} else {

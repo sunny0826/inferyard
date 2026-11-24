@@ -3,6 +3,7 @@ package core
 import (
 	"encoding/json"
 	"fmt"
+	"inferyard/studio/internal/l10n"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -267,7 +268,7 @@ func scanPolystrataModelConfigs(installPaths, extraDataDirs []string) ([]registr
 			entries = append(entries, registryEntry{
 				path:        resolved,
 				rawPath:     full,
-				source:      "PolyStrata 配置",
+				source:      l10n.TR("core.registry.source.polystrata_config"),
 				displayName: displayName,
 				assetFiles:  assetFiles,
 				model: ModelAsset{

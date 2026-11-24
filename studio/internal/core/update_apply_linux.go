@@ -4,6 +4,7 @@ package core
 
 import (
 	"context"
+	"inferyard/studio/internal/l10n"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,7 +20,7 @@ func inspectPlatformInstallTarget(exePath string) updateInstallTarget {
 			InstallDir:    installDir,
 			CanSelfUpdate: false,
 			BlockCode:     "update_path_unwritable",
-			BlockMessage:  "当前安装目录没有写入权限，可打开已下载安装包手动安装或前往发布页下载。",
+			BlockMessage:  l10n.TR("core.update.err.install_dir_unwritable"),
 		}
 	}
 	return updateInstallTarget{
@@ -37,7 +38,7 @@ func applyPlatformUpdate(_ context.Context, plan platformApplyPlan) error {
 	if err := checkDirWritable(installDir); err != nil {
 		return &updateCheckError{
 			code:    "update_path_unwritable",
-			message: "当前安装目录没有写入权限，可打开已下载安装包手动安装或前往发布页下载。",
+			message: l10n.TR("core.update.err.install_dir_unwritable"),
 			cause:   err,
 		}
 	}
@@ -47,7 +48,7 @@ func applyPlatformUpdate(_ context.Context, plan platformApplyPlan) error {
 	if err != nil {
 		return &updateCheckError{
 			code:    "update_extract_failed",
-			message: "解压更新安装包失败，原有安装保持不变。",
+			message: l10n.TR("core.update.err.linux_extract_failed"),
 			cause:   err,
 		}
 	}
@@ -66,7 +67,7 @@ func applyPlatformUpdate(_ context.Context, plan platformApplyPlan) error {
 		if err := spawnLinuxRelaunch(os.Getpid(), plan.ExePath); err != nil {
 			return &updateCheckError{
 				code:    "update_relaunch_failed",
-				message: "更新已完成，但自动重启失败，请手动重新启动应用。",
+				message: l10n.TR("core.update.err.relaunch_failed_restart"),
 				cause:   err,
 			}
 		}

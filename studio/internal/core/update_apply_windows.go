@@ -4,6 +4,7 @@ package core
 
 import (
 	"context"
+	"inferyard/studio/internal/l10n"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,7 +22,7 @@ func inspectPlatformInstallTarget(exePath string) updateInstallTarget {
 			InstallDir:    installDir,
 			CanSelfUpdate: false,
 			BlockCode:     "update_path_unwritable",
-			BlockMessage:  "当前安装目录没有写入权限，可打开已下载安装包手动安装或前往发布页下载。",
+			BlockMessage:  l10n.TR("core.update.err.install_dir_unwritable"),
 		}
 	}
 	return updateInstallTarget{
@@ -39,7 +40,7 @@ func applyPlatformUpdate(_ context.Context, plan platformApplyPlan) error {
 	if err := checkDirWritable(installDir); err != nil {
 		return &updateCheckError{
 			code:    "update_path_unwritable",
-			message: "当前安装目录没有写入权限，可打开已下载安装包手动安装或前往发布页下载。",
+			message: l10n.TR("core.update.err.install_dir_unwritable"),
 			cause:   err,
 		}
 	}
@@ -47,7 +48,7 @@ func applyPlatformUpdate(_ context.Context, plan platformApplyPlan) error {
 	if err != nil {
 		return &updateCheckError{
 			code:    "update_apply_failed",
-			message: "未找到 PowerShell，无法启动静默安装，可打开已下载安装包手动安装。",
+			message: l10n.TR("core.update.err.windows_powershell_missing"),
 			cause:   err,
 		}
 	}
@@ -56,7 +57,7 @@ func applyPlatformUpdate(_ context.Context, plan platformApplyPlan) error {
 	if err != nil {
 		return &updateCheckError{
 			code:    "update_apply_failed",
-			message: "创建安装辅助脚本失败。",
+			message: l10n.TR("core.update.err.windows_script_create_failed"),
 			cause:   err,
 		}
 	}
@@ -64,11 +65,11 @@ func applyPlatformUpdate(_ context.Context, plan platformApplyPlan) error {
 	if _, err := scriptFile.WriteString(windowsUpdateScriptContent()); err != nil {
 		_ = scriptFile.Close()
 		_ = os.Remove(scriptPath)
-		return &updateCheckError{code: "update_apply_failed", message: "写入安装辅助脚本失败。", cause: err}
+		return &updateCheckError{code: "update_apply_failed", message: l10n.TR("core.update.err.windows_script_write_failed"), cause: err}
 	}
 	if err := scriptFile.Close(); err != nil {
 		_ = os.Remove(scriptPath)
-		return &updateCheckError{code: "update_apply_failed", message: "关闭安装辅助脚本失败。", cause: err}
+		return &updateCheckError{code: "update_apply_failed", message: l10n.TR("core.update.err.windows_script_close_failed"), cause: err}
 	}
 
 	launchExe := plan.ExePath
@@ -103,7 +104,7 @@ func applyPlatformUpdate(_ context.Context, plan platformApplyPlan) error {
 		_ = os.Remove(scriptPath)
 		return &updateCheckError{
 			code:    "update_apply_failed",
-			message: "启动 Windows 安装程序失败，可打开已下载安装包手动安装。",
+			message: l10n.TR("core.update.err.windows_installer_launch_failed"),
 			cause:   err,
 		}
 	}

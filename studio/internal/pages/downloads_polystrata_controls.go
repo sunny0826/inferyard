@@ -9,16 +9,17 @@ import (
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func (s *viewState) polystrataInstallHeaderAction(c *ui.Context, task core.DownloadTask) {
 	if s.destructiveActionWithTrigger(c, destructiveOption{
 		kind:         destructiveCancelDownload,
 		id:           task.TaskId,
-		label:        "取消安装",
-		confirmLabel: "确认取消安装",
-		dismissLabel: "继续安装",
-		prompt:       "取消本次安装？已下载文件将保留。",
+		label:        tr(c, "downloads.polystrata.cancel_install"),
+		confirmLabel: tr(c, "downloads.polystrata.cancel_install_confirm"),
+		dismissLabel: tr(c, "downloads.polystrata.resume_install"),
+		prompt:       tr(c, "downloads.polystrata.cancel_install_prompt"),
 		disabled:     s.busy,
 	}, true, func(open bool) ui.Element {
 		return polystrataInstallStatusButton(c, open, s.busy)
@@ -28,7 +29,7 @@ func (s *viewState) polystrataInstallHeaderAction(c *ui.Context, task core.Downl
 		}
 		s.workDownload(func() (string, *core.ApiError) {
 			_, e := s.service.CancelDownload(task.TaskId)
-			return "已请求取消安装", e
+			return l10n.TR("downloads.polystrata.toast.cancel_requested"), e
 		})
 	}
 }
@@ -36,7 +37,7 @@ func (s *viewState) polystrataInstallHeaderAction(c *ui.Context, task core.Downl
 func polystrataInstallStatusButton(c *ui.Context, confirmOpen, disabled bool) ui.Element {
 	t := tokens(c)
 	theme := c.Theme()
-	b := ui.ButtonBase(c).MinWidth(100).Padding(theme.Space(1.5), theme.Space(3)).Radius(t.Radius.Full).Label("取消安装")
+	b := ui.ButtonBase(c).MinWidth(100).Padding(theme.Space(1.5), theme.Space(3)).Radius(t.Radius.Full).Label(tr(c, "downloads.polystrata.cancel_install"))
 	b.Disabled(disabled)
 
 	showCancel := !disabled && (b.Hovered() || b.Pressed() || confirmOpen)
@@ -84,15 +85,15 @@ func polystrataInstallStatusButton(c *ui.Context, confirmOpen, disabled bool) ui
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.Center).Gap(theme.Space(1.5)).Children(func() {
 			if showCancel {
 				components.Icon(c, lucide.X).Size(12, 12).TextColor(fg).Role(ui.RoleNone)
-				ui.Text(c, "取消安装").Bold().FontSize(t.Type.Caption).TextColor(fg).SingleLine()
+				ui.Text(c, tr(c, "downloads.polystrata.cancel_install")).Bold().FontSize(t.Type.Caption).TextColor(fg).SingleLine()
 			} else {
-				components.Spinner(c, components.SpinnerRing).Size(12, 12).TextColor(fg).Label("安装进行中")
-				ui.Text(c, "安装中").Bold().FontSize(t.Type.Caption).TextColor(fg).SingleLine()
+				components.Spinner(c, components.SpinnerRing).Size(12, 12).TextColor(fg).Label(tr(c, "downloads.polystrata.installing_label"))
+				ui.Text(c, tr(c, "downloads.badge.installing")).Bold().FontSize(t.Type.Caption).TextColor(fg).SingleLine()
 			}
 		})
 	})
 	if !confirmOpen && !disabled {
-		components.Tooltip(c, b, "点击取消安装")
+		components.Tooltip(c, b, tr(c, "downloads.polystrata.click_cancel_tooltip"))
 	}
 	return b
 }
@@ -102,14 +103,14 @@ func (s *viewState) polystrataInstallLogSection(c *ui.Context, taskID, logPath s
 	container := ui.Column(c.Key("polystrata-live-log-" + taskID)).FillWidth().Gap(t.Density.Tight)
 	open := ui.Local(container, "open", func() bool { return false })
 	container.Children(func() {
-		labelText := "查看安装日志"
+		labelText := tr(c, "downloads.polystrata.log.view")
 		if *open {
-			labelText = "收起安装日志"
+			labelText = tr(c, "downloads.polystrata.log.hide")
 		}
 		toggle := ui.ButtonBase(c).AlignSelf(ui.Start).
 			Padding(t.Density.Hairline, t.Density.Tight).
 			Radius(t.Radius.XS).
-			Label("查看安装日志")
+			Label(tr(c, "downloads.polystrata.log.view"))
 		fg := t.Color.FgTertiary
 		if *open || toggle.Hovered() {
 			fg = t.Color.FgSecondary
@@ -141,12 +142,12 @@ func (s *viewState) polystrataInstallLogSection(c *ui.Context, taskID, logPath s
 			Border(1, t.Color.BorderSubtle).
 			Children(func() {
 				if snippet == "" {
-					ui.Text(c, "暂无可显示的日志内容。").FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary)
+					ui.Text(c, tr(c, "downloads.polystrata.log.empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary)
 					return
 				}
 				ui.Row(c).FillWidth().AlignItems(ui.Center).Justify(ui.SpaceBetween).Children(func() {
 					ui.Text(c, filepath.Base(logPath)).FontSize(max(11, t.Type.Caption-1)).TextColor(t.Color.FgTertiary).SingleLine()
-					copyBtn := ui.ButtonBase(c).Padding(t.Density.Hairline, t.Density.Tight).Radius(t.Radius.XS).Label("复制安装日志")
+					copyBtn := ui.ButtonBase(c).Padding(t.Density.Hairline, t.Density.Tight).Radius(t.Radius.XS).Label(tr(c, "downloads.polystrata.log.copy_label"))
 					copyFg := t.Color.FgTertiary
 					if copyBtn.Hovered() {
 						copyFg = t.Color.FgSecondary
@@ -155,11 +156,11 @@ func (s *viewState) polystrataInstallLogSection(c *ui.Context, taskID, logPath s
 					copyBtn.Children(func() {
 						ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 							components.Icon(c, lucide.Copy).Size(11, 11).TextColor(copyFg).Role(ui.RoleNone)
-							ui.Text(c, "复制").FontSize(max(11, t.Type.Caption-1)).TextColor(copyFg).SingleLine()
+							ui.Text(c, tr(c, "downloads.action.copy")).FontSize(max(11, t.Type.Caption-1)).TextColor(copyFg).SingleLine()
 						})
 					})
 					if copyBtn.Clicked() {
-						s.copyDownloadText(c, "安装日志", snippet)
+						s.copyDownloadText(c, tr(c, "downloads.copy_subject.install_log"), snippet)
 					}
 				})
 				ui.Scroll(c).FillWidth().MaxHeight(168).Children(func() {
@@ -182,7 +183,7 @@ func (s *viewState) readDownloadLogSnippet(taskID, logPath string) string {
 func (s *viewState) renderDownloadLogTail(c *ui.Context, taskID, logPath string) {
 	snippet := s.readDownloadLogSnippet(taskID, logPath)
 	if snippet == "" {
-		ui.Text(c, "暂无可显示的日志内容。").FontSize(tokens(c).Type.Caption).TextColor(tokens(c).Color.FgSecondary)
+		ui.Text(c, tr(c, "downloads.polystrata.log.empty")).FontSize(tokens(c).Type.Caption).TextColor(tokens(c).Color.FgSecondary)
 		return
 	}
 	ui.Text(c, snippet).Selectable().FontSize(tokens(c).Type.Caption)

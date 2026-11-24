@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -293,7 +294,7 @@ func (s *Service) lookupAsset(kind, name string) (path string, deletable bool) {
 func errAssetNotDeletable() *ApiError {
 	return &ApiError{
 		Code:        "asset_not_deletable",
-		Message:     "该资源受保护或不在受管目录内，不能删除。",
+		Message:     l10n.TR("core.asset.err.not_deletable"),
 		Limitations: []string{},
 	}
 }

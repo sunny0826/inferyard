@@ -1,11 +1,11 @@
 package pages
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func cliOutdatedSummary(version *string) string {
@@ -16,11 +16,11 @@ func cliOutdatedSummary(version *string) string {
 	}
 	switch {
 	case cur != "" && req != "":
-		return fmt.Sprintf("CLI 版本过旧（当前 %s，需要 %s），请升级 CLI。", cur, req)
+		return l10n.TRf("onboarding.cli.outdated_cur_req", "current", cur, "required", req)
 	case cur != "":
-		return fmt.Sprintf("CLI 版本过旧（当前 %s），请升级 CLI。", cur)
+		return l10n.TRf("onboarding.cli.outdated_cur", "current", cur)
 	default:
-		return "CLI 版本过旧，请升级 CLI。"
+		return l10n.TR("onboarding.cli.outdated")
 	}
 }
 
@@ -39,7 +39,7 @@ func (s *viewState) upgradeCLI() {
 		}); e != nil {
 			return "", e
 		}
-		return "CLI 已升级", nil
+		return l10n.TR("onboarding.cli.upgraded"), nil
 	})
 }
 
@@ -48,30 +48,30 @@ func (s *viewState) setupGuide(c *ui.Context) {
 	if onlyCLIOutdated {
 		upgrading := s.actionBusy("upgrade-cli")
 		bound := s.service != nil && s.service.BoundPaths() != nil
-		card(c, "CLI 需要升级", func() {
+		card(c, tr(c, "onboarding.cli.upgrade_card"), func() {
 			ui.Text(c, cliOutdatedSummary(s.ready.CLI.Version)).TextColor(c.Theme().TextMuted)
 			locations, known := s.preparationLocations()
-			componentFold(c, "查看准备详情", func() {
+			componentFold(c, tr(c, "onboarding.setup.details_fold"), func() {
 				setupActions(c, locations, known, s.ready.CLI)
 				if known {
 					setupTargets(c, locations)
 				}
 			})
 			if bound {
-				ui.Text(c, "当前为开发环境绑定模式，请同步更新本地 CLI 后刷新。").TextColor(c.Theme().TextMuted)
+				ui.Text(c, tr(c, "onboarding.cli.bound_notice")).TextColor(c.Theme().TextMuted)
 			} else {
 				row := ui.Row(c.Key("upgrade-cli-actions")).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row)
 				showProgress, elapsed := delayedElapsed(c, row, "upgrade-cli", upgrading)
 				row.Children(func() {
-					if primaryActionButton(c, "升级 CLI", upgrading).Disabled(s.busy).Clicked() {
+					if primaryActionButton(c, tr(c, "onboarding.cli.upgrade_button"), upgrading).Disabled(s.busy).Clicked() {
 						s.upgradeCLI()
 					}
-					button(c, "前往设置").Disabled(s.busy).OnClick(func() { s.selected = "settings" })
+					button(c, tr(c, "onboarding.setup.open_settings")).Disabled(s.busy).OnClick(func() { s.selected = "settings" })
 				})
 				if showProgress {
-					progressBar(c, -1, "CLI 升级进度")
+					progressBar(c, -1, tr(c, "onboarding.cli.upgrade_progress"))
 					if elapsed >= loadingSlowThreshold {
-						ui.Text(c, "网络下载或环境初始化耗时较长，仍在继续…").TextColor(c.Theme().TextMuted)
+						ui.Text(c, tr(c, "onboarding.setup.slow_notice")).TextColor(c.Theme().TextMuted)
 					}
 				}
 			}
@@ -81,8 +81,8 @@ func (s *viewState) setupGuide(c *ui.Context) {
 		})
 		return
 	}
-	card(c, "环境准备", func() {
-		ui.Text(c, "首次使用流程：1. 准备运行环境 → 2. 获取引擎与模型 → 3. 开始首次测评").TextColor(c.Theme().TextMuted)
+	card(c, tr(c, "onboarding.setup.title"), func() {
+		ui.Text(c, tr(c, "onboarding.setup.steps_summary")).TextColor(c.Theme().TextMuted)
 		if s.ready.CLI.Status == "outdated" {
 			noticeBanner(c, noticeBannerOptions{
 				Kind:    stateWarning,
@@ -91,7 +91,7 @@ func (s *viewState) setupGuide(c *ui.Context) {
 			})
 		}
 		locations, known := s.preparationLocations()
-		componentFold(c, "查看准备详情", func() {
+		componentFold(c, tr(c, "onboarding.setup.details_fold"), func() {
 			setupActions(c, locations, known, s.ready.CLI)
 			if known {
 				setupTargets(c, locations)
@@ -101,15 +101,15 @@ func (s *viewState) setupGuide(c *ui.Context) {
 		row := ui.Row(c.Key("setup-actions")).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row)
 		showProgress, elapsed := delayedElapsed(c, row, "prepare-env", preparing)
 		row.Children(func() {
-			if primaryActionButton(c, "准备环境", preparing).Disabled(s.busy).Clicked() {
+			if primaryActionButton(c, tr(c, "onboarding.setup.prepare_button"), preparing).Disabled(s.busy).Clicked() {
 				s.prepareEnvironment()
 			}
-			button(c, "前往设置").Disabled(s.busy).OnClick(func() { s.selected = "settings" })
+			button(c, tr(c, "onboarding.setup.open_settings")).Disabled(s.busy).OnClick(func() { s.selected = "settings" })
 		})
 		if showProgress {
-			progressBar(c, -1, "环境准备进度")
+			progressBar(c, -1, tr(c, "onboarding.setup.progress_label"))
 			if elapsed >= loadingSlowThreshold {
-				ui.Text(c, "网络下载或环境初始化耗时较长，仍在继续…").TextColor(c.Theme().TextMuted)
+				ui.Text(c, tr(c, "onboarding.setup.slow_notice")).TextColor(c.Theme().TextMuted)
 			}
 		}
 		if s.cliInstallStatus != "" {
@@ -122,7 +122,7 @@ func setupActions(c *ui.Context, locations core.PreparationLocations, known bool
 	py := managedPythonLabel(known, locations)
 	switch {
 	case known && locations.CLI != nil && locations.CLIStatus == "ok":
-		ui.Text(c, "CLI：复用 "+displayName(*locations.CLI))
+		ui.Text(c, trf(c, "onboarding.setup.cli_reuse", "path", displayName(*locations.CLI)))
 	case (known && locations.CLIStatus == "outdated") || cli.Status == "outdated":
 		oldVer := emptyText(cli.Version)
 		if known && emptyText(locations.CLIVersion) != "" {
@@ -133,32 +133,32 @@ func setupActions(c *ui.Context, locations core.PreparationLocations, known bool
 			wantVer = ""
 		}
 		if oldVer != "" && wantVer != "" {
-			ui.Text(c, fmt.Sprintf("CLI：从 %s 升级至 %s（Python %s）", oldVer, wantVer, py))
+			ui.Text(c, trf(c, "onboarding.setup.cli_upgrade_ver", "from", oldVer, "to", wantVer, "python", py))
 		} else {
-			ui.Text(c, "CLI：升级至配套版本（Python "+py+"）")
+			ui.Text(c, trf(c, "onboarding.setup.cli_upgrade", "python", py))
 		}
 	default:
-		ui.Text(c, "CLI：安装配套版本（Python "+py+"）")
+		ui.Text(c, trf(c, "onboarding.setup.cli_install", "python", py))
 	}
 	if known && locations.UV != nil {
-		ui.Text(c, "uv：复用 "+displayName(*locations.UV))
+		ui.Text(c, trf(c, "onboarding.setup.uv_reuse", "path", displayName(*locations.UV)))
 	} else {
-		ui.Text(c, "uv：按需下载独立版本")
+		ui.Text(c, tr(c, "onboarding.setup.uv_download"))
 	}
 }
 
 func setupTargets(c *ui.Context, locations core.PreparationLocations) {
-	deviceRow(c, "工作区", configuredPath(locations.Workspace))
-	deviceRow(c, "结果目录", configuredPath(locations.Results))
-	deviceRow(c, "模型目录", configuredPath(locations.Models))
+	deviceRow(c, tr(c, "onboarding.target.workspace"), configuredPath(locations.Workspace))
+	deviceRow(c, tr(c, "onboarding.target.results"), configuredPath(locations.Results))
+	deviceRow(c, tr(c, "onboarding.target.models"), configuredPath(locations.Models))
 	if locations.ToolsDir != "" {
-		deviceRow(c, "uv 工具", configuredPath(ptrOrNil(locations.ToolsDir)))
+		deviceRow(c, tr(c, "onboarding.target.uv_tools"), configuredPath(ptrOrNil(locations.ToolsDir)))
 	}
 	if locations.CLI != nil {
 		deviceRow(c, "CLI", displayName(*locations.CLI))
 	}
 	if locations.Bound {
-		ui.Text(c, "开发环境下以上路径固定。").TextColor(c.Theme().TextMuted)
+		ui.Text(c, tr(c, "onboarding.target.bound_notice")).TextColor(c.Theme().TextMuted)
 	}
 }
 
@@ -176,12 +176,12 @@ func managedPythonLabel(known bool, locations core.PreparationLocations) string 
 	if known && locations.ManagedPython != "" {
 		return locations.ManagedPython
 	}
-	return "运行时"
+	return l10n.TR("onboarding.setup.python_runtime")
 }
 
 func configuredPath(value *string) string {
 	if value == nil || *value == "" {
-		return "默认路径"
+		return l10n.TR("onboarding.target.default_path")
 	}
 	return displayName(*value)
 }

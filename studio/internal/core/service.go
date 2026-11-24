@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 	"log"
 	"os"
 	"path/filepath"
@@ -180,16 +181,34 @@ func uuid() string {
 func clone[T any](v T) T { raw, _ := json.Marshal(v); var c T; _ = json.Unmarshal(raw, &c); return c }
 func Err(code string) *ApiError {
 	if code == "output_name_exhausted" {
-		return &ApiError{Code: code, Message: "前 1000 个目录名均已占用，请更换目录名或工作区。"}
+		return &ApiError{Code: code, Message: l10n.TR("core.err.output_name_exhausted")}
 	}
-	messages := map[string]string{"invalid_request": "请求参数无效", "not_found": "未找到资源", "conflict": "操作与当前状态冲突", "cli_blocked": "inferyard 拒绝执行", "internal_error": "服务内部错误", "cli_error": "inferyard 工具或证据错误", "cli_unavailable": "inferyard 不可用", "cli_outdated": "CLI 版本过旧，请升级 CLI"}
-	return &ApiError{Code: code, Message: messages[code], Limitations: []string{}}
+	var msg string
+	switch code {
+	case "invalid_request":
+		msg = l10n.TR("core.err.invalid_request")
+	case "not_found":
+		msg = l10n.TR("core.err.not_found")
+	case "conflict":
+		msg = l10n.TR("core.err.conflict")
+	case "cli_blocked":
+		msg = l10n.TR("core.err.cli_blocked")
+	case "internal_error":
+		msg = l10n.TR("core.err.internal_error")
+	case "cli_error":
+		msg = l10n.TR("core.err.cli_error")
+	case "cli_unavailable":
+		msg = l10n.TR("core.err.cli_unavailable")
+	case "cli_outdated":
+		msg = l10n.TR("core.err.cli_outdated")
+	}
+	return &ApiError{Code: code, Message: msg, Limitations: []string{}}
 }
 func Conflict(reason string) *ApiError {
 	e := Err("conflict")
 	e.Details = map[string]any{"reason": reason}
 	if reason == "output_exists" {
-		e.Message = "输出目录已存在，请更换目录名"
+		e.Message = l10n.TR("core.err.output_exists")
 	}
 	return e
 }
@@ -251,6 +270,7 @@ func (s *Service) Settings() SettingsResponse {
 		ExtraModelsRoots: append([]string(nil), u.ExtraModelsRoots...),
 		DownloadProxy:    u.DownloadProxy,
 		Theme:            NormalizeTheme(u.Theme),
+		Language:         NormalizeLanguage(u.Language),
 		MinimizeToTray:   u.MinimizeToTray,
 		ReportsRoot:      reportsRoot(u),
 	}}
@@ -260,7 +280,7 @@ func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResp
 	defer s.settingsMu.Unlock()
 	u := s.userSettings()
 	for k, v := range patch {
-		if s.paths != nil && k != "model_download_name" && k != "engine_download_name" && k != "download_proxy" && k != "theme" && k != "minimize_to_tray" {
+		if s.paths != nil && k != "model_download_name" && k != "engine_download_name" && k != "download_proxy" && k != "theme" && k != "language" && k != "minimize_to_tray" {
 			return SettingsResponse{}, Conflict("paths_bound")
 		}
 		if handled, apiErr := applySettingsPatchExtra(&u, k, v); handled {

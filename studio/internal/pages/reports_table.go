@@ -1,8 +1,6 @@
 package pages
 
 import (
-	"fmt"
-
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
@@ -11,22 +9,22 @@ import (
 func (s *viewState) reportsTableView(c *ui.Context) {
 	if s.reportsError != nil {
 		errorRecoveryBanner(c, s.reportsError, func() {
-			button(c, "重试读取报告").OnClick(s.refreshAction)
+			button(c, tr(c, "reports.list.retry_load")).OnClick(s.refreshAction)
 		})
 		return
 	}
 	if !s.loaded {
-		ui.Text(c, "正在读取报告列表…")
+		ui.Text(c, tr(c, "reports.list.loading"))
 		return
 	}
 	if len(s.reports) == 0 {
 		emptyGuideCard(c, emptyGuideOptions{
 			Icon:        lucide.FileText,
-			Title:       "暂无报告",
-			Description: "可新建任务，或从历史运行生成报告。",
+			Title:       tr(c, "reports.list.empty_title"),
+			Description: tr(c, "reports.list.empty_description"),
 			Surface:     emptyCard,
 			Action: func() {
-				primaryButton(c, "新任务").OnClick(s.newBenchmark)
+				primaryButton(c, tr(c, "reports.action.new_task")).OnClick(s.newBenchmark)
 			},
 		})
 		return
@@ -39,24 +37,24 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 func reportCard(c *ui.Context, report core.ReportSummary, open func()) {
 	t := tokens(c)
 	applyMaterial(c, ui.Column(c.Key(report.ReportId)).MinWidth(0).Gap(t.Density.Row).Padding(t.Card.Padding), materialCard).Children(func() {
-		ui.Text(c, reportHeading(report)).Bold()
-		ui.Text(c, reportSubheading(report)).TextColor(c.Theme().TextMuted)
+		ui.Text(c, reportHeadingFor(c, report)).Bold()
+		ui.Text(c, reportSubheadingFor(c, report)).TextColor(c.Theme().TextMuted)
 		if report.Unreadable {
-			ui.Text(c, "报告文件无法读取").TextColor(stateColor(c, stateDanger))
+			ui.Text(c, tr(c, "reports.list.unreadable_body")).TextColor(stateColor(c, stateDanger))
 		} else {
 			for _, run := range report.RunSummaries {
-				ui.Text(c, reportRunLine(report, run)).Selectable()
+				ui.Text(c, reportRunLineFor(c, report, run)).Selectable()
 			}
 		}
-		primaryButton(c, "打开报告").Label("打开报告 · " + report.ReportId).OnClick(open)
-		componentFoldKeyed(c, "report-"+report.ReportId, "报告详情", func() {
-			ui.Text(c, "报告 ID："+report.ReportId).Selectable()
-			ui.Text(c, "更新时间："+configuredValue(formatTimestampUTC(emptyText(report.ModifiedAt)))).Selectable()
+		primaryButton(c, tr(c, "reports.list.open")).Label(trf(c, "reports.list.open_aria", "id", report.ReportId)).OnClick(open)
+		componentFoldKeyed(c, "report-"+report.ReportId, tr(c, "reports.list.details_fold"), func() {
+			ui.Text(c, trf(c, "reports.list.report_id", "id", report.ReportId)).Selectable()
+			ui.Text(c, trf(c, "reports.list.updated_at", "time", configuredValue(formatTimestampUTC(emptyText(report.ModifiedAt))))).Selectable()
 			for _, id := range report.RunIds {
-				ui.Text(c, "来源运行："+id).Selectable()
+				ui.Text(c, trf(c, "reports.list.source_run", "id", id)).Selectable()
 			}
 			for _, path := range report.RunPaths {
-				ui.Text(c, "来源路径："+reportSource(path)).Selectable()
+				ui.Text(c, trf(c, "reports.list.source_path", "path", reportSourceFor(c, path))).Selectable()
 			}
 			ui.Text(c, displayName(report.Path)).Selectable().TextColor(c.Theme().TextMuted)
 		})
@@ -64,8 +62,12 @@ func reportCard(c *ui.Context, report core.ReportSummary, open func()) {
 }
 
 func reportHeading(report core.ReportSummary) string {
+	return reportHeadingFor(nil, report)
+}
+
+func reportHeadingFor(c *ui.Context, report core.ReportSummary) string {
 	if report.Unreadable {
-		return "无法读取的报告 · " + report.ReportId
+		return trf(c, "reports.list.unreadable_heading", "id", report.ReportId)
 	}
 	if len(report.RunSummaries) == 0 {
 		return report.ReportId
@@ -78,15 +80,19 @@ func reportHeading(report core.ReportSummary) string {
 }
 
 func reportSubheading(report core.ReportSummary) string {
+	return reportSubheadingFor(nil, report)
+}
+
+func reportSubheadingFor(c *ui.Context, report core.ReportSummary) string {
 	parts := []string{}
 	if len(report.RunSummaries) <= 1 {
 		if label := reportBundleLabel(report); label != "" {
 			parts = append(parts, label)
 		}
 	}
-	parts = append(parts, fmt.Sprintf("%d 次运行", len(report.RunIds)))
+	parts = append(parts, trf(c, "reports.list.run_count", "count", len(report.RunIds)))
 	if report.ModifiedAt != nil {
-		parts = append(parts, "更新于 "+displayValue(formatTimestamp(*report.ModifiedAt)))
+		parts = append(parts, trf(c, "reports.list.updated_inline", "time", displayValue(formatTimestamp(*report.ModifiedAt))))
 	}
 	return joinParts(parts)
 }
@@ -101,8 +107,12 @@ func reportBundleLabel(report core.ReportSummary) string {
 }
 
 func reportRunLine(report core.ReportSummary, run core.ReportListRun) string {
+	return reportRunLineFor(nil, report, run)
+}
+
+func reportRunLineFor(c *ui.Context, report core.ReportSummary, run core.ReportListRun) string {
 	prefix := ""
-	if run.Model != "" && (len(report.RunSummaries) > 1 || reportText(run.Model) != reportHeading(report)) {
+	if run.Model != "" && (len(report.RunSummaries) > 1 || reportText(run.Model) != reportHeadingFor(c, report)) {
 		prefix = reportText(run.Model) + " · "
 	}
 	if run.BundleLabel != "" && len(report.RunSummaries) > 1 {
@@ -110,18 +120,22 @@ func reportRunLine(report core.ReportSummary, run core.ReportListRun) string {
 	}
 	quality := run.Quality
 	if quality.Numerator == nil || quality.Denominator == nil {
-		return prefix + "答案通过未记录"
+		return prefix + tr(c, "reports.list.pass_unrecorded")
 	}
-	line := prefix + fmt.Sprintf("答案通过 %s", reportRate(quality.StudioCounts))
+	line := prefix + trf(c, "reports.list.pass_rate", "rate", reportRate(quality.StudioCounts))
 	if !quality.Complete {
-		line += "（部分评分）"
+		line = trf(c, "reports.list.pass_rate_partial", "line", line)
 	}
 	return line
 }
 
 func reportSource(path *string) string {
+	return reportSourceFor(nil, path)
+}
+
+func reportSourceFor(c *ui.Context, path *string) string {
 	if path == nil {
-		return "来源不可达"
+		return tr(c, "reports.list.source_unreachable")
 	}
 	return displayName(*path)
 }

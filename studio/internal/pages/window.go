@@ -14,22 +14,24 @@ import (
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 )
 
 var navigation = []struct {
-	id, label string
-	icon      func() *ui.SVG
+	id, labelKey string
+	icon         func() *ui.SVG
 }{
-	{"dashboard", "任务", lucide.Play},
-	{"reports", "报告", lucide.FileText},
-	{"models", "模型", lucide.Layers},
-	{"downloads", "下载", lucide.Download},
-	{"device", "设备", lucide.Cpu},
-	{"settings", "设置", lucide.Settings},
+	{"dashboard", "nav.dashboard", lucide.Play},
+	{"reports", "nav.reports", lucide.FileText},
+	{"models", "nav.models", lucide.Layers},
+	{"downloads", "nav.downloads", lucide.Download},
+	{"device", "nav.device", lucide.Cpu},
+	{"settings", "nav.settings", lucide.Settings},
 }
 
 type WindowHooks struct {
-	BindTray func(win *mygo.Window) func(bool) error
+	BindTray        func(win *mygo.Window) func(bool) error
+	OnLocaleChanged func(locale string)
 }
 
 func New(ctx context.Context, service *core.Service, page string, hooks ...WindowHooks) func(core.Event) bool {
@@ -39,8 +41,10 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 		title = paths.WindowTitle
 	}
 	initialTheme := service.Theme()
+	initialLanguage := service.Language()
 	initialMinimizeToTray := service.MinimizeToTray()
 	syncNativeTheme(initialTheme)
+	syncNativeLocale(initialLanguage)
 	s := &viewState{
 		ctx:                   ctx,
 		service:               service,
@@ -50,11 +54,13 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 		speed:                 &speedWorkspace{context: inferyard.ContextSpeed64K},
 		themeMode:             initialTheme,
 		appliedThemeMode:      initialTheme,
+		languageMode:          initialLanguage,
+		appliedLanguageMode:   initialLanguage,
 		minimizeToTray:        initialMinimizeToTray,
 		appliedMinimizeToTray: false,
 		settings: core.SettingsResponse{
-			Settings:  core.UserSettings{Theme: initialTheme, MinimizeToTray: initialMinimizeToTray},
-			Effective: core.EffectiveSettings{Theme: initialTheme, MinimizeToTray: initialMinimizeToTray},
+			Settings:  core.UserSettings{Theme: initialTheme, Language: initialLanguage, MinimizeToTray: initialMinimizeToTray},
+			Effective: core.EffectiveSettings{Theme: initialTheme, Language: initialLanguage, MinimizeToTray: initialMinimizeToTray},
 		},
 	}
 	options := pageShellOptions(title, "inferyard-studio-main", s.leftNav, s.contentView)
@@ -68,7 +74,18 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 	} else {
 		s.appliedMinimizeToTray = initialMinimizeToTray
 	}
+	var localeHook func(string)
+	if len(hooks) > 0 {
+		localeHook = hooks[0].OnLocaleChanged
+	}
+	offLocale := mygo.App.OnLocaleChanged(func(locale string) {
+		if localeHook != nil {
+			localeHook(locale)
+		}
+		go s.refresh(true)
+	})
 	w.OnClosed(func() {
+		offLocale()
 		cancel()
 		s.waitMinimizeToTrayPersist()
 	})
@@ -213,6 +230,14 @@ type viewState struct {
 	themeWorkerRunning                                                                  bool
 	applyNativeTheme                                                                    func(string)
 	persistTheme                                                                        func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
+	languageMode, appliedLanguageMode                                                   string
+	languageSaving                                                                      bool
+	languageMu                                                                          sync.Mutex
+	languageWanted                                                                      string
+	languageWantedSeq                                                                   uint64
+	languageWorkerRunning                                                               bool
+	applyNativeLocale                                                                   func(string)
+	persistLanguage                                                                     func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
 	minimizeToTray, appliedMinimizeToTray                                               bool
 	trayUnavailable                                                                     bool
 	minimizeToTraySaving                                                                bool
@@ -552,23 +577,23 @@ func (s *viewState) contentView(c *ui.Context) {
 }
 
 func (s *viewState) loadingView(c *ui.Context) {
-	title := "首次上手"
+	title := tr(c, "shell.loading.getting_started")
 	if s.selected == "dashboard" {
 		title = ""
 		if s.detailID != "" {
-			title = "运行详情"
+			title = tr(c, "shell.page.run_detail")
 		}
 	}
 	for _, n := range navigation {
 		if n.id == s.selected {
-			title = n.label
+			title = tr(c, n.labelKey)
 		}
 	}
 	if title != "" {
 		s.header(c, title)
 	}
 	if s.failure != nil || s.refreshFailure != "" {
-		button(c, "重试读取页面").AlignSelf(ui.Start).OnClick(s.refreshAction)
+		button(c, tr(c, "shell.loading.retry_page")).AlignSelf(ui.Start).OnClick(s.refreshAction)
 		return
 	}
 	host := ui.Column(c.Key("page-loading")).FillWidth().Gap(tokens(c).Density.Section)
@@ -596,7 +621,7 @@ func field(c *ui.Context, label string, value *string) ui.Element {
 }
 func text(p *string) string {
 	if p == nil || *p == "" {
-		return "缺测"
+		return l10n.TR("common.missing")
 	}
 	return *p
 }

@@ -1,6 +1,6 @@
 # 资源、稳定性与条件指标
 
-本文件是[指标定义](metrics.md)的一部分，也是 catalogue 的生成源；共同记录与计算规则见该文件第 1 节。
+本文件是[指标定义](metrics.md)的一部分；打包指标目录直接维护在 `cli/src/inferyard/data/metrics.json`（可通过 `inferyard catalogue --kind metrics` 查看），共同记录与计算规则见该文件第 1 节。
 
 ## 4. 资源与环境：8 组
 

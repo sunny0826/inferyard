@@ -7,11 +7,13 @@ import (
 	"math"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func (s *viewState) downloadDisplayPriority(task core.DownloadTask, index int) int {
@@ -58,7 +60,7 @@ func (s *viewState) orderedDownloads() []core.DownloadTask {
 
 func (s *viewState) downloadsView(c *ui.Context) {
 	if len(s.downloads) == 0 {
-		ui.Text(c, "暂无下载任务。")
+		ui.Text(c, tr(c, "downloads.tasks.empty"))
 		return
 	}
 	for _, task := range s.orderedDownloads() {
@@ -76,23 +78,23 @@ func downloadDisplayName(task core.DownloadTask) string {
 func downloadStageLabel(stage string) string {
 	switch stage {
 	case "downloading":
-		return "下载中"
+		return l10n.TR("downloads.stage.downloading")
 	case "verifying":
-		return "校验中"
+		return l10n.TR("downloads.stage.verifying")
 	case "extracting":
-		return "解压中"
+		return l10n.TR("downloads.stage.extracting")
 	case "preparing":
-		return "准备中"
+		return l10n.TR("downloads.stage.preparing")
 	case "preflight":
-		return "环境预检"
+		return l10n.TR("downloads.stage.preflight")
 	case "downloading_runtime":
-		return "下载运行时"
+		return l10n.TR("downloads.stage.downloading_runtime")
 	case "setup_engine":
-		return "安装引擎环境"
+		return l10n.TR("downloads.stage.setup_engine")
 	case "downloading_model":
-		return "下载模型"
+		return l10n.TR("downloads.stage.downloading_model")
 	case "verifying_installation":
-		return "核验安装"
+		return l10n.TR("downloads.stage.verifying_installation")
 	}
 	return ""
 }
@@ -112,7 +114,7 @@ func formatDownloadBytes(v int64) string {
 
 func formatDownloadETA(seconds float64) string {
 	if math.IsNaN(seconds) || math.IsInf(seconds, 0) || seconds < 1 {
-		return "即将完成"
+		return l10n.TR("downloads.eta.almost_done")
 	}
 	total := int64(math.Round(seconds))
 	if total < 60 {
@@ -142,9 +144,9 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 		s.polystrataDownloadTaskCard(c, task)
 		return
 	}
-	kind := "模型"
+	kind := tr(c, "downloads.kind.model")
 	if task.Kind == "engine" {
-		kind = "引擎"
+		kind = tr(c, "downloads.kind.engine")
 	}
 	engineIndeterminate := task.Kind == "engine" && task.TotalBytes == nil && task.DownloadedBytes == 0 && task.BytesPerSecond == nil && task.Stage == ""
 	var metrics []taskMetric
@@ -168,26 +170,26 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 			rateVal = formatRate(*task.BytesPerSecond)
 			rateReason = ""
 			if task.State == "downloading" && *task.BytesPerSecond > 0 && task.DownloadedBytes < total && (task.Stage == "" || task.Stage == "downloading") {
-				rateReason = "剩余 " + formatDownloadETA(float64(total-task.DownloadedBytes)/(*task.BytesPerSecond))
+				rateReason = trf(c, "downloads.eta.remaining", "eta", formatDownloadETA(float64(total-task.DownloadedBytes)/(*task.BytesPerSecond)))
 			}
 		} else if task.State == "downloading" && task.Stage != "" && task.Stage != "downloading" {
 			rateVal, rateReason = stageText, ""
 		}
 		metrics = []taskMetric{
-			{"进度", fmt.Sprintf("%s / %s", formatDownloadBytes(task.DownloadedBytes), formatDownloadBytes(total)), fmt.Sprintf("%.1f%%", pct)},
-			{"速率", rateVal, rateReason},
-			{"阶段", stageText, ""},
+			{tr(c, "downloads.metric.progress"), fmt.Sprintf("%s / %s", formatDownloadBytes(task.DownloadedBytes), formatDownloadBytes(total)), fmt.Sprintf("%.1f%%", pct)},
+			{tr(c, "downloads.metric.rate"), rateVal, rateReason},
+			{tr(c, "downloads.metric.stage"), stageText, ""},
 		}
 		active = false
 	default:
 		stageReason := downloadStageLabel(task.Stage)
 		metrics = []taskMetric{
-			{"已下载", formatDownloadBytes(task.DownloadedBytes), stageReason},
-			{"速率", "—", ""},
-			{"总量", "—", ""},
+			{tr(c, "downloads.metric.downloaded"), formatDownloadBytes(task.DownloadedBytes), stageReason},
+			{tr(c, "downloads.metric.rate"), "—", ""},
+			{tr(c, "downloads.metric.total"), "—", ""},
 		}
 		if task.BytesPerSecond != nil {
-			metrics[1] = taskMetric{"速率", formatRate(*task.BytesPerSecond), ""}
+			metrics[1] = taskMetric{tr(c, "downloads.metric.rate"), formatRate(*task.BytesPerSecond), ""}
 		}
 	}
 	color := downloadStateColor(c, task.State)
@@ -199,7 +201,7 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 			status:  status,
 			notice: func() {
 				if task.State == "downloading" && task.TotalBytes != nil {
-					progressBar(c, progressValue(task.DownloadedBytes, task.TotalBytes), "下载进度").Height(tokens(c).Density.Tight)
+					progressBar(c, progressValue(task.DownloadedBytes, task.TotalBytes), tr(c, "downloads.progress.download_label")).Height(tokens(c).Density.Tight)
 				}
 				s.downloadErrorView(c, task.Error)
 			},
@@ -212,15 +214,15 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 func engineTaskStatus(task core.DownloadTask) string {
 	switch task.State {
 	case "downloading":
-		return "正在下载引擎归档…"
+		return l10n.TR("downloads.engine_archive.downloading")
 	case "done":
-		return "引擎归档下载完成。"
+		return l10n.TR("downloads.engine_archive.done")
 	case "failed":
-		return "引擎归档下载失败。"
+		return l10n.TR("downloads.engine_archive.failed")
 	case "cancelled":
-		return "引擎归档下载已取消。"
+		return l10n.TR("downloads.engine_archive.cancelled")
 	}
-	return "引擎归档状态未知。"
+	return l10n.TR("downloads.engine_archive.unknown")
 }
 
 func downloadTaskSamePinnedSource(a, b core.DownloadTask) bool {
@@ -246,8 +248,8 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 	pendingHere := s.pendingDestructive.kind == string(destructiveCancelDownload) && s.pendingDestructive.id == task.TaskId
 	if task.State == "downloading" || pendingHere {
 		if s.destructiveAction(c, destructiveOption{
-			kind: destructiveCancelDownload, id: task.TaskId, label: "取消下载", confirmLabel: "确认取消下载",
-			prompt:   "取消本次下载？已下载文件将保留。",
+			kind: destructiveCancelDownload, id: task.TaskId, label: tr(c, "downloads.action.cancel"), confirmLabel: tr(c, "downloads.action.cancel_confirm"),
+			prompt:   tr(c, "downloads.action.cancel_prompt"),
 			disabled: s.busy,
 		}) {
 			if s.simulate(previewCancelDownload{id: task.TaskId}) {
@@ -255,19 +257,19 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 			}
 			s.workDownload(func() (string, *core.ApiError) {
 				_, e := s.service.CancelDownload(task.TaskId)
-				return "已请求取消下载", e
+				return l10n.TR("downloads.toast.cancel_requested"), e
 			})
 		}
 	}
 	retryDisabled := s.busy || s.downloadRetryActive(task)
 	if task.State == "cancelled" {
-		button(c, "继续下载").Disabled(retryDisabled).OnClick(func() {
+		button(c, tr(c, "downloads.action.resume")).Disabled(retryDisabled).OnClick(func() {
 			if s.simulate(previewRetryDownload{id: task.TaskId}) {
 				return
 			}
 			s.workDownload(func() (string, *core.ApiError) {
 				_, e := s.service.RetryDownload(task.TaskId)
-				return "已继续下载任务", e
+				return l10n.TR("downloads.toast.resumed"), e
 			})
 		})
 		return
@@ -275,60 +277,60 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 	if task.State != "failed" {
 		return
 	}
-	button(c, "重新创建下载任务").Disabled(retryDisabled).OnClick(func() {
+	button(c, tr(c, "downloads.action.recreate")).Disabled(retryDisabled).OnClick(func() {
 		if s.simulate(previewRetryDownload{id: task.TaskId}) {
 			return
 		}
 		s.workDownload(func() (string, *core.ApiError) {
 			_, e := s.service.RetryDownload(task.TaskId)
-			return "已重新创建下载任务", e
+			return l10n.TR("downloads.toast.recreated"), e
 		})
 	})
 }
 
 func (s *viewState) downloadDetails(c *ui.Context, task core.DownloadTask) {
-	ui.Text(c, "目录名："+task.OutName).Selectable()
+	ui.Text(c, trf(c, "downloads.detail.out_name", "name", task.OutName)).Selectable()
 	if fileName := strings.TrimSpace(text(task.FileName)); fileName != "" {
-		ui.Text(c, "文件："+displayName(fileName))
+		ui.Text(c, trf(c, "downloads.detail.file", "name", displayName(fileName)))
 	} else if task.Kind != "polystrata" {
-		ui.Text(c, "文件："+displayName(""))
+		ui.Text(c, trf(c, "downloads.detail.file", "name", displayName("")))
 	}
 	noBytesYet := task.TotalBytes == nil && task.DownloadedBytes == 0 && task.BytesPerSecond == nil
 	if task.Kind == "engine" && noBytesYet {
-		ui.Text(c, "已下载 — · 速率 —")
+		ui.Text(c, tr(c, "downloads.detail.pending_bytes"))
 	} else if !(task.Kind == "polystrata" && noBytesYet) {
 		if task.TotalBytes != nil {
-			ui.Text(c, fmt.Sprintf("已下载 %d / %d bytes", task.DownloadedBytes, *task.TotalBytes))
+			ui.Text(c, trf(c, "downloads.detail.bytes_of_total", "downloaded", strconv.FormatInt(task.DownloadedBytes, 10), "total", strconv.FormatInt(*task.TotalBytes, 10)))
 		} else {
-			ui.Text(c, fmt.Sprintf("已下载 %d bytes", task.DownloadedBytes))
+			ui.Text(c, trf(c, "downloads.detail.bytes_only", "downloaded", strconv.FormatInt(task.DownloadedBytes, 10)))
 		}
 		if task.BytesPerSecond != nil {
-			ui.Text(c, fmt.Sprintf("速率 %s bytes/s", groupedInt(int64(*task.BytesPerSecond))))
+			ui.Text(c, trf(c, "downloads.detail.rate_bps", "rate", groupedInt(int64(*task.BytesPerSecond))))
 		}
 	}
 	if task.EnginePath != nil {
-		ui.Text(c, "引擎："+displayName(*task.EnginePath)).Selectable()
+		ui.Text(c, trf(c, "downloads.detail.engine", "name", displayName(*task.EnginePath))).Selectable()
 	}
 	if task.InstallationPath != nil && *task.InstallationPath != "" {
-		ui.Text(c, "安装声明："+*task.InstallationPath).Selectable()
+		ui.Text(c, trf(c, "downloads.detail.installation", "path", *task.InstallationPath)).Selectable()
 	}
 	if task.ModelConfigPath != nil && *task.ModelConfigPath != "" {
-		ui.Text(c, "模型配置："+*task.ModelConfigPath).Selectable()
+		ui.Text(c, trf(c, "downloads.detail.model_config", "path", *task.ModelConfigPath)).Selectable()
 	}
 	if task.LogPath != nil && *task.LogPath != "" {
 		logPath := *task.LogPath
-		ui.Text(c, "安装日志："+logPath).Selectable()
+		ui.Text(c, trf(c, "downloads.detail.install_log", "path", logPath)).Selectable()
 		if task.Kind != "polystrata" {
-			componentFoldKeyed(c, "download-log-"+task.TaskId, "查看日志尾部", func() {
+			componentFoldKeyed(c, "download-log-"+task.TaskId, tr(c, "downloads.detail.view_log_tail"), func() {
 				s.renderDownloadLogTail(c, task.TaskId, logPath)
 			})
 		}
 	}
 	if task.Result != nil {
-		ui.Text(c, fmt.Sprintf("大小：%s · SHA-256：%s", formatDownloadBytes(task.Result.Bytes), task.Result.Sha256)).Selectable()
+		ui.Text(c, trf(c, "downloads.detail.size_sha256", "size", formatDownloadBytes(task.Result.Bytes), "sha256", task.Result.Sha256)).Selectable()
 	}
 	if task.Error != nil {
-		ui.Text(c, "错误码："+task.Error.Code).Selectable()
+		ui.Text(c, trf(c, "downloads.detail.error_code", "code", task.Error.Code)).Selectable()
 	}
 }
 
@@ -364,15 +366,15 @@ func readLogTail(path string, maxBytes int64) string {
 func downloadFailureStageLabel(stage string) string {
 	switch stage {
 	case "token":
-		return "读取访问凭据"
+		return l10n.TR("downloads.failure_stage.token")
 	case "download_open":
-		return "建立下载连接"
+		return l10n.TR("downloads.failure_stage.download_open")
 	case "download_body":
-		return "传输下载数据"
+		return l10n.TR("downloads.failure_stage.download_body")
 	case "disk_write":
-		return "写入本地文件"
+		return l10n.TR("downloads.failure_stage.disk_write")
 	case "checksum", "verify":
-		return "校验文件完整性"
+		return l10n.TR("downloads.failure_stage.checksum")
 	default:
 		if label := downloadStageLabel(stage); label != "" {
 			return label
@@ -398,10 +400,11 @@ func remainingDownloadErrorDetails(details map[string]any) map[string]any {
 		}
 		if k == "reason" {
 			if reason, ok := v.(string); ok && reason != "" {
+				reasonKey := l10n.TR("downloads.error.reason_key")
 				if label := conflictReasonLabel(reason); label != "" {
-					extra["原因"] = label
+					extra[reasonKey] = label
 				} else {
-					extra["原因"] = human(reason)
+					extra[reasonKey] = human(reason)
 				}
 				continue
 			}
@@ -514,7 +517,7 @@ func (s *viewState) downloadErrorView(c *ui.Context, e *core.ApiError) {
 		}
 	}
 	if failureStage != "" {
-		ui.Text(c, "失败阶段："+downloadFailureStageLabel(failureStage)).
+		ui.Text(c, trf(c, "downloads.error.failure_stage", "stage", downloadFailureStageLabel(failureStage))).
 			FontSize(t.Type.Caption).
 			TextColor(t.Color.FgSecondary)
 	}
@@ -536,8 +539,8 @@ func (s *viewState) downloadErrorView(c *ui.Context, e *core.ApiError) {
 			if item.fixCommand != "" {
 				ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 					ui.Text(c, item.fixCommand).Grow(1).MinWidth(0).Selectable().FontSize(t.Type.Caption)
-					outlineButton(c, "复制修复命令").Label(fmt.Sprintf("复制修复命令 · %d", idx)).OnClick(func() {
-						s.copyDownloadText(c, "修复命令", item.fixCommand)
+					outlineButton(c, tr(c, "downloads.error.copy_fix_cmd")).Label(trf(c, "downloads.error.copy_fix_cmd_label", "index", strconv.Itoa(idx))).OnClick(func() {
+						s.copyDownloadText(c, tr(c, "downloads.copy_subject.fix_cmd"), item.fixCommand)
 					})
 				})
 			}

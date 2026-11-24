@@ -6,6 +6,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func (s *viewState) syncMinimizeToTrayIfNeeded() error {
@@ -38,14 +39,14 @@ func (s *viewState) loadTraySettings(v core.SettingsResponse) {
 
 func (s *viewState) traySettingsView(c *ui.Context) {
 	t := tokens(c)
-	card(c, "系统托盘", func() {
+	card(c, tr(c, "settings.tray.title"), func() {
 		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-				ui.Text(c, "关闭窗口时最小化到托盘").FontSize(t.Type.Body).TextColor(t.Color.FgPrimary)
-				ui.Text(c, "保持后台测评与下载继续运行，可通过托盘菜单恢复窗口或退出").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				ui.Text(c, tr(c, "settings.tray.minimize_label")).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary)
+				ui.Text(c, tr(c, "settings.tray.minimize_desc")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			})
 			enabled := s.minimizeToTray
-			components.Switch(c, &enabled, "最小化到系统托盘", components.SwitchOptions{HideLabel: true})
+			components.Switch(c, &enabled, tr(c, "settings.tray.switch_label"), components.SwitchOptions{HideLabel: true})
 			if enabled != s.minimizeToTray {
 				s.changeMinimizeToTray(enabled)
 			}
@@ -66,7 +67,7 @@ func (s *viewState) changeMinimizeToTray(enabled bool) {
 	if s.applyMinimizeToTray != nil {
 		if err := s.applyMinimizeToTray(enabled); err != nil {
 			s.trayUnavailable = true
-			s.failure = &core.ApiError{Code: "tray_unavailable", Message: "当前桌面环境不支持系统托盘。"}
+			s.failure = &core.ApiError{Code: "tray_unavailable", Message: l10n.TR("settings.tray.unavailable")}
 			s.failurePage = s.selected
 			return
 		}

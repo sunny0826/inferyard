@@ -7,11 +7,12 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"errors"
-	"fmt"
+	"inferyard/studio/internal/l10n"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -66,7 +67,7 @@ func (m *updateManager) downloadUpdateWithSeq(ctx context.Context, manual bool, 
 	if m.applyInFlight {
 		snap := m.cloneStateLocked()
 		m.mu.Unlock()
-		return snap, &updateCheckError{code: "update_busy", message: "更新正在处理中，请稍候。"}
+		return snap, &updateCheckError{code: "update_busy", message: l10n.TR("core.update.err.busy")}
 	}
 	if expectedSeq != 0 && (m.state.Seq != expectedSeq || m.state.State != UpdateAvailable) {
 		snap := m.cloneStateLocked()
@@ -84,18 +85,18 @@ func (m *updateManager) downloadUpdateWithSeq(ctx context.Context, manual bool, 
 	case UpdateChecking, UpdateDownloading, UpdateVerifying, UpdateApplying:
 		snap := m.cloneStateLocked()
 		m.mu.Unlock()
-		return snap, &updateCheckError{code: "update_busy", message: "更新正在处理中，请稍候。"}
+		return snap, &updateCheckError{code: "update_busy", message: l10n.TR("core.update.err.busy")}
 	}
 	if m.state.Release == nil {
 		snap := m.cloneStateLocked()
 		m.mu.Unlock()
-		return snap, &updateCheckError{code: "update_not_available", message: "当前没有可用的更新版本。"}
+		return snap, &updateCheckError{code: "update_not_available", message: l10n.TR("core.update.err.not_available")}
 	}
 	rel := *m.state.Release
 	if rel.AssetName == "" || !validateUpdateURL(rel.AssetURL, m.opts.AllowInsecureHTTP) {
 		m.state.State = UpdateError
 		m.state.ErrorCode = "update_asset_missing"
-		m.state.ErrorMessage = "未找到适配当前平台的更新安装包，请前往发布页下载。"
+		m.state.ErrorMessage = l10n.TR("core.update.err.asset_missing")
 		m.publishLocked()
 		snap := m.cloneStateLocked()
 		m.mu.Unlock()
@@ -104,7 +105,7 @@ func (m *updateManager) downloadUpdateWithSeq(ctx context.Context, manual bool, 
 	if !validateUpdateURL(rel.ChecksumsURL, m.opts.AllowInsecureHTTP) {
 		m.state.State = UpdateError
 		m.state.ErrorCode = "update_checksums_missing"
-		m.state.ErrorMessage = "当前发布缺少 SHA256SUMS 校验文件，无法安全更新。"
+		m.state.ErrorMessage = l10n.TR("core.update.err.checksums_missing")
 		m.publishLocked()
 		snap := m.cloneStateLocked()
 		m.mu.Unlock()
@@ -138,11 +139,11 @@ func (m *updateManager) downloadUpdateWithSeq(ctx context.Context, manual bool, 
 
 	baseDir, err := m.stagingBaseDir()
 	if err != nil {
-		return m.failDownload(seq, opCtx, "", manual, &updateCheckError{code: "update_staging_failed", message: "创建临时下载目录失败。", cause: err})
+		return m.failDownload(seq, opCtx, "", manual, &updateCheckError{code: "update_staging_failed", message: l10n.TR("core.update.err.staging_dir_failed"), cause: err})
 	}
 	stagingDir, err := os.MkdirTemp(baseDir, "update-v"+rel.Version+"-*")
 	if err != nil {
-		return m.failDownload(seq, opCtx, "", manual, &updateCheckError{code: "update_staging_failed", message: "创建临时下载目录失败。", cause: err})
+		return m.failDownload(seq, opCtx, "", manual, &updateCheckError{code: "update_staging_failed", message: l10n.TR("core.update.err.staging_dir_failed"), cause: err})
 	}
 
 	m.mu.Lock()
@@ -187,7 +188,7 @@ func (m *updateManager) downloadUpdateWithSeq(ctx context.Context, manual bool, 
 	if err := os.Rename(partPath, finalPath); err != nil {
 		return m.failDownload(seq, opCtx, stagingDir, manual, &updateCheckError{
 			code:    "update_staging_failed",
-			message: "整理更新安装包失败，请重试。",
+			message: l10n.TR("core.update.err.staging_finalize_failed"),
 			cause:   err,
 		})
 	}
@@ -224,7 +225,7 @@ func (m *updateManager) streamDownloadArtifact(ctx context.Context, seq uint64, 
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rel.AssetURL, nil)
 	if err != nil {
-		return 0, "", &updateCheckError{code: "update_download_failed", message: "创建更新下载请求失败。", cause: err}
+		return 0, "", &updateCheckError{code: "update_download_failed", message: l10n.TR("core.update.err.download_request_failed"), cause: err}
 	}
 	req.Header.Set("User-Agent", "InferYard-Studio/"+strings.TrimPrefix(currentVer, "v"))
 
@@ -233,14 +234,14 @@ func (m *updateManager) streamDownloadArtifact(ctx context.Context, seq uint64, 
 		if errors.Is(err, context.Canceled) || ctx.Err() != nil {
 			return 0, "", context.Canceled
 		}
-		return 0, "", &updateCheckError{code: "update_download_failed", message: "下载更新安装包失败，请检查网络后重试。", cause: err}
+		return 0, "", &updateCheckError{code: "update_download_failed", message: l10n.TR("core.update.err.download_network_failed"), cause: err}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return 0, "", &updateCheckError{
 			code:    "update_download_failed",
-			message: fmt.Sprintf("下载更新失败（HTTP %d），请重试。", resp.StatusCode),
+			message: l10n.TRf("core.update.err.download_http_status", "status", strconv.Itoa(resp.StatusCode)),
 		}
 	}
 
@@ -261,7 +262,7 @@ func (m *updateManager) streamDownloadArtifact(ctx context.Context, seq uint64, 
 
 	f, err := os.OpenFile(partPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
-		return 0, "", &updateCheckError{code: "update_staging_failed", message: "无法写入临时更新文件。", cause: err}
+		return 0, "", &updateCheckError{code: "update_staging_failed", message: l10n.TR("core.update.err.temp_file_open_failed"), cause: err}
 	}
 	defer f.Close()
 
@@ -278,7 +279,7 @@ func (m *updateManager) streamDownloadArtifact(ctx context.Context, seq uint64, 
 		n, readErr := resp.Body.Read(buf)
 		if n > 0 {
 			if _, writeErr := f.Write(buf[:n]); writeErr != nil {
-				return downloaded, "", &updateCheckError{code: "update_staging_failed", message: "写入更新文件失败，请检查磁盘空间。", cause: writeErr}
+				return downloaded, "", &updateCheckError{code: "update_staging_failed", message: l10n.TR("core.update.err.temp_file_write_failed"), cause: writeErr}
 			}
 			_, _ = hasher.Write(buf[:n])
 			downloaded += int64(n)
@@ -310,12 +311,12 @@ func (m *updateManager) streamDownloadArtifact(ctx context.Context, seq uint64, 
 			if errors.Is(readErr, context.Canceled) || ctx.Err() != nil {
 				return downloaded, "", context.Canceled
 			}
-			return downloaded, "", &updateCheckError{code: "update_download_failed", message: "下载更新中断，请重试。", cause: readErr}
+			return downloaded, "", &updateCheckError{code: "update_download_failed", message: l10n.TR("core.update.err.download_interrupted"), cause: readErr}
 		}
 	}
 
 	if err := f.Sync(); err != nil {
-		return downloaded, "", &updateCheckError{code: "update_staging_failed", message: "刷新更新文件到磁盘失败。", cause: err}
+		return downloaded, "", &updateCheckError{code: "update_staging_failed", message: l10n.TR("core.update.err.temp_file_sync_failed"), cause: err}
 	}
 	return downloaded, hex.EncodeToString(hasher.Sum(nil)), nil
 }
@@ -327,7 +328,7 @@ func (m *updateManager) verifyArtifactChecksum(ctx context.Context, rel UpdateRe
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rel.ChecksumsURL, nil)
 	if err != nil {
-		return "", &updateCheckError{code: "update_verify_failed", message: "请求校验文件失败。", cause: err}
+		return "", &updateCheckError{code: "update_verify_failed", message: l10n.TR("core.update.err.verify_request_failed"), cause: err}
 	}
 	req.Header.Set("User-Agent", "InferYard-Studio/"+strings.TrimPrefix(currentVer, "v"))
 
@@ -336,14 +337,14 @@ func (m *updateManager) verifyArtifactChecksum(ctx context.Context, rel UpdateRe
 		if errors.Is(err, context.Canceled) || ctx.Err() != nil {
 			return "", context.Canceled
 		}
-		return "", &updateCheckError{code: "update_verify_failed", message: "下载 SHA256SUMS 校验文件失败，请重试。", cause: err}
+		return "", &updateCheckError{code: "update_verify_failed", message: l10n.TR("core.update.err.verify_download_failed"), cause: err}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", &updateCheckError{
 			code:    "update_verify_failed",
-			message: fmt.Sprintf("获取校验文件失败（HTTP %d），请重试。", resp.StatusCode),
+			message: l10n.TRf("core.update.err.verify_http_status", "status", strconv.Itoa(resp.StatusCode)),
 		}
 	}
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
@@ -351,14 +352,14 @@ func (m *updateManager) verifyArtifactChecksum(ctx context.Context, rel UpdateRe
 		if errors.Is(err, context.Canceled) || ctx.Err() != nil {
 			return "", context.Canceled
 		}
-		return "", &updateCheckError{code: "update_verify_failed", message: "读取 SHA256SUMS 校验文件失败。", cause: err}
+		return "", &updateCheckError{code: "update_verify_failed", message: l10n.TR("core.update.err.verify_read_failed"), cause: err}
 	}
 	expectedHex, ok := parseSHA256Sums(string(raw), rel.AssetName)
 	if !ok {
-		return "", &updateCheckError{code: "update_checksum_missing", message: "SHA256SUMS 中未找到对应安装包的校验和。"}
+		return "", &updateCheckError{code: "update_checksum_missing", message: l10n.TR("core.update.err.checksum_missing")}
 	}
 	if subtle.ConstantTimeCompare([]byte(strings.ToLower(actualHex)), []byte(expectedHex)) != 1 {
-		return "", &updateCheckError{code: "update_checksum_mismatch", message: "安装包 SHA-256 校验未通过，已删除损坏文件。"}
+		return "", &updateCheckError{code: "update_checksum_mismatch", message: l10n.TR("core.update.err.download_checksum_mismatch")}
 	}
 	return expectedHex, nil
 }
@@ -409,7 +410,7 @@ func (m *updateManager) failDownload(seq uint64, ctx context.Context, stagingDir
 	}
 
 	var ce *updateCheckError
-	code, msg := "update_download_failed", "更新下载失败，请重试。"
+	code, msg := "update_download_failed", l10n.TR("core.update.err.download_failed")
 	if errors.As(err, &ce) {
 		code, msg = ce.code, ce.message
 	}

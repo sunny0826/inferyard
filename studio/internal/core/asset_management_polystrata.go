@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"inferyard/studio/internal/l10n"
 	"io"
 	"io/fs"
 	"os"
@@ -446,7 +447,7 @@ func (s *Service) findAssetRawPath(kind, name, canonPath string) string {
 
 func workspaceBusyError() *ApiError {
 	err := Conflict("workspace_busy")
-	err.Message = "当前有任务、下载或模型服务正在运行，请停止后再删除。"
+	err.Message = l10n.TR("core.asset.err.workspace_busy")
 	return err
 }
 
@@ -579,7 +580,7 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 
 	if rmErr != nil && !os.IsNotExist(rmErr) {
 		apiErr := Err("internal_error")
-		apiErr.Message = "已取消注册引擎，但暂存目录中的部分文件无法移除（可检查权限后清理暂存目录）。"
+		apiErr.Message = l10n.TR("core.asset.err.polystrata_staged_cleanup_failed")
 		return true, apiErr
 	}
 	return true, nil

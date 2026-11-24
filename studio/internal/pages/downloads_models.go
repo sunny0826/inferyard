@@ -1,14 +1,15 @@
 package pages
 
 import (
-	"fmt"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func (s *viewState) downloadsModelsTab(c *ui.Context) {
@@ -31,9 +32,9 @@ func (s *viewState) downloadsModelsTab(c *ui.Context) {
 	ui.Column(c.Key("downloads-models-tab")).FillWidth().Gap(t.Density.Section).Children(func() {
 		applyMaterial(c, ui.Column(c).MinWidth(0).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
 			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				ui.Row(c).Grow(1).MinWidth(0).Children(func() { heading(c, "模型", 2) })
+				ui.Row(c).Grow(1).MinWidth(0).Children(func() { heading(c, tr(c, "downloads.kind.model"), 2) })
 				prev := st.modelSource
-				segmentedControl(c, "下载源", &st.modelSource, []components.NativeSelectOption[string]{
+				segmentedControl(c, tr(c, "downloads.models.source_label"), &st.modelSource, []components.NativeSelectOption[string]{
 					{Value: "huggingface", Label: "HuggingFace"},
 					{Value: "modelscope", Label: "ModelScope"},
 				})
@@ -42,7 +43,7 @@ func (s *viewState) downloadsModelsTab(c *ui.Context) {
 				}
 			})
 			if len(supported) == 0 {
-				ui.Text(c, "当前平台暂无预设模型。").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				ui.Text(c, tr(c, "downloads.models.none_preset")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			}
 			for i, entry := range supported {
 				if i > 0 {
@@ -53,7 +54,7 @@ func (s *viewState) downloadsModelsTab(c *ui.Context) {
 		})
 
 		if len(otherPlatform) > 0 {
-			componentFoldKeyed(c, "downloads-other-platform-models", fmt.Sprintf("其他平台模型（%d）", len(otherPlatform)), func() {
+			componentFoldKeyed(c, "downloads-other-platform-models", trf(c, "downloads.models.other_platform_fold", "count", strconv.Itoa(len(otherPlatform))), func() {
 				for i, entry := range otherPlatform {
 					if i > 0 {
 						ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
@@ -72,7 +73,7 @@ func (s *viewState) modelCatalogRow(c *ui.Context, st *downloadsUIState, entry c
 	activeURL, activeSourceLabel := modelCatalogSource(entry, st.modelSource)
 	downloaded := s.isModelEntryDownloaded(entry)
 	downloading := s.isModelEntryDownloading(entry)
-	sizeText := "目录权重"
+	sizeText := tr(c, "downloads.models.dir_weights")
 	if entry.Bytes > 0 {
 		sizeText = catalogHumanSize(entry.Bytes)
 	}
@@ -83,22 +84,22 @@ func (s *viewState) modelCatalogRow(c *ui.Context, st *downloadsUIState, entry c
 				ui.Text(c, modelCatalogTitle(entry)).Bold()
 				badge(c, core.ModelFormatLabel(modelCatalogFormat(entry)), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
 				if downloaded {
-					badge(c, "已下载", stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
+					badge(c, tr(c, "downloads.metric.downloaded"), stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
 				} else if downloading {
-					badge(c, "下载中", stateActive, badgeOptions{Style: badgeSoft, Size: sizeSM})
+					badge(c, tr(c, "downloads.stage.downloading"), stateActive, badgeOptions{Style: badgeSoft, Size: sizeSM})
 				}
 			})
 			meta := joinParts([]string{modelCatalogEngineLabel(entry), sizeText, activeSourceLabel})
 			ui.Text(c, meta).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		})
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-			outlineButton(c, "详情与地址").Label("模型详情 · " + entry.ID).OnClick(func() {
+			outlineButton(c, tr(c, "downloads.models.details_urls")).Label(trf(c, "downloads.models.details_label", "id", entry.ID)).OnClick(func() {
 				st.openModelDrawer(entry.ID)
 			})
 			if downloading {
-				button(c, "下载中…").Label("下载模型 · " + entry.ID).Disabled(true)
+				button(c, tr(c, "downloads.action.downloading")).Label(trf(c, "downloads.models.download_label", "id", entry.ID)).Disabled(true)
 			} else {
-				s.downloadAction(c, "model", "下载").Label("下载模型 · " + entry.ID).Disabled(s.busy).OnClick(func() {
+				s.downloadAction(c, "model", tr(c, "downloads.action.download")).Label(trf(c, "downloads.models.download_label", "id", entry.ID)).Disabled(s.busy).OnClick(func() {
 					s.acquireModelSource(activeURL, "")
 				})
 			}
@@ -114,9 +115,9 @@ func (s *viewState) otherPlatformModelRow(c *ui.Context, st *downloadsUIState, e
 				ui.Text(c, modelCatalogTitle(entry)).Bold()
 				badge(c, core.ModelFormatLabel(modelCatalogFormat(entry)), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
 			})
-			ui.Text(c, "支持平台："+core.PlatformLabel(entry.Platform)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			ui.Text(c, trf(c, "downloads.platform.supported_line", "platforms", core.PlatformLabel(entry.Platform))).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		})
-		outlineButton(c, "详情与地址").Label("模型详情 · " + entry.ID).OnClick(func() {
+		outlineButton(c, tr(c, "downloads.models.details_urls")).Label(trf(c, "downloads.models.details_label", "id", entry.ID)).OnClick(func() {
 			st.openModelDrawer(entry.ID)
 		})
 	})
@@ -126,7 +127,7 @@ func (s *viewState) customModelURLFold(c *ui.Context, st *downloadsUIState) {
 	t := tokens(c)
 	resState := st.customModelResolve
 
-	componentFoldKeyed(c, "downloads-custom-model-url", "自定义模型地址", func() {
+	componentFoldKeyed(c, "downloads-custom-model-url", tr(c, "downloads.models.custom_url_fold"), func() {
 		trimmed := strings.TrimSpace(st.customModelURL)
 		tokenEnv := s.tokenEnv
 		if resState.source != trimmed || resState.tokenEnv != tokenEnv {
@@ -143,12 +144,12 @@ func (s *viewState) customModelURLFold(c *ui.Context, st *downloadsUIState) {
 		}
 
 		ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
-			field(c, "模型地址", &st.customModelURL).
-				Description("支持 HuggingFace 或 ModelScope 的 GGUF 文件或 /tree 目录地址。").
+			field(c, tr(c, "downloads.models.custom_url_label"), &st.customModelURL).
+				Description(tr(c, "downloads.models.custom_url_desc")).
 				Error(customModelURLError(st.customModelURL))
-			componentFoldKeyed(c, "downloads-custom-model-auth", "访问凭据（私有仓库可选）", func() {
-				field(c, "凭据环境变量名", &s.tokenEnv).
-					Description("仅填写变量名，不填写凭据值。").
+			componentFoldKeyed(c, "downloads-custom-model-auth", tr(c, "downloads.models.auth_fold"), func() {
+				field(c, tr(c, "downloads.models.token_env_label"), &s.tokenEnv).
+					Description(tr(c, "downloads.models.token_env_desc")).
 					Error(tokenNameError(s.tokenEnv))
 			})
 
@@ -156,10 +157,10 @@ func (s *viewState) customModelURLFold(c *ui.Context, st *downloadsUIState) {
 			urlValid := trimmed != "" && customModelURLError(trimmed) == "" && tokenOK
 			canResolve := !s.busy && !resState.resolving && trimmed != "" && core.IsResolvableModelURL(trimmed) && tokenOK
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				outlineButton(c, "解析地址").Disabled(!canResolve).OnClick(func() {
+				outlineButton(c, tr(c, "downloads.models.resolve_url")).Disabled(!canResolve).OnClick(func() {
 					s.triggerModelResolve(resState, trimmed, tokenEnv)
 				})
-				primaryButton(c, "下载模型").Label("下载自定义模型").Disabled(s.busy || !urlValid).OnClick(func() {
+				primaryButton(c, tr(c, "downloads.models.download_button")).Label(tr(c, "downloads.models.download_custom_label")).Disabled(s.busy || !urlValid).OnClick(func() {
 					source := trimmed
 					if resState.resolved != nil && resState.resolved.PinnedURL != "" {
 						source = resState.resolved.PinnedURL
@@ -170,20 +171,20 @@ func (s *viewState) customModelURLFold(c *ui.Context, st *downloadsUIState) {
 
 			switch {
 			case resState.resolving:
-				ui.Text(c, "正在解析远端模型版本…").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				ui.Text(c, tr(c, "downloads.models.resolving")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			case resState.errText != "":
 				ui.Text(c, resState.errText).FontSize(t.Type.Caption).TextColor(stateColor(c, stateDanger))
 			case resState.resolved != nil:
-				sizeText := "大小未知"
+				sizeText := tr(c, "downloads.size.unknown")
 				if resState.resolved.Bytes != nil && *resState.resolved.Bytes > 0 {
 					sizeText = catalogHumanSize(*resState.resolved.Bytes)
 				}
 				applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Inset), materialInset).Children(func() {
-					ui.Text(c, "已解析版本："+resState.resolved.Revision).Selectable().FontSize(t.Type.Caption)
-					ui.Text(c, "文件："+resState.resolved.Filename+" · "+sizeText).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-					ui.Text(c, "固定地址："+resState.resolved.PinnedURL).Selectable().FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-					outlineButton(c, "复制固定地址").OnClick(func() {
-						s.copyDownloadText(c, "固定地址", resState.resolved.PinnedURL)
+					ui.Text(c, trf(c, "downloads.models.resolved_revision", "revision", resState.resolved.Revision)).Selectable().FontSize(t.Type.Caption)
+					ui.Text(c, trf(c, "downloads.models.resolved_file", "filename", resState.resolved.Filename, "size", sizeText)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+					ui.Text(c, trf(c, "downloads.models.resolved_pinned_url", "url", resState.resolved.PinnedURL)).Selectable().FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+					outlineButton(c, tr(c, "downloads.models.copy_pinned_url")).OnClick(func() {
+						s.copyDownloadText(c, tr(c, "downloads.copy_subject.pinned_url"), resState.resolved.PinnedURL)
 					})
 				})
 			}
@@ -194,14 +195,15 @@ func (s *viewState) customModelURLFold(c *ui.Context, st *downloadsUIState) {
 func (s *viewState) downloadsModelDrawer(c *ui.Context) {
 	st := s.ensureDownloadsUI()
 	c.Key("downloads-model-detail-drawer")
+	drawerTitle := tr(c, "downloads.model_drawer.title")
 	if !st.modelDrawerOpen {
-		drawer(c, &st.modelDrawerOpen, drawerOptions{Label: "模型详情", Title: "模型详情"}, nil)
+		drawer(c, &st.modelDrawerOpen, drawerOptions{Label: drawerTitle, Title: drawerTitle}, nil)
 		return
 	}
 	entry, ok := core.CatalogEntryByID(st.modelDrawerID)
 	if !ok || entry.Kind != core.CatalogModel {
 		st.modelDrawerOpen = false
-		drawer(c, &st.modelDrawerOpen, drawerOptions{Label: "模型详情", Title: "模型详情"}, nil)
+		drawer(c, &st.modelDrawerOpen, drawerOptions{Label: drawerTitle, Title: drawerTitle}, nil)
 		return
 	}
 
@@ -210,11 +212,11 @@ func (s *viewState) downloadsModelDrawer(c *ui.Context) {
 	usingMirror := entry.MirrorURL != "" && st.modelSource == "modelscope"
 	versionText := entry.Revision
 	if usingMirror || versionText == "" {
-		versionText = "自动解析"
+		versionText = tr(c, "downloads.model_drawer.auto_resolve")
 	}
 
 	drawer(c, &st.modelDrawerOpen, drawerOptions{
-		Label: "模型详情",
+		Label: drawerTitle,
 		Title: modelCatalogTitle(entry),
 		Width: c.Theme().Space(145),
 	}, func(ui.Element) {
@@ -223,7 +225,7 @@ func (s *viewState) downloadsModelDrawer(c *ui.Context) {
 			ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
 				if entry.MirrorURL != "" {
 					prev := st.modelSource
-					segmentedControl(c, "模型详情下载源", &st.modelSource, []components.NativeSelectOption[string]{
+					segmentedControl(c, tr(c, "downloads.model_drawer.source_label"), &st.modelSource, []components.NativeSelectOption[string]{
 						{Value: "huggingface", Label: "HuggingFace"},
 						{Value: "modelscope", Label: modelCatalogMirrorLabel(entry)},
 					})
@@ -232,23 +234,23 @@ func (s *viewState) downloadsModelDrawer(c *ui.Context) {
 					}
 				}
 				ui.Column(c).FillWidth().Gap(t.Density.Tight).Children(func() {
-					keyValueRow(c, "格式", core.ModelFormatLabel(modelCatalogFormat(entry)), false)
-					keyValueRow(c, "适用引擎", modelCatalogEngineLabel(entry), false)
-					keyValueRow(c, "支持平台", core.PlatformLabel(entry.Platform), false)
+					keyValueRow(c, tr(c, "downloads.model_drawer.field.format"), core.ModelFormatLabel(modelCatalogFormat(entry)), false)
+					keyValueRow(c, tr(c, "downloads.model_drawer.field.engines"), modelCatalogEngineLabel(entry), false)
+					keyValueRow(c, tr(c, "downloads.model_drawer.field.platform"), core.PlatformLabel(entry.Platform), false)
 					if entry.Bytes > 0 {
-						keyValueRow(c, "文件大小", catalogHumanSize(entry.Bytes), true)
+						keyValueRow(c, tr(c, "downloads.model_drawer.field.file_size"), catalogHumanSize(entry.Bytes), true)
 					}
-					keyValueRow(c, "版本", versionText, false)
+					keyValueRow(c, tr(c, "downloads.model_drawer.field.version"), versionText, false)
 				})
 				if entry.Platform != "any" && entry.Platform != hostPlatform {
 					noticeBanner(c, noticeBannerOptions{
 						Kind:    stateWarning,
 						Size:    bannerCompact,
-						Message: "当前模型仅适用于 " + core.PlatformLabel(entry.Platform) + "，无法在本机直接运行。",
+						Message: trf(c, "downloads.model_drawer.platform_mismatch", "platform", core.PlatformLabel(entry.Platform)),
 					})
 				}
 
-				heading(c, "下载地址", 3)
+				heading(c, tr(c, "downloads.engine_drawer.section.urls"), 3)
 				applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Inset), materialInset).Children(func() {
 					ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 						ui.Text(c, activeSourceLabel).Bold()
@@ -258,18 +260,18 @@ func (s *viewState) downloadsModelDrawer(c *ui.Context) {
 					})
 					ui.Text(c, activeURL).Selectable().FontSize(t.Type.Caption)
 					if !usingMirror && entry.SHA256 != "" {
-						ui.Text(c, "SHA-256："+entry.SHA256).Selectable().FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+						ui.Text(c, trf(c, "downloads.engine_drawer.sha256_value", "sha256", entry.SHA256)).Selectable().FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 					}
 					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-						outlineButton(c, "复制地址").Label("复制模型地址 · " + entry.ID).OnClick(func() {
-							s.copyDownloadText(c, "下载地址", activeURL)
+						outlineButton(c, tr(c, "downloads.action.copy_url")).Label(trf(c, "downloads.model_drawer.copy_url_label", "id", entry.ID)).OnClick(func() {
+							s.copyDownloadText(c, tr(c, "downloads.engine_drawer.section.urls"), activeURL)
 						})
 						if !usingMirror && entry.SHA256 != "" {
-							outlineButton(c, "复制 SHA-256").Label("复制模型校验 · " + entry.ID).OnClick(func() {
+							outlineButton(c, tr(c, "downloads.action.copy_sha256")).Label(trf(c, "downloads.model_drawer.copy_sha256_label", "id", entry.ID)).OnClick(func() {
 								s.copyDownloadText(c, "SHA-256", entry.SHA256)
 							})
 						}
-						outlineButton(c, "打开链接").Label("打开模型链接 · " + entry.ID).OnClick(func() {
+						outlineButton(c, tr(c, "downloads.action.open_link")).Label(trf(c, "downloads.model_drawer.open_link_label", "id", entry.ID)).OnClick(func() {
 							s.openDownloadURL(c, modelCatalogTitle(entry), activeURL)
 						})
 					})
@@ -277,14 +279,14 @@ func (s *viewState) downloadsModelDrawer(c *ui.Context) {
 
 				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 					if s.isModelEntryDownloading(entry) {
-						button(c, "下载中…").Label("下载此模型 · " + entry.ID).Disabled(true)
+						button(c, tr(c, "downloads.action.downloading")).Label(trf(c, "downloads.model_drawer.download_this_label", "id", entry.ID)).Disabled(true)
 					} else {
-						primaryButton(c, "下载此模型").Label("下载此模型 · " + entry.ID).Disabled(s.busy).OnClick(func() {
+						primaryButton(c, tr(c, "downloads.model_drawer.download_this")).Label(trf(c, "downloads.model_drawer.download_this_label", "id", entry.ID)).Disabled(s.busy).OnClick(func() {
 							s.acquireModelSource(activeURL, "")
 						})
 					}
 					if repoURL := modelCatalogRepoURL(activeURL); repoURL != "" && repoURL != activeURL {
-						ghostButton(c, "打开仓库").OnClick(func() {
+						ghostButton(c, tr(c, "downloads.model_drawer.open_repo")).OnClick(func() {
 							s.openDownloadURL(c, modelCatalogTitle(entry), repoURL)
 						})
 					}
@@ -360,8 +362,13 @@ func modelCatalogSource(entry core.CatalogEntry, source string) (activeURL, acti
 }
 
 func modelCatalogTitle(entry core.CatalogEntry) string {
-	title := strings.TrimSuffix(entry.Title, "（GGUF）")
-	title = strings.TrimSuffix(title, "（目录模型）")
+	title := entry.Title
+	for _, key := range []string{"downloads.model.title_suffix.gguf", "downloads.model.title_suffix.directory"} {
+		title = strings.TrimSuffix(title, l10n.TR(key))
+		title = strings.TrimSuffix(title, l10n.T(l10n.LanguageZhHans, key))
+		title = strings.TrimSuffix(title, l10n.T(l10n.LanguageEn, key))
+	}
+	title = strings.TrimSuffix(title, " (Directory Model)")
 	return title
 }
 

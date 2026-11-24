@@ -1,5 +1,7 @@
 package core
 
+import "inferyard/studio/internal/l10n"
+
 func polystrataProvider() EngineCatalogProvider {
 	releaseURL := "https://github.com/simplexai-labs/PolyStrata/releases/tag/v0.1.45-poly.10"
 	sourceArtifact := artifactFromCatalog("engine-polystrata", "source", "PolyStrata v0.1.45-poly.10", "v0.1.45-poly.10")
@@ -29,7 +31,7 @@ func polystrataProvider() EngineCatalogProvider {
 							AcquireMode:    EngineAcquireManagedSetup,
 							Artifacts:      []EngineArtifact{sourceArtifact},
 							InstallCommand: "inferyard engine prepare-polystrata --out ./polystrata --backend metal",
-							Note:           "需 macOS 15+ 与 Xcode Command Line Tools。",
+							Note:           l10n.TR("core.engine_catalog.note.polystrata_macos"),
 						},
 						{
 							ID:             "engine-polystrata-win-x64",
@@ -38,7 +40,7 @@ func polystrataProvider() EngineCatalogProvider {
 							AcquireMode:    EngineAcquireManagedSetup,
 							Artifacts:      []EngineArtifact{sourceArtifact},
 							InstallCommand: `inferyard engine prepare-polystrata --out .\polystrata --backend auto`,
-							Note:           "支持 NVIDIA (驱动 580+) 与 AMD Radeon (HIP)。",
+							Note:           l10n.TR("core.engine_catalog.note.polystrata_win"),
 						},
 						{
 							ID:             "engine-polystrata-linux-x64",
@@ -47,7 +49,7 @@ func polystrataProvider() EngineCatalogProvider {
 							AcquireMode:    EngineAcquireManagedSetup,
 							Artifacts:      []EngineArtifact{sourceArtifact},
 							InstallCommand: "inferyard engine prepare-polystrata --out ./polystrata --backend auto",
-							Note:           "需 python3-venv 与对应 GPU 驱动。",
+							Note:           l10n.TR("core.engine_catalog.note.polystrata_linux"),
 						},
 					},
 				},
@@ -85,7 +87,7 @@ func mlxLMProvider() EngineCatalogProvider {
 								artifactFromCatalog("runtime-mlx", "runtime", "mlx", "0.32.4"),
 							},
 							InstallCommand: "uv venv ~/.venvs/mlx-lm --python 3.12 && uv pip install --python ~/.venvs/mlx-lm/bin/python mlx-lm==0.32.2 mlx==0.32.4",
-							Note:           "在独立 Python 虚拟环境中安装后注册本地引擎。",
+							Note:           l10n.TR("core.engine_catalog.note.python_venv_register"),
 						},
 					},
 				},
@@ -124,7 +126,7 @@ func vllmProvider() EngineCatalogProvider {
 								artifactFromCatalog("engine-vllm-metal", "plugin", "vllm-metal", "0.31.0"),
 							},
 							InstallCommand: "uv venv ~/.venvs/vllm --python 3.12 && uv pip install --python ~/.venvs/vllm/bin/python vllm-0.31.0+cpu-cp312-cp312-macosx_11_0_arm64.whl vllm_metal-0.31.0-cp312-cp312-macosx_15_0_arm64.whl",
-							Note:           "在独立 Python 虚拟环境中安装后注册本地引擎。",
+							Note:           l10n.TR("core.engine_catalog.note.python_venv_register"),
 						},
 						{
 							ID:          "engine-vllm-linux-x64",
@@ -132,10 +134,10 @@ func vllmProvider() EngineCatalogProvider {
 							Variant:     "CUDA / CPU",
 							AcquireMode: EngineAcquireExternalPage,
 							Artifacts: []EngineArtifact{
-								{Role: "release_page", Label: "vLLM v0.31.0 发布页", Version: "v0.31.0", URL: tagURL},
+								{Role: "release_page", Label: l10n.TRf("core.engine_catalog.artifact.release_page", "version", "vLLM v0.31.0"), Version: "v0.31.0", URL: tagURL},
 							},
 							InstallCommand: "uv venv ~/.venvs/vllm --python 3.12 && uv pip install --python ~/.venvs/vllm/bin/python vllm==0.31.0",
-							Note:           "在独立 Python 虚拟环境中安装后注册本地引擎。",
+							Note:           l10n.TR("core.engine_catalog.note.python_venv_register"),
 						},
 						{
 							ID:          "engine-vllm-linux-arm64",
@@ -143,7 +145,7 @@ func vllmProvider() EngineCatalogProvider {
 							Variant:     "CUDA / CPU",
 							AcquireMode: EngineAcquireExternalPage,
 							Artifacts: []EngineArtifact{
-								{Role: "release_page", Label: "vLLM v0.31.0 发布页", Version: "v0.31.0", URL: tagURL},
+								{Role: "release_page", Label: l10n.TRf("core.engine_catalog.artifact.release_page", "version", "vLLM v0.31.0"), Version: "v0.31.0", URL: tagURL},
 							},
 							InstallCommand: "uv venv ~/.venvs/vllm --python 3.12 && uv pip install --python ~/.venvs/vllm/bin/python vllm==0.31.0",
 						},
@@ -168,7 +170,7 @@ func sglangProvider() EngineCatalogProvider {
 			Releases: []EngineRelease{
 				{
 					ID:           "sglang-releases",
-					Version:      "最新版",
+					Version:      l10n.TR("core.engine_catalog.channel.latest"),
 					Revision:     "releases",
 					Distribution: "GitHub",
 					Channel:      ReleaseLatest,
@@ -178,12 +180,12 @@ func sglangProvider() EngineCatalogProvider {
 						{
 							ID:          "engine-sglang-latest-any",
 							Platform:    "any",
-							Variant:     "发布页",
+							Variant:     l10n.TR("core.engine_catalog.variant.release_page"),
 							AcquireMode: EngineAcquireExternalPage,
 							Artifacts: []EngineArtifact{
-								{Role: "release_page", Label: "SGLang GitHub Releases", Version: "最新版", URL: releasesURL},
+								{Role: "release_page", Label: "SGLang GitHub Releases", Version: l10n.TR("core.engine_catalog.channel.latest"), URL: releasesURL},
 							},
-							Note: "从发布页安装后注册本地引擎。",
+							Note: l10n.TR("core.engine_catalog.note.release_page_register"),
 						},
 					},
 				},
@@ -197,12 +199,12 @@ func sglangProvider() EngineCatalogProvider {
 					ReleaseURL:   "https://github.com/sgl-project/sglang/tree/" + snapshot.Revision,
 					Builds: func() []EnginePlatformBuild {
 						archiveName := "sglang-" + snapshot.Revision + ".tar.gz"
-						sourceArtifact := artifactFromCatalog("engine-sglang", "source", "SGLang 源码包", "e262b44")
+						sourceArtifact := artifactFromCatalog("engine-sglang", "source", l10n.TR("core.engine_catalog.artifact.sglang_source"), "e262b44")
 						sourceArtifact.Filename = archiveName
 						linuxCmd := "tar -xzf " + archiveName + " && uv venv ~/.venvs/sglang --python 3.12 && uv pip install --python ~/.venvs/sglang/bin/python --prerelease=allow ./sglang-" + snapshot.Revision + "/python"
 						appleMetalDoc := EngineArtifact{
 							Role:    "release_page",
-							Label:   "Apple Silicon 安装说明",
+							Label:   l10n.TR("core.engine_catalog.artifact.apple_silicon_guide"),
 							Version: "e262b44",
 							URL:     "https://github.com/sgl-project/sglang/blob/" + snapshot.Revision + "/docs/docs/hardware-platforms/apple_metal.mdx",
 						}
@@ -210,28 +212,28 @@ func sglangProvider() EngineCatalogProvider {
 							{
 								ID:             "engine-sglang-snapshot-linux-x64",
 								Platform:       "linux/amd64",
-								Variant:        "源码包 (CUDA 13)",
+								Variant:        l10n.TR("core.engine_catalog.variant.source_cuda13"),
 								AcquireMode:    EngineAcquireManualArchive,
 								Artifacts:      []EngineArtifact{sourceArtifact},
 								InstallCommand: linuxCmd,
-								Note:           "解压源码包后在独立虚拟环境中安装，再注册本地引擎。",
+								Note:           l10n.TR("core.engine_catalog.note.source_venv_register"),
 							},
 							{
 								ID:             "engine-sglang-snapshot-linux-arm64",
 								Platform:       "linux/arm64",
-								Variant:        "源码包 (CUDA 13)",
+								Variant:        l10n.TR("core.engine_catalog.variant.source_cuda13"),
 								AcquireMode:    EngineAcquireManualArchive,
 								Artifacts:      []EngineArtifact{sourceArtifact},
 								InstallCommand: linuxCmd,
-								Note:           "解压源码包后在独立虚拟环境中安装，再注册本地引擎。",
+								Note:           l10n.TR("core.engine_catalog.note.source_venv_register"),
 							},
 							{
 								ID:          "engine-sglang-snapshot-macos-arm64",
 								Platform:    "darwin/arm64",
-								Variant:     "源码包 (Apple Silicon / MLX)",
+								Variant:     l10n.TR("core.engine_catalog.variant.source_apple_mlx"),
 								AcquireMode: EngineAcquireManualArchive,
 								Artifacts:   []EngineArtifact{sourceArtifact, appleMetalDoc},
-								Note:        "解压源码包后按上方 Apple Silicon 安装说明完成安装，再注册本地引擎。",
+								Note:        l10n.TR("core.engine_catalog.note.source_apple_mlx_register"),
 							},
 						}
 					}(),
@@ -255,7 +257,7 @@ func lmStudioProvider() EngineCatalogProvider {
 			Releases: []EngineRelease{
 				{
 					ID:           "lmstudio-official",
-					Version:      "最新版",
+					Version:      l10n.TR("core.engine_catalog.channel.latest"),
 					Revision:     "official",
 					Distribution: "LM Studio",
 					Channel:      ReleaseStable,
@@ -265,12 +267,12 @@ func lmStudioProvider() EngineCatalogProvider {
 						{
 							ID:          "engine-lmstudio-any",
 							Platform:    "any",
-							Variant:     "桌面应用",
+							Variant:     l10n.TR("core.engine_catalog.variant.desktop_app"),
 							AcquireMode: EngineAcquireExternalPage,
 							Artifacts: []EngineArtifact{
-								{Role: "release_page", Label: "LM Studio 下载页", Version: "最新版", URL: entry.URL},
+								{Role: "release_page", Label: l10n.TR("core.engine_catalog.artifact.lmstudio_download"), Version: l10n.TR("core.engine_catalog.channel.latest"), URL: entry.URL},
 							},
-							Note: "安装桌面应用并启用 lms CLI 后注册本地引擎。",
+							Note: l10n.TR("core.engine_catalog.note.lmstudio_register"),
 						},
 					},
 				},

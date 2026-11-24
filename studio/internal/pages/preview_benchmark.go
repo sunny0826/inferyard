@@ -10,6 +10,7 @@ import (
 
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 )
 
 func (p *previewSession) beginBenchmark(op previewBenchmark) {
@@ -232,7 +233,7 @@ func previewSimulatedCase(bundle string, seq int64) core.CaseProgress {
 	return core.CaseProgress{
 		CaseId:       fmt.Sprintf("preview-case-%03d", seq),
 		State:        "completed",
-		Category:     previewValue("模拟分类"),
+		Category:     previewValue(l10n.TR("preview.fixture.category")),
 		QualityState: previewValue("pass"),
 		DurationMs:   previewValue(1240.0),
 	}

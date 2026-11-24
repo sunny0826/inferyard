@@ -21,7 +21,11 @@
 - **结果可复现，不靠模型当裁判。** 用冻结且经过人工审核的题集测试本地模型，按各题适用的固定规则评分，避免裁判模型波动带来的不确定性。
 - **不做虚假“总分”，直面真实取舍。** 质量、请求延迟、吞吐以及 CPU、内存和可用温度采集分维度独立呈现；无法测量的指标保持为 `null` 并标明原因，绝不补 `0`。
 - **完整保留原始证据。** 逐题答案、执行元数据与资源采样均落盘封存，服务关闭后依然可以离线复核，并投影出供 Studio 展示的 `studio.json` 报告。
-- **原生桌面工作台。** [InferYard Studio](studio/README.md) 基于 Go 与 MyGo 构建原生桌面界面，一站式完成设备硬件检查与硬件感知首装推荐（支持 Apple Silicon、NVIDIA CUDA、AMD ROCm 硬件优先推荐 PolyStrata，其余设备平滑回退至 `llama.cpp`）、模型与引擎下载或本机登记、服务启停管理、实时采样曲线监控与按模型汇总的报告浏览。
+- **原生桌面工作台。** [InferYard Studio](studio/README.md) 基于 Go 与 MyGo 构建原生桌面界面，涵盖以下能力：
+  - **多语言界面（i18n）：** 内置英文与简体中文（在「设置 → 语言」中切换「跟随系统」/「English」/「简体中文」，无需重启即时生效；支持 `MYGO_LOCALE` 环境变量覆盖及 macOS 应用包本地化）。
+  - **桌面交互与自更新：** 浅色 / 深色 / 跟随系统主题实时可视化预览、关闭窗口最小化到系统托盘（后台继续运行测评与下载）、独立作用域的 HTTP(S) 下载代理，以及自动检查 GitHub Releases 更新与一键 SHA-256 校验自更新。
+  - **硬件感知下载与资产管理：** 硬件感知首装推荐（在 Apple Silicon、NVIDIA CUDA、AMD ROCm 硬件上优先推荐 **PolyStrata**，支持一键 4 阶段引导安装与恢复流程，其余设备平滑回退至 `llama.cpp`）、可扩展多引擎目录（`PolyStrata`、`llama.cpp`、`mlx-lm`、`vLLM`、`SGLang`、`LM Studio`）、Hugging Face 与 ModelScope 镜像、自定义 URL 解析（`model resolve`）、多分片 GGUF 与目录模型流式进度下载与断点续传，以及多根目录模型管理与本地 PolyStrata 运行时及模型的安全卸载和磁盘清理。
+  - **任务编排与实时监控：** 自动检测 CLI 版本并支持一键「升级 CLI」（要求 `uv >= 0.13.6`）、常规题包与「长上下文专项」（`zh-context-speed`：64K / 128K / 256K）、引擎状态卡片与 Web UI 直达链接、实时「资源曲线」、应用内通知收件箱与系统通知，以及按模型分组的报告浏览。
 - **可独立调用的 CLI 子项目。** [CLI 子项目](cli/README.zh-CN.md)（`inferyard`）负责设备预检、主机互斥锁、冻结执行、证据封存、离线核验与报告投影，既在 Studio 底层自动运转，也支持终端与脚本直接调用。
 
 ## 开始使用
@@ -32,8 +36,8 @@
   xattr -dr com.apple.quarantine /Applications/InferYard\ Studio.app
   ```
 
-  启动后在任务页选择「准备环境」，再按 [Studio 首次使用说明](studio/README.md#pages-and-first-launch) 选择模型、引擎和题包。
-- **终端测评**　从[安装与候选准备](cli/docs/installation.md)开始。按候选参数启动服务，绑定实际 PID 和端点，分别运行题包并生成汇总报告。
+  启动后在「任务」页选择「准备环境」，再按 [Studio 首次使用说明](studio/README.md#pages-and-first-launch) 选择模型、引擎和题包。
+- **终端测评**　从[安装与候选准备](cli/docs/installation.md)或 [CLI 说明](cli/README.zh-CN.md)开始。按候选参数启动服务，绑定实际 PID 和端点，分别运行题包并生成汇总报告。
 
 ## 现有题包
 
@@ -50,11 +54,11 @@
 
 | 平台 | Studio 界面后端 | 测评与采集范围 |
 | --- | --- | --- |
-| macOS（Apple Silicon，12+） | Metal | 单次与批量运行、CPU/Metal 核验、CPU/RSS/换页及 AppleSMC 温度采集 |
-| Windows x64（10/11） | Direct3D 11（支持 WARP 回退） | Prism/KVMem/NInfer 串行文本运行、原生身份与内存采集 |
-| Linux x64 | GTK 3 与 OpenGL（支持 CPU 渲染回退） | 单次与批量运行、CPU/内存采集 |
+| macOS（Apple Silicon，12+） | Metal | 单次与批量运行、PolyStrata（Metal）与 `llama.cpp` / `mlx-lm` / `vLLM` / `SGLang`、CPU/RSS/换页及 AppleSMC 温度采集 |
+| Windows x64（10/11） | Direct3D 11（支持 WARP 回退） | PolyStrata（CUDA/HIP）与 `llama.cpp` 串行文本运行、原生进程身份与内存采集 |
+| Linux x64 | GTK 3 与 OpenGL（支持 CPU 渲染回退） | 单次与批量运行、PolyStrata（CUDA/HIP）与 `llama.cpp` / `vLLM` / `SGLang`、CPU/内存采集 |
 
-表中列出实现范围。v0.0.5 的 Windows 和 Linux 原生窗口交互仍待验收。各平台准备方式见[安装指南](cli/docs/installation.md)。
+表中列出实现范围。自动化原生桌面 UI 验收目前运行在 macOS（Apple Silicon）上，Windows 与 Linux 的原生窗口交互暂未纳入自动化 UI 测试覆盖。各平台准备方式见[安装指南](cli/docs/installation.md)。
 
 ## 设计原则与边界
 
@@ -67,10 +71,25 @@
 | 主题 | 链接 |
 | --- | --- |
 | 下载 Studio 安装包 | [GitHub Releases](https://github.com/sunny0826/inferyard/releases/latest) |
-| Studio 各页面说明与构建方式 | [Studio 说明](studio/README.md) |
+| Studio 各页面说明、多语言与构建方式 | [Studio 说明](studio/README.md) |
 | CLI 子项目与命令行用法 | [CLI 说明](cli/README.zh-CN.md) |
 | CLI 安装与候选准备 | [安装指南](cli/docs/installation.md) |
+| 冻结题包说明 | [题包说明](cli/bundles/README.md) |
 | 本地源码开发与调试命令 | [本地开发命令](tools/README.md) |
+| 参与贡献 | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| 版本变更记录 | [变更记录](cli/CHANGELOG.md) |
+
+## 致谢
+
+感谢以下项目：
+
+- [PolyStrata](https://github.com/simplexai-labs/PolyStrata)
+- [llama.cpp](https://github.com/ggml-org/llama.cpp) / [PrismML-Eng/llama.cpp](https://github.com/PrismML-Eng/llama.cpp)
+- [mlx-lm](https://github.com/ml-explore/mlx-lm)
+- [vLLM](https://github.com/vllm-project/vllm) / [vllm-metal](https://github.com/vllm-project/vllm-metal)
+- [SGLang](https://github.com/sgl-project/sglang)
+- [LM Studio](https://lmstudio.ai)
+- [MyGo](https://github.com/egoist/mygo) / [onevra](https://github.com/oneo-me/onevra)
 
 ## 许可证
 

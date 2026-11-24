@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"inferyard/studio/internal/evidence"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 	"os"
 	"path/filepath"
 	"sort"
@@ -240,7 +241,7 @@ func (s *Service) ReportIndex(reference string) (*ReportIndex, *ApiError) {
 	path, e := s.ReportFile(reference + "/studio.json")
 	if e != nil {
 		if e.Code == "not_found" && s.legacyReport(reference) {
-			return nil, &ApiError{Code: "unsupported_report_format", Message: "旧格式报告不受支持，请用当前 CLI 重新生成报告。"}
+			return nil, &ApiError{Code: "unsupported_report_format", Message: l10n.TR("core.report.err.unsupported_format")}
 		}
 		return nil, e
 	}
@@ -265,5 +266,5 @@ func (s *Service) legacyReport(reference string) bool {
 }
 
 func reportUnreadable() *ApiError {
-	return &ApiError{Code: "report_unreadable", Message: "无法读取"}
+	return &ApiError{Code: "report_unreadable", Message: l10n.TR("core.report.err.unreadable")}
 }

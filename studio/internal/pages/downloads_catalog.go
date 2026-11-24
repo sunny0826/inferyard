@@ -1,11 +1,15 @@
 package pages
 
-import "fmt"
+import (
+	"fmt"
+
+	"inferyard/studio/internal/l10n"
+)
 
 func catalogHumanSize(bytes int64) string {
 	switch {
 	case bytes <= 0:
-		return "大小未知"
+		return l10n.TR("downloads.size.unknown")
 	case bytes >= 1073741824:
 		return fmt.Sprintf("%.2f GiB", float64(bytes)/1073741824)
 	case bytes >= 1048576:

@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"inferyard/studio/internal/l10n"
 	"net/url"
 	"os"
 	"path"
@@ -110,9 +111,9 @@ func ResolveDownloadDisplayName(kind, sourceURL string) string {
 		}
 	}
 	if kind == "engine" {
-		return "引擎"
+		return l10n.TR("core.download.kind.engine")
 	}
-	return "模型"
+	return l10n.TR("core.download.kind.model")
 }
 
 func resolveAutoDownloadName(kind, configuredDefault, sourceURL string) string {

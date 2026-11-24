@@ -13,6 +13,7 @@ final class ReleaseUITests: XCTestCase {
         }
         app = XCUIApplication(url: URL(fileURLWithPath: appPath))
         app.launchEnvironment["HOME"] = home
+        app.launchEnvironment["MYGO_LOCALE"] = "zh-Hans"
         app.launch()
         expectExists(app.windows["InferYard Studio"], timeout: 15)
         XCTAssertFalse(app.windows["InferYard Studio · UI 调试"].exists)

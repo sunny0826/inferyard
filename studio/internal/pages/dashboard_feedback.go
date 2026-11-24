@@ -3,241 +3,140 @@ package pages
 import (
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
+
+var knownErrorKeys = map[string]string{
+	"candidate_description_invalid":       "err.candidate_description_invalid",
+	"candidate_endpoint_mismatch":         "err.candidate_endpoint_mismatch",
+	"service_identity_unavailable":        "err.service_identity_unavailable",
+	"previous_scope_incomplete":           "err.previous_scope_incomplete",
+	"candidate_binding_invalid":           "err.candidate_binding_invalid",
+	"engine_working_directory_invalid":    "err.engine_isolation_invalid",
+	"engine_environment_invalid":          "err.engine_isolation_invalid",
+	"engine_process_isolation_failed":     "err.engine_isolation_invalid",
+	"engine_candidate_mismatch":           "err.engine_candidate_mismatch",
+	"model_discovery_limit":               "err.model_discovery_limit",
+	"model_discovery_unreadable":          "err.model_discovery_unreadable",
+	"service_closing":                     "err.service_closing",
+	"run_active":                          "err.run_active",
+	"engine_orphaned":                     "err.engine_orphaned",
+	"engine_owner_invalid":                "err.engine_owner_invalid",
+	"engine_owner_write_failed":           "err.engine_owner_write_failed",
+	"engine_owner_remove_failed":          "err.engine_owner_remove_failed",
+	"engine_stop_failed":                  "err.engine_stop_failed",
+	"engine_stopping":                     "err.engine_stopping",
+	"workspace_busy":                      "err.workspace_busy",
+	"engine_host_not_loopback":            "err.engine_host_not_loopback",
+	"engine_credentials_forbidden":        "err.engine_credentials_forbidden",
+	"engine_not_executable":               "err.engine_not_executable",
+	"service_identity_unreadable":         "err.service_identity_unreadable",
+	"unsupported_platform":                "err.unsupported_platform",
+	"device_preflight_blocked":            "err.device_preflight_blocked",
+	"no_local_model":                      "err.no_local_model",
+	"blocked":                             "err.blocked",
+	"preflight_missing":                   "err.blocked",
+	"incomplete":                          "err.incomplete",
+	"run_incomplete":                      "err.incomplete",
+	"single_run_resume_not_supported":     "err.single_run_resume_not_supported",
+	"not_resumable":                       "err.not_resumable",
+	"duration_resume_requires_new_window": "err.duration_resume_requires_new_window",
+	"batch_plan_not_finished":             "err.batch_plan_not_finished",
+	"cancelled":                           "err.cancelled",
+	"output_name_exhausted":               "err.output_name_exhausted",
+	"cli_blocked":                         "err.cli_blocked",
+	"output_exists":                       "err.output_exists",
+	"settings_incomplete":                 "err.settings_incomplete",
+	"cli_unavailable":                     "err.cli_unavailable",
+	"install_unsupported":                 "err.install_unsupported",
+	"download_failed":                     "err.download_failed",
+	"install_checksum_failed":             "err.install_checksum_failed",
+	"install_unpack_failed":               "err.install_unpack_failed",
+	"install_failed":                      "err.install_failed",
+	"install_version_unknown":             "err.install_version_unknown",
+	"ac_power_required":                   "err.ac_power_required",
+	"chat_template_unavailable":           "err.chat_template_unavailable",
+	"model_acquire_incomplete":            "err.model_acquire_incomplete",
+	"engine_acquire_incomplete":           "err.engine_acquire_incomplete",
+	"engine_checksum_mismatch":            "err.engine_checksum_mismatch",
+	"token_env_missing":                   "err.token_env_missing",
+	"auth_required":                       "err.auth_required",
+	"rate_limited":                        "err.rate_limited",
+	"upstream_http_error":                 "err.upstream_http_error",
+	"unexpected_content_encoding":         "err.unexpected_content_encoding",
+	"network_timeout":                     "err.network_timeout",
+	"connection_error":                    "err.connection_error",
+	"transfer_error":                      "err.transfer_error",
+	"disk_full":                           "err.disk_full",
+	"permission_denied":                   "err.permission_denied",
+	"engine_unpack_failed":                "err.engine_unpack_failed",
+	"engine_binary_missing":               "err.engine_binary_missing",
+	"cli_outdated":                        "err.cli_outdated",
+	"engine_check_error":                  "err.engine_check_error",
+	"engine_check_invalid_response":       "err.engine_check_invalid_response",
+	"invalid_library_manifest":            "err.invalid_library_manifest",
+	"unsupported_engine_build_requires_adapter_validation": "err.unsupported_engine_build",
+	"unsupported_runtime_profile":                          "err.unsupported_runtime_profile",
+	"runtime_receipt_invalid":                              "err.runtime_receipt_invalid",
+	"runtime_profile_mismatch":                             "err.runtime_profile_mismatch",
+	"runtime_asset_mismatch":                               "err.runtime_asset_mismatch",
+	"runtime_receipt_missing":                              "err.runtime_receipt_missing",
+	"engine_version_query_failed":                          "err.engine_version_query_failed",
+	"package_resource_invalid":                             "err.package_resource_invalid",
+	"io_error":                                             "err.io_error",
+	"invalid_input":                                        "err.invalid_input",
+	"candidate_mismatch":                                   "err.candidate_mismatch",
+	"engine_exited":                                        "err.engine_exited",
+	"engine_start_timeout":                                 "err.engine_start_timeout",
+	"engine_start_failed":                                  "err.engine_start_failed",
+	"engine_port_in_use":                                   "err.engine_port_in_use",
+	"service_discovery_invalid_response":                   "err.service_discovery_invalid_response",
+	"service_discovery_error":                              "err.service_discovery_error",
+	"service_discovery_unsupported_platform":               "err.service_discovery_unsupported_platform",
+	"listener_enumeration_failed":                          "err.listener_enumeration_failed",
+	"listener_table_incomplete":                            "err.listener_table_incomplete",
+	"listener_ownership_incomplete":                        "err.listener_ownership_incomplete",
+	"process_identity_unavailable":                         "err.process_identity_unavailable",
+	"models_timeout":                                       "err.models_timeout",
+	"models_unreachable":                                   "err.models_unreachable",
+	"models_http_1xx":                                      "err.models_http_1xx",
+	"models_http_3xx":                                      "err.models_http_3xx",
+	"models_http_4xx":                                      "err.models_http_4xx",
+	"models_http_5xx":                                      "err.models_http_5xx",
+	"models_invalid_response":                              "err.models_invalid_response",
+	"models_empty":                                         "err.models_empty",
+	"models_response_too_large":                            "err.models_response_too_large",
+	"health_timeout":                                       "err.health_timeout",
+	"health_unreachable":                                   "err.health_unreachable",
+	"startup_arguments_mismatch":                           "err.startup_arguments_mismatch",
+	"service_process_unavailable":                          "err.service_process_unavailable",
+	"binding_progress_changed":                             "err.binding_progress_changed",
+	"report_unreadable":                                    "err.report_unreadable",
+	"unsupported_report_format":                            "err.unsupported_report_format",
+	"cli_error":                                            "err.cli_error",
+	"invalid_request":                                      "err.invalid_request",
+	"not_found":                                            "err.not_found",
+	"conflict":                                             "err.conflict",
+	"internal_error":                                       "err.internal_error",
+	"error":                                                "err.error",
+	"unknown":                                              "err.unknown",
+}
 
 func human(code string) string {
 	if msg, ok := humanKnown(code); ok {
 		return msg
 	}
-	return "操作失败（" + code + "），请查看下方错误详情后重试。"
+	return l10n.TRf("err.unknown_code", "code", code)
 }
 
 func humanKnown(code string) (string, bool) {
 	if msg, ok := humanLocalEngineCode(code); ok {
 		return msg, true
 	}
-	switch code {
-	case "candidate_description_invalid":
-		return "CLI 的测评配置描述不符合当前接口，请升级配套 CLI。", true
-	case "candidate_endpoint_mismatch":
-		return "服务地址与本次固定的测评配置不一致，请填写创建测评配置时的本机地址。", true
-	case "service_identity_unavailable":
-		return "无法核验后台进程的启动身份，请检查 PID 和进程权限。", true
-	case "previous_scope_incomplete":
-		return "上一测评题集未完整结束，后续测评题集尚未执行。请先处理停止原因。", true
-	case "candidate_binding_invalid":
-		return "连接产物与本次测评题集或结果目录不一致，运行已停止。", true
-	case "engine_working_directory_invalid", "engine_environment_invalid", "engine_process_isolation_failed":
-		return "引擎工作目录或进程隔离设置无效，启动已停止。", true
-	case "engine_candidate_mismatch":
-		return "当前服务属于另一测评配置，请先结束任务并停止该服务。", true
-	case "model_discovery_limit":
-		return "模型目录超过扫描范围，请将模型放在较浅的独立目录中。", true
-	case "model_discovery_unreadable":
-		return "无法读取模型目录，请检查目录与权限。", true
-	case "service_closing":
-		return "Studio 正在关闭，无法接收新任务。", true
-	case "run_active":
-		return "测评正在进行，请先取消并等待收尾，再停止引擎。", true
-	case "engine_orphaned":
-		return "请先处理遗留服务或无效记录，再启动引擎。", true
-	case "engine_owner_invalid":
-		return "遗留服务记录无效；可仅删除记录（不终止进程）。", true
-	case "engine_owner_write_failed":
-		return "无法保存服务记录，已中止启动。", true
-	case "engine_owner_remove_failed":
-		return "遗留服务记录未能清除；可重试仅删除记录（不终止进程）。", true
-	case "engine_stop_failed":
-		return "遗留引擎停止失败，所有权记录已保留。", true
-	case "engine_stopping":
-		return "引擎正在停止，请等待回收后再运行。", true
-	case "workspace_busy":
-		return "当前工作区仍有运行或托管引擎，请先结束任务并停止引擎。", true
-	case "engine_host_not_loopback":
-		return "引擎监听地址必须是 127.0.0.1、::1 或 localhost。", true
-	case "engine_credentials_forbidden":
-		return "启动参数含凭据，只接受凭据环境变量引用，请重新创建测评配置。", true
-	case "engine_not_executable":
-		return "引擎文件不存在或不可执行，请检查引擎路径和权限。", true
-	case "service_identity_unreadable":
-		return "无法读取绑定进程身份，请检查进程权限后刷新。", true
-	case "unsupported_platform":
-		return "当前平台不支持此测评配置流程，请检查平台支持范围。", true
-	case "device_preflight_blocked":
-		return "设备检查未给出可运行推荐，请检查设备报告后重试。", true
-	case "no_local_model":
-		return "还没有可用的本地模型，请到下载页获取模型，或在设置中指定已有模型目录。", true
-	case "blocked", "preflight_missing":
-		return "设备检查尚未通过，请检查准备条件后重试。", true
-	case "incomplete", "run_incomplete":
-		return "运行尚未完成，请检查停止原因后继续。", true
-	case "single_run_resume_not_supported":
-		return "单次运行不支持断点续跑；请重新运行该配置。", true
-	case "not_resumable":
-		return "当前运行不可续测；请用「新任务」重新测评。", true
-	case "duration_resume_requires_new_window":
-		return "时长型任务不支持续跑；请按固定计划重新开窗运行。", true
-	case "batch_plan_not_finished":
-		return "批计划尚有未完成题目；请按固定计划继续运行。", true
-	case "cancelled":
-		return "操作已取消，可检查进度后重试。", true
-	case "output_name_exhausted":
-		return "前 1000 个目录名均已占用，请更换目录名或工作区。", true
-	case "cli_blocked":
-		return "CLI 拒绝执行，请检查限制原因。", true
-	case "output_exists":
-		return "输出目录已存在，请选择新目录。", true
-	case "settings_incomplete":
-		return "目录配置缺项，请先配置目录。", true
-	case "cli_unavailable":
-		return "CLI 尚未就绪，请在主窗口设置路径。", true
-	case "install_unsupported":
-		return "当前平台没有可用的自动安装包，请按安装指南手动安装。", true
-	case "download_failed":
-		return "下载失败，请检查网络后重试。", true
-	case "install_checksum_failed":
-		return "下载内容未通过校验，已中止安装，请重试。", true
-	case "install_unpack_failed":
-		return "安装包解包失败，请重试或按安装指南手动安装。", true
-	case "install_failed":
-		return "CLI 自动安装失败，可重试或改用「手动指定路径」。", true
-	case "install_version_unknown":
-		return "无法确定要安装的 CLI 版本，请按安装指南手动安装。", true
-	case "ac_power_required":
-		return "macOS 测评需接通交流电源后运行，请插上电源适配器后重试。", true
-	case "chat_template_unavailable":
-		return "模型缺少聊天模板，无法用于当前对话测评。", true
-	case "model_acquire_incomplete":
-		return "模型下载未完成，请检查下方具体原因与网络或目录状态后重试。", true
-	case "engine_acquire_incomplete":
-		return "引擎下载未完成，请检查下方具体原因与网络或目录状态后重试。", true
-	case "engine_checksum_mismatch":
-		return "引擎下载校验和不匹配，文件可能已损坏，请重新下载。", true
-	case "token_env_missing":
-		return "指定的访问凭据环境变量未设置或内容无效，请在系统环境中配置后重试。", true
-	case "auth_required":
-		return "远端服务拒绝访问（HTTP 401/403），请检查访问凭据与权限后重试。", true
-	case "rate_limited":
-		return "远端下载请求触发限流（HTTP 429），请稍后重试。", true
-	case "upstream_http_error":
-		return "远端服务器返回异常 HTTP 状态，请稍后重试或检查下载地址。", true
-	case "unexpected_content_encoding":
-		return "远端响应内容编码不受支持，下载已中止。", true
-	case "network_timeout":
-		return "网络请求或读取超时，请检查网络连接后重试。", true
-	case "connection_error":
-		return "网络连接失败或中断，请检查网络及代理配置后重试。", true
-	case "transfer_error":
-		return "下载传输过程中发生网络协议或传输错误，请重试。", true
-	case "disk_full":
-		return "磁盘可用空间不足，无法继续写入文件，请清理磁盘空间后重试。", true
-	case "permission_denied":
-		return "没有足够的文件或目录写入权限，请检查目标目录权限后重试。", true
-	case "engine_unpack_failed":
-		return "引擎归档解包失败，请检查来源后重试。", true
-	case "engine_binary_missing":
-		return "引擎归档内未找到 llama-server，请检查引擎来源。", true
-	case "cli_outdated":
-		return "CLI 版本过旧或缺少所需命令，请升级 CLI 后重试。", true
-	case "engine_check_error":
-		return "引擎核验执行失败，请检查引擎路径后重试。", true
-	case "engine_check_invalid_response":
-		return "CLI 引擎核验结果格式无效，请升级 CLI 后重试。", true
-	case "invalid_library_manifest":
-		return "引擎运行库不完整或库链接无效", true
-	case "unsupported_engine_build_requires_adapter_validation":
-		return "引擎版本与评测要求不符", true
-	case "unsupported_runtime_profile":
-		return "引擎运行时 profile 不受支持", true
-	case "runtime_receipt_invalid":
-		return "运行时回执无效", true
-	case "runtime_profile_mismatch":
-		return "运行时回执与 profile 不符", true
-	case "runtime_asset_mismatch":
-		return "运行时文件与清单不符", true
-	case "runtime_receipt_missing":
-		return "引擎目录缺少运行时回执，无法核验", true
-	case "engine_version_query_failed":
-		return "引擎版本查询失败或超时", true
-	case "package_resource_invalid":
-		return "CLI 内置资源无效，请重新安装或升级 CLI。", true
-	case "io_error":
-		return "文件读写失败，请检查目录权限后重试。", true
-	case "invalid_input":
-		return "输入无效，请检查参数后重试。", true
-	case "candidate_mismatch":
-		return "测评配置与所选组合不一致，请重试。", true
-	case "engine_exited":
-		return "模型服务启动后退出", true
-	case "engine_start_timeout":
-		return "模型服务启动超时（模型加载未完成）", true
-	case "engine_start_failed":
-		return "引擎进程启动失败，请检查文件权限与运行环境", true
-	case "engine_port_in_use":
-		return "端口已被占用：该端口可能已有模型服务", true
-	case "service_discovery_invalid_response":
-		return "CLI 服务发现结果格式无效，请升级 CLI 后重试。", true
-	case "service_discovery_error":
-		return "本机服务发现失败，请检查权限后手动刷新。", true
-	case "service_discovery_unsupported_platform":
-		return "当前平台不支持本机服务发现。", true
-	case "listener_enumeration_failed":
-		return "无法读取连接表或枚举进程，本次发现失败。", true
-	case "listener_table_incomplete":
-		return "部分连接表不可读或含无效记录，扫描不完整。", true
-	case "listener_ownership_incomplete":
-		return "部分监听进程不可读、已退出或无法确定，扫描不完整。", true
-	case "process_identity_unavailable":
-		return "部分监听进程名称不可读或启动身份已变化，扫描不完整。", true
-	case "models_timeout":
-		return "模型列表请求超时。", true
-	case "models_unreachable":
-		return "模型列表连接、传输或 HTTP 协议失败。", true
-	case "models_http_1xx":
-		return "模型列表返回 HTTP 1xx。", true
-	case "models_http_3xx":
-		return "模型列表返回 HTTP 3xx，未跟随重定向。", true
-	case "models_http_4xx":
-		return "模型列表返回 HTTP 4xx，可能需要认证。", true
-	case "models_http_5xx":
-		return "模型列表返回 HTTP 5xx。", true
-	case "models_invalid_response":
-		return "模型列表响应格式无效。", true
-	case "models_empty":
-		return "服务未返回可列出的模型。", true
-	case "models_response_too_large":
-		return "模型列表响应超过 1 MiB。", true
-	case "health_timeout":
-		return "模型列表可用，但健康检查超时。", true
-	case "health_unreachable":
-		return "模型列表可用，但健康检查连接、传输或协议失败。", true
-	case "startup_arguments_mismatch":
-		return "启动参数与测评配置不一致，连接已停止，请核对配置与引擎设置。", true
-	case "service_process_unavailable":
-		return "已连接的服务进程不可用，请刷新服务列表后重新选择。", true
-	case "binding_progress_changed":
-		return "工作区或测评配置的连接阶段已变化，连接已停止。", true
-	case "report_unreadable":
-		return "报告文件无法读取或格式无效，请重新生成。", true
-	case "unsupported_report_format":
-		return "旧格式报告不受支持，请用当前 CLI 重新生成报告。", true
-	case "cli_error":
-		return "CLI 执行失败，请检查下方错误详情与运行状态后重试。", true
-	case "invalid_request":
-		return "输入不符合要求，请检查路径、URL 和环境变量名。", true
-	case "not_found":
-		return "所需文件、记录或远端资源不存在，请检查路径、工作区状态或下载地址后重试。", true
-	case "conflict":
-		return "操作与当前状态冲突，请刷新进度后重试。", true
-	case "internal_error":
-		return "Studio 内部错误，请检查下方错误详情后重试。", true
-	case "error":
-		return "CLI 执行出错，请查看下方错误详情后重试。", true
-	case "unknown":
-		return "CLI 异常退出，请检查下方错误详情与运行状态后重试。", true
-	default:
-		return "", false
+	if key, ok := knownErrorKeys[code]; ok {
+		return l10n.TR(key), true
 	}
+	return "", false
 }
 
 func (s *viewState) guideWork(fn func() (string, *core.ApiError)) {
@@ -268,7 +167,7 @@ func (s *viewState) feedback(c *ui.Context) {
 			s.failurePage = ""
 		} else if !s.stepOwnsError(s.failure) {
 			errorRecoveryBanner(c, s.failure, func() {
-				if ghostButton(c, "关闭").Clicked() {
+				if ghostButton(c, tr(c, "dashboard.feedback.close")).Clicked() {
 					s.failure = nil
 					s.failurePage = ""
 				}
@@ -281,8 +180,8 @@ func (s *viewState) feedback(c *ui.Context) {
 			Size:    bannerCompact,
 			Message: s.refreshFailure,
 			Actions: func() {
-				button(c, "重试").OnClick(s.refreshAction)
-				if ghostButton(c, "关闭").Clicked() {
+				button(c, tr(c, "dashboard.feedback.retry")).OnClick(s.refreshAction)
+				if ghostButton(c, tr(c, "dashboard.feedback.close")).Clicked() {
 					s.refreshFailure = ""
 				}
 			},
@@ -304,7 +203,7 @@ func (s *viewState) outdatedCLIBanner(c *ui.Context) {
 	if !bound {
 		actions = func() {
 			upgrading := s.actionBusy("upgrade-cli")
-			if primaryActionButton(c, "升级 CLI", upgrading).Disabled(s.busy).Clicked() {
+			if primaryActionButton(c, tr(c, "onboarding.cli.upgrade_button"), upgrading).Disabled(s.busy).Clicked() {
 				s.upgradeCLI()
 			}
 		}

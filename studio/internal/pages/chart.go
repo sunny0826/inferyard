@@ -12,6 +12,7 @@ import (
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/components/chart"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 type resourceSeries struct {
@@ -78,21 +79,28 @@ func resourceLineData(series resourceSeries, color ui.Color) chart.Data {
 
 func sourceLabel(source core.ResourceSource) string {
 	if source.Name == "" {
-		return "来源未记录"
+		return l10n.TR("chart.source.unrecorded")
+	}
+	return source.Name
+}
+
+func sourceLabelFor(c *ui.Context, source core.ResourceSource) string {
+	if source.Name == "" {
+		return tr(c, "chart.source.unrecorded")
 	}
 	return source.Name
 }
 
 func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
-	card(c, "资源曲线", func() {
+	card(c, tr(c, "chart.resource.title"), func() {
 		series := resourceSeriesData(samples)
-		ui.Text(c, fmt.Sprintf("采样点：%d", len(samples)))
+		ui.Text(c, trf(c, "chart.resource.sample_count", "count", len(samples)))
 		if len(series) == 0 {
-			ui.Text(c, "等待资源采样…")
+			ui.Text(c, tr(c, "chart.resource.waiting"))
 			return
 		}
 		theme := c.Theme()
-		metrics := resourceMetrics(theme)
+		metrics := resourceMetrics(c, theme)
 		selected := []core.ResourceSample{}
 		draw := func(metric resourceMetric) {
 			c.Key(metric.id)
@@ -123,13 +131,15 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 				}
 				if len(options) > 1 {
 					picker := components.Select(c, &state.source)
-					picker.Trigger.Label(metric.label + "来源").Value(sourceLabel(options[current].source)).Children(func() {
-						ui.Text(c, sourceLabel(options[current].source)).SingleLine()
+					currentLabel := sourceLabelFor(c, options[current].source)
+					picker.Trigger.Label(trf(c, "chart.resource.source_picker_label", "metric", metric.label)).Value(currentLabel).Children(func() {
+						ui.Text(c, currentLabel).SingleLine()
 					})
 					picker.Popup(func(ui.Element) {
 						for _, option := range options {
-							picker.Item(option.id).Label(sourceLabel(option.source)).Children(func() {
-								ui.Text(c, sourceLabel(option.source)).SingleLine()
+							optLabel := sourceLabelFor(c, option.source)
+							picker.Item(option.id).Label(optLabel).Children(func() {
+								ui.Text(c, optLabel).SingleLine()
 								ui.Text(c, option.source.Collector+" · "+option.source.ClockID).TextColor(theme.TextMuted)
 							})
 						}
@@ -139,32 +149,32 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 						s.samplesTable = pageTableState{}
 						s.resourceTablePage = 0
 					}
-				} else if label := secondarySourceLabel(metric.id, options[current].source); label != "" {
+				} else if label := secondarySourceLabel(c, metric.id, options[current].source); label != "" {
 					ui.Text(c, label).TextColor(theme.TextMuted)
 				}
 				chosen := options[current]
 				selected = append(selected, chosen.points...)
 				data := resourceLineData(chosen, metric.color)
 				if !chartHasValues(data) {
-					reason := "暂无有效采样"
+					reason := tr(c, "chart.resource.no_valid_samples")
 					for _, point := range chosen.points {
 						if point.MissingReason != nil {
 							reason = *point.MissingReason
 						}
 					}
-					ui.Text(c, "缺测："+reason).TextColor(theme.TextMuted)
+					ui.Text(c, trf(c, "chart.resource.missing_reason", "reason", reason)).TextColor(theme.TextMuted)
 					return
 				}
 				chart.Line(c, &state.chart, data, chart.Options{
-					HideLegend: true, Label: metric.label + "曲线", PlotHeight: 140, AnimationDuration: -1,
-					Description: "左右方向键选择样本",
+					HideLegend: true, Label: trf(c, "chart.resource.curve_label", "metric", metric.label), PlotHeight: 140, AnimationDuration: -1,
+					Description: tr(c, "chart.resource.curve_description"),
 					Detail: func(c *ui.Context, selection chart.Selection) {
 						ui.Column(c).Children(func() {
 							if selection.Index >= 0 && selection.Index < len(chosen.points) {
 								point := chosen.points[selection.Index]
 								value := number(point.Value)
 								if point.MissingReason != nil {
-									value = "缺测：" + *point.MissingReason
+									value = trf(c, "chart.resource.missing_reason", "reason", *point.MissingReason)
 								}
 								ui.Text(c, formatTimestampUTC(point.Utc)+" · "+value+" "+chosen.source.Unit).Selectable()
 							}
@@ -186,10 +196,10 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 	})
 }
 
-func secondarySourceLabel(metricID string, source core.ResourceSource) string {
-	name := sourceLabel(source)
+func secondarySourceLabel(c *ui.Context, metricID string, source core.ResourceSource) string {
+	name := sourceLabelFor(c, source)
 	if metricID == "service_cpu_percent" {
-		return "单核 100% · 仅服务主进程"
+		return tr(c, "chart.resource.service_cpu_note")
 	}
 	if metricID == "temperature" || !strings.Contains(name, ":") {
 		return name
@@ -202,48 +212,55 @@ type resourceMetric struct {
 	color     ui.Color
 }
 
-func resourceMetrics(theme *ui.Theme) []resourceMetric {
+func resourceMetrics(c *ui.Context, theme *ui.Theme) []resourceMetric {
 	colors := colorTokensFor(theme, false).Chart
 	return []resourceMetric{
-		{"system_mem_available", "可用内存 GiB", colors[0]},
-		{"service_rss", "服务 RSS GiB", colors[1]},
-		{"service_cpu_percent", "服务 CPU %", colors[2]},
-		{"temperature", "传感器温度 °C", colors[4]},
+		{"system_mem_available", tr(c, "chart.metric.system_mem_available"), colors[0]},
+		{"service_rss", tr(c, "chart.metric.service_rss"), colors[1]},
+		{"service_cpu_percent", tr(c, "chart.metric.service_cpu_percent"), colors[2]},
+		{"temperature", tr(c, "chart.metric.temperature"), colors[4]},
 	}
 }
 
 func (s *viewState) resourceSampleFold(c *ui.Context, selected []core.ResourceSample) {
-	componentFold(c, "原始采样数值", func() { s.resourceTable(c, selected) })
+	componentFold(c, tr(c, "chart.table.fold_title"), func() { s.resourceTable(c, selected) })
 }
 
 func (s *viewState) resourceTable(c *ui.Context, samples []core.ResourceSample) {
 	sort.SliceStable(samples, func(i, j int) bool { return samples[i].Seq < samples[j].Seq })
-	heading(c, "采样数值", 3)
+	heading(c, tr(c, "chart.table.heading"), 3)
 	const pageSize = 50
 	pages := max(1, (len(samples)+pageSize-1)/pageSize)
 	s.resourceTablePage = min(max(0, s.resourceTablePage), pages-1)
 	ui.Row(c).AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-		if button(c, "上一页采样").Disabled(s.resourceTablePage == 0).Clicked() {
+		if button(c, tr(c, "chart.table.prev_page")).Disabled(s.resourceTablePage == 0).Clicked() {
 			s.resourceTablePage--
 		}
-		ui.Text(c, fmt.Sprintf("第 %d / %d 页 · 当前来源共 %d 条记录", s.resourceTablePage+1, pages, len(samples)))
-		if button(c, "下一页采样").Disabled(s.resourceTablePage == pages-1).Clicked() {
+		ui.Text(c, trf(c, "chart.table.page_status", "page", s.resourceTablePage+1, "totalPages", pages, "count", len(samples)))
+		if button(c, tr(c, "chart.table.next_page")).Disabled(s.resourceTablePage == pages-1).Clicked() {
 			s.resourceTablePage++
 		}
 	})
 	start := s.resourceTablePage * pageSize
 	samples = samples[start:min(start+pageSize, len(samples))]
-	cols := []ui.TableColumn{{Title: "UTC", Width: 220}, {Title: "来源", Width: 250}, {Title: "数值", Width: 140}, {Title: "单位", Width: 80}, {Title: "缺测原因", Width: 180}}
+	cols := []ui.TableColumn{
+		{Title: tr(c, "chart.table.col_utc"), Width: 220},
+		{Title: tr(c, "chart.table.col_source"), Width: 250},
+		{Title: tr(c, "chart.table.col_value"), Width: 140},
+		{Title: tr(c, "chart.table.col_unit"), Width: 80},
+		{Title: tr(c, "chart.table.col_missing_reason"), Width: 180},
+	}
+	tableLabel := tr(c, "chart.table.aria_label")
 	s.samplesTable.Key = func(i int) any { return samples[i].Seq }
-	pageTable(c, &s.samplesTable, "资源采样数值表", cols, len(samples), func(row, col int) {
+	pageTable(c, &s.samplesTable, tableLabel, cols, len(samples), func(row, col int) {
 		p := samples[row]
 		value := number(p.Value)
 		if p.Value != nil && p.Source.Unit == "bytes" {
 			value = fmt.Sprintf("%.0f", *p.Value)
 		}
-		values := []string{formatTimestampUTC(p.Utc), sourceLabel(p.Source), value, p.Source.Unit, emptyText(p.MissingReason)}
+		values := []string{formatTimestampUTC(p.Utc), sourceLabelFor(c, p.Source), value, p.Source.Unit, emptyText(p.MissingReason)}
 		ui.Text(c, values[col]).Selectable()
-	}).Height(180).Label("资源采样数值表")
+	}).Height(180).Label(tableLabel)
 }
 
 func chartHasValues(data chart.Data) bool {

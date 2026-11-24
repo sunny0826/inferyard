@@ -13,22 +13,23 @@ import (
 
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 )
 
 //go:embed testdata/studio.json
 var previewReportJSON []byte
 
 var previewScenes = []struct {
-	label string
-	apply func(*viewState)
+	labelKey string
+	apply    func(*viewState)
 }{
-	{"任务 · 准备", previewPreparation},
-	{"任务 · 待运行", func(s *viewState) {
+	{"preview.scene.task_preparation", previewPreparation},
+	{"preview.scene.task_ready", func(s *viewState) {
 		s.history, s.downloads, s.reports = core.RunHistoryResponse{}, nil, nil
 	}},
-	{"任务 · 运行中", previewRunning},
-	{"任务 · 已完成", previewCompleted},
-	{"任务 · 失败", func(s *viewState) {
+	{"preview.scene.task_running", previewRunning},
+	{"preview.scene.task_completed", previewCompleted},
+	{"preview.scene.task_failed", func(s *viewState) {
 		s.task = benchmarkTask{stage: "bind", start: startChainResult{candidate: "/preview/candidate"}, failure: core.Err("engine_start_failed")}
 		s.engineState = core.EngineState{
 			State:       "failed",
@@ -41,39 +42,39 @@ var previewScenes = []struct {
 			Error:       core.Err("engine_start_failed"),
 		}
 	}},
-	{"首次使用 · 无资源", func(s *viewState) {
+	{"preview.scene.first_use_empty", func(s *viewState) {
 		previewPreparation(s)
 		s.registry = core.Registry{}
 		s.model, s.engine = "", ""
 		s.checks = core.EngineCheckOverview{Supported: true}
 	}},
-	{"引擎 · 本地安装与目录模型", previewLocalEngines},
-	{"引擎 · LM Studio 手动绑定", func(s *viewState) {
+	{"preview.scene.engines_local_and_dir", previewLocalEngines},
+	{"preview.scene.engines_lmstudio_bind", func(s *viewState) {
 		previewLocalEngines(s)
-		s.engine, s.model = "lmstudio · 模拟安装", "local.gguf"
+		s.engine, s.model = l10n.TRf("preview.engine.local_name", "family", "lmstudio"), "local.gguf"
 		s.localPID, s.localEndpoint = "4001", "http://127.0.0.1:48857"
 		s.discoveryLoaded = true
 		s.discovery = inferyard.ServiceDiscovery{Status: "complete", Services: []inferyard.DiscoveredService{
 			{PID: 4001, ProcessName: "LM Studio", Endpoints: []inferyard.DiscoveredEndpoint{{URL: "http://127.0.0.1:48857", Models: []string{"local.gguf", "local-weights"}}}},
 		}}
 	}},
-	{"资源 · 密集采样与缺测", previewDenseResources},
-	{"资源 · CPU 与多路温度", previewMultiSensorResources},
-	{"报告 · 长表与缺测", func(s *viewState) { s.openReport("long-report") }},
-	{"报告 · 读取失败", func(s *viewState) { s.openReport("broken-report") }},
-	{"下载 · 进行中与失败", previewDownloadsActiveAndFailed},
-	{"下载 · PolyStrata 引导安装", previewDownloadsPolystrata},
-	{"下载 · PolyStrata 模型下载", previewDownloadsPolystrataModel},
-	{"推荐 · 首次引导（Apple M4 Pro 48G）", previewRecMac48FirstUse},
-	{"推荐 · RTX 5090 32G（多样性档位）", previewRecRTX5090FirstUse},
-	{"推荐 · RTX 4070 8G（含紧凑适配）", previewRecRTX4070Tight},
-	{"推荐 · 已有资源（下载页顶部收起态）", previewRecExistingAssetsCollapsed},
-	{"推荐 · 无独显回退 llama.cpp", previewRecCPUFallback},
-	{"推荐 · 低磁盘阻断态", previewRecBlockedDisk},
-	{"更新 · 发现新版本", previewUpdateAvailable},
-	{"更新 · 下载中", previewUpdateDownloading},
-	{"更新 · 待重启生效", previewUpdateReadyToApply},
-	{"更新 · 更新失败", previewUpdateError},
+	{"preview.scene.resources_dense_missing", previewDenseResources},
+	{"preview.scene.resources_cpu_sensors", previewMultiSensorResources},
+	{"preview.scene.report_long_missing", func(s *viewState) { s.openReport("long-report") }},
+	{"preview.scene.report_read_failed", func(s *viewState) { s.openReport("broken-report") }},
+	{"preview.scene.downloads_active_failed", previewDownloadsActiveAndFailed},
+	{"preview.scene.downloads_polystrata_setup", previewDownloadsPolystrata},
+	{"preview.scene.downloads_polystrata_model", previewDownloadsPolystrataModel},
+	{"preview.scene.rec_mac48_first_use", previewRecMac48FirstUse},
+	{"preview.scene.rec_rtx5090_tiers", previewRecRTX5090FirstUse},
+	{"preview.scene.rec_rtx4070_tight", previewRecRTX4070Tight},
+	{"preview.scene.rec_existing_collapsed", previewRecExistingAssetsCollapsed},
+	{"preview.scene.rec_cpu_fallback", previewRecCPUFallback},
+	{"preview.scene.rec_blocked_disk", previewRecBlockedDisk},
+	{"preview.scene.update_available", previewUpdateAvailable},
+	{"preview.scene.update_downloading", previewUpdateDownloading},
+	{"preview.scene.update_ready", previewUpdateReadyToApply},
+	{"preview.scene.update_error", previewUpdateError},
 }
 
 func previewDownloadsPolystrata(s *viewState) {
@@ -84,7 +85,7 @@ func previewDownloadsPolystrata(s *viewState) {
 	blockerErr.Details = map[string]any{
 		"blockers": []map[string]any{{
 			"code":        "cmake_missing",
-			"message":     "需要安装 CMake 才能构建 PolyStrata。",
+			"message":     l10n.TR("preview.polystrata.blocker.cmake"),
 			"fix_command": "brew install cmake",
 		}},
 	}
@@ -98,7 +99,7 @@ func previewDownloadsPolystrata(s *viewState) {
 			Step:        previewValue(3),
 			StepTotal:   previewValue(4),
 			Percent:     previewValue(62.0),
-			Detail:      previewValue("编译 Metal 推理核心"),
+			Detail:      previewValue(l10n.TR("preview.polystrata.stage.build_metal_inference")),
 			SourceUrl:   "https://github.com/simplexai-labs/PolyStrata/archive/3e1642161198c50ff1abed4046f4e4f476099dbb.tar.gz",
 			OutName:     "polystrata-preview",
 			OutDir:      "/preview/engines/polystrata-preview",
@@ -230,7 +231,7 @@ func previewBase(ctx context.Context) *viewState {
 				},
 			},
 			Engines: []core.EngineAsset{{
-				Name: engine, Family: "llama-cpp", Source: "模拟引擎目录",
+				Name: engine, Family: "llama-cpp", Source: l10n.TR("preview.source.engine_dir"),
 				Path: filepath.Join(root, "engines", "llama-server"), Deletable: true,
 			}},
 			DefaultEngine:   engine,
@@ -308,7 +309,7 @@ func previewReportFixture(reference string) *core.ReportIndex {
 	if reference == "long-report" {
 		run := &index.Runs[0]
 		for i := range 40 {
-			run.Requests = append(run.Requests, core.ReportRequest{CaseID: fmt.Sprintf("preview-case-%03d", i), CategoryLabel: "模拟分类", State: "completed"})
+			run.Requests = append(run.Requests, core.ReportRequest{CaseID: fmt.Sprintf("preview-case-%03d", i), CategoryLabel: l10n.TR("preview.fixture.category"), State: "completed"})
 		}
 		run.Dashboard.Latency.Excluded = previewValue(int64(len(run.Requests)) - *run.Dashboard.Latency.SampleCount)
 	}
