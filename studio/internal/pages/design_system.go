@@ -165,9 +165,14 @@ func (s *viewState) announceChanges(c *ui.Context) {
 		}
 	}
 	add(s.failure)
+	if s.cliUpgradeErrorVisible() {
+		add(s.cliUpgrade.Error)
+	}
 	switch s.selected {
 	case "device":
-		add(s.device.LastError)
+		if s.device.LastError == nil || s.device.LastError.Code != "cli_outdated" || (!s.cliAutoUpgradeActive() && !s.cliUpgradeErrorVisible()) {
+			add(s.device.LastError)
+		}
 		if _, err := parseDeviceSnapshot(s.device.Snapshot); err != nil {
 			errors = append(errors, tr(c, "shell.announce.device_snapshot_unreadable"))
 		}

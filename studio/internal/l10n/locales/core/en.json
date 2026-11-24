@@ -44,6 +44,7 @@
   "core.err.output_name_exhausted": "The first 1,000 directory names are already taken. Choose a different name or workspace.",
   "core.install.err.archive_corrupted": "Installer archive is corrupted. Installation aborted.",
   "core.install.err.auto_install_failed": "Automatic CLI installation failed. You can use \"Specify Path Manually\" instead.",
+  "core.install.err.auto_upgrade_failed": "Automatic CLI upgrade failed. Retry or specify the path manually in Settings.",
   "core.install.err.checksum_file_invalid": "Checksum file is invalid. Installation aborted.",
   "core.install.err.checksum_mismatch": "Downloaded file does not match the official checksum. Installation aborted.",
   "core.install.err.download_failed": "Download failed. Check your network connection and retry.",

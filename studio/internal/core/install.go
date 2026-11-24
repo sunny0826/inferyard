@@ -363,6 +363,16 @@ func (s *Service) inspectCLIForInstall(u UserSettings) (string, *InferyardProbe)
 }
 
 func (s *Service) InstallCLI(ctx context.Context, onStatus func(string)) (string, *ApiError) {
+	s.cliInstallMu.Lock()
+	defer s.cliInstallMu.Unlock()
+	path, apiErr := s.installCLILocked(ctx, onStatus)
+	if apiErr == nil {
+		s.clearCLIUpgradeState()
+	}
+	return path, apiErr
+}
+
+func (s *Service) installCLILocked(ctx context.Context, onStatus func(string)) (string, *ApiError) {
 	if s.paths != nil {
 		p := s.probe(s.userSettings())
 		if p.Status == "outdated" {
@@ -413,7 +423,11 @@ func (s *Service) InstallCLI(ctx context.Context, onStatus func(string)) (string
 		if len(tail) > 600 {
 			tail = tail[len(tail)-600:]
 		}
-		return "", &ApiError{Code: "install_failed", Message: l10n.TR("core.install.err.auto_install_failed"), Details: map[string]any{"output_tail": tail}}
+		errMsg := l10n.TR("core.install.err.auto_install_failed")
+		if outdated != nil {
+			errMsg = l10n.TR("core.install.err.auto_upgrade_failed")
+		}
+		return "", &ApiError{Code: "install_failed", Message: errMsg, Details: map[string]any{"output_tail": tail}}
 	}
 	binOut, err := installCommandOutput(ctx, uv, "tool", "dir", "--bin")
 	if err != nil {

@@ -28,26 +28,54 @@ func (s *viewState) upgradeCLI() {
 	if s.simulate(previewPrepareEnvironment) {
 		return
 	}
-	if s.service == nil {
+	if s.service == nil || s.cliAutoUpgradeActive() {
 		return
 	}
 	s.cliInstallStatus = ""
-	s.guideWorkAs("upgrade-cli", func() (string, *core.ApiError) {
+	s.cliUpgradeDismissedSeq = 0
+	s.workAs("upgrade-cli", func() (string, *core.ApiError) {
 		defer s.updateView(func() { s.cliInstallStatus = "" })
-		if _, e := s.service.InstallCLI(s.ctx, func(message string) {
+		_, e := s.service.UpgradeCLI(s.ctx, func(message string) {
 			s.updateView(func() { s.cliInstallStatus = message })
-		}); e != nil {
-			return "", e
+		})
+		st := s.service.CLIUpgradeStatus()
+		s.updateView(func() { s.applyCLIUpgradeState(st) })
+		if e != nil {
+			return "", nil
 		}
 		return l10n.TR("onboarding.cli.upgraded"), nil
 	})
 }
 
+func (s *viewState) effectiveCLIUpgradeMessage(c *ui.Context) string {
+	if msg := strings.TrimSpace(s.cliUpgrade.Message); msg != "" {
+		return msg
+	}
+	if msg := strings.TrimSpace(s.cliInstallStatus); msg != "" {
+		return msg
+	}
+	return tr(c, "onboarding.cli.upgrading_status")
+}
+
 func (s *viewState) setupGuide(c *ui.Context) {
 	onlyCLIOutdated := s.ready.CLI.Status == "outdated" && s.ready.Workspace.Initialized && s.ready.Results.Exists && s.ready.Models.Exists
 	if onlyCLIOutdated {
-		upgrading := s.actionBusy("upgrade-cli")
 		bound := s.service != nil && s.service.BoundPaths() != nil
+		if !bound && s.cliAutoUpgradeActive() {
+			card(c, tr(c, "onboarding.cli.upgrading_card"), func() {
+				host := ui.Column(c.Key("auto-upgrade-cli")).FillWidth().Gap(tokens(c).Density.Row)
+				_, elapsed := delayedElapsed(c, host, "auto-upgrade-cli", true)
+				host.Children(func() {
+					ui.Text(c, s.effectiveCLIUpgradeMessage(c)).TextColor(c.Theme().TextMuted)
+					progressBar(c, -1, tr(c, "onboarding.cli.upgrade_progress"))
+					if elapsed >= loadingSlowThreshold {
+						ui.Text(c, tr(c, "onboarding.setup.slow_notice")).TextColor(c.Theme().TextMuted)
+					}
+				})
+			})
+			return
+		}
+		upgrading := s.actionBusy("upgrade-cli")
 		card(c, tr(c, "onboarding.cli.upgrade_card"), func() {
 			ui.Text(c, cliOutdatedSummary(s.ready.CLI.Version)).TextColor(c.Theme().TextMuted)
 			locations, known := s.preparationLocations()
@@ -83,7 +111,7 @@ func (s *viewState) setupGuide(c *ui.Context) {
 	}
 	card(c, tr(c, "onboarding.setup.title"), func() {
 		ui.Text(c, tr(c, "onboarding.setup.steps_summary")).TextColor(c.Theme().TextMuted)
-		if s.ready.CLI.Status == "outdated" {
+		if s.ready.CLI.Status == "outdated" && !s.cliAutoUpgradeActive() && !s.cliUpgradeErrorVisible() {
 			noticeBanner(c, noticeBannerOptions{
 				Kind:    stateWarning,
 				Size:    bannerCompact,

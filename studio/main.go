@@ -60,6 +60,7 @@ func runMain() (exitCode int) {
 		log.Print(err)
 		return 1
 	}
+	service.StartAutoCLIUpgrade()
 	defer func() {
 		shutdownCtx, stop := context.WithTimeout(context.Background(), 30*time.Second)
 		defer stop()

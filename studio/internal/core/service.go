@@ -86,6 +86,10 @@ type Service struct {
 	probeCheckedAt    time.Time
 	probeResult       InferyardProbe
 	updater           *updateManager
+	cliInstallMu      sync.Mutex
+	cliUpgradeMu      sync.Mutex
+	cliUpgrade        CLIUpgradeState
+	cliUpgradeOnce    sync.Once
 }
 
 func New(ctx context.Context, o Options) (*Service, error) {
@@ -382,6 +386,9 @@ func (s *Service) persistSettings(u UserSettings, forceCLIRefresh bool) (Setting
 	s.mu.Unlock()
 	if cliChanged {
 		s.clearProbeCache()
+		if !forceCLIRefresh && s.probe(u).Status == "ok" {
+			s.clearCLIUpgradeState()
+		}
 	}
 	if workspaceChanged {
 		s.detectEngineOwner()
