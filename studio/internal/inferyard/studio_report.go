@@ -12,6 +12,7 @@ import (
 const (
 	StudioReportKind          = "studio-report.v1"
 	StudioReportSchemaVersion = 3
+	StudioMaxSVGBytes         = 512 * 1024
 )
 
 type StudioReport struct {
@@ -20,15 +21,16 @@ type StudioReport struct {
 	Runs          []StudioRun `json:"runs"`
 }
 type StudioRun struct {
-	Source     StudioSource    `json:"source"`
-	Model      string          `json:"model"`
-	Threads    *int64          `json:"threads"`
-	Diagnostic bool            `json:"diagnostic"`
-	Facets     StudioFacets    `json:"facets"`
-	Profile    StudioProfile   `json:"profile"`
-	Summary    StudioSummary   `json:"summary"`
-	Dashboard  StudioDashboard `json:"dashboard"`
-	Requests   []StudioRequest `json:"requests"`
+	Source     StudioSource      `json:"source"`
+	Model      string            `json:"model"`
+	Threads    *int64            `json:"threads"`
+	Diagnostic bool              `json:"diagnostic"`
+	Facets     StudioFacets      `json:"facets"`
+	Profile    StudioProfile     `json:"profile"`
+	Summary    StudioSummary     `json:"summary"`
+	Dashboard  StudioDashboard   `json:"dashboard"`
+	Requests   []StudioRequest   `json:"requests"`
+	SVGOutputs []StudioSVGOutput `json:"svg_outputs,omitempty"`
 }
 type StudioSource struct {
 	RunID string `json:"run_id"`
@@ -118,6 +120,13 @@ type StudioRequest struct {
 	Quality       *string  `json:"quality"`
 	LatencyMS     *float64 `json:"latency_ms"`
 }
+type StudioSVGOutput struct {
+	CaseID string  `json:"case_id"`
+	Prompt string  `json:"prompt"`
+	Status string  `json:"status"`
+	SVG    *string `json:"svg"`
+	Bytes  int64   `json:"bytes"`
+}
 
 var (
 	studioIdentifier  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$`)
@@ -125,6 +134,7 @@ var (
 	studioCategoryIDs = []string{"instruction", "extraction", "qa", "math", "classification", "structured"}
 	studioStates      = []string{"completed", "failed", "cancelled", "invalid", "not_executed"}
 	studioQualities   = []string{"pass", "fail", "unscorable", "not_applicable", "not_scored"}
+	studioSVGStatuses = []string{"ok", "not_found", "malformed", "too_large"}
 )
 
 func ParseStudioReport(raw []byte) (StudioReport, error) {
@@ -192,7 +202,8 @@ func validateStudioReport(raw []byte) error {
 }
 
 func validateStudioRun(run map[string]json.RawMessage) (string, error) {
-	if err := studioClosed(run, "source", "model", "threads", "diagnostic", "facets", "profile", "summary", "dashboard", "requests"); err != nil {
+	required := []string{"source", "model", "threads", "diagnostic", "facets", "profile", "summary", "dashboard", "requests"}
+	if err := studioClosedOptional(run, required, []string{"svg_outputs"}); err != nil {
 		return "", err
 	}
 	source, err := studioObject(run["source"])
@@ -238,6 +249,11 @@ func validateStudioRun(run map[string]json.RawMessage) (string, error) {
 	}
 	if err := validateStudioDashboard(run["dashboard"], len(requests)); err != nil {
 		return "", err
+	}
+	if raw, ok := run["svg_outputs"]; ok {
+		if err := validateStudioSVGOutputs(raw); err != nil {
+			return "", err
+		}
 	}
 	return runID, nil
 }

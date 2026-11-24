@@ -93,3 +93,45 @@ def test_exported_schema_matches_document_and_rejects_forbidden_shapes(tmp_path)
     broken = deepcopy(report)
     broken["runs"][0]["dashboard"]["sampled_peak_rss_bytes"] = -1
     assert not Draft202012Validator(schema).is_valid(broken)
+
+
+def test_svg_outputs_exported_only_for_svg_cases_and_validated(tmp_path):
+    data, source = loaded(tmp_path / "non_svg")
+    non_svg = build(tmp_path, data, source)
+    assert "svg_outputs" not in non_svg["runs"][0]
+
+    svg_markup = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+        '<circle cx="32" cy="32" r="10">'
+        '<animate attributeName="r" values="10;14;10" dur="1s" repeatCount="indefinite"/>'
+        "</circle></svg>"
+    )
+    svg_data, svg_source = deepcopy(data), deepcopy(source)
+    svg_data["bundle"]["cases"][0]["category"] = "svg"
+    svg_data["bundle"]["cases"][0]["prompt"] = (
+        "Generate an animated SVG of a pelican riding a bicycle"
+    )
+    svg_data["requests"][0]["category"] = "svg"
+    svg_data["requests"][0]["content"] = f"<think><svg><rect/></svg></think>\n```svg\n{svg_markup}\n```"
+    svg_data["requests"][0]["score"] = {"quality_state": "not_applicable"}
+
+    report = build(tmp_path, svg_data, svg_source)
+    schema = export_schema("studio_report")
+    Draft202012Validator(schema).validate(report)
+    assert report["runs"][0]["svg_outputs"] == [
+        {
+            "case_id": svg_data["requests"][0]["case_id"],
+            "prompt": "Generate an animated SVG of a pelican riding a bicycle",
+            "status": "ok",
+            "svg": svg_markup,
+            "bytes": len(svg_markup.encode("utf-8")),
+        }
+    ]
+
+    bad_path = tmp_path / "bad_svg_report"
+    bad_path.mkdir()
+    tampered = deepcopy(report)
+    tampered["runs"][0]["svg_outputs"][0]["bytes"] = 1
+    (bad_path / "studio.json").write_text(json.dumps(tampered), encoding="utf-8")
+    with pytest.raises(ContractError):
+        read_studio_report(bad_path)

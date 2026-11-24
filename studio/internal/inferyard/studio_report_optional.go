@@ -3,6 +3,7 @@ package inferyard
 import (
 	"encoding/json"
 	"errors"
+	"slices"
 )
 
 type studioIntervalValues struct {
@@ -141,6 +142,54 @@ func validateStudioP95Samples(intervals studioIntervalValues) error {
 	}
 	if intervals.p95 == nil || intervals.p95Reason != nil {
 		return errors.New("studio report interval p95 is required from twenty samples")
+	}
+	return nil
+}
+
+func validateStudioSVGOutputs(raw json.RawMessage) error {
+	items, err := studioArray(raw)
+	if err != nil || len(items) < 1 {
+		return errors.New("invalid studio report svg outputs")
+	}
+	for _, rawItem := range items {
+		item, err := studioObject(rawItem)
+		if err != nil {
+			return err
+		}
+		if err := studioClosed(item, "case_id", "prompt", "status", "svg", "bytes"); err != nil {
+			return err
+		}
+		caseID, err := studioText(item["case_id"])
+		if err != nil || !studioIdentifier.MatchString(caseID) {
+			return errors.New("invalid studio report svg output case id")
+		}
+		if _, err := studioText(item["prompt"]); err != nil {
+			return err
+		}
+		status, err := studioText(item["status"])
+		if err != nil || !slices.Contains(studioSVGStatuses, status) {
+			return errors.New("invalid studio report svg output status")
+		}
+		svg, err := studioNullableText(item["svg"])
+		if err != nil {
+			return err
+		}
+		size, err := studioCount(item["bytes"])
+		if err != nil {
+			return err
+		}
+		if (status == "ok") != (svg != nil) {
+			return errors.New("studio report svg payload must appear exactly when status is ok")
+		}
+		if status == "ok" && (int64(len(*svg)) != size || size > StudioMaxSVGBytes) {
+			return errors.New("studio report svg size must match bounded UTF-8 byte count")
+		}
+		if status == "not_found" && size != 0 {
+			return errors.New("studio report not_found svg output must have zero bytes")
+		}
+		if status == "too_large" && size <= StudioMaxSVGBytes {
+			return errors.New("studio report too_large svg output must exceed limit")
+		}
 	}
 	return nil
 }

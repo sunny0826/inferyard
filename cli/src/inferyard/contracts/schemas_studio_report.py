@@ -18,6 +18,7 @@ type JsonNode = JsonScalar | list[JsonNode] | dict[str, JsonNode]
 type JsonObject = dict[str, JsonNode]
 
 KIND = "studio-report.v1"
+MAX_SVG_BYTES = 512 * 1024
 CATEGORY = enum("instruction", "extraction", "qa", "math", "classification", "structured")
 REQUEST_QUALITY = enum("pass", "fail", "unscorable", "not_applicable", "not_scored")
 BACKEND = enum("cpu", "cuda", "metal", "hip")
@@ -97,6 +98,34 @@ REQUEST = obj(
         "latency_ms": nullable(NONNEGATIVE),
     }
 )
+def _svg_output_variant(status, svg_spec, bytes_spec):
+    return obj(
+        {
+            "case_id": IDENTIFIER,
+            "prompt": LABEL,
+            "status": {"type": "string", "const": status},
+            "svg": svg_spec,
+            "bytes": bytes_spec,
+        }
+    )
+
+
+SVG_OUTPUT = {
+    "oneOf": [
+        _svg_output_variant(
+            "ok",
+            {"type": "string", "minLength": 1},
+            {"type": "integer", "minimum": 1, "maximum": MAX_SVG_BYTES},
+        ),
+        _svg_output_variant("not_found", {"type": "null"}, {"type": "integer", "const": 0}),
+        _svg_output_variant("malformed", {"type": "null"}, NAT),
+        _svg_output_variant(
+            "too_large",
+            {"type": "null"},
+            {"type": "integer", "minimum": MAX_SVG_BYTES + 1},
+        ),
+    ]
+}
 RUN = obj(
     {
         "source": SOURCE,
@@ -110,6 +139,7 @@ RUN = obj(
         "requests": array(REQUEST),
     }
 )
+RUN["properties"]["svg_outputs"] = array(SVG_OUTPUT, 1)
 STUDIO_REPORT = obj(
     {
         "kind": {"type": "string", "const": KIND},
@@ -237,6 +267,25 @@ def _validate_intervals(dashboard: JsonObject, path: str) -> None:
         _validate_measured_intervals(intervals, count, path)
 
 
+def _validate_svg_outputs(run: JsonObject, path: str) -> None:
+    outputs = run.get("svg_outputs")
+    if outputs is None:
+        return
+    for index, item in enumerate(outputs):
+        item_path = f"{path}.svg_outputs[{index}]"
+        status, svg, size = item["status"], item["svg"], item["bytes"]
+        if (status == "ok") != (svg is not None):
+            raise ContractError(item_path + ".svg", "required exactly when status is ok")
+        if status == "ok":
+            actual = len(svg.encode("utf-8"))
+            if actual != size or actual > MAX_SVG_BYTES:
+                raise ContractError(item_path + ".bytes", "must match bounded UTF-8 SVG size")
+        elif status == "not_found" and size != 0:
+            raise ContractError(item_path + ".bytes", "not_found svg output must have zero bytes")
+        elif status == "too_large" and size <= MAX_SVG_BYTES:
+            raise ContractError(item_path + ".bytes", "too_large svg output must exceed limit")
+
+
 def _validate_run(run: JsonObject, path: str) -> None:
     dashboard = run["dashboard"]
     _validate_categories(run, dashboard, path)
@@ -249,6 +298,8 @@ def _validate_run(run: JsonObject, path: str) -> None:
     _validate_throughput(dashboard, path)
 
     _validate_intervals(dashboard, path)
+
+    _validate_svg_outputs(run, path)
 
 
 def validate_studio_report(data: JsonObject) -> None:

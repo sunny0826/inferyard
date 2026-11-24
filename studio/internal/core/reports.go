@@ -26,6 +26,7 @@ type (
 	ReportLatency   = inferyard.StudioLatency
 	ReportDashboard = inferyard.StudioDashboard
 	ReportRequest   = inferyard.StudioRequest
+	ReportSVGOutput = inferyard.StudioSVGOutput
 )
 
 type (

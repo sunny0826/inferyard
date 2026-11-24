@@ -144,6 +144,13 @@ func studioSchemaMutations() []studioProbe {
 		{"null throughput section", studioDashboardPath("throughput"), studioRaw("null"), false},
 		{"unknown interval field", studioDashboardPath("output_block_intervals", "excluded_interval_count"), studioRaw("0"), true},
 		{"fractional interval count", studioDashboardPath("output_block_intervals", "interval_count"), studioRaw("1.5"), true},
+		{"empty svg outputs", []string{"runs", "0", "svg_outputs"}, studioRaw("[]"), false},
+		{"null svg outputs", []string{"runs", "0", "svg_outputs"}, studioRaw("null"), false},
+		{"bad svg status", []string{"runs", "0", "svg_outputs", "0", "status"}, studioRaw(`"pending"`), true},
+		{"unknown svg field", []string{"runs", "0", "svg_outputs", "0", "extra"}, studioRaw("1"), true},
+		{"ok svg null payload", []string{"runs", "0", "svg_outputs", "0", "svg"}, studioRaw("null"), true},
+		{"not_found svg nonzero bytes", []string{"runs", "0", "svg_outputs", "0"}, studioRaw(`{"case_id":"svg-pelican-01","prompt":"p","status":"not_found","svg":null,"bytes":1}`), true},
+		{"too_large svg within limit", []string{"runs", "0", "svg_outputs", "0"}, studioRaw(`{"case_id":"svg-pelican-01","prompt":"p","status":"too_large","svg":null,"bytes":1}`), true},
 	}
 }
 
@@ -269,8 +276,62 @@ func studioIntervalsSection() map[string]json.RawMessage {
 	}
 }
 
+func studioSVGOutputsSection() []map[string]json.RawMessage {
+	svg := `<svg xmlns="http://www.w3.org/2000/svg"><circle r="4"/></svg>`
+	encoded, _ := json.Marshal(svg)
+	return []map[string]json.RawMessage{
+		{
+			"case_id": studioRaw(`"svg-pelican-01"`),
+			"prompt":  studioRaw(`"Generate an animated SVG of a pelican riding a bicycle"`),
+			"status":  studioRaw(`"ok"`),
+			"svg":     encoded,
+			"bytes":   studioRaw(strconv.Itoa(len(svg))),
+		},
+	}
+}
+
 func studioDocumentWithSections(t *testing.T) json.RawMessage {
 	t.Helper()
 	raw := studioPatch(t, studioReportFixture, studioDashboardPath("throughput"), studioBytes(t, studioThroughputSection()))
-	return studioPatch(t, raw, studioDashboardPath("output_block_intervals"), studioBytes(t, studioIntervalsSection()))
+	raw = studioPatch(t, raw, studioDashboardPath("output_block_intervals"), studioBytes(t, studioIntervalsSection()))
+	return studioPatch(t, raw, []string{"runs", "0", "svg_outputs"}, studioBytes(t, studioSVGOutputsSection()))
+}
+
+func TestParseStudioReportSVGOutputsInvariants(t *testing.T) {
+	valid := studioDocumentWithSections(t)
+	parsed, err := ParseStudioReport(valid)
+	if err != nil {
+		t.Fatalf("expected valid svg_outputs report, got: %v", err)
+	}
+	if len(parsed.Runs[0].SVGOutputs) != 1 || parsed.Runs[0].SVGOutputs[0].Status != "ok" || parsed.Runs[0].SVGOutputs[0].SVG == nil {
+		t.Fatalf("unexpected parsed svg_outputs: %+v", parsed.Runs[0].SVGOutputs)
+	}
+	cases := map[string]func(map[string]any){
+		"ok without svg": func(item map[string]any) { item["svg"] = nil },
+		"not_found with svg": func(item map[string]any) {
+			item["status"] = "not_found"
+			item["bytes"] = 0
+		},
+		"not_found nonzero bytes": func(item map[string]any) {
+			item["status"] = "not_found"
+			item["svg"] = nil
+			item["bytes"] = 12
+		},
+		"ok byte mismatch": func(item map[string]any) { item["bytes"] = 1 },
+		"too_large within limit": func(item map[string]any) {
+			item["status"] = "too_large"
+			item["svg"] = nil
+			item["bytes"] = StudioMaxSVGBytes
+		},
+	}
+	for name, mutate := range cases {
+		t.Run(name, func(t *testing.T) {
+			doc := studioDocument(t, valid)
+			items := studioRun(t, doc)["svg_outputs"].([]any)
+			mutate(items[0].(map[string]any))
+			if _, err := ParseStudioReport(studioBytes(t, doc)); err == nil {
+				t.Fatal("svg_outputs invariant violation accepted")
+			}
+		})
+	}
 }

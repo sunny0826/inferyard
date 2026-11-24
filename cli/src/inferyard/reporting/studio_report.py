@@ -9,6 +9,7 @@ from inferyard.analysis.comparison_input import comparison_input
 from inferyard.reporting.studio_dashboard import CATEGORIES, dashboard_view
 from inferyard.reporting.studio_profile import profile_view
 from inferyard.reporting.studio_resources import memory_view
+from inferyard.reporting.svg_extract import inspect_svg_content
 
 KIND = "studio-report.v1"
 
@@ -17,9 +18,28 @@ def _threads(value):
     return value if type(value) is int and value >= 0 else None
 
 
+def _svg_outputs(data):
+    prompts = {case["case_id"]: case["prompt"] for case in data["bundle"]["cases"]}
+    items = []
+    for request in data["requests"]:
+        if request["category"] != "svg":
+            continue
+        inspected = inspect_svg_content(request.get("content"))
+        items.append(
+            {
+                "case_id": request["case_id"],
+                "prompt": prompts.get(request["case_id"], request["case_id"]),
+                "status": inspected["status"],
+                "svg": inspected["svg"],
+                "bytes": inspected["bytes"],
+            }
+        )
+    return items
+
+
 def _run_view(data, source):
     config, summary = data["config"], data["summary"]
-    return {
+    run = {
         "source": {"run_id": source["run_id"], "path": source["path"]},
         "model": config["model"]["display_name"],
         "threads": _threads(config["conditions"].get("threads")),
@@ -47,6 +67,10 @@ def _run_view(data, source):
             for request in data["requests"]
         ],
     }
+    svg_outputs = _svg_outputs(data)
+    if svg_outputs:
+        run["svg_outputs"] = svg_outputs
+    return run
 
 
 def build_studio_report(roots, *, loaded=None, source_metadata=None):
