@@ -170,7 +170,7 @@ func (s *viewState) announceChanges(c *ui.Context) {
 	}
 	switch s.selected {
 	case "device":
-		if s.device.LastError == nil || s.device.LastError.Code != "cli_outdated" || (!s.cliAutoUpgradeActive() && !s.cliUpgradeErrorVisible()) {
+		if !s.suppressOutdatedCLIError(s.device.LastError) {
 			add(s.device.LastError)
 		}
 		if _, err := parseDeviceSnapshot(s.device.Snapshot); err != nil {

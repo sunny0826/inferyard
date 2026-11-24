@@ -37,7 +37,11 @@ func (s *viewState) modelsView(c *ui.Context) {
 			})
 		}
 		card(c, tr(c, "models.section.installed_models"), func() {
-			errorView(c, s.registry.ModelError)
+			modelErr := s.registry.ModelError
+			if s.suppressOutdatedCLIError(modelErr) {
+				modelErr = nil
+			}
+			errorView(c, modelErr)
 			s.modelStorageAndRootsView(c)
 			if len(s.registry.Models) == 0 {
 				emptyGuideCard(c, emptyGuideOptions{

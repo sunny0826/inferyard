@@ -89,6 +89,7 @@ type Service struct {
 	cliInstallMu      sync.Mutex
 	cliUpgradeMu      sync.Mutex
 	cliUpgrade        CLIUpgradeState
+	cliUpgradeCancel  context.CancelFunc
 	cliUpgradeOnce    sync.Once
 }
 

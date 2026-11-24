@@ -14,6 +14,7 @@
   "err.cli_error": "CLI execution failed. Check the error details and run status below, then retry.",
   "err.cli_outdated": "CLI version is outdated or missing required commands. Upgrade the CLI and retry.",
   "err.cli_unavailable": "CLI is not ready. Configure its path in the main window.",
+  "err.cli_upgrade_failed": "Automatic CLI upgrade failed. Retry or specify the path manually in Settings.",
   "err.cmake_missing": "CMake (3.24 or later) is missing. Please install it first.",
   "err.conflict": "Operation conflicts with the current state. Refresh progress and retry.",
   "err.connection_error": "Network connection failed or was interrupted. Check network and proxy settings, then retry.",

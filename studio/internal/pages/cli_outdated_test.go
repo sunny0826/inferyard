@@ -155,12 +155,18 @@ func TestAutoCLIUpgradeBannerOnlyShowsOnFailure(t *testing.T) {
 		}
 	}
 
-	// Device page suppresses transient cli_outdated LastError while auto-upgrading.
+	// Device and Models pages suppress transient cli_outdated errors while auto-upgrading.
 	s.selected = "device"
 	s.device.LastError = core.Err("cli_outdated")
 	tt.Frame()
 	if tt.HasText("CLI 版本过旧") {
 		t.Fatalf("device page should suppress cli_outdated error during auto-upgrade: %v", tt.Texts())
+	}
+	s.selected = "models"
+	s.registry.ModelError = core.Err("cli_outdated")
+	tt.Frame()
+	if tt.HasText("CLI 版本过旧") {
+		t.Fatalf("models page should suppress cli_outdated ModelError during auto-upgrade: %v", tt.Texts())
 	}
 
 	// Even when idle (before failure), non-bound reports page does not show an outdated warning banner.
@@ -177,7 +183,7 @@ func TestAutoCLIUpgradeBannerOnlyShowsOnFailure(t *testing.T) {
 		State:         core.CLIUpgradeFailed,
 		TargetVersion: "0.0.12",
 		Error: &core.ApiError{
-			Code:    "install_failed",
+			Code:    "cli_upgrade_failed",
 			Message: "CLI 自动升级失败，可重试或在设置中手动指定路径。",
 			Details: map[string]any{"output_tail": "error: Failed to fetch from PyPI"},
 		},
@@ -187,16 +193,38 @@ func TestAutoCLIUpgradeBannerOnlyShowsOnFailure(t *testing.T) {
 		t.Fatalf("expected CLI upgrade failure banner with actions, got %v", tt.Texts())
 	}
 
-	// Device page does not duplicate cli_outdated LastError while CLI upgrade failure banner is shown.
+	// Device and Models pages do not duplicate cli_outdated errors alongside CLI upgrade failure banner,
+	// while non-cli_outdated ModelErrors remain visible.
 	s.selected = "device"
 	tt.Frame()
 	if tt.HasText("CLI 版本过旧") {
 		t.Fatalf("device page should not duplicate cli_outdated error alongside CLI upgrade failure banner: %v", tt.Texts())
 	}
+	s.selected = "models"
+	tt.Frame()
+	if tt.HasText("CLI 版本过旧") {
+		t.Fatalf("models page should not duplicate cli_outdated ModelError alongside CLI upgrade failure banner: %v", tt.Texts())
+	}
+	s.registry.ModelError = core.Err("io_error")
+	tt.Frame()
+	if !tt.HasText("文件读写失败") {
+		t.Fatalf("models page should keep non-cli_outdated ModelError visible: %v", tt.Texts())
+	}
+
+	// Switching UI language after a cli_upgrade_failed error renders cleanly without double-prefixing.
+	s.selected = "reports"
+	tt.SetLocale("en")
+	tt.Frame()
+	if !tt.HasText("Automatic CLI upgrade failed. Retry or specify the path manually in Settings.") {
+		t.Fatalf("expected clean English message after locale switch, got %v", tt.Texts())
+	}
+	if tt.HasText("Automatic CLI upgrade failed: CLI") {
+		t.Fatalf("locale switch double-prefixed CLI upgrade error: %v", tt.Texts())
+	}
+	tt.SetLocale("zh-Hans")
+	tt.Frame()
 
 	// Dismissing closes the banner for the current failure seq, and a subsequent failure seq re-shows it.
-	s.selected = "reports"
-	tt.Frame()
 	click(t, tt, "关闭")
 	tt.Frame()
 	if tt.HasText("CLI 自动升级失败，可重试或在设置中手动指定路径。") {
@@ -289,5 +317,33 @@ func TestCLIUpgradeRetryDoesNotDuplicateFailureBanner(t *testing.T) {
 	}
 	if s.cliUpgrade.State != core.CLIUpgradeFailed || s.cliUpgrade.Error == nil {
 		t.Fatalf("expected cliUpgrade to capture retry failure, got %+v", s.cliUpgrade)
+	}
+
+	// Prepare Environment with outdated CLI also routes failure into cliUpgrade without duplicating s.failure.
+	if err := os.MkdirAll(bound.Workspace, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bound.Workspace, "preparation.json"), []byte(`{"kind":"community_init.v1"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s.selected = "dashboard"
+	s.ready.CLI = core.InferyardProbe{Status: "outdated"}
+	s.ready.Workspace.Initialized = true
+	s.ready.Results.Exists = false
+	s.prepareEnvironment()
+	deadline = time.After(3 * time.Second)
+	for s.busy {
+		select {
+		case fn := <-updates:
+			fn()
+		case <-deadline:
+			t.Fatal("timed out waiting for prepareEnvironment with outdated CLI")
+		}
+	}
+	if s.failure != nil {
+		t.Fatalf("prepareEnvironment with outdated CLI duplicated failure into s.failure: %+v", s.failure)
+	}
+	if s.cliUpgrade.State != core.CLIUpgradeFailed || s.cliUpgrade.Error == nil {
+		t.Fatalf("expected cliUpgrade to own outdated CLI upgrade failure, got %+v", s.cliUpgrade)
 	}
 }

@@ -389,9 +389,11 @@ func (s *Service) installCLILocked(ctx context.Context, onStatus func(string)) (
 		}
 	}
 	toolsDir := filepath.Join(filepath.Dir(s.settingsPath), "tools")
-	reusable, outdated := s.inspectCLIForInstall(s.userSettings())
+	initialSettings := s.userSettings()
+	initialCLIPath := str(initialSettings.InferyardPath)
+	reusable, outdated := s.inspectCLIForInstall(initialSettings)
 	if reusable != "" {
-		return s.finishInstall(reusable, report)
+		return s.finishInstall(ctx, initialCLIPath, reusable, report)
 	}
 	targetVersion := strings.TrimPrefix(strings.TrimSpace(Version), "v")
 	if _, ok := parseSemver(targetVersion); !ok {
@@ -423,11 +425,13 @@ func (s *Service) installCLILocked(ctx context.Context, onStatus func(string)) (
 		if len(tail) > 600 {
 			tail = tail[len(tail)-600:]
 		}
+		code := "install_failed"
 		errMsg := l10n.TR("core.install.err.auto_install_failed")
 		if outdated != nil {
+			code = "cli_upgrade_failed"
 			errMsg = l10n.TR("core.install.err.auto_upgrade_failed")
 		}
-		return "", &ApiError{Code: "install_failed", Message: errMsg, Details: map[string]any{"output_tail": tail}}
+		return "", &ApiError{Code: code, Message: errMsg, Details: map[string]any{"output_tail": tail}}
 	}
 	binOut, err := installCommandOutput(ctx, uv, "tool", "dir", "--bin")
 	if err != nil {
@@ -444,26 +448,36 @@ func (s *Service) installCLILocked(ctx context.Context, onStatus func(string)) (
 		}
 		return "", &ApiError{Code: "install_failed", Message: l10n.TR("core.install.err.post_install_broken")}
 	}
-	return s.finishInstall(installed, report)
+	return s.finishInstall(ctx, initialCLIPath, installed, report)
 }
 
-func (s *Service) saveInstalledCLIPath(path string) (SettingsResponse, *ApiError) {
-	if !filepath.IsAbs(path) || strings.ContainsRune(path, 0) {
-		return SettingsResponse{}, Err("invalid_request")
+func (s *Service) saveInstalledCLIPathIfCurrent(ctx context.Context, initialPath, installed string) (string, *ApiError) {
+	if !filepath.IsAbs(installed) || strings.ContainsRune(installed, 0) {
+		return "", Err("invalid_request")
 	}
 	s.settingsMu.Lock()
 	defer s.settingsMu.Unlock()
 	u := s.userSettings()
-	u.InferyardPath = ptr(path)
-	return s.persistSettings(u, true)
+	if ctx.Err() != nil || (str(u.InferyardPath) != initialPath && s.probe(u).Status == "ok") {
+		if p := s.probe(u); p.Status == "ok" && p.Path != nil {
+			return *p.Path, nil
+		}
+		return "", Err("cancelled")
+	}
+	u.InferyardPath = ptr(installed)
+	if _, e := s.persistSettings(u, true); e != nil {
+		return "", e
+	}
+	return installed, nil
 }
 
-func (s *Service) finishInstall(path string, onStatus func(string)) (string, *ApiError) {
-	if _, e := s.saveInstalledCLIPath(path); e != nil {
+func (s *Service) finishInstall(ctx context.Context, initialPath, path string, onStatus func(string)) (string, *ApiError) {
+	savedPath, e := s.saveInstalledCLIPathIfCurrent(ctx, initialPath, path)
+	if e != nil {
 		return "", e
 	}
 	if onStatus != nil {
-		onStatus(l10n.TRf("core.install.status.cli_ready", "path", path))
+		onStatus(l10n.TRf("core.install.status.cli_ready", "path", savedPath))
 	}
-	return path, nil
+	return savedPath, nil
 }

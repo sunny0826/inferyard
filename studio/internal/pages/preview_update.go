@@ -231,8 +231,10 @@ func (p *previewSession) applyUpdate(confirmStop bool) {
 			CurrentVersion: ver,
 			CanSelfUpdate:  true,
 		}
-		s.ready.CLI.Status = "ok"
-		s.ready.CLI.Version = previewValue(ver)
+		if s.ready.CLI.Status != "not_found" {
+			s.ready.CLI.Status = "ok"
+			s.ready.CLI.Version = previewValue(ver)
+		}
 		s.cliUpgrade = core.CLIUpgradeState{State: core.CLIUpgradeIdle}
 		s.updateDialogOpen = false
 		s.enqueueStatusToast(l10n.TRf("preview.update.toast.completed", "version", ver))

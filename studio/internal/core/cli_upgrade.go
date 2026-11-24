@@ -62,15 +62,45 @@ func (s *Service) clearCLIUpgradeState() {
 		return
 	}
 	s.cliUpgradeMu.Lock()
-	defer s.cliUpgradeMu.Unlock()
-	if s.cliUpgrade.State == "" || (s.cliUpgrade.State == CLIUpgradeIdle && s.cliUpgrade.Error == nil && s.cliUpgrade.Message == "" && s.cliUpgrade.TargetVersion == "") {
-		return
+	cancel := s.cliUpgradeCancel
+	s.cliUpgradeCancel = nil
+	unchanged := s.cliUpgrade.State == "" ||
+		(s.cliUpgrade.State == CLIUpgradeIdle && s.cliUpgrade.Error == nil && s.cliUpgrade.Message == "" && s.cliUpgrade.TargetVersion == "")
+	if !unchanged {
+		s.cliUpgrade.State = CLIUpgradeIdle
+		s.cliUpgrade.TargetVersion = ""
+		s.cliUpgrade.Message = ""
+		s.cliUpgrade.Error = nil
+		s.publishCLIUpgradeLocked()
 	}
-	s.cliUpgrade.State = CLIUpgradeIdle
-	s.cliUpgrade.TargetVersion = ""
-	s.cliUpgrade.Message = ""
-	s.cliUpgrade.Error = nil
-	s.publishCLIUpgradeLocked()
+	s.cliUpgradeMu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+}
+
+func (s *Service) recoverAfterCLICompatible(u UserSettings) {
+	s.mu.Lock()
+	needRefresh := (s.device.LastError != nil && s.device.LastError.Code == "cli_outdated") ||
+		(s.assets.AssetsError != nil && s.assets.AssetsError.Code == "cli_outdated")
+	if needRefresh {
+		s.deviceGeneration++
+		s.device.Snapshot = nil
+		s.device.CapturedAt = nil
+		s.device.LastError = nil
+		s.device.Refreshing = false
+		s.assetsGen++
+		s.assets = AssetsState{}
+	}
+	s.mu.Unlock()
+	if needRefresh && len(allModelsRoots(u)) > 0 {
+		s.RefreshAssets()
+		s.RefreshDevice()
+	}
+	s.clearCLIUpgradeState()
+	if s.Bus != nil {
+		_ = s.Bus.Publish("sync.reset", map[string]string{"reason": "cli_upgraded"})
+	}
 }
 
 func (s *Service) StartAutoCLIUpgrade() {
@@ -117,8 +147,9 @@ func (s *Service) UpgradeCLI(ctx context.Context, onStatus func(string)) (string
 	s.cliInstallMu.Lock()
 	defer s.cliInstallMu.Unlock()
 
-	if p := s.probe(s.userSettings()); p.Status == "ok" && p.Path != nil {
-		s.clearCLIUpgradeState()
+	u := s.userSettings()
+	if p := s.probe(u); p.Status == "ok" && p.Path != nil {
+		s.recoverAfterCLICompatible(u)
 		return *p.Path, nil
 	}
 
@@ -126,15 +157,23 @@ func (s *Service) UpgradeCLI(ctx context.Context, onStatus func(string)) (string
 	if _, ok := parseSemver(targetVersion); !ok {
 		targetVersion = ""
 	}
+	upgradeCtx, cancel := context.WithCancel(ctx)
 	s.cliUpgradeMu.Lock()
+	s.cliUpgradeCancel = cancel
 	s.cliUpgrade.State = CLIUpgradeUpgrading
 	s.cliUpgrade.TargetVersion = targetVersion
 	s.cliUpgrade.Message = ""
 	s.cliUpgrade.Error = nil
 	s.publishCLIUpgradeLocked()
 	s.cliUpgradeMu.Unlock()
+	defer func() {
+		s.cliUpgradeMu.Lock()
+		s.cliUpgradeCancel = nil
+		s.cliUpgradeMu.Unlock()
+		cancel()
+	}()
 
-	path, apiErr := s.installCLILocked(ctx, func(message string) {
+	path, apiErr := s.installCLILocked(upgradeCtx, func(message string) {
 		s.cliUpgradeMu.Lock()
 		if s.cliUpgrade.State == CLIUpgradeUpgrading {
 			s.cliUpgrade.Message = message
@@ -146,9 +185,13 @@ func (s *Service) UpgradeCLI(ctx context.Context, onStatus func(string)) (string
 		}
 	})
 	if apiErr != nil {
-		if ctx.Err() != nil {
+		if upgradeCtx.Err() != nil {
 			s.clearCLIUpgradeState()
 			return "", apiErr
+		}
+		if cur := s.userSettings(); s.probe(cur).Status == "ok" {
+			s.clearCLIUpgradeState()
+			return "", nil
 		}
 		s.cliUpgradeMu.Lock()
 		s.cliUpgrade.State = CLIUpgradeFailed

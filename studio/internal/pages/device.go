@@ -146,7 +146,7 @@ func (s *viewState) deviceView(c *ui.Context) {
 		}
 	}
 	deviceErr := s.device.LastError
-	if deviceErr != nil && deviceErr.Code == "cli_outdated" && (s.cliAutoUpgradeActive() || s.cliUpgradeErrorVisible()) {
+	if s.suppressOutdatedCLIError(deviceErr) {
 		deviceErr = nil
 	}
 	errorRecoveryBanner(c, deviceErr, func() {

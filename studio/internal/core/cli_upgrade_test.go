@@ -167,8 +167,8 @@ func TestStartAutoCLIUpgradeRecordsFailureAndAllowsRetryOrManualFix(t *testing.T
 	failed := waitForCLIUpgrade(t, s, func(st CLIUpgradeState) bool {
 		return st.State == CLIUpgradeFailed
 	})
-	if failed.Error == nil || failed.Error.Code != "install_failed" {
-		t.Fatalf("expected install_failed error, got %+v", failed.Error)
+	if failed.Error == nil || failed.Error.Code != "cli_upgrade_failed" {
+		t.Fatalf("expected cli_upgrade_failed error, got %+v", failed.Error)
 	}
 	if tail, _ := failed.Error.Details["output_tail"].(string); !strings.Contains(tail, "PyPI") {
 		t.Fatalf("expected output_tail with uv stderr, got %+v", failed.Error.Details)
@@ -256,4 +256,140 @@ func TestStartAutoCLIUpgradeSkipsFreshInstallAndUpToDate(t *testing.T) {
 			t.Fatalf("expected nil error for compatible CLI, got %+v", st.Error)
 		}
 	})
+}
+
+func TestAutoCLIUpgradeDoesNotOverwriteUserSavedCompatibleCLI(t *testing.T) {
+	stubInstall(t)
+	oldCLI := fakeCLIFile(t)
+	manualCLI := fakeCLIFile(t)
+	binDir := t.TempDir()
+	installed := filepath.Join(binDir, cliBinaryName())
+
+	installLookPath = func(name string) (string, error) {
+		if name == uvBinaryName() {
+			return "/opt/uv/uv", nil
+		}
+		return "", errors.New("not found")
+	}
+	installStat = func(p string) (os.FileInfo, error) {
+		if p == "/opt/uv/uv" {
+			return fakeInfo{}, nil
+		}
+		return os.Stat(p)
+	}
+
+	uvStarted := make(chan struct{})
+	releaseUV := make(chan struct{})
+	installCommandOutput = func(ctx context.Context, _ string, args ...string) ([]byte, error) {
+		if len(args) == 1 && args[0] == "--version" {
+			return []byte("uv " + uvRelease + "\n"), nil
+		}
+		if len(args) >= 2 && args[0] == "tool" && args[1] == "install" {
+			close(uvStarted)
+			select {
+			case <-releaseUV:
+				if err := os.WriteFile(installed, []byte("managed-bin"), 0755); err != nil {
+					t.Fatal(err)
+				}
+				return []byte("Upgraded"), nil
+			case <-ctx.Done():
+				return []byte("cancelled"), ctx.Err()
+			}
+		}
+		if len(args) >= 2 && args[0] == "tool" && args[1] == "dir" {
+			return []byte(binDir + "\n"), nil
+		}
+		return nil, errors.New("unexpected command")
+	}
+
+	Version = "0.0.12"
+	t.Cleanup(func() { Version = "dev" })
+
+	s := installService(t, func(_ context.Context, p string, args ...string) (inferyard.Execution, error) {
+		if len(args) > 0 && args[0] == "--version" {
+			switch p {
+			case oldCLI:
+				return inferyard.Execution{ExitCode: 0, Stdout: []byte("inferyard 0.0.11 source=release\n")}, nil
+			case manualCLI, installed:
+				return inferyard.Execution{ExitCode: 0, Stdout: []byte("inferyard 0.0.12 source=release\n")}, nil
+			}
+		}
+		return inferyard.Execution{}, errors.New("unexpected")
+	})
+	s.settings.InferyardPath = ptr(oldCLI)
+
+	s.StartAutoCLIUpgrade()
+	select {
+	case <-uvStarted:
+	case <-time.After(3 * time.Second):
+		t.Fatal("timed out waiting for background uv install to start")
+	}
+
+	// User switches to a compatible CLI in Settings while background upgrade is still running.
+	manualPatch, _ := json.Marshal(manualCLI)
+	if _, e := s.UpdateSettings(map[string]json.RawMessage{"inferyard_path": manualPatch}); e != nil {
+		t.Fatal(e)
+	}
+	close(releaseUV)
+
+	st := waitForCLIUpgrade(t, s, func(st CLIUpgradeState) bool {
+		return st.State == CLIUpgradeIdle
+	})
+	if st.Error != nil {
+		t.Fatalf("expected nil error after user chose compatible CLI, got %+v", st.Error)
+	}
+	if got := textOf(s.Settings().Settings.InferyardPath); got != manualCLI {
+		t.Fatalf("background upgrade overwrote user CLI path: got %q, want %q", got, manualCLI)
+	}
+}
+
+func TestUpgradeCLIFastReturnRefreshesStaleOutdatedDeviceError(t *testing.T) {
+	stubInstall(t)
+	cliPath := fakeCLIFile(t)
+	modelsDir := t.TempDir()
+
+	Version = "0.0.12"
+	t.Cleanup(func() { Version = "dev" })
+
+	upgraded := false
+	s := installService(t, func(_ context.Context, p string, args ...string) (inferyard.Execution, error) {
+		if p == cliPath && len(args) > 0 && args[0] == "--version" {
+			if !upgraded {
+				return inferyard.Execution{ExitCode: 0, Stdout: []byte("inferyard 0.0.11 source=release\n")}, nil
+			}
+			return inferyard.Execution{ExitCode: 0, Stdout: []byte("inferyard 0.0.12 source=release\n")}, nil
+		}
+		if p == cliPath && len(args) > 0 && args[0] == "device-check" {
+			return inferyard.Execution{ExitCode: 0, Stdout: []byte(`{"command":"device-check","status":"complete","completeness":"complete","details":{"kind":"device_preflight.v1","hardware":{"cpu_model":"Test CPU","logical_cpus":8,"memory_total_bytes":17179869184,"memory_available_bytes":8589934592},"models":[],"recommendation":{},"platform_capabilities":{}}}`)}, nil
+		}
+		return inferyard.Execution{ExitCode: 4}, nil
+	})
+	s.settings.InferyardPath = ptr(cliPath)
+	s.settings.ModelsRoot = ptr(modelsDir)
+	s.mu.Lock()
+	s.device.LastError = Err("cli_outdated")
+	s.assets.AssetsError = Err("cli_outdated")
+	s.mu.Unlock()
+	s.cliUpgradeMu.Lock()
+	s.cliUpgrade = CLIUpgradeState{Seq: 1, State: CLIUpgradeFailed, Error: Err("cli_upgrade_failed")}
+	s.cliUpgradeMu.Unlock()
+
+	// User upgrades CLI in-place in terminal and clicks Retry.
+	upgraded = true
+	if err := os.WriteFile(cliPath, []byte("#!/bin/sh\n# upgraded\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	got, apiErr := s.UpgradeCLI(context.Background(), nil)
+	if apiErr != nil || got != cliPath {
+		t.Fatalf("UpgradeCLI fast-return = (%q, %+v), want %q", got, apiErr, cliPath)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		dev := s.Device()
+		if !dev.Refreshing && dev.LastError == nil && len(dev.Snapshot) > 0 {
+			return
+		}
+		time.Sleep(15 * time.Millisecond)
+	}
+	t.Fatalf("expected fast-return retry to refresh device snapshot and clear cli_outdated, got %+v", s.Device())
 }

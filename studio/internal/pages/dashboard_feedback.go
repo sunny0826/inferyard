@@ -56,6 +56,7 @@ var knownErrorKeys = map[string]string{
 	"install_checksum_failed":             "err.install_checksum_failed",
 	"install_unpack_failed":               "err.install_unpack_failed",
 	"install_failed":                      "err.install_failed",
+	"cli_upgrade_failed":                  "err.cli_upgrade_failed",
 	"install_version_unknown":             "err.install_version_unknown",
 	"ac_power_required":                   "err.ac_power_required",
 	"chat_template_unavailable":           "err.chat_template_unavailable",
@@ -209,6 +210,10 @@ func (s *viewState) cliAutoUpgradeActive() bool {
 	return s.cliUpgrade.State == core.CLIUpgradeChecking || s.cliUpgrade.State == core.CLIUpgradeUpgrading
 }
 
+func (s *viewState) suppressOutdatedCLIError(e *core.ApiError) bool {
+	return e != nil && e.Code == "cli_outdated" && (s.cliAutoUpgradeActive() || s.cliUpgradeErrorVisible())
+}
+
 func (s *viewState) cliUpgradeErrorVisible() bool {
 	if s.cliUpgrade.State != core.CLIUpgradeFailed || s.cliUpgrade.Error == nil {
 		return false
@@ -222,24 +227,24 @@ func (s *viewState) cliUpgradeErrorVisible() bool {
 	return true
 }
 
-func (s *viewState) cliUpgradeErrorMessage(e *core.ApiError) string {
+func (s *viewState) cliUpgradeErrorMessage(c *ui.Context, e *core.ApiError) string {
 	if e == nil {
 		return ""
+	}
+	if e.Code == "cli_upgrade_failed" {
+		return tr(c, "err.cli_upgrade_failed")
 	}
 	detail := strings.TrimSpace(e.Message)
 	if detail == "" {
 		detail = human(e.Code)
 	}
-	if e.Code == "install_failed" && detail == l10n.TR("core.install.err.auto_upgrade_failed") {
-		return detail
-	}
-	return l10n.TRf("onboarding.cli.auto_upgrade_failed", "error", detail)
+	return trf(c, "onboarding.cli.auto_upgrade_failed", "error", detail)
 }
 
 func (s *viewState) cliUpgradeBanner(c *ui.Context) {
 	if s.cliUpgradeErrorVisible() {
 		bannerErr := *s.cliUpgrade.Error
-		bannerErr.Message = s.cliUpgradeErrorMessage(s.cliUpgrade.Error)
+		bannerErr.Message = s.cliUpgradeErrorMessage(c, s.cliUpgrade.Error)
 		ui.Column(c.Key("cli-upgrade-error-banner")).FillWidth().Children(func() {
 			errorRecoveryBanner(c, &bannerErr, func() {
 				upgrading := s.actionBusy("upgrade-cli") || s.cliAutoUpgradeActive()

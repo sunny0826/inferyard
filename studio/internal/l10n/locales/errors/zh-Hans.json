@@ -14,6 +14,7 @@
   "err.cli_error": "CLI 执行失败，请检查下方错误详情与运行状态后重试。",
   "err.cli_outdated": "CLI 版本过旧或缺少所需命令，请升级 CLI 后重试。",
   "err.cli_unavailable": "CLI 尚未就绪，请在主窗口设置路径。",
+  "err.cli_upgrade_failed": "CLI 自动升级失败，可重试或在设置中手动指定路径。",
   "err.cmake_missing": "缺少 CMake（需 3.24 及以上版本），请先安装。",
   "err.conflict": "操作与当前状态冲突，请刷新进度后重试。",
   "err.connection_error": "网络连接失败或中断，请检查网络及代理配置后重试。",

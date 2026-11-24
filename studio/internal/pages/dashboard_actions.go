@@ -439,9 +439,21 @@ func (s *viewState) prepareEnvironment() {
 				return "", wizardFailure(result)
 			}
 		}
+		upgradedOutdated := false
 		e := prepareEnvironmentSteps(s.ctx, s.service.Readiness, func(ctx context.Context) (string, *core.ApiError) {
+			if s.service.Readiness().CLI.Status == "outdated" {
+				upgradedOutdated = true
+				return s.service.UpgradeCLI(ctx, func(message string) { s.updateView(func() { s.cliInstallStatus = message }) })
+			}
 			return s.service.InstallCLI(ctx, func(message string) { s.updateView(func() { s.cliInstallStatus = message }) })
 		}, func() *core.ApiError { _, e := s.service.Provision(); return e }, s.service.WizardExecute)
+		if upgradedOutdated {
+			st := s.service.CLIUpgradeStatus()
+			s.updateView(func() { s.applyCLIUpgradeState(st) })
+			if e != nil && st.State == core.CLIUpgradeFailed && st.Error != nil {
+				return "", nil
+			}
+		}
 		if e == nil && s.service != nil {
 			_ = s.service.RefreshAssets()
 			_ = s.service.RefreshDevice()
