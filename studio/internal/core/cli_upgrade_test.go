@@ -331,12 +331,13 @@ func TestAutoCLIUpgradeDoesNotOverwriteUserSavedCompatibleCLI(t *testing.T) {
 		t.Fatal(e)
 	}
 	close(releaseUV)
+	// Wait until the background UpgradeCLI goroutine releases cliInstallMu so assertions check its final state.
+	s.cliInstallMu.Lock()
+	s.cliInstallMu.Unlock()
 
-	st := waitForCLIUpgrade(t, s, func(st CLIUpgradeState) bool {
-		return st.State == CLIUpgradeIdle
-	})
-	if st.Error != nil {
-		t.Fatalf("expected nil error after user chose compatible CLI, got %+v", st.Error)
+	st := s.CLIUpgradeStatus()
+	if st.State != CLIUpgradeIdle || st.Error != nil {
+		t.Fatalf("expected idle/nil error after user chose compatible CLI, got %+v", st)
 	}
 	if got := textOf(s.Settings().Settings.InferyardPath); got != manualCLI {
 		t.Fatalf("background upgrade overwrote user CLI path: got %q, want %q", got, manualCLI)
