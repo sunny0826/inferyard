@@ -32,6 +32,41 @@ func (s *viewState) localEngine() *core.EngineAsset {
 	return nil
 }
 
+func (s *viewState) selectedEnginePath() string {
+	if s.engine == "" {
+		return ""
+	}
+	for _, eng := range s.registry.Engines {
+		if eng.Name == s.engine {
+			return cleanMatchPath(eng.Path)
+		}
+	}
+	return ""
+}
+
+func (s *viewState) reconcileSelectedEngine(prevEnginePath string) bool {
+	if s.engine == "" {
+		return false
+	}
+	for _, eng := range s.registry.Engines {
+		if eng.Name == s.engine {
+			return false
+		}
+	}
+	if prevEnginePath != "" {
+		for _, eng := range s.registry.Engines {
+			if cleanMatchPath(eng.Path) == prevEnginePath {
+				s.engine = eng.Name
+				return false
+			}
+		}
+		s.engine = ""
+		return true
+	}
+	s.engine = ""
+	return true
+}
+
 func (s *viewState) hasLocalEngine() bool {
 	for _, e := range s.registry.Engines {
 		if e.Kind == "local_installation" {

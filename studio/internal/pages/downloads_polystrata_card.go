@@ -301,16 +301,23 @@ func (s *viewState) startBenchmarkFromPolystrataTask(task core.DownloadTask) {
 	run()
 }
 
-func (s *viewState) applyPendingPolystrataSelection() {
+func (s *viewState) applyPendingPolystrataSelection(prevEngineName, prevModelName string) bool {
 	pending := s.pendingPolystrataSelection
 	if pending == nil {
-		return
+		return false
 	}
-	s.pendingPolystrataSelection = nil
-	if s.engine != pending.initialEngine || s.model != pending.initialModel {
-		return
+	if prevEngineName != pending.initialEngine || prevModelName != pending.initialModel {
+		s.pendingPolystrataSelection = nil
+		return false
 	}
-	_, _ = s.applyPolystrataSelection(pending.installationPath, pending.modelConfigPath)
+	engineMatched, modelMatched := s.applyPolystrataSelection(pending.installationPath, pending.modelConfigPath)
+	if engineMatched && modelMatched {
+		s.pendingPolystrataSelection = nil
+	} else {
+		pending.initialEngine = s.engine
+		pending.initialModel = s.model
+	}
+	return true
 }
 
 func (s *viewState) applyPolystrataSelection(wantInst, wantModel string) (bool, bool) {

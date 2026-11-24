@@ -411,6 +411,7 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 		s.detailError = b.detailError
 	}
 	s.applySettings(b.settings)
+	skipEngineAdopt := false
 	skipModelAdopt := false
 	if b.full {
 		if b.historyError == nil {
@@ -420,11 +421,17 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 			s.reports = b.reports
 		}
 		s.historyError, s.reportsError = b.historyError, b.reportsError
+		prevEngineName, prevModelName := s.engine, s.model
+		prevEnginePath := s.selectedEnginePath()
 		prevModelPath := s.selectedModelPath()
 		s.registry = b.registry
-		s.reconcileSelectedEngine()
-		s.applyPendingPolystrataSelection()
-		skipModelAdopt = s.reconcileSelectedModel(prevModelPath)
+		if s.applyPendingPolystrataSelection(prevEngineName, prevModelName) {
+			skipEngineAdopt = true
+			skipModelAdopt = true
+		} else {
+			skipEngineAdopt = s.reconcileSelectedEngine(prevEnginePath)
+			skipModelAdopt = s.reconcileSelectedModel(prevModelPath)
+		}
 	}
 	s.ready, s.progress = b.ready, b.progress.Progress
 	s.applyDashboard(b.dashboard, b.progressError)
@@ -432,7 +439,9 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	s.checks = s.service.EngineChecks()
 	s.applyUpdateState(b.updateState)
 	s.applyCLIUpgradeState(b.cliUpgrade)
-	s.adoptDownloadedEngine()
+	if !skipEngineAdopt {
+		s.adoptDownloadedEngine()
+	}
 	if !skipModelAdopt {
 		s.adoptOnlyModel()
 	}
@@ -445,18 +454,6 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 		s.refreshDiscovery()
 	}
 	return true
-}
-
-func (s *viewState) reconcileSelectedEngine() {
-	if s.engine == "" {
-		return
-	}
-	for _, eng := range s.registry.Engines {
-		if eng.Name == s.engine {
-			return
-		}
-	}
-	s.engine = ""
 }
 
 func (s *viewState) work(fn func() (string, *core.ApiError)) {

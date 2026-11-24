@@ -12,6 +12,8 @@ from inferyard.platforms.local_engines.detect_polystrata import (
 )
 from inferyard.provisioning.preparation_io import PreparationError, read_json
 
+from .polystrata_rebind import rebind_or_keep_polystrata_config
+
 _LEGACY_MODEL_PATH_KEYS = (
     "gguf",
     "gguf_path",
@@ -237,12 +239,26 @@ def inspect_polystrata_payload(
     return model_asset, existing_ctx, model_flag, fallback_tokenizer
 
 
+def _ordered_bases(payload: dict, bases: tuple[Path, ...]) -> tuple[Path, ...]:
+    ordered: list[Path] = []
+    cwd_val = payload.get("cwd")
+    if isinstance(cwd_val, str) and cwd_val.strip():
+        cwd_path = Path(cwd_val.strip())
+        if cwd_path.is_dir() and not cwd_path.is_symlink():
+            ordered.append(cwd_path)
+    for item in bases:
+        if item not in ordered:
+            ordered.append(item)
+    return tuple(ordered)
+
+
 def _resolve_existing_json(
     installation: dict,
     config_file: Path,
     out_dir: Path,
     context_size: int | None,
     *,
+    system: str,
     served_model: str | None,
     default_asset_dir: Path | None = None,
 ) -> tuple[Path, Path, dict | None, int, Path | None, str, Path | None, str | None]:
@@ -253,6 +269,7 @@ def _resolve_existing_json(
     if installation.get("data_dir"):
         bases.append(Path(installation["data_dir"]))
     base_tuple = tuple(bases)
+    orig_bases = _ordered_bases(payload, base_tuple)
 
     model_asset, existing_ctx, model_flag, fallback_tokenizer = inspect_polystrata_payload(
         payload, config_file, base_tuple
@@ -267,14 +284,10 @@ def _resolve_existing_json(
         else:
             raise PreparationError("polystrata_config_model_missing")
 
-    if model_asset.is_file() and model_asset.suffix.lower() == ".gguf" and _is_poly_config(payload):
+    is_poly = _is_poly_config(payload)
+    if model_asset.is_file() and model_asset.suffix.lower() == ".gguf" and is_poly:
         _check_gguf_arch(model_asset)
 
-    resolved_exe_dir: Path | None = None
-    if isinstance(payload.get("exe"), str) and payload["exe"].strip():
-        resolved_exe = _resolve_ref(payload["exe"].strip(), base_tuple)
-        if resolved_exe is not None:
-            resolved_exe_dir = resolved_exe.parent
     explicit_backend = (
         payload["backend"].strip().lower()
         if isinstance(payload.get("backend"), str) and payload["backend"].strip()
@@ -290,29 +303,28 @@ def _resolve_existing_json(
     )
     resolved_served = served_model or json_model_name or "inferyard-local-model"
 
-    needs_derive = (context_size is not None and existing_ctx != context_size) or (
-        served_model is not None and served_model != json_model_name
+    derived_path, derived_payload, target_exe = rebind_or_keep_polystrata_config(
+        payload,
+        installation,
+        out_dir,
+        orig_bases,
+        safe_keys=_SAFE_DERIVED_KEYS,
+        legacy_model_keys=_LEGACY_MODEL_PATH_KEYS,
+        tokenizer_keys=_TOKENIZER_PATH_KEYS,
+        model_asset=model_asset,
+        model_flag=model_flag,
+        existing_ctx=existing_ctx,
+        resolved_context=resolved_context,
+        context_size=context_size,
+        json_model_name=json_model_name,
+        resolved_served=resolved_served,
+        served_model=served_model,
+        is_poly=is_poly,
+        resolve_ref=_resolve_ref,
+        set_arg_value=_set_arg_value,
+        system=system,
     )
-    derived_payload: dict | None = None
-    config_path = config_file
-    if needs_derive:
-        derived_payload = {k: payload[k] for k in _SAFE_DERIVED_KEYS if k in payload}
-        derived_payload["model_name"] = resolved_served
-        if isinstance(derived_payload.get("args"), list):
-            new_args = [str(x) for x in derived_payload["args"]]
-            if model_flag and model_flag.startswith("--"):
-                new_args = _set_arg_value(new_args, model_flag, str(model_asset))
-            new_args = _set_arg_value(new_args, "--max-context", str(resolved_context))
-            derived_payload["args"] = new_args
-            if isinstance(derived_payload.get("exe"), str):
-                resolved_exe = _resolve_ref(derived_payload["exe"], base_tuple)
-                if resolved_exe is not None:
-                    derived_payload["exe"] = str(resolved_exe)
-        else:
-            derived_payload["context"] = resolved_context
-            if model_flag and model_flag.startswith("key:"):
-                derived_payload[model_flag[4:]] = str(model_asset)
-        config_path = out_dir / "strata-candidate.json"
+    config_path = derived_path if derived_path is not None else config_file
     return (
         model_asset,
         config_path,
@@ -320,7 +332,7 @@ def _resolve_existing_json(
         resolved_context,
         fallback_tokenizer,
         resolved_served,
-        resolved_exe_dir,
+        target_exe.parent,
         explicit_backend,
     )
 
@@ -381,7 +393,12 @@ def resolve_polystrata_model(
                 exe_dir,
                 explicit_backend,
             ) = _resolve_existing_json(
-                installation, model_input, out_dir, context_size, served_model=served_model
+                installation,
+                model_input,
+                out_dir,
+                context_size,
+                system=system,
+                served_model=served_model,
             )
             backend = select_polystrata_backend(
                 installation,
@@ -414,6 +431,7 @@ def resolve_polystrata_model(
             matches[0].resolve(strict=True),
             out_dir,
             context_size,
+            system=system,
             served_model=served_model,
             default_asset_dir=model_input,
         )

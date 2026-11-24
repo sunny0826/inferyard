@@ -66,12 +66,14 @@ def _create_polystrata_layout(
     )
     exe = venv_dir / "bin" / "python"
     engine_bin = root / "engine-poly" / "strata-poly"
+    strata_bin = root / "engine" / "strata"
     exe.parent.mkdir(parents=True, exist_ok=True)
     exe.write_bytes(b"#!/bin/sh\n")
     exe.chmod(0o755)
-    engine_bin.parent.mkdir(parents=True, exist_ok=True)
-    engine_bin.write_bytes(b"synthetic-engine-binary")
-    engine_bin.chmod(0o755)
+    for binary in (engine_bin, strata_bin):
+        binary.parent.mkdir(parents=True, exist_ok=True)
+        binary.write_bytes(b"synthetic-engine-binary")
+        binary.chmod(0o755)
 
     if build_json is not None:
         (engine_bin.parent / "BUILD.json").write_text(json.dumps(build_json), encoding="utf-8")

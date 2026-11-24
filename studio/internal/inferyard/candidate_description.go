@@ -376,7 +376,7 @@ func validCandidateSafety(raw []byte, family string) bool {
 		OverrideReason *string  `json:"temperature_stop_override_reason"`
 	}
 	if json.Unmarshal(raw, &value) != nil || value.Interval == nil || *value.Interval < 0.1 || *value.Interval > 5 ||
-		value.Maximum == nil || *value.Maximum < 1 || *value.Maximum > 85 ||
+		value.Maximum == nil || *value.Maximum < 1 || *value.Maximum > 100 ||
 		value.Temperature == nil || value.Environment == nil || !*value.Environment {
 		return false
 	}

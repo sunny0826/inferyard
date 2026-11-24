@@ -37,6 +37,7 @@ var localEngineErrorKeys = map[string]string{
 	"local_engine_requires_explicit_candidate":            "err.local.context_speed_unsupported",
 	"local_engine_data_dir_polystrata_only":               "err.local.data_dir_polystrata_only",
 	"local_engine_data_dir_invalid":                       "err.local.data_dir_invalid",
+	"local_engine_polystrata_engine_missing":              "err.polystrata.runtime_invalid",
 	"polystrata_preflight_blocked":                        "err.polystrata.preflight_blocked",
 	"polystrata_setup_active":                             "err.polystrata.setup_active",
 	"polystrata_setup_failed":                             "err.polystrata.setup_failed",
