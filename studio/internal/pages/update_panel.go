@@ -92,8 +92,56 @@ func (s *viewState) updateSettingsView(c *ui.Context) {
 					s.updateDialogOpen = true
 				}
 			}
+			if updateExternalButton(c, tr(c, "update.prompt.view_changelog")).Clicked() {
+				s.openUpdateURL(c, updateChangelogURL(st))
+			}
 		})
 	})
+}
+
+func updateExternalButton(c *ui.Context, label string) ui.Element {
+	t := tokens(c)
+	b := components.Button(c, "", components.ButtonOutline).
+		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.Control).
+		MaxWidthPercent(100).AlignSelf(ui.Start).Label(label)
+	b.Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+			ui.Text(c, label).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
+			components.Icon(c, lucide.ArrowUpRight).Size(13, 13).TextColor(t.Color.FgSecondary).Role(ui.RoleNone)
+		})
+	})
+	return b
+}
+
+func (s *viewState) updateChangelogCard(c *ui.Context, st core.UpdateState) {
+	releaseURL := updateReleaseURL(st.Release)
+	if releaseURL == "" {
+		return
+	}
+	t := tokens(c)
+	ver := strings.TrimPrefix(strings.TrimSpace(st.Release.Version), "v")
+	title := tr(c, "update.changelog.title")
+	if ver != "" {
+		title = trf(c, "update.changelog.title_version", "version", ver)
+	}
+	subtitle := tr(c, "update.changelog.subtitle")
+	if published := formatReleasePublishedDate(st.Release.PublishedAt); published != "" {
+		subtitle = trf(c, "update.changelog.subtitle_dated", "date", published)
+	}
+	applyMaterial(c, ui.Row(c.Key("update-changelog-card")).FillWidth().Wrap().
+		AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Stack), materialSunken).
+		Children(func() {
+			ui.Row(c).Grow(1).MinWidth(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				components.Icon(c, lucide.FileText).Size(15, 15).TextColor(t.Color.FgSecondary).Role(ui.RoleNone)
+				ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
+					ui.Text(c, title).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary)
+					ui.Text(c, subtitle).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				})
+			})
+			if updateExternalButton(c, tr(c, "update.action.open_release")).Clicked() {
+				s.openUpdateURL(c, releaseURL)
+			}
+		})
 }
 
 func (s *viewState) updateDialog(c *ui.Context) {
@@ -117,15 +165,7 @@ func (s *viewState) updateDialog(c *ui.Context) {
 					}
 				})
 
-				if st.Release != nil {
-					notes := summarizeReleaseNotesFor(loc, st.Release.Notes)
-					ui.Scroll(c.Key("update-release-notes")).FillWidth().MaxHeight(160).
-						Padding(t.Density.Row).Radius(t.Radius.Inset).
-						Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).
-						Children(func() {
-							ui.Text(c, notes).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-						})
-				}
+				s.updateChangelogCard(c, st)
 
 				workloads := s.effectiveUpdateWorkloads()
 				if workloads.Any() && (st.State == core.UpdateAvailable || st.State == core.UpdateDownloading || st.State == core.UpdateVerifying || st.State == core.UpdateReadyToApply) {
@@ -147,6 +187,9 @@ func (s *viewState) updateDialog(c *ui.Context) {
 					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 						if primaryButton(c, tr(c, "update.action.check")).Clicked() {
 							s.triggerUpdateCheck()
+						}
+						if updateExternalButton(c, tr(c, "update.prompt.view_changelog")).Clicked() {
+							s.openUpdateURL(c, core.DefaultReleasesURL)
 						}
 						if button(c, tr(c, "common.close")).Clicked() {
 							s.updateDialogOpen = false
@@ -170,11 +213,6 @@ func (s *viewState) updateDialog(c *ui.Context) {
 						if st.CanSelfUpdate && st.Release != nil && st.Release.AssetURL != "" && st.Release.ChecksumsURL != "" {
 							if primaryButton(c, tr(c, "update.action.update_now")).Clicked() {
 								s.triggerUpdateStart()
-							}
-						}
-						if st.Release != nil && st.Release.ReleaseURL != "" {
-							if outlineButton(c, tr(c, "update.action.open_release")).Clicked() {
-								s.openUpdateURL(c, st.Release.ReleaseURL)
 							}
 						}
 						if button(c, tr(c, "common.close")).Clicked() {
@@ -236,11 +274,6 @@ func (s *viewState) updateDialog(c *ui.Context) {
 								s.openUpdatePath(st.FallbackPath)
 							}
 						}
-						if st.Release != nil && st.Release.ReleaseURL != "" {
-							if outlineButton(c, tr(c, "update.action.open_release")).Clicked() {
-								s.openUpdateURL(c, st.Release.ReleaseURL)
-							}
-						}
 						if button(c, tr(c, "common.close")).Clicked() {
 							s.updateDialogOpen = false
 						}
@@ -277,15 +310,20 @@ func (s *viewState) updateReadyPrompt(c *ui.Context) {
 				ui.Text(c, tr(c, "update.badge.available")).Bold().FontSize(t.Type.CardTitle).TextColor(t.Color.FgPrimary)
 				ui.Text(c, trf(c, "update.prompt.ready_body", "version", ver)).
 					FontSize(t.Type.Body).TextColor(t.Color.FgSecondary)
-				notesLabel := tr(c, "update.prompt.view_changelog")
-				notesBtn := components.Button(c, "", components.ButtonGhost).
-					Padding(0).Radius(promptBtnRadius).AlignSelf(ui.Start).Label(notesLabel)
-				notesBtn.Children(func() {
-					ui.Text(c, notesLabel).FontSize(t.Type.Body).
-						TextColor(t.Color.Accent).Underline().UnderlineOffset(2)
-				})
-				if notesBtn.Clicked() {
-					s.updateDialogOpen = true
+				if releaseURL := updateReleaseURL(st.Release); releaseURL != "" {
+					notesLabel := tr(c, "update.prompt.view_changelog")
+					notesBtn := components.Button(c, "", components.ButtonGhost).
+						Padding(0).Radius(promptBtnRadius).AlignSelf(ui.Start).Label(notesLabel)
+					notesBtn.Children(func() {
+						ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Hairline).Children(func() {
+							ui.Text(c, notesLabel).FontSize(t.Type.Body).
+								TextColor(t.Color.Accent).Underline().UnderlineOffset(2)
+							components.Icon(c, lucide.ArrowUpRight).Size(13, 13).TextColor(t.Color.Accent).Role(ui.RoleNone)
+						})
+					})
+					if notesBtn.Clicked() {
+						s.openUpdateURL(c, releaseURL)
+					}
 				}
 				ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Gap(t.Density.Stack).Padding(t.Density.Row, 0, 0, 0).Children(func() {
 					laterLabel := tr(c, "update.action.later")
@@ -420,6 +458,7 @@ func (s *viewState) triggerUpdateRetry() {
 }
 
 func (s *viewState) openUpdateURL(c *ui.Context, rawURL string) {
+	rawURL = strings.TrimSpace(rawURL)
 	if !strings.HasPrefix(rawURL, "https://") {
 		return
 	}

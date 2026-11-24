@@ -18,6 +18,7 @@ func previewUpdateRelease() core.UpdateRelease {
 		Name:         "v" + previewUpdateVersion,
 		Notes:        "## Highlights\n\n- feat(studio): add automatic update discovery and one-click in-app update\n- fix(studio): improve download stability and verification",
 		ReleaseURL:   "https://github.com/sunny0826/inferyard/releases/tag/v" + previewUpdateVersion,
+		PublishedAt:  "2026-11-24T00:00:00Z",
 		AssetName:    "inferyard-studio-v" + previewUpdateVersion + "-darwin-arm64.dmg",
 		AssetURL:     "https://github.com/sunny0826/inferyard/releases/download/v" + previewUpdateVersion + "/inferyard-studio-v" + previewUpdateVersion + "-darwin-arm64.dmg",
 		AssetSize:    15 << 20,

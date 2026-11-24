@@ -27,6 +27,7 @@ const (
 
 const (
 	defaultUpdateAPIURL       = "https://api.github.com/repos/sunny0826/inferyard/releases/latest"
+	DefaultReleasesURL        = "https://github.com/sunny0826/inferyard/releases"
 	defaultUpdateStartupDelay = 2 * time.Second
 	defaultUpdateCheckTimeout = 10 * time.Second
 )

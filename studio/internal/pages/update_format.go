@@ -2,17 +2,14 @@ package pages
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
-	"unicode/utf8"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
 )
-
-var releaseHTMLCommentRe = regexp.MustCompile(`(?s)<!--.*?-->`)
 
 func updateBadgePresentation(st core.UpdateState) (label string, kind stateKind, icon func() *ui.SVG, animated bool) {
 	return updateBadgePresentationFor("", st)
@@ -145,35 +142,32 @@ func formatUpdateWorkloadWarningFor(locale string, w core.UpdateActiveWorkloads)
 	}
 }
 
-func summarizeReleaseNotes(notes string) string {
-	return summarizeReleaseNotesFor("", notes)
+func updateReleaseURL(rel *core.UpdateRelease) string {
+	if rel == nil {
+		return ""
+	}
+	raw := strings.TrimSpace(rel.ReleaseURL)
+	if strings.HasPrefix(raw, "https://") {
+		return raw
+	}
+	return ""
 }
 
-func summarizeReleaseNotesFor(locale, notes string) string {
-	cleaned := releaseHTMLCommentRe.ReplaceAllString(notes, "")
-	lines := strings.Split(strings.ReplaceAll(cleaned, "\r\n", "\n"), "\n")
-	out := make([]string, 0, 12)
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" {
-			continue
-		}
-		out = append(out, trimmed)
-		if len(out) >= 12 {
-			break
-		}
+func updateChangelogURL(st core.UpdateState) string {
+	if releaseURL := updateReleaseURL(st.Release); releaseURL != "" {
+		return releaseURL
 	}
-	if len(out) == 0 {
-		return l10n.T(locale, "update.notes.empty")
+	return core.DefaultReleasesURL
+}
+
+func formatReleasePublishedDate(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
 	}
-	summary := strings.Join(out, "\n")
-	if len(lines) > len(out) {
-		summary += "\n…"
+	parsed, err := time.Parse(time.RFC3339, trimmed)
+	if err != nil {
+		return ""
 	}
-	const maxRunes = 600
-	if utf8.RuneCountInString(summary) > maxRunes {
-		runes := []rune(summary)
-		return string(runes[:maxRunes-1]) + "…"
-	}
-	return summary
+	return parsed.UTC().Format("2006-01-02")
 }

@@ -16,6 +16,7 @@ func sampleUpdateRelease() *core.UpdateRelease {
 		Name:         "v0.10.0",
 		Notes:        "<!-- comment -->\n## Highlights\n- feat(studio): one-click update",
 		ReleaseURL:   "https://github.com/sunny0826/inferyard/releases/tag/v0.10.0",
+		PublishedAt:  "2026-11-24T00:00:00Z",
 		AssetName:    "inferyard-studio-v0.10.0-darwin-arm64.dmg",
 		AssetURL:     "https://github.com/sunny0826/inferyard/releases/download/v0.10.0/inferyard-studio-v0.10.0-darwin-arm64.dmg",
 		AssetSize:    15 << 20,
@@ -61,8 +62,17 @@ func TestUpdateDialogActionsActiveWorkloadWarningAndFallback(t *testing.T) {
 
 	tt := ui.NewTester(s.contentView, 1120, 800)
 	tt.Frame()
-	if !tt.HasText("v0.0.8 → v0.10.0") || !tt.HasText("one-click update") || tt.HasText("comment") {
+	if !tt.HasText("v0.0.8 → v0.10.0") || !tt.HasText("v0.10.0 更新日志") || !tt.HasText("2026-11-24") || !tt.HasText("前往 Release") {
 		t.Fatalf("unexpected dialog content: %v", tt.Texts())
+	}
+	for _, rawNote := range []string{"Highlights", "one-click update", "comment"} {
+		if tt.HasText(rawNote) {
+			t.Fatalf("dialog should not render raw release notes %q: %v", rawNote, tt.Texts())
+		}
+	}
+	click(t, tt, "前往 Release")
+	if urls := tt.OpenedURLs(); len(urls) != 1 || urls[0] != s.updateState.Release.ReleaseURL {
+		t.Fatalf("expected release URL opened from available dialog, got %v", urls)
 	}
 
 	click(t, tt, "立即更新")
@@ -120,9 +130,9 @@ func TestUpdateDialogActionsActiveWorkloadWarningAndFallback(t *testing.T) {
 	if openedPath != s.updateState.FallbackPath {
 		t.Fatalf("openUpdatePathFunc got %q, want %q", openedPath, s.updateState.FallbackPath)
 	}
-	click(t, tt, "打开发布页")
-	if urls := tt.OpenedURLs(); len(urls) != 1 || urls[0] != s.updateState.Release.ReleaseURL {
-		t.Fatalf("expected release URL opened, got %v", urls)
+	click(t, tt, "前往 Release")
+	if urls := tt.OpenedURLs(); len(urls) != 2 || urls[1] != s.updateState.Release.ReleaseURL {
+		t.Fatalf("expected release URL opened from error dialog, got %v", urls)
 	}
 }
 
@@ -160,13 +170,22 @@ func TestUpdateReadyPromptCardActionsAndWorkloadGuard(t *testing.T) {
 		}
 	}
 
-	// Clicking "查看更新日志" opens the full update modal and hides the floating card;
-	// clicking "稍后" inside the modal dismisses BOTH without popping the card right back up, while keeping header badge available.
+	// Clicking "查看更新日志" opens the release changelog page directly without opening the raw-notes dialog.
 	click(t, tt, "查看更新日志")
-	if !s.updateDialogOpen {
-		t.Fatal("clicking 查看更新日志 did not open update dialog")
+	if s.updateDialogOpen {
+		t.Fatal("clicking 查看更新日志 on ready prompt should open release URL directly, not modal")
 	}
+	if urls := tt.OpenedURLs(); len(urls) != 1 || urls[0] != s.updateState.Release.ReleaseURL {
+		t.Fatalf("expected release URL opened from ready prompt, got %v", urls)
+	}
+
+	// Opening the full update modal and clicking "稍后" dismisses BOTH without popping the card right back up,
+	// while keeping the header badge available.
+	s.updateDialogOpen = true
 	tt.Frame()
+	if !tt.HasText("前往 Release") || tt.HasText("one-click update") {
+		t.Fatalf("ready modal should link to release without raw notes: %v", tt.Texts())
+	}
 	click(t, tt, "稍后")
 	tt.Frame()
 	if s.updateDialogOpen || s.updateReadyPromptDismissedVersion != "0.10.0" || tt.HasText("版本 0.10.0 已可更新，重启后生效。") {
@@ -235,5 +254,68 @@ func TestUpdateReadyPromptCardActionsAndWorkloadGuard(t *testing.T) {
 	}
 	if len(applyCalls) != 1 || applyCalls[0] {
 		t.Fatalf("expected single idle apply(false) call, got %v", applyCalls)
+	}
+}
+
+func TestUpdateChangelogLinksInSettingsUpToDateDialogAndMissingReleaseURL(t *testing.T) {
+	s := readyState("settings")
+	s.updateState = core.UpdateState{
+		State:          core.UpdateUpToDate,
+		CurrentVersion: "0.0.11",
+	}
+
+	tt := ui.NewTester(s.contentView, 1120, 2400)
+	tt.Frame()
+	if !tt.HasText("查看更新日志") {
+		t.Fatalf("settings update card missing changelog button: %v", tt.Texts())
+	}
+	click(t, tt, "查看更新日志")
+	if urls := tt.OpenedURLs(); len(urls) != 1 || urls[0] != core.DefaultReleasesURL {
+		t.Fatalf("settings changelog button opened %v, want %q", urls, core.DefaultReleasesURL)
+	}
+
+	// Up-to-date modal also links to the default releases page.
+	s.updateDialogOpen = true
+	tt.Frame()
+	click(t, tt, "查看更新日志")
+	if urls := tt.OpenedURLs(); len(urls) != 2 || urls[1] != core.DefaultReleasesURL {
+		t.Fatalf("up-to-date dialog changelog button opened %v, want %q", urls, core.DefaultReleasesURL)
+	}
+
+	// When a release has a valid ReleaseURL, settings changelog button jumps straight to that release.
+	rel := sampleUpdateRelease()
+	s.updateDialogOpen = false
+	s.updateState = core.UpdateState{
+		State:          core.UpdateAvailable,
+		CurrentVersion: "0.0.11",
+		Release:        rel,
+		CanSelfUpdate:  true,
+	}
+	tt.Frame()
+	click(t, tt, "查看更新日志")
+	if urls := tt.OpenedURLs(); len(urls) != 3 || urls[2] != rel.ReleaseURL {
+		t.Fatalf("settings changelog button with available release opened %v, want %q", urls, rel.ReleaseURL)
+	}
+
+	// When ReleaseURL is empty or non-HTTPS, neither modal nor floating prompt shows a dead link or raw notes.
+	noURLRel := sampleUpdateRelease()
+	noURLRel.ReleaseURL = "http://example.com/releases/v0.10.0"
+	s = readyState("reports")
+	s.updateState = core.UpdateState{
+		State:          core.UpdateReadyToApply,
+		CurrentVersion: "0.0.11",
+		Release:        noURLRel,
+		CanSelfUpdate:  true,
+	}
+	tt = ui.NewTester(s.contentView, 1120, 800)
+	tt.Frame()
+	if tt.HasText("查看更新日志") || tt.HasText("one-click update") {
+		t.Fatalf("ready prompt should hide changelog link when ReleaseURL is non-HTTPS: %v", tt.Texts())
+	}
+
+	s.updateDialogOpen = true
+	tt.Frame()
+	if tt.HasText("前往 Release") || tt.HasText("one-click update") {
+		t.Fatalf("dialog should hide release card and raw notes when ReleaseURL is non-HTTPS: %v", tt.Texts())
 	}
 }

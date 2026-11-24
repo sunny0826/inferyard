@@ -30,10 +30,13 @@ func TestPreviewUpdateScenesAndTransitionsStayInMemory(t *testing.T) {
 	// Scene 1: Available update opens dialog and runs simulated download -> verify -> apply without network or FS IO.
 	p.loadScene(previewSceneIndex(t, "更新 · 发现新版本"))
 	tt.Frame()
-	if !tt.HasText("新版本 v0.10.0") || !tt.HasText("立即更新") {
+	if !tt.HasText("新版本 v0.10.0") || !tt.HasText("立即更新") || !tt.HasText("前往 Release") {
 		t.Fatalf("preview available update scene missing badge or action: %v", tt.Texts())
 	}
-	click(t, tt, "打开发布页")
+	if tt.HasText("Highlights") || tt.HasText("automatic update discovery") {
+		t.Fatalf("preview available update scene should not render raw notes: %v", tt.Texts())
+	}
+	click(t, tt, "前往 Release")
 	if len(tt.OpenedURLs()) != 0 {
 		t.Fatalf("preview mode called OpenURLThen: %v", tt.OpenedURLs())
 	}
@@ -68,6 +71,10 @@ func TestPreviewUpdateScenesAndTransitionsStayInMemory(t *testing.T) {
 	if !tt.HasText("版本 0.10.0 已可更新，重启后生效。") || !tt.HasText("查看更新日志") || !tt.HasText("更新并重启") {
 		t.Fatalf("preview ready-to-apply scene missing floating prompt: %v", tt.Texts())
 	}
+	click(t, tt, "查看更新日志")
+	if len(tt.OpenedURLs()) != 0 {
+		t.Fatalf("preview mode called OpenURLThen from ready prompt: %v", tt.OpenedURLs())
+	}
 	click(t, tt, "更新并重启")
 	p.advance(600 * time.Millisecond)
 	tt.Frame()
@@ -78,8 +85,11 @@ func TestPreviewUpdateScenesAndTransitionsStayInMemory(t *testing.T) {
 	// Scene 4: Error scene renders fallback actions safely in-memory and supports Retry.
 	p.loadScene(previewSceneIndex(t, "更新 · 更新失败"))
 	tt.Frame()
-	if !tt.HasText("打开安装包") || !tt.HasText("打开发布页") || !tt.HasText("重试") {
+	if !tt.HasText("打开安装包") || !tt.HasText("前往 Release") || !tt.HasText("重试") {
 		t.Fatalf("preview error scene missing fallback actions: %v", tt.Texts())
+	}
+	if tt.HasText("Highlights") || tt.HasText("automatic update discovery") {
+		t.Fatalf("preview error scene should not render raw notes: %v", tt.Texts())
 	}
 	click(t, tt, "打开安装包")
 	if len(tt.OpenedURLs()) != 0 {
