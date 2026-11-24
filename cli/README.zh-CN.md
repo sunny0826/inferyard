@@ -45,7 +45,7 @@ uv tool upgrade inferyard
 
 1. 按[安装指南](docs/installation.md)安装 `inferyard`，创建操作目录并运行设备预检。
 2. 按[平台步骤](docs/installation.md#3-准备候选)准备候选。在独立终端按候选参数启动模型服务，用实际 PID 和本机端点绑定。
-3. 分别运行 `zh-core` 与 `zh-svg-pelican` 题包，核验各自的原始 run，再生成一份汇总报告。已有完整核心结果时，只补缺少的鹈鹕运行。
+3. 分别运行 `zh-core` 与 `zh-svg-pelican` 题包，核验各自的原始 run，再生成一份汇总报告。已有完整 `zh-core` 结果时，只补缺少的 `zh-svg-pelican` 运行。
 4. 在 Studio 阅读 `studio.json`。交付时一并复制封存的 run 和报告（如需脱敏公开证据可使用 `inferyard public package`）。
 
 桌面工作流从 [Studio 任务页](../studio/README.md#pages-and-first-launch) 开始。Studio 可以复用已有 CLI、一键升级 CLI，并管理自己启动的服务。

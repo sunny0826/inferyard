@@ -48,7 +48,7 @@ uv tool upgrade inferyard
 
 1. Follow the [installation guide (Chinese)](docs/installation.md) to install `inferyard`, initialize the operations directory, and run the device preflight.
 2. [Prepare a candidate for your platform (Chinese)](docs/installation.md#3-准备候选). Start the declared model service in another terminal, then bind its actual PID and local endpoint.
-3. Run `zh-core` and `zh-svg-pelican` separately, verify each raw run, and generate one combined report. If the core run is already complete, add only the missing pelican run.
+3. Run `zh-core` and `zh-svg-pelican` separately, verify each raw run, and generate one combined report. If the `zh-core` run is already complete, add only the missing `zh-svg-pelican` run.
 4. Open `studio.json` in Studio. For handoff, copy the sealed runs along with the report (or produce a redacted evidence bundle with `inferyard public package`).
 
 The desktop workflow starts on the [Studio Tasks page](../studio/README.md#pages-and-first-launch). Studio can reuse an existing CLI, upgrade it with one click, and manage services it starts.
