@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"path/filepath"
 )
 
@@ -41,7 +42,7 @@ func (s *Service) PreparationLocations() PreparationLocations {
 		l.CLIStatus = "outdated"
 		l.CLIVersion = outdated.Version
 	}
-	if uv := FindUV(tools); uv != "" {
+	if uv, _ := findCompatibleUV(context.Background(), tools); uv != "" {
 		l.UV = ptr(uv)
 	}
 	return l
