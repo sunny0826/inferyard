@@ -441,17 +441,14 @@ def verify_bound_service(
     validate_binding(binding, config)
     if bound_files is not None and any(not item.unchanged() for item in bound_files):
         raise PreflightError("local_engine_bound_file_changed")
-    if bound_files is None:
-        current = bind_service(config)
+    _require_family_platform(config["engine"]["family"])
+    cached = _cached(config)
+    if cached is None:
+        runtime, runtime_files, asset_files = assets(config)
+        _remember(config, runtime, runtime_files, asset_files)
     else:
-        _require_family_platform(config["engine"]["family"])
-        cached = _cached(config)
-        if cached is None:
-            runtime, runtime_files, asset_files = assets(config)
-            _remember(config, runtime, runtime_files, asset_files)
-        else:
-            runtime, runtime_files, _, _ = cached
-        current = _bind(config, runtime, runtime_files)
+        runtime, runtime_files, _, _ = cached
+    current = _bind(config, runtime, runtime_files)
     if current != binding:
         raise PreflightError("local_engine_bound_service_changed")
     return current["service"]

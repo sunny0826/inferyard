@@ -27,19 +27,24 @@ type runEntry struct {
 }
 
 func readConfig(path string) (string, string, string, error) {
+	cfgPath, root, bundle, _, _, err := readConfigWithEndpoint(path)
+	return cfgPath, root, bundle, err
+}
+
+func readConfigWithEndpoint(path string) (string, string, string, int64, int64, error) {
 	if !filepath.IsAbs(path) {
-		return "", "", "", os.ErrInvalid
+		return "", "", "", 0, 0, os.ErrInvalid
 	}
 	if st, e := os.Stat(path); e == nil && st.IsDir() {
 		path = filepath.Join(path, "config.toml")
 	}
 	path, e := filepath.EvalSymlinks(path)
 	if e != nil {
-		return "", "", "", e
+		return "", "", "", 0, 0, e
 	}
 	raw, e := os.ReadFile(path)
 	if e != nil {
-		return "", "", "", e
+		return "", "", "", 0, 0, e
 	}
 	fields := map[string]json.RawMessage{}
 	section := ""
@@ -59,7 +64,7 @@ func readConfig(path string) (string, string, string, error) {
 		key := section + "." + strings.TrimSpace(k)
 		if key == "output.root" || key == "bundle.path" || key == "endpoint.server_pid" || key == "endpoint.process_start_ticks" {
 			if _, exists := fields[key]; exists {
-				return "", "", "", os.ErrInvalid
+				return "", "", "", 0, 0, os.ErrInvalid
 			}
 			fields[key] = json.RawMessage(strings.TrimSpace(v))
 		}
@@ -67,7 +72,7 @@ func readConfig(path string) (string, string, string, error) {
 	var root, bundle string
 	var pid, ticks int64
 	if json.Unmarshal(fields["output.root"], &root) != nil || json.Unmarshal(fields["bundle.path"], &bundle) != nil || json.Unmarshal(fields["endpoint.server_pid"], &pid) != nil || json.Unmarshal(fields["endpoint.process_start_ticks"], &ticks) != nil || pid <= 0 || ticks <= 0 || root == "" || bundle == "" {
-		return "", "", "", os.ErrInvalid
+		return "", "", "", 0, 0, os.ErrInvalid
 	}
 	if !filepath.IsAbs(root) {
 		root = filepath.Join(filepath.Dir(path), root)
@@ -77,15 +82,15 @@ func readConfig(path string) (string, string, string, error) {
 	}
 	bundleRaw, err := os.ReadFile(bundle)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", 0, 0, err
 	}
 	var frozenBundle struct {
 		ID string `json:"bundle_id"`
 	}
 	if json.Unmarshal(bundleRaw, &frozenBundle) != nil || frozenBundle.ID == "" {
-		return "", "", "", os.ErrInvalid
+		return "", "", "", 0, 0, os.ErrInvalid
 	}
-	return path, root, inferyard.CanonicalBundleName(frozenBundle.ID), nil
+	return path, root, inferyard.CanonicalBundleName(frozenBundle.ID), pid, ticks, nil
 }
 func (s *Service) StartRuns(req StartRunsRequest) ([]RunTask, *ApiError) {
 	s.settingsMu.Lock()
@@ -326,10 +331,11 @@ func (s *Service) executeRun(t *runEntry) {
 		err error
 	}
 	done := make(chan result, 1)
+	execArgs := s.executionArgsWithRecovery(t)
 	s.mu.Lock()
 	t.commandActive = true
 	s.mu.Unlock()
-	go func() { out, e := s.exec(ctx, t.binary, t.args...); done <- result{out, e} }()
+	go func() { out, e := s.exec(ctx, t.binary, execArgs...); done <- result{out, e} }()
 	ticker := time.NewTicker(ProgressInterval)
 	defer ticker.Stop()
 	var a *aggregate

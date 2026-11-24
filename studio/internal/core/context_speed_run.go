@@ -34,7 +34,9 @@ func (s *Service) executeContextSpeed(t *runEntry) {
 			done <- response{inferyard.Execution{ExitCode: 4}, e}
 			return
 		}
-		out, err := s.exec(inferyard.WithDrainGrace(ctx, 10*time.Second), t.binary, t.args...)
+		eng := s.Engine()
+		execArgs := s.withDirtyRecoveryArgs(t.args, eng.Pid, eng.StartTicks)
+		out, err := s.exec(inferyard.WithDrainGrace(ctx, 10*time.Second), t.binary, execArgs...)
 		done <- response{out, err}
 	}()
 	ticker := time.NewTicker(ProgressInterval)

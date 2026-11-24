@@ -90,11 +90,11 @@ def _expand(value, path, executable):
 
 def verify_libraries(paths, executable, *, mapped_paths=None):
     """Record unavailable optional libraries; require closure for every mapped file."""
-    known = {p.resolve() for p in paths}
+    known = None
     executable = executable.resolve()
     mapped = None if mapped_paths is None else {p.resolve() for p in mapped_paths}
     _, executable_rpaths = _commands(executable)
-    inherited = {Path(_expand(r, p, executable)) for p in paths for r in _commands(p)[1]}
+    inherited = None
     unresolved = []
     for path in paths if mapped is None else sorted(mapped):
         dependencies, rpaths = _commands(path)
@@ -109,6 +109,12 @@ def verify_libraries(paths, executable, *, mapped_paths=None):
                 ]
                 resolved = {p.resolve() for p in candidates if p.is_file()}
                 if not resolved:
+                    if inherited is None:
+                        inherited = {
+                            Path(_expand(r, p, executable))
+                            for p in paths
+                            for r in _commands(p)[1]
+                        }
                     resolved = {
                         (root / dependency[7:]).resolve()
                         for root in inherited
@@ -121,10 +127,14 @@ def verify_libraries(paths, executable, *, mapped_paths=None):
             else:
                 target = Path(_expand(dependency, path, executable))
                 resolved = {target.resolve()} if target.is_absolute() and target.exists() else set()
-            if len(resolved) == 1 and (
-                next(iter(resolved)) in known or _system(str(next(iter(resolved))))
-            ):
-                continue
+            if len(resolved) == 1:
+                candidate = next(iter(resolved))
+                if _system(str(candidate)):
+                    continue
+                if known is None:
+                    known = {p.resolve() for p in paths}
+                if candidate in known:
+                    continue
             reason = "unresolved" if not resolved else "ambiguous_or_outside_inventory"
             if mapped is not None:
                 raise PreflightError("local_engine_mapped_library_closure_unverified")
