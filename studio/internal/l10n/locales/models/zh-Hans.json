@@ -160,7 +160,7 @@
   "models.delete.cancel_button": "取消",
   "models.delete.clause.path": "（{path}）",
   "models.delete.clause.size": "，预计释放 {size}",
-  "models.delete.confirm.polystrata_engine": "将卸载并移除 PolyStrata 托管运行时「{name}」{pathClause}{sizeClause}，并移除本地引擎注册，此操作不可撤销。",
+  "models.delete.confirm.polystrata_engine": "将卸载并移除 Studio 安装的本地 PolyStrata 运行时「{name}」{pathClause}{sizeClause}，并移除本地引擎注册，此操作不可撤销。",
   "models.delete.confirm.polystrata_model": "将删除 PolyStrata 模型「{name}」的配置及未被引用的托管模型权重{sizeClause}，此操作不可撤销。",
   "models.delete.confirm.polystrata_model_config_only": "将仅删除 PolyStrata 模型配置「{name}」{sizeClause}，此操作不可撤销。",
   "models.delete.confirm.standard": "将从磁盘删除「{name}」{pathClause}以释放空间，此操作不可撤销。",

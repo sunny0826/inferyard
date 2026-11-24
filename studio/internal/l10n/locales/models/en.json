@@ -160,7 +160,7 @@
   "models.delete.cancel_button": "Cancel",
   "models.delete.clause.path": " ({path})",
   "models.delete.clause.size": ", freeing ~{size}",
-  "models.delete.confirm.polystrata_engine": "Uninstall managed PolyStrata runtime \"{name}\"{pathClause}{sizeClause} and remove its local engine registration. This cannot be undone.",
+  "models.delete.confirm.polystrata_engine": "Uninstall Studio-installed local PolyStrata runtime \"{name}\"{pathClause}{sizeClause} and remove its local engine registration. This cannot be undone.",
   "models.delete.confirm.polystrata_model": "Delete the configuration and unreferenced managed weights for PolyStrata model \"{name}\"{sizeClause}. This cannot be undone.",
   "models.delete.confirm.polystrata_model_config_only": "Delete only the configuration for PolyStrata model \"{name}\"{sizeClause}. This cannot be undone.",
   "models.delete.confirm.standard": "Delete \"{name}\"{pathClause} from disk to free up space. This cannot be undone.",

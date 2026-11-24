@@ -38,7 +38,7 @@ Results stay on your machine. Frozen rules score the quality tasks.
   Go/MyGo native desktop app featuring:
   - **Multi-language UI (i18n):** English and Simplified Chinese (`Follow System` / `English` / `简体中文` in **Settings → Language**, switching live without restart; supports `MYGO_LOCALE` override and macOS bundle localizations).
   - **Desktop UX & self-update:** Light / Dark / Follow System themes with live visual previews, optional minimize to system tray on window close to keep background runs and downloads active, scoped HTTP(S) download proxy, and automatic GitHub Releases update checks with one-click SHA-256 verified self-update.
-  - **Hardware-aware downloads & assets:** Starter recommendations prioritizing managed **PolyStrata** on Apple Silicon, NVIDIA CUDA, and AMD ROCm hardware (with 4-stage setup/recovery and `llama.cpp` fallback), extensible multi-engine catalog (`PolyStrata`, `llama.cpp`, `mlx-lm`, `vLLM`, `SGLang`, `LM Studio`), Hugging Face & ModelScope mirrors, custom URL resolution (`model resolve`), multi-shard GGUF and directory models with streaming progress and resume, plus multi-root model directories and safe uninstall/disk cleanup for managed PolyStrata and models.
+  - **Hardware-aware downloads & assets:** Starter recommendations prioritizing **PolyStrata** on Apple Silicon, NVIDIA CUDA, and AMD ROCm hardware (with one-click 4-stage guided setup/recovery and `llama.cpp` fallback), extensible multi-engine catalog (`PolyStrata`, `llama.cpp`, `mlx-lm`, `vLLM`, `SGLang`, `LM Studio`), Hugging Face & ModelScope mirrors, custom URL resolution (`model resolve`), multi-shard GGUF and directory models with streaming progress and resume, plus multi-root model directories and safe uninstall/disk cleanup for Studio-installed PolyStrata runtimes and downloaded models.
   - **Tasks & live monitoring:** Automatic CLI version check and one-click **Upgrade CLI** (`uv >= 0.13.6`), standard bundles and **Long-Context Speed** testing (`zh-context-speed`: 64K / 128K / 256K), an engine status card with direct Web UI link, live **Resource Curves**, in-app notification inbox, OS notifications, and model-grouped reports.
 - **Scriptable CLI subproject.** The [CLI](cli/README.md) subproject
   (`inferyard`) handles preflight checks, host locking, frozen execution,
@@ -72,9 +72,9 @@ set is reviewed by a person before release; see [task sets](cli/bundles/README.m
 
 | Platform | Studio UI backend | Benchmark & telemetry scope |
 | --- | --- | --- |
-| macOS (Apple Silicon, 12+) | Metal | Single and batch runs, managed PolyStrata (Metal) & `llama.cpp` / `mlx-lm` / `vLLM` / `SGLang`, CPU/RSS/paging and AppleSMC temperature sampling |
-| Windows x64 (10/11) | Direct3D 11 (WARP fallback) | Managed PolyStrata (CUDA/HIP) & `llama.cpp` serial text runs, native process identity and memory sampling |
-| Linux x64 | GTK 3 and OpenGL (CPU fallback) | Single and batch runs, managed PolyStrata (CUDA/HIP) & `llama.cpp` / `vLLM` / `SGLang`, CPU/memory sampling |
+| macOS (Apple Silicon, 12+) | Metal | Single and batch runs, PolyStrata (Metal) & `llama.cpp` / `mlx-lm` / `vLLM` / `SGLang`, CPU/RSS/paging and AppleSMC temperature sampling |
+| Windows x64 (10/11) | Direct3D 11 (WARP fallback) | PolyStrata (CUDA/HIP) & `llama.cpp` serial text runs, native process identity and memory sampling |
+| Linux x64 | GTK 3 and OpenGL (CPU fallback) | Single and batch runs, PolyStrata (CUDA/HIP) & `llama.cpp` / `vLLM` / `SGLang`, CPU/memory sampling |
 
 The table describes implementation scope. Automated native desktop UI verification currently runs on macOS (Apple Silicon); native Windows and Linux window interactions are not yet covered by automated UI tests. See [CLI installation and platform setup](cli/docs/installation.md) (Chinese) for platform setup details.
 

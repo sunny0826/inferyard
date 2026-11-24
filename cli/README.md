@@ -32,7 +32,7 @@ uv tool upgrade inferyard
 | --- | --- |
 | `inferyard init --out DIR` | Export a starter workspace and frozen task bundles (`zh-core` + `zh-svg-pelican` by default, or `--bundle zh-smoke\|zh-context-speed`) |
 | `inferyard device-check --json` | Read-only hardware preflight and hardware-aware starter recommendation (PolyStrata vs. `llama.cpp`) |
-| `inferyard engine prepare-polystrata` | Managed PolyStrata setup (preflight, decoupled Python 3.10–3.13 `.venv`, runtime, model, `installation.json`) |
+| `inferyard engine prepare-polystrata` | Automated local PolyStrata setup (preflight, isolated Python 3.10–3.13 `.venv`, runtime, model, `installation.json`) |
 | `inferyard engine prepare` / `engine check` | Download, verify, and unpack a pinned engine archive, or verify a local engine / `installation.json` read-only |
 | `inferyard engine detect` / `engine init-installation` | Detect local engine binaries/venvs and generate a validated `installation.json` |
 | `inferyard model acquire` / `model resolve` | Resolve or download pinned Hugging Face / ModelScope models (single/multi-shard GGUF or directory models, with resume & proxy) |

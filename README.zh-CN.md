@@ -24,7 +24,7 @@
 - **原生桌面工作台。** [InferYard Studio](studio/README.md) 基于 Go 与 MyGo 构建原生桌面界面，涵盖以下能力：
   - **多语言界面（i18n）：** 内置英文与简体中文（在「设置 → 语言」中切换「跟随系统」/「English」/「简体中文」，无需重启即时生效；支持 `MYGO_LOCALE` 环境变量覆盖及 macOS 应用包本地化）。
   - **桌面交互与自更新：** 浅色 / 深色 / 跟随系统主题实时可视化预览、关闭窗口最小化到系统托盘（后台继续运行测评与下载）、独立作用域的 HTTP(S) 下载代理，以及自动检查 GitHub Releases 更新与一键 SHA-256 校验自更新。
-  - **硬件感知下载与资产管理：** 硬件感知首装推荐（在 Apple Silicon、NVIDIA CUDA、AMD ROCm 硬件上优先推荐托管 **PolyStrata**，具备 4 阶段安装与恢复流程，其余设备平滑回退至 `llama.cpp`）、可扩展多引擎目录（`PolyStrata`、`llama.cpp`、`mlx-lm`、`vLLM`、`SGLang`、`LM Studio`）、Hugging Face 与 ModelScope 镜像、自定义 URL 解析（`model resolve`）、多分片 GGUF 与目录模型流式进度下载与断点续传，以及多根目录模型管理与托管 PolyStrata / 模型安全卸载和磁盘清理。
+  - **硬件感知下载与资产管理：** 硬件感知首装推荐（在 Apple Silicon、NVIDIA CUDA、AMD ROCm 硬件上优先推荐 **PolyStrata**，支持一键 4 阶段引导安装与恢复流程，其余设备平滑回退至 `llama.cpp`）、可扩展多引擎目录（`PolyStrata`、`llama.cpp`、`mlx-lm`、`vLLM`、`SGLang`、`LM Studio`）、Hugging Face 与 ModelScope 镜像、自定义 URL 解析（`model resolve`）、多分片 GGUF 与目录模型流式进度下载与断点续传，以及多根目录模型管理与本地 PolyStrata 运行时及模型的安全卸载和磁盘清理。
   - **任务编排与实时监控：** 自动检测 CLI 版本并支持一键「升级 CLI」（要求 `uv >= 0.13.6`）、常规题包与「长上下文专项」（`zh-context-speed`：64K / 128K / 256K）、引擎状态卡片与 Web UI 直达链接、实时「资源曲线」、应用内通知收件箱与系统通知，以及按模型分组的报告浏览。
 - **可独立调用的 CLI 子项目。** [CLI 子项目](cli/README.zh-CN.md)（`inferyard`）负责设备预检、主机互斥锁、冻结执行、证据封存、离线核验与报告投影，既在 Studio 底层自动运转，也支持终端与脚本直接调用。
 
@@ -54,9 +54,9 @@
 
 | 平台 | Studio 界面后端 | 测评与采集范围 |
 | --- | --- | --- |
-| macOS（Apple Silicon，12+） | Metal | 单次与批量运行、托管 PolyStrata（Metal）与 `llama.cpp` / `mlx-lm` / `vLLM` / `SGLang`、CPU/RSS/换页及 AppleSMC 温度采集 |
-| Windows x64（10/11） | Direct3D 11（支持 WARP 回退） | 托管 PolyStrata（CUDA/HIP）与 `llama.cpp` 串行文本运行、原生进程身份与内存采集 |
-| Linux x64 | GTK 3 与 OpenGL（支持 CPU 渲染回退） | 单次与批量运行、托管 PolyStrata（CUDA/HIP）与 `llama.cpp` / `vLLM` / `SGLang`、CPU/内存采集 |
+| macOS（Apple Silicon，12+） | Metal | 单次与批量运行、PolyStrata（Metal）与 `llama.cpp` / `mlx-lm` / `vLLM` / `SGLang`、CPU/RSS/换页及 AppleSMC 温度采集 |
+| Windows x64（10/11） | Direct3D 11（支持 WARP 回退） | PolyStrata（CUDA/HIP）与 `llama.cpp` 串行文本运行、原生进程身份与内存采集 |
+| Linux x64 | GTK 3 与 OpenGL（支持 CPU 渲染回退） | 单次与批量运行、PolyStrata（CUDA/HIP）与 `llama.cpp` / `vLLM` / `SGLang`、CPU/内存采集 |
 
 表中列出实现范围。自动化原生桌面 UI 验收目前运行在 macOS（Apple Silicon）上，Windows 与 Linux 的原生窗口交互暂未纳入自动化 UI 测试覆盖。各平台准备方式见[安装指南](cli/docs/installation.md)。
 

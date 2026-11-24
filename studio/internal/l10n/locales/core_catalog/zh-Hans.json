@@ -10,7 +10,7 @@
   "core.catalog.reason.cuda_runtime_prepare": "CUDA 运行时归档需配合 inferyard runtime prepare 校验准备。",
   "core.catalog.reason.linux_manual_engine": "Linux 平台请手动下载并注册本地引擎。",
   "core.catalog.reason.lmstudio_manual": "LM Studio 需自行安装并加载模型，再在设置页注册 installation.json 连接已有服务。",
-  "core.catalog.reason.polystrata_managed": "通过 inferyard engine prepare-polystrata 托管安装。",
+  "core.catalog.reason.polystrata_managed": "通过 inferyard engine prepare-polystrata 自动准备本地环境。",
   "core.catalog.reason.python_wheel_venv": "Python wheel 需在独立虚拟环境安装，再在设置页注册 installation.json。",
   "core.catalog.reason.source_archive_venv": "源码归档需在独立虚拟环境构建，再在设置页注册 installation.json。",
   "core.catalog.runtime.win_cuda.title": "CUDA 运行时 · Windows CUDA 12.4 x64",

@@ -15,7 +15,7 @@ xattr -dr com.apple.quarantine /Applications/InferYard\ Studio.app
 ```
 
 1. Open **Tasks** and choose **Prepare Environment** to set up or reuse `uv` (`>= 0.13.6`), `inferyard`, and workspace directories. When a newer CLI is available, Studio detects the version mismatch and offers one-click **Upgrade CLI**.
-2. If local assets are missing, open **Downloads** to follow the hardware-aware starter recommendation (one-click managed **PolyStrata** setup with 4-stage progress/recovery on supported Apple Silicon, NVIDIA CUDA, or AMD ROCm hardware, or switch to lightweight `llama.cpp` + GGUF), browse the engine/model catalog, or configure an existing local engine from **Models**.
+2. If local assets are missing, open **Downloads** to follow the hardware-aware starter recommendation (one-click guided **PolyStrata** setup with 4-stage progress/recovery on supported Apple Silicon, NVIDIA CUDA, or AMD ROCm hardware, or switch to lightweight `llama.cpp` + GGUF), browse the engine/model catalog, or configure an existing local engine from **Models**.
 3. On **Tasks**, select an engine, model, and task sets (`zh-core` + `zh-svg-pelican` by default, or switch to **Long-Context Speed** / `zh-context-speed` for 64K / 128K / 256K), then click **Start Benchmark**. Studio manages local services it launches and stops them on exit, or binds a running local service after PID/identity checks.
 4. Click **View Report** when finished, or navigate between the six views in the sidebar:
 
@@ -23,8 +23,8 @@ xattr -dr com.apple.quarantine /Applications/InferYard\ Studio.app
 | --- | --- |
 | **Tasks** | Environment setup & one-click **Upgrade CLI**, **New Task** launcher for standard bundles & **Long-Context Speed** (`zh-context-speed`: 64K / 128K / 256K), local service lifecycle & PID-verified binding, engine status card with direct Web UI link, live **Resource Curves**, in-app notification inbox & OS notifications |
 | **Reports** | Model-grouped `studio.json` **Benchmark Reports**, quality/latency/throughput/resource breakdowns, **Long-Context Speed** results, and **Run History** table |
-| **Models** | Multi-root model directory management, local engine setup wizard (**Models → Configure Local Engine**), and safe uninstall & disk cleanup for managed PolyStrata installations and downloaded models |
-| **Downloads** | Hardware-aware starter recommendations (managed PolyStrata with 4-stage setup/recovery or `llama.cpp` fallback), extensible multi-engine catalog (`PolyStrata`, `llama.cpp`, `mlx-lm`, `vLLM`, `SGLang`, `LM Studio`), Hugging Face & ModelScope mirrors, custom URL resolution (`model resolve`), multi-shard GGUF and directory model downloads with streaming progress and resume |
+| **Models** | Multi-root model directory management, local engine setup wizard (**Models → Configure Local Engine**), and safe uninstall & disk cleanup for Studio-installed PolyStrata runtimes and downloaded models |
+| **Downloads** | Hardware-aware starter recommendations (guided PolyStrata 4-stage setup/recovery or `llama.cpp` fallback), extensible multi-engine catalog (`PolyStrata`, `llama.cpp`, `mlx-lm`, `vLLM`, `SGLang`, `LM Studio`), Hugging Face & ModelScope mirrors, custom URL resolution (`model resolve`), multi-shard GGUF and directory model downloads with streaming progress and resume |
 | **Device** | Read-only hardware readiness inspection (`device-check`), CPU/GPU/memory summary, and starter recommendation details |
 | **Settings** | **Appearance** (`Light` / `Dark` / `Follow System` with live visual previews), **Language** (`Follow System` / `English` / `简体中文`), **System Tray** (minimize to tray on window close to keep background runs/downloads active), **Paths**, **Existing Local Engines**, **Download Directory Names**, **Network & Proxy** (scoped HTTP(S) download proxy), and **Software Update** (automatic GitHub Releases check & one-click SHA-256 verified self-update) |
 

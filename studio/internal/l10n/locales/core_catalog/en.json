@@ -10,7 +10,7 @@
   "core.catalog.reason.cuda_runtime_prepare": "The CUDA runtime archive must be verified and prepared with inferyard runtime prepare.",
   "core.catalog.reason.linux_manual_engine": "On Linux, download manually and register the local engine.",
   "core.catalog.reason.lmstudio_manual": "Install LM Studio and load a model separately, then register installation.json in Settings to connect to the running service.",
-  "core.catalog.reason.polystrata_managed": "Managed installation via inferyard engine prepare-polystrata.",
+  "core.catalog.reason.polystrata_managed": "Automated local setup via inferyard engine prepare-polystrata.",
   "core.catalog.reason.python_wheel_venv": "Install the Python wheel in a dedicated virtual environment, then register installation.json in Settings.",
   "core.catalog.reason.source_archive_venv": "Build the source archive in a dedicated virtual environment, then register installation.json in Settings.",
   "core.catalog.runtime.win_cuda.title": "CUDA Runtime · Windows CUDA 12.4 x64",

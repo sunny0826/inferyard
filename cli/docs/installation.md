@@ -58,7 +58,7 @@ inferyard model acquire \
 
 如需私有仓库鉴权，通过 `--token-env ENV_VAR_NAME` 仅传入环境变量名。下载固定版本引擎归档可使用 `inferyard engine acquire` / `inferyard engine prepare`（同样支持 `--proxy-origin`、`--resume`、`--progress-stream`）。
 
-### 托管安装 PolyStrata（推荐）
+### 自动准备本地 PolyStrata（推荐）
 
 在受支持的 macOS（Apple Silicon）、Linux x64 或 Windows x64 设备上，可直接通过一条命令自动完成预检、独立 Python 3.10–3.13 虚拟环境与运行时构建、模型下载并生成 `installation.json`：
 
@@ -129,7 +129,7 @@ inferyard config create \
 
 ### Windows x64：使用固定 `llama.cpp`（Prism）归档
 
-除上述托管 PolyStrata 外，如使用 Prism 固定版本 `prism-b10743-adfffbe` 归档，可校验解包后创建候选（CUDA 12.4 需额外传入 `--runtime-archive`）：
+除上述本地 PolyStrata 自动安装方式外，如使用 Prism 固定版本 `prism-b10743-adfffbe` 归档，可校验解包后创建候选（CUDA 12.4 需额外传入 `--runtime-archive`）：
 
 ```powershell
 # CPU
