@@ -22,6 +22,15 @@ const (
 
 var DefaultBundles = []string{DefaultBundleCore, DefaultBundlePelican}
 
+func CanonicalBundleName(id string) string {
+	switch id {
+	case "zh-core-v2":
+		return DefaultBundleCore
+	default:
+		return id
+	}
+}
+
 var contextSpeedCases = map[int]string{
 	ContextSpeed64K:  "context-speed-64k",
 	ContextSpeed128K: "context-speed-128k",

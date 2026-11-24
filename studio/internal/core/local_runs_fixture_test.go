@@ -20,6 +20,8 @@ func runLocalQueueHelper(args []string) {
 	_, port := startupAddress(args)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/models", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{"data":[]}`)) })
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{"service":"strata","loaded":true}`)) })
+	mux.HandleFunc("/unload", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{"status":"unloaded"}`)) })
 	if http.ListenAndServe("127.0.0.1:"+strconv.Itoa(port), mux) != nil {
 		os.Exit(2)
 	}
@@ -84,7 +86,11 @@ func (f *localQueueFixture) writeConfig(path, bundle string) error {
 	if err := os.MkdirAll(filepath.Dir(bundlePath), 0700); err != nil {
 		return err
 	}
-	raw, _ := json.Marshal(map[string]string{"bundle_id": bundle})
+	bundleID := bundle
+	if bundle == inferyard.DefaultBundleCore {
+		bundleID = "zh-core-v2"
+	}
+	raw, _ := json.Marshal(map[string]string{"bundle_id": bundleID})
 	if err := os.WriteFile(bundlePath, raw, 0600); err != nil {
 		return err
 	}
@@ -96,7 +102,7 @@ func (f *localQueueFixture) description() inferyard.Execution {
 	port := strings.TrimPrefix(f.endpoint, "http://127.0.0.1:")
 	launch := map[string]any{"kind": "direct_process", "argv": []string{os.Args[0], "local-queue-helper", "--host", "127.0.0.1", "--port", port}, "working_directory": f.workspace, "environment": map[string]string{}, "ownership": "operator"}
 	kind := "directory"
-	if f.family == "llama-cpp" || f.family == "lmstudio" {
+	if f.family == "llama-cpp" || f.family == "lmstudio" || f.family == inferyard.PolystrataFamily {
 		kind = "gguf"
 	}
 	if f.family == "lmstudio" {

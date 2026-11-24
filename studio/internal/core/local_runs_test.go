@@ -12,7 +12,7 @@ func TestLocalQueueStartsFreshProcessPerBundle(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("local process isolation is unavailable on Windows")
 	}
-	for _, family := range []string{"llama-cpp", "mlx-lm"} {
+	for _, family := range []string{"llama-cpp", "mlx-lm", "polystrata"} {
 		t.Run(family, func(t *testing.T) {
 			f := newLocalQueueFixture(t, family)
 			tasks, failure := f.s.StartCandidateRuns(CandidateRunsRequest{Candidates: f.candidates})
@@ -75,5 +75,15 @@ func TestLocalQueueLMStudioRequiresFreshExternalIdentity(t *testing.T) {
 	}
 	if failure := f.s.stopEngineForHandoff(context.Background()); failure != nil {
 		t.Fatal(failure)
+	}
+}
+
+func TestStartCandidateRunsRejectsMismatchedBundleID(t *testing.T) {
+	f := newLocalQueueFixture(t, "polystrata")
+	mismatched := []CandidateRun{
+		{CandidatePath: f.candidates[1].CandidatePath, Bundle: "zh-core", Family: "polystrata"},
+	}
+	if _, failure := f.s.StartCandidateRuns(CandidateRunsRequest{Candidates: mismatched, AllowSingleBundle: true}); failure == nil || failure.Code != "invalid_request" {
+		t.Fatalf("expected invalid_request for mismatched bundle, got %#v", failure)
 	}
 }
