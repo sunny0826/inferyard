@@ -271,11 +271,13 @@ func studioToasts(c *ui.Context) {
 		parts := ui.ToastBase(c, toast)
 		paused := viewport.Hovered() || viewport.FocusWithin()
 
-		padRight := float32(12)
+		padRight := t.Density.Stack
 		if data.ShowClose || toast.Action != "" {
-			padRight = 6
+			padRight = t.Density.Row
 		}
-		pill := parts.Root.MinHeight(40).Padding(6, padRight, 6, 8).Radius(16).Clip().
+		pill := parts.Root.MinHeight(40).
+			Padding(t.Density.Row, padRight, t.Density.Row, t.Density.Row).
+			Radius(t.Radius.LG).Clip().
 			LinearGradient(ui.LinearGradient{
 				From:  surfaceFrom,
 				To:    surfaceTo,
@@ -342,9 +344,10 @@ func studioToastIcon(c *ui.Context, host ui.Element, data toastRenderData, pause
 		}
 	}
 
+	innerRadius := concentricRadius(t.Radius.LG, t.Density.Row)
 	ui.Box(c).Size(24, 24).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
 		slot := ui.Box(c.Key(fmt.Sprintf("toast-icon-%d-%d", data.Kind, data.Phase))).
-			Size(24, 24).Radius(8).AlignItems(ui.Center).Justify(ui.Center).
+			Size(24, 24).Radius(innerRadius).AlignItems(ui.Center).Justify(ui.Center).
 			Transition(iconTransition)
 
 		switch data.Kind {
@@ -382,13 +385,14 @@ func studioToastBody(c *ui.Context, parts ui.ToastParts, toast ui.Toast, data to
 		}
 	}
 
+	innerRadius := concentricRadius(t.Radius.LG, t.Density.Row)
 	ui.Row(c.Key(fmt.Sprintf("toast-body-%d", data.Phase))).
-		AlignItems(ui.Center).Gap(6).Transition(contentTransition).Children(func() {
+		AlignItems(ui.Center).Gap(t.Density.Row).Transition(contentTransition).Children(func() {
 		ui.Text(c, toast.Title).FontSize(14).FixedLineHeight(20).TextColor(t.Color.FgPrimary).SingleLine()
 		if toast.Action != "" || data.ShowClose {
-			ui.Row(c).AlignItems(ui.Center).Gap(2).Children(func() {
+			ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 				if toast.Action != "" {
-					btn := parts.ActionButton().Height(28).Padding(0, 10).Radius(10).
+					btn := parts.ActionButton().Height(28).Padding(0, t.Density.Stack).Radius(innerRadius).
 						AlignItems(ui.Center).Justify(ui.Center).Label(toast.Action)
 					if btn.Pressed() {
 						btn.Background(t.Color.AccentSelection)
@@ -400,7 +404,7 @@ func studioToastBody(c *ui.Context, parts ui.ToastParts, toast ui.Toast, data to
 					})
 				}
 				if data.ShowClose {
-					closeBtn := parts.CloseButton().Size(28, 28).Radius(10).
+					closeBtn := parts.CloseButton().Size(28, 28).Radius(innerRadius).
 						AlignItems(ui.Center).Justify(ui.Center).Label(tr(c, "common.toast.dismiss"))
 					if closeBtn.Hovered() {
 						closeBtn.Background(t.Color.SurfaceHover)
@@ -478,6 +482,7 @@ func studioCountdownRing(c *ui.Context, host ui.Element, data toastRenderData, p
 }
 
 func studioToastSheenOverlay(c *ui.Context, state *toastSheenState, dark bool) {
+	radius := tokens(c).Radius.LG
 	ui.Box(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).PassThrough().Draw(func(p *ui.Painter, r ui.Rect) {
 		if state.start.IsZero() || r.W <= 0 || r.H <= 0 {
 			return
@@ -495,7 +500,7 @@ func studioToastSheenOverlay(c *ui.Context, state *toastSheenState, dark bool) {
 		if dark {
 			alpha = 0.14
 		}
-		p.Clip(r, 16, func() {
+		p.Clip(r, radius, func() {
 			p.FillGradient(ui.Rect{X: x, Y: r.Y, W: bandW, H: r.H}, ui.LinearGradient{
 				Angle: 90,
 				Stops: []ui.GradientStop{

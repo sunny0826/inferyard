@@ -15,11 +15,14 @@ func card(c *ui.Context, title string, fn func()) {
 }
 
 func statusBadge(c *ui.Context, label string, color ui.Color) ui.Element {
-	t := c.Theme()
-	background, foreground := badgeSurfaceColors(t, color)
-	badge := components.Badge(c, label).TextColor(foreground).Background(background)
+	theme := c.Theme()
+	t := tokens(c)
+	background, foreground := badgeSurfaceColors(theme, color)
+	badge := components.Badge(c, label).
+		Padding(t.Density.Tight, t.Density.Row).Radius(t.Radius.Full).
+		TextColor(foreground).Background(background)
 	if c.Preferences().HighContrast {
-		badge.Background(t.Surface).Border(1, color)
+		badge.Background(theme.Surface).Border(1, color)
 	}
 	return badge
 }
@@ -145,7 +148,7 @@ func stepTrack(c *ui.Context, number, title string, fn func()) {
 	size := max(theme.Space(7), theme.Rem(1.6))
 	ui.Row(c).AlignItems(ui.Stretch).Gap(t.Density.Section).Label(trf(c, "common.step.label", "number", number)).Children(func() {
 		ui.Column(c).MinWidth(size).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-			ui.Box(c).Label(trf(c, "common.step.number_label", "number", number)).Size(size, size).Radius(size / 2).Background(stateColor(c, stateActive)).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+			ui.Box(c).Label(trf(c, "common.step.number_label", "number", number)).Size(size, size).Radius(t.Radius.Full).Background(stateColor(c, stateActive)).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
 				ui.Text(c, number).Bold().FontFeatures("tnum").TextColor(theme.Surface)
 			})
 			ui.Box(c).Width(theme.Space(.5)).Grow(1).Background(theme.Border)
@@ -343,4 +346,55 @@ func searchableSelectField(c *ui.Context, name, description, placeholder, emptyF
 	if description != "" {
 		f.Description(description)
 	}
+}
+
+func studioDialog(c *ui.Context, open *bool, options components.DialogOptions, build func(panel ui.Element)) ui.Element {
+	t := tokens(c)
+	return components.Dialog(c, open, options, func(panel ui.Element) {
+		panel.Padding(t.Density.Section).Gap(t.Density.Stack).Radius(t.Radius.Modal)
+		if build != nil {
+			build(panel)
+		}
+	})
+}
+
+func studioAlertDialog(c *ui.Context, open *bool, options components.AlertDialogOptions) components.DialogResult {
+	result := components.DialogNone
+	wasOpen := *open
+	opts := options.DialogOptions
+	opts.Label = options.Title
+	t := tokens(c)
+	studioDialog(c, open, opts, func(panel ui.Element) {
+		panel.Role(ui.RoleAlertDialog)
+		if options.Title != "" {
+			components.Text(c, options.Title).Bold()
+		}
+		if options.Message != "" {
+			components.Text(c, options.Message).TextColor(t.Color.FgSecondary)
+		}
+		ui.Row(c).FillWidth().Wrap().Justify(ui.End).Gap(t.Density.Row).Children(func() {
+			if !options.HideCancel && button(c, options.CancelLabel).Clicked() {
+				result = components.DialogCancelled
+				*open = false
+			}
+			if primaryButton(c, options.ConfirmLabel).Clicked() {
+				result = components.DialogConfirmed
+				*open = false
+			}
+		})
+	})
+	if wasOpen && !*open && result == components.DialogNone {
+		result = components.DialogCancelled
+	}
+	return result
+}
+
+func studioPopover(c *ui.Context, anchor ui.Element, open *bool, build func(panel ui.Element)) ui.Element {
+	t := tokens(c)
+	return components.Popover(c, anchor, open, func(panel ui.Element) {
+		panel.Padding(t.Card.Padding).Gap(t.Density.Stack).Radius(t.Radius.Surface)
+		if build != nil {
+			build(panel)
+		}
+	})
 }

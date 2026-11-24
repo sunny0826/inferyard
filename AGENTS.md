@@ -53,8 +53,8 @@ first read `.agents/skills/pluvy/SKILL.md` and follow it.
 
 执行发版或发版预演时，先读取并遵循 `.agents/skills/release/SKILL.md`：
 
-- 入口命令：`mise run release patch --dry-run`（支持 `patch` / `minor` / `major` / `X.Y.Z`、`--notes`、`--prepare-only`）。
-- 必须在干净且已同步 `origin/main` 的 `main` 分支运行；Agent 须先展示 `--dry-run` 预览并获用户明确确认后，再执行 `mise run release <target>`。
+- 入口命令：`mise run release <target>`（默认 `patch`，支持 `minor` / `major` / `X.Y.Z`、`--notes`、`--prepare-only`、`--dry-run`）。
+- 必须在干净且已同步 `origin/main` 的 `main` 分支运行；收到用户明确发版指令后，Agent 直接执行 `mise run release <target>` 发布，无需先跑 `--dry-run` 等待二次确认（仅在存在前置阻塞项或用户明确要求预演时停下汇报）。
 - 流程通过仓库所有者 `gh` 账号自动同步 4 处版本号与 `cli/CHANGELOG.md`、提并 squash 合并发布 PR、推送 `vX.Y.Z` tag，由 `.github/workflows/release.yml` 自动拼装 Release Notes 并直接发布正式 GitHub Release 与 PyPI（不产生 bot 提交）。
 
 ## 交付规则
@@ -63,5 +63,5 @@ first read `.agents/skills/pluvy/SKILL.md` and follow it.
 - **每次提交 PR 前必须执行文案与文档检查**（遵循 [CONTRIBUTING.md](CONTRIBUTING.md) 与 [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md)）：
   - 若改动涉及 Studio 用户可见文本，必须同步更新 `studio/internal/l10n/locales/<domain>/{en,zh-Hans}.json`（禁止硬编码中/英文 UI 字符串），并运行 `mise run test:studio` 与 `mise run test:studio:preview` 校验中英文 key/占位符一致与无硬编码中文回归。
   - 若改动影响 CLI 命令/参数、Studio 页面/设置、安装/运行/发版流程或指标口径，必须同步检查并更新对应文档（`README.md` / `README.zh-CN.md`、`studio/README.md`、`cli/README*.md`、`cli/docs/*`、`studio/tests/ui/README.md`），并确保相对链接有效；若确无文档影响，在 PR 清单中显式确认。
-- 未经用户明确同意，不执行 `git push`、创建/合并/关闭 PR 或推送发布 tag。PR 合并使用仓库所有者账号（GitHub 网页或本地 `gh` CLI），不允许 bot 作者提交。
+- 除执行用户明确下达的发版流程外，未经用户明确同意，不执行 `git push`、创建/合并/关闭 PR 或推送发布 tag。PR 合并使用仓库所有者账号（GitHub 网页或本地 `gh` CLI），不允许 bot 作者提交。
 - 报告变更时简要说明改动内容、实际运行的检查及未验证范围。

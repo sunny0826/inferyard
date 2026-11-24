@@ -48,19 +48,20 @@ func (s *viewState) updateHeaderBadge(c *ui.Context) {
 	if label == "" {
 		return
 	}
-	t := c.Theme()
+	theme := c.Theme()
+	t := tokens(c)
 	color := stateColor(c, kind)
 	b := components.Button(c, "", components.ButtonGhost).
-		Padding(t.Space(.75), t.Space(1.5)).Radius(t.Space(4.5)).
+		Padding(t.Density.Tight, t.Density.Row).Radius(t.Radius.Full).
 		Label(label)
 	b.Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Gap(t.Space(.75)).Children(func() {
-			el := components.Icon(c, icon).Size(t.Space(4), t.Space(4)).TextColor(color)
+		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+			el := components.Icon(c, icon).Size(theme.Space(4), theme.Space(4)).TextColor(color)
 			if animated && !c.Preferences().ReduceMotion {
 				phase := el.Loop("update-activity", 1400*time.Millisecond, ui.Linear)
 				el.Opacity(.65 + .35*float32((math.Sin(float64(phase)*2*math.Pi)+1)/2))
 			}
-			ui.Text(c, label).FontSize(tokens(c).Type.Caption).SingleLine().TextColor(color)
+			ui.Text(c, label).FontSize(t.Type.Caption).SingleLine().TextColor(color)
 		})
 	})
 	if b.Clicked() {
@@ -100,7 +101,7 @@ func (s *viewState) updateDialog(c *ui.Context) {
 	t := tokens(c)
 	loc := contextLocale(c)
 	c.Key("update-dialog")
-	components.Dialog(c, &s.updateDialogOpen, components.DialogOptions{
+	studioDialog(c, &s.updateDialogOpen, components.DialogOptions{
 		Label:                tr(c, "update.title"),
 		DisableBackdropClose: st.State == core.UpdateApplying,
 		DisableEscapeClose:   st.State == core.UpdateApplying,
@@ -260,12 +261,14 @@ func (s *viewState) updateReadyPrompt(c *ui.Context) {
 		return
 	}
 	t := tokens(c)
+	promptPad := t.Density.Section
+	promptBtnRadius := concentricRadius(t.Radius.Modal, promptPad)
 	ui.Overlay(c, func() {
-		ui.Box(c).Fill().PassThrough().AlignItems(ui.End).Justify(ui.End).Padding(16).Children(func() {
+		ui.Box(c).Fill().PassThrough().AlignItems(ui.End).Justify(ui.End).Padding(t.Density.Section).Children(func() {
 			card := applyShadow(
 				ui.Column(c.Key("update-ready-prompt")).
 					Width(340).MaxWidthPercent(90).
-					Padding(18).Gap(10).Radius(16).
+					Padding(promptPad).Gap(t.Density.Stack).Radius(t.Radius.Modal).
 					Background(t.Color.Elevated).
 					Border(1, t.Color.BorderDefault),
 				t.Elevation.LG,
@@ -276,7 +279,7 @@ func (s *viewState) updateReadyPrompt(c *ui.Context) {
 					FontSize(t.Type.Body).TextColor(t.Color.FgSecondary)
 				notesLabel := tr(c, "update.prompt.view_changelog")
 				notesBtn := components.Button(c, "", components.ButtonGhost).
-					Padding(2, 0).AlignSelf(ui.Start).Label(notesLabel)
+					Padding(0).Radius(promptBtnRadius).AlignSelf(ui.Start).Label(notesLabel)
 				notesBtn.Children(func() {
 					ui.Text(c, notesLabel).FontSize(t.Type.Body).
 						TextColor(t.Color.Accent).Underline().UnderlineOffset(2)
@@ -284,10 +287,10 @@ func (s *viewState) updateReadyPrompt(c *ui.Context) {
 				if notesBtn.Clicked() {
 					s.updateDialogOpen = true
 				}
-				ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Gap(12).Padding(6, 0, 0, 0).Children(func() {
+				ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Gap(t.Density.Stack).Padding(t.Density.Row, 0, 0, 0).Children(func() {
 					laterLabel := tr(c, "update.action.later")
 					laterBtn := components.Button(c, "", components.ButtonGhost).
-						Padding(8, 12).Radius(10).Label(laterLabel)
+						Padding(t.Density.Row, t.Density.Stack).Radius(promptBtnRadius).Label(laterLabel)
 					laterBtn.Children(func() {
 						ui.Text(c, laterLabel).FontSize(t.Type.Body).TextColor(t.Color.FgSecondary)
 					})
@@ -295,7 +298,7 @@ func (s *viewState) updateReadyPrompt(c *ui.Context) {
 						s.dismissUpdateReadyPrompt(st)
 					}
 					restartBtn := components.Button(c, tr(c, "update.action.update_and_restart"), components.ButtonPrimary).
-						Padding(8, 18).Radius(10)
+						Padding(t.Density.Row, t.Density.Section).Radius(promptBtnRadius)
 					if restartBtn.Clicked() {
 						if s.effectiveUpdateWorkloads().Any() {
 							s.updateDialogOpen = true

@@ -370,7 +370,7 @@ func (s *viewState) engineEndpointBar(c *ui.Context, state core.EngineState) {
 					ui.Text(c, uiURL).FontSize(t.Type.Caption).FontFeatures("tnum").
 						TextColor(t.Color.Info.Fg).Grow(1).MinWidth(0).SingleLine()
 					ui.Row(c).AlignItems(ui.Center).Gap(3).
-						Padding(2, 7).Radius(t.Radius.SM).Background(t.Color.Info.SubtleBg).Shrink(0).Children(func() {
+						Padding(2, 7).Radius(t.Radius.XS).Background(t.Color.Info.SubtleBg).Shrink(0).Children(func() {
 						ui.Text(c, tr(c, "engine.action.open_webui")).FontSize(t.Type.ShellLabel).Bold().
 							TextColor(t.Color.Info.Fg).SingleLine()
 						components.Icon(c, lucide.ArrowUpRight).Size(12, 12).TextColor(t.Color.Info.Fg)

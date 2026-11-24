@@ -88,12 +88,12 @@ func newTaskButton(c *ui.Context, disabled bool) ui.Element {
 	}
 	label := tr(c, "shell.nav.new_task")
 	b := components.Button(c, "", variant).FillWidth().Label(label).
-		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.MD)
+		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.Control)
 	if disabled {
 		b.Background(t.Color.Surface.Alpha(.65)).Border(1, t.Color.BorderDefault).Disabled(true)
 	}
 	b.Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Justify(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Justify(ui.Center).Gap(t.Density.Row).Children(func() {
 			components.Icon(c, lucide.Plus).Size(14, 14).TextColor(fg)
 			ui.Text(c, label).Bold().FontSize(t.Type.Body).TextColor(fg).SingleLine()
 		})
