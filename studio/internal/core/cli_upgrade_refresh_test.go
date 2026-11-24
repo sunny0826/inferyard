@@ -141,6 +141,9 @@ func TestInstallCLIDoesNotReuseOutdatedBuildMetadata(t *testing.T) {
 		return os.Stat(p)
 	}
 	installCommandOutput = func(_ context.Context, _ string, args ...string) ([]byte, error) {
+		if len(args) == 1 && args[0] == "--version" {
+			return []byte("uv " + uvRelease + "\n"), nil
+		}
 		if len(args) >= 2 && args[0] == "tool" && args[1] == "install" {
 			if err := os.WriteFile(installed, []byte("good"), 0o755); err != nil {
 				t.Fatal(err)
@@ -205,6 +208,9 @@ func TestInPlaceCLIUpgradeInvalidatesInFlightDeviceAndAssets(t *testing.T) {
 	var oldDone sync.WaitGroup
 
 	installCommandOutput = func(_ context.Context, _ string, args ...string) ([]byte, error) {
+		if len(args) == 1 && args[0] == "--version" {
+			return []byte("uv " + uvRelease + "\n"), nil
+		}
 		if len(args) >= 2 && args[0] == "tool" && args[1] == "install" {
 			if err := os.WriteFile(cliPath, []byte("#!/bin/sh\n# upgraded\n"), 0o755); err != nil {
 				t.Fatal(err)

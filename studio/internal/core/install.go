@@ -98,29 +98,91 @@ func FindCLI() string {
 	return ""
 }
 
-func FindUV(toolsDir string) string {
-	candidates := []string{}
+func uvCandidatePaths(toolsDir string) []string {
+	raw := []string{}
 	if p, err := installLookPath(uvBinaryName()); err == nil {
-		candidates = append(candidates, p)
+		raw = append(raw, p)
 	}
 	if strings.TrimSpace(toolsDir) != "" {
-		candidates = append(candidates, filepath.Join(toolsDir, uvBinaryName()))
+		raw = append(raw, filepath.Join(toolsDir, uvBinaryName()))
 	}
 	if home, err := os.UserHomeDir(); err == nil {
-		candidates = append(candidates,
+		raw = append(raw,
 			filepath.Join(home, ".local", "bin", uvBinaryName()),
 			filepath.Join(home, ".cargo", "bin", uvBinaryName()),
 		)
 	}
 	for _, dir := range extraBinDirs() {
-		candidates = append(candidates, filepath.Join(dir, uvBinaryName()))
+		raw = append(raw, filepath.Join(dir, uvBinaryName()))
 	}
-	for _, p := range candidates {
-		if st, err := installStat(p); err == nil && !st.IsDir() {
-			return p
+	seen := map[string]bool{}
+	var out []string
+	for _, p := range raw {
+		st, err := installStat(p)
+		if err != nil || st.IsDir() {
+			continue
 		}
+		key := p
+		if abs, err := filepath.Abs(p); err == nil {
+			key = abs
+		}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, p)
+	}
+	return out
+}
+
+func FindUV(toolsDir string) string {
+	if paths := uvCandidatePaths(toolsDir); len(paths) > 0 {
+		return paths[0]
 	}
 	return ""
+}
+
+func parseUVVersion(raw string) (semver, bool) {
+	fields := strings.Fields(strings.TrimSpace(raw))
+	if len(fields) < 2 {
+		return semver{}, false
+	}
+	exe := strings.ToLower(fields[0])
+	if exe != "uv" && exe != "uv.exe" {
+		return semver{}, false
+	}
+	verToken := fields[1]
+	if base, _, ok := strings.Cut(verToken, "+"); ok {
+		verToken = base
+	}
+	return parseSemver(verToken)
+}
+
+func probeUVVersion(ctx context.Context, path string) (semver, bool) {
+	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	out, err := installCommandOutput(probeCtx, path, "--version")
+	if err != nil {
+		return semver{}, false
+	}
+	return parseUVVersion(string(out))
+}
+
+func findCompatibleUV(ctx context.Context, toolsDir string) (string, bool) {
+	minVer, hasMin := parseSemver(uvRelease)
+	candidates := uvCandidatePaths(toolsDir)
+	sawIncompatible := false
+	for _, cand := range candidates {
+		if !hasMin {
+			return cand, false
+		}
+		ver, ok := probeUVVersion(ctx, cand)
+		if ok && compareSemver(ver, minVer) >= 0 {
+			return cand, sawIncompatible
+		}
+		sawIncompatible = true
+	}
+	return "", sawIncompatible
 }
 
 func uvAsset() (string, *ApiError) {
@@ -324,9 +386,13 @@ func (s *Service) InstallCLI(ctx context.Context, onStatus func(string)) (string
 	if _, ok := parseSemver(targetVersion); !ok {
 		return "", &ApiError{Code: "install_version_unknown", Message: "无法确定要安装的 CLI 版本。"}
 	}
-	uv := FindUV(toolsDir)
+	uv, sawIncompatibleUV := findCompatibleUV(ctx, toolsDir)
 	if uv == "" {
-		report("未找到 uv，正在下载独立工具…")
+		if sawIncompatibleUV {
+			report("当前 uv 版本过旧，正在下载独立工具…")
+		} else {
+			report("未找到 uv，正在下载独立工具…")
+		}
 		var e *ApiError
 		uv, e = downloadUV(ctx, toolsDir)
 		if e != nil {
