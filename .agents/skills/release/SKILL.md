@@ -13,52 +13,35 @@ description: "Run InferYard's fast PR-compliant release workflow (`mise run rele
 - **版本约束**：CLI 与 Studio 必须保持同一严格数字版本 `X.Y.Z`（Windows Inno Setup 要求，不支持 `v` 前缀或 `-rc` 后缀）。
 - **不可逆边界**：推送 `vX.Y.Z` tag 后，`.github/workflows/release.yml` 会直接发布正式 GitHub Release 并推送至 PyPI（PyPI 已发布版本不可撤回或覆盖）。
 
-## 标准执行步骤（必须先预览再确认）
+## 标准执行步骤（直接执行发版）
 
-### 1. 确认目标版本并只读预览
+### 1. 确定目标版本并直接执行
 
-默认目标为 `patch`，也可由用户指定 `minor`、`major` 或 `X.Y.Z`。先运行只读预览：
+默认目标为 `patch`，也可由用户指定 `minor`、`major` 或 `X.Y.Z`（若用户输入带 `v` 前缀如 `v0.0.11`，传参时去掉 `v`）。
 
-```sh
-mise run release <target> --dry-run
-```
-
-- `cli/CHANGELOG.md` 必须使用英文；如需润色或精简自上个 tag 起的提交摘要，先拟好英文要点并通过多个 `--notes "..."` 参数重新 `--dry-run` 预览。
-
-### 2. 展示摘要并获取明确确认
-
-向用户汇报：
-- 版本变更：`current -> next`（及 tag `vX.Y.Z`）
-- 将同步修改的 5 个文件：`cli/pyproject.toml`、`cli/src/inferyard/__init__.py`、`cli/uv.lock`、`cli/CHANGELOG.md`、`studio/mygo.config.ts`
-- Changelog 预览条目
-- `dry-run` 输出的任意前置警告
-
-**必须等待用户明确同意后**，才可执行写操作与远端发布。
-
-### 3. 检查前置阻塞项
-
-若 `dry-run` 或前置检查提示以下任一情况，立即停止并报告阻塞项，**不得擅自 `git reset`、`git stash`、丢弃未提交改动或强推**：
-- 当前不在 `main` 分支
-- 工作区存在未提交改动
-- 本地 `main` 与 `origin/main` 未对齐
-- 目标 tag `vX.Y.Z` 或分支 `chore/release-vX.Y.Z` 已存在
-- 本地 `gh` 未登录仓库所有者账号
-
-### 4. 执行发版
-
-获得用户明确确认后，在仓库根目录执行：
+收到用户明确发版请求后，**无需先展示 `--dry-run` 预览或二次确认**，直接在仓库根目录执行：
 
 ```sh
 mise run release <target>
 ```
 
 可选参数（按用户需求选用）：
-- `--notes "..."`：覆盖自动收集的提交列表（可重复传入）
+- `--notes "..."`：覆盖自动收集的提交列表（可重复传入；`cli/CHANGELOG.md` 必须使用英文）
+- `--dry-run`：仅在用户明确要求预演/预览发版内容时使用
 - `--prepare-only`：仅在本地 `chore/release-vX.Y.Z` 分支完成改版、快检与提交，不 push、不调用 `gh`
 - `--wait-pr-checks`：开 PR 后等待 PR 检查通过再执行 squash 合并
 - `--no-watch`：推送 tag 后立即返回，不阻塞等待 `release.yml`
 
-该命令使用本地仓库所有者 `gh` 账号自动完成：切出 `chore/release-vX.Y.Z` → 同步 4 处版本号与 `cli/CHANGELOG.md` → 运行本地快检（`uv lock --check`、`ruff`、schema、`studio/scripts` 与 `tools` 单测）→ 提交并开 PR → `--squash --delete-branch` 合并回 `main` → 核对 `HEAD == mergeCommit.oid` → 推送 `vX.Y.Z` tag 并监听 `.github/workflows/release.yml`。
+该命令使用本地仓库所有者 `gh` 账号自动完成：切出 `chore/release-vX.Y.Z` → 同步 4 处版本号与 `cli/CHANGELOG.md`（`cli/pyproject.toml`、`cli/src/inferyard/__init__.py`、`cli/uv.lock`、`cli/CHANGELOG.md`、`studio/mygo.config.ts`）→ 运行本地快检（`uv lock --check`、`ruff`、schema、`studio/scripts` 与 `tools` 单测）→ 提交并开 PR → `--squash --delete-branch` 合并回 `main` → 核对 `HEAD == mergeCommit.oid` → 推送 `vX.Y.Z` tag 并监听 `.github/workflows/release.yml`。
+
+### 2. 前置阻塞项处理
+
+若前置检查命中以下任一情况，立即停止并报告阻塞项，**不得擅自 `git reset`、`git stash`、丢弃未提交改动或强推**：
+- 当前不在 `main` 分支
+- 工作区存在未提交改动
+- 本地 `main` 与 `origin/main` 未对齐
+- 目标 tag `vX.Y.Z` 或分支 `chore/release-vX.Y.Z` 已存在
+- 本地 `gh` 未登录仓库所有者账号
 
 ## 异常恢复与结果汇报
 
