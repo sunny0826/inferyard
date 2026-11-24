@@ -122,6 +122,8 @@ class CommandRequest:
     proxy_origin: str | None = None
     protect_pids: list[int] | None = None
     workspace: Path | None = None
+    results_root: Path | None = None
+    reports_root: Path | None = None
     temperature_stop_override_reason: str | None = None
     prompt_cache: str | None = None
 

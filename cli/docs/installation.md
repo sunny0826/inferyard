@@ -35,7 +35,7 @@ inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight/dev
 
 - 省略 `--bundle` 时导出默认双题包 `zh-core` 与 `zh-svg-pelican`；显式传入 `--bundle` 可选 `zh-smoke`、`zh-core`、`zh-svg-pelican` 或 `zh-context-speed`。
 - 所有准备与报告命令的 `--out` 均须指向不存在的新目录（不覆盖历史产物）。
-- 工作区当前阶段可随时用 `inferyard progress --workspace bench-ops` 查询；已有本地资产可通过 `inferyard assets scan` 只读扫描，正在运行的本机推理服务可通过 `inferyard service discover` 只读发现。
+- 工作区当前阶段可随时用 `inferyard progress --workspace bench-ops` 查询（若结果或报告目录位于工作区外，可附加 `--results DIR` / `--reports DIR`）；已有本地资产可通过 `inferyard assets scan` 只读扫描，正在运行的本机推理服务可通过 `inferyard service discover` 只读发现。
 - `inferyard device-check --json` 同时输出硬件感知首装推荐（`starter_recommendation`）：在满足条件的 Apple Silicon、NVIDIA CUDA 或 AMD ROCm（`hip`）设备上优先推荐 **PolyStrata**，其余环境平滑回退至 `llama.cpp`。
 
 ### 模型解析与下载（`model resolve` / `model acquire`）

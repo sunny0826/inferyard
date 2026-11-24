@@ -14,7 +14,7 @@ On macOS, open the downloaded `.dmg` from [Releases](https://github.com/sunny082
 xattr -dr com.apple.quarantine /Applications/InferYard\ Studio.app
 ```
 
-1. Open **Tasks** and choose **Prepare Environment** to set up or reuse `uv` (`>= 0.13.6`), `inferyard`, and workspace directories. After upgrading Studio, an outdated CLI is upgraded automatically in the background, and an error banner is shown only if the CLI upgrade fails.
+1. Open **Tasks** and choose **Prepare Environment** to set up or reuse `uv` (`>= 0.13.6`), `inferyard`, and default directories (`~/.inferyard/workspace`, `~/.inferyard/results`, `~/.inferyard/models`). After upgrading Studio, an outdated CLI is upgraded automatically in the background, and an error banner is shown only if the CLI upgrade fails.
 2. If local assets are missing, open **Downloads** to follow the hardware-aware starter recommendation (one-click guided **PolyStrata** setup with 4-stage progress/recovery on supported Apple Silicon, NVIDIA CUDA, or AMD ROCm hardware, or switch to lightweight `llama.cpp` + GGUF), browse the engine/model catalog, or configure an existing local engine from **Models**.
 3. On **Tasks**, select an engine, model, and task sets (`zh-core` + `zh-svg-pelican` by default, or switch to **Long-Context Speed** / `zh-context-speed` for 64K / 128K / 256K), then click **Start Benchmark**. Studio manages local services it launches and stops them on exit, or binds a running local service after PID/identity checks.
 4. Click **View Report** when finished, or navigate between the six views in the sidebar:

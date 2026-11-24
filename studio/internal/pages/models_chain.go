@@ -13,10 +13,10 @@ import (
 var chooseFreePortFunc = core.ChooseFreeLoopbackPort
 
 type startChainResult struct {
-	candidate, workspace string
-	localCandidates      []core.CandidateRun
-	existingService      *core.EngineState
-	localRequest         *core.LocalCandidateRequest
+	candidate, workspace, reportsRoot string
+	localCandidates                   []core.CandidateRun
+	existingService                   *core.EngineState
+	localRequest                      *core.LocalCandidateRequest
 }
 
 func runStartChain(ctx context.Context, modelName, engineName string,

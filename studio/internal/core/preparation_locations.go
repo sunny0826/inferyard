@@ -30,8 +30,8 @@ func (s *Service) PreparationLocations() PreparationLocations {
 		ToolsDir:      tools,
 		ManagedPython: installPython,
 		Workspace:     workspaceRoot(u),
-		Results:       u.ResultsRoot,
-		Models:        u.ModelsRoot,
+		Results:       defaultResultsRoot(u),
+		Models:        defaultModelsRoot(u),
 	}
 	reusable, outdated := s.inspectCLIForInstall(u)
 	if reusable != "" {

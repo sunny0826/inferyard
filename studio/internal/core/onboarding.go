@@ -129,15 +129,22 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 		args = resourceArg(args, "--model", path)
 		flags["--model"] = []string{path}
 	}
-	if len(args) > 1 && args[0] == "config" && args[1] == "create" && q.EngineName != "" {
-		var err *ApiError
-		args, err = s.candidateEngineArgs(args, q.EngineName, runtime.GOOS)
-		if err != nil {
-			return result, err
+	if len(args) > 1 && args[0] == "config" && args[1] == "create" {
+		if q.EngineName != "" {
+			var err *ApiError
+			args, err = s.candidateEngineArgs(args, q.EngineName, runtime.GOOS)
+			if err != nil {
+				return result, err
+			}
 		}
-	}
-	if len(args) > 1 && args[0] == "config" && args[1] == "create" && q.PreflightPath != "" {
-		args = resourceArg(args, "--preflight", q.PreflightPath)
+		if q.PreflightPath != "" {
+			args = resourceArg(args, "--preflight", q.PreflightPath)
+		}
+		if value(flags, "--results") == "" {
+			if res := s.userSettings().ResultsRoot; res != nil {
+				args = resourceArg(args, "--results", *res)
+			}
+		}
 	}
 
 	if args[0] == "run" {
@@ -212,8 +219,12 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 			return result, Err("invalid_request")
 		}
 		workspace, _ := json.Marshal(root)
-		results, _ := json.Marshal(filepath.Join(root, "results"))
-		if _, e := s.UpdateSettings(map[string]json.RawMessage{"workspace_root": workspace, "results_root": results}); e != nil {
+		patch := map[string]json.RawMessage{"workspace_root": workspace}
+		if s.userSettings().ResultsRoot == nil {
+			results, _ := json.Marshal(filepath.Join(root, "results"))
+			patch["results_root"] = results
+		}
+		if _, e := s.UpdateSettings(patch); e != nil {
 			return result, e
 		}
 	}

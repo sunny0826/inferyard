@@ -6,11 +6,11 @@ from inferyard.config.workspace_inputs import latest
 from inferyard.application.context_speed_evidence import read_inputs
 
 
-def update(workspace, result, bundle, bound):
+def update(workspace, result, bundle, bound, *, results_root=None):
     from inferyard.application.workspace_progress import command, new_output
 
     batches = []
-    results = workspace / "results"
+    results = results_root if results_root is not None else workspace / "results"
     if results.is_dir():
         for path in results.iterdir():
             if not path.is_dir() or not (path / "batch.json").exists():
@@ -67,7 +67,7 @@ def update(workspace, result, bundle, bound):
                 "--config",
                 bound["config"],
                 "--out",
-                new_output(workspace / "results", "speed-plan"),
+                new_output(results, "speed-plan"),
             ),
         )
     elif result["next_action"] == "prepare_candidate":

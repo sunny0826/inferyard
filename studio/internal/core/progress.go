@@ -6,6 +6,7 @@ import (
 	"errors"
 	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
+	"path/filepath"
 )
 
 type ProgressResponse struct {
@@ -24,7 +25,14 @@ func (s *Service) Progress(ctx context.Context) (ProgressResponse, *ApiError) {
 	if w == nil {
 		return ProgressResponse{}, Conflict("settings_incomplete")
 	}
-	out, err := s.exec(ctx, *p.Path, "progress", "--workspace", *w)
+	args := []string{"progress", "--workspace", *w}
+	if u.ResultsRoot != nil && !sameDirPath(*u.ResultsRoot, filepath.Join(*w, "results")) {
+		args = append(args, "--results", *u.ResultsRoot)
+	}
+	if rp := reportsRoot(u); rp != nil && !sameDirPath(*rp, filepath.Join(*w, "reports")) {
+		args = append(args, "--reports", *rp)
+	}
+	out, err := s.exec(ctx, *p.Path, args...)
 	if err != nil {
 		return ProgressResponse{}, Err("internal_error")
 	}
@@ -55,4 +63,14 @@ func (s *Service) Progress(ctx context.Context) (ProgressResponse, *ApiError) {
 	}
 	result.Progress = &value
 	return result, nil
+}
+
+func sameDirPath(a, b string) bool {
+	ca, cb := filepath.Clean(a), filepath.Clean(b)
+	if ca == cb {
+		return true
+	}
+	ra, errA := canonical(ca)
+	rb, errB := canonical(cb)
+	return errA == nil && errB == nil && ra == rb
 }

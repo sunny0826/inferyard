@@ -47,8 +47,12 @@ func prepareCombination(ctx context.Context, service *core.Service, model, engin
 			return r, nil
 		}
 	}
-	return runStartChain(ctx, model, engine, progress, service.WizardExecute,
+	result, e := runStartChain(ctx, model, engine, progress, service.WizardExecute,
 		service.PreflightMatchesModel, service.CandidateMatchesCombination, len(selection) > 0)
+	if e == nil {
+		result.reportsRoot = emptyText(service.Settings().Effective.ReportsRoot)
+	}
+	return result, e
 }
 
 func (s *viewState) startBenchmark() {
@@ -240,10 +244,10 @@ func runBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result star
 			return core.Err("cancelled")
 		}
 	}
-	return finishBenchmarkReport(ctx, backend, result.workspace, names, paths, announce, report)
+	return finishBenchmarkReport(ctx, backend, result.workspace, result.reportsRoot, names, paths, announce, report)
 }
 
-func finishBenchmarkReport(ctx context.Context, backend benchmarkBackend, workspace string, names, paths []string, announce func(string), report func([]string, string)) *core.ApiError {
+func finishBenchmarkReport(ctx context.Context, backend benchmarkBackend, workspace, reportsRoot string, names, paths []string, announce func(string), report func([]string, string)) *core.ApiError {
 	current, e := backend.Progress(ctx)
 	if e != nil {
 		return e
@@ -252,7 +256,12 @@ func finishBenchmarkReport(ctx context.Context, backend benchmarkBackend, worksp
 		return core.Err("run_incomplete")
 	}
 	announce("report")
-	out, e := core.NextOutput(workspace, "reports", "summary")
+	var out string
+	if reportsRoot != "" {
+		out, e = core.NextOutputInDir(reportsRoot, "summary")
+	} else {
+		out, e = core.NextOutput(workspace, "reports", "summary")
+	}
 	if e != nil {
 		return e
 	}
