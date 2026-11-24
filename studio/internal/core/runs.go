@@ -377,12 +377,6 @@ func (s *Service) executeRun(t *runEntry) {
 			a.events(rows)
 			pending = true
 		}
-		t.Progress = ptr(clone(a.Progress))
-		if pending && time.Since(lastProgress) >= ProgressInterval {
-			s.Bus.Publish("run.progress", map[string]any{"task_id": t.Task.TaskId, "run_id": t.Task.RunId, "progress": a.Progress})
-			pending = false
-			lastProgress = time.Now()
-		}
 		rows, c, e = evidence.Tail(filepath.Join(path, "memory.jsonl"), mc)
 		if e != nil && !os.IsNotExist(e) {
 			tailErr = e
@@ -390,7 +384,17 @@ func (s *Service) executeRun(t *runEntry) {
 			return
 		}
 		mc = c
+		prevPhase := str(a.Progress.Phase)
 		points := a.resources(rows)
+		if str(a.Progress.Phase) != prevPhase {
+			pending = true
+		}
+		t.Progress = ptr(clone(a.Progress))
+		if pending && time.Since(lastProgress) >= ProgressInterval {
+			s.Bus.Publish("run.progress", map[string]any{"task_id": t.Task.TaskId, "run_id": t.Task.RunId, "progress": a.Progress})
+			pending = false
+			lastProgress = time.Now()
+		}
 		if len(points) > 0 {
 			t.Resources = appendResources(t.Resources, points)
 			resourcePending = appendResources(resourcePending, points)

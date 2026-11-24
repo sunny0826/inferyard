@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"inferyard/studio/internal/evidence"
 	"inferyard/studio/internal/inferyard"
 	"os"
 	"reflect"
@@ -158,5 +159,45 @@ func TestLocalQueueAutoRecoversDirtyHostOnce(t *testing.T) {
 	}
 	if slices.Contains(recordedRunArgs[1], "--recovery-confirm") {
 		t.Fatalf("second run must not resend consumed recovery token: %v", recordedRunArgs[1])
+	}
+}
+
+func TestBaselinePhaseFromResourcesTransitionsToFormal(t *testing.T) {
+	inputs := []byte(`{"documents":{"selection":{"payload":{"case_ids":["case-1","case-2"]}}}}`)
+	a := newAggregate(inputs)
+
+	// Warmup residual event sets phase to "residual".
+	a.events([]evidence.Record{{
+		Seq:       1,
+		Phase:     "residual",
+		EventType: "native_observed",
+		Raw:       []byte(`{"seq":1,"utc":"2026-11-24T07:49:56Z","phase":"residual","event_type":"native_observed","data":{}}`),
+	}})
+	if str(a.Progress.Phase) != "residual" {
+		t.Fatalf("expected residual phase, got %v", str(a.Progress.Phase))
+	}
+
+	// Baseline resource sample updates phase to "baseline" while no formal case has started.
+	a.resources([]evidence.Record{{
+		Seq: 2,
+		Raw: []byte(`{"metric_name":"service_rss","collector":"macos","source":"psutil","clock_id":"c1","unit":"bytes","semantics":"rss","utc":"2026-11-24T07:49:57Z","read_started_ns":100,"read_finished_ns":110,"phase":"baseline","value":1024}`),
+	}})
+	if str(a.Progress.Phase) != "baseline" {
+		t.Fatalf("expected baseline phase from resource sample, got %v", str(a.Progress.Phase))
+	}
+
+	// Formal request_started transitions to "formal" with active case, and lagged baseline samples do not clobber it.
+	a.events([]evidence.Record{{
+		Seq:       3,
+		Phase:     "formal",
+		EventType: "request_started",
+		Raw:       []byte(`{"seq":3,"utc":"2026-11-24T07:50:02Z","phase":"formal","event_type":"request_started","request_id":"req-1","data":{"case_id":"case-1","plan_index":0}}`),
+	}})
+	a.resources([]evidence.Record{{
+		Seq: 4,
+		Raw: []byte(`{"metric_name":"service_rss","collector":"macos","source":"psutil","clock_id":"c1","unit":"bytes","semantics":"rss","utc":"2026-11-24T07:50:02Z","read_started_ns":200,"read_finished_ns":210,"phase":"baseline","value":1024}`),
+	}})
+	if str(a.Progress.Phase) != "formal" || str(a.Progress.CurrentCaseId) != "case-1" {
+		t.Fatalf("expected formal phase with active case-1, got phase=%v case=%v", str(a.Progress.Phase), str(a.Progress.CurrentCaseId))
 	}
 }

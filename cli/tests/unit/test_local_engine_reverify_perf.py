@@ -21,8 +21,10 @@ def test_permission_denied_non_exec_mapping_caches_per_process_incarnation(
     runtime_file = hash_file(exe)
 
     unreadable_path = "/private/var/db/analyticsd/events.allowlist"
+    user_unreadable_path = "/private/tmp/restricted-user-file.dat"
     unlinked_path = "/private/tmp/unlinked-cache.dat"
     unreadable_stamp = (16777230, 2071706)
+    user_unreadable_stamp = (16777230, 8888888)
     unlinked_stamp = (16777230, 9999999)
 
     monkeypatch.setattr(mapping_permissions, "_NON_EXEC_CACHE", {})
@@ -35,7 +37,7 @@ def test_permission_denied_non_exec_mapping_caches_per_process_incarnation(
 
     def fake_open(path, flags, *args, **kwargs):
         p = str(path)
-        if p == unreadable_path:
+        if p in (unreadable_path, user_unreadable_path):
             raise PermissionError(13, "Permission denied", p)
         if p == unlinked_path:
             raise FileNotFoundError(2, "No such file", p)
@@ -54,6 +56,8 @@ def test_permission_denied_non_exec_mapping_caches_per_process_incarnation(
             f"mapped file  100000000-100004000 [ 16K  16K   0K   0K] "
             f"{vmmap_mode} SM=COW  {unreadable_path}\n"
             f"mapped file  100004000-100008000 [ 16K  16K   0K   0K] "
+            f"{vmmap_mode} SM=COW  {user_unreadable_path}\n"
+            f"mapped file  100008000-10000c000 [ 16K  16K   0K   0K] "
             f"{vmmap_mode} SM=COW  {unlinked_path}\n"
         )
 
@@ -83,6 +87,21 @@ def test_permission_denied_non_exec_mapping_caches_per_process_incarnation(
     workers.mapped_closure(unreadable_rows, [runtime_file], exe, pid=777)
     assert observe_calls == 2
 
+    # Non-system PermissionError paths outside /private/var/db are never cached.
+    user_unreadable_rows = [
+        {
+            "p": 777,
+            "f": "txt",
+            "t": "REG",
+            "D": f"{user_unreadable_stamp[0]:x}",
+            "i": str(user_unreadable_stamp[1]),
+            "n": user_unreadable_path,
+        }
+    ]
+    workers.mapped_closure(user_unreadable_rows, [runtime_file], exe, pid=777)
+    workers.mapped_closure(user_unreadable_rows, [runtime_file], exe, pid=777)
+    assert observe_calls == 4
+
     # Unlinked (FileNotFoundError) mappings are never cached across checks.
     unlinked_rows = [
         {
@@ -96,11 +115,13 @@ def test_permission_denied_non_exec_mapping_caches_per_process_incarnation(
     ]
     workers.mapped_closure(unlinked_rows, [runtime_file], exe, pid=777)
     workers.mapped_closure(unlinked_rows, [runtime_file], exe, pid=777)
-    assert observe_calls == 4
+    assert observe_calls == 6
 
-    # Executable mappings are rejected and never cached.
-    current_ticks = 50003
+    # Executable mappings on uncached paths are rejected even within the same start_ticks.
     vmmap_mode = "r-x/r-x"
+    with pytest.raises(PreflightError, match="local_engine_mapping_unverified"):
+        workers.mapped_closure(user_unreadable_rows, [runtime_file], exe, pid=777)
+    current_ticks = 50003
     with pytest.raises(PreflightError, match="local_engine_mapping_unverified"):
         workers.mapped_closure(unreadable_rows, [runtime_file], exe, pid=777)
     assert mapping_permissions.cached_non_executable(777, unreadable_stamp, unreadable_path) is False

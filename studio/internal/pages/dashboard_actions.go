@@ -48,13 +48,22 @@ func (w *viewState) bindTarget() *inferyard.BundleProgress {
 	}
 	return w.active()
 }
-func (w *viewState) running() *core.RunTask {
-	for i := range w.tasks {
-		if !terminal(w.tasks[i].State) {
-			return &w.tasks[i]
+func activeRunTask(tasks []core.RunTask) *core.RunTask {
+	var fallback *core.RunTask
+	for i := range tasks {
+		if terminal(tasks[i].State) {
+			continue
 		}
+		if !tasks[i].Queued {
+			return &tasks[i]
+		}
+		fallback = &tasks[i]
 	}
-	return nil
+	return fallback
+}
+
+func (w *viewState) running() *core.RunTask {
+	return activeRunTask(w.tasks)
 }
 
 func suggestInitDir(path string, exists, initialized bool) string {

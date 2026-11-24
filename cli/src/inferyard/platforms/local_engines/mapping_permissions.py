@@ -14,10 +14,13 @@ _REGION = re.compile(
     r"([rwx-]{3})/([rwx-]{3})\s+SM=\S+\s+(/.*)$"
 )
 _CACHE_LIMIT = 256
+_OS_UNREADABLE_DATA_PREFIXES = ("/private/var/db/", "/var/db/")
 _NON_EXEC_CACHE: dict[tuple[int, int, tuple[int, int], str], None] = {}
 
 
 def _permission_denied(path: Path | str) -> bool:
+    if not str(path).startswith(_OS_UNREADABLE_DATA_PREFIXES):
+        return False
     try:
         fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
     except PermissionError:
