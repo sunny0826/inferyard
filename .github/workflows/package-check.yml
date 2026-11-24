@@ -1,5 +1,19 @@
 name: Package checks
 on:
+  push:
+    branches: [main]
+    paths:
+      - "cli/src/**"
+      - "cli/tests/**"
+      - "cli/scripts/**"
+      - "cli/bundles/**"
+      - "cli/configs/**"
+      - "cli/schemas/**"
+      - "cli/pyproject.toml"
+      - "cli/uv.lock"
+      - "LICENSE"
+      - "mise.toml"
+      - ".github/workflows/package-check.yml"
   pull_request:
     paths:
       - "cli/src/**"
@@ -16,18 +30,31 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+env:
+  MISE_DISABLE_TOOLS: go
 defaults:
   run:
     working-directory: cli
 jobs:
   check:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: jdx/mise-action@v5.2.4
+      - name: Cache uv
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('cli/uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
       - run: mise exec -- uv sync --frozen
-      - run: mise exec -- uv run --frozen pytest -n auto -q
       - run: mise exec -- uv run --frozen ruff check src tests scripts
       - run: mise exec -- uv run --frozen python scripts/export_schemas.py --check
+      - run: mise exec -- uv run --frozen pytest -n auto -q
