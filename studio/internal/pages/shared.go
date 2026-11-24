@@ -22,7 +22,7 @@ func stateBanner(c *ui.Context, kind stateKind, icon func() *ui.SVG, fn func(for
 	}
 	banner.Children(func() {
 		ui.Row(c).AlignItems(ui.Start).Gap(t.Density.Row).Children(func() {
-			ui.Box(c).Padding(2, 0, 0, 0).Children(func() {
+			ui.Box(c).Children(func() {
 				components.Icon(c, icon).Size(t.Type.Body, t.Type.Body).TextColor(scale.Fg)
 			})
 			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() { fn(scale.Fg) })

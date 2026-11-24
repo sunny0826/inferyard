@@ -70,7 +70,7 @@ func (s *viewState) studioNotifications(c *ui.Context) {
 					clearRow := ui.Row(c.Key("notif-clear-all")).Absolute().Left(0).Right(0).Justify(ui.End)
 					clearRow.Children(func() {
 						btn := components.Button(c, "全部清除", components.ButtonGhost).
-							Padding(4, 10).Radius(10).FontSize(t.Type.Caption)
+							Padding(t.Density.Tight, t.Density.Stack).Radius(t.Radius.Control).FontSize(t.Type.Caption)
 						if btn.Clicked() {
 							s.clearScreenNotifications()
 						}
@@ -129,7 +129,7 @@ func (s *viewState) notificationStackCard(c *ui.Context, item *studioNotificatio
 	}
 
 	root := ui.Box(c.Key("notif-card-"+item.ID)).Absolute().Top(0).Left(0).Right(0).
-		Radius(24).Background(t.Color.Elevated).Border(1, t.Color.BorderDefault).Clip().
+		Radius(t.Radius.Surface).Background(t.Color.Elevated).Border(1, t.Color.BorderDefault).Clip().
 		Role(ui.RoleStatus).Label(item.Title).
 		TransformOrigin(.5, 0).
 		Transition(ui.ElementTransition{
@@ -157,7 +157,7 @@ func (s *viewState) notificationStackCard(c *ui.Context, item *studioNotificatio
 
 	showClose := root.Hovered() || root.FocusWithin()
 	root.Children(func() {
-		body := ui.Column(c).FillWidth().Padding(12).Gap(8)
+		body := ui.Column(c).FillWidth().Padding(t.Card.Padding).Gap(t.Density.Row)
 		if !expanded && depth == 0 {
 			body.OnClick(func() {
 				s.notifications().tappedExpanded = !s.notifications().tappedExpanded
@@ -171,7 +171,7 @@ func (s *viewState) notificationStackCard(c *ui.Context, item *studioNotificatio
 		}
 		if showClose {
 			closeBtn := components.Button(c, "", components.ButtonGhost).
-				Absolute().Top(6).Left(6).Size(24, 24).Padding(0).Radius(10).
+				Absolute().Top(t.Density.Row).Left(t.Density.Row).Size(24, 24).Padding(0).Radius(t.Radius.Full).
 				Background(t.Color.Surface).Border(1, t.Color.BorderDefault).
 				Label("关闭通知：" + item.Title)
 			closeBtn.Children(func() {
@@ -189,13 +189,14 @@ func (s *viewState) notificationStackCard(c *ui.Context, item *studioNotificatio
 func (s *viewState) notificationCardInner(c *ui.Context, item *studioNotification, onScreen bool) {
 	t := tokens(c)
 	scale := stateScale(c, item.Kind)
-	ui.Row(c).FillWidth().AlignItems(ui.Start).Gap(10).Children(func() {
-		ui.Box(c).Size(32, 32).Radius(12).Shrink(0).
+	innerRadius := concentricRadius(t.Radius.Surface, t.Card.Padding)
+	ui.Row(c).FillWidth().AlignItems(ui.Start).Gap(t.Density.Row).Children(func() {
+		ui.Box(c).Size(32, 32).Radius(innerRadius).Shrink(0).
 			Background(scale.SubtleBg).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
 			components.Icon(c, defaultStateIcon(item.Kind)).Size(16, 16).TextColor(scale.Fg).Role(ui.RoleNone)
 		})
-		ui.Column(c).Grow(1).MinWidth(0).Gap(4).Children(func() {
-			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(8).Children(func() {
+		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
+			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, item.Title).Bold().FontSize(14).FixedLineHeight(20).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine()
 				ui.Text(c, relativeNotificationTime(item.CreatedAt)).FontSize(12).TextColor(t.Color.FgTertiary).SingleLine().Shrink(0)
 			})
@@ -203,7 +204,7 @@ func (s *viewState) notificationCardInner(c *ui.Context, item *studioNotificatio
 				ui.Text(c, item.Body).FontSize(13).FixedLineHeight(20).TextColor(t.Color.FgSecondary).MaxLines(3)
 			}
 			if item.Secondary != nil || item.Primary != nil {
-				ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Gap(6).Padding(4, 0, 0, 0).Children(func() {
+				ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Tight, 0, 0, 0).Children(func() {
 					if item.Secondary != nil {
 						if notificationCardButton(c, item.Secondary.Label, false).Clicked() {
 							fn := item.Secondary.OnClick
@@ -232,11 +233,12 @@ func (s *viewState) notificationCardInner(c *ui.Context, item *studioNotificatio
 }
 
 func notificationCardButton(c *ui.Context, label string, primary bool) ui.Element {
+	t := tokens(c)
 	variant := components.ButtonSecondary
 	if primary {
 		variant = components.ButtonPrimary
 	}
-	return components.Button(c, label, variant).Height(32).Padding(0, 12).Radius(12).FontSize(13)
+	return components.Button(c, label, variant).Height(32).Padding(0, t.Density.Stack).Radius(t.Radius.Control).FontSize(13)
 }
 
 func (s *viewState) notificationBell(c *ui.Context) {
@@ -250,10 +252,10 @@ func (s *viewState) notificationBell(c *ui.Context) {
 	c.Key("notification-bell")
 	ui.Column(c).Children(func() {
 		anchor := components.Button(c, "", components.ButtonGhost).
-			Padding(c.Theme().Space(.75), c.Theme().Space(1.5)).Radius(c.Theme().Space(4.5)).
+			Padding(t.Density.Tight, t.Density.Row).Radius(t.Radius.Full).
 			Label(label)
 		anchor.Children(func() {
-			ui.Row(c).AlignItems(ui.Center).Gap(4).Children(func() {
+			ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 				iconColor := t.Color.FgSecondary
 				if unread > 0 {
 					iconColor = t.Color.FgPrimary
@@ -264,7 +266,7 @@ func (s *viewState) notificationBell(c *ui.Context) {
 					if unread > 99 {
 						countText = "99+"
 					}
-					ui.Box(c).MinWidth(18).Height(18).Padding(0, 5).Radius(t.Radius.Full).
+					ui.Box(c).MinWidth(18).Height(18).Padding(0, t.Density.Tight).Radius(t.Radius.Full).
 						Background(t.Color.Danger.Solid).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
 						ui.Text(c, countText).FontSize(11).Bold().FontFeatures("tnum").TextColor(t.Color.FgOnAccent).SingleLine()
 					})
@@ -277,8 +279,9 @@ func (s *viewState) notificationBell(c *ui.Context) {
 		if !nc.bellOpen {
 			components.Tooltip(c, anchor, label)
 		}
-		components.Popover(c, anchor, &nc.bellOpen, func(panel ui.Element) {
+		studioPopover(c, anchor, &nc.bellOpen, func(panel ui.Element) {
 			panel.AttachTo(anchor, ui.AnchorBottomRight, ui.AnchorTopRight).
+				Padding(t.Density.Row).Radius(t.Radius.Modal).
 				Width(360).MaxWidthPercent(100).Label("通知列表")
 			panel.Children(func() {
 				s.notificationInboxPanel(c)
@@ -305,10 +308,11 @@ func (s *viewState) notificationInboxPanel(c *ui.Context) {
 			return
 		}
 		ui.Scroll(c.Key("notif-inbox-scroll")).FillWidth().MaxHeight(380).Children(func() {
-			ui.Column(c).FillWidth().Gap(8).Children(func() {
+			inboxCardRadius := concentricRadius(t.Radius.Modal, t.Density.Row)
+			ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
 				for _, item := range inbox {
 					item := item
-					cardBox := ui.Box(c.Key("inbox-"+item.ID)).FillWidth().Padding(12).Radius(16).
+					cardBox := ui.Box(c.Key("inbox-"+item.ID)).FillWidth().Padding(t.Density.Row).Radius(inboxCardRadius).
 						Background(t.Color.Surface).Border(1, t.Color.BorderSubtle)
 					cardBox.Children(func() {
 						s.notificationCardInner(c, item, false)

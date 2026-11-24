@@ -153,7 +153,7 @@ func (s *viewState) polystrataInstallLogSection(c *ui.Context, taskID, logPath s
 						copyBtn.Background(t.Color.SurfaceHover)
 					}
 					copyBtn.Children(func() {
-						ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Hairline + 2).Children(func() {
+						ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 							components.Icon(c, lucide.Copy).Size(11, 11).TextColor(copyFg).Role(ui.RoleNone)
 							ui.Text(c, "复制").FontSize(max(11, t.Type.Caption-1)).TextColor(copyFg).SingleLine()
 						})

@@ -78,27 +78,33 @@ type listRowOptions struct {
 }
 
 func outlineButton(c *ui.Context, label string) ui.Element {
-	return components.Button(c, label, components.ButtonOutline).MaxWidthPercent(100).AlignSelf(ui.Start)
+	t := tokens(c)
+	return components.Button(c, label, components.ButtonOutline).
+		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.Control).
+		MaxWidthPercent(100).AlignSelf(ui.Start)
 }
 
 func ghostButton(c *ui.Context, label string) ui.Element {
-	return components.Button(c, label, components.ButtonGhost).MaxWidthPercent(100).AlignSelf(ui.Start)
+	t := tokens(c)
+	return components.Button(c, label, components.ButtonGhost).
+		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.Control).
+		MaxWidthPercent(100).AlignSelf(ui.Start)
 }
 
 func iconButton(c *ui.Context, icon func() *ui.SVG, label string, style components.IconButtonStyle) ui.Element {
-	return components.IconButton(c, icon(), label, style)
+	return components.IconButton(c, icon(), label, style).Radius(tokens(c).Radius.Control)
 }
 
 func sizedButton(c *ui.Context, variant components.ButtonVariant, size controlSize, label string) ui.Element {
 	t := tokens(c)
-	b := components.Button(c, label, variant).MaxWidthPercent(100).AlignSelf(ui.Start)
+	b := components.Button(c, label, variant).Radius(t.Radius.Control).MaxWidthPercent(100).AlignSelf(ui.Start)
 	switch size {
 	case sizeSM:
 		return b.Padding(t.Density.Tight, t.Density.Row).FontSize(t.Type.Caption)
 	case sizeLG:
 		return b.Padding(t.Density.Stack, t.Density.Section).FontSize(t.Type.Body)
 	default:
-		return b
+		return b.Padding(t.Density.Row, t.Density.Stack)
 	}
 }
 
@@ -106,13 +112,13 @@ func badge(c *ui.Context, label string, kind stateKind, opts badgeOptions) ui.El
 	t := tokens(c)
 	scale := stateScale(c, kind)
 	fontSize := t.Type.Caption
-	padY, padX := float32(3), float32(10)
+	padY, padX := t.Density.Tight, t.Density.Stack
 	if opts.Size == sizeSM {
 		fontSize = max(11, t.Type.ShellLabel)
-		padY, padX = 2, 8
+		padY, padX = t.Density.Tight, t.Density.Row
 	}
 	if opts.Style == badgeDot {
-		row := ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight+2).Label(label)
+		row := ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Label(label)
 		row.Children(func() {
 			dotSize := float32(6)
 			if opts.Size == sizeSM {
@@ -172,17 +178,15 @@ func noticeBanner(c *ui.Context, opts noticeBannerOptions) {
 	}
 	banner.Children(func() {
 		rowAlign := ui.Start
-		iconTop := float32(2)
 		if opts.Size == bannerCompact && opts.Title == "" && opts.Actions == nil && opts.Details == nil {
 			rowAlign = ui.Center
-			iconTop = 0
 		}
 		ui.Row(c).AlignItems(rowAlign).Gap(t.Density.Row).Children(func() {
 			iconSize := t.Type.Body
 			if opts.Size == bannerCompact {
 				iconSize = t.Type.Caption
 			}
-			ui.Box(c).Padding(iconTop, 0, 0, 0).Children(func() {
+			ui.Box(c).Children(func() {
 				components.Icon(c, icon).Size(iconSize, iconSize).TextColor(scale.Fg)
 			})
 			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
@@ -326,7 +330,7 @@ func keyValueRow(c *ui.Context, key, value string, tabular bool) {
 	t := tokens(c)
 	ui.Row(c).FillWidth().AlignItems(ui.Start).Gap(t.Density.Section).
 		Padding(t.Density.Tight, 0).Children(func() {
-		ui.Box(c).Width(140).Shrink(0).Padding(2, 0, 0, 0).Children(func() {
+		ui.Box(c).Width(140).Shrink(0).Children(func() {
 			ui.Text(c, key).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		})
 		display := value
