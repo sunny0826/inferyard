@@ -448,6 +448,14 @@ func TestRecommendationReviewRegressions(t *testing.T) {
 		if len(stub.intents) != 1 || stub.intents[0].(previewDownload).kind != "engine" {
 			t.Fatalf("expected 1 engine download intent, got %#v", stub.intents)
 		}
+
+		// An ineligible CUDA engine must also not be treated as ready
+		s.registry.Engines = []core.EngineAsset{{Name: "llama-cuda", Family: "llama-cpp", Path: "C:\\engines\\cuda\\llama-server.exe"}}
+		s.checks.Engines["llama-cuda"] = core.EngineEligibility{State: core.EngineCheckIneligible, Reason: "runtime_asset_mismatch"}
+		tt.Frame()
+		if tt.HasText("已就绪") || !tt.HasText("下载推荐引擎") {
+			t.Fatalf("expected 下载推荐引擎 when only ineligible CUDA llama.cpp exists: %v", tt.Texts())
+		}
 	})
 
 	// 7. Reusing the same PolyStrata config path for another quantization must not mark the old quant ready

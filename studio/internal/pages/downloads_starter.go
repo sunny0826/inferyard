@@ -268,10 +268,13 @@ func (s *viewState) isStarterEngineInstalled(opt starterOption) bool {
 		if !isLlama {
 			continue
 		}
+		check, checked := s.checks.Engines[eng.Name]
+		if checked && check.State == core.EngineCheckIneligible {
+			continue
+		}
 		if wantBackend == "" || wantBackend == "cpu" {
 			return true
 		}
-		check, checked := s.checks.Engines[eng.Name]
 		if checked && check.State == core.EngineCheckEligible {
 			if strings.EqualFold(strings.TrimSpace(check.Mode), wantBackend) || check.Modes[wantBackend] {
 				return true
@@ -292,8 +295,15 @@ func (s *viewState) isStarterEngineInstalled(opt starterOption) bool {
 	return false
 }
 
+func strataAssetPrimaryText(asset core.ModelAsset) string {
+	if len(asset.CoveredPaths) > 0 {
+		return strings.ToLower(asset.Name + " " + strings.Join(asset.CoveredPaths, " "))
+	}
+	return strings.ToLower(asset.Name + " " + asset.Path)
+}
+
 func strataAssetConflictsWithSize(asset core.ModelAsset, wantSize string) bool {
-	hay := strings.ToLower(asset.Name + " " + asset.Path + " " + strings.Join(asset.CoveredPaths, " "))
+	hay := strataAssetPrimaryText(asset)
 	if strings.Contains(hay, wantSize) {
 		return false
 	}
@@ -321,7 +331,7 @@ func (s *viewState) isStarterOptionInstalled(opt starterOption) bool {
 			if cleaned := cleanMatchPath(m.Path); cleaned != "" {
 				availableStrata[cleaned] = m
 			}
-			hay := strings.ToLower(m.Name + " " + m.Path + " " + strings.Join(m.CoveredPaths, " "))
+			hay := strataAssetPrimaryText(m)
 			if fam != "" && size != "" && strings.Contains(hay, fam) && strings.Contains(hay, size) {
 				return true
 			}
