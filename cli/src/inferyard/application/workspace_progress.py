@@ -19,11 +19,23 @@ def new_output(root, stem):
     return root / f"{stem}-{number}"
 
 
+_CANDIDATE_KINDS = frozenset({"config_candidate.v1", "local-engine-candidate.v1"})
+_BINDING_KINDS = frozenset({"config_binding.v1", "local-engine-binding-output.v1"})
+
+
 def preparation(path, kind):
     value = read_json(path)
-    if type(value) is not dict or value.get("kind") != kind or value.get("schema_version") != 3:
+    allowed = (kind,) if isinstance(kind, str) else kind
+    if type(value) is not dict or value.get("kind") not in allowed or value.get("schema_version") != 3:
         raise PreparationError("workspace_artifact_unreadable")
     return value
+
+
+def _required_path(record, key):
+    value = record.get(key)
+    if not isinstance(value, str) or not value:
+        raise PreparationError("workspace_artifact_unreadable")
+    return Path(value)
 
 
 def artifact_paths(root, marker):
@@ -37,8 +49,9 @@ def artifact_paths(root, marker):
 def candidates(workspace):
     records = []
     for path in artifact_paths(workspace / "candidates", "preparation.json"):
-        record = preparation(path, "config_candidate.v1")
-        candidate = Path(record["candidate"])
+        record = preparation(path, _CANDIDATE_KINDS)
+        candidate = _required_path(record, "candidate")
+        _required_path(record, "bundle")
         candidate.read_bytes()
         records.append((path.parent, record))
     return records
@@ -47,8 +60,9 @@ def candidates(workspace):
 def bindings(workspace):
     records = []
     for path in artifact_paths(workspace / "bound", "preparation.json"):
-        record = preparation(path, "config_binding.v1")
-        Path(record["config"]).read_bytes()
+        record = preparation(path, _BINDING_KINDS)
+        _required_path(record, "candidate")
+        _required_path(record, "config").read_bytes()
         records.append((path.parent, record))
     return records
 
@@ -183,7 +197,8 @@ def bundle_state(workspace, name, bundle_path, preflight, candidate_records, bou
     bound_paths = {
         path: record
         for path, record in bound_records
-        if candidate and Path(record["candidate"]).resolve() == Path(candidate["candidate"])
+        if candidate
+        and Path(record["candidate"]).resolve() == Path(candidate["candidate"]).resolve()
     }
     bound_path = latest(bound_paths)
     bound = bound_paths.get(bound_path)

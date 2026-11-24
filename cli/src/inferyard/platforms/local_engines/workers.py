@@ -3,6 +3,7 @@
 import ast
 import hashlib
 import os
+import time
 from importlib.resources import files
 from pathlib import Path
 
@@ -18,6 +19,50 @@ _WORKER_ENTRYPOINTS = {
     "multiprocessing.resource_tracker": "main",
     "multiprocessing.forkserver": "main",
 }
+_POLYSTRATA_MACOS_TELEMETRY_EXE = Path("/usr/sbin/ioreg")
+_POLYSTRATA_MACOS_TELEMETRY_ARGS = ("-l", "-w0", "-r", "-c", "IOAccelerator")
+_POLYSTRATA_WORKER_RETRY_ATTEMPTS = 3
+_POLYSTRATA_WORKER_RETRY_SLEEP_SECONDS = 0.05
+_POLYSTRATA_TRANSIENT_PREFLIGHT = frozenset(
+    {
+        "local_engine_worker_tree_changed",
+        "service_process_unavailable",
+        "service_identity_unreadable",
+        "service_process_identity_changed",
+    }
+)
+
+
+def _is_polystrata_macos_telemetry_probe(family, parent, root_pid, arguments, executable):
+    if family != "polystrata" or parent != root_pid:
+        return False
+    if executable != _POLYSTRATA_MACOS_TELEMETRY_EXE:
+        return False
+    return (
+        len(arguments) == 1 + len(_POLYSTRATA_MACOS_TELEMETRY_ARGS)
+        and arguments[0] in ("ioreg", str(_POLYSTRATA_MACOS_TELEMETRY_EXE))
+        and tuple(arguments[1:]) == _POLYSTRATA_MACOS_TELEMETRY_ARGS
+    )
+
+
+def _check_worker_env(observed_env, environment, *, allowed_extras, expected_lib_dirs, expected_cfg_env):
+    check_environment(observed_env, environment, allowed_extras=allowed_extras)
+    if expected_lib_dirs:
+        actual_parts = observed_env.get("LD_LIBRARY_PATH", "").split(os.pathsep)
+        if actual_parts[: len(expected_lib_dirs)] != list(expected_lib_dirs):
+            raise PreflightError("local_engine_environment_override")
+        if expected_cfg_env and "LD_LIBRARY_PATH" in expected_cfg_env:
+            suffix = expected_cfg_env["LD_LIBRARY_PATH"].split(os.pathsep)
+            if (
+                actual_parts[len(expected_lib_dirs) : len(expected_lib_dirs) + len(suffix)]
+                != suffix
+            ):
+                raise PreflightError("local_engine_environment_override")
+    for key, expected_val in (expected_cfg_env or {}).items():
+        if key == "LD_LIBRARY_PATH" and expected_lib_dirs:
+            continue
+        if observed_env.get(key) != expected_val:
+            raise PreflightError("local_engine_environment_override")
 
 
 def validate_python_worker(arguments, root_arguments):
@@ -88,7 +133,17 @@ def mapped_closure(rows, runtime_files, executable, *, pid=None):
     verify_libraries([Path(item.path) for item in runtime_files], executable, mapped_paths=mapped)
 
 
-def observe_workers(pid, psutil, runtime_files, environment):
+def _observe_workers_once(
+    pid,
+    psutil,
+    runtime_files,
+    environment,
+    *,
+    family=None,
+    allowed_extras=None,
+    expected_lib_dirs=(),
+    expected_cfg_env=None,
+):
     root = psutil.Process(pid)
     first = native._children(root)
     python_root = None
@@ -97,23 +152,35 @@ def observe_workers(pid, psutil, runtime_files, environment):
         root_state = native.service_process_state(pid, psutil)
         if root_state[1][1:5] == ["-I", "-S", "-B", bootstrap]:
             python_root = root_state
-    pending, states, result = [(child, pid) for child in first], {}, []
+    pending, states, ignored_probes, result = [(child, pid) for child in first], {}, set(), []
     while pending:
         child, parent = pending.pop()
-        if child in states or len(states) >= 10000 or child == pid:
+        if child in states or child in ignored_probes or len(states) >= 10000 or child == pid:
             raise PreflightError("local_engine_worker_tree_changed")
         process = psutil.Process(child)
         state = native.service_process_state(child, psutil)
-        start, _, raw, executable, cwd = state
+        start, arguments, raw, executable, cwd = state
         if process.ppid() != parent:
             raise PreflightError("local_engine_worker_tree_changed")
+        children = native._children(process)
+        if (
+            _is_polystrata_macos_telemetry_probe(family, parent, pid, arguments, executable)
+            and not children
+        ):
+            ignored_probes.add(child)
+            continue
         observed_environment = process.environ()
-        check_environment(observed_environment, environment)
+        _check_worker_env(
+            observed_environment,
+            environment,
+            allowed_extras=allowed_extras,
+            expected_lib_dirs=expected_lib_dirs,
+            expected_cfg_env=expected_cfg_env,
+        )
         if python_root is not None:
             if executable != python_root[3]:
                 raise PreflightError("local_engine_python_worker_executable_mismatch")
-            validate_python_worker(state[1], python_root[1])
-        children = native._children(process)
+            validate_python_worker(arguments, python_root[1])
         states[child] = (parent, state, children)
         pending.extend((item, child) for item in children)
         try:
@@ -146,11 +213,33 @@ def observe_workers(pid, psutil, runtime_files, environment):
                 "cwd_sha256": hashlib.sha256(os.fsencode(cwd)).hexdigest(),
             }
         )
-    if native._children(root) != first:
+    current_children = native._children(root)
+    if family == "polystrata":
+        extra_children = current_children - first
+        for extra in extra_children:
+            proc = psutil.Process(extra)
+            extra_state = native.service_process_state(extra, psutil)
+            if (
+                proc.ppid() == pid
+                and _is_polystrata_macos_telemetry_probe(
+                    family, pid, pid, extra_state[1], extra_state[3]
+                )
+                and not native._children(proc)
+            ):
+                ignored_probes.add(extra)
+        if (current_children - ignored_probes) != (first - ignored_probes):
+            raise PreflightError("local_engine_worker_tree_changed")
+    elif current_children != first:
         raise PreflightError("local_engine_worker_tree_changed")
     for child, (parent, state, children) in states.items():
         process = psutil.Process(child)
-        check_environment(process.environ(), environment)
+        _check_worker_env(
+            process.environ(),
+            environment,
+            allowed_extras=allowed_extras,
+            expected_lib_dirs=expected_lib_dirs,
+            expected_cfg_env=expected_cfg_env,
+        )
         if (
             native.service_process_state(child, psutil) != state
             or process.ppid() != parent
@@ -158,3 +247,53 @@ def observe_workers(pid, psutil, runtime_files, environment):
         ):
             raise PreflightError("local_engine_worker_tree_changed")
     return sorted(result, key=lambda row: row["pid"])
+
+
+def _process_alive(psutil, pid):
+    try:
+        return psutil.Process(pid).is_running()
+    except psutil.Error:
+        return False
+
+
+def observe_workers(
+    pid,
+    psutil,
+    runtime_files,
+    environment,
+    *,
+    family=None,
+    allowed_extras=None,
+    expected_lib_dirs=(),
+    expected_cfg_env=None,
+):
+    attempts = _POLYSTRATA_WORKER_RETRY_ATTEMPTS if family == "polystrata" else 1
+    transient_psutil = (
+        psutil.NoSuchProcess,
+        getattr(psutil, "ZombieProcess", psutil.NoSuchProcess),
+    )
+    for attempt in range(attempts):
+        try:
+            return _observe_workers_once(
+                pid,
+                psutil,
+                runtime_files,
+                environment,
+                family=family,
+                allowed_extras=allowed_extras,
+                expected_lib_dirs=expected_lib_dirs,
+                expected_cfg_env=expected_cfg_env,
+            )
+        except PreflightError as exc:
+            if (
+                attempt + 1 >= attempts
+                or str(exc) not in _POLYSTRATA_TRANSIENT_PREFLIGHT
+                or not _process_alive(psutil, pid)
+            ):
+                raise
+            time.sleep(_POLYSTRATA_WORKER_RETRY_SLEEP_SECONDS)
+        except transient_psutil:
+            if attempt + 1 >= attempts or not _process_alive(psutil, pid):
+                raise
+            time.sleep(_POLYSTRATA_WORKER_RETRY_SLEEP_SECONDS)
+    raise AssertionError("unreachable")

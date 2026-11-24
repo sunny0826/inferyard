@@ -31,10 +31,14 @@ func (s *Service) Progress(ctx context.Context) (ProgressResponse, *ApiError) {
 	result := ProgressResponse{Status: inferyard.MapExitCode(out.ExitCode), ExitCode: out.ExitCode}
 	if out.ExitCode == inferyard.ExitBlocked {
 		var header struct {
-			Command string `json:"command"`
+			Command     string   `json:"command"`
+			Limitations []string `json:"limitations"`
 		}
 		if json.Unmarshal(out.Stdout, &header) != nil || header.Command != "progress" {
 			return result, &ApiError{Code: "cli_outdated", Message: l10n.TR("core.cli.err.missing_progress_cmd")}
+		}
+		if len(header.Limitations) > 0 {
+			return result, &ApiError{Code: header.Limitations[0], Limitations: header.Limitations}
 		}
 		return result, nil
 	}

@@ -398,8 +398,18 @@ def _bind(
         else:
             service = _direct_cross_platform(config, declaration, runtime_files, psutil)
         if use_darwin_probe:
+            allowed_extras, expected_lib_dirs, expected_cfg_env = _polystrata_worker_env_policy(
+                config
+            )
             service["workers"] = observe_workers(
-                endpoint["server_pid"], psutil, runtime_files, worker_environment
+                endpoint["server_pid"],
+                psutil,
+                runtime_files,
+                worker_environment,
+                family=engine["family"],
+                allowed_extras=allowed_extras,
+                expected_lib_dirs=expected_lib_dirs,
+                expected_cfg_env=expected_cfg_env,
             )
         else:
             service["workers"] = _observe_workers_cross_platform(
