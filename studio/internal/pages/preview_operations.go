@@ -272,6 +272,11 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 			s.syncNativeThemeIfNeeded()
 			s.failurePage = s.selected
 		}
+		if _, hasTray := patch["minimize_to_tray"]; hasTray {
+			s.minimizeToTray = s.settings.Settings.MinimizeToTray
+			s.syncMinimizeToTrayIfNeeded()
+			s.failurePage = s.selected
+		}
 		s.failure = &core.ApiError{Code: "preview_save_failed", Message: "模拟保存失败，可再次点击保存。"}
 		return
 	}
@@ -285,6 +290,7 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		ExtraModelsRoots: slices.Clone(value.ExtraModelsRoots),
 		DownloadProxy:    value.DownloadProxy,
 		Theme:            value.Theme,
+		MinimizeToTray:   value.MinimizeToTray,
 	}
 	s.syncSavedGroups(patch, s.settingsDraft(), s.settings)
 	if _, hasTheme := patch["theme"]; hasTheme {
@@ -292,6 +298,10 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		s.themeMode = value.Theme
 		s.appliedThemeMode = value.Theme
 		p.syncNativeTheme()
+	}
+	if _, hasTray := patch["minimize_to_tray"]; hasTray {
+		s.minimizeToTray = value.MinimizeToTray
+		s.syncMinimizeToTrayIfNeeded()
 	}
 	s.ready.Workspace.Path, s.ready.Results.Path, s.ready.Models.Path = value.WorkspaceRoot, value.ResultsRoot, value.ModelsRoot
 	if workspaceChanged {
