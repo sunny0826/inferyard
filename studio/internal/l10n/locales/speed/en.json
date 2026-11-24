@@ -57,8 +57,6 @@
   "speed.result.title": "Long-Context Speed · Results",
   "speed.result.valid_median": "Valid 5/5 · Median",
   "speed.result.valid_partial": "Valid {valid}/5 · No full summary",
-  "speed.select.conditions_body": "Concurrency 1 · Fixed prompt · Prefix caching & speculative decoding disabled",
-  "speed.select.conditions_title": "Benchmark Conditions",
   "speed.select.context_tier": "Context Tier",
   "speed.select.spec_summary": "{bundle} · {samples} runs · 256 output tokens each",
   "speed.stage.binding": "Connect & Verify",

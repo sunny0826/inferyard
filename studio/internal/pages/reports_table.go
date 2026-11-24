@@ -47,17 +47,6 @@ func reportCard(c *ui.Context, report core.ReportSummary, open func()) {
 			}
 		}
 		primaryButton(c, tr(c, "reports.list.open")).Label(trf(c, "reports.list.open_aria", "id", report.ReportId)).OnClick(open)
-		componentFoldKeyed(c, "report-"+report.ReportId, tr(c, "reports.list.details_fold"), func() {
-			ui.Text(c, trf(c, "reports.list.report_id", "id", report.ReportId)).Selectable()
-			ui.Text(c, trf(c, "reports.list.updated_at", "time", configuredValue(formatTimestampUTC(emptyText(report.ModifiedAt))))).Selectable()
-			for _, id := range report.RunIds {
-				ui.Text(c, trf(c, "reports.list.source_run", "id", id)).Selectable()
-			}
-			for _, path := range report.RunPaths {
-				ui.Text(c, trf(c, "reports.list.source_path", "path", reportSourceFor(c, path))).Selectable()
-			}
-			ui.Text(c, displayName(report.Path)).Selectable().TextColor(c.Theme().TextMuted)
-		})
 	})
 }
 
@@ -127,15 +116,4 @@ func reportRunLineFor(c *ui.Context, report core.ReportSummary, run core.ReportL
 		line = trf(c, "reports.list.pass_rate_partial", "line", line)
 	}
 	return line
-}
-
-func reportSource(path *string) string {
-	return reportSourceFor(nil, path)
-}
-
-func reportSourceFor(c *ui.Context, path *string) string {
-	if path == nil {
-		return tr(c, "reports.list.source_unreachable")
-	}
-	return displayName(*path)
 }

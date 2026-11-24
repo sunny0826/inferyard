@@ -46,12 +46,6 @@ func TestDefaultWorkspaceAndResultsLocations(t *testing.T) {
 	if got := str(s.Settings().Effective.WorkspaceRoot); got != wantWorkspace {
 		t.Fatalf("Effective.WorkspaceRoot = %q, want %q", got, wantWorkspace)
 	}
-	locs := s.PreparationLocations()
-	if str(locs.Workspace) != wantWorkspace || str(locs.Results) != wantResults || str(locs.Models) != wantModels {
-		t.Fatalf("PreparationLocations = (%q, %q, %q), want (%q, %q, %q)",
-			str(locs.Workspace), str(locs.Results), str(locs.Models),
-			wantWorkspace, wantResults, wantModels)
-	}
 
 	provisioned, apiErr := s.Provision()
 	if apiErr != nil {

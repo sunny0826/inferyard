@@ -179,12 +179,3 @@ func (s *viewState) readDownloadLogSnippet(taskID, logPath string) string {
 	}
 	return readLogTail(logPath, 4096)
 }
-
-func (s *viewState) renderDownloadLogTail(c *ui.Context, taskID, logPath string) {
-	snippet := s.readDownloadLogSnippet(taskID, logPath)
-	if snippet == "" {
-		ui.Text(c, tr(c, "downloads.polystrata.log.empty")).FontSize(tokens(c).Type.Caption).TextColor(tokens(c).Color.FgSecondary)
-		return
-	}
-	ui.Text(c, snippet).Selectable().FontSize(tokens(c).Type.Caption)
-}

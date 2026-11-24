@@ -113,7 +113,6 @@
   "common.table.no_match_desc": "当前筛选条件下没有结果，可调整条件或清空筛选。",
   "common.table.total_count": "共 {count} 条记录",
   "common.table.filtered_count": "已筛选 {filtered} / 共 {total} 条记录",
-  "common.task.details": "任务详情",
   "common.task.download_activity": "下载任务活动",
   "common.task.queued": "排队中",
   "common.task.prep.awaiting_service": "等待连接 LM Studio",

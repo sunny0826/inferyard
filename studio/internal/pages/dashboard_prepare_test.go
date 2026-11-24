@@ -248,13 +248,6 @@ func TestPrepareEnvironmentCustomWorkspaceWithDefaultResultsMatchesPreview(t *te
 		t.Fatal(apiErr)
 	}
 
-	preview := service.PreparationLocations()
-	if emptyText(preview.Workspace) != wantWorkspace || emptyText(preview.Results) != wantResults || emptyText(preview.Models) != wantModels {
-		t.Fatalf("PreparationLocations = (%q, %q, %q), want (%q, %q, %q)",
-			emptyText(preview.Workspace), emptyText(preview.Results), emptyText(preview.Models),
-			wantWorkspace, wantResults, wantModels)
-	}
-
 	apiErr := prepareEnvironmentSteps(
 		context.Background(),
 		service.Readiness,

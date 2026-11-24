@@ -86,9 +86,9 @@ type taskCardOptions struct {
 	active            bool
 	metrics           []taskMetric
 	status            string
-	headerRight       func()
-	notice            func()
-	actions, details  func()
+	headerRight func()
+	notice      func()
+	actions     func()
 }
 
 func taskCard(c *ui.Context, options taskCardOptions) {
@@ -135,9 +135,6 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 		}
 		if options.actions != nil {
 			options.actions()
-		}
-		if options.details != nil {
-			componentFold(c, tr(c, "common.task.details"), func() { options.details() })
 		}
 	})
 }

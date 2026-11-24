@@ -79,6 +79,11 @@ func TestPreviewScenesAllLoadAndSaveSettingsPreservesProxy(t *testing.T) {
 		}
 		p.themeMode = 1
 		tt.Frame()
+		for _, retiredFold := range []string{"报告详情", "间隔详情", "任务详情", "原始字段", "运行原始详情", "查看准备详情", "测评条件"} {
+			if tt.HasText(retiredFold) {
+				t.Fatalf("scene %q still renders retired card fold %q", label, retiredFold)
+			}
+		}
 		p.themeMode = 2
 		tt.Frame()
 	}

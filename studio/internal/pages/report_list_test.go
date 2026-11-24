@@ -22,9 +22,9 @@ func TestReportCardsKeepRunsSeparateAndNeverZeroFill(t *testing.T) {
 			t.Fatalf("missing %q: %v", want, tt.Texts())
 		}
 	}
-	for _, unwanted := range []string{"3 / 5 · 0 / 0", "100%", "合计"} {
+	for _, unwanted := range []string{"3 / 5 · 0 / 0", "100%", "合计", "报告详情"} {
 		if tt.HasText(unwanted) {
-			t.Fatalf("runs merged or zero-filled as %q", unwanted)
+			t.Fatalf("unexpected report card text %q", unwanted)
 		}
 	}
 }
