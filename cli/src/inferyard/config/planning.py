@@ -105,7 +105,7 @@ def compile_plan(experiment):
     return plan
 
 
-def prepare_plan(source: Path):
+def prepare_plan(source: Path, *, source_directory: Path | None = None):
     """Read bounded, hash-bound sources; return plan plus exact source bytes."""
     raw = read_document(source)
     try:
@@ -153,8 +153,13 @@ def prepare_plan(source: Path):
         corpus_path = (config_path.parent / config["bundle"]["path"]).resolve()
         if hashlib.sha256(read_document(corpus_path)).hexdigest() != workload["bundle"]["sha256"]:
             raise ContractError("experiment.workloads.bundle", "config and bundle content differ")
+        origin = (
+            source_directory.resolve()
+            if source_directory is not None
+            else config_path.parent.resolve()
+        )
         binding, snapshot = runtime_snapshot(
-            workload, artifacts[workload["config"]["path"]], config_path.parent.resolve()
+            workload, artifacts[workload["config"]["path"]], origin
         )
         plan["runtime_bindings"].append(binding)
         artifacts[binding["config"]["path"]] = snapshot
@@ -165,8 +170,8 @@ def prepare_plan(source: Path):
     return plan, artifacts
 
 
-def write_plan(source: Path, destination: Path):
-    plan, artifacts = prepare_plan(source)
+def write_plan(source: Path, destination: Path, *, source_directory: Path | None = None):
+    plan, artifacts = prepare_plan(source, source_directory=source_directory)
     with command_validation(enabled=False):
         validate_document("plan", plan)
     if destination.resolve() == source.parent.resolve():

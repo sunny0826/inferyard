@@ -34,6 +34,7 @@ func TestChainBindRunReport(t *testing.T) {
 	}
 	if _, e := service.UpdateSettings(map[string]json.RawMessage{
 		"inferyard_path": mustJSON(cli),
+		"results_root":   mustJSON(filepath.Join(env.Workspace, "results")),
 		"models_root":    mustJSON(env.Models),
 	}); e != nil {
 		t.Fatal(e)

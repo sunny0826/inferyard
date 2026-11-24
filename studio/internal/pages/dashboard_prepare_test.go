@@ -194,3 +194,95 @@ func TestPrepareEnvironmentCustomNestedDirsDoNotCreateTimestampWorkspace(t *test
 		t.Fatalf("ModelsRoot = %q, want %q", emptyText(saved.ModelsRoot), wantModels)
 	}
 }
+
+func TestPrepareEnvironmentCustomWorkspaceWithDefaultResultsMatchesPreview(t *testing.T) {
+	home, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	customBase, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantWorkspace := filepath.Join(customBase, "bench")
+	wantResults := filepath.Join(home, ".inferyard", "results")
+	wantModels := filepath.Join(home, ".inferyard", "models")
+	wantReports := filepath.Join(home, ".inferyard", "reports")
+
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	service, err := core.New(context.Background(), core.Options{
+		SettingsPath:  filepath.Join(t.TempDir(), "settings.json"),
+		HostStatePath: filepath.Join(t.TempDir(), "host.json"),
+		Execute: func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
+			if len(args) > 0 && args[0] == "--version" {
+				return inferyard.Execution{Stdout: []byte("inferyard 9.9.9")}, nil
+			}
+			if len(args) >= 3 && args[0] == "init" && args[1] == "--out" {
+				out := args[2]
+				_ = os.MkdirAll(out, 0700)
+				_ = os.WriteFile(filepath.Join(out, "preparation.json"), []byte(`{"kind":"community_init.v1"}`), 0600)
+				return inferyard.Execution{}, nil
+			}
+			return inferyard.Execution{}, nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer service.Shutdown(context.Background())
+
+	mustJSON := func(v any) json.RawMessage {
+		raw, _ := json.Marshal(v)
+		return raw
+	}
+	if _, apiErr := service.UpdateSettings(map[string]json.RawMessage{
+		"inferyard_path": mustJSON(exe),
+		"workspace_root": mustJSON(wantWorkspace),
+	}); apiErr != nil {
+		t.Fatal(apiErr)
+	}
+
+	preview := service.PreparationLocations()
+	if emptyText(preview.Workspace) != wantWorkspace || emptyText(preview.Results) != wantResults || emptyText(preview.Models) != wantModels {
+		t.Fatalf("PreparationLocations = (%q, %q, %q), want (%q, %q, %q)",
+			emptyText(preview.Workspace), emptyText(preview.Results), emptyText(preview.Models),
+			wantWorkspace, wantResults, wantModels)
+	}
+
+	apiErr := prepareEnvironmentSteps(
+		context.Background(),
+		service.Readiness,
+		func(context.Context) (string, *core.ApiError) {
+			t.Fatal("CLI already ok; install should not be called")
+			return "", nil
+		},
+		func() *core.ApiError {
+			_, e := service.Provision()
+			return e
+		},
+		service.WizardExecute,
+	)
+	if apiErr != nil {
+		t.Fatalf("prepareEnvironmentSteps failed: %+v", apiErr)
+	}
+
+	resp := service.Settings()
+	if emptyText(resp.Settings.WorkspaceRoot) != wantWorkspace {
+		t.Fatalf("WorkspaceRoot = %q, want %q", emptyText(resp.Settings.WorkspaceRoot), wantWorkspace)
+	}
+	if emptyText(resp.Settings.ResultsRoot) != wantResults {
+		t.Fatalf("ResultsRoot = %q, want %q", emptyText(resp.Settings.ResultsRoot), wantResults)
+	}
+	if emptyText(resp.Settings.ModelsRoot) != wantModels {
+		t.Fatalf("ModelsRoot = %q, want %q", emptyText(resp.Settings.ModelsRoot), wantModels)
+	}
+	if emptyText(resp.Effective.ReportsRoot) != wantReports {
+		t.Fatalf("ReportsRoot = %q, want %q", emptyText(resp.Effective.ReportsRoot), wantReports)
+	}
+}

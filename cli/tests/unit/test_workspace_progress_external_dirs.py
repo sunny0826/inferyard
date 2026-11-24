@@ -184,3 +184,190 @@ def test_progress_reads_runs_and_suggests_report_in_external_roots(
     assert state_b["bundles"][0]["phase"] == "run_missing"
     assert state_b["next_action"] == "run"
     assert state_b["bundles"][0]["runs"] == []
+
+
+def test_context_speed_preset_plan_and_batch_scoped_to_workspace(
+    tmp_path: Path, capsys, monkeypatch
+) -> None:
+    import hashlib
+    import shutil
+
+    from inferyard.config.toml_writer import render
+    from inferyard.contracts.context_speed_profile import GENERATION
+
+    base = tmp_path / ".inferyard"
+    base.mkdir()
+    results = base / "results"
+    results.mkdir()
+    reports = base / "reports"
+
+    model_file = tmp_path / "model.gguf"
+    model_file.write_bytes(b"gguf")
+    tmpl_file = tmp_path / "template.jinja"
+    tmpl_file.write_text("{{ prompt }}", encoding="utf-8")
+    bin_file = tmp_path / "llama-server"
+    bin_file.write_bytes(b"bin")
+    sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()  # noqa: E731
+
+    def setup_speed_workspace(ws: Path) -> Path:
+        initialize(SimpleNamespace(out=ws, community_bundle="zh-context-speed"))
+        _write_json(
+            ws / "preflight" / "device-1" / "device-preflight.json",
+            {
+                "kind": "device_preflight.v1",
+                "schema_version": 3,
+                "hardware": {"platform": "Darwin"},
+                "recommendation": {"status": "recommended"},
+            },
+        )
+        bundle_path = ws / "bundles" / "zh-context-speed.json"
+        bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+        cand_dir = ws / "candidates" / "zh-context-speed-1"
+        cand_dir.mkdir(parents=True)
+        cand_file = cand_dir / "candidate.toml"
+        cand_file.write_text("# cand\n", encoding="utf-8")
+        _write_json(
+            cand_dir / "preparation.json",
+            {
+                "kind": "config_candidate.v1",
+                "schema_version": 3,
+                "candidate": str(cand_file),
+                "bundle": str(bundle_path),
+            },
+        )
+        bound_dir = ws / "bound" / "zh-context-speed-1"
+        bound_dir.mkdir(parents=True)
+        bound_cfg = bound_dir / "config.toml"
+        manifest_file = tmp_path / "engine-sha256.json"
+        _write_json(manifest_file, {bin_file.name: sha(bin_file)})
+        config_doc = {
+            "schema_version": 3,
+            "device": {"id": "test-host", "client_position": "same_host_native"},
+            "model": {
+                "display_name": "test-model",
+                "repo": "local",
+                "revision": "rev1",
+                "local_path": str(model_file),
+                "sha256": sha(model_file),
+                "packing": "GGUF",
+                "template_path": str(tmpl_file),
+                "template_sha256": sha(tmpl_file),
+            },
+            "engine": {
+                "adapter": "prism_llama_server_v1",
+                "release": "prism-b1",
+                "backend": "metal",
+                "binary_path": str(bin_file),
+                "binary_sha256": sha(bin_file),
+                "runtime_library_manifest": str(manifest_file),
+                "startup_args": [
+                    "-m",
+                    str(model_file),
+                    "-c",
+                    "65536",
+                    "-np",
+                    "1",
+                    "--no-cache-prompt",
+                    "--no-cache-idle-slots",
+                    "--cache-ram",
+                    "0",
+                    "--reasoning",
+                    "off",
+                ],
+            },
+            "endpoint": {
+                "url": "http://127.0.0.1:18080",
+                "server_pid": 12345,
+                "process_start_ticks": 99999,
+            },
+            "bundle": {"path": str(bundle_path.resolve()), "version": bundle["version"]},
+            "generation": dict(GENERATION),
+            "conditions": {
+                "context_size": 65536,
+                "threads": 4,
+                "threads_batch": 4,
+                "slots": 1,
+                "cache_policy": "disabled",
+                "ac_online": True,
+                "profile": "unknown",
+                "governor": "unknown",
+                "epp": "unknown",
+                "allow_unknown_environment": True,
+                "model_loaded": True,
+                "background_load": "idle",
+            },
+            "execution": {"warmup_count": 1, "timeout_seconds": 3},
+            "output": {
+                "root": str(results),
+                "min_available_memory_bytes": 10 * 1024**3,
+                "min_disk_bytes": 10 * 1024**3,
+            },
+        }
+        bound_cfg.write_text(render(config_doc), encoding="utf-8")
+        _write_json(
+            bound_dir / "preparation.json",
+            {
+                "kind": "config_binding.v1",
+                "schema_version": 3,
+                "candidate": str(cand_file),
+                "config": str(bound_cfg),
+            },
+        )
+        return bound_cfg
+
+    ws_a = base / "workspace-a"
+    ws_b = base / "workspace-b"
+    cfg_a = setup_speed_workspace(ws_a)
+    setup_speed_workspace(ws_b)
+
+    plan_dir = results / "speed-plan-1"
+    code = main(
+        [
+            "plan",
+            "--preset",
+            "context-speed",
+            "--config",
+            str(cfg_a),
+            "--out",
+            str(plan_dir),
+        ]
+    )
+    assert code == 0
+    capsys.readouterr()
+
+    plan_doc = json.loads((plan_dir / "plan.json").read_text(encoding="utf-8"))
+    assert (
+        Path(plan_doc["runtime_bindings"][0]["source_directory"]).resolve()
+        == cfg_a.parent.resolve()
+    )
+
+    state_a = inspect_workspace(ws_a, results_root=results, reports_root=reports)
+    assert state_a["bundles"][0]["phase"] == "run_missing"
+    assert state_a["bundles"][0]["next_action"] == "run"
+
+    state_b = inspect_workspace(ws_b, results_root=results, reports_root=reports)
+    assert state_b["bundles"][0]["phase"] == "plan_missing"
+    assert state_b["bundles"][0]["next_action"] == "freeze_plan"
+
+    # Simulate a completed batch using workspace A's frozen plan in the shared results dir.
+    batch_dir = results / "speed-batch-1"
+    shutil.copytree(plan_dir, batch_dir / "frozen-plan")
+    _write_json(batch_dir / "batch.json", {"kind": "batch"})
+    bundle_a = json.loads((ws_a / "bundles" / "zh-context-speed.json").read_text(encoding="utf-8"))
+    fake_loaded = {
+        "context-speed": SimpleNamespace(
+            bundle=SimpleNamespace(to_dict=lambda: bundle_a),
+        )
+    }
+    monkeypatch.setattr(
+        "inferyard.application.context_speed_progress.read_inputs",
+        lambda path: (None, fake_loaded, None),
+    )
+
+    batch_a = inspect_workspace(ws_a, results_root=results, reports_root=reports)
+    assert batch_a["bundles"][0]["phase"] == "results_available"
+    assert batch_a["bundles"][0]["next_action"] == "speed_results"
+
+    batch_b = inspect_workspace(ws_b, results_root=results, reports_root=reports)
+    assert batch_b["bundles"][0]["phase"] == "plan_missing"
+    assert batch_b["bundles"][0]["next_action"] == "freeze_plan"

@@ -221,14 +221,10 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 		workspace, _ := json.Marshal(root)
 		patch := map[string]json.RawMessage{"workspace_root": workspace}
 		if s.userSettings().ResultsRoot == nil {
-			resultsPath := filepath.Join(root, "results")
-			if defWS := workspaceRoot(UserSettings{}); defWS != nil && sameDirPath(root, *defWS) {
-				if defRes := defaultResultsRoot(UserSettings{}); defRes != nil {
-					resultsPath = *defRes
-				}
+			if res := defaultResultsRoot(UserSettings{WorkspaceRoot: &root}); res != nil {
+				results, _ := json.Marshal(*res)
+				patch["results_root"] = results
 			}
-			results, _ := json.Marshal(resultsPath)
-			patch["results_root"] = results
 		}
 		if _, e := s.UpdateSettings(patch); e != nil {
 			return result, e
