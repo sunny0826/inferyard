@@ -231,6 +231,9 @@ func (s *viewState) deviceRecommendationCard(c *ui.Context, rec core.StarterReco
 		if rec.Backend != "" {
 			engineText += " · " + deviceLabel(rec.Backend)
 		}
+		if rec.FitLevel != "" {
+			engineText += " · " + deviceLabel(rec.FitLevel)
+		}
 		deviceRow(c, "推荐引擎", engineText)
 		if rec.ModelTitle != "" {
 			modelText := rec.ModelTitle
@@ -240,7 +243,11 @@ func (s *viewState) deviceRecommendationCard(c *ui.Context, rec core.StarterReco
 			deviceRow(c, "推荐模型", modelText)
 		}
 		if rec.EstimatedDownloadBytes > 0 {
-			deviceRow(c, "预计下载", formatDownloadBytes(rec.EstimatedDownloadBytes))
+			downloadText := formatDownloadBytes(rec.EstimatedDownloadBytes)
+			if rec.EstimatedRAMBytes > 0 {
+				downloadText += "（预计内存约 " + formatDownloadBytes(rec.EstimatedRAMBytes) + "）"
+			}
+			deviceRow(c, "预计下载", downloadText)
 		}
 		if rec.Reason != "" && rec.Reason != "polystrata_hardware_fit" {
 			deviceRow(c, "说明", deviceLabel(rec.Reason))
@@ -248,8 +255,15 @@ func (s *viewState) deviceRecommendationCard(c *ui.Context, rec core.StarterReco
 		if notes := localizedDeviceNotes(rec.Notes); len(notes) > 0 {
 			deviceRow(c, "提示", strings.Join(notes, "；"))
 		}
+		opts := starterOptions(rec)
+		st := s.ensureDownloadsUI()
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			button(c, "前往下载").OnClick(func() { s.selected = "downloads" })
+			if len(opts) > 0 {
+				s.starterPrimaryCTA(c, st, opts[0], true)
+			}
+			button(c, "查看全部推荐").OnClick(func() {
+				s.openDownloadsWithStarterExpanded()
+			})
 		})
 	})
 }

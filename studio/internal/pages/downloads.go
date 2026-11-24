@@ -23,6 +23,7 @@ type downloadsUIState struct {
 	polystrataModelSource   string
 	starterChoice           int
 	starterAltOpen          bool
+	starterExpandedOverride *bool
 	modelDrawerOpen         bool
 	modelDrawerID           string
 	customEngineURL         string

@@ -62,7 +62,7 @@ func TestDownloadsDynamicStarterCardSwitchAndPolystrataSetup(t *testing.T) {
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
 	tt.Frame()
 
-	for _, want := range []string{"推荐组合", "PolyStrata", "Qwen3.6 35B-A3B (UD-Q4_K_M)", "Apple M4 Pro", "一键安装 PolyStrata", "切换备选方案（1）"} {
+	for _, want := range []string{"推荐组合", "PolyStrata", "Qwen3.6 35B-A3B (UD-Q4_K_M)", "Apple M4 Pro", "一键安装 PolyStrata", "Qwen3-0.6B-Q8_0 (GGUF)"} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing %q in dynamic starter card: %v", want, tt.Texts())
 		}
@@ -81,10 +81,9 @@ func TestDownloadsDynamicStarterCardSwitchAndPolystrataSetup(t *testing.T) {
 		t.Fatalf("unexpected polystrata setup request: %+v", setupIntent.req)
 	}
 
-	// Switch to llama.cpp alternative
+	// Switch to llama.cpp alternative directly from flat option cards
 	stub.intents = nil
-	click(t, tt, "切换备选方案（1）")
-	click(t, tt, "使用此方案 · model-qwen3-0.6b-q8")
+	click(t, tt, "选择推荐方案 · model-qwen3-0.6b-q8")
 	if !tt.HasText("下载推荐组合") {
 		t.Fatalf("expected llama.cpp starter CTA after switching alternative: %v", tt.Texts())
 	}
@@ -134,10 +133,9 @@ func TestPolystrataRound1ReviewRegressions(t *testing.T) {
 	tt := ui.NewTester(s.downloadsPageView, 1120, 2600)
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
 	tt.Frame()
-	click(t, tt, "切换备选方案（1）")
-	click(t, tt, "使用此方案 · polystrata-qwen38-coder-iq1-m")
-	if st.starterAltOpen {
-		t.Fatal("expected alternatives fold to auto-collapse after selecting alternative")
+	click(t, tt, "选择推荐方案 · polystrata-qwen38-coder-iq1-m")
+	if st.starterChoice != 1 {
+		t.Fatalf("expected flat option click to select coder alternative: choice=%d", st.starterChoice)
 	}
 	click(t, tt, "安装 · polystrata")
 	if len(stub.intents) != 0 {
@@ -336,9 +334,12 @@ func TestDevicePageShowsAMDFeaturesAndRecommendationCard(t *testing.T) {
 			t.Fatalf("missing %q on device page: %v", want, tt.Texts())
 		}
 	}
-	click(t, tt, "前往下载")
+	click(t, tt, "查看全部推荐")
 	if s.selected != "downloads" {
 		t.Fatalf("selected = %q, want downloads", s.selected)
+	}
+	if !s.starterPanelExpanded() {
+		t.Fatal("expected downloads starter panel expanded after clicking 查看全部推荐")
 	}
 }
 

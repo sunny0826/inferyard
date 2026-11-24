@@ -2,11 +2,11 @@ package pages
 
 import (
 	"fmt"
-	"slices"
+	"net/url"
+	"path"
+	"path/filepath"
 	"strings"
 
-	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 )
 
@@ -17,10 +17,13 @@ type starterOption struct {
 	ModelTitle             string
 	Family                 string
 	Size                   string
+	EngineCore             string
 	ModelFormat            string
 	FitLevel               string
+	Tier                   string
 	RecommendedContext     int64
 	EstimatedDownloadBytes int64
+	EstimatedRAMBytes      int64
 }
 
 func (s *viewState) starterRecommendation() core.StarterRecommendation {
@@ -43,10 +46,13 @@ func starterOptions(rec core.StarterRecommendation) []starterOption {
 			ModelTitle:             rec.ModelTitle,
 			Family:                 emptyText(rec.Family),
 			Size:                   emptyText(rec.Size),
+			EngineCore:             emptyText(rec.EngineCore),
 			ModelFormat:            rec.ModelFormat,
 			FitLevel:               rec.FitLevel,
+			Tier:                   rec.Tier,
 			RecommendedContext:     rec.RecommendedContext,
 			EstimatedDownloadBytes: rec.EstimatedDownloadBytes,
+			EstimatedRAMBytes:      rec.EstimatedRAMBytes,
 		})
 	}
 	for _, alt := range rec.Alternatives {
@@ -60,13 +66,54 @@ func starterOptions(rec core.StarterRecommendation) []starterOption {
 			ModelTitle:             alt.ModelTitle,
 			Family:                 emptyText(alt.Family),
 			Size:                   emptyText(alt.Size),
+			EngineCore:             emptyText(alt.EngineCore),
 			ModelFormat:            alt.ModelFormat,
 			FitLevel:               alt.FitLevel,
+			Tier:                   alt.Tier,
 			RecommendedContext:     alt.RecommendedContext,
 			EstimatedDownloadBytes: alt.EstimatedDownloadBytes,
+			EstimatedRAMBytes:      alt.EstimatedRAMBytes,
 		})
 	}
+	for i := range opts {
+		opts[i].Tier = resolveStarterTier(i, opts[i])
+	}
 	return opts
+}
+
+func resolveStarterTier(index int, opt starterOption) string {
+	switch strings.TrimSpace(opt.Tier) {
+	case "best", "balanced", "lightweight", "fallback":
+		return strings.TrimSpace(opt.Tier)
+	}
+	if index == 0 {
+		return "best"
+	}
+	if opt.Engine == "llama-cpp" {
+		return "fallback"
+	}
+	if opt.EngineCore == "strata-poly" {
+		return "lightweight"
+	}
+	return "balanced"
+}
+
+func starterTierLabel(tier string) string {
+	if label := deviceLabel("tier_" + tier); label != "tier_"+tier {
+		return label
+	}
+	return "备选方案"
+}
+
+func starterTierState(tier string) stateKind {
+	switch tier {
+	case "best":
+		return stateActive
+	case "balanced":
+		return stateInfo
+	default:
+		return stateNeutral
+	}
 }
 
 func (s *viewState) defaultPolystrataSetupRequest() core.PolystrataSetupRequest {
@@ -137,6 +184,16 @@ func starterContextLabel(ctx int64) string {
 	return fmt.Sprintf("上下文 %d", ctx)
 }
 
+func starterContextShort(ctx int64) string {
+	if ctx <= 0 {
+		return "—"
+	}
+	if ctx%1024 == 0 {
+		return fmt.Sprintf("%dK", ctx/1024)
+	}
+	return fmt.Sprintf("%d", ctx)
+}
+
 func starterFitState(fitLevel string) stateKind {
 	switch fitLevel {
 	case "fits":
@@ -167,6 +224,176 @@ func starterGPUChipText(rec core.StarterRecommendation) string {
 		return gpuText + " · " + formatDownloadBytes(*rec.GPU.UnifiedMemoryBytes)
 	}
 	return gpuText
+}
+
+func (s *viewState) starterHardwareSummary(rec core.StarterRecommendation) string {
+	var parts []string
+	hasUnified := rec.GPU != nil && rec.GPU.UnifiedMemoryBytes != nil && *rec.GPU.UnifiedMemoryBytes > 0
+	if gpuText := starterGPUChipText(rec); gpuText != "" {
+		if hasUnified {
+			parts = append(parts, gpuText+" 统一内存")
+		} else {
+			parts = append(parts, gpuText)
+		}
+	}
+	snapshot, err := parseDeviceSnapshot(s.device.Snapshot)
+	if err == nil && snapshot != nil {
+		hw := snapshot.object("hardware")
+		if !hasUnified {
+			if mem := deviceBytes(hw["memory_total_bytes"]); mem != "" && mem != "缺测" {
+				parts = append(parts, "内存 "+mem)
+			}
+		}
+		_, hasModelsDiskKey := hw["models_disk_free_bytes"]
+		modelsDiskMissing := hw.object("missing")["models_disk_free_bytes"] != nil
+		if rec.DiskFreeBytes == nil && !hasModelsDiskKey && !modelsDiskMissing {
+			if disk := deviceBytes(hw["disk_free_bytes"]); disk != "" && disk != "缺测" {
+				parts = append(parts, "可用磁盘 "+disk)
+			}
+		}
+	}
+	if rec.DiskFreeBytes != nil && *rec.DiskFreeBytes > 0 {
+		parts = append(parts, "可用磁盘 "+formatDownloadBytes(*rec.DiskFreeBytes))
+	}
+	return joinParts(parts)
+}
+
+func (s *viewState) isStarterEngineInstalled(opt starterOption) bool {
+	if opt.Engine == "polystrata" {
+		return s.isEngineFamilyInstalled("polystrata")
+	}
+	wantBackend := strings.ToLower(strings.TrimSpace(opt.Backend))
+	for _, eng := range s.registry.Engines {
+		isLlama := eng.Family == "llama-cpp" || (eng.Family == "" && strings.Contains(strings.ToLower(eng.Name), "llama"))
+		if !isLlama {
+			continue
+		}
+		check, checked := s.checks.Engines[eng.Name]
+		if checked && check.State == core.EngineCheckIneligible {
+			continue
+		}
+		if wantBackend == "" || wantBackend == "cpu" {
+			return true
+		}
+		if checked && check.State == core.EngineCheckEligible {
+			if strings.EqualFold(strings.TrimSpace(check.Mode), wantBackend) || check.Modes[wantBackend] {
+				return true
+			}
+			if strings.TrimSpace(check.Mode) != "" || len(check.Modes) > 0 {
+				continue
+			}
+		}
+		if wantBackend == "cuda" {
+			hay := strings.ToLower(eng.Name + " " + eng.Path)
+			if strings.Contains(hay, "cuda") {
+				return true
+			}
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+func strataAssetPrimaryText(asset core.ModelAsset) string {
+	if len(asset.CoveredPaths) > 0 {
+		return strings.ToLower(asset.Name + " " + strings.Join(asset.CoveredPaths, " "))
+	}
+	return strings.ToLower(asset.Name + " " + asset.Path)
+}
+
+func strataAssetConflictsWithSize(asset core.ModelAsset, wantSize string) bool {
+	hay := strataAssetPrimaryText(asset)
+	if strings.Contains(hay, wantSize) {
+		return false
+	}
+	for _, preset := range polystrataCatalogPresets {
+		other := strings.ToLower(strings.TrimSpace(preset.size))
+		if other != "" && other != wantSize && strings.Contains(hay, other) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *viewState) isStarterOptionInstalled(opt starterOption) bool {
+	if opt.Engine == "polystrata" {
+		if !s.isEngineFamilyInstalled("polystrata") {
+			return false
+		}
+		fam := strings.ToLower(strings.TrimSpace(opt.Family))
+		size := strings.ToLower(strings.TrimSpace(opt.Size))
+		availableStrata := map[string]core.ModelAsset{}
+		for _, m := range s.registry.Models {
+			if !m.Available || m.Format != "strata_pack" {
+				continue
+			}
+			if cleaned := cleanMatchPath(m.Path); cleaned != "" {
+				availableStrata[cleaned] = m
+			}
+			hay := strataAssetPrimaryText(m)
+			if fam != "" && size != "" && strings.Contains(hay, fam) && strings.Contains(hay, size) {
+				return true
+			}
+		}
+		if len(availableStrata) == 0 {
+			return false
+		}
+		seenCfg := map[string]bool{}
+		for _, task := range s.downloads {
+			if task.Kind != "polystrata" || task.State != "done" || task.ModelConfigPath == nil {
+				continue
+			}
+			cfgPath := cleanMatchPath(*task.ModelConfigPath)
+			if cfgPath == "" || seenCfg[cfgPath] {
+				continue
+			}
+			seenCfg[cfgPath] = true
+			asset, ok := availableStrata[cfgPath]
+			if !ok || (size != "" && strataAssetConflictsWithSize(asset, size)) {
+				continue
+			}
+			hay := strings.ToLower(task.DisplayName)
+			if fam != "" && size != "" && strings.Contains(hay, fam) && strings.Contains(hay, size) {
+				return true
+			}
+		}
+		return false
+	}
+	return s.isStarterEngineInstalled(opt) && s.isStarterModelInstalled(opt)
+}
+
+func (s *viewState) isStarterModelInstalled(opt starterOption) bool {
+	if opt.Engine == "polystrata" {
+		return s.isStarterOptionInstalled(opt)
+	}
+	entry, ok := core.CatalogEntryByID(opt.ModelID)
+	if !ok {
+		return false
+	}
+	if s.isModelEntryDownloaded(entry) {
+		return true
+	}
+	wantFile := ""
+	if u, err := url.Parse(strings.TrimSpace(entry.URL)); err == nil {
+		base := strings.TrimSpace(path.Base(u.Path))
+		if strings.HasSuffix(strings.ToLower(base), ".gguf") {
+			wantFile = strings.ToLower(base)
+		}
+	}
+	if wantFile == "" {
+		return false
+	}
+	for _, m := range s.registry.Models {
+		if !m.Available {
+			continue
+		}
+		if strings.EqualFold(strings.TrimSpace(m.Name), wantFile) ||
+			strings.EqualFold(filepath.Base(strings.TrimSpace(m.Path)), wantFile) {
+			return true
+		}
+	}
+	return false
 }
 
 func starterCardNotes(notes []string, excludeXcodeCLT bool) []string {
@@ -266,9 +493,9 @@ func starterModelURLForOption(opt starterOption, modelSource string) string {
 	return modelURL
 }
 
-func (s *viewState) hasUnresolvedPolystrataTask() bool {
+func (s *viewState) hasUnresolvedDownloadTask() bool {
 	for i, task := range s.downloads {
-		if task.Kind != "polystrata" || (task.State != "failed" && task.State != "cancelled") {
+		if task.State != "failed" && task.State != "cancelled" {
 			continue
 		}
 		if !s.downloadResolved(task, i) {
@@ -278,210 +505,106 @@ func (s *viewState) hasUnresolvedPolystrataTask() bool {
 	return false
 }
 
-func (s *viewState) starterCardVisible() bool {
-	assets := s.availableTaskAssets()
-	if assets.engine || assets.model || s.downloadActive("engine") || s.downloadActive("model") || s.downloadActive("polystrata") || s.hasUnresolvedPolystrataTask() {
-		return false
-	}
-	rec := s.starterRecommendation()
+func (s *viewState) hasStarterContent(rec core.StarterRecommendation) bool {
 	if s.device.Refreshing && !rec.FromSnapshot {
 		return true
 	}
 	return len(starterOptions(rec)) > 0 || rec.Status == "blocked"
 }
 
-func (s *viewState) downloadsStarterCard(c *ui.Context) {
-	st := s.ensureDownloadsUI()
+func (s *viewState) starterDefaultCollapsed() bool {
 	assets := s.availableTaskAssets()
-	if assets.engine || assets.model || s.downloadActive("engine") || s.downloadActive("model") || s.downloadActive("polystrata") || s.hasUnresolvedPolystrataTask() {
-		return
-	}
-	rec := s.starterRecommendation()
-	t := tokens(c)
-	if s.device.Refreshing && !rec.FromSnapshot {
-		applyMaterial(c, ui.Column(c.Key("downloads-starter-card")).FillWidth().Gap(t.Density.Row).Padding(t.Card.Padding), materialCard).Children(func() {
-			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-				heading(c, "推荐组合", 3)
-				badge(c, "检测中", stateActive, badgeOptions{Style: badgeSoft, Size: sizeSM})
-			})
-			ui.Text(c, "正在检测本机硬件配置与可用磁盘空间…").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-		})
-		return
-	}
-	opts := starterOptions(rec)
-	if len(opts) == 0 && rec.Status != "blocked" {
-		return
-	}
-	if st.starterChoice < 0 || st.starterChoice >= len(opts) {
-		st.starterChoice = 0
-	}
+	return assets.engine || assets.model || s.downloadActive("engine") || s.downloadActive("model") || s.downloadActive("polystrata") || s.hasUnresolvedDownloadTask()
+}
 
-	applyMaterial(c, ui.Column(c.Key("downloads-starter-card")).FillWidth().Gap(t.Density.Row).Padding(t.Card.Padding), materialCard).Children(func() {
-		if rec.Status == "blocked" && len(opts) == 0 {
-			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
-					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-						heading(c, "推荐组合", 3)
-						badge(c, "暂不可用", stateWarning, badgeOptions{Style: badgeSoft, Size: sizeSM})
-					})
-					reason := deviceLabel(rec.Reason)
-					if reason == "" {
-						reason = "当前硬件不满足默认推荐条件。"
-					}
-					ui.Text(c, reason).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-					if notes := localizedDeviceNotes(rec.Notes); len(notes) > 0 {
-						ui.Text(c, strings.Join(notes, "；")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-					}
-				})
-				button(c, "查看设备").OnClick(func() { s.selected = "device" })
-			})
+func (s *viewState) starterPanelExpanded() bool {
+	st := s.ensureDownloadsUI()
+	if st.starterExpandedOverride != nil {
+		return *st.starterExpandedOverride
+	}
+	return !s.starterDefaultCollapsed()
+}
+
+func (s *viewState) setStarterPanelExpanded(expanded bool) {
+	st := s.ensureDownloadsUI()
+	v := expanded
+	st.starterExpandedOverride = &v
+}
+
+// starterCardVisible reports whether the expanded recommendation panel with
+// primary install CTA is currently visible on the Downloads page.
+func (s *viewState) starterCardVisible() bool {
+	rec := s.starterRecommendation()
+	if !s.hasStarterContent(rec) {
+		return false
+	}
+	return s.starterPanelExpanded()
+}
+
+func (s *viewState) openDownloadsWithStarterExpanded() {
+	s.setStarterPanelExpanded(true)
+	s.selected = "downloads"
+}
+
+func (s *viewState) startStarterOption(opt starterOption, navigateToDownloads bool) {
+	st := s.ensureDownloadsUI()
+	switch opt.Engine {
+	case "polystrata":
+		if navigateToDownloads {
+			s.setStarterPanelExpanded(false)
+			s.selected = "downloads"
+		}
+		s.acquirePolystrataSetup(polystrataRequestForOption(opt, st.polystrataModelSource))
+	default:
+		engineInstalled := s.isStarterEngineInstalled(opt)
+		modelInstalled := s.isStarterModelInstalled(opt)
+		if engineInstalled && modelInstalled {
 			return
 		}
-
-		chosen := opts[st.starterChoice]
-		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
-				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-					heading(c, "推荐组合", 3)
-					badge(c, starterEngineLabel(chosen.Engine), stateActive, badgeOptions{Style: badgeSoft, Size: sizeSM})
-					if chosen.Backend != "" {
-						badge(c, deviceLabel(chosen.Backend), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
-					}
-					if chosen.FitLevel != "" {
-						badge(c, deviceLabel(chosen.FitLevel), starterFitState(chosen.FitLevel), badgeOptions{Style: badgeOutline, Size: sizeSM})
-					}
-				})
-				ui.Text(c, starterOptionTitle(chosen)).Bold()
-				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-					if ctx := starterContextLabel(chosen.RecommendedContext); ctx != "" {
-						badge(c, ctx, stateNeutral, badgeOptions{Style: badgeSoft, Size: sizeSM})
-					}
-					if chosen.EstimatedDownloadBytes > 0 {
-						badge(c, "预计下载 "+formatDownloadBytes(chosen.EstimatedDownloadBytes), stateNeutral, badgeOptions{Style: badgeSoft, Size: sizeSM})
-					}
-					if gpuText := starterGPUChipText(rec); gpuText != "" {
-						badge(c, gpuText, stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
-					}
-				})
-				var summaryNotes []string
-				if st.starterChoice == 0 && rec.Reason != "" && rec.Reason != "polystrata_hardware_fit" {
-					summaryNotes = append(summaryNotes, deviceLabel(rec.Reason))
-				}
-				summaryNotes = append(summaryNotes, starterCardNotes(rec.Notes, chosen.Engine == "polystrata")...)
-				if len(summaryNotes) > 0 {
-					ui.Text(c, strings.Join(summaryNotes, "；")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-				}
-			})
-			switch chosen.Engine {
-			case "polystrata":
-				if primaryButton(c, "一键安装 PolyStrata").Disabled(s.busy).Clicked() {
-					s.acquirePolystrataSetup(polystrataRequestForOption(chosen, st.polystrataModelSource))
-				}
-			default:
-				hostPlatform := s.downloadsHostPlatform()
-				engineURL := starterLlamaCppEngineURL(hostPlatform, chosen.Backend)
-				modelURL := starterModelURLForOption(chosen, st.modelSource)
-				switch {
-				case engineURL != "" && modelURL != "":
-					if primaryButton(c, "下载推荐组合").Disabled(s.busy).Clicked() {
-						s.acquireStarterBundle(engineURL, modelURL)
-					}
-				default:
-					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-						primaryButton(c, "查看引擎获取方式").OnClick(func() {
-							relID, buildID := starterLlamaCppDrawerTarget(s.engineCatalogRegistry(), hostPlatform, chosen.Backend)
-							st.openEngineDrawer("llama-cpp", relID, hostPlatform, buildID)
-						})
-						if modelURL != "" {
-							outlineButton(c, "下载推荐模型").Disabled(s.busy).OnClick(func() {
-								s.acquireModelSource(modelURL, "")
-							})
-						}
-					})
-				}
+		hostPlatform := s.downloadsHostPlatform()
+		engineURL := starterLlamaCppEngineURL(hostPlatform, opt.Backend)
+		modelURL := starterModelURLForOption(opt, st.modelSource)
+		switch {
+		case engineInstalled && modelURL != "":
+			if navigateToDownloads {
+				s.setStarterPanelExpanded(false)
+				s.selected = "downloads"
 			}
-		})
-
-		if chosen.Engine == "polystrata" && slices.Contains(rec.Notes, "xcode_clt_missing") {
-			applyMaterial(c, ui.Row(c.Key("starter-xcode-clt-hint")).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Padding(t.Density.Inset), materialInset).Children(func() {
-				badge(c, "前置工具", stateWarning, badgeOptions{Style: badgeSoft, Size: sizeSM})
-				ui.Text(c, "未检测到 Xcode Command Line Tools，首次构建前请先安装：").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-				ui.Text(c, "xcode-select --install").Selectable().FontSize(t.Type.Caption)
-				outlineButton(c, "复制命令").Label("复制 Xcode CLT 安装命令").OnClick(func() {
-					s.copyDownloadText(c, "安装命令", "xcode-select --install")
-				})
-			})
-		}
-
-		ui.Row(c.Key("starter-model-source-row")).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			ui.Text(c, "模型下载源").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-			if chosen.Engine == "polystrata" {
-				ui.Box(c.Key("starter-source-polystrata")).Children(func() {
-					prev := st.polystrataModelSource
-					segmentedControl(c, "PolyStrata 模型源", &st.polystrataModelSource, []components.NativeSelectOption[string]{
-						{Value: "auto", Label: "自动"},
-						{Value: "modelscope", Label: "ModelScope"},
-						{Value: "huggingface", Label: "HuggingFace"},
-					})
-					if st.polystrataModelSource != prev {
-						st.setPolystrataModelSource(st.polystrataModelSource)
-					}
-				})
-			} else {
-				ui.Box(c.Key("starter-source-direct")).Children(func() {
-					prev := st.modelSource
-					segmentedControl(c, "推荐模型源", &st.modelSource, []components.NativeSelectOption[string]{
-						{Value: "huggingface", Label: "HuggingFace"},
-						{Value: "modelscope", Label: "ModelScope"},
-					})
-					if st.modelSource != prev {
-						st.setDirectModelSource(st.modelSource)
-					}
-				})
+			s.acquireModelSource(modelURL, "")
+		case modelInstalled && engineURL != "":
+			if navigateToDownloads {
+				s.setStarterPanelExpanded(false)
+				s.selected = "downloads"
 			}
-		})
-
-		if len(opts) > 1 {
-			ui.Column(c.Key("downloads-starter-alternatives")).FillWidth().Children(func() {
-				components.Collapsible(c, fmt.Sprintf("切换备选方案（%d）", len(opts)-1), &st.starterAltOpen, components.CollapsibleOptions{}, func() {
-					ui.Column(c).FillWidth().Gap(t.Density.Tight).Children(func() {
-						for i, opt := range opts {
-							if i == st.starterChoice {
-								continue
-							}
-							idx, option := i, opt
-							ui.Row(c.Key(fmt.Sprintf("starter-alt-%d", idx))).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-								ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
-									ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-										ui.Text(c, starterOptionTitle(option)).Bold()
-										badge(c, starterEngineLabel(option.Engine), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
-										if option.Backend != "" {
-											badge(c, deviceLabel(option.Backend), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
-										}
-									})
-									meta := []string{}
-									if ctx := starterContextLabel(option.RecommendedContext); ctx != "" {
-										meta = append(meta, ctx)
-									}
-									if option.EstimatedDownloadBytes > 0 {
-										meta = append(meta, "预计下载 "+formatDownloadBytes(option.EstimatedDownloadBytes))
-									}
-									if len(meta) > 0 {
-										ui.Text(c, joinParts(meta)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-									}
-								})
-								outlineButton(c, "使用此方案").Label("使用此方案 · " + option.ModelID).OnClick(func() {
-									st.starterChoice = idx
-									st.starterAltOpen = false
-									if option.Engine == "polystrata" {
-										st.polystrataDrawerModelID = option.ModelID
-									}
-								})
-							})
-						}
-					})
-				})
-			})
+			s.acquireEngine(engineURL, "")
+		case !engineInstalled && !modelInstalled && engineURL != "" && modelURL != "":
+			if navigateToDownloads {
+				s.setStarterPanelExpanded(false)
+				s.selected = "downloads"
+			}
+			s.acquireStarterBundle(engineURL, modelURL)
+		default:
+			if navigateToDownloads {
+				s.selected = "downloads"
+			}
+			relID, buildID := starterLlamaCppDrawerTarget(s.engineCatalogRegistry(), hostPlatform, opt.Backend)
+			st.openEngineDrawer("llama-cpp", relID, hostPlatform, buildID)
 		}
-	})
+	}
+}
+
+func (s *viewState) openPolystrataDrawerForCurrentHost() {
+	fam, ok := s.engineCatalogRegistry().FamilyByID("polystrata")
+	if !ok || len(fam.Releases) == 0 {
+		return
+	}
+	st := s.ensureDownloadsUI()
+	hostPlatform := s.downloadsHostPlatform()
+	releases := fam.ReleasesForPlatform(hostPlatform, false)
+	if len(releases) == 0 {
+		releases = fam.Releases
+	}
+	rel := resolveEngineRelease(st.selectedRelease[fam.ID], releases)
+	build := pickEngineBuildForPlatform(st, fam.ID, rel, hostPlatform)
+	s.openPolystrataConfigDrawer(fam.ID, rel.ID, build.Platform, build.ID)
 }
