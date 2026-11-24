@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.0.11
+
+- style(studio): unify concentric corner radii and 4px grid in shared tokens and components (#204)
+- fix: unblock local engine runs for zh-core-v2 and cache model asset hashes (#203)
+- feat(studio): add minimize to system tray setting (#202)
+- chore(tests): prune redundant implementation tests and keep product hypothesis & release gates (#201)
+- ci: optimize workflows for runner concurrency, caching, and Linux unit coverage (#200)
+- feat: upgrade hardware-aware starter recommendation UX and CLI ranking (#198)
+- fix(studio): require minimum uv version before reusing for CLI install (#199)
+- refactor(studio): streamline PolyStrata install card UI and merge header cancel action (#197)
+
 ## 0.0.10
 
 - fix(studio): deduplicate PolyStrata preflight errors, localize failure stages, and fix notification and action copy (#195)
