@@ -135,29 +135,34 @@ func (s *viewState) needsTaskAssets() bool {
 
 func (s *viewState) taskAssetsView(c *ui.Context) {
 	assets := s.availableTaskAssets()
+	rec := s.starterRecommendation()
+	hasStarter := s.hasStarterContent(rec)
+	t := tokens(c)
 	card(c, "准备模型与引擎", func() {
-		for _, asset := range []struct {
-			kind, label string
-			available   bool
-		}{{"engine", "引擎", assets.engine}, {"model", "模型", assets.model}} {
-			status := "待下载"
-			kind := stateNeutral
-			if asset.available {
-				status = "已发现"
-				kind = stateSuccess
-			} else {
-				for _, task := range s.downloads {
-					if (task.Kind == asset.kind || task.Kind == "polystrata") && task.State == "downloading" {
-						status = "下载中"
-						kind = stateActive
-						break
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			for _, asset := range []struct {
+				kind, label string
+				available   bool
+			}{{"engine", "引擎", assets.engine}, {"model", "模型", assets.model}} {
+				status := "待下载"
+				kind := stateNeutral
+				if asset.available {
+					status = "已发现"
+					kind = stateSuccess
+				} else {
+					for _, task := range s.downloads {
+						if (task.Kind == asset.kind || task.Kind == "polystrata") && task.State == "downloading" {
+							status = "下载中"
+							kind = stateActive
+							break
+						}
 					}
 				}
+				badge(c, asset.label+" · "+status, kind, badgeOptions{Style: badgeDot})
 			}
-			badge(c, asset.label+" · "+status, kind, badgeOptions{Style: badgeDot})
-		}
+		})
 		if s.registry.Refreshing {
-			ui.Text(c, "正在读取本地资源…").TextColor(tokens(c).Color.FgSecondary)
+			ui.Text(c, "正在读取本地资源…").TextColor(t.Color.FgSecondary)
 		}
 		errorView(c, s.registry.ModelError)
 		shown := map[string]bool{}
@@ -175,11 +180,18 @@ func (s *viewState) taskAssetsView(c *ui.Context) {
 		if s.engineState.State == "orphaned" {
 			s.stopOrphanButton(c)
 		}
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-			primaryButton(c, "到下载页").OnClick(func() { s.selected = "downloads" })
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			if s.activeDownloadCount() > 0 {
+				primaryButton(c, "查看安装进度").OnClick(func() { s.selected = "downloads" })
+			} else if !hasStarter {
+				primaryButton(c, "到下载页").OnClick(func() { s.selected = "downloads" })
+			}
 			button(c, "使用已有资源").OnClick(func() { s.selected = "settings" })
 		})
 	})
+	if hasStarter && s.activeDownloadCount() == 0 {
+		s.renderStarterRecommendationPanel(c, "dashboard")
+	}
 }
 
 func (s *viewState) activeDownloadCount() int {

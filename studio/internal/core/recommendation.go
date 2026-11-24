@@ -18,6 +18,7 @@ type StarterAlternative struct {
 	EngineCore             *string `json:"engine_core,omitempty"`
 	ModelFormat            string  `json:"model_format"`
 	FitLevel               string  `json:"fit_level"`
+	Tier                   string  `json:"tier,omitempty"`
 	RecommendedContext     int64   `json:"recommended_context"`
 	EstimatedDownloadBytes int64   `json:"estimated_download_bytes"`
 	EstimatedRAMBytes      int64   `json:"estimated_ram_bytes"`
@@ -45,6 +46,7 @@ type StarterRecommendation struct {
 	EngineCore             *string                   `json:"engine_core,omitempty"`
 	ModelFormat            string                    `json:"model_format,omitempty"`
 	FitLevel               string                    `json:"fit_level,omitempty"`
+	Tier                   string                    `json:"tier,omitempty"`
 	RecommendedContext     int64                     `json:"recommended_context,omitempty"`
 	EstimatedDownloadBytes int64                     `json:"estimated_download_bytes,omitempty"`
 	EstimatedRAMBytes      int64                     `json:"estimated_ram_bytes,omitempty"`
@@ -53,6 +55,7 @@ type StarterRecommendation struct {
 	GPU                    *StarterRecommendationGPU `json:"gpu,omitempty"`
 	Notes                  []string                  `json:"notes,omitempty"`
 	Alternatives           []StarterAlternative      `json:"alternatives,omitempty"`
+	PolystrataModels       []StarterAlternative      `json:"polystrata_models,omitempty"`
 	FromSnapshot           bool                      `json:"from_snapshot"`
 }
 
@@ -104,6 +107,7 @@ func StaticFallbackStarterRecommendation() StarterRecommendation {
 			ModelTitle:             entry.Title,
 			ModelFormat:            "gguf",
 			FitLevel:               "fits",
+			Tier:                   "balanced",
 			RecommendedContext:     8192,
 			EstimatedDownloadBytes: entry.Bytes,
 			EstimatedRAMBytes:      6442450944,
@@ -117,6 +121,7 @@ func StaticFallbackStarterRecommendation() StarterRecommendation {
 			ModelTitle:             entry.Title,
 			ModelFormat:            "gguf",
 			FitLevel:               "fits",
+			Tier:                   "lightweight",
 			RecommendedContext:     4096,
 			EstimatedDownloadBytes: entry.Bytes,
 			EstimatedRAMBytes:      1073741824,
@@ -131,6 +136,7 @@ func StaticFallbackStarterRecommendation() StarterRecommendation {
 		ModelTitle:             primaryTitle,
 		ModelFormat:            "gguf",
 		FitLevel:               "fits",
+		Tier:                   "best",
 		RecommendedContext:     8192,
 		EstimatedDownloadBytes: primaryBytes,
 		EstimatedRAMBytes:      2147483648,

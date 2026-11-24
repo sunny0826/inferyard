@@ -101,13 +101,9 @@ func TestStarterAlternativeAutoCollapsesAndSyncsDownloadSource(t *testing.T) {
 		t.Fatalf("expected ModelScope selection to sync across sources: poly=%q direct=%q", st.polystrataModelSource, st.modelSource)
 	}
 
-	click(t, tt, "切换备选方案（1）")
-	if !st.starterAltOpen {
-		t.Fatal("expected alternatives fold to open")
-	}
-	click(t, tt, "使用此方案 · model-qwen3-0.6b-q8")
-	if st.starterAltOpen || st.starterChoice != 1 {
-		t.Fatalf("expected fold auto-collapse after choosing alternative: open=%v choice=%d", st.starterAltOpen, st.starterChoice)
+	click(t, tt, "选择推荐方案 · model-qwen3-0.6b-q8")
+	if st.starterChoice != 1 {
+		t.Fatalf("expected flat card selection to choose alternative: choice=%d", st.starterChoice)
 	}
 	if !tt.HasText("模型下载源") || !tt.HasText("下载推荐组合") {
 		t.Fatalf("expected download source switcher to remain visible on llama.cpp option: %v", tt.Texts())

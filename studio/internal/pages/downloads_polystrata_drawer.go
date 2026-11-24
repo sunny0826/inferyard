@@ -124,11 +124,32 @@ func polystrataDrawerBackend(rec core.StarterRecommendation, hostPlatform string
 
 func (s *viewState) polystrataDrawerOptions(hostPlatform string) []starterOption {
 	rec := s.starterRecommendation()
-	opts := starterOptions(rec)
 	out := make([]starterOption, 0, len(polystrataCatalogPresets))
 	seen := make(map[string]bool, len(polystrataCatalogPresets))
 
-	for _, opt := range opts {
+	for _, alt := range rec.PolystrataModels {
+		if alt.Engine != "polystrata" || seen[alt.ModelID] {
+			continue
+		}
+		seen[alt.ModelID] = true
+		out = append(out, starterOption{
+			Engine:                 alt.Engine,
+			Backend:                alt.Backend,
+			ModelID:                alt.ModelID,
+			ModelTitle:             alt.ModelTitle,
+			Family:                 emptyText(alt.Family),
+			Size:                   emptyText(alt.Size),
+			EngineCore:             emptyText(alt.EngineCore),
+			ModelFormat:            alt.ModelFormat,
+			FitLevel:               alt.FitLevel,
+			Tier:                   alt.Tier,
+			RecommendedContext:     alt.RecommendedContext,
+			EstimatedDownloadBytes: alt.EstimatedDownloadBytes,
+			EstimatedRAMBytes:      alt.EstimatedRAMBytes,
+		})
+	}
+
+	for _, opt := range starterOptions(rec) {
 		if opt.Engine != "polystrata" || seen[opt.ModelID] {
 			continue
 		}
@@ -301,6 +322,9 @@ func (s *viewState) polystrataDrawerSetupSection(c *ui.Context, st *downloadsUIS
 			}
 			if selected.EstimatedDownloadBytes > 0 {
 				badge(c, "预计下载 "+formatDownloadBytes(selected.EstimatedDownloadBytes), stateNeutral, badgeOptions{Style: badgeSoft, Size: sizeSM})
+			}
+			if selected.EstimatedRAMBytes > 0 {
+				badge(c, "预计内存 "+formatDownloadBytes(selected.EstimatedRAMBytes), stateNeutral, badgeOptions{Style: badgeSoft, Size: sizeSM})
 			}
 		})
 	})
