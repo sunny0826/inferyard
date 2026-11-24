@@ -33,6 +33,7 @@ type phaseProgressOptions struct {
 	Current  int
 	RowLabel string
 	BarLabel string
+	HideBar  bool
 }
 
 func phaseProgress(c *ui.Context, o phaseProgressOptions) {
@@ -49,6 +50,9 @@ func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 			}
 		}
 	})
+	if o.HideBar {
+		return
+	}
 	value := float64(0)
 	if len(o.Labels) > 0 {
 		value = float64(o.Current) / float64(len(o.Labels))
@@ -79,6 +83,7 @@ type taskCardOptions struct {
 	active            bool
 	metrics           []taskMetric
 	status            string
+	headerRight       func()
 	notice            func()
 	actions, details  func()
 }
@@ -93,7 +98,11 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 					ui.Text(c, options.kind).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
 				}
 			})
-			statusBadge(c, options.state, options.color)
+			if options.headerRight != nil {
+				options.headerRight()
+			} else {
+				statusBadge(c, options.state, options.color)
+			}
 		})
 		if options.status != "" {
 			ui.Text(c, options.status).TextColor(c.Theme().TextMuted)
@@ -121,8 +130,12 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 		if options.notice != nil {
 			options.notice()
 		}
-		options.actions()
-		componentFold(c, "任务详情", func() { options.details() })
+		if options.actions != nil {
+			options.actions()
+		}
+		if options.details != nil {
+			componentFold(c, "任务详情", func() { options.details() })
+		}
 	})
 }
 

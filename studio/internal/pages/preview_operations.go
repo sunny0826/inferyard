@@ -406,7 +406,9 @@ func (p *previewSession) activateScene() {
 	}
 	for _, task := range s.downloads {
 		if task.State == "downloading" {
-			if task.Kind == "polystrata" {
+			if task.TaskId == "preview-polystrata-model-live" {
+				p.tickPolystrataModelPreview(task.TaskId)
+			} else if task.Kind == "polystrata" {
 				p.tickPolystrataSetup(task.TaskId, false, 1)
 			} else {
 				p.tickDownload(task.TaskId, false, 0)

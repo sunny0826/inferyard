@@ -63,6 +63,7 @@ var previewScenes = []struct {
 	{"报告 · 读取失败", func(s *viewState) { s.openReport("broken-report") }},
 	{"下载 · 进行中与失败", previewDownloadsActiveAndFailed},
 	{"下载 · PolyStrata 引导安装", previewDownloadsPolystrata},
+	{"下载 · PolyStrata 模型下载", previewDownloadsPolystrataModel},
 	{"更新 · 发现新版本", previewUpdateAvailable},
 	{"更新 · 下载中", previewUpdateDownloading},
 	{"更新 · 待重启生效", previewUpdateReadyToApply},
@@ -109,6 +110,33 @@ func previewDownloadsPolystrata(s *viewState) {
 			OutDir:      "/preview/engines/polystrata-blocked",
 			Error:       blockerErr,
 			StartedAt:   "2026-10-16T23:55:00Z",
+		},
+	}
+}
+
+func previewDownloadsPolystrataModel(s *viewState) {
+	s.selected = "downloads"
+	s.registry.Engines = nil
+	s.registry.Models = nil
+	totalBytes := int64(37623912858) // 35.04 GiB
+	s.downloads = []core.DownloadTask{
+		{
+			TaskId:          "preview-polystrata-model-live",
+			Kind:            "polystrata",
+			DisplayName:     "PolyStrata · qwen · Q2_0",
+			State:           "downloading",
+			Stage:           "downloading_model",
+			Step:            previewValue(4),
+			StepTotal:       previewValue(4),
+			DownloadedBytes: 4456028569, // 4.15 GiB
+			TotalBytes:      previewValue(totalBytes),
+			BytesPerSecond:  previewValue(22502441.0), // 21.46 MiB/s
+			Detail:          previewValue("Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf"),
+			SourceUrl:       "https://github.com/simplexai-labs/PolyStrata/archive/3e1642161198c50ff1abed4046f4e4f476099dbb.tar.gz",
+			OutName:         "polystrata-qwen-q2",
+			OutDir:          "/preview/engines/polystrata-qwen-q2",
+			LogPath:         previewValue("/preview/engines/polystrata-qwen-q2/.inferyard-setup.log"),
+			StartedAt:       "2026-10-17T00:00:00Z",
 		},
 	}
 }
