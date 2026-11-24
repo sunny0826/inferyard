@@ -28,8 +28,19 @@ def _hash_cache_path() -> Path:
     return Path.home() / ".cache" / "inferyard" / "model-hash-cache.v1.json"
 
 
-def _valid_hex64(value: object) -> bool:
-    return type(value) is str and len(value) == 64 and set(value) <= _HEX_LOWER
+def _valid_hex(value: object, length: int) -> bool:
+    return type(value) is str and len(value) == length and set(value) <= _HEX_LOWER
+
+
+def _native_stamp(target: Path) -> tuple | None:
+    if os.name != "nt":
+        return None
+    from inferyard.platforms.engine_fit_windows_files import path_stamp
+
+    volume, identifier, attributes, size, creation, write, change = path_stamp(
+        target.resolve(strict=True)
+    )
+    return (volume, identifier.hex(), attributes, size, creation, write, change)
 
 
 def _load_disk_cache() -> dict:
@@ -52,6 +63,15 @@ def _load_disk_cache() -> dict:
         return {}
 
 
+def _encode_disk_cache(entries: dict) -> bytes:
+    return json.dumps(
+        {"definition": _DISK_CACHE_DEFINITION, "entries": entries},
+        ensure_ascii=False,
+        allow_nan=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
 def _save_disk_cache(entries: dict) -> None:
     tmp_path = None
     try:
@@ -59,22 +79,19 @@ def _save_disk_cache(entries: dict) -> None:
         cache_dir = path.parent
         if path.is_symlink() or (cache_dir.exists() and cache_dir.is_symlink()):
             return
+        trimmed = dict(list(entries.items())[-_MAX_DISK_CACHE_ENTRIES:])
+        payload = _encode_disk_cache(trimmed)
+        while trimmed and len(payload) > _MAX_DISK_CACHE_BYTES:
+            trimmed.pop(next(iter(trimmed)))
+            payload = _encode_disk_cache(trimmed)
+        if not trimmed or len(payload) > _MAX_DISK_CACHE_BYTES:
+            return
         cache_dir.mkdir(parents=True, exist_ok=True)
-        if len(entries) > _MAX_DISK_CACHE_ENTRIES:
-            trimmed = dict(list(entries.items())[-_MAX_DISK_CACHE_ENTRIES:])
-        else:
-            trimmed = entries
-        payload = json.dumps(
-            {"definition": _DISK_CACHE_DEFINITION, "entries": trimmed},
-            ensure_ascii=False,
-            allow_nan=False,
-            separators=(",", ":"),
-        )
         fd, tmp_name = tempfile.mkstemp(
             dir=cache_dir, prefix="model-hash-cache-", suffix=".tmp"
         )
         tmp_path = Path(tmp_name)
-        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+        with os.fdopen(fd, "wb") as stream:
             stream.write(payload)
             stream.flush()
         os.chmod(tmp_path, 0o600)
@@ -89,30 +106,37 @@ def _save_disk_cache(entries: dict) -> None:
 
 
 def _serialize_stamps(stamps: dict) -> dict:
-    return {
-        name: [list(link), list(target)]
-        for name, (link, target) in sorted(stamps.items())
-    }
+    return {name: [list(part) for part in parts] for name, parts in sorted(stamps.items())}
+
+
+def _valid_stat_tuple(raw: object) -> bool:
+    return isinstance(raw, list) and len(raw) == 6 and all(type(x) is int for x in raw)
+
+
+def _valid_native_tuple(raw: object) -> bool:
+    return (
+        isinstance(raw, list)
+        and len(raw) == 7
+        and _valid_hex(raw[1], 32)
+        and all(type(raw[i]) is int for i in (0, 2, 3, 4, 5, 6))
+    )
 
 
 def _deserialize_stamps(raw: object) -> dict | None:
     if not isinstance(raw, dict) or not raw:
         return None
     parsed = {}
-    for name, pair in raw.items():
-        if type(name) is not str or not isinstance(pair, list) or len(pair) != 2:
+    for name, parts in raw.items():
+        if type(name) is not str or not isinstance(parts, list) or len(parts) not in (2, 3):
             return None
-        link, target = pair
-        if (
-            not isinstance(link, list)
-            or not isinstance(target, list)
-            or len(link) != 6
-            or len(target) != 6
-            or any(type(x) is not int for x in link)
-            or any(type(x) is not int for x in target)
-        ):
+        if not _valid_stat_tuple(parts[0]) or not _valid_stat_tuple(parts[1]):
             return None
-        parsed[name] = (tuple(link), tuple(target))
+        if len(parts) == 3:
+            if not _valid_native_tuple(parts[2]):
+                return None
+            parsed[name] = (tuple(parts[0]), tuple(parts[1]), tuple(parts[2]))
+        else:
+            parsed[name] = (tuple(parts[0]), tuple(parts[1]))
     return parsed
 
 
@@ -131,15 +155,15 @@ def _valid_cached_manifest(manifest: object, resolved: str, before: dict, *, is_
         return False
     if is_dir and manifest.get("definition") != MODEL_ASSETS_DEFINITION:
         return False
-    if not _valid_hex64(manifest.get("sha256")):
+    if not _valid_hex(manifest.get("sha256"), 64):
         return False
     files = manifest.get("files")
     if not isinstance(files, list) or not files:
         return False
     expected_sizes = {
-        name: target[3]
-        for name, (_, target) in before.items()
-        if stat.S_ISREG(target[2])
+        name: parts[1][3]
+        for name, parts in before.items()
+        if stat.S_ISREG(parts[1][2])
     }
     seen_paths: set[str] = set()
     for entry in files:
@@ -150,7 +174,7 @@ def _valid_cached_manifest(manifest: object, resolved: str, before: dict, *, is_
             type(rel) is not str
             or rel in seen_paths
             or rel not in expected_sizes
-            or not _valid_hex64(sha)
+            or not _valid_hex(sha, 64)
             or type(size) is not int
             or size != expected_sizes[rel]
         ):
@@ -220,26 +244,48 @@ def _file_identities(path: Path, manifest: dict) -> list[FileIdentity]:
     return files
 
 
+def _entry_stamp(target: Path, link_stamp: tuple, target_stamp: tuple, *, attach_native: bool):
+    if attach_native:
+        native = _native_stamp(target)
+        if native is not None:
+            return (link_stamp, target_stamp, native)
+    return (link_stamp, target_stamp)
+
+
 def snapshot(path):
     path = Path(path)
     try:
         is_dir = path.is_dir()
+        path_is_symlink = path.is_symlink()
 
         def view():
             if is_dir:
-                return inventory(path)
-            return {
-                shard.name: (file_stamp(shard.lstat()), file_stamp(shard.stat()))
-                for shard in _gguf_shard_paths(path)
-            }
+                raw = inventory(path)
+                if path_is_symlink:
+                    return raw
+                return {
+                    name: _entry_stamp(
+                        path / name,
+                        link,
+                        target,
+                        attach_native=stat.S_ISREG(target[2]),
+                    )
+                    for name, (link, target) in raw.items()
+                }
+            result = {}
+            for shard in _gguf_shard_paths(path):
+                link, target = file_stamp(shard.lstat()), file_stamp(shard.stat())
+                attach = not path_is_symlink and not stat.S_ISLNK(link[2])
+                result[shard.name] = _entry_stamp(shard, link, target, attach_native=attach)
+            return result
 
         before = view()
         cached = _CACHE.get(str(path))
         if cached is not None and cached[0] == before:
             return deepcopy(cached[1]), list(cached[2])
 
-        can_use_disk_cache = not path.is_symlink() and (
-            is_dir or not any(stat.S_ISLNK(link[2]) for link, _ in before.values())
+        can_use_disk_cache = not path_is_symlink and (
+            is_dir or not any(stat.S_ISLNK(parts[0][2]) for parts in before.values())
         )
         resolved = str(path.resolve(strict=True)) if can_use_disk_cache else None
         manifest = (
@@ -258,5 +304,5 @@ def snapshot(path):
         if computed and resolved is not None:
             _record_disk_cache(resolved, before, manifest)
         return manifest, files
-    except OSError as exc:
+    except (OSError, ValueError) as exc:
         raise PreflightError("local_engine_model_unreadable") from exc

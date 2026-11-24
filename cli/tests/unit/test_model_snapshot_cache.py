@@ -172,3 +172,93 @@ def test_tampered_or_corrupt_disk_cache_falls_back_to_rehash(
     model_snapshot._CACHE.clear()
     recomputed_after_corrupt, _ = model_snapshot.snapshot(model)
     assert recomputed_after_corrupt == first_manifest
+
+
+def test_windows_native_change_time_invalidates_disk_cache_when_mtime_preserved(
+    monkeypatch, tmp_path
+):
+    model = _write_gguf(
+        tmp_path / "win.gguf",
+        {"general.architecture": "qwen35moe"},
+        payload=b"payload-a",
+    )
+    change_time = [100]
+
+    def fake_native_stamp(target: Path):
+        st = target.stat()
+        return (1, "ab" * 16, 0x20, st.st_size, 50, st.st_mtime_ns, change_time[0])
+
+    monkeypatch.setattr(model_snapshot, "_native_stamp", fake_native_stamp)
+
+    calls = 0
+    real_manifest = model_snapshot.model_asset_manifest
+
+    def counting_manifest(path, **kwargs):
+        nonlocal calls
+        calls += 1
+        return real_manifest(path, **kwargs)
+
+    monkeypatch.setattr(model_snapshot, "model_asset_manifest", counting_manifest)
+
+    first_manifest, _ = model_snapshot.snapshot(model)
+    assert calls == 1
+
+    # Same mtime & size & ChangeTime -> disk cache hit across cleared memory cache.
+    model_snapshot._CACHE.clear()
+    second_manifest, _ = model_snapshot.snapshot(model)
+    assert calls == 1
+    assert second_manifest == first_manifest
+
+    # In-place update with identical length and preserved mtime, but incremented ChangeTime.
+    original_stat = model.stat()
+    _write_gguf(model, {"general.architecture": "qwen35moe"}, payload=b"payload-b")
+    os.utime(model, ns=(original_stat.st_atime_ns, original_stat.st_mtime_ns))
+    change_time[0] = 200
+
+    model_snapshot._CACHE.clear()
+    third_manifest, _ = model_snapshot.snapshot(model)
+    assert calls == 2
+    assert third_manifest["sha256"] != first_manifest["sha256"]
+
+
+def test_directory_model_invalid_index_encoding_raises_preflight_error(tmp_path):
+    model_dir = tmp_path / "utf16-index-model"
+    model_dir.mkdir()
+    (model_dir / "config.json").write_text('{"model_type":"qwen3"}', encoding="utf-8")
+    (model_dir / "model.safetensors.index.json").write_bytes(
+        '{"weight_map":{"a":"model.safetensors"}}'.encode("utf-16")
+    )
+
+    with pytest.raises(PreflightError, match="local_engine_model_unreadable"):
+        model_snapshot.snapshot(model_dir)
+
+
+def test_disk_cache_evicts_oldest_entries_to_stay_within_byte_limit(
+    monkeypatch, tmp_path, _isolated_model_cache
+):
+    model_a = _write_gguf(
+        tmp_path / "a.gguf", {"general.architecture": "qwen35moe"}, payload=b"aaa"
+    )
+    model_b = _write_gguf(
+        tmp_path / "b.gguf", {"general.architecture": "qwen35moe"}, payload=b"bbb"
+    )
+
+    model_snapshot.snapshot(model_a)
+    one_entry_bytes = _isolated_model_cache.stat().st_size
+
+    # Cap just above one entry so adding model_b must evict model_a instead of exceeding limit.
+    monkeypatch.setattr(model_snapshot, "_MAX_DISK_CACHE_BYTES", one_entry_bytes + 64)
+    model_snapshot.snapshot(model_b)
+
+    assert _isolated_model_cache.stat().st_size <= one_entry_bytes + 64
+    saved = json.loads(_isolated_model_cache.read_text(encoding="utf-8"))
+    assert str(model_b.resolve(strict=True)) in saved["entries"]
+    assert str(model_a.resolve(strict=True)) not in saved["entries"]
+
+    # If a single entry exceeds the byte limit, keep the existing cache file intact.
+    before_raw = _isolated_model_cache.read_bytes()
+    monkeypatch.setattr(model_snapshot, "_MAX_DISK_CACHE_BYTES", 32)
+    model_snapshot._CACHE.clear()
+    model_snapshot.snapshot(model_a)
+    assert _isolated_model_cache.read_bytes() == before_raw
+
