@@ -9,11 +9,16 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 var releaseHTMLCommentRe = regexp.MustCompile(`(?s)<!--.*?-->`)
 
 func updateBadgePresentation(st core.UpdateState) (label string, kind stateKind, icon func() *ui.SVG, animated bool) {
+	return updateBadgePresentationFor("", st)
+}
+
+func updateBadgePresentationFor(locale string, st core.UpdateState) (label string, kind stateKind, icon func() *ui.SVG, animated bool) {
 	switch st.State {
 	case core.UpdateAvailable:
 		ver := ""
@@ -21,34 +26,34 @@ func updateBadgePresentation(st core.UpdateState) (label string, kind stateKind,
 			ver = st.Release.Version
 		}
 		if ver == "" {
-			return "发现新版本", stateActive, lucide.ArrowUp, false
+			return l10n.T(locale, "update.badge.available"), stateActive, lucide.ArrowUp, false
 		}
-		return "新版本 v" + ver, stateActive, lucide.ArrowUp, false
+		return l10n.Tf(locale, "update.badge.available_version", "version", ver), stateActive, lucide.ArrowUp, false
 	case core.UpdateDownloading:
 		if st.TotalBytes != nil && *st.TotalBytes > 0 && st.DownloadedBytes >= 0 {
 			pct := float64(st.DownloadedBytes) * 100 / float64(*st.TotalBytes)
 			if pct > 100 {
 				pct = 100
 			}
-			return fmt.Sprintf("下载更新 %.0f%%", pct), stateActive, lucide.Download, true
+			return l10n.Tf(locale, "update.badge.downloading_pct", "pct", fmt.Sprintf("%.0f", pct)), stateActive, lucide.Download, true
 		}
-		return "下载更新中", stateActive, lucide.Download, true
+		return l10n.T(locale, "update.badge.downloading"), stateActive, lucide.Download, true
 	case core.UpdateVerifying:
-		return "校验更新", stateActive, lucide.RefreshCw, true
+		return l10n.T(locale, "update.badge.verifying"), stateActive, lucide.RefreshCw, true
 	case core.UpdateReadyToApply:
 		ver := ""
 		if st.Release != nil {
 			ver = st.Release.Version
 		}
 		if ver == "" {
-			return "更新已就绪", stateSuccess, lucide.Download, false
+			return l10n.T(locale, "update.badge.ready"), stateSuccess, lucide.Download, false
 		}
-		return "待安装 v" + ver, stateSuccess, lucide.Download, false
+		return l10n.Tf(locale, "update.badge.ready_version", "version", ver), stateSuccess, lucide.Download, false
 	case core.UpdateApplying:
-		return "正在安装更新", stateActive, lucide.RefreshCw, true
+		return l10n.T(locale, "update.badge.applying"), stateActive, lucide.RefreshCw, true
 	case core.UpdateError:
 		if st.Release != nil {
-			return "更新失败", stateDanger, lucide.CircleAlert, false
+			return l10n.T(locale, "update.badge.error"), stateDanger, lucide.CircleAlert, false
 		}
 		return "", stateNeutral, lucide.Info, false
 	default:
@@ -57,35 +62,39 @@ func updateBadgePresentation(st core.UpdateState) (label string, kind stateKind,
 }
 
 func updateSettingsStatus(st core.UpdateState) (string, stateKind) {
+	return updateSettingsStatusFor("", st)
+}
+
+func updateSettingsStatusFor(locale string, st core.UpdateState) (string, stateKind) {
 	switch st.State {
 	case core.UpdateChecking:
 		if st.ManualCheck {
-			return "正在检查更新…", stateActive
+			return l10n.T(locale, "update.status.checking"), stateActive
 		}
 		return "", stateNeutral
 	case core.UpdateUpToDate:
-		return "已是最新版本", stateSuccess
+		return l10n.T(locale, "update.status.up_to_date"), stateSuccess
 	case core.UpdateAvailable:
 		if st.Release != nil {
-			return "发现新版本 v" + st.Release.Version, stateActive
+			return l10n.Tf(locale, "update.status.available_version", "version", st.Release.Version), stateActive
 		}
-		return "发现新版本", stateActive
+		return l10n.T(locale, "update.badge.available"), stateActive
 	case core.UpdateDownloading:
-		return "正在下载更新：" + formatUpdateProgress(st), stateActive
+		return l10n.Tf(locale, "update.status.downloading", "progress", formatUpdateProgress(st)), stateActive
 	case core.UpdateVerifying:
-		return "正在校验安装包…", stateActive
+		return l10n.T(locale, "update.status.verifying"), stateActive
 	case core.UpdateReadyToApply:
 		if st.Release != nil {
-			return "v" + st.Release.Version + " 已校验就绪", stateSuccess
+			return l10n.Tf(locale, "update.status.ready_version", "version", st.Release.Version), stateSuccess
 		}
-		return "更新已就绪", stateSuccess
+		return l10n.T(locale, "update.badge.ready"), stateSuccess
 	case core.UpdateApplying:
-		return "正在安装更新并准备重启…", stateActive
+		return l10n.T(locale, "update.status.applying"), stateActive
 	case core.UpdateError:
 		if st.ErrorMessage != "" {
 			return st.ErrorMessage, stateDanger
 		}
-		return "检查更新失败，请重试", stateDanger
+		return l10n.T(locale, "update.status.check_failed"), stateDanger
 	default:
 		return "", stateNeutral
 	}
@@ -120,20 +129,27 @@ func formatUpdateProgress(st core.UpdateState) string {
 }
 
 func formatUpdateWorkloadWarning(w core.UpdateActiveWorkloads) string {
-	parts := make([]string, 0, 2)
-	if w.ActiveRuns > 0 {
-		parts = append(parts, fmt.Sprintf("%d 个测评任务", w.ActiveRuns))
-	}
-	if w.ActiveDownloads > 0 {
-		parts = append(parts, fmt.Sprintf("%d 个下载任务", w.ActiveDownloads))
-	}
-	if len(parts) == 0 {
+	return formatUpdateWorkloadWarningFor("", w)
+}
+
+func formatUpdateWorkloadWarningFor(locale string, w core.UpdateActiveWorkloads) string {
+	switch {
+	case w.ActiveRuns > 0 && w.ActiveDownloads > 0:
+		return l10n.Tf(locale, "update.workload.both", "runs", w.ActiveRuns, "downloads", w.ActiveDownloads)
+	case w.ActiveRuns > 0:
+		return l10n.Tf(locale, "update.workload.runs_only", "runs", w.ActiveRuns)
+	case w.ActiveDownloads > 0:
+		return l10n.Tf(locale, "update.workload.downloads_only", "downloads", w.ActiveDownloads)
+	default:
 		return ""
 	}
-	return "当前有 " + strings.Join(parts, "和 ") + "正在运行，安装更新前需先中止。"
 }
 
 func summarizeReleaseNotes(notes string) string {
+	return summarizeReleaseNotesFor("", notes)
+}
+
+func summarizeReleaseNotesFor(locale, notes string) string {
 	cleaned := releaseHTMLCommentRe.ReplaceAllString(notes, "")
 	lines := strings.Split(strings.ReplaceAll(cleaned, "\r\n", "\n"), "\n")
 	out := make([]string, 0, 12)
@@ -148,7 +164,7 @@ func summarizeReleaseNotes(notes string) string {
 		}
 	}
 	if len(out) == 0 {
-		return "暂无发布说明。"
+		return l10n.T(locale, "update.notes.empty")
 	}
 	summary := strings.Join(out, "\n")
 	if len(lines) > len(out) {

@@ -7,6 +7,7 @@ import (
 
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 )
 
 var chooseFreePortFunc = core.ChooseFreeLoopbackPort
@@ -179,8 +180,8 @@ func commandHasFlag(command, flag string) bool {
 func chainFailure(r core.WizardResult) *core.ApiError {
 	e := wizardFailure(r)
 	if len(e.Limitations) > 0 {
-		if label, ok := deviceLabels[e.Limitations[0]]; ok {
-			e.Message = label + "；请先解决设备检查阻断项。"
+		if label := deviceLabel(e.Limitations[0]); label != "" && label != e.Limitations[0] {
+			e.Message = l10n.TRf("models.chain.preflight_blocker", "label", label)
 		}
 	}
 	return e

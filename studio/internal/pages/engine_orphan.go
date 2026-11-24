@@ -3,12 +3,13 @@ package pages
 import (
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func (s *viewState) stopOrphanButton(c *ui.Context) {
 	if s.destructiveDialog(c, destructiveOption{
-		kind: destructiveStopOrphan, label: "停止遗留服务", confirmLabel: "确认停止遗留服务",
-		prompt:   "将终止上次 Studio 留下的服务进程。",
+		kind: destructiveStopOrphan, label: tr(c, "engine.orphan.stop"), confirmLabel: tr(c, "engine.orphan.stop_confirm"),
+		prompt:   tr(c, "engine.orphan.stop_prompt"),
 		disabled: s.busy || s.running() != nil,
 	}) {
 		if s.simulate(previewStopEngine) {
@@ -17,15 +18,15 @@ func (s *viewState) stopOrphanButton(c *ui.Context) {
 		s.work(func() (string, *core.ApiError) {
 			state, e := s.service.StopOrphanEngine()
 			if state.State == "stopped" {
-				return "遗留引擎已退出，已清除记录", e
+				return l10n.TR("engine.orphan.stopped_cleared"), e
 			}
-			return "已请求停止遗留服务，等待收尾", e
+			return l10n.TR("engine.orphan.stop_requested"), e
 		})
 	}
 	if orphanRecordRecoverable(s.engineState) {
 		if s.destructiveDialog(c, destructiveOption{
-			kind: destructiveDiscardOrphan, label: "仅删除记录（不终止进程）", confirmLabel: "确认仅删除记录",
-			prompt:   "将移除遗留服务记录且不终止原进程；若进程仍在运行需自行停止。",
+			kind: destructiveDiscardOrphan, label: tr(c, "engine.orphan.discard"), confirmLabel: tr(c, "engine.orphan.discard_confirm"),
+			prompt:   tr(c, "engine.orphan.discard_prompt"),
 			disabled: s.busy || s.running() != nil,
 		}) {
 			if s.simulate(previewStopEngine) {
@@ -33,7 +34,7 @@ func (s *viewState) stopOrphanButton(c *ui.Context) {
 			}
 			s.work(func() (string, *core.ApiError) {
 				_, e := s.service.DiscardOrphanRecord()
-				return "已删除遗留记录，未终止任何进程", e
+				return l10n.TR("engine.orphan.discarded"), e
 			})
 		}
 	}

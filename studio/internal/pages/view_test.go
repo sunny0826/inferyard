@@ -1,12 +1,24 @@
 package pages
 
 import (
+	"os"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 )
+
+func TestMain(m *testing.M) {
+	if os.Getenv("MYGO_LOCALE") == "" {
+		_ = os.Setenv("MYGO_LOCALE", l10n.LanguageZhHans)
+	}
+	restore := l10n.SetTestLocale(l10n.LanguageZhHans)
+	code := m.Run()
+	restore()
+	os.Exit(code)
+}
 
 func ptr[T any](v T) *T { return &v }
 

@@ -44,7 +44,7 @@ func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 			case i < o.Current:
 				ui.Text(c, "✓  "+label).TextColor(stateColor(c, stateSuccess))
 			case i == o.Current:
-				statusBadge(c, label, stateColor(c, stateActive)).Description("当前阶段：" + label)
+				statusBadge(c, label, stateColor(c, stateActive)).Description(trf(c, "common.phase.current", "label", label))
 			default:
 				ui.Text(c, label).TextColor(stateColor(c, stateNeutral))
 			}
@@ -125,7 +125,7 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 			})
 		}
 		if options.active {
-			progressBar(c, -1, "下载任务活动").Height(t.Density.Tight)
+			progressBar(c, -1, tr(c, "common.task.download_activity")).Height(t.Density.Tight)
 		}
 		if options.notice != nil {
 			options.notice()
@@ -134,7 +134,7 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 			options.actions()
 		}
 		if options.details != nil {
-			componentFold(c, "任务详情", func() { options.details() })
+			componentFold(c, tr(c, "common.task.details"), func() { options.details() })
 		}
 	})
 }
@@ -143,9 +143,9 @@ func stepTrack(c *ui.Context, number, title string, fn func()) {
 	t := tokens(c)
 	theme := c.Theme()
 	size := max(theme.Space(7), theme.Rem(1.6))
-	ui.Row(c).AlignItems(ui.Stretch).Gap(t.Density.Section).Label("阶段步骤 " + number).Children(func() {
+	ui.Row(c).AlignItems(ui.Stretch).Gap(t.Density.Section).Label(trf(c, "common.step.label", "number", number)).Children(func() {
 		ui.Column(c).MinWidth(size).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-			ui.Box(c).Label("阶段编号 "+number).Size(size, size).Radius(size / 2).Background(stateColor(c, stateActive)).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+			ui.Box(c).Label(trf(c, "common.step.number_label", "number", number)).Size(size, size).Radius(size / 2).Background(stateColor(c, stateActive)).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
 				ui.Text(c, number).Bold().FontFeatures("tnum").TextColor(theme.Surface)
 			})
 			ui.Box(c).Width(theme.Space(.5)).Grow(1).Background(theme.Border)
@@ -297,7 +297,7 @@ func searchableSelectField(c *ui.Context, name, description, placeholder, emptyF
 						ui.Scroll(c).MaxHeight(248).Children(func() {
 							ui.Column(c).FillWidth().Gap(t.Density.Hairline).Children(func() {
 								if len(visible) == 0 {
-									msg := "暂无可选项"
+									msg := tr(c, "common.select.empty")
 									if len(options) > 0 {
 										msg = fmt.Sprintf(emptyFormat, strings.TrimSpace(state.query))
 									}

@@ -1,10 +1,9 @@
 package pages
 
 import (
-	"fmt"
-
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 type taskAssets struct {
@@ -138,21 +137,24 @@ func (s *viewState) taskAssetsView(c *ui.Context) {
 	rec := s.starterRecommendation()
 	hasStarter := s.hasStarterContent(rec)
 	t := tokens(c)
-	card(c, "准备模型与引擎", func() {
+	card(c, tr(c, "onboarding.assets.title"), func() {
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			for _, asset := range []struct {
 				kind, label string
 				available   bool
-			}{{"engine", "引擎", assets.engine}, {"model", "模型", assets.model}} {
-				status := "待下载"
+			}{
+				{"engine", tr(c, "onboarding.assets.engine"), assets.engine},
+				{"model", tr(c, "onboarding.assets.model"), assets.model},
+			} {
+				status := tr(c, "onboarding.assets.pending")
 				kind := stateNeutral
 				if asset.available {
-					status = "已发现"
+					status = tr(c, "onboarding.assets.found")
 					kind = stateSuccess
 				} else {
 					for _, task := range s.downloads {
 						if (task.Kind == asset.kind || task.Kind == "polystrata") && task.State == "downloading" {
-							status = "下载中"
+							status = tr(c, "onboarding.assets.downloading")
 							kind = stateActive
 							break
 						}
@@ -162,7 +164,7 @@ func (s *viewState) taskAssetsView(c *ui.Context) {
 			}
 		})
 		if s.registry.Refreshing {
-			ui.Text(c, "正在读取本地资源…").TextColor(t.Color.FgSecondary)
+			ui.Text(c, tr(c, "onboarding.assets.refreshing")).TextColor(t.Color.FgSecondary)
 		}
 		errorView(c, s.registry.ModelError)
 		shown := map[string]bool{}
@@ -182,11 +184,11 @@ func (s *viewState) taskAssetsView(c *ui.Context) {
 		}
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			if s.activeDownloadCount() > 0 {
-				primaryButton(c, "查看安装进度").OnClick(func() { s.selected = "downloads" })
+				primaryButton(c, tr(c, "onboarding.assets.view_install")).OnClick(func() { s.selected = "downloads" })
 			} else if !hasStarter {
-				primaryButton(c, "到下载页").OnClick(func() { s.selected = "downloads" })
+				primaryButton(c, tr(c, "onboarding.assets.go_downloads")).OnClick(func() { s.selected = "downloads" })
 			}
-			button(c, "使用已有资源").OnClick(func() { s.selected = "settings" })
+			button(c, tr(c, "onboarding.assets.use_existing")).OnClick(func() { s.selected = "settings" })
 		})
 	})
 	if hasStarter && s.activeDownloadCount() == 0 {
@@ -246,7 +248,7 @@ func (s *viewState) downloadTaskGuide(c *ui.Context) {
 		Padding(t.Density.Stack, t.Card.Padding), materialCard).
 		Children(func() {
 			ui.Text(c, s.downloadGuideStatus()).Grow(1).MinWidth(0).TextColor(t.Color.FgSecondary)
-			button(c, "返回任务").Shrink(0).OnClick(func() { s.selected = "dashboard" })
+			button(c, tr(c, "onboarding.guide.back_dashboard")).Shrink(0).OnClick(func() { s.selected = "dashboard" })
 		})
 }
 
@@ -256,15 +258,15 @@ func (s *viewState) downloadGuideStatus() string {
 	failed := s.unresolvedDownloadFailures()
 	switch {
 	case active > 0 && failed > 0:
-		return fmt.Sprintf("正在下载 %d 项资源，另有 %d 项下载失败。", active, failed)
+		return l10n.TRf("onboarding.guide.downloading_and_failed", "active", active, "failed", failed)
 	case active > 0:
-		return fmt.Sprintf("正在下载 %d 项资源…", active)
+		return l10n.TRf("onboarding.guide.downloading", "active", active)
 	case failed > 0:
-		return fmt.Sprintf("有 %d 项下载失败。", failed)
+		return l10n.TRf("onboarding.guide.failed", "failed", failed)
 	case assets.model && assets.engine:
-		return "模型与引擎已就绪，可返回任务页开始测评。"
+		return l10n.TR("onboarding.guide.ready")
 	default:
-		return "下载所需引擎与模型后返回任务页。"
+		return l10n.TR("onboarding.guide.prompt")
 	}
 }
 

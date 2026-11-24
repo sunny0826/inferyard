@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"inferyard/studio/internal/l10n"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -35,12 +36,12 @@ func (m *updateManager) applyUpdate(ctx context.Context, confirmStopWorkloads bo
 	if m.state.State == UpdateApplying || m.applyInFlight {
 		snap := m.cloneStateLocked()
 		m.mu.Unlock()
-		return snap, &updateCheckError{code: "update_busy", message: "正在安装更新，请稍候。"}
+		return snap, &updateCheckError{code: "update_busy", message: l10n.TR("core.update.err.applying_busy")}
 	}
 	if m.state.State != UpdateReadyToApply || m.stagedArtifact == "" {
 		snap := m.cloneStateLocked()
 		m.mu.Unlock()
-		return snap, &updateCheckError{code: "update_not_ready", message: "更新安装包尚未准备就绪。"}
+		return snap, &updateCheckError{code: "update_not_ready", message: l10n.TR("core.update.err.not_ready")}
 	}
 	m.applyInFlight = true
 	artifact := m.stagedArtifact
@@ -67,7 +68,7 @@ func (m *updateManager) applyUpdate(ctx context.Context, confirmStopWorkloads bo
 		m.removeStagedLocked()
 		m.state.State = UpdateError
 		m.state.ErrorCode = "update_artifact_missing"
-		m.state.ErrorMessage = "已下载的更新安装包不存在，请重新下载。"
+		m.state.ErrorMessage = l10n.TR("core.update.err.artifact_missing")
 		m.publishLocked()
 		snap := m.cloneStateLocked()
 		m.mu.Unlock()
@@ -80,7 +81,7 @@ func (m *updateManager) applyUpdate(ctx context.Context, confirmStopWorkloads bo
 		m.removeStagedLocked()
 		m.state.State = UpdateError
 		m.state.ErrorCode = "update_checksum_mismatch"
-		m.state.ErrorMessage = "安装包 SHA-256 校验未通过，已删除异常文件。"
+		m.state.ErrorMessage = l10n.TR("core.update.err.apply_checksum_mismatch")
 		m.publishLocked()
 		snap := m.cloneStateLocked()
 		m.mu.Unlock()
@@ -116,7 +117,7 @@ func (m *updateManager) applyUpdate(ctx context.Context, confirmStopWorkloads bo
 	if !target.CanSelfUpdate || target.BlockCode != "" {
 		msg := target.BlockMessage
 		if msg == "" {
-			msg = "当前安装路径不可写，无法完成自动替换。"
+			msg = l10n.TR("core.update.err.path_unwritable_generic")
 		}
 		code := target.BlockCode
 		if code == "" {
@@ -140,7 +141,7 @@ func (m *updateManager) applyUpdate(ctx context.Context, confirmStopWorkloads bo
 	if m.state.State != UpdateReadyToApply || m.stagedArtifact != artifact {
 		snap := m.cloneStateLocked()
 		m.mu.Unlock()
-		return snap, &updateCheckError{code: "update_busy", message: "更新状态已变更，请重试。"}
+		return snap, &updateCheckError{code: "update_busy", message: l10n.TR("core.update.err.state_changed")}
 	}
 	m.opSeq++
 	m.state.State = UpdateApplying
@@ -205,7 +206,7 @@ func (m *updateManager) applyUpdate(ctx context.Context, confirmStopWorkloads bo
 	defer m.mu.Unlock()
 	if applyErr != nil {
 		m.preserveStagingOnExit = false
-		code, msg := "update_apply_failed", "安装更新失败，现有安装未受影响。"
+		code, msg := "update_apply_failed", l10n.TR("core.update.err.apply_failed")
 		var ce *updateCheckError
 		if errors.As(applyErr, &ce) {
 			code, msg = ce.code, ce.message
@@ -271,7 +272,7 @@ func (m *updateManager) consumePendingApplyError() bool {
 	}
 	m.state.State = UpdateError
 	m.state.ErrorCode = "update_windows_install_failed"
-	m.state.ErrorMessage = "上次安装更新未完成，现有版本保持可用，可重试或前往发布页下载。"
+	m.state.ErrorMessage = l10n.TR("core.update.err.windows_install_incomplete")
 	m.publishLocked()
 	return true
 }
@@ -308,26 +309,26 @@ func checkDirWritable(dir string) error {
 
 func resolveDarwinAppBundle(exePath string) (appBundlePath, blockCode, blockMsg string) {
 	if strings.Contains(exePath, "/AppTranslocation/") {
-		return "", "update_app_translocated", "应用正处于 macOS 隔离路径，请移至「应用程序」目录后再更新。"
+		return "", "update_app_translocated", l10n.TR("core.update.err.darwin_translocated")
 	}
 	resolved := exePath
 	if eval, err := filepath.EvalSymlinks(exePath); err == nil {
 		resolved = eval
 	}
 	if strings.Contains(resolved, "/AppTranslocation/") {
-		return "", "update_app_translocated", "应用正处于 macOS 隔离路径，请移至「应用程序」目录后再更新。"
+		return "", "update_app_translocated", l10n.TR("core.update.err.darwin_translocated")
 	}
 	macosDir := filepath.Dir(resolved)
 	contentsDir := filepath.Dir(macosDir)
 	appDir := filepath.Dir(contentsDir)
 	if filepath.Base(macosDir) != "MacOS" || filepath.Base(contentsDir) != "Contents" || !strings.HasSuffix(filepath.Base(appDir), ".app") {
-		return "", "update_not_app_bundle", "当前未从 .app 应用包运行，请前往发布页手动更新。"
+		return "", "update_not_app_bundle", l10n.TR("core.update.err.darwin_not_app_bundle")
 	}
 	if err := checkDirWritable(filepath.Dir(appDir)); err != nil {
-		return "", "update_path_unwritable", "当前应用所在目录没有写入权限，可打开安装包手动安装或前往发布页下载。"
+		return "", "update_path_unwritable", l10n.TR("core.update.err.darwin_dir_unwritable")
 	}
 	if err := checkDirWritable(appDir); err != nil {
-		return "", "update_path_unwritable", "当前应用包没有写入权限，可打开安装包手动安装或前往发布页下载。"
+		return "", "update_path_unwritable", l10n.TR("core.update.err.darwin_bundle_unwritable")
 	}
 	return appDir, "", ""
 }

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/ebitengine/purego"
+	"inferyard/studio/internal/l10n"
 )
 
 const darwinRenameSwap uint32 = 0x00000002
@@ -75,21 +76,21 @@ func applyDarwinUpdate(ctx context.Context, plan platformApplyPlan, swapFn darwi
 	if err := checkDirWritable(parentDir); err != nil {
 		return &updateCheckError{
 			code:    "update_path_unwritable",
-			message: "当前应用所在目录没有写入权限，可打开安装包手动替换或前往发布页下载。",
+			message: l10n.TR("core.update.err.darwin_dir_unwritable_replace"),
 			cause:   err,
 		}
 	}
 
 	mountDir := filepath.Join(plan.StagingDir, "mount")
 	if err := os.MkdirAll(mountDir, 0o700); err != nil {
-		return &updateCheckError{code: "update_apply_failed", message: "创建镜像挂载目录失败。", cause: err}
+		return &updateCheckError{code: "update_apply_failed", message: l10n.TR("core.update.err.darwin_mount_dir_failed"), cause: err}
 	}
 	defer func() { _ = os.RemoveAll(mountDir) }()
 
 	if out, err := plan.RunCmd(ctx, "hdiutil", "attach", "-readonly", "-nobrowse", "-mountpoint", mountDir, plan.ArtifactPath); err != nil {
 		return &updateCheckError{
 			code:    "update_dmg_attach_failed",
-			message: "挂载更新镜像失败：" + stringsTrimmedTail(string(out), err),
+			message: l10n.TRf("core.update.err.darwin_dmg_attach_failed", "detail", stringsTrimmedTail(string(out), err)),
 			cause:   err,
 		}
 	}
@@ -116,7 +117,7 @@ func applyDarwinUpdate(ctx context.Context, plan platformApplyPlan, swapFn darwi
 	if st, err := os.Stat(mountedExe); err != nil || !st.Mode().IsRegular() {
 		fallbackExe := filepath.Join(mountedApp, "Contents", "MacOS", "inferyard-studio")
 		if st2, err2 := os.Stat(fallbackExe); err2 != nil || !st2.Mode().IsRegular() {
-			return &updateCheckError{code: "update_dmg_invalid", message: "更新镜像中缺少有效的 InferYard Studio.app。"}
+			return &updateCheckError{code: "update_dmg_invalid", message: l10n.TR("core.update.err.darwin_dmg_invalid")}
 		}
 	}
 
@@ -132,7 +133,7 @@ func applyDarwinUpdate(ctx context.Context, plan platformApplyPlan, swapFn darwi
 	if out, err := plan.RunCmd(ctx, "ditto", mountedApp, stageApp); err != nil {
 		return &updateCheckError{
 			code:    "update_apply_failed",
-			message: "复制新版本应用包失败：" + stringsTrimmedTail(string(out), err),
+			message: l10n.TRf("core.update.err.darwin_copy_bundle_failed", "detail", stringsTrimmedTail(string(out), err)),
 			cause:   err,
 		}
 	}
@@ -140,9 +141,9 @@ func applyDarwinUpdate(ctx context.Context, plan platformApplyPlan, swapFn darwi
 	detachDMG()
 
 	if err := swapFn(appDir, stageApp); err != nil {
-		msg := "替换应用包失败，原有安装已保留。"
+		msg := l10n.TR("core.update.err.darwin_swap_failed")
 		if errors.Is(err, syscall.ENOTSUP) || errors.Is(err, syscall.ENOSYS) {
-			msg = "当前磁盘不支持原子替换应用包，可打开安装包手动安装或前往发布页下载。"
+			msg = l10n.TR("core.update.err.darwin_atomic_swap_unsupported")
 		}
 		return &updateCheckError{
 			code:    "update_apply_failed",
@@ -164,7 +165,7 @@ func applyDarwinUpdate(ctx context.Context, plan platformApplyPlan, swapFn darwi
 		if err := spawnDarwinRelaunch(os.Getpid(), appDir); err != nil {
 			return &updateCheckError{
 				code:    "update_relaunch_failed",
-				message: "更新已完成，但自动重启失败，请手动重新打开应用。",
+				message: l10n.TR("core.update.err.relaunch_failed_reopen"),
 				cause:   err,
 			}
 		}

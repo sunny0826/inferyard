@@ -34,12 +34,12 @@ Results stay on your machine. Frozen rules score the quality tasks.
 - **Evidence you can verify later.** Every answer, timing sample, and system
   reading is saved and sealed on disk for offline verification, then projected
   into clean `studio.json` reports.
-- **Native desktop workbench.** [InferYard Studio](studio/README.md) gives you
-  a Go/MyGo desktop window to check device readiness with hardware-aware starter
-  recommendations (PolyStrata prioritized on supported Apple Silicon, NVIDIA
-  CUDA, and AMD ROCm hardware with smooth `llama.cpp` fallback), download or
-  register models and engines, manage local service lifecycles, watch live
-  resource curves, and browse model-grouped reports.
+- **Native desktop workbench.** [InferYard Studio](studio/README.md) is a
+  Go/MyGo native desktop app featuring:
+  - **Multi-language UI (i18n):** English and Simplified Chinese (`Follow System` / `English` / `简体中文` in **Settings → Language**, switching live without restart; supports `MYGO_LOCALE` override and macOS bundle localizations).
+  - **Desktop UX & self-update:** Light / Dark / Follow System themes with live visual previews, optional minimize to system tray on window close to keep background runs and downloads active, scoped HTTP(S) download proxy, and automatic GitHub Releases update checks with one-click SHA-256 verified self-update.
+  - **Hardware-aware downloads & assets:** Starter recommendations prioritizing managed **PolyStrata** on Apple Silicon, NVIDIA CUDA, and AMD ROCm hardware (with 4-stage setup/recovery and `llama.cpp` fallback), extensible multi-engine catalog (`PolyStrata`, `llama.cpp`, `mlx-lm`, `vLLM`, `SGLang`, `LM Studio`), Hugging Face & ModelScope mirrors, custom URL resolution (`model resolve`), multi-shard GGUF and directory models with streaming progress and resume, plus multi-root model directories and safe uninstall/disk cleanup for managed PolyStrata and models.
+  - **Tasks & live monitoring:** Automatic CLI version check and one-click **Upgrade CLI** (`uv >= 0.13.6`), standard bundles and **Long-Context Speed** testing (`zh-context-speed`: 64K / 128K / 256K), an engine status card with direct Web UI link, live **Resource Curves**, in-app notification inbox, OS notifications, and model-grouped reports.
 - **Scriptable CLI subproject.** The [CLI](cli/README.md) subproject
   (`inferyard`) handles preflight checks, host locking, frozen execution,
   evidence sealing, and report projection—invoked automatically by Studio or
@@ -53,8 +53,8 @@ Results stay on your machine. Frozen rules score the quality tasks.
   xattr -dr com.apple.quarantine /Applications/InferYard\ Studio.app
   ```
 
-  Open Tasks, choose **准备环境** (Prepare environment), then select a model, engine and task sets. See the [first-launch guide](studio/README.md#pages-and-first-launch).
-- **Terminal** — Follow [installation and candidate preparation](cli/docs/installation.md). Start the service with the candidate's arguments, bind its PID and endpoint, run each bundle, and generate a combined report.
+  Open **Tasks**, choose **Prepare Environment**, then select a model, engine, and task sets. See the [first-launch guide](studio/README.md#pages-and-first-launch).
+- **Terminal** — Follow the [installation and candidate preparation guide](cli/docs/installation.md) (Chinese) or the [CLI guide](cli/README.md). Start the service with the candidate's arguments, bind its PID and endpoint, run each bundle, and generate a combined report.
 
 ## Available task sets
 
@@ -72,11 +72,11 @@ set is reviewed by a person before release; see [task sets](cli/bundles/README.m
 
 | Platform | Studio UI backend | Benchmark & telemetry scope |
 | --- | --- | --- |
-| macOS (Apple Silicon, 12+) | Metal | Single and batch runs, CPU/Metal verification, CPU/RSS/paging and AppleSMC temperature sampling |
-| Windows x64 (10/11) | Direct3D 11 (WARP fallback) | Prism/KVMem/NInfer serial text runs, native identity and memory sampling |
-| Linux x64 | GTK 3 and OpenGL (CPU fallback) | Single and batch runs, CPU/memory sampling |
+| macOS (Apple Silicon, 12+) | Metal | Single and batch runs, managed PolyStrata (Metal) & `llama.cpp` / `mlx-lm` / `vLLM` / `SGLang`, CPU/RSS/paging and AppleSMC temperature sampling |
+| Windows x64 (10/11) | Direct3D 11 (WARP fallback) | Managed PolyStrata (CUDA/HIP) & `llama.cpp` serial text runs, native process identity and memory sampling |
+| Linux x64 | GTK 3 and OpenGL (CPU fallback) | Single and batch runs, managed PolyStrata (CUDA/HIP) & `llama.cpp` / `vLLM` / `SGLang`, CPU/memory sampling |
 
-The table describes implementation scope. Native Windows and Linux window interaction remains unverified for v0.0.5. See [CLI installation and platform setup](cli/docs/installation.md) before relying on a result.
+The table describes implementation scope. Automated native desktop UI verification currently runs on macOS (Apple Silicon); native Windows and Linux window interactions are not yet covered by automated UI tests. See [CLI installation and platform setup](cli/docs/installation.md) (Chinese) for platform setup details.
 
 ## Design principles and boundaries
 
@@ -94,10 +94,13 @@ The table describes implementation scope. Native Windows and Linux window intera
 | Topic | Link |
 | --- | --- |
 | Download Studio builds | [GitHub Releases](https://github.com/sunny0826/inferyard/releases/latest) |
-| Studio pages, usage, and builds | [Studio guide](studio/README.md) |
+| Studio pages, i18n, and builds | [Studio guide](studio/README.md) |
 | CLI subproject and terminal workflow | [CLI guide](cli/README.md) |
-| CLI installation and candidate setup | [Installation guide](cli/docs/installation.md) |
+| CLI installation and candidate setup (Chinese) | [Installation guide](cli/docs/installation.md) |
+| Frozen task sets | [Task sets](cli/bundles/README.md) |
 | Local monorepo development | [Development commands](tools/README.md) |
+| Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Release history | [Changelog](cli/CHANGELOG.md) |
 
 ## License
 

@@ -332,7 +332,7 @@ func keyValueRow(c *ui.Context, key, value string, tabular bool) {
 		display := value
 		valColor := t.Color.FgPrimary
 		if display == "" {
-			display = "缺测"
+			display = tr(c, "common.missing")
 			valColor = t.Color.FgTertiary
 		}
 		val := ui.Text(c, display).FontSize(t.Type.Body).TextColor(valColor).Selectable()

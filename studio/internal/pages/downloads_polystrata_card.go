@@ -9,6 +9,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 type polystrataSelectionTarget struct {
@@ -26,14 +27,27 @@ func cleanMatchPath(p string) string {
 	return filepath.Clean(trimmed)
 }
 
-var polystrataPhaseLabels = []string{"预检", "获取运行时", "构建环境", "模型与核验"}
+var polystrataPhaseLabelKeys = []string{
+	"downloads.polystrata.phase.preflight",
+	"downloads.polystrata.phase.runtime",
+	"downloads.polystrata.phase.setup",
+	"downloads.polystrata.phase.model_verify",
+}
+
+func polystrataPhaseLabels(c *ui.Context) []string {
+	out := make([]string, len(polystrataPhaseLabelKeys))
+	for i, key := range polystrataPhaseLabelKeys {
+		out[i] = tr(c, key)
+	}
+	return out
+}
 
 func polystrataPhaseIndex(task core.DownloadTask) int {
 	if task.State == "done" {
-		return len(polystrataPhaseLabels)
+		return len(polystrataPhaseLabelKeys)
 	}
-	if task.Step != nil && (task.StepTotal == nil || *task.StepTotal == len(polystrataPhaseLabels)) &&
-		*task.Step >= 1 && *task.Step <= len(polystrataPhaseLabels) {
+	if task.Step != nil && (task.StepTotal == nil || *task.StepTotal == len(polystrataPhaseLabelKeys)) &&
+		*task.Step >= 1 && *task.Step <= len(polystrataPhaseLabelKeys) {
 		return *task.Step - 1
 	}
 	switch task.Stage {
@@ -47,7 +61,7 @@ func polystrataPhaseIndex(task core.DownloadTask) int {
 		return 3
 	default:
 		if task.Step != nil && *task.Step > 0 {
-			return min(max(*task.Step-1, 0), len(polystrataPhaseLabels)-1)
+			return min(max(*task.Step-1, 0), len(polystrataPhaseLabelKeys)-1)
 		}
 		return 0
 	}
@@ -55,7 +69,7 @@ func polystrataPhaseIndex(task core.DownloadTask) int {
 
 func polystrataStateLabel(state string) string {
 	if state == "downloading" {
-		return "安装中"
+		return l10n.TR("downloads.badge.installing")
 	}
 	return stateLabel(state)
 }
@@ -94,7 +108,7 @@ func preflightBlockerBaseText(item preflightBlockerItem) string {
 		if msg, ok := humanKnown(item.code); ok {
 			return msg
 		}
-		if label, ok := deviceLabels[item.code]; ok {
+		if label := deviceLabel(item.code); label != "" && label != item.code {
 			return label
 		}
 	}
@@ -109,14 +123,15 @@ func formatPreflightBlockerText(item preflightBlockerItem) string {
 	if item.requiredBytes == nil && item.freeBytes == nil {
 		return base
 	}
-	prefix := strings.TrimSuffix(base, "。")
+	prefix := strings.TrimSuffix(base, ".")
+	prefix = strings.TrimSuffix(prefix, l10n.T(l10n.LanguageZhHans, "downloads.punctuation.period"))
 	switch {
 	case item.freeBytes != nil && item.requiredBytes != nil:
-		return fmt.Sprintf("%s（可用 %s，至少需要 %s）。", prefix, formatDownloadBytes(*item.freeBytes), formatDownloadBytes(*item.requiredBytes))
+		return l10n.TRf("downloads.blocker.disk_free_and_required", "prefix", prefix, "free", formatDownloadBytes(*item.freeBytes), "required", formatDownloadBytes(*item.requiredBytes))
 	case item.requiredBytes != nil:
-		return fmt.Sprintf("%s（至少需要 %s）。", prefix, formatDownloadBytes(*item.requiredBytes))
+		return l10n.TRf("downloads.blocker.disk_required", "prefix", prefix, "required", formatDownloadBytes(*item.requiredBytes))
 	default:
-		return fmt.Sprintf("%s（可用 %s）。", prefix, formatDownloadBytes(*item.freeBytes))
+		return l10n.TRf("downloads.blocker.disk_free", "prefix", prefix, "free", formatDownloadBytes(*item.freeBytes))
 	}
 }
 
@@ -150,15 +165,15 @@ func (s *viewState) polystrataDownloadTaskCard(c *ui.Context, task core.Download
 		progressVal = formatDownloadBytes(task.DownloadedBytes)
 	}
 	metrics := []taskMetric{
-		{"步骤", stepVal, stepSub},
-		{"进度", progressVal, progressSub},
+		{tr(c, "downloads.metric.step"), stepVal, stepSub},
+		{tr(c, "downloads.metric.progress"), progressVal, progressSub},
 	}
 	if task.BytesPerSecond != nil {
 		rateSub := ""
 		if task.State == "downloading" && hasByteProgress && *task.BytesPerSecond > 0 && task.DownloadedBytes < *task.TotalBytes {
-			rateSub = "剩余 " + formatDownloadETA(float64(*task.TotalBytes-task.DownloadedBytes)/(*task.BytesPerSecond))
+			rateSub = trf(c, "downloads.eta.remaining", "eta", formatDownloadETA(float64(*task.TotalBytes-task.DownloadedBytes)/(*task.BytesPerSecond)))
 		}
-		metrics = append(metrics, taskMetric{"速率", formatRate(*task.BytesPerSecond), rateSub})
+		metrics = append(metrics, taskMetric{tr(c, "downloads.metric.rate"), formatRate(*task.BytesPerSecond), rateSub})
 	}
 
 	active := task.State == "downloading" && !hasByteProgress && !hasPercent
@@ -174,27 +189,27 @@ func (s *viewState) polystrataDownloadTaskCard(c *ui.Context, task core.Download
 	}
 	ui.Column(c.Key(task.TaskId)).Children(func() {
 		taskCard(c, taskCardOptions{
-			kind: "PolyStrata 引导安装", name: downloadDisplayName(task), state: polystrataStateLabel(task.State), color: color,
+			kind: tr(c, "downloads.polystrata.task_kind"), name: downloadDisplayName(task), state: polystrataStateLabel(task.State), color: color,
 			active:      active,
 			metrics:     metrics,
 			headerRight: headerRight,
 			notice: func() {
 				if task.State == "downloading" {
 					phaseProgress(c, phaseProgressOptions{
-						Labels:   polystrataPhaseLabels,
+						Labels:   polystrataPhaseLabels(c),
 						Current:  polystrataPhaseIndex(task),
-						RowLabel: "PolyStrata 安装阶段",
+						RowLabel: tr(c, "downloads.polystrata.phase_row_label"),
 						HideBar:  true,
 					})
 					if hasPercent {
 						ratio := math.Max(0, math.Min(1, *task.Percent/100))
-						barLabel := "安装进度"
+						barLabel := tr(c, "downloads.progress.install_label")
 						if hasByteProgress {
-							barLabel = "下载进度"
+							barLabel = tr(c, "downloads.progress.download_label")
 						}
 						progressBar(c, ratio, barLabel).Height(t.Density.Tight)
 					} else if hasByteProgress {
-						progressBar(c, progressValue(task.DownloadedBytes, task.TotalBytes), "下载进度").Height(t.Density.Tight)
+						progressBar(c, progressValue(task.DownloadedBytes, task.TotalBytes), tr(c, "downloads.progress.download_label")).Height(t.Density.Tight)
 					}
 				}
 				if task.Detail != nil && strings.TrimSpace(*task.Detail) != "" {
@@ -214,7 +229,7 @@ func (s *viewState) polystrataDownloadTaskCard(c *ui.Context, task core.Download
 func (s *viewState) polystrataDownloadActions(c *ui.Context, task core.DownloadTask) {
 	t := tokens(c)
 	if task.State == "done" {
-		if primaryButton(c, "前往开始测评").Disabled(s.busy).Clicked() {
+		if primaryButton(c, tr(c, "downloads.polystrata.go_benchmark")).Disabled(s.busy).Clicked() {
 			s.startBenchmarkFromPolystrataTask(task)
 		}
 		return
@@ -223,11 +238,11 @@ func (s *viewState) polystrataDownloadActions(c *ui.Context, task core.DownloadT
 		return
 	}
 	retryDisabled := s.busy || s.downloadRetryActive(task)
-	retryLabel := "重试安装"
-	retryDoneMsg := "已重试 PolyStrata 安装"
+	retryLabel := tr(c, "downloads.polystrata.retry_install")
+	retryDoneKey := "downloads.polystrata.toast.retried"
 	if task.State == "cancelled" {
-		retryLabel = "继续安装"
-		retryDoneMsg = "已继续 PolyStrata 安装"
+		retryLabel = tr(c, "downloads.polystrata.resume_install")
+		retryDoneKey = "downloads.polystrata.toast.resumed"
 	}
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 		if primaryButton(c, retryLabel).Disabled(retryDisabled).Clicked() {
@@ -236,10 +251,10 @@ func (s *viewState) polystrataDownloadActions(c *ui.Context, task core.DownloadT
 			}
 			s.workDownload(func() (string, *core.ApiError) {
 				_, e := s.service.RetryDownload(task.TaskId)
-				return retryDoneMsg, e
+				return l10n.TR(retryDoneKey), e
 			})
 		}
-		if outlineButton(c, "更换方案或下载源").Disabled(s.busy).Clicked() {
+		if outlineButton(c, tr(c, "downloads.polystrata.change_option")).Disabled(s.busy).Clicked() {
 			s.openPolystrataRecoveryDrawer(task)
 		}
 	})

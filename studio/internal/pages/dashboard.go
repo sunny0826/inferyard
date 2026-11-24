@@ -56,20 +56,20 @@ func (s *viewState) dashboardView(c *ui.Context) {
 		return
 	}
 	if s.newTaskPending {
-		s.header(c, "任务")
+		s.header(c, tr(c, "dashboard.title"))
 		host := ui.Column(c.Key("new-task-pending")).FillWidth()
 		show := delayedVisible(c, host, "new-task-pending", true)
 		host.Children(func() {
 			if show {
-				card(c, "正在取消当前任务", func() {
-					ui.Text(c, "正在等待安全收尾，完成后将进入新任务准备…").TextColor(c.Theme().TextMuted)
-					progressBar(c, -1, "等待任务收尾")
+				card(c, tr(c, "dashboard.cancelling.title"), func() {
+					ui.Text(c, tr(c, "dashboard.cancelling.body")).TextColor(c.Theme().TextMuted)
+					progressBar(c, -1, tr(c, "dashboard.cancelling.progress"))
 				})
 			}
 		})
 		return
 	}
-	s.header(c, "任务")
+	s.header(c, tr(c, "dashboard.title"))
 	if s.environmentMissing() {
 		s.setupGuide(c)
 		return
@@ -86,9 +86,9 @@ func (s *viewState) dashboardView(c *ui.Context) {
 	if len(s.task.start.localCandidates) > 0 && s.task.failure != nil && !s.busy {
 		noticeBanner(c, noticeBannerOptions{
 			Kind:    stateWarning,
-			Message: "已完成题集会保留，仅重试未完成项。",
+			Message: tr(c, "dashboard.retry.completed_kept"),
 			Actions: func() {
-				button(c, "重试未完成的测评题集").OnClick(s.retryBenchmark)
+				button(c, tr(c, "dashboard.retry.button")).OnClick(s.retryBenchmark)
 			},
 		})
 	}
@@ -115,13 +115,20 @@ func (s *viewState) conclusionView(c *ui.Context) {
 	if s.progress == nil {
 		return
 	}
-	card(c, "工作区进度", func() {
+	card(c, tr(c, "dashboard.progress.title"), func() {
 		step := s.step()
 		phaseProgress(c, phaseProgressOptions{
-			Labels:   []string{"准备", "设备检查", termBenchmarkStage, "连接并核验服务", "运行", "报告"},
+			Labels: []string{
+				tr(c, "dashboard.stage.prepare"),
+				tr(c, "dashboard.stage.device_check"),
+				tr(c, "dashboard.stage.configure"),
+				tr(c, "dashboard.stage.bind"),
+				tr(c, "dashboard.stage.run"),
+				tr(c, "dashboard.stage.report"),
+			},
 			Current:  step,
-			RowLabel: "六阶段进度",
-			BarLabel: "工作区六阶段准备进度",
+			RowLabel: tr(c, "dashboard.progress.row_label"),
+			BarLabel: tr(c, "dashboard.progress.bar_label"),
 		})
 		failed := s.failedBundles()
 		for _, b := range s.taskBundles() {
@@ -134,7 +141,7 @@ func (s *viewState) conclusionView(c *ui.Context) {
 				continue
 			}
 			if failed[b.Bundle] {
-				badge(c, b.Bundle+" · 失败", stateDanger, badgeOptions{Style: badgeDot})
+				badge(c, trf(c, "dashboard.bundle.failed_badge", "bundle", b.Bundle), stateDanger, badgeOptions{Style: badgeDot})
 				continue
 			}
 			kind := stateNeutral
@@ -169,7 +176,7 @@ func (s *viewState) conclusionView(c *ui.Context) {
 			noticeBanner(c, noticeBannerOptions{
 				Kind:    stateDanger,
 				Size:    bannerCompact,
-				Message: "当前任务已中止：" + human(code),
+				Message: trf(c, "dashboard.task.aborted", "reason", human(code)),
 			})
 		}
 	})
@@ -210,10 +217,10 @@ func (s *viewState) failedBundles() map[string]bool {
 
 func (s *viewState) configStage(c *ui.Context, body func()) {
 	if s.speed != nil && s.speed.selected {
-		card(c, termBenchmarkStage, body)
+		card(c, tr(c, "dashboard.stage.configure"), body)
 		return
 	}
-	stepTrack(c, "3", termBenchmarkStage, body)
+	stepTrack(c, "3", tr(c, "dashboard.stage.configure"), body)
 }
 
 func (s *viewState) stageView(c *ui.Context) {
@@ -241,44 +248,44 @@ func (s *viewState) stageView(c *ui.Context) {
 	}
 	switch action {
 	case "device_check":
-		stepTrack(c, "2", "设备检查", func() {
-			ui.Text(c, "正在检查设备，结果可在设备页查看。")
+		stepTrack(c, "2", tr(c, "dashboard.stage.device_check"), func() {
+			ui.Text(c, tr(c, "dashboard.device_check.running"))
 			s.checkWorkspaceDevice()
-			button(c, "查看设备页明细").OnClick(func() { s.selected = "device" })
+			button(c, tr(c, "dashboard.device_check.open_device")).OnClick(func() { s.selected = "device" })
 		})
 	case "prepare_candidate":
 		ui.Column(c.Key("config-stage")).Gap(tokens(c).Density.CardGap).Children(func() {
 			s.speedTypeSwitch(c)
 			s.configStage(c, func() {
 				if s.task.failure != nil {
-					failureView(c, termBenchmarkStage+"失败", s.task.failure, "已完成题集会保留，仅重试未完成项。")
+					failureView(c, tr(c, "dashboard.stage.configure_failed"), s.task.failure, tr(c, "dashboard.retry.completed_kept"))
 				}
 				s.candidateFields(c)
 			})
 		})
 	case "bind":
-		stepTrack(c, "4", "连接并核验服务", func() { s.serviceView(c) })
+		stepTrack(c, "4", tr(c, "dashboard.stage.bind"), func() { s.serviceView(c) })
 	case "run", "resume":
 		if s.serviceCardVisible() {
-			card(c, "模型服务", func() { s.serviceView(c) })
+			card(c, tr(c, "dashboard.service.card_title"), func() { s.serviceView(c) })
 		}
-		stepTrack(c, "5", "运行", func() { s.runView(c) })
+		stepTrack(c, "5", tr(c, "dashboard.stage.run"), func() { s.runView(c) })
 	case "report":
-		stepTrack(c, "6", "报告", func() {
+		stepTrack(c, "6", tr(c, "dashboard.stage.report"), func() {
 			if s.task.stage != "" {
-				ui.Text(c, "正在生成任务报告…")
+				ui.Text(c, tr(c, "dashboard.report.generating"))
 			} else {
-				ui.Text(c, "在报告页生成报告。")
-				button(c, "查看报告").OnClick(func() { s.selected = "reports" })
+				ui.Text(c, tr(c, "dashboard.report.open_hint"))
+				button(c, tr(c, "dashboard.completion.view_report")).OnClick(func() { s.selected = "reports" })
 			}
 		})
 	case "done":
-		stepTrack(c, "6", "报告", func() { s.completionView(c) })
+		stepTrack(c, "6", tr(c, "dashboard.stage.report"), func() { s.completionView(c) })
 	default:
 		if s.progress == nil {
-			ui.Text(c, "无法读取工作区进度，请刷新重试")
+			ui.Text(c, tr(c, "dashboard.progress.unreadable"))
 		} else {
-			ui.Text(c, "未识别的进度阶段："+action)
+			ui.Text(c, trf(c, "dashboard.progress.unknown_stage", "stage", action))
 		}
 	}
 }

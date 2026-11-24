@@ -10,6 +10,7 @@ import (
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 )
 
 type localEngineWizardState struct {
@@ -55,20 +56,20 @@ func (s *viewState) localEngineWizardView(c *ui.Context) {
 		w.family = "llama-cpp"
 	}
 	container.Children(func() {
-		section(c, "添加本地引擎", func() {
-			segmentedField(c, "引擎类型", "", &w.family, localEngineFamilyOptions)
+		section(c, tr(c, "engine.wizard.title"), func() {
+			segmentedField(c, tr(c, "engine.wizard.family_label"), "", &w.family, localEngineFamilyOptions)
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				if secondaryActionButton(c, "自动探测本机引擎", w.detecting).Disabled(s.busy || w.detecting).Clicked() {
+				if secondaryActionButton(c, tr(c, "engine.wizard.detect_button"), w.detecting).Disabled(s.busy || w.detecting).Clicked() {
 					s.detectWizardEngines(w)
 				}
 			})
 			if w.detectError != nil {
 				errorView(c, w.detectError)
 			} else if w.detectedLoaded && len(w.candidates) == 0 {
-				ui.Text(c, "未在本机常用路径探测到引擎，可直接选择路径。").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				ui.Text(c, tr(c, "engine.wizard.detect_empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			}
 			if len(w.candidates) > 0 {
-				ui.Text(c, "已探测到的本机引擎（点击自动填入）：").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				ui.Text(c, tr(c, "engine.wizard.detect_found")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 					for _, cand := range w.candidates {
 						cand := cand
@@ -92,18 +93,18 @@ func (s *viewState) localEngineWizardView(c *ui.Context) {
 				execField.Description(execDesc)
 			}
 			if w.family == "lmstudio" {
-				s.pathField(c, "LM Studio 模型目录", &w.modelsRoot, browseModelsRootDir).
+				s.pathField(c, tr(c, "engine.wizard.lmstudio_models_root"), &w.modelsRoot, browseModelsRootDir).
 					Error(s.browseError(browseModelsRootDir.key, pathError(w.modelsRoot)))
 			}
 			if w.family == "polystrata" {
-				monoField(c, "PolyStrata 数据目录（可选）", "留空由安装目录自动解析。", "", pathError(w.dataDir), &w.dataDir)
+				monoField(c, tr(c, "engine.wizard.polystrata_data_dir"), tr(c, "engine.wizard.polystrata_data_dir_desc"), "", pathError(w.dataDir), &w.dataDir)
 			}
-			monoField(c, "工作目录（可选）", "留空默认使用可执行文件所在目录。", "", pathError(w.workingDir), &w.workingDir)
+			monoField(c, tr(c, "engine.wizard.working_dir"), tr(c, "engine.wizard.working_dir_desc"), "", pathError(w.workingDir), &w.workingDir)
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				if wizardActionButton(c, "生成并注册引擎", "注册引擎", s.actionBusy("install-init")).Disabled(s.busy || !wizardCanSubmit(w)).Clicked() {
+				if wizardActionButton(c, tr(c, "engine.wizard.submit_visible"), tr(c, "engine.wizard.submit_accessible"), s.actionBusy("install-init")).Disabled(s.busy || !wizardCanSubmit(w)).Clicked() {
 					s.initAndRegisterWizardEngine(w)
 				}
-				if secondaryActionButton(c, "重新核验引擎", s.actionBusy("install-recheck")).Disabled(s.busy).Clicked() {
+				if secondaryActionButton(c, tr(c, "engine.wizard.recheck"), s.actionBusy("install-recheck")).Disabled(s.busy).Clicked() {
 					s.changeInstallation("recheck", "")
 				}
 			})
@@ -118,7 +119,7 @@ func wizardActionButton(c *ui.Context, visibleLabel, accessibleLabel string, act
 	b.Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(theme.Space(1.5)).Children(func() {
 			if showSpinner {
-				components.Spinner(c, components.SpinnerRing).Size(14, 14).Label(visibleLabel + "处理中")
+				components.Spinner(c, components.SpinnerRing).Size(14, 14).Label(trf(c, "engine.action.in_progress", "action", visibleLabel))
 			}
 			ui.Text(c, visibleLabel).SingleLine()
 		})
@@ -129,13 +130,13 @@ func wizardActionButton(c *ui.Context, visibleLabel, accessibleLabel string, act
 func wizardExecutableLabels(family string) (string, string) {
 	switch family {
 	case "polystrata":
-		return "PolyStrata Python 路径", "PolyStrata 虚拟环境中的 .venv/bin/python"
+		return l10n.TR("engine.wizard.exec.polystrata_label"), l10n.TR("engine.wizard.exec.polystrata_desc")
 	case "mlx-lm", "vllm", "sglang":
-		return "虚拟环境 Python 路径", "独立虚拟环境中的 venv/bin/python"
+		return l10n.TR("engine.wizard.exec.venv_label"), l10n.TR("engine.wizard.exec.venv_desc")
 	case "lmstudio":
-		return "LM Studio CLI (lms) 路径", ""
+		return l10n.TR("engine.wizard.exec.lmstudio_label"), ""
 	default:
-		return "引擎可执行文件路径", "llama-server 可执行文件"
+		return l10n.TR("engine.wizard.exec.default_label"), l10n.TR("engine.wizard.exec.default_desc")
 	}
 }
 
@@ -184,7 +185,7 @@ func (s *viewState) detectWizardEngines(w *localEngineWizardState) {
 		w.detectedLoaded = true
 		w.detectError = nil
 		w.detecting = false
-		s.enqueueStatusToast("已模拟探测本机引擎（仅预览会话）")
+		s.enqueueStatusToast(l10n.TR("engine.wizard.toast.detect_preview"))
 		return
 	}
 	if s.service == nil || w.detecting {
@@ -239,7 +240,7 @@ func (s *viewState) initAndRegisterWizardEngine(w *localEngineWizardState) {
 		}
 		path := "/preview/" + w.family + "-" + slug + ".json"
 		if s.simulate(previewInstallation{action: "register", path: path}) && s.failure == nil {
-			s.enqueueStatusToast("已模拟生成并注册本地引擎")
+			s.enqueueStatusToast(l10n.TR("engine.wizard.toast.registered_preview"))
 		}
 		return
 	}
@@ -262,6 +263,6 @@ func (s *viewState) initAndRegisterWizardEngine(w *localEngineWizardState) {
 	}
 	s.workAs("install-init", func() (string, *core.ApiError) {
 		_, err := s.service.InitAndRegisterLocalEngine(s.ctx, req)
-		return "已生成并注册本地引擎", err
+		return l10n.TR("engine.wizard.toast.registered"), err
 	})
 }

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"path/filepath"
 	"strings"
+
+	"inferyard/studio/internal/l10n"
 )
 
 func allModelsRoots(u UserSettings) []string {
@@ -81,6 +83,15 @@ func (s *Service) Theme() string {
 	return NormalizeTheme(s.userSettings().Theme)
 }
 
+func NormalizeLanguage(mode string) string {
+	return l10n.NormalizeLanguage(mode)
+}
+
+// Language returns the normalized persisted UI language preference without probing the CLI.
+func (s *Service) Language() string {
+	return NormalizeLanguage(s.userSettings().Language)
+}
+
 // MinimizeToTray returns whether closing the window minimizes to the system tray.
 func (s *Service) MinimizeToTray() bool {
 	return s.userSettings().MinimizeToTray
@@ -121,6 +132,21 @@ func applySettingsPatchExtra(u *UserSettings, key string, raw json.RawMessage) (
 		default:
 			return true, Err("invalid_request")
 		}
+		return true, nil
+	case "language":
+		var lang *string
+		if json.Unmarshal(raw, &lang) != nil {
+			return true, Err("invalid_request")
+		}
+		if lang == nil {
+			u.Language = LanguageSystem
+			return true, nil
+		}
+		normalized, ok := l10n.ParseLanguageSetting(*lang)
+		if !ok {
+			return true, Err("invalid_request")
+		}
+		u.Language = normalized
 		return true, nil
 	case "minimize_to_tray":
 		var enabled *bool

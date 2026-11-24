@@ -8,6 +8,7 @@ import (
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 )
 
 type speedStage uint8
@@ -51,8 +52,22 @@ func (r *speedTask) active() bool {
 	return r.stage <= speedReading || r.stage == speedCancelling || r.stage == speedQueued
 }
 
+var speedStageKeys = [...]string{
+	"speed.stage.preparing",
+	"speed.stage.binding",
+	"speed.stage.planning",
+	"speed.stage.measuring",
+	"speed.stage.reading",
+	"speed.stage.done",
+	"speed.stage.cancelling",
+	"speed.stage.cancelled",
+	"speed.stage.failed",
+	"speed.stage.partial",
+	"speed.stage.queued",
+}
+
 func (r *speedTask) label() string {
-	return [...]string{"准备专项", "连接并核验服务", "固定计划", "测量", "读取结果", "执行完成", "取消中 · 等待收尾", "已取消", "未完成", "部分完成", "等待测量"}[r.stage]
+	return l10n.TR(speedStageKeys[r.stage])
 }
 
 func (r *speedTask) validCount() int {
@@ -87,7 +102,7 @@ func (s *viewState) speedTypeSwitch(c *ui.Context) bool {
 	if want := boolIndex(w.selected); w.typeTabSeen != want {
 		w.typeTab, w.typeTabSeen = want, want
 	}
-	tabs := components.Tabs(c, &w.typeTab, components.TabsUnderline, "常规测评", "长上下文速度")
+	tabs := components.Tabs(c, &w.typeTab, components.TabsUnderline, tr(c, "speed.tab.standard"), tr(c, "speed.tab.context_speed"))
 	if tabs.List.Changed() {
 		w.selected, w.typeTabSeen = w.typeTab == 1, w.typeTab
 	}
@@ -109,20 +124,20 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 	if !w.selected {
 		return false
 	}
-	segmentedField(c, "上下文档位", "", &w.context, []components.NativeSelectOption[int]{
+	segmentedField(c, tr(c, "speed.select.context_tier"), "", &w.context, []components.NativeSelectOption[int]{
 		{Value: inferyard.ContextSpeed64K, Label: "64k"},
 		{Value: inferyard.ContextSpeed128K, Label: "128k"},
 		{Value: inferyard.ContextSpeed256K, Label: "256k"},
 	})
-	ui.Text(c, fmt.Sprintf("%s · %d 次测量 · 每次输出 256 tokens", inferyard.ContextSpeedBundleID, inferyard.ContextSpeedSamples))
-	componentFold(c, "测评条件", func() {
-		ui.Text(c, "并发 1 · 固定输入 · 关闭输入缓存与投机解码")
+	ui.Text(c, trf(c, "speed.select.spec_summary", "bundle", inferyard.ContextSpeedBundleID, "samples", inferyard.ContextSpeedSamples))
+	componentFold(c, tr(c, "speed.select.conditions_title"), func() {
+		ui.Text(c, tr(c, "speed.select.conditions_body"))
 	})
 	reason := s.speedStartBlockReason()
 	if engineLocked(s.engineState.State) {
 		if s.destructiveDialog(c, destructiveOption{
-			kind: destructiveStopEngine, label: "停止当前服务", confirmLabel: "确认停止当前服务",
-			prompt:   "将停止 Studio 启动的模型服务；长上下文专项测评需要重新启动服务后才能开始。",
+			kind: destructiveStopEngine, label: tr(c, "speed.stop_engine.label"), confirmLabel: tr(c, "speed.stop_engine.confirm"),
+			prompt:   tr(c, "speed.stop_engine.prompt"),
 			disabled: s.busy || s.engineState.State == "stopping",
 		}) {
 			s.stopEngine()
@@ -132,9 +147,9 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 		noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: reason})
 	}
 	if s.eligibility(s.engine).Reason == "cli_outdated" {
-		button(c, "打开 CLI 设置").OnClick(func() { s.selected = "settings" })
+		button(c, tr(c, "speed.action.open_cli_settings")).OnClick(func() { s.selected = "settings" })
 	}
-	if primaryButton(c, "开始专项测评").Disabled(reason != "").AlignSelf(ui.Start).Clicked() {
+	if primaryButton(c, tr(c, "speed.action.start")).Disabled(reason != "").AlignSelf(ui.Start).Clicked() {
 		s.startSpeed()
 	}
 	return true
@@ -142,64 +157,70 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 
 func (s *viewState) speedStartBlockReason() string {
 	if s.localEngine() != nil {
-		return "安装声明引擎暂不支持长上下文速度；可运行普通测评。"
+		return l10n.TR("speed.block.local_engine")
 	}
 	switch {
 	case s.environmentMissing():
-		return "请先完成环境准备。"
+		return l10n.TR("speed.block.env_missing")
 	case !s.preflightReady():
-		return "请先完成工作区设备检查。"
+		return l10n.TR("speed.block.preflight")
 	case s.newTaskPending:
-		return "正在结束上一任务，请等待完成。"
+		return l10n.TR("speed.block.prev_task")
 	case s.busy:
-		return "正在处理其他操作，请等待完成。"
+		return l10n.TR("speed.block.busy")
 	case s.running() != nil:
-		return "已有任务尚未结束，请等待完成或取消后再开始。"
+		return l10n.TR("speed.block.running")
 	case s.model == "":
-		return "请选择测评模型。"
+		return l10n.TR("speed.block.no_model")
 	case s.engine == "":
-		return "请选择引擎。"
+		return l10n.TR("speed.block.no_engine")
 	case s.engineState.State == "orphaned":
-		return "请先处理遗留服务记录，再开始专项测评。"
+		return l10n.TR("speed.block.orphaned")
 	case engineLocked(s.engineState.State):
-		return "先停止当前受管服务，再按所选上下文启动新任务。"
+		return l10n.TR("speed.block.engine_locked")
 	}
 	e := s.eligibility(s.engine)
 	switch e.State {
 	case core.EngineCheckEligible:
 		for _, model := range s.registry.Models {
 			if model.Name == s.model && model.ContextLength != nil && s.speed != nil && *model.ContextLength < int64(s.speed.context) {
-				return fmt.Sprintf("所选模型最多支持 %gk 上下文，不能运行 %dk 档；请更换长上下文模型。", float64(*model.ContextLength)/1024, s.speed.context/1024)
+				return l10n.TRf("speed.block.model_context_short", "max", fmt.Sprintf("%g", float64(*model.ContextLength)/1024), "target", s.speed.context/1024)
 			}
 		}
 		return ""
 	case core.EngineCheckChecking:
-		return "正在核验所选引擎，请稍候。"
+		return l10n.TR("speed.block.checking")
 	case core.EngineCheckIneligible:
-		return "所选引擎不可用：" + human(e.Reason) + "。请重新选择。"
+		return l10n.TRf("speed.block.ineligible", "reason", human(e.Reason))
 	default:
 		if e.Reason == "cli_outdated" {
-			return "当前 CLI 不支持引擎核验；请在设置中选择支持长上下文速度的 CLI。"
+			return l10n.TR("speed.block.cli_outdated")
 		}
-		return "所选引擎尚未通过核验，请在任务页的「引擎」下拉中重新选择。"
+		return l10n.TR("speed.block.unverified")
 	}
 }
 
 func (s *viewState) speedTaskView(c *ui.Context) {
 	r := s.speed.current
-	s.header(c, "长上下文速度")
+	s.header(c, tr(c, "speed.title"))
 	ui.Text(c, fmt.Sprintf("%s · %s · %s", r.model, r.engine, speedContext(r.context)))
-	label := inferyard.ContextSpeedBundleID + " · "
 	if s.preview != nil {
-		label += "模拟任务 "
+		ui.Text(c, trf(c, "speed.task.meta_preview", "bundle", inferyard.ContextSpeedBundleID, "id", r.id)).TextColor(c.Theme().TextMuted)
+	} else {
+		ui.Text(c, inferyard.ContextSpeedBundleID+" · "+r.id).TextColor(c.Theme().TextMuted)
 	}
-	ui.Text(c, label+r.id).TextColor(c.Theme().TextMuted)
 	if r.budget > 0 {
-		ui.Text(c, fmt.Sprintf("时间上限 %.0f 秒", r.budget))
+		ui.Text(c, trf(c, "speed.task.time_budget", "seconds", fmt.Sprintf("%.0f", r.budget)))
 	}
-	card(c, "任务进度", func() {
+	card(c, tr(c, "speed.task.progress_card"), func() {
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-			for i, label := range []string{"准备", "连接并核验服务", "固定计划", "测量", "读取结果"} {
+			for i, label := range []string{
+				tr(c, "speed.step.prepare"),
+				tr(c, "speed.step.bind"),
+				tr(c, "speed.step.plan"),
+				tr(c, "speed.step.measure"),
+				tr(c, "speed.step.read"),
+			} {
 				if speedStage(i) == r.stage {
 					statusBadge(c, label, stateColor(c, stateActive))
 				} else {
@@ -221,12 +242,12 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 			eta = formatETA(c, row, "speed-"+r.id, int64(r.completed), 5)
 		}
 		row.Children(func() {
-			ui.Text(c, fmt.Sprintf("已完成 %d / 5 次测量", r.completed))
+			ui.Text(c, trf(c, "speed.task.completed_count", "completed", r.completed))
 			if eta != "" {
 				ui.Text(c, "· "+eta).TextColor(c.Theme().TextMuted)
 			}
 		})
-		progressBar(c, float64(r.completed)/5, "专项五次测量进度")
+		progressBar(c, float64(r.completed)/5, tr(c, "speed.task.progress_bar_label"))
 		if r.reason != "" {
 			ui.Text(c, r.reason).TextColor(stateColor(c, stateWarning))
 		}
@@ -237,8 +258,8 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 func (s *viewState) speedTaskActions(c *ui.Context, r *speedTask) {
 	if r.active() {
 		if s.destructiveAction(c, destructiveOption{
-			kind: destructiveCancelRun, id: r.id, label: "取消专项测评", confirmLabel: "确认取消专项测评",
-			prompt:   "取消本次专项测评？已完成记录将保留，但不形成完整汇总。",
+			kind: destructiveCancelRun, id: r.id, label: tr(c, "speed.cancel.label"), confirmLabel: tr(c, "speed.cancel.confirm"),
+			prompt:   tr(c, "speed.cancel.prompt"),
 			disabled: r.stage == speedCancelling,
 		}) {
 			s.cancelSpeed()
@@ -246,14 +267,14 @@ func (s *viewState) speedTaskActions(c *ui.Context, r *speedTask) {
 		return
 	}
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-		primaryButton(c, "查看结果").OnClick(func() { s.openSpeed(r.id) })
-		button(c, "用此组合新开任务").Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
+		primaryButton(c, tr(c, "speed.action.view_result")).OnClick(func() { s.openSpeed(r.id) })
+		button(c, tr(c, "speed.action.new_with_combo")).Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
 	})
 }
 
 func (s *viewState) newSpeedTask(r *speedTask) {
 	if r.selectionModel == "" || r.selectionEngine == "" {
-		s.failure = &core.ApiError{Code: "context_speed_assets_unavailable", Message: "原任务模型或引擎已不可用，请恢复原资源后重新打开结果。"}
+		s.failure = &core.ApiError{Code: "context_speed_assets_unavailable", Message: l10n.TR("speed.error.assets_unavailable")}
 		return
 	}
 	s.newBenchmark()
@@ -299,7 +320,7 @@ func (s *viewState) openSpeed(id string) {
 					s.speed.readError = e.Code
 				}
 				if len(e.Limitations) > 0 {
-					s.speed.readError += " · " + strings.Join(e.Limitations, "、")
+					s.speed.readError += " · " + strings.Join(e.Limitations, l10n.TR("speed.list_sep"))
 				}
 			} else {
 				s.speed.opened = result
@@ -311,26 +332,26 @@ func (s *viewState) openSpeed(id string) {
 
 func (s *viewState) speedResultView(c *ui.Context) {
 	w, r := s.speed, s.speed.opened
-	s.header(c, "长上下文速度 · 结果")
+	s.header(c, tr(c, "speed.result.title"))
 	ui.Text(c, r.model+" · "+r.engine+" · "+inferyard.ContextSpeedBundleID)
-	prefix := ""
 	if s.preview != nil {
-		prefix = "模拟数据 · "
+		ui.Text(c, trf(c, "speed.result.meta_preview", "id", r.id, "status", r.label())).TextColor(stateColor(c, stateWarning))
+	} else {
+		ui.Text(c, r.id+" · "+r.label()).TextColor(stateColor(c, stateWarning))
 	}
-	ui.Text(c, prefix+r.id+" · "+r.label()).TextColor(stateColor(c, stateWarning))
 	ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
-		button(c, "返回历史任务").OnClick(func() {
+		button(c, tr(c, "speed.action.back_history")).OnClick(func() {
 			w.opened, w.readError, w.reading = nil, "", false
 			s.reportsTab = reportsTabSpeed
 		})
-		button(c, "用此组合新开任务").Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
+		button(c, tr(c, "speed.action.new_with_combo")).Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
 	})
 	if w.reading {
 		host := ui.Column(c.Key("speed-result-loading-" + r.id)).FillWidth()
 		show := delayedVisible(c, host, "speed-read", true)
 		host.Children(func() {
 			if show {
-				skeletonCard(c, "测量结果", 3, "正在读取专项测量结果")
+				skeletonCard(c, tr(c, "speed.result.card_title"), 3, tr(c, "speed.result.loading_label"))
 			}
 		})
 		return
@@ -340,32 +361,39 @@ func (s *viewState) speedResultView(c *ui.Context) {
 			Kind:    stateDanger,
 			Message: w.readError,
 			Actions: func() {
-				primaryButton(c, "重新读取结果").OnClick(func() { s.openSpeed(r.id) })
+				primaryButton(c, tr(c, "speed.action.retry_read")).OnClick(func() { s.openSpeed(r.id) })
 			},
 		})
 		return
 	}
 	if r.stage == speedCancelled {
-		infoBanner(c, "任务已取消，已完成的测量已保留。")
+		infoBanner(c, tr(c, "speed.result.cancelled_notice"))
 	} else if r.summary == nil {
 		noticeBanner(c, noticeBannerOptions{
 			Kind:    stateWarning,
 			Size:    bannerCompact,
-			Message: "未形成完整汇总，原因见下方诊断详情。",
+			Message: tr(c, "speed.result.incomplete_notice"),
 		})
 	}
-	card(c, "测量结果", func() {
+	card(c, tr(c, "speed.result.card_title"), func() {
 		if r.summary != nil {
-			ui.Text(c, "有效 5/5 · 中位数")
+			ui.Text(c, tr(c, "speed.result.valid_median"))
 			if r.result != nil && r.result.Summary != nil {
 				v := r.result.Summary.Columns
-				ui.Text(c, fmt.Sprintf("范围：输入处理 %.2f–%.2f s · Prefill %.2f–%.2f tok/s · Decode %.2f–%.2f tok/s", v.Time.Min, v.Time.Max, v.Prefill.Min, v.Prefill.Max, v.Decode.Min, v.Decode.Max))
+				ui.Text(c, trf(c, "speed.result.range",
+					"time_min", fmt.Sprintf("%.2f", v.Time.Min),
+					"time_max", fmt.Sprintf("%.2f", v.Time.Max),
+					"prefill_min", fmt.Sprintf("%.2f", v.Prefill.Min),
+					"prefill_max", fmt.Sprintf("%.2f", v.Prefill.Max),
+					"decode_min", fmt.Sprintf("%.2f", v.Decode.Min),
+					"decode_max", fmt.Sprintf("%.2f", v.Decode.Max),
+				))
 			}
-			speedTable(c.Key("speed-summary"), &w.table, "专项六项指标", r, []speedSample{*r.summary})
+			speedTable(c.Key("speed-summary"), &w.table, tr(c, "speed.table.summary_label"), r, []speedSample{*r.summary})
 		} else {
-			ui.Text(c, fmt.Sprintf("有效 %d/5 · 未形成完整汇总", r.validCount()))
+			ui.Text(c, trf(c, "speed.result.valid_partial", "valid", r.validCount()))
 			if len(r.samples) > 0 {
-				speedTable(c.Key("speed-partial"), &w.table, "专项已完成测量", r, r.samples)
+				speedTable(c.Key("speed-partial"), &w.table, tr(c, "speed.table.partial_label"), r, r.samples)
 			}
 		}
 	})
@@ -374,37 +402,38 @@ func (s *viewState) speedResultView(c *ui.Context) {
 
 func speedResultFolds(c *ui.Context, w *speedWorkspace, r *speedTask) {
 	if r.summary == nil || r.reason != "" {
-		componentFold(c.Key(r.id), "查看诊断详情", func() {
+		componentFold(c.Key(r.id), tr(c, "speed.result.diagnostics_fold"), func() {
 			if r.reason != "" {
 				ui.Text(c, r.reason).TextColor(stateColor(c, stateWarning))
 			}
 			for i, sample := range r.samples {
 				if sample.missing != "" {
-					ui.Text(c, fmt.Sprintf("第 %d 次缺测：%s", i+1, sample.missing)).TextColor(stateColor(c, stateWarning))
+					ui.Text(c, trf(c, "speed.result.sample_missing", "index", i+1, "detail", sample.missing)).TextColor(stateColor(c, stateWarning))
 				}
 				if sample.reason != "" {
-					ui.Text(c, fmt.Sprintf("第 %d 次：%s", i+1, sample.reason)).TextColor(stateColor(c, stateWarning))
+					ui.Text(c, trf(c, "speed.result.sample_reason", "index", i+1, "reason", sample.reason)).TextColor(stateColor(c, stateWarning))
 				}
 			}
 		})
 	}
 	if r.summary != nil {
-		componentFold(c, "查看逐次测量", func() {
-			speedTable(c.Key("speed-samples"), &w.samples, "专项逐次测量", r, r.samples)
+		componentFold(c, tr(c, "speed.result.samples_fold"), func() {
+			speedTable(c.Key("speed-samples"), &w.samples, tr(c, "speed.table.samples_label"), r, r.samples)
 		})
 	}
 }
 
 func speedTable(c *ui.Context, state *pageTableState, label string, task *speedTask, rows []speedSample) {
 	columns := []ui.TableColumn{
-		{Title: "模型 / 引擎", MinWidth: c.Theme().Rem(14)},
-		{Title: "上下文（tokens）", MinWidth: c.Theme().Rem(9)},
-		{Title: "输入长度（tokens）", MinWidth: c.Theme().Rem(11)},
-		{Title: "输入处理（s）", MinWidth: c.Theme().Rem(9)},
-		{Title: "Prefill（tok/s）", MinWidth: c.Theme().Rem(9)},
-		{Title: "Decode（tok/s）", MinWidth: c.Theme().Rem(9)},
+		{Title: tr(c, "speed.col.model_engine"), MinWidth: c.Theme().Rem(14)},
+		{Title: tr(c, "speed.col.context_tokens"), MinWidth: c.Theme().Rem(9)},
+		{Title: tr(c, "speed.col.prompt_tokens"), MinWidth: c.Theme().Rem(11)},
+		{Title: tr(c, "speed.col.input_time"), MinWidth: c.Theme().Rem(9)},
+		{Title: tr(c, "speed.col.prefill"), MinWidth: c.Theme().Rem(9)},
+		{Title: tr(c, "speed.col.decode"), MinWidth: c.Theme().Rem(9)},
 	}
-	selectableTable(state, func(i int) any { return i }, func(i int) string { return fmt.Sprintf("测量行 %d", i+1) })
+	loc := contextLocale(c)
+	selectableTable(state, func(i int) any { return i }, func(i int) string { return l10n.Tf(loc, "speed.table.row_label", "index", i+1) })
 	pageTable(c, state, label, columns, len(rows), func(row, col int) {
 		v := rows[row]
 		prompt := "—"
@@ -442,11 +471,11 @@ func (s *viewState) speedHistoryView(c *ui.Context) {
 		return
 	}
 	w := s.speed
-	card(c, "专项历史任务", func() {
+	card(c, tr(c, "speed.history.card_title"), func() {
 		selectableTable(&w.historyTable, func(i int) any { return w.history[i].id }, func(i int) string { return w.history[i].id })
-		pageTable(c.Key("speed-history"), &w.historyTable, "专项历史表", []ui.TableColumn{
-			{Title: "任务", MinWidth: c.Theme().Rem(11)}, {Title: "模型 / 引擎", MinWidth: c.Theme().Rem(24)},
-			{Title: "上下文", MinWidth: c.Theme().Rem(6)}, {Title: "状态", MinWidth: c.Theme().Rem(6)},
+		pageTable(c.Key("speed-history"), &w.historyTable, tr(c, "speed.history.table_label"), []ui.TableColumn{
+			{Title: tr(c, "speed.history.col_task"), MinWidth: c.Theme().Rem(11)}, {Title: tr(c, "speed.col.model_engine"), MinWidth: c.Theme().Rem(24)},
+			{Title: tr(c, "speed.history.col_context"), MinWidth: c.Theme().Rem(6)}, {Title: tr(c, "speed.history.col_status"), MinWidth: c.Theme().Rem(6)},
 		}, len(w.history), func(row, col int) {
 			r := w.history[row]
 			if col == 1 {
@@ -456,7 +485,7 @@ func (s *viewState) speedHistoryView(c *ui.Context) {
 			ui.Text(c, []string{r.id, "", speedContext(r.context), r.label()}[col]).SingleLine()
 		}).Height(c.Theme().Rem(4)*float32(min(len(w.history), 5)+1) + 2)
 		if i := selectedRow(&w.historyTable, len(w.history)); i >= 0 {
-			if primaryButton(c, "打开专项结果").Clicked() || w.historyTable.submitted {
+			if primaryButton(c, tr(c, "speed.history.open_result")).Clicked() || w.historyTable.submitted {
 				s.openSpeed(w.history[i].id)
 			}
 		}

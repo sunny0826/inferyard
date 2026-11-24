@@ -142,8 +142,8 @@ func TestInstallCLIReusesCompatibleAndUpgradesOutdated(t *testing.T) {
 		if len(calls) < 2 || !strings.Contains(strings.Join(calls[0], " "), "--upgrade --force") || !strings.Contains(strings.Join(calls[0], " "), "inferyard==0.0.9") {
 			t.Fatalf("expected uv tool install --upgrade --force inferyard==0.0.9, got %+v", calls)
 		}
-		if len(statuses) == 0 || !strings.Contains(statuses[0], "升级") {
-			t.Fatalf("expected upgrade status message, got %+v", statuses)
+		if len(statuses) == 0 || !strings.Contains(statuses[0], "0.0.9") {
+			t.Fatalf("expected upgrade status message mentioning target version, got %+v", statuses)
 		}
 		if textOf(s.Settings().Settings.InferyardPath) != installed {
 			t.Fatalf("settings inferyard_path = %q, want %q", textOf(s.Settings().Settings.InferyardPath), installed)

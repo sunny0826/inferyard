@@ -5,6 +5,7 @@ import (
 	"net/url"
 
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func engineLocked(state string) bool {
@@ -34,11 +35,18 @@ func (s *viewState) stopEnabled(active, runActive bool) bool {
 	return s.engineState.State == "starting" || s.engineState.State == "running"
 }
 
-func loopbackEndpoint(raw string) string {
+func isLoopbackURL(raw string) bool {
 	if u, err := url.Parse(raw); err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.User == nil && u.RawQuery == "" && u.Fragment == "" {
 		if host := u.Hostname(); host == "localhost" || net.ParseIP(host).IsLoopback() {
-			return raw
+			return true
 		}
 	}
-	return "非本机地址"
+	return false
+}
+
+func loopbackEndpoint(raw string) string {
+	if isLoopbackURL(raw) {
+		return raw
+	}
+	return l10n.TR("engine.endpoint.non_local")
 }

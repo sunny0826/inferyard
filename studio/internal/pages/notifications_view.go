@@ -8,6 +8,7 @@ import (
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
+	"inferyard/studio/internal/l10n"
 )
 
 var notifStackEase = ui.CubicBezier(0.32, 0.72, 0, 1)
@@ -19,7 +20,7 @@ func (s *viewState) announceNotifications(c *ui.Context) {
 			item.Announced = true
 			text := item.Title
 			if item.Body != "" {
-				text += "。" + item.Body
+				text = trf(c, "notif.announce_with_body", "title", item.Title, "body", item.Body)
 			}
 			c.Announce(text)
 		}
@@ -69,7 +70,7 @@ func (s *viewState) studioNotifications(c *ui.Context) {
 				if expanded && n > 0 {
 					clearRow := ui.Row(c.Key("notif-clear-all")).Absolute().Left(0).Right(0).Justify(ui.End)
 					clearRow.Children(func() {
-						btn := components.Button(c, "全部清除", components.ButtonGhost).
+						btn := components.Button(c, tr(c, "notif.clear_all"), components.ButtonGhost).
 							Padding(4, 10).Radius(10).FontSize(t.Type.Caption)
 						if btn.Clicked() {
 							s.clearScreenNotifications()
@@ -173,11 +174,11 @@ func (s *viewState) notificationStackCard(c *ui.Context, item *studioNotificatio
 			closeBtn := components.Button(c, "", components.ButtonGhost).
 				Absolute().Top(6).Left(6).Size(24, 24).Padding(0).Radius(10).
 				Background(t.Color.Surface).Border(1, t.Color.BorderDefault).
-				Label("关闭通知：" + item.Title)
+				Label(trf(c, "notif.dismiss_title", "title", item.Title))
 			closeBtn.Children(func() {
 				components.Icon(c, lucide.X).Size(12, 12).TextColor(t.Color.FgSecondary).Role(ui.RoleNone)
 			})
-			components.Tooltip(c, closeBtn, "关闭通知")
+			components.Tooltip(c, closeBtn, tr(c, "notif.dismiss"))
 			if closeBtn.Clicked() {
 				s.dismissNotificationFromScreen(item.ID)
 			}
@@ -197,7 +198,7 @@ func (s *viewState) notificationCardInner(c *ui.Context, item *studioNotificatio
 		ui.Column(c).Grow(1).MinWidth(0).Gap(4).Children(func() {
 			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(8).Children(func() {
 				ui.Text(c, item.Title).Bold().FontSize(14).FixedLineHeight(20).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine()
-				ui.Text(c, relativeNotificationTime(item.CreatedAt)).FontSize(12).TextColor(t.Color.FgTertiary).SingleLine().Shrink(0)
+				ui.Text(c, relativeNotificationTimeFor(contextLocale(c), item.CreatedAt)).FontSize(12).TextColor(t.Color.FgTertiary).SingleLine().Shrink(0)
 			})
 			if item.Body != "" {
 				ui.Text(c, item.Body).FontSize(13).FixedLineHeight(20).TextColor(t.Color.FgSecondary).MaxLines(3)
@@ -243,9 +244,9 @@ func (s *viewState) notificationBell(c *ui.Context) {
 	t := tokens(c)
 	nc := s.notifications()
 	unread := nc.unreadCount()
-	label := "通知"
+	label := tr(c, "notif.title")
 	if unread > 0 {
-		label = fmt.Sprintf("通知（%d 条未处理）", unread)
+		label = trf(c, "notif.bell_unread", "count", unread)
 	}
 	c.Key("notification-bell")
 	ui.Column(c).Children(func() {
@@ -279,7 +280,7 @@ func (s *viewState) notificationBell(c *ui.Context) {
 		}
 		components.Popover(c, anchor, &nc.bellOpen, func(panel ui.Element) {
 			panel.AttachTo(anchor, ui.AnchorBottomRight, ui.AnchorTopRight).
-				Width(360).MaxWidthPercent(100).Label("通知列表")
+				Width(360).MaxWidthPercent(100).Label(tr(c, "notif.list_label"))
 			panel.Children(func() {
 				s.notificationInboxPanel(c)
 			})
@@ -293,15 +294,15 @@ func (s *viewState) notificationInboxPanel(c *ui.Context) {
 	inbox := nc.inboxItems()
 	ui.Column(c).FillWidth().Gap(t.Density.Stack).Children(func() {
 		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			heading(c, "通知", 3).Grow(1)
+			heading(c, tr(c, "notif.title"), 3).Grow(1)
 			if len(inbox) > 0 {
-				if ghostButton(c, "全部已读").FontSize(t.Type.Caption).Clicked() {
+				if ghostButton(c, tr(c, "notif.mark_all_read")).FontSize(t.Type.Caption).Clicked() {
 					s.markAllNotificationsRead()
 				}
 			}
 		})
 		if len(inbox) == 0 {
-			ui.Text(c, "暂无未处理通知。").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			ui.Text(c, tr(c, "notif.empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			return
 		}
 		ui.Scroll(c.Key("notif-inbox-scroll")).FillWidth().MaxHeight(380).Children(func() {
@@ -320,17 +321,21 @@ func (s *viewState) notificationInboxPanel(c *ui.Context) {
 }
 
 func relativeNotificationTime(at time.Time) string {
+	return relativeNotificationTimeFor("", at)
+}
+
+func relativeNotificationTimeFor(locale string, at time.Time) string {
 	if at.IsZero() {
-		return "刚刚"
+		return l10n.T(locale, "notif.time.just_now")
 	}
 	diff := time.Since(at)
 	switch {
 	case diff < time.Minute:
-		return "刚刚"
+		return l10n.T(locale, "notif.time.just_now")
 	case diff < time.Hour:
-		return fmt.Sprintf("%d 分钟前", int(diff.Minutes()))
+		return l10n.Tf(locale, "notif.time.minutes_ago", "count", int(diff.Minutes()))
 	case diff < 24*time.Hour:
-		return fmt.Sprintf("%d 小时前", int(diff.Hours()))
+		return l10n.Tf(locale, "notif.time.hours_ago", "count", int(diff.Hours()))
 	default:
 		return at.Format("01-02 15:04")
 	}

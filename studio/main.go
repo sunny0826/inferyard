@@ -15,6 +15,7 @@ import (
 	"github.com/egoist/mygo"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/desktop"
+	"inferyard/studio/internal/l10n"
 	"inferyard/studio/internal/pages"
 )
 
@@ -43,6 +44,7 @@ func runMain() (exitCode int) {
 		return 1
 	}
 	core.Version = version[0][1]
+	mygo.App.SetLanguages(l10n.SupportedLanguages()...)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	if runDebugUI(ctx, options) {
@@ -73,15 +75,21 @@ func runMain() (exitCode int) {
 		mygo.App.SetWindowStateStore(windowStates)
 	}
 	runApp(ctx, func() {
+		var tray *desktop.TrayController
 		suppress := pages.New(ctx, service, "", pages.WindowHooks{
 			BindTray: func(win *mygo.Window) func(bool) error {
-				tray := desktop.NewTrayController(desktop.TrayConfig{
+				tray = desktop.NewTrayController(desktop.TrayConfig{
 					Window:  win,
 					IconPNG: appIconPNG,
 					ToolTip: win.Title(),
 					Logf:    log.Printf,
 				})
 				return tray.SetEnabled
+			},
+			OnLocaleChanged: func(string) {
+				if tray != nil {
+					tray.RefreshLocale()
+				}
 			},
 		})
 		service.SetUpdateQuitHook(func() { mygo.App.Quit() })

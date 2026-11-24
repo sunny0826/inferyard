@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -38,7 +37,7 @@ func (s *viewState) openReport(reference string) {
 }
 
 func (s *viewState) reportBackLink(c *ui.Context) {
-	button(c, "返回报告列表").OnClick(func() {
+	button(c, tr(c, "reports.detail.back")).OnClick(func() {
 		s.openedReport, s.reportsTab = nil, reportsTabList
 	})
 }
@@ -48,18 +47,18 @@ func (s *viewState) reportView(c *ui.Context) {
 	id := displayName(report.reference)
 	s.reportBackLink(c)
 	if report.failure != nil {
-		s.header(c, "报告 "+id)
+		s.header(c, trf(c, "reports.detail.title_with_id", "id", id))
 		errorRecoveryBanner(c, report.failure, func() {
-			button(c, "重新读取报告").OnClick(func() { s.openReport(report.reference) })
+			button(c, tr(c, "reports.detail.retry_read")).OnClick(func() { s.openReport(report.reference) })
 		})
 		return
 	}
 	if len(report.index.Runs) == 0 {
-		s.header(c, "报告 "+id)
+		s.header(c, trf(c, "reports.detail.title_with_id", "id", id))
 		emptyGuideCard(c, emptyGuideOptions{
-			Icon:        lucide.FileText,
-			Title:       "报告中暂无运行数据。",
-			Surface:     emptyCard,
+			Icon:    lucide.FileText,
+			Title:   tr(c, "reports.detail.empty_runs"),
+			Surface: emptyCard,
 		})
 		return
 	}
@@ -71,7 +70,7 @@ func (s *viewState) reportView(c *ui.Context) {
 		run = report.index.Runs[report.run]
 	}
 	if run.Diagnostic {
-		statusBadge(c, "诊断运行", stateColor(c, stateWarning))
+		statusBadge(c, tr(c, "reports.detail.diagnostic_badge"), stateColor(c, stateWarning))
 	}
 	reportMetrics(c, run)
 	reportSummaryGrid(c,
@@ -101,41 +100,46 @@ func reportSummaryGrid(c *ui.Context, cards ...func(*ui.Context)) {
 }
 
 func reportSourceView(c *ui.Context, run core.ReportRun) {
-	card(c, "数据来源", func() {
-		deviceRow(c, "运行", reportText(run.Source.RunID))
-		deviceRow(c, "停止原因", stopReasonLabel(run.Summary.StopReason))
+	card(c, tr(c, "reports.detail.source.title"), func() {
+		deviceRow(c, tr(c, "reports.detail.source.run"), reportText(run.Source.RunID))
+		deviceRow(c, tr(c, "reports.detail.source.stop_reason"), stopReasonLabelFor(c, run.Summary.StopReason))
 	})
 }
 
 func stopReasonLabel(raw string) string {
+	return stopReasonLabelFor(nil, raw)
+}
+
+func stopReasonLabelFor(c *ui.Context, raw string) string {
 	switch raw {
 	case "":
 		return "—"
 	case "plan_finished", "completed":
-		return "已完成"
+		return tr(c, "reports.stop_reason.completed")
 	case "user_cancelled", "cancelled":
-		return "用户取消"
+		return tr(c, "reports.stop_reason.user_cancelled")
 	case "run_in_progress":
-		return "运行进行中"
+		return tr(c, "reports.stop_reason.run_in_progress")
 	case "interrupted_checkpoint":
-		return "中断后恢复的检查点"
+		return tr(c, "reports.stop_reason.interrupted_checkpoint")
 	case "diagnostic_run_not_formal":
-		return "诊断运行"
+		return tr(c, "reports.stop_reason.diagnostic_run_not_formal")
 	case "check_only_no_formal_cases":
-		return "仅检查，无正式题目"
+		return tr(c, "reports.stop_reason.check_only_no_formal_cases")
 	case "unscorable_case":
-		return "存在无法评分的题目"
+		return tr(c, "reports.stop_reason.unscorable_case")
 	case "service_stop_unconfirmed":
-		return "服务停止未确认"
+		return tr(c, "reports.stop_reason.service_stop_unconfirmed")
 	default:
 		return raw
 	}
 }
 
 func (r *reportViewState) runPicker(c *ui.Context) {
-	ui.Field(c, "选择运行", func() {
+	pickerLabel := tr(c, "reports.detail.select_run")
+	ui.Field(c, pickerLabel, func() {
 		selectRun := components.Select(c, &r.run)
-		selectRun.Trigger.Label("选择运行").Value(reportRunLabel(r.index.Runs[r.run])).Children(func() {
+		selectRun.Trigger.Label(pickerLabel).Value(reportRunLabel(r.index.Runs[r.run])).Children(func() {
 			ui.Text(c, reportRunLabel(r.index.Runs[r.run])).SingleLine()
 		})
 		selectRun.Popup(func(panel ui.Element) {
@@ -163,8 +167,8 @@ func reportModel(run core.ReportRun) string {
 }
 
 func reportProfileView(c *ui.Context, run core.ReportRun) {
-	card(c, "模型与机器", func() {
-		deviceRow(c, "模型", reportModel(run))
+	card(c, tr(c, "reports.detail.profile.title"), func() {
+		deviceRow(c, tr(c, "reports.detail.profile.model"), reportModel(run))
 		engine := displayName(emptyText(run.Profile.Engine.BinaryPath))
 		if engine == "" {
 			engine = run.Profile.Engine.Adapter
@@ -173,9 +177,9 @@ func reportProfileView(c *ui.Context, run core.ReportRun) {
 		if backend == "METAL" {
 			backend = "Metal"
 		}
-		deviceRow(c, "引擎", fmt.Sprintf("%s · %s · %s 线程", reportText(engine), reportText(backend), reportNumber(run.Threads)))
+		deviceRow(c, tr(c, "reports.detail.profile.engine"), trf(c, "reports.detail.profile.engine_value", "engine", reportText(engine), "backend", reportText(backend), "threads", reportNumber(run.Threads)))
 		machine := run.Profile.Machine
-		deviceRow(c, "机器", fmt.Sprintf("%s · %s 核 · %s", reportText(emptyText(machine.CPU)), reportNumber(machine.LogicalCPUs), reportScaled(machine.MemoryTotalBytes, 1<<30, "GiB")))
-		deviceRow(c, "测评题集", reportText(run.Facets.BundleLabel))
+		deviceRow(c, tr(c, "reports.detail.profile.machine"), trf(c, "reports.detail.profile.machine_value", "cpu", reportText(emptyText(machine.CPU)), "cores", reportNumber(machine.LogicalCPUs), "memory", reportScaled(machine.MemoryTotalBytes, 1<<30, "GiB")))
+		deviceRow(c, tr(c, "reports.detail.profile.bundle"), reportText(run.Facets.BundleLabel))
 	})
 }

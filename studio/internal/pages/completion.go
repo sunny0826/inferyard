@@ -6,21 +6,22 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func (s *viewState) completionView(c *ui.Context) {
 	runs := s.completionRuns()
 	path := s.completedReportPath()
 	if len(runs) == 0 {
-		ui.Text(c, "本轮还没有可读取的运行结果；报告页可以查看历史记录。")
+		ui.Text(c, tr(c, "dashboard.completion.empty"))
 		s.completionActions(c, path)
 		return
 	}
 	for _, run := range runs {
 		card(c, completionRunTitle(run), func() {
-			deviceRow(c, "通过率", runPassRate(run))
-			deviceRow(c, "耗时", runDuration(run))
-			deviceRow(c, "状态", stateLabel(run.Status))
+			deviceRow(c, tr(c, "dashboard.completion.pass_rate"), runPassRate(run))
+			deviceRow(c, tr(c, "dashboard.completion.duration"), runDuration(run))
+			deviceRow(c, tr(c, "dashboard.completion.status"), stateLabel(run.Status))
 		})
 	}
 	s.completionActions(c, path)
@@ -29,13 +30,13 @@ func (s *viewState) completionView(c *ui.Context) {
 func (s *viewState) completionActions(c *ui.Context, path string) {
 	ui.Row(c).Wrap().Gap(tokens(c).Density.CardGap).Children(func() {
 		if path != "" {
-			if primaryButton(c, "查看报告").AlignSelf(ui.Start).Clicked() {
+			if primaryButton(c, tr(c, "dashboard.completion.view_report")).AlignSelf(ui.Start).Clicked() {
 				s.openReport(path)
 			}
-		} else if primaryButton(c, "查看报告列表").AlignSelf(ui.Start).Clicked() {
+		} else if primaryButton(c, tr(c, "dashboard.completion.view_reports")).AlignSelf(ui.Start).Clicked() {
 			s.selected = "reports"
 		}
-		if button(c, "再次测评").AlignSelf(ui.Start).Clicked() {
+		if button(c, tr(c, "dashboard.completion.run_again")).AlignSelf(ui.Start).Clicked() {
 			s.newBenchmark()
 		}
 	})
@@ -86,7 +87,7 @@ func runPassRate(run core.RunSummary) string {
 		return "—"
 	}
 	if gap := run.Score.RateGap(); gap != "" {
-		return fmt.Sprintf("%d / %d（%s）", run.Score.Passed, run.Score.Valid, gapDescription(*run.Score, gap))
+		return l10n.TRf("dashboard.completion.pass_rate_gap", "passed", run.Score.Passed, "valid", run.Score.Valid, "gap", gapDescription(*run.Score, gap))
 	}
 	line := fmt.Sprintf("%d / %d", run.Score.Passed, run.Score.Valid)
 	if run.Score.Rate != nil {
@@ -99,17 +100,17 @@ func failedNote(score core.RunScore) string {
 	if score.Failed == 0 {
 		return ""
 	}
-	return fmt.Sprintf(" · 含 %d 题执行失败", score.Failed)
+	return l10n.TRf("dashboard.completion.failed_note", "count", score.Failed)
 }
 
 func gapDescription(score core.RunScore, gap string) string {
-	switch gap {
-	case "运行不完整":
-		return "本次运行未完整执行全部题目"
-	case "不可评分":
-		return fmt.Sprintf("%d 题不可评分", score.Unscorable)
+	switch {
+	case score.Unscorable > 0:
+		return l10n.TRf("dashboard.score.gap_unscorable", "count", score.Unscorable)
+	case score.Missing > 0:
+		return l10n.TRf("dashboard.score.gap_missing", "count", score.Missing)
 	default:
-		return fmt.Sprintf("%d 题缺评分", score.Missing)
+		return l10n.TR("dashboard.score.gap_incomplete")
 	}
 }
 
@@ -131,14 +132,14 @@ func runDuration(run core.RunSummary) string {
 
 func formatDuration(d time.Duration) string {
 	if d < time.Minute {
-		return fmt.Sprintf("%.2f 秒", d.Seconds())
+		return l10n.TRf("dashboard.duration.seconds", "seconds", fmt.Sprintf("%.2f", d.Seconds()))
 	}
 	d = d.Round(time.Second)
 	hours := int(d / time.Hour)
 	minutes := int(d/time.Minute) % 60
 	seconds := int(d/time.Second) % 60
 	if hours > 0 {
-		return fmt.Sprintf("%d 小时 %d 分", hours, minutes)
+		return l10n.TRf("dashboard.duration.hours_minutes", "hours", hours, "minutes", minutes)
 	}
-	return fmt.Sprintf("%d 分 %d 秒", minutes, seconds)
+	return l10n.TRf("dashboard.duration.minutes_seconds", "minutes", minutes, "seconds", seconds)
 }

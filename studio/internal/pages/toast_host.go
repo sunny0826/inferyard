@@ -401,7 +401,7 @@ func studioToastBody(c *ui.Context, parts ui.ToastParts, toast ui.Toast, data to
 				}
 				if data.ShowClose {
 					closeBtn := parts.CloseButton().Size(28, 28).Radius(10).
-						AlignItems(ui.Center).Justify(ui.Center).Label("关闭提示")
+						AlignItems(ui.Center).Justify(ui.Center).Label(tr(c, "common.toast.dismiss"))
 					if closeBtn.Hovered() {
 						closeBtn.Background(t.Color.SurfaceHover)
 					}

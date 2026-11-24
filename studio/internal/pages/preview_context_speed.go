@@ -7,6 +7,7 @@ import (
 
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 )
 
 func (p *previewSession) startSpeed(op previewSpeedStart) {
@@ -80,7 +81,7 @@ func (p *previewSession) tickSpeed(r *speedTask, missing bool) {
 		sample := previewSpeedSample(r.context, len(r.samples))
 		if missing && len(r.samples) == 4 {
 			sample.seconds, sample.prefill, sample.decode = nil, nil, nil
-			sample.reason = "引擎阶段计时缺失（模拟）"
+			sample.reason = l10n.TR("preview.speed.missing_timing_reason")
 		}
 		r.samples = append(r.samples, sample)
 		r.completed = len(r.samples)
@@ -127,7 +128,7 @@ func (p *previewSession) cancelSpeed(after func()) {
 	p.cancelEvents("speed")
 	r.stage = speedCancelling
 	p.after("speed", 500*time.Millisecond, func() {
-		r.stage, r.reason = speedCancelled, "任务已取消，已完成的测量已保留。"
+		r.stage, r.reason = speedCancelled, l10n.TR("preview.speed.cancelled_reason")
 		if s.engineState.State == "starting" {
 			s.engineState.State = "stopped"
 		}
@@ -157,7 +158,7 @@ func (p *previewSession) readSpeed(id string) {
 			copy := *r
 			copy.samples, copy.summary, copy.result = nil, nil, nil
 			w.opened = &copy
-			w.readError = "模拟结果读取失败，可重试。"
+			w.readError = l10n.TR("preview.speed.read_failed")
 		}
 		return
 	}

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 )
 
 func (s *Service) StartContextSpeed(req StartContextSpeedRequest) (RunTask, *ApiError) {
@@ -149,7 +150,7 @@ func (s *Service) prepareContextSpeed(ctx context.Context, t *runEntry, req Star
 		return Err("cancelled")
 	}
 	if err != nil || out.ExitCode != 0 || !inferyard.SupportsContextSpeedSchema(out.Stdout) {
-		return &ApiError{Code: "cli_outdated", Message: "CLI 不支持长上下文速度结果，请升级 CLI；普通测评仍可使用。"}
+		return &ApiError{Code: "cli_outdated", Message: l10n.TR("core.context_speed.err.cli_unsupported")}
 	}
 	model, e := s.resourcePath(req.Model, false)
 	if e != nil {
@@ -234,11 +235,11 @@ func (s *Service) prepareContextSpeed(ctx context.Context, t *runEntry, req Star
 func speedFailureMessage(reason string) string {
 	switch reason {
 	case "human_corpus_review_required":
-		return "专项题库尚未完成人工审核，不能开始测评。"
+		return l10n.TR("core.context_speed.err.corpus_review_required")
 	case "context_unsupported", "model_context_unsupported":
-		return "模型不支持所选上下文档位，请选择支持的档位。"
+		return l10n.TR("core.context_speed.err.context_unsupported")
 	case "device_preflight_blocked", "insufficient_host_memory", "insufficient_device_memory":
-		return "设备资源预算未通过检查，测评未启动。"
+		return l10n.TR("core.context_speed.err.resource_budget_blocked")
 	}
 	return ""
 }

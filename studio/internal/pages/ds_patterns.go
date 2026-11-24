@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -36,12 +35,12 @@ func errorRecoveryBanner(c *ui.Context, e *core.ApiError, actions func()) {
 				ui.Text(c, human(v)).TextColor(scale.Fg)
 			}
 			if e.Code != "" || len(e.Limitations) > 0 || len(e.Details) > 0 {
-				componentFoldKeyed(c, "error-details-"+e.Code, "错误详情", func() {
+				componentFoldKeyed(c, "error-details-"+e.Code, tr(c, "common.error.details"), func() {
 					if e.Code != "" {
-						ui.Text(c, "错误码："+e.Code).TextColor(scale.Fg)
+						ui.Text(c, trf(c, "common.error.code", "code", e.Code)).TextColor(scale.Fg)
 					}
 					if len(e.Limitations) > 0 {
-						ui.Text(c, "限制码："+strings.Join(e.Limitations, "、")).TextColor(scale.Fg)
+						ui.Text(c, trf(c, "common.error.limitations", "items", strings.Join(e.Limitations, tr(c, "common.list_separator")))).TextColor(scale.Fg)
 					}
 					if len(e.Details) > 0 {
 						kvview(c, "kv-error-details", e.Details)
@@ -105,7 +104,7 @@ func kpiOverviewSection(c *ui.Context, opts kpiOverviewOptions) {
 		if opts.Evidence != nil {
 			title := opts.EvidenceTitle
 			if title == "" {
-				title = "指标说明"
+				title = tr(c, "common.kpi.evidence_title")
 			}
 			key := opts.EvidenceKey
 			if key == "" {
@@ -148,7 +147,7 @@ func filterableTable(c *ui.Context, opts filterableTableOptions) {
 					opts.Filters()
 				}
 				if activeFilter && opts.OnClearFilters != nil {
-					ghostButton(c, "清空筛选").OnClick(opts.OnClearFilters)
+					ghostButton(c, tr(c, "common.table.clear_filters")).OnClick(opts.OnClearFilters)
 				}
 				if opts.Actions != nil {
 					opts.Actions()
@@ -159,7 +158,7 @@ func filterableTable(c *ui.Context, opts filterableTableOptions) {
 		case opts.TotalCount == 0:
 			title := opts.EmptyTitle
 			if title == "" {
-				title = "暂无数据"
+				title = tr(c, "common.table.empty_title")
 			}
 			emptyGuideCard(c, emptyGuideOptions{
 				Icon:        lucide.Inbox,
@@ -171,12 +170,12 @@ func filterableTable(c *ui.Context, opts filterableTableOptions) {
 		case opts.FilteredCount == 0:
 			emptyGuideCard(c, emptyGuideOptions{
 				Icon:        lucide.FileSearch,
-				Title:       "无匹配记录",
-				Description: "当前筛选条件下没有结果，可调整条件或清空筛选。",
+				Title:       tr(c, "common.table.no_match_title"),
+				Description: tr(c, "common.table.no_match_desc"),
 				Surface:     emptySunken,
 				Action: func() {
 					if opts.OnClearFilters != nil {
-						ghostButton(c, "清空筛选").OnClick(opts.OnClearFilters)
+						ghostButton(c, tr(c, "common.table.clear_filters")).OnClick(opts.OnClearFilters)
 					}
 				},
 			})
@@ -184,9 +183,9 @@ func filterableTable(c *ui.Context, opts filterableTableOptions) {
 			if opts.Table != nil {
 				opts.Table()
 			}
-			summary := fmt.Sprintf("共 %d 条记录", opts.TotalCount)
+			summary := trf(c, "common.table.total_count", "count", opts.TotalCount)
 			if opts.FilteredCount != opts.TotalCount {
-				summary = fmt.Sprintf("已筛选 %d / 共 %d 条记录", opts.FilteredCount, opts.TotalCount)
+				summary = trf(c, "common.table.filtered_count", "filtered", opts.FilteredCount, "total", opts.TotalCount)
 			}
 			ui.Text(c, summary).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).FontFeatures("tnum")
 		}
@@ -207,7 +206,7 @@ func settingsFormSection(c *ui.Context, opts settingsFormOptions) {
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			heading(c, opts.Title, 2).Grow(1)
 			if opts.Dirty {
-				badge(c, "有未保存修改", stateWarning, badgeOptions{Style: badgeSoft, Size: sizeSM})
+				badge(c, tr(c, "common.unsaved_changes"), stateWarning, badgeOptions{Style: badgeSoft, Size: sizeSM})
 			}
 		})
 		if opts.Description != "" {

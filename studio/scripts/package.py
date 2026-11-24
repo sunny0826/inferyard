@@ -66,12 +66,16 @@ def assemble_distribution(directory: Path, version: str, target: str, binary: Pa
         bundle = directory / "InferYard Studio.app" / "Contents"
         (bundle / "MacOS").mkdir(parents=True)
         (bundle / "Resources").mkdir(parents=True)
+        for loc in ("en", "zh-Hans"):
+            (bundle / "Resources" / f"{loc}.lproj").mkdir(parents=True, exist_ok=True)
         shutil.copy2(binary, bundle / "MacOS" / executable)
         shutil.copy2(ICON_ICNS_SOURCE, bundle / "Resources" / "AppIcon.icns")
         shutil.copy2(LICENSE_SOURCE, bundle / "Resources" / "LICENSE")
         with (bundle / "Info.plist").open("wb") as output:
             plistlib.dump(dict(CFBundleExecutable=executable, CFBundleIdentifier="com.inferyard.studio",
                                CFBundleName="InferYard Studio", CFBundleDisplayName="InferYard Studio",
+                               CFBundleDevelopmentRegion="en",
+                               CFBundleLocalizations=["en", "zh-Hans"],
                                CFBundleIconFile="AppIcon",
                                CFBundlePackageType="APPL", CFBundleVersion=version,
                                CFBundleShortVersionString=version, LSMinimumSystemVersion="12.0",

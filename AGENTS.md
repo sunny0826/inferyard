@@ -60,5 +60,8 @@ first read `.agents/skills/pluvy/SKILL.md` and follow it.
 ## 交付规则
 
 - 交付改动必须先建分支，不直接提交到 `main`；通过相关检查后保留在本地提交。
+- **每次提交 PR 前必须执行文案与文档检查**（遵循 [CONTRIBUTING.md](CONTRIBUTING.md) 与 [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md)）：
+  - 若改动涉及 Studio 用户可见文本，必须同步更新 `studio/internal/l10n/locales/<domain>/{en,zh-Hans}.json`（禁止硬编码中/英文 UI 字符串），并运行 `mise run test:studio` 与 `mise run test:studio:preview` 校验中英文 key/占位符一致与无硬编码中文回归。
+  - 若改动影响 CLI 命令/参数、Studio 页面/设置、安装/运行/发版流程或指标口径，必须同步检查并更新对应文档（`README.md` / `README.zh-CN.md`、`studio/README.md`、`cli/README*.md`、`cli/docs/*`、`studio/tests/ui/README.md`），并确保相对链接有效；若确无文档影响，在 PR 清单中显式确认。
 - 未经用户明确同意，不执行 `git push`、创建/合并/关闭 PR 或推送发布 tag。PR 合并使用仓库所有者账号（GitHub 网页或本地 `gh` CLI），不允许 bot 作者提交。
 - 报告变更时简要说明改动内容、实际运行的检查及未验证范围。

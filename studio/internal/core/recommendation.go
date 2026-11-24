@@ -92,7 +92,7 @@ func ParseStarterRecommendation(snapshot json.RawMessage) (StarterRecommendation
 }
 
 func StaticFallbackStarterRecommendation() StarterRecommendation {
-	primaryTitle := "Qwen3-0.6B-Q8_0（GGUF）"
+	primaryTitle := "Qwen3-0.6B-Q8_0 (GGUF)"
 	var primaryBytes int64 = 639446688
 	if entry, ok := CatalogEntryByID("model-qwen3-0.6b-q8"); ok {
 		primaryTitle = entry.Title

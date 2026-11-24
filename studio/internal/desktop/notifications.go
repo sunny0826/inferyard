@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 type Message struct{ Title, Body string }
@@ -70,13 +71,13 @@ func reportCreatedMessage(data json.RawMessage) Message {
 	}
 	if json.Unmarshal(data, &payload) == nil && strings.TrimSpace(payload.Report.ReportId) != "" {
 		return Message{
-			Title: "报告已生成",
-			Body:  "测评报告 " + payload.Report.ReportId + " 已就绪，可打开 Studio 查看。",
+			Title: l10n.TR("desktop.notif.report_created.title"),
+			Body:  l10n.TRf("desktop.notif.report_created.body_id", "id", payload.Report.ReportId),
 		}
 	}
 	return Message{
-		Title: "报告已生成",
-		Body:  "测评报告已就绪，可打开 Studio 查看。",
+		Title: l10n.TR("desktop.notif.report_created.title"),
+		Body:  l10n.TR("desktop.notif.report_created.body"),
 	}
 }
 
@@ -91,19 +92,28 @@ func runStateMessage(data json.RawMessage) (Message, bool) {
 	if json.Unmarshal(data, &payload) != nil {
 		return Message{}, false
 	}
-	name := "测评任务"
+	name := l10n.TR("desktop.notif.run.name_default")
 	if payload.Task.Kind == "context_speed" {
-		name = "长上下文专项"
+		name = l10n.TR("desktop.notif.run.name_context_speed")
 	} else if payload.Task.Bundle != nil && strings.TrimSpace(*payload.Task.Bundle) != "" {
-		name = "测评题集 " + *payload.Task.Bundle
+		name = l10n.TRf("desktop.notif.run.name_bundle", "bundle", *payload.Task.Bundle)
 	}
 	switch payload.Task.State {
 	case "done":
-		return Message{Title: name + "已完成", Body: "结果已保存，可打开 Studio 查看详情或报告。"}, true
+		return Message{
+			Title: l10n.TRf("desktop.notif.run.done.title", "name", name),
+			Body:  l10n.TR("desktop.notif.run.done.body"),
+		}, true
 	case "failed":
-		return Message{Title: name + "失败", Body: "请打开 Studio 查看失败原因与恢复操作。"}, true
+		return Message{
+			Title: l10n.TRf("desktop.notif.run.failed.title", "name", name),
+			Body:  l10n.TR("desktop.notif.run.failed.body"),
+		}, true
 	case "cancelled":
-		return Message{Title: name + "已取消", Body: "已完成的进度与结果已保留。"}, true
+		return Message{
+			Title: l10n.TRf("desktop.notif.run.cancelled.title", "name", name),
+			Body:  l10n.TR("desktop.notif.run.cancelled.body"),
+		}, true
 	default:
 		return Message{}, false
 	}
@@ -128,30 +138,48 @@ func downloadStateMessage(data json.RawMessage) (Message, bool) {
 		}
 		switch payload.Task.State {
 		case "done":
-			return Message{Title: "PolyStrata 安装完成", Body: label + " 已就绪，可打开 Studio 开始测评。"}, true
+			return Message{
+				Title: l10n.TR("desktop.notif.download.polystrata.done.title"),
+				Body:  l10n.TRf("desktop.notif.download.polystrata.done.body", "label", label),
+			}, true
 		case "failed":
-			return Message{Title: "PolyStrata 安装失败", Body: label + " 安装未完成，请打开 Studio 查看原因并重试。"}, true
+			return Message{
+				Title: l10n.TR("desktop.notif.download.polystrata.failed.title"),
+				Body:  l10n.TRf("desktop.notif.download.polystrata.failed.body", "label", label),
+			}, true
 		case "cancelled":
-			return Message{Title: "PolyStrata 安装已取消", Body: label + " 的安装已取消。"}, true
+			return Message{
+				Title: l10n.TR("desktop.notif.download.polystrata.cancelled.title"),
+				Body:  l10n.TRf("desktop.notif.download.polystrata.cancelled.body", "label", label),
+			}, true
 		default:
 			return Message{}, false
 		}
 	}
-	kind := "模型"
+	kind := l10n.TR("desktop.notif.download.kind_model")
 	if payload.Task.Kind == "engine" {
-		kind = "引擎"
+		kind = l10n.TR("desktop.notif.download.kind_engine")
 	}
 	target := kind
 	if strings.TrimSpace(payload.Task.OutName) != "" {
-		target = kind + " " + payload.Task.OutName
+		target = l10n.TRf("desktop.notif.download.target", "kind", kind, "name", payload.Task.OutName)
 	}
 	switch payload.Task.State {
 	case "done":
-		return Message{Title: kind + "下载完成", Body: target + " 已就绪，可用于测评。"}, true
+		return Message{
+			Title: l10n.TRf("desktop.notif.download.done.title", "kind", kind),
+			Body:  l10n.TRf("desktop.notif.download.done.body", "target", target),
+		}, true
 	case "failed":
-		return Message{Title: kind + "下载失败", Body: target + " 下载失败，请打开 Studio 查看原因并重试。"}, true
+		return Message{
+			Title: l10n.TRf("desktop.notif.download.failed.title", "kind", kind),
+			Body:  l10n.TRf("desktop.notif.download.failed.body", "target", target),
+		}, true
 	case "cancelled":
-		return Message{Title: kind + "下载已取消", Body: target + " 的下载已取消。"}, true
+		return Message{
+			Title: l10n.TRf("desktop.notif.download.cancelled.title", "kind", kind),
+			Body:  l10n.TRf("desktop.notif.download.cancelled.body", "target", target),
+		}, true
 	default:
 		return Message{}, false
 	}
@@ -168,9 +196,15 @@ func engineStateMessage(data json.RawMessage) (Message, bool) {
 	}
 	switch payload.Engine.State {
 	case "failed":
-		return Message{Title: "托管引擎异常退出", Body: "请打开 Studio 检查引擎状态并重新启动。"}, true
+		return Message{
+			Title: l10n.TR("desktop.notif.engine.failed.title"),
+			Body:  l10n.TR("desktop.notif.engine.failed.body"),
+		}, true
 	case "orphaned":
-		return Message{Title: "检测到遗留模型服务", Body: "请打开 Studio 停止遗留服务或清理记录。"}, true
+		return Message{
+			Title: l10n.TR("desktop.notif.engine.orphaned.title"),
+			Body:  l10n.TR("desktop.notif.engine.orphaned.body"),
+		}, true
 	default:
 		return Message{}, false
 	}

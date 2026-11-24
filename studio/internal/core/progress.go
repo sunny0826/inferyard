@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 )
 
 type ProgressResponse struct {
@@ -33,7 +34,7 @@ func (s *Service) Progress(ctx context.Context) (ProgressResponse, *ApiError) {
 			Command string `json:"command"`
 		}
 		if json.Unmarshal(out.Stdout, &header) != nil || header.Command != "progress" {
-			return result, &ApiError{Code: "cli_outdated", Message: "CLI 版本缺少 progress 命令，请升级 CLI。"}
+			return result, &ApiError{Code: "cli_outdated", Message: l10n.TR("core.cli.err.missing_progress_cmd")}
 		}
 		return result, nil
 	}
@@ -44,7 +45,7 @@ func (s *Service) Progress(ctx context.Context) (ProgressResponse, *ApiError) {
 	if err != nil {
 		var verErr inferyard.ProgressVersionError
 		if errors.As(err, &verErr) && verErr.Version > 0 && verErr.Version < 2 {
-			return result, &ApiError{Code: "cli_outdated", Message: "CLI 版本过旧，请升级 CLI。"}
+			return result, &ApiError{Code: "cli_outdated", Message: l10n.TR("core.cli.err.outdated")}
 		}
 		return result, Err("cli_error")
 	}

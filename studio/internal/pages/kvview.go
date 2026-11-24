@@ -37,7 +37,7 @@ func kvview(c *ui.Context, key string, value any) {
 		if values, ok := cache.data.(map[string]any); ok && stringMap(values) {
 			ui.Form(c, func() {
 				for _, key := range kvKeys(values) {
-					ui.Field(c.Key(key), key, func() { ui.Text(c, kvValue(key, values[key])).Selectable() })
+					ui.Field(c.Key(key), key, func() { ui.Text(c, kvValue(c, key, values[key])).Selectable() })
 				}
 			})
 			return
@@ -71,20 +71,20 @@ func kvChildren(c *ui.Context, data any, path string, open map[string]*bool) {
 	switch value := data.(type) {
 	case map[string]any:
 		if len(value) == 0 {
-			ui.Text(c, "无").Selectable()
+			ui.Text(c, tr(c, "common.none")).Selectable()
 		}
 		for _, key := range kvKeys(value) {
 			kvNode(c, key, value[key], path, open)
 		}
 	case []any:
 		if len(value) == 0 {
-			ui.Text(c, "无").Selectable()
+			ui.Text(c, tr(c, "common.none")).Selectable()
 		}
 		for i, item := range value {
 			kvNode(c, fmt.Sprintf("[%d]", i), item, path, open)
 		}
 	default:
-		ui.Text(c, kvValue("", value)).Selectable()
+		ui.Text(c, kvValue(c, "", value)).Selectable()
 	}
 }
 
@@ -100,14 +100,14 @@ func kvNode(c *ui.Context, label string, value any, parent string, open map[stri
 		ui.TreeItem(c.Key(path), label, open[path], func() { kvChildren(c, value, path, open) })
 	default:
 		ui.TreeItem(c.Key(path), label, nil, nil).Children(func() {
-			ui.Text(c, kvValue(label, value)).Selectable()
+			ui.Text(c, kvValue(c, label, value)).Selectable()
 		})
 	}
 }
 
-func kvValue(key string, value any) string {
+func kvValue(c *ui.Context, key string, value any) string {
 	if value == nil {
-		return "缺测"
+		return tr(c, "common.missing")
 	}
 	if strings.HasSuffix(key, "_bytes") || key == "bytes" {
 		if n, ok := value.(json.Number); ok {

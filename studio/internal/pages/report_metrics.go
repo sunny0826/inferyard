@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func reportNumber[T ~float64 | ~int64](value *T) string {
@@ -34,11 +35,15 @@ func reportScaled[T ~float64 | ~int64](value *T, divisor float64, unit string) s
 }
 
 func reportMemoryReason(reason *string) string {
+	return reportMemoryReasonFor(nil, reason)
+}
+
+func reportMemoryReasonFor(c *ui.Context, reason *string) string {
 	switch emptyText(reason) {
 	case "multiple_sources":
-		return "多个采样来源，未合并"
+		return tr(c, "reports.metrics.memory_reason.multiple_sources")
 	case "resource_samples_missing":
-		return "缺少资源采样"
+		return tr(c, "reports.metrics.memory_reason.resource_samples_missing")
 	case "":
 		return ""
 	default:
@@ -47,23 +52,47 @@ func reportMemoryReason(reason *string) string {
 }
 
 func reportExcludedNote(v *int64) string {
+	return reportExcludedNoteFor(nil, v)
+}
+
+func reportExcludedNoteFor(c *ui.Context, v *int64) string {
 	if v == nil || *v <= 0 {
 		return ""
 	}
-	return fmt.Sprintf("排除 %d", *v)
+	return trf(c, "reports.metrics.excluded_count", "count", *v)
 }
 
 func reportMetrics(c *ui.Context, run core.ReportRun) {
 	d := run.Dashboard
 	qualityNote := ""
 	if !d.Quality.Complete {
-		qualityNote = "部分评分"
+		qualityNote = tr(c, "reports.metrics.partial_scoring")
 	}
 	metrics := []struct{ label, value, detail, note string }{
-		{"答案通过", reportPassRate(d.Quality), "通过 / 评分题", qualityNote},
-		{"请求完成", reportRate(run.Summary.CompletionRate), "完成 / 发出", reportExcludedNote(run.Summary.CompletionRate.Excluded)},
-		{"完成请求耗时（中位）", reportScaled(d.Latency.P50, 1000, "s"), reportNumber(d.Latency.SampleCount) + " 个有效样本", reportExcludedNote(d.Latency.Excluded)},
-		{"服务进程内存（采样峰值）", reportScaled(d.SampledPeakRSSBytes, 1<<30, "GiB"), "采样期间系统最少可用 " + reportScaled(d.SampledMinimumAvailableBytes, 1<<30, "GiB"), reportMemoryReason(d.SampledPeakRSSReason)},
+		{
+			tr(c, "reports.metrics.answer_pass"),
+			reportPassRate(d.Quality),
+			tr(c, "reports.metrics.answer_pass_detail"),
+			qualityNote,
+		},
+		{
+			tr(c, "reports.metrics.request_completion"),
+			reportRate(run.Summary.CompletionRate),
+			tr(c, "reports.metrics.request_completion_detail"),
+			reportExcludedNoteFor(c, run.Summary.CompletionRate.Excluded),
+		},
+		{
+			tr(c, "reports.metrics.median_latency"),
+			reportScaled(d.Latency.P50, 1000, "s"),
+			trf(c, "reports.metrics.valid_samples", "count", reportNumber(d.Latency.SampleCount)),
+			reportExcludedNoteFor(c, d.Latency.Excluded),
+		},
+		{
+			tr(c, "reports.metrics.peak_rss"),
+			reportScaled(d.SampledPeakRSSBytes, 1<<30, "GiB"),
+			trf(c, "reports.metrics.min_system_available_detail", "value", reportScaled(d.SampledMinimumAvailableBytes, 1<<30, "GiB")),
+			reportMemoryReasonFor(c, d.SampledPeakRSSReason),
+		},
 	}
 	columns := 4
 	if compactLayout(c) {
@@ -74,8 +103,8 @@ func reportMetrics(c *ui.Context, run core.ReportRun) {
 			metricCard(c, metric.label, metric.value, metric.detail, metric.note)
 		}
 	})
-	if reason := reportMemoryReason(d.MinimumAvailableReason); reason != "" {
-		ui.Text(c, "系统可用内存："+reason).TextColor(c.Theme().TextMuted)
+	if reason := reportMemoryReasonFor(c, d.MinimumAvailableReason); reason != "" {
+		ui.Text(c, trf(c, "reports.metrics.system_available_memory_note", "reason", reason)).TextColor(c.Theme().TextMuted)
 	}
 	reportFactSummary(c, run)
 }
@@ -93,26 +122,30 @@ func reportFactSummary(c *ui.Context, run core.ReportRun) {
 	if d.Quality.Numerator == nil && d.Quality.Denominator == nil &&
 		run.Summary.CompletionRate.Numerator == nil && run.Summary.CompletionRate.Denominator == nil &&
 		d.Latency.P50 == nil && d.SampledPeakRSSBytes == nil {
-		ui.Text(c, "本次运行暂无可汇总的指标。").TextColor(c.Theme().TextMuted)
+		ui.Text(c, tr(c, "reports.metrics.no_summary")).TextColor(c.Theme().TextMuted)
 	}
 }
 
 func reportThroughput(c *ui.Context, run core.ReportRun) {
 	throughput := run.Dashboard.Throughput
-	card(c, "吞吐", func() {
+	card(c, tr(c, "reports.throughput.title"), func() {
 		if throughput == nil {
-			ui.Text(c, "未提供测量").TextColor(c.Theme().TextMuted)
+			ui.Text(c, tr(c, "reports.metrics.not_measured")).TextColor(c.Theme().TextMuted)
 		} else {
-			deviceRow(c, "完成请求/秒", reportPerSecond(throughput.RequestsPerSecond, throughput.RequestsPerSecondReason))
-			deviceRow(c, "输出 token/秒", reportPerSecond(throughput.OutputTokensPerSecond, throughput.OutputTokensPerSecondReason))
-			deviceRow(c, "达标请求/秒", reportPerSecond(throughput.GoodputPerSecond, throughput.GoodputPerSecondReason))
+			deviceRow(c, tr(c, "reports.throughput.requests_per_sec"), reportPerSecondFor(c, throughput.RequestsPerSecond, throughput.RequestsPerSecondReason))
+			deviceRow(c, tr(c, "reports.throughput.output_tokens_per_sec"), reportPerSecondFor(c, throughput.OutputTokensPerSecond, throughput.OutputTokensPerSecondReason))
+			deviceRow(c, tr(c, "reports.throughput.goodput_per_sec"), reportPerSecondFor(c, throughput.GoodputPerSecond, throughput.GoodputPerSecondReason))
 		}
 	})
 }
 
 func reportPerSecond(value *float64, reason *string) string {
+	return reportPerSecondFor(nil, value, reason)
+}
+
+func reportPerSecondFor(c *ui.Context, value *float64, reason *string) string {
 	if value == nil {
-		return reportThroughputReason(reason)
+		return reportThroughputReasonFor(c, reason)
 	}
 	if *value == 0 {
 		return "0"
@@ -128,25 +161,29 @@ func reportDecimal(value float64) string {
 }
 
 func reportThroughputReason(reason *string) string {
+	return reportThroughputReasonFor(nil, reason)
+}
+
+func reportThroughputReasonFor(c *ui.Context, reason *string) string {
 	switch emptyText(reason) {
 	case "":
 		return "—"
 	case "no_formal_requests":
-		return "无正式请求"
+		return tr(c, "reports.throughput.reason.no_formal_requests")
 	case "terminal_window_unavailable":
-		return "无有效窗口"
+		return tr(c, "reports.throughput.reason.terminal_window_unavailable")
 	case "output_token_counts_incomplete":
-		return "输出 token 计数不完整"
+		return tr(c, "reports.throughput.reason.output_token_counts_incomplete")
 	case "no_completed_requests":
-		return "无完成请求"
+		return tr(c, "reports.throughput.reason.no_completed_requests")
 	case "quality_not_applicable":
-		return "质量不适用"
+		return tr(c, "reports.throughput.reason.quality_not_applicable")
 	case "thresholds_not_preregistered":
-		return "未设阈值"
+		return tr(c, "reports.throughput.reason.thresholds_not_preregistered")
 	case "goodput_indeterminable":
-		return "无法判定"
+		return tr(c, "reports.throughput.reason.goodput_indeterminable")
 	case "observation_missing":
-		return "缺少观测"
+		return tr(c, "reports.throughput.reason.observation_missing")
 	default:
 		return *reason
 	}
@@ -154,28 +191,38 @@ func reportThroughputReason(reason *string) string {
 
 func reportOutputIntervals(c *ui.Context, run core.ReportRun) {
 	intervals := run.Dashboard.OutputBlockIntervals
-	card(c, "输出内容块到达间隔", func() {
+	card(c, tr(c, "reports.intervals.title"), func() {
 		if intervals == nil {
-			ui.Text(c, "未提供测量").TextColor(c.Theme().TextMuted)
+			ui.Text(c, tr(c, "reports.metrics.not_measured")).TextColor(c.Theme().TextMuted)
 			return
 		}
-		deviceRow(c, "中位", reportMilliseconds("", intervals.P50, ""))
-		deviceRow(c, "P95", reportIntervalP95(intervals))
-		if reason := reportIntervalReason(intervals.Reason); reason != "" {
+		deviceRow(c, tr(c, "reports.intervals.median"), reportMilliseconds("", intervals.P50, ""))
+		deviceRow(c, "P95", reportIntervalP95For(c, intervals))
+		if reason := reportIntervalReasonFor(c, intervals.Reason); reason != "" {
 			ui.Text(c, reason).TextColor(c.Theme().TextMuted)
 		}
-		componentFoldKeyed(c, "interval-details", "间隔详情", func() {
-			deviceRow(c, "间隔数", fmt.Sprintf("%d 个", intervals.IntervalCount))
-			deviceRow(c, "贡献请求数", fmt.Sprintf("%d 个请求", intervals.RequestCount))
-			deviceRow(c, "最小 / 最大", reportMilliseconds("min", intervals.Min, "")+" · "+reportMilliseconds("max", intervals.Max, ""))
+		componentFoldKeyed(c, "interval-details", tr(c, "reports.intervals.details_fold"), func() {
+			deviceRow(c, tr(c, "reports.intervals.interval_count_label"), trf(c, "reports.intervals.interval_count_value", "count", intervals.IntervalCount))
+			deviceRow(c, tr(c, "reports.intervals.request_count_label"), trf(c, "reports.intervals.request_count_value", "count", intervals.RequestCount))
+			deviceRow(c, tr(c, "reports.intervals.min_max"), reportMilliseconds("min", intervals.Min, "")+" · "+reportMilliseconds("max", intervals.Max, ""))
 		})
 	})
 }
 
 func reportIntervalP95(intervals *core.ReportOutputBlockIntervals) string {
-	value := reportMilliseconds("", intervals.P95, reportP95Reason(intervals.P95Reason))
-	if intervals.P95 != nil && intervals.IntervalCount >= 20 && intervals.IntervalCount < 100 {
-		return fmt.Sprintf("%s（n=%d）", value, intervals.IntervalCount)
+	return reportIntervalP95For(nil, intervals)
+}
+
+func reportIntervalP95For(c *ui.Context, intervals *core.ReportOutputBlockIntervals) string {
+	if intervals.P95 == nil {
+		if emptyText(intervals.P95Reason) == "insufficient_samples" {
+			return trf(c, "reports.intervals.p95_insufficient_value", "value", "—")
+		}
+		return "—"
+	}
+	value := reportMilliseconds("", intervals.P95, "")
+	if intervals.IntervalCount >= 20 && intervals.IntervalCount < 100 {
+		return trf(c, "reports.intervals.p95_with_n", "value", value, "count", intervals.IntervalCount)
 	}
 	return value
 }
@@ -192,25 +239,29 @@ func reportMilliseconds(label string, value *float64, missing string) string {
 
 func reportP95Reason(reason *string) string {
 	if emptyText(reason) == "insufficient_samples" {
-		return "（样本少于 20）"
+		return l10n.TRf("reports.intervals.p95_insufficient_value", "value", "")
 	}
 	return ""
 }
 
 func reportIntervalReason(reason *string) string {
+	return reportIntervalReasonFor(nil, reason)
+}
+
+func reportIntervalReasonFor(c *ui.Context, reason *string) string {
 	switch emptyText(reason) {
 	case "":
 		return ""
 	case "no_completed_requests":
-		return "无完成请求"
+		return tr(c, "reports.intervals.reason.no_completed_requests")
 	case "arrival_capture_missing":
-		return "缺少到达时间采集"
+		return tr(c, "reports.intervals.reason.arrival_capture_missing")
 	case "not_streaming":
-		return "非流式请求"
+		return tr(c, "reports.intervals.reason.not_streaming")
 	case "insufficient_blocks":
-		return "内容块不足"
+		return tr(c, "reports.intervals.reason.insufficient_blocks")
 	case "observation_missing":
-		return "缺少观测"
+		return tr(c, "reports.intervals.reason.observation_missing")
 	default:
 		return *reason
 	}

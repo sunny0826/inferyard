@@ -4,6 +4,7 @@ import (
 	"context"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 	"path/filepath"
 	"slices"
 )
@@ -83,7 +84,7 @@ func (s *viewState) startBenchmark() {
 			if e != nil {
 				s.failedBundle = s.task.bindings.failedBundle
 			} else {
-				s.resolveProgressToast("benchmark-report-toast", "任务报告已生成", "查看报告", func() {
+				s.resolveProgressToast("benchmark-report-toast", l10n.TR("models.benchmark.report_ready"), l10n.TR("models.benchmark.view_report"), func() {
 					s.navigateTo("reports", "")
 				})
 			}
@@ -346,7 +347,7 @@ func (s *viewState) retryBenchmark() {
 			if e != nil {
 				s.failedBundle = s.task.bindings.failedBundle
 			} else {
-				s.resolveProgressToast("benchmark-report-toast", "任务报告已生成", "查看报告", func() {
+				s.resolveProgressToast("benchmark-report-toast", l10n.TR("models.benchmark.report_ready"), l10n.TR("models.benchmark.view_report"), func() {
 					s.navigateTo("reports", "")
 				})
 			}

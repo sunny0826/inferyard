@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"inferyard/studio/internal/l10n"
 	"io"
 	"net/http"
 	"os"
@@ -199,7 +200,7 @@ func uvAsset() (string, *ApiError) {
 	case "windows/amd64":
 		name = "uv-x86_64-pc-windows-msvc.zip"
 	default:
-		return "", &ApiError{Code: "install_unsupported", Message: "当前平台没有可用的自动安装包。", Limitations: []string{"platform:" + runtime.GOOS + "/" + runtime.GOARCH}}
+		return "", &ApiError{Code: "install_unsupported", Message: l10n.TR("core.install.err.unsupported_platform"), Limitations: []string{"platform:" + runtime.GOOS + "/" + runtime.GOARCH}}
 	}
 	return name, nil
 }
@@ -213,11 +214,11 @@ func httpGet(ctx context.Context, url string) (*http.Response, *ApiError) {
 	}
 	resp, err := installHTTPDo(req)
 	if err != nil {
-		return nil, &ApiError{Code: "download_failed", Message: "下载失败，请检查网络后重试。", Details: map[string]any{"url": url, "error": err.Error()}}
+		return nil, &ApiError{Code: "download_failed", Message: l10n.TR("core.install.err.download_failed"), Details: map[string]any{"url": url, "error": err.Error()}}
 	}
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		return nil, &ApiError{Code: "download_failed", Message: "下载失败，请检查网络后重试。", Details: map[string]any{"url": url, "status": resp.StatusCode}}
+		return nil, &ApiError{Code: "download_failed", Message: l10n.TR("core.install.err.download_failed"), Details: map[string]any{"url": url, "status": resp.StatusCode}}
 	}
 	return resp, nil
 }
@@ -229,14 +230,14 @@ func fetchURL(ctx context.Context, url string) ([]byte, *ApiError) {
 	}
 	defer resp.Body.Close()
 	if resp.ContentLength > maxFetchBytes {
-		return nil, &ApiError{Code: "download_too_large", Message: "下载超出 64 MiB 上限，请检查来源。", Details: map[string]any{"url": url, "content_length": resp.ContentLength}}
+		return nil, &ApiError{Code: "download_too_large", Message: l10n.TR("core.install.err.download_too_large"), Details: map[string]any{"url": url, "content_length": resp.ContentLength}}
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxFetchBytes+1))
 	if err != nil {
-		return nil, &ApiError{Code: "download_failed", Message: "下载中断，请重试。", Details: map[string]any{"url": url}}
+		return nil, &ApiError{Code: "download_failed", Message: l10n.TR("core.install.err.download_interrupted"), Details: map[string]any{"url": url}}
 	}
 	if len(body) > maxFetchBytes {
-		return nil, &ApiError{Code: "download_too_large", Message: "下载超出 64 MiB 上限，请检查来源。", Details: map[string]any{"url": url}}
+		return nil, &ApiError{Code: "download_too_large", Message: l10n.TR("core.install.err.download_too_large"), Details: map[string]any{"url": url}}
 	}
 	return body, nil
 }
@@ -257,11 +258,11 @@ func downloadUV(ctx context.Context, toolsDir string) (string, *ApiError) {
 	}
 	want := strings.Fields(string(sumText))
 	if len(want) == 0 {
-		return "", &ApiError{Code: "install_checksum_failed", Message: "校验文件内容异常，已中止安装。"}
+		return "", &ApiError{Code: "install_checksum_failed", Message: l10n.TR("core.install.err.checksum_file_invalid")}
 	}
 	sum := sha256.Sum256(archive)
 	if !strings.EqualFold(want[0], hex.EncodeToString(sum[:])) {
-		return "", &ApiError{Code: "install_checksum_failed", Message: "下载内容与官方校验和不一致，已中止安装。"}
+		return "", &ApiError{Code: "install_checksum_failed", Message: l10n.TR("core.install.err.checksum_mismatch")}
 	}
 	if err := os.MkdirAll(toolsDir, 0700); err != nil {
 		return "", Err("internal_error")
@@ -284,7 +285,7 @@ func downloadUV(ctx context.Context, toolsDir string) (string, *ApiError) {
 func unpackUVTarGz(archive []byte, target string) *ApiError {
 	zr, err := gzip.NewReader(bytes.NewReader(archive))
 	if err != nil {
-		return &ApiError{Code: "install_unpack_failed", Message: "安装包损坏，已中止安装。"}
+		return &ApiError{Code: "install_unpack_failed", Message: l10n.TR("core.install.err.archive_corrupted")}
 	}
 	defer zr.Close()
 	tr := tar.NewReader(zr)
@@ -294,20 +295,20 @@ func unpackUVTarGz(archive []byte, target string) *ApiError {
 			break
 		}
 		if err != nil {
-			return &ApiError{Code: "install_unpack_failed", Message: "安装包损坏，已中止安装。"}
+			return &ApiError{Code: "install_unpack_failed", Message: l10n.TR("core.install.err.archive_corrupted")}
 		}
 		if filepath.Base(h.Name) != uvBinaryName() || h.Typeflag != tar.TypeReg {
 			continue
 		}
 		return writeBinary(tr, target)
 	}
-	return &ApiError{Code: "install_unpack_failed", Message: "安装包内未找到 uv 可执行文件。"}
+	return &ApiError{Code: "install_unpack_failed", Message: l10n.TR("core.install.err.uv_binary_missing")}
 }
 
 func unpackUVZip(archive []byte, target string) *ApiError {
 	zr, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
 	if err != nil {
-		return &ApiError{Code: "install_unpack_failed", Message: "安装包损坏，已中止安装。"}
+		return &ApiError{Code: "install_unpack_failed", Message: l10n.TR("core.install.err.archive_corrupted")}
 	}
 	for _, f := range zr.File {
 		if filepath.Base(f.Name) != uvBinaryName() {
@@ -315,16 +316,16 @@ func unpackUVZip(archive []byte, target string) *ApiError {
 		}
 		rc, err := f.Open()
 		if err != nil {
-			return &ApiError{Code: "install_unpack_failed", Message: "安装包损坏，已中止安装。"}
+			return &ApiError{Code: "install_unpack_failed", Message: l10n.TR("core.install.err.archive_corrupted")}
 		}
 		defer rc.Close()
 		return writeBinary(rc, target)
 	}
-	return &ApiError{Code: "install_unpack_failed", Message: "安装包内未找到 uv 可执行文件。"}
+	return &ApiError{Code: "install_unpack_failed", Message: l10n.TR("core.install.err.uv_binary_missing")}
 }
 
 func writeBinary(src io.Reader, target string) *ApiError {
-	return writeBinaryTo(src, target, "install_unpack_failed", "写入工具目录失败。")
+	return writeBinaryTo(src, target, "install_unpack_failed", l10n.TR("core.install.err.write_tools_failed"))
 }
 
 func writeBinaryTo(src io.Reader, target, code, message string) *ApiError {
@@ -384,14 +385,14 @@ func (s *Service) InstallCLI(ctx context.Context, onStatus func(string)) (string
 	}
 	targetVersion := strings.TrimPrefix(strings.TrimSpace(Version), "v")
 	if _, ok := parseSemver(targetVersion); !ok {
-		return "", &ApiError{Code: "install_version_unknown", Message: "无法确定要安装的 CLI 版本。"}
+		return "", &ApiError{Code: "install_version_unknown", Message: l10n.TR("core.install.err.version_unknown")}
 	}
 	uv, sawIncompatibleUV := findCompatibleUV(ctx, toolsDir)
 	if uv == "" {
 		if sawIncompatibleUV {
-			report("当前 uv 版本过旧，正在下载独立工具…")
+			report(l10n.TR("core.install.status.uv_outdated_downloading"))
 		} else {
-			report("未找到 uv，正在下载独立工具…")
+			report(l10n.TR("core.install.status.uv_missing_downloading"))
 		}
 		var e *ApiError
 		uv, e = downloadUV(ctx, toolsDir)
@@ -400,9 +401,9 @@ func (s *Service) InstallCLI(ctx context.Context, onStatus func(string)) (string
 		}
 	}
 	if outdated != nil {
-		report("正在升级 InferYard CLI 至 " + targetVersion + "…")
+		report(l10n.TRf("core.install.status.upgrading_cli", "version", targetVersion))
 	} else {
-		report("正在安装 InferYard CLI " + targetVersion + "（首次需下载 Python 运行时，可能需要几分钟）…")
+		report(l10n.TRf("core.install.status.installing_cli", "version", targetVersion))
 	}
 	installCtx, cancel := context.WithTimeout(ctx, 15*time.Minute)
 	defer cancel()
@@ -412,22 +413,22 @@ func (s *Service) InstallCLI(ctx context.Context, onStatus func(string)) (string
 		if len(tail) > 600 {
 			tail = tail[len(tail)-600:]
 		}
-		return "", &ApiError{Code: "install_failed", Message: "CLI 自动安装失败，可改用「手动指定路径」。", Details: map[string]any{"output_tail": tail}}
+		return "", &ApiError{Code: "install_failed", Message: l10n.TR("core.install.err.auto_install_failed"), Details: map[string]any{"output_tail": tail}}
 	}
 	binOut, err := installCommandOutput(ctx, uv, "tool", "dir", "--bin")
 	if err != nil {
-		return "", &ApiError{Code: "install_failed", Message: "无法定位安装结果，请改用「手动指定路径」。"}
+		return "", &ApiError{Code: "install_failed", Message: l10n.TR("core.install.err.locate_result_failed")}
 	}
 	installed := filepath.Join(strings.TrimSpace(string(binOut)), cliBinaryName())
 	if st, err := installStat(installed); err != nil || st.IsDir() {
-		return "", &ApiError{Code: "install_failed", Message: "安装结果缺失，请改用「手动指定路径」。"}
+		return "", &ApiError{Code: "install_failed", Message: l10n.TR("core.install.err.result_missing")}
 	}
 	s.clearProbeCache()
 	if p := s.probeCLI(installed); p.Status != "ok" {
 		if p.Status == "outdated" {
 			return "", cliOutdatedError(p.Version)
 		}
-		return "", &ApiError{Code: "install_failed", Message: "安装后的 CLI 无法正常运行，可改用「手动指定路径」。"}
+		return "", &ApiError{Code: "install_failed", Message: l10n.TR("core.install.err.post_install_broken")}
 	}
 	return s.finishInstall(installed, report)
 }
@@ -448,7 +449,7 @@ func (s *Service) finishInstall(path string, onStatus func(string)) (string, *Ap
 		return "", e
 	}
 	if onStatus != nil {
-		onStatus("CLI 已就绪：" + path)
+		onStatus(l10n.TRf("core.install.status.cli_ready", "path", path))
 	}
 	return path, nil
 }

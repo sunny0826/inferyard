@@ -7,6 +7,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 type downloadsUIState struct {
@@ -118,16 +119,16 @@ func (s *viewState) downloadsPageView(c *ui.Context) {
 	t := tokens(c)
 
 	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		ui.Row(c).Grow(1).MinWidth(0).Children(func() { s.header(c, "下载") })
-		button(c, "下载设置").OnClick(func() { s.selected = "settings" })
+		ui.Row(c).Grow(1).MinWidth(0).Children(func() { s.header(c, tr(c, "downloads.page.title")) })
+		button(c, tr(c, "downloads.page.settings")).OnClick(func() { s.selected = "settings" })
 	})
 	s.downloadTaskGuide(c)
 	s.downloadsStarterCard(c)
 	if len(s.downloads) > 0 {
-		card(c, "下载任务", func() { s.downloadsView(c) })
+		card(c, tr(c, "downloads.section.tasks"), func() { s.downloadsView(c) })
 	}
 	ui.Column(c.Key("downloads-tabs")).FillWidth().Gap(t.Density.Row).Children(func() {
-		components.Tabs(c, &st.activeTab, components.TabsUnderline, "引擎", "模型")
+		components.Tabs(c, &st.activeTab, components.TabsUnderline, tr(c, "downloads.kind.engine"), tr(c, "downloads.kind.model"))
 		if st.activeTab == 1 {
 			s.downloadsModelsTab(c)
 		} else {
@@ -217,7 +218,7 @@ func (s *viewState) acquireModelSource(source, tokenEnv string) {
 	}
 	s.workDownload(func() (string, *core.ApiError) {
 		_, e := s.service.CreateOrResolveModelDownload(s.ctx, core.CreateDownloadRequest{SourceUrl: trimmed}, tokenEnv)
-		return "已加入下载队列", e
+		return l10n.TR("downloads.toast.queued"), e
 	})
 }
 
@@ -230,7 +231,7 @@ func (s *viewState) acquireEngine(source, name string) {
 	}
 	s.workDownload(func() (string, *core.ApiError) {
 		_, e := s.service.CreateEngineDownload(source, name)
-		return "已加入下载队列", e
+		return l10n.TR("downloads.toast.queued"), e
 	})
 }
 
@@ -239,15 +240,15 @@ func (s *viewState) copyDownloadText(c *ui.Context, label, value string) {
 		return
 	}
 	if s.preview != nil {
-		s.enqueueStatusToast("已复制 " + label + "（模拟）")
+		s.enqueueStatusToast(trf(c, "downloads.toast.copied_preview", "label", label))
 		return
 	}
 	c.WriteClipboardThen(value, func(err error) {
 		if err != nil {
-			s.enqueueStatusToast("复制" + label + "失败")
+			s.enqueueStatusToast(l10n.TRf("downloads.toast.copy_failed", "label", label))
 			return
 		}
-		s.enqueueStatusToast("已复制 " + label)
+		s.enqueueStatusToast(l10n.TRf("downloads.toast.copied", "label", label))
 	})
 }
 
@@ -256,15 +257,15 @@ func (s *viewState) openDownloadURL(c *ui.Context, label, rawURL string) {
 		return
 	}
 	if s.preview != nil {
-		s.enqueueStatusToast("已在浏览器打开 " + label + "（模拟）")
+		s.enqueueStatusToast(trf(c, "downloads.toast.opened_url_preview", "label", label))
 		return
 	}
 	c.OpenURLThen(rawURL, func(err error) {
 		if err != nil {
-			s.enqueueStatusToast("无法打开链接")
+			s.enqueueStatusToast(l10n.TR("downloads.toast.open_url_failed"))
 			return
 		}
-		s.enqueueStatusToast("已在浏览器打开 " + label)
+		s.enqueueStatusToast(l10n.TRf("downloads.toast.opened_url", "label", label))
 	})
 }
 
@@ -274,7 +275,7 @@ func downloadURLError(value string) string {
 	}
 	u, err := url.Parse(strings.TrimSpace(value))
 	if err != nil || u.Scheme != "https" || u.Host == "" {
-		return "请输入完整的 https URL。"
+		return l10n.TR("downloads.validation.https_url")
 	}
 	return ""
 }

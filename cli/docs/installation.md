@@ -2,14 +2,20 @@
 
 项目采用 [MIT 许可证](../LICENSE)。以下每条命令也可用 `uvx --isolated --managed-python --python 3.15 inferyard ...` 单次运行；详细参数通过 `inferyard --help` 查询。
 
-## 1. 安装 uv 与 CLI
+## 1. 安装与升级 uv 与 CLI
 
-从 [uv 官方安装页](https://docs.astral.sh/uv/getting-started/installation/)安装 `uv`，随后安装 `inferyard`：
+从 [uv 官方安装页](https://docs.astral.sh/uv/getting-started/installation/)安装 `uv`（要求 `uv >= 0.13.6`），随后安装 `inferyard`（由 `uv` 自动托管 Python 3.15）：
 
 ```bash
 uv tool install --managed-python --python 3.15 inferyard
 inferyard --versions
 inferyard --help
+```
+
+升级到最新版本：
+
+```bash
+uv tool upgrade inferyard
 ```
 
 若使用 GitHub Releases 离线附件，在核对 `SHA256SUMS` 后直接安装 wheel：
@@ -20,7 +26,7 @@ uv tool install --managed-python --python 3.15 ./inferyard-*.whl
 
 在已缓存相同解释器与依赖的环境可附加 `--offline` 运行。
 
-## 2. 初始化工作区与设备预检
+## 2. 初始化工作区、设备预检与资产准备
 
 ```bash
 inferyard init --out bench-ops
@@ -29,24 +35,101 @@ inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight/dev
 
 - 省略 `--bundle` 时导出默认双题包 `zh-core` 与 `zh-svg-pelican`；显式传入 `--bundle` 可选 `zh-smoke`、`zh-core`、`zh-svg-pelican` 或 `zh-context-speed`。
 - 所有准备与报告命令的 `--out` 均须指向不存在的新目录（不覆盖历史产物）。
-- 单文件 GGUF 模型或引擎归档可通过 `inferyard model acquire` / `inferyard engine acquire` 下载；工作区当前阶段可随时用 `inferyard progress --workspace bench-ops` 查询。
+- 工作区当前阶段可随时用 `inferyard progress --workspace bench-ops` 查询；已有本地资产可通过 `inferyard assets scan` 只读扫描，正在运行的本机推理服务可通过 `inferyard service discover` 只读发现。
 - `inferyard device-check --json` 同时输出硬件感知首装推荐（`starter_recommendation`）：在满足条件的 Apple Silicon、NVIDIA CUDA 或 AMD ROCm（`hip`）设备上优先推荐 **PolyStrata**，其余环境平滑回退至 `llama.cpp`。
+
+### 模型解析与下载（`model resolve` / `model acquire`）
+
+支持从 Hugging Face 与 ModelScope 解析并下载单文件 GGUF、多分片 GGUF 或完整目录模型（`--kind auto|gguf|directory`）：
+
+```bash
+# 先解析到不可变 revision 与文件清单
+inferyard model resolve --source <HF_OR_MODELSCOPE_URL> --kind auto
+
+# 下载到新目录（支持断点续传、独立代理与流式 JSON 进度）
+inferyard model acquire \
+  --source <HF_OR_MODELSCOPE_URL> \
+  --kind auto \
+  --out bench-ops/models/my-model \
+  --resume \
+  --progress-stream \
+  --proxy-origin http://127.0.0.1:7890
+```
+
+如需私有仓库鉴权，通过 `--token-env ENV_VAR_NAME` 仅传入环境变量名。下载固定版本引擎归档可使用 `inferyard engine acquire` / `inferyard engine prepare`（同样支持 `--proxy-origin`、`--resume`、`--progress-stream`）。
 
 ### 托管安装 PolyStrata（推荐）
 
-在受支持的 macOS（Apple Silicon）、Linux x64 或 Windows x64 设备上，可直接通过一条命令自动完成预检、运行时构建、模型下载并生成 `installation.json`：
+在受支持的 macOS（Apple Silicon）、Linux x64 或 Windows x64 设备上，可直接通过一条命令自动完成预检、独立 Python 3.10–3.13 虚拟环境与运行时构建、模型下载并生成 `installation.json`：
 
 ```bash
-inferyard engine prepare-polystrata --out bench-ops/engines/polystrata --data-dir bench-ops/polystrata-data
+inferyard engine prepare-polystrata \
+  --out bench-ops/engines/polystrata \
+  --data-dir bench-ops/polystrata-data \
+  --progress-stream
 ```
 
-常用选项：`--family` / `--model`（如 `--family qwen36 --model UD-Q4_K_M`）、`--context`、`--backend auto|cuda|hip|metal`、`--model-source auto|modelscope|huggingface`、`--gguf-path`（复用本地 GGUF）、`--resume`（断点续装）。安装完成后可使用 `inferyard engine check --installation bench-ops/engines/polystrata/installation.json` 核验。
+常用选项：
+- `--family` / `--model`（如 `--family qwen36 --model UD-Q4_K_M`）、`--context`
+- `--backend auto|cuda|hip|metal`、`--model-source auto|modelscope|huggingface`、`--gguf-path`（复用本地 GGUF）
+- `--python /path/to/python3.12`（显式指定用于创建 PolyStrata 独立 `.venv` 的 Python 3.10–3.13 解释器，与 CLI 自身的 Python 3.15 解耦）
+- `--proxy-origin http://127.0.0.1:7890`、`--resume`（断点续装）、`--progress-stream`（向 stderr 输出单行 JSON 进度事件）
+
+安装完成后可使用 `inferyard engine check --installation bench-ops/engines/polystrata/installation.json` 核验。
 
 ## 3. 准备候选
 
-### Windows x64：先准备固定 runtime
+### 跨平台本地引擎安装声明（`installation.json`）
 
-从 Prism 固定版本 `prism-b10743-adfffbe` 下载归档后校验解包（CUDA 12.4 需额外传入 `--runtime-archive`）：
+在 macOS、Linux 或 Windows 上接入独立安装的 `polystrata`、`llama-cpp`、`mlx-lm`、`vllm`、`sglang` 或 `lmstudio` 时，可先探测本机可执行文件与虚拟环境，再生成并校验 `installation.json`（完整 Schema 见 `inferyard --schema local_engine_installation`）：
+
+```bash
+# 只读探测本机引擎二进制与 Python 虚拟环境
+inferyard engine detect --extra-path /abs/path/to/venv
+
+# 生成并自动校验 local-engine-installation.v1 声明文件
+inferyard engine init-installation \
+  --family mlx-lm \
+  --executable /abs/path/to/venv/bin/python3 \
+  --working-directory /abs/path/to/workdir \
+  --runtime-root /abs/path/to/venv \
+  --out bench-ops/engines/mlx-lm/installation.json
+```
+
+生成的 `installation.json` 示例：
+
+```json
+{
+  "schema_version": 3,
+  "definition": "local-engine-installation.v1",
+  "family": "mlx-lm",
+  "executable": "/abs/path/to/venv/bin/python3",
+  "working_directory": "/abs/path/to/workdir",
+  "runtime_roots": ["/abs/path/to/venv"],
+  "environment": {
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1"
+  }
+}
+```
+
+可通过 `inferyard engine check --installation /abs/path/to/installation.json` 核验，并通过 `--installation` 配合 `--model` 与 `--results` 直接创建候选：
+
+```bash
+inferyard config create \
+  --installation bench-ops/engines/mlx-lm/installation.json \
+  --model /abs/path/to/model \
+  --bundle bench-ops/bundles/zh-core.json \
+  --results bench-ops/results \
+  --out bench-ops/candidates/zh-core-1
+```
+
+在 Studio 中，也可通过「模型 → 配置本地引擎」向导或「设置 → 已有本地引擎」直接探测与登记。
+
+### Windows x64：使用固定 `llama.cpp`（Prism）归档
+
+除上述托管 PolyStrata 外，如使用 Prism 固定版本 `prism-b10743-adfffbe` 归档，可校验解包后创建候选（CUDA 12.4 需额外传入 `--runtime-archive`）：
 
 ```powershell
 # CPU
@@ -76,37 +159,15 @@ Windows 另提供 `inferyard memory-check [--protect-pid PID] --out NEW_DIR` 只
 xattr -dr com.apple.quarantine /Applications/InferYard\ Studio.app
 ```
 
-使用本地 Prism `llama-server`（同目录保留 `libggml-metal.dylib` 等动态库）：
+使用本地 `llama-server`（同目录保留 `libggml-metal.dylib` 等动态库）创建候选：
 
 ```bash
 inferyard config create --workspace bench-ops --bundle zh-core --engine /path/to/llama-server --out bench-ops/candidates/zh-core-1
 ```
 
-### macOS 本地安装声明（installation.json）
-
-接入独立安装的 `polystrata`、`llama-cpp`、`mlx-lm`、`vllm`、`sglang` 或 `lmstudio` 时，准备绝对路径声明 `installation.json`（完整结构见 `inferyard schema --kind local_engine_installation`）：
-
-```json
-{
-  "schema_version": 3,
-  "definition": "local-engine-installation.v1",
-  "family": "mlx-lm",
-  "executable": "/abs/path/to/venv/bin/python3",
-  "working_directory": "/abs/path/to/workdir",
-  "runtime_roots": ["/abs/path/to/venv"],
-  "environment": {
-    "PYTHONDONTWRITEBYTECODE": "1",
-    "HF_HUB_OFFLINE": "1",
-    "TRANSFORMERS_OFFLINE": "1"
-  }
-}
-```
-
-可通过 `inferyard engine check --installation /abs/path/to/installation.json` 核验，或在 Studio「设置 → 已有本地引擎」中直接注册。
-
 ### Linux x64
 
-导出 GGUF 聊天模板与文件哈希清单，填入 `bench-ops/configs/linux.example.toml` 副本：
+除 `installation.json` 流程外，使用本地 `llama-server` 时可导出 GGUF 聊天模板与文件哈希清单，填入 `bench-ops/configs/linux.example.toml` 副本：
 
 ```bash
 inferyard config assets --model /path/to/model.gguf --engine /path/to/llama-server --out bench-ops/assets/local-model
@@ -126,6 +187,27 @@ inferyard verify --path bench-ops/results/CORE_RUN_ID
 
 ```bash
 inferyard report --runs bench-ops/results/CORE_RUN_ID bench-ops/results/SVG_RUN_ID --out bench-ops/reports/summary-1
+```
+
+### 长上下文速度专项（`zh-context-speed`）
+
+测量 64K / 128K / 256K 上下文预填充与解码速度时，先导出 `zh-context-speed` 工作区并运行设备预检，创建并绑定对应上下文长度的候选配置，再冻结计划、执行批次并离线读取结果：
+
+```bash
+# 1. 导出长上下文专项工作区并运行设备预检
+inferyard init --bundle zh-context-speed --out bench-ops-ctx
+inferyard device-check --model /path/to/model.gguf --out bench-ops-ctx/preflight/device-1 --json
+
+# 2. 创建 64K 候选（128K 用 131072，256K 用 262144；Windows 使用 --runtime-receipt 替代 --engine），启动服务后执行 config bind
+inferyard config create --profile context-speed --context-size 65536 \
+  --workspace bench-ops-ctx --bundle zh-context-speed \
+  --engine /path/to/llama-server \
+  --out bench-ops-ctx/candidates/ctx-64k
+
+# 3. 冻结长上下文速度计划、执行并读取核验结果
+inferyard plan --preset context-speed --config bench-ops-ctx/bound/ctx-64k/config.toml --out bench-ops-ctx/plans/ctx-64k
+inferyard run --plan bench-ops-ctx/plans/ctx-64k/plan.json --output-root bench-ops-ctx/results/ctx-64k-batch
+inferyard speed-results --batch bench-ops-ctx/results/ctx-64k-batch
 ```
 
 退出码约定：`0` 完成、`2` 输入或身份预检阻断、`3` 运行不完整、`4` IO 或工具错误、`130` 取消。

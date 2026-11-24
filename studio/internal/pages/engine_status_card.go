@@ -8,6 +8,7 @@ import (
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 type engineInfoRow struct {
@@ -31,7 +32,7 @@ func engineStateKind(state string) stateKind {
 }
 
 func validLoopbackURL(raw string) (string, bool) {
-	if raw == "" || raw == "非本机地址" || loopbackEndpoint(raw) != raw {
+	if raw == "" || !isLoopbackURL(raw) {
 		return "", false
 	}
 	return raw, true
@@ -43,10 +44,10 @@ func engineWebUIInfo(state core.EngineState) (url string, canOpen bool, disabled
 		return "", false, ""
 	}
 	if state.WebUIDisabled {
-		return u, false, "网页未启用"
+		return u, false, l10n.TR("engine.webui.disabled")
 	}
 	if state.Family == "mlx-lm" {
-		return u, false, "仅提供 API"
+		return u, false, l10n.TR("engine.webui.api_only")
 	}
 	if state.State != "running" {
 		return u, false, ""
@@ -149,22 +150,22 @@ func (s *viewState) engineCardSummary() []engineInfoRow {
 		engineParts = append(engineParts, s.engine)
 	}
 	if len(engineParts) > 0 {
-		rows = append(rows, engineInfoRow{label: "引擎", value: strings.Join(engineParts, " · ")})
+		rows = append(rows, engineInfoRow{label: l10n.TR("engine.info.engine"), value: strings.Join(engineParts, " · ")})
 	}
 	if modelName := displayName(modelRaw); modelName != "" {
-		rows = append(rows, engineInfoRow{label: "模型", value: modelName})
+		rows = append(rows, engineInfoRow{label: l10n.TR("engine.info.model"), value: modelName})
 	}
 	ctxStr := formatContextTokens(contextSize)
 	switch {
 	case ctxStr != "" && state.Pid > 0:
-		rows = append(rows, engineInfoRow{label: "参数", value: fmt.Sprintf("上下文 %s · PID %d", ctxStr, state.Pid), tabular: true})
+		rows = append(rows, engineInfoRow{label: l10n.TR("engine.info.params"), value: l10n.TRf("engine.info.context_pid", "context", ctxStr, "pid", fmt.Sprintf("%d", state.Pid)), tabular: true})
 	case ctxStr != "":
-		rows = append(rows, engineInfoRow{label: "上下文", value: ctxStr, tabular: true})
+		rows = append(rows, engineInfoRow{label: l10n.TR("engine.info.context"), value: ctxStr, tabular: true})
 	case state.Pid > 0:
-		rows = append(rows, engineInfoRow{label: "进程", value: fmt.Sprintf("PID %d", state.Pid), tabular: true})
+		rows = append(rows, engineInfoRow{label: l10n.TR("engine.info.process"), value: fmt.Sprintf("PID %d", state.Pid), tabular: true})
 	}
 	if candidateRaw != "" {
-		rows = append(rows, engineInfoRow{label: "配置", value: displayName(candidateRaw)})
+		rows = append(rows, engineInfoRow{label: l10n.TR("engine.info.config"), value: displayName(candidateRaw)})
 	}
 	return rows
 }
@@ -187,17 +188,17 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 	switch state.State {
 	case "starting", "running", "stopping":
 		stopDisabled := !s.stopEnabled(true, runActive)
-		stopTip := "点击停止引擎"
+		stopTip := tr(c, "engine.tooltip.click_stop")
 		if stopDisabled {
 			if runActive {
-				stopTip = "测评进行中，结束后可停止引擎"
+				stopTip = tr(c, "engine.tooltip.stop_busy_run")
 			} else {
-				stopTip = "正在停止引擎"
+				stopTip = tr(c, "engine.tooltip.stopping")
 			}
 		}
 		headerOpts.action = &engineHeaderActionOptions{
 			statusText:  stateLabel(label),
-			actionLabel: "停止引擎",
+			actionLabel: tr(c, "engine.action.stop"),
 			kind:        kind,
 			action:      "stop",
 			busy:        state.State == "stopping",
@@ -211,15 +212,15 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 	case "orphaned":
 	default:
 		startDisabled := !s.canStartManagedEngine()
-		startTip := "点击开启引擎"
+		startTip := tr(c, "engine.tooltip.click_start")
 		if s.managedEngineCandidate() == "" {
-			startTip = "先在任务页选择模型并创建测评配置"
+			startTip = tr(c, "engine.tooltip.need_candidate")
 		} else if startDisabled {
-			startTip = "当前无法开启引擎"
+			startTip = tr(c, "engine.tooltip.cannot_start")
 		}
 		headerOpts.action = &engineHeaderActionOptions{
 			statusText:  stateLabel(label),
-			actionLabel: "开启引擎",
+			actionLabel: tr(c, "engine.action.start"),
 			kind:        kind,
 			action:      "start",
 			busy:        s.actionBusy("start-engine"),
@@ -240,33 +241,33 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 		}
 		s.engineEndpointBar(c, state)
 		if state.State == "starting" || state.State == "stopping" {
-			progressBar(c, -1, "模型引擎状态变更中")
+			progressBar(c, -1, tr(c, "engine.status.transitioning"))
 		}
 		switch state.State {
 		case "starting", "running", "stopping":
 			if runActive {
-				ui.Text(c, "测评进行中，结束后可停止引擎。").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
+				ui.Text(c, tr(c, "engine.notice.stop_after_run")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
 			}
 		case "orphaned":
 			noticeBanner(c, noticeBannerOptions{
 				Kind:    stateWarning,
 				Size:    bannerCompact,
-				Message: "遗留服务状态尚未确认，请到任务页处理。",
+				Message: tr(c, "engine.notice.orphan_unconfirmed"),
 			})
-			button(c, "前往任务").FillWidth().Padding(theme.Space(1.75), theme.Space(3.5)).Radius(theme.Space(2.5)).OnClick(func() {
+			button(c, tr(c, "engine.action.go_dashboard")).FillWidth().Padding(theme.Space(1.75), theme.Space(3.5)).Radius(theme.Space(2.5)).OnClick(func() {
 				s.navigateTo("dashboard", "")
 				close()
 			})
 		default:
 			errorView(c, state.Error)
 			if state.State == "failed" && state.LogPath != "" {
-				outlineButton(c, "打开日志文件").FillWidth().Padding(theme.Space(1.75), theme.Space(3.5)).Radius(theme.Space(2.5)).OnClick(func() {
+				outlineButton(c, tr(c, "engine.action.open_log")).FillWidth().Padding(theme.Space(1.75), theme.Space(3.5)).Radius(theme.Space(2.5)).OnClick(func() {
 					s.openEngineCardLog(state.LogPath)
 				})
 			}
 			if s.managedEngineCandidate() == "" {
-				ui.Text(c, "先在任务页选择模型并创建测评配置。").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-				button(c, "前往任务").FillWidth().Padding(theme.Space(1.75), theme.Space(3.5)).Radius(theme.Space(2.5)).OnClick(func() {
+				ui.Text(c, tr(c, "engine.notice.need_candidate")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				button(c, tr(c, "engine.action.go_dashboard")).FillWidth().Padding(theme.Space(1.75), theme.Space(3.5)).Radius(theme.Space(2.5)).OnClick(func() {
 					s.navigateTo("dashboard", "")
 					close()
 				})
@@ -296,7 +297,7 @@ func engineCardHeader(c *ui.Context, opts engineHeaderOptions) {
 		tile.Children(func() {
 			components.Icon(c, lucide.Server).Size(15, 15).TextColor(scale.Fg)
 		})
-		heading(c, "模型引擎", 3).Grow(1).MinWidth(0)
+		heading(c, tr(c, "engine.card.title"), 3).Grow(1).MinWidth(0)
 		if opts.action != nil {
 			if engineHeaderActionButton(c, *opts.action).Clicked() && opts.onClick != nil {
 				opts.onClick()
@@ -352,7 +353,7 @@ func (s *viewState) engineEndpointBar(c *ui.Context, state core.EngineState) {
 		if canOpen {
 			linkBtn := ui.ButtonBase(c).Grow(1).MinWidth(0).
 				Padding(theme.Space(1.25), theme.Space(1.5)).Radius(t.Radius.Control).
-				Label("打开网页")
+				Label(tr(c, "engine.action.open_webui"))
 			var bg ui.Color
 			switch {
 			case linkBtn.Pressed():
@@ -370,13 +371,13 @@ func (s *viewState) engineEndpointBar(c *ui.Context, state core.EngineState) {
 						TextColor(t.Color.Info.Fg).Grow(1).MinWidth(0).SingleLine()
 					ui.Row(c).AlignItems(ui.Center).Gap(3).
 						Padding(2, 7).Radius(t.Radius.SM).Background(t.Color.Info.SubtleBg).Shrink(0).Children(func() {
-						ui.Text(c, "打开网页").FontSize(t.Type.ShellLabel).Bold().
+						ui.Text(c, tr(c, "engine.action.open_webui")).FontSize(t.Type.ShellLabel).Bold().
 							TextColor(t.Color.Info.Fg).SingleLine()
 						components.Icon(c, lucide.ArrowUpRight).Size(12, 12).TextColor(t.Color.Info.Fg)
 					})
 				})
 			})
-			components.Tooltip(c, linkBtn, "在浏览器中打开引擎界面")
+			components.Tooltip(c, linkBtn, tr(c, "engine.tooltip.open_webui"))
 			if linkBtn.Clicked() {
 				s.openEngineWebUI(c, uiURL)
 			}
@@ -394,7 +395,7 @@ func (s *viewState) engineEndpointBar(c *ui.Context, state core.EngineState) {
 		}
 		if hasLoopback {
 			ui.Box(c).Width(1).Height(16).Background(t.Color.BorderSubtle)
-			if iconButton(c, lucide.Copy, "复制服务地址", components.IconButtonCompact).Clicked() {
+			if iconButton(c, lucide.Copy, tr(c, "engine.action.copy_endpoint"), components.IconButtonCompact).Clicked() {
 				s.copyEngineEndpoint(c, validURL)
 			}
 		}

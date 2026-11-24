@@ -5,6 +5,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 	"math"
 )
 
@@ -25,7 +26,7 @@ func section(c *ui.Context, title string, fn func()) {
 
 func configuredValue(value string) string {
 	if value == "" {
-		return "未配置"
+		return l10n.TR("common.not_configured")
 	}
 	return value
 }
@@ -131,15 +132,15 @@ func (s *viewState) announceChanges(c *ui.Context) {
 		page += "/" + s.detailID
 	}
 	if page != s.announcedPage {
-		title := "运行详情"
+		title := tr(c, "shell.page.run_detail")
 		if s.detailID == "" || s.selected != "dashboard" {
 			for _, n := range navigation {
 				if n.id == s.selected {
-					title = n.label
+					title = tr(c, n.labelKey)
 				}
 			}
 			if s.selected == "dashboard" && s.detailID == "" {
-				title = "任务"
+				title = tr(c, "nav.dashboard")
 			}
 		}
 		c.Announce(title)
@@ -159,7 +160,7 @@ func (s *viewState) announceChanges(c *ui.Context) {
 	case "device":
 		add(s.device.LastError)
 		if _, err := parseDeviceSnapshot(s.device.Snapshot); err != nil {
-			errors = append(errors, "设备快照无法读取，请重新采集。")
+			errors = append(errors, tr(c, "shell.announce.device_snapshot_unreadable"))
 		}
 	case "models":
 		add(s.engineState.Error)
@@ -185,7 +186,7 @@ func (s *viewState) announceChanges(c *ui.Context) {
 	if s.progress != nil && (s.selected == "dashboard" && s.detailID == "") {
 		for _, bundle := range s.progress.Bundles {
 			if bundle.BlockedReason != nil && bundle.Phase != "run_incomplete" {
-				errors = append(errors, bundle.Bundle+"："+human(*bundle.BlockedReason))
+				errors = append(errors, trf(c, "shell.announce.bundle_blocked", "bundle", bundle.Bundle, "reason", human(*bundle.BlockedReason)))
 			}
 		}
 	}

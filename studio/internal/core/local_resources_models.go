@@ -1,6 +1,7 @@
 package core
 
 import (
+	"inferyard/studio/internal/l10n"
 	"io"
 	"os"
 	"path/filepath"
@@ -78,7 +79,7 @@ func scanDirectoryModels(root string) ([]registryEntry, *ApiError) {
 			config, tokenizer, weights = markModelEntry(entry.Name(), config, tokenizer, weights)
 		}
 		if config && tokenizer && weights && safe {
-			result = append(result, registryEntry{path: next.path, source: "模型目录", model: ModelAsset{Format: "directory", Available: true}})
+			result = append(result, registryEntry{path: next.path, source: l10n.TR("core.registry.source.model_directory"), model: ModelAsset{Format: "directory", Available: true}})
 		}
 	}
 	return result, failure

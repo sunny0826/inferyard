@@ -1,6 +1,6 @@
 # 指标定义与验收
 
-本文件与[资源、稳定性与条件指标](metrics-resources.md)共同定义 36 组核心与 10 组条件指标，两者都是 catalogue 的生成源。指标定义版本 `phase2.v1` 与活动数据格式 `schema_version = 3` 分别管理；定义存在不表示每个平台均可采集或已实测。平台与证据见 [README](../../README.md)。
+本文件与[资源、稳定性与条件指标](metrics-resources.md)共同定义 36 组核心与 10 组条件指标；打包指标目录直接维护在 `cli/src/inferyard/data/metrics.json`（可通过 `inferyard catalogue --kind metrics` 查看）。指标定义版本 `phase2.v1` 与活动数据格式 `schema_version = 3` 分别管理；定义存在不表示每个平台均可采集或已实测。平台与证据见 [README](../../README.md)。
 
 目标不是凑指标数量，而是每个启用指标都能回答一个问题、给出证据、重算并判断可比性。两份文件的表格共 36 组核心指标、10 组条件指标；同一指标的 P50/P95 或分组曲线不重复计数。
 

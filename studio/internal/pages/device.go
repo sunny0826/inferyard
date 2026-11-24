@@ -9,6 +9,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 type deviceObject map[string]any
@@ -20,22 +21,37 @@ func (v deviceObject) object(key string) deviceObject {
 func (v deviceObject) list(key string) []any { value, _ := v[key].([]any); return value }
 func (v deviceObject) flag(key string) bool  { value, _ := v[key].(bool); return value }
 func (v deviceObject) value(key string) string {
+	return v.valueWithMissing(key, l10n.TR("device.missing"))
+}
+func (v deviceObject) valueFor(c *ui.Context, key string) string {
+	return v.valueWithMissing(key, tr(c, "device.missing"))
+}
+func (v deviceObject) valueWithMissing(key, missing string) string {
 	if v[key] == nil {
-		return "缺测"
+		return missing
 	}
 	return fmt.Sprint(v[key])
 }
 func (v deviceObject) label(key string) string { return deviceLabel(v.value(key)) }
-func deviceItem(value any) deviceObject        { item, _ := value.(map[string]any); return deviceObject(item) }
+func (v deviceObject) labelFor(c *ui.Context, key string) string {
+	return deviceLabelFor(c, v.valueFor(c, key))
+}
+func deviceItem(value any) deviceObject { item, _ := value.(map[string]any); return deviceObject(item) }
 
 func deviceBytes(value any) string {
+	return deviceBytesWithMissing(value, l10n.TR("device.missing"))
+}
+func deviceBytesFor(c *ui.Context, value any) string {
+	return deviceBytesWithMissing(value, tr(c, "device.missing"))
+}
+func deviceBytesWithMissing(value any, missing string) string {
 	n, ok := value.(json.Number)
 	if !ok {
-		return "缺测"
+		return missing
 	}
 	v, err := n.Int64()
 	if err != nil {
-		return "缺测"
+		return missing
 	}
 	for _, unit := range []struct {
 		size int64
@@ -48,21 +64,34 @@ func deviceBytes(value any) string {
 	return fmt.Sprintf("%d bytes", v)
 }
 func deviceMeasurement(v deviceObject, key string, capacity bool) string {
-	value := v.value(key)
+	missing := l10n.TR("device.missing")
+	value := v.valueWithMissing(key, missing)
 	if capacity {
-		value = deviceBytes(v[key])
+		value = deviceBytesWithMissing(v[key], missing)
 	}
-	if value == "缺测" && v.object("missing")[key] != nil {
+	if value == missing && v.object("missing")[key] != nil {
 		value += " — " + v.object("missing").label(key)
+	}
+	return value
+}
+func deviceMeasurementFor(c *ui.Context, v deviceObject, key string, capacity bool) string {
+	missing := tr(c, "device.missing")
+	value := v.valueWithMissing(key, missing)
+	if capacity {
+		value = deviceBytesWithMissing(v[key], missing)
+	}
+	if value == missing && v.object("missing")[key] != nil {
+		value += " — " + v.object("missing").labelFor(c, key)
 	}
 	return value
 }
 func deviceRow(c *ui.Context, label, value string) {
 	t := tokens(c)
+	ariaLabel := trf(c, "device.row.aria_label", "label", label, "value", value)
 	if compactLayout(c) {
 		ui.Column(c).Gap(t.Density.Tight).Children(func() {
 			ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-			ui.Text(c, value).FontFeatures("tnum").Selectable().Label(label + "：" + value)
+			ui.Text(c, value).FontFeatures("tnum").Selectable().Label(ariaLabel)
 		})
 		return
 	}
@@ -70,14 +99,14 @@ func deviceRow(c *ui.Context, label, value string) {
 		ui.Box(c).Width(c.Theme().Rem(10)).Shrink(0).Padding(2, 0, 0, 0).Children(func() {
 			ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		})
-		ui.Text(c, value).Grow(1).MinWidth(0).FontFeatures("tnum").Selectable().Label(label + "：" + value)
+		ui.Text(c, value).Grow(1).MinWidth(0).FontFeatures("tnum").Selectable().Label(ariaLabel)
 	})
 }
 func (s *viewState) refreshDevice() {
 	if s.simulate(previewRefreshDevice) {
 		return
 	}
-	s.workAs("refresh-device", func() (string, *core.ApiError) { return "设备信息已更新", s.service.RefreshDevice() })
+	s.workAs("refresh-device", func() (string, *core.ApiError) { return l10n.TR("device.action.refreshed"), s.service.RefreshDevice() })
 }
 
 func (s *viewState) deviceCollectionBlocked() bool { return s.busy || s.device.Refreshing }
@@ -106,8 +135,8 @@ func parseDeviceSnapshot(raw json.RawMessage) (deviceObject, error) {
 func (s *viewState) deviceView(c *ui.Context) {
 	t := tokens(c)
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		heading(c, "设备", 1).Grow(1)
-		s.deviceRefreshButton(c, "刷新设备")
+		heading(c, tr(c, "device.title"), 1).Grow(1)
+		s.deviceRefreshButton(c, tr(c, "device.action.refresh"))
 	})
 	snapshot, parseError := parseDeviceSnapshot(s.device.Snapshot)
 	if snapshot != nil && parseError == nil {
@@ -117,18 +146,18 @@ func (s *viewState) deviceView(c *ui.Context) {
 		}
 	}
 	errorRecoveryBanner(c, s.device.LastError, func() {
-		s.deviceRefreshButton(c, "重试")
-		if button(c, "前往设置").Clicked() {
+		s.deviceRefreshButton(c, tr(c, "device.action.retry"))
+		if button(c, tr(c, "device.action.open_settings")).Clicked() {
 			s.selected = "settings"
 		}
 	})
 	if parseError != nil {
 		noticeBanner(c, noticeBannerOptions{
 			Kind:    stateDanger,
-			Message: "设备快照无法读取，请重新采集或检查设置。",
+			Message: tr(c, "device.error.unreadable_snapshot"),
 			Actions: func() {
-				s.deviceRefreshButton(c, "重新采集设备")
-				button(c, "检查设备设置").OnClick(func() { s.selected = "settings" })
+				s.deviceRefreshButton(c, tr(c, "device.action.recollect"))
+				button(c, tr(c, "device.action.check_settings")).OnClick(func() { s.selected = "settings" })
 			},
 		})
 		return
@@ -136,15 +165,15 @@ func (s *viewState) deviceView(c *ui.Context) {
 	if snapshot == nil && s.device.LastError == nil && !s.device.Refreshing {
 		emptyGuideCard(c, emptyGuideOptions{
 			Icon:        lucide.Cpu,
-			Title:       "尚无设备快照",
-			Description: "采集本机硬件与 GPU 信息。",
+			Title:       tr(c, "device.empty.title"),
+			Description: tr(c, "device.empty.description"),
 			Surface:     emptyCard,
 			Action: func() {
 				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
-					if primaryButton(c, "采集设备信息").Disabled(s.deviceCollectionBlocked()).Clicked() {
+					if primaryButton(c, tr(c, "device.action.collect")).Disabled(s.deviceCollectionBlocked()).Clicked() {
 						s.refreshDevice()
 					}
-					if button(c, "前往设置").Clicked() {
+					if button(c, tr(c, "device.action.open_settings")).Clicked() {
 						s.selected = "settings"
 					}
 				})
@@ -153,38 +182,38 @@ func (s *viewState) deviceView(c *ui.Context) {
 	}
 }
 func deviceHardware(c *ui.Context, hw deviceObject) {
-	card(c, "硬件", func() {
-		deviceRow(c, "处理器", deviceMeasurement(hw, "cpu_model", false)+" · "+deviceMeasurement(hw, "logical_cpus", false)+" 核")
-		memory := deviceMeasurement(hw, "memory_total_bytes", true) + "（可用约 " + deviceMeasurement(hw, "memory_available_bytes", true) + "）"
-		deviceRow(c, "内存", memory)
+	card(c, tr(c, "device.hardware.title"), func() {
+		deviceRow(c, tr(c, "device.hardware.cpu"), trf(c, "device.hardware.cpu_value", "model", deviceMeasurementFor(c, hw, "cpu_model", false), "cores", deviceMeasurementFor(c, hw, "logical_cpus", false)))
+		memory := trf(c, "device.hardware.memory_value", "total", deviceMeasurementFor(c, hw, "memory_total_bytes", true), "available", deviceMeasurementFor(c, hw, "memory_available_bytes", true))
+		deviceRow(c, tr(c, "device.hardware.memory"), memory)
 		gpu := hw.object("gpu")
 		devices := gpu.list("devices")
 		for i, item := range devices {
 			v := deviceItem(item)
-			name := v.value("name")
+			name := v.valueFor(c, "name")
 			if arch := strings.TrimSpace(fmt.Sprint(v["arch_family"])); v["arch_family"] != nil && arch != "" {
 				name += " · " + arch
 			}
 			if v["cores"] != nil {
-				name += " · " + v.value("cores") + " 核"
+				name += " · " + trf(c, "device.hardware.gpu_cores", "cores", v.valueFor(c, "cores"))
 			}
 			if v.flag("metal_supported") {
-				name += " · 支持 Metal"
+				name += " · " + tr(c, "device.hardware.metal_supported")
 			}
 			if drv := strings.TrimSpace(fmt.Sprint(v["driver_version"])); v["driver_version"] != nil && drv != "" {
-				name += " · 驱动 " + drv
+				name += " · " + trf(c, "device.hardware.driver_version", "version", drv)
 			}
 			label := "GPU"
 			if len(devices) > 1 {
 				label = fmt.Sprintf("GPU %d", i+1)
 			}
 			deviceRow(c, label, name)
-			deviceRow(c, label+" 显存", deviceMeasurement(v, "memory_total_bytes", true))
+			deviceRow(c, trf(c, "device.hardware.gpu_vram", "label", label), deviceMeasurementFor(c, v, "memory_total_bytes", true))
 		}
 		if len(devices) == 0 {
-			value := "缺测"
+			value := tr(c, "device.missing")
 			if gpu["reason"] != nil {
-				value += " — " + gpu.label("reason")
+				value += " — " + gpu.labelFor(c, "reason")
 			}
 			deviceRow(c, "GPU", value)
 		}
@@ -197,63 +226,63 @@ func deviceHardware(c *ui.Context, hw deviceObject) {
 				flags = append(flags, "AVX-512")
 			}
 			if len(flags) > 0 {
-				deviceRow(c, "指令集", strings.Join(flags, " · "))
+				deviceRow(c, tr(c, "device.hardware.instruction_set"), strings.Join(flags, " · "))
 			}
 		}
-		deviceRow(c, "磁盘可用", deviceMeasurement(hw, "disk_free_bytes", true))
-		power := deviceMeasurement(hw, "ac_online", false)
+		deviceRow(c, tr(c, "device.hardware.disk_free"), deviceMeasurementFor(c, hw, "disk_free_bytes", true))
+		power := deviceMeasurementFor(c, hw, "ac_online", false)
 		if online, ok := hw["ac_online"].(bool); ok {
-			power = "使用电池"
+			power = tr(c, "device.hardware.power_battery")
 			if online {
-				power = "已接通"
+				power = tr(c, "device.hardware.power_ac")
 			}
 		}
-		deviceRow(c, "电源", power)
-		architecture := hw.value("architecture")
+		deviceRow(c, tr(c, "device.hardware.power"), power)
+		architecture := hw.valueFor(c, "architecture")
 		if hw.flag("apple_silicon") {
-			architecture += "（Apple 芯片）"
+			architecture = trf(c, "device.hardware.architecture_apple_silicon", "arch", architecture)
 		}
-		deviceRow(c, "架构", architecture)
+		deviceRow(c, tr(c, "device.hardware.architecture"), architecture)
 	})
 }
 
 func (s *viewState) deviceRecommendationCard(c *ui.Context, rec core.StarterRecommendation) {
 	t := tokens(c)
-	card(c, "推荐配置", func() {
+	card(c, tr(c, "device.recommendation.title"), func() {
 		if rec.Status == "blocked" {
-			deviceRow(c, "状态", deviceLabel(rec.Reason))
-			if notes := localizedDeviceNotes(rec.Notes); len(notes) > 0 {
-				deviceRow(c, "提示", strings.Join(notes, "；"))
+			deviceRow(c, tr(c, "device.recommendation.status"), deviceLabelFor(c, rec.Reason))
+			if notes := localizedDeviceNotesFor(c, rec.Notes); len(notes) > 0 {
+				deviceRow(c, tr(c, "device.recommendation.notes"), strings.Join(notes, tr(c, "device.recommendation.note_separator")))
 			}
 			return
 		}
 		engineText := starterEngineLabel(rec.Engine)
 		if rec.Backend != "" {
-			engineText += " · " + deviceLabel(rec.Backend)
+			engineText += " · " + deviceLabelFor(c, rec.Backend)
 		}
 		if rec.FitLevel != "" {
-			engineText += " · " + deviceLabel(rec.FitLevel)
+			engineText += " · " + deviceLabelFor(c, rec.FitLevel)
 		}
-		deviceRow(c, "推荐引擎", engineText)
+		deviceRow(c, tr(c, "device.recommendation.engine"), engineText)
 		if rec.ModelTitle != "" {
 			modelText := rec.ModelTitle
 			if ctx := starterContextLabel(rec.RecommendedContext); ctx != "" {
 				modelText += " · " + ctx
 			}
-			deviceRow(c, "推荐模型", modelText)
+			deviceRow(c, tr(c, "device.recommendation.model"), modelText)
 		}
 		if rec.EstimatedDownloadBytes > 0 {
 			downloadText := formatDownloadBytes(rec.EstimatedDownloadBytes)
 			if rec.EstimatedRAMBytes > 0 {
-				downloadText += "（预计内存约 " + formatDownloadBytes(rec.EstimatedRAMBytes) + "）"
+				downloadText = trf(c, "device.recommendation.estimated_download_with_ram", "download", downloadText, "ram", formatDownloadBytes(rec.EstimatedRAMBytes))
 			}
-			deviceRow(c, "预计下载", downloadText)
+			deviceRow(c, tr(c, "device.recommendation.estimated_download"), downloadText)
 		}
 		if rec.Reason != "" && rec.Reason != "polystrata_hardware_fit" {
-			deviceRow(c, "说明", deviceLabel(rec.Reason))
+			deviceRow(c, tr(c, "device.recommendation.reason"), deviceLabelFor(c, rec.Reason))
 		}
-		if notes := localizedDeviceNotes(rec.Notes); len(notes) > 0 {
-			deviceRow(c, "提示", strings.Join(notes, "；"))
+		if notes := localizedDeviceNotesFor(c, rec.Notes); len(notes) > 0 {
+			deviceRow(c, tr(c, "device.recommendation.notes"), strings.Join(notes, tr(c, "device.recommendation.note_separator")))
 		}
 		opts := starterOptions(rec)
 		st := s.ensureDownloadsUI()
@@ -261,7 +290,7 @@ func (s *viewState) deviceRecommendationCard(c *ui.Context, rec core.StarterReco
 			if len(opts) > 0 {
 				s.starterPrimaryCTA(c, st, opts[0], true)
 			}
-			button(c, "查看全部推荐").OnClick(func() {
+			button(c, tr(c, "device.recommendation.view_all")).OnClick(func() {
 				s.openDownloadsWithStarterExpanded()
 			})
 		})

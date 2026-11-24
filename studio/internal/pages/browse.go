@@ -6,32 +6,39 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
+	"inferyard/studio/internal/l10n"
 )
 
 type browseSpec struct {
 	key        string
-	title      string
+	titleKey   string
 	folder     bool
 	extensions []string
 }
 
-const browseFailureMessage = "无法打开选择窗口；可手动输入路径。"
+func browseFailureText() string {
+	return l10n.TR("browse.failure")
+}
+
+func (spec browseSpec) dialogTitle() string {
+	return l10n.TR(spec.titleKey)
+}
 
 var (
-	browseCLI           = browseSpec{key: "cli", title: "选择 CLI 可执行文件"}
-	browseInstallation  = browseSpec{key: "installation", title: "选择 installation.json", extensions: []string{"json"}}
-	browseExecutable    = browseSpec{key: "engine-exec", title: "选择引擎可执行文件或虚拟环境 Python"}
-	browseModelsRootDir = browseSpec{key: "engine-models-root", title: "选择 LM Studio 模型目录", folder: true}
-	browseWorkspace     = browseSpec{key: "workspace", title: "选择工作区目录", folder: true}
-	browseResults       = browseSpec{key: "results", title: "选择结果目录", folder: true}
-	browseModels        = browseSpec{key: "models", title: "选择模型目录", folder: true}
+	browseCLI           = browseSpec{key: "cli", titleKey: "browse.title.cli"}
+	browseInstallation  = browseSpec{key: "installation", titleKey: "browse.title.installation", extensions: []string{"json"}}
+	browseExecutable    = browseSpec{key: "engine-exec", titleKey: "browse.title.executable"}
+	browseModelsRootDir = browseSpec{key: "engine-models-root", titleKey: "browse.title.models_root_dir", folder: true}
+	browseWorkspace     = browseSpec{key: "workspace", titleKey: "browse.title.workspace", folder: true}
+	browseResults       = browseSpec{key: "results", titleKey: "browse.title.results", folder: true}
+	browseModels        = browseSpec{key: "models", titleKey: "browse.title.models", folder: true}
 )
 
 func (s *viewState) pathField(c *ui.Context, label string, value *string, spec browseSpec) ui.Element {
 	return ui.Field(c, label, func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 			components.TextBox(c, value, components.TextBoxOptions{}).Grow(1)
-			button(c, "浏览…").Label("浏览… · " + label).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
+			button(c, tr(c, "browse.button")).Label(trf(c, "browse.button_label", "label", label)).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
 				s.browsePath(value, spec)
 			})
 		})
@@ -76,14 +83,14 @@ func (s *viewState) browsePath(value *string, spec browseSpec) {
 	apply := func(paths []string, err error) {
 		switch {
 		case err != nil:
-			s.browseFailure(spec.key, browseFailureMessage)
+			s.browseFailure(spec.key, browseFailureText())
 		case len(paths) > 0:
 			s.clearBrowseFailure(spec.key)
 			*value = paths[0]
 		}
 	}
 	options := mygo.OpenDialogOptions{
-		Parent: win, Title: spec.title, DefaultPath: defaultPath,
+		Parent: win, Title: spec.dialogTitle(), DefaultPath: defaultPath,
 		Directory: spec.folder, CreateDirectories: spec.folder,
 		Filters: spec.filters(),
 	}

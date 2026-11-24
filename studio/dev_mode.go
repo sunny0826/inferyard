@@ -12,6 +12,7 @@ import (
 
 	"github.com/egoist/mygo"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 type devStatusReporter struct {
@@ -86,8 +87,8 @@ func developmentBindings(o startupOptions) (*core.BoundPaths, mygo.WindowStateSt
 		Models:      models,
 		Engines:     engines,
 		Settings:    filepath.Join(profile, "settings.json"),
-		Source:      "开发环境 · " + label,
-		WindowTitle: "InferYard Studio · DEV · " + label,
+		Source:      l10n.TRf("dev.source", "label", label),
+		WindowTitle: l10n.TRf("app.title.dev", "label", label),
 		SourceLabel: label,
 	}
 	return paths, devWindowStates{filepath.Join(profile, "window-state.json")}, devStatusReporter{path: statusPath}, nil

@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/egoist/mygo"
+	"inferyard/studio/internal/l10n"
 )
 
 const trayID = "inferyard-studio"
@@ -36,6 +37,7 @@ type TrayConfig struct {
 type trayHooks struct {
 	win            TrayWindow
 	createTray     func(onShow, onQuit func()) (TrayIcon, error)
+	refreshMenu    func(icon TrayIcon, onShow, onQuit func())
 	focusApp       func()
 	quitApp        func()
 	logf           func(string, ...any)
@@ -57,11 +59,19 @@ type TrayController struct {
 	offs     []func()
 }
 
+func buildTrayMenu(onShow, onQuit func()) *mygo.Menu {
+	return mygo.NewMenu([]*mygo.MenuItem{
+		{Label: l10n.TR("tray.show_window"), Click: func(*mygo.MenuItem, *mygo.Window) { onShow() }},
+		mygo.Separator(),
+		{Label: l10n.TR("tray.quit"), Click: func(*mygo.MenuItem, *mygo.Window) { onQuit() }},
+	})
+}
+
 // NewTrayController binds tray and close-to-tray handling to a MyGo window.
 func NewTrayController(cfg TrayConfig) *TrayController {
 	toolTip := cfg.ToolTip
 	if toolTip == "" {
-		toolTip = "InferYard Studio"
+		toolTip = l10n.TR("app.name")
 	}
 	hooks := trayHooks{
 		win:      cfg.Window,
@@ -69,23 +79,23 @@ func NewTrayController(cfg TrayConfig) *TrayController {
 		quitApp:  mygo.App.Quit,
 		logf:     cfg.Logf,
 		createTray: func(onShow, onQuit func()) (TrayIcon, error) {
-			menu := mygo.NewMenu([]*mygo.MenuItem{
-				{Label: "显示主窗口", Click: func(*mygo.MenuItem, *mygo.Window) { onShow() }},
-				mygo.Separator(),
-				{Label: "退出", Click: func(*mygo.MenuItem, *mygo.Window) { onQuit() }},
-			})
 			tray, err := mygo.NewTray(mygo.TrayOptions{
 				ID:             trayID,
 				Icon:           cfg.IconPNG,
 				IconIsTemplate: false,
 				ToolTip:        toolTip,
-				Menu:           menu,
+				Menu:           buildTrayMenu(onShow, onQuit),
 			})
 			if err != nil {
 				return nil, err
 			}
 			tray.OnClick(onShow)
 			return tray, nil
+		},
+		refreshMenu: func(icon TrayIcon, onShow, onQuit func()) {
+			if tray, ok := icon.(*mygo.Tray); ok {
+				tray.SetMenu(buildTrayMenu(onShow, onQuit))
+			}
 		},
 		onClose: func(shouldHide func() bool) func() {
 			if cfg.Window == nil {
@@ -211,6 +221,22 @@ func (c *TrayController) SetEnabled(enabled bool) error {
 	c.tray = created
 	c.mu.Unlock()
 	return nil
+}
+
+// RefreshLocale rebuilds the active tray menu in the current UI locale.
+func (c *TrayController) RefreshLocale() {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	icon := c.tray
+	closed := c.closed
+	refresh := c.hooks.refreshMenu
+	c.mu.Unlock()
+	if closed || icon == nil || refresh == nil {
+		return
+	}
+	refresh(icon, c.RestoreWindow, c.quit)
 }
 
 // RestoreWindow brings the window back from hidden or minimized state and focuses it.

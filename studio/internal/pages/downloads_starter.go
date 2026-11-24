@@ -1,13 +1,16 @@
 package pages
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 type starterOption struct {
@@ -102,7 +105,7 @@ func starterTierLabel(tier string) string {
 	if label := deviceLabel("tier_" + tier); label != "tier_"+tier {
 		return label
 	}
-	return "备选方案"
+	return l10n.TR("downloads.starter.tier_fallback")
 }
 
 func starterTierState(tier string) stateKind {
@@ -179,9 +182,9 @@ func starterContextLabel(ctx int64) string {
 		return ""
 	}
 	if ctx%1024 == 0 {
-		return fmt.Sprintf("上下文 %dK", ctx/1024)
+		return l10n.TRf("downloads.starter.context_k", "k", strconv.FormatInt(ctx/1024, 10))
 	}
-	return fmt.Sprintf("上下文 %d", ctx)
+	return l10n.TRf("downloads.starter.context_n", "n", strconv.FormatInt(ctx, 10))
 }
 
 func starterContextShort(ctx int64) string {
@@ -226,12 +229,23 @@ func starterGPUChipText(rec core.StarterRecommendation) string {
 	return gpuText
 }
 
+func validDeviceBytes(value any) (string, bool) {
+	n, ok := value.(json.Number)
+	if !ok {
+		return "", false
+	}
+	if _, err := n.Int64(); err != nil {
+		return "", false
+	}
+	return deviceBytes(n), true
+}
+
 func (s *viewState) starterHardwareSummary(rec core.StarterRecommendation) string {
 	var parts []string
 	hasUnified := rec.GPU != nil && rec.GPU.UnifiedMemoryBytes != nil && *rec.GPU.UnifiedMemoryBytes > 0
 	if gpuText := starterGPUChipText(rec); gpuText != "" {
 		if hasUnified {
-			parts = append(parts, gpuText+" 统一内存")
+			parts = append(parts, l10n.TRf("downloads.starter.hw.unified_memory", "gpu", gpuText))
 		} else {
 			parts = append(parts, gpuText)
 		}
@@ -240,20 +254,20 @@ func (s *viewState) starterHardwareSummary(rec core.StarterRecommendation) strin
 	if err == nil && snapshot != nil {
 		hw := snapshot.object("hardware")
 		if !hasUnified {
-			if mem := deviceBytes(hw["memory_total_bytes"]); mem != "" && mem != "缺测" {
-				parts = append(parts, "内存 "+mem)
+			if mem, ok := validDeviceBytes(hw["memory_total_bytes"]); ok && mem != "" {
+				parts = append(parts, l10n.TRf("downloads.starter.hw.memory", "size", mem))
 			}
 		}
 		_, hasModelsDiskKey := hw["models_disk_free_bytes"]
 		modelsDiskMissing := hw.object("missing")["models_disk_free_bytes"] != nil
 		if rec.DiskFreeBytes == nil && !hasModelsDiskKey && !modelsDiskMissing {
-			if disk := deviceBytes(hw["disk_free_bytes"]); disk != "" && disk != "缺测" {
-				parts = append(parts, "可用磁盘 "+disk)
+			if disk, ok := validDeviceBytes(hw["disk_free_bytes"]); ok && disk != "" {
+				parts = append(parts, l10n.TRf("downloads.starter.hw.disk_free", "size", disk))
 			}
 		}
 	}
 	if rec.DiskFreeBytes != nil && *rec.DiskFreeBytes > 0 {
-		parts = append(parts, "可用磁盘 "+formatDownloadBytes(*rec.DiskFreeBytes))
+		parts = append(parts, l10n.TRf("downloads.starter.hw.disk_free", "size", formatDownloadBytes(*rec.DiskFreeBytes)))
 	}
 	return joinParts(parts)
 }
@@ -416,7 +430,7 @@ func starterSummaryMeta(rec core.StarterRecommendation, opt starterOption) strin
 		parts = append(parts, ctx)
 	}
 	if opt.EstimatedDownloadBytes > 0 {
-		parts = append(parts, "预计下载 "+formatDownloadBytes(opt.EstimatedDownloadBytes))
+		parts = append(parts, l10n.TRf("downloads.starter.est_download_badge", "size", formatDownloadBytes(opt.EstimatedDownloadBytes)))
 	}
 	if gpuText := starterGPUChipText(rec); gpuText != "" {
 		parts = append(parts, gpuText)

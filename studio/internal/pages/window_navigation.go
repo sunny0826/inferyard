@@ -5,6 +5,7 @@ import (
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
+	"inferyard/studio/internal/l10n"
 )
 
 func (s *viewState) guardLeaveSettings(targetPage string, action func()) bool {
@@ -58,7 +59,7 @@ func (s *viewState) leftNav(c *ui.Context) {
 		components.Sidebar(c).Children(func() {
 			if s.service != nil {
 				if paths := s.service.BoundPaths(); paths != nil {
-					components.Text(c, "开发环境").Bold().FontSize(t.Type.ShellLabel).
+					components.Text(c, tr(c, "shell.nav.dev_env")).Bold().FontSize(t.Type.ShellLabel).
 						Padding(t.Density.Tight, t.Density.Row, 0, t.Density.Row)
 					components.Text(c, paths.SourceLabel).FontSize(t.Type.ShellDetail).
 						Padding(0, t.Density.Row, t.Density.Row, t.Density.Row)
@@ -68,7 +69,7 @@ func (s *viewState) leftNav(c *ui.Context) {
 				s.newTaskEntry(c)
 			})
 			for _, n := range navigation {
-				if components.SidebarItem(c, n.label, n.icon(), s.selected == n.id).Clicked() {
+				if components.SidebarItem(c, tr(c, n.labelKey), n.icon(), s.selected == n.id).Clicked() {
 					s.pendingDestructive = destructiveRequest{}
 					s.selectPage(n.id)
 				}
@@ -85,7 +86,8 @@ func newTaskButton(c *ui.Context, disabled bool) ui.Element {
 		variant = components.ButtonOutline
 		fg = t.Color.FgSecondary
 	}
-	b := components.Button(c, "", variant).FillWidth().Label("新任务").
+	label := tr(c, "shell.nav.new_task")
+	b := components.Button(c, "", variant).FillWidth().Label(label).
 		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.MD)
 	if disabled {
 		b.Background(t.Color.Surface.Alpha(.65)).Border(1, t.Color.BorderDefault).Disabled(true)
@@ -93,14 +95,14 @@ func newTaskButton(c *ui.Context, disabled bool) ui.Element {
 	b.Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
 			components.Icon(c, lucide.Plus).Size(14, 14).TextColor(fg)
-			ui.Text(c, "新任务").Bold().FontSize(t.Type.Body).TextColor(fg).SingleLine()
+			ui.Text(c, label).Bold().FontSize(t.Type.Body).TextColor(fg).SingleLine()
 		})
 	})
 	return b
 }
 
 func (s *viewState) newTaskEntry(c *ui.Context) {
-	hint := s.newTaskEntryHint()
+	hint := s.newTaskEntryHintFor(contextLocale(c))
 	if hint == "" {
 		newTaskButton(c, false).OnClick(func() {
 			if s.guardLeaveSettings("dashboard", func() { s.newBenchmark() }) {
@@ -118,14 +120,18 @@ func (s *viewState) newTaskEntry(c *ui.Context) {
 }
 
 func (s *viewState) newTaskEntryHint() string {
+	return s.newTaskEntryHintFor("")
+}
+
+func (s *viewState) newTaskEntryHintFor(locale string) string {
 	switch {
 	case s.environmentMissing():
-		return "先完成环境准备，才能进行测评"
+		return l10n.T(locale, "shell.nav.new_task_hint.env_missing")
 	case s.roundWorkActive():
-		return "测评进行中，请在任务页取消后再新建任务"
+		return l10n.T(locale, "shell.nav.new_task_hint.round_active")
 	case s.selected == "dashboard" && s.detailID == "" && s.resumeSource == nil &&
 		(s.speed == nil || s.speed.current == nil) && s.preparingTask():
-		return "已在任务准备页，请在页面内开始测评"
+		return l10n.T(locale, "shell.nav.new_task_hint.already_preparing")
 	}
 	return ""
 }
