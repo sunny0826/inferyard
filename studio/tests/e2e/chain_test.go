@@ -34,13 +34,18 @@ func TestChainBindRunReport(t *testing.T) {
 	}
 	if _, e := service.UpdateSettings(map[string]json.RawMessage{
 		"inferyard_path": mustJSON(cli),
-		"results_root":   mustJSON(filepath.Join(env.Workspace, "results")),
-		"models_root":    mustJSON(env.Models),
 	}); e != nil {
 		t.Fatal(e)
 	}
 
 	runWizard(t, service, ctx, "inferyard init --out "+quote(env.Workspace), env.Recorder)
+	eff := service.Settings().Effective
+	if eff.ResultsRoot == nil || *eff.ResultsRoot != env.Results {
+		t.Fatalf("Effective.ResultsRoot = %v, want %q", eff.ResultsRoot, env.Results)
+	}
+	if eff.ModelsRoot == nil || *eff.ModelsRoot != env.Models {
+		t.Fatalf("Effective.ModelsRoot = %v, want %q", eff.ModelsRoot, env.Models)
+	}
 
 	assets := writeFakeAssets(t)
 	binary, err := os.Executable()

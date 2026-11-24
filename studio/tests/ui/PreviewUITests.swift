@@ -70,7 +70,7 @@ final class PreviewUITests: XCTestCase {
         click("下载模型 · model-qwen3-0.6b-q8")
         expectText("已结束")
         click("模型")
-        let downloadedModel = "model · Qwen3-0.6B-Q8_0.gguf"
+        let downloadedModel = "Qwen3-0.6B-Q8_0 · Qwen3-0.6B-Q8_0.gguf"
         let downloadedModelLabel = downloadedModel + " · GGUF"
         expectText(downloadedModelLabel)
         XCTAssertFalse(app.popUpButtons["模型"].exists, "Models must not offer an inline pair selector")

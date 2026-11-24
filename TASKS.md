@@ -33,7 +33,7 @@
   - `preview_fixtures.go` / `preview_operations.go` / `preview_benchmark.go` / `preview_downloads.go`：适配统一工作区目录模型与默认下载目录名。
   - 更新 `studio/internal/pages/*_test.go`，运行 `mise run test:studio` 与 `mise run test:studio:preview`。
   - 未解决问题（第 5 轮 Reviewer 打回）：`studio/internal/pages/models_management.go:69` 的 `isExtraModelRoot` 已无生产调用方（页面已改为调用 `isExtraModelRootDir`），仅 `studio/internal/pages/settings_save_test.go:189` 仍调用旧函数，待删除死代码并将测试断言改为调用 `isExtraModelRootDir`。
-- [ ] **T03：更新 E2E / UI 测试、文档与全链路验证及节点 (d) 终审**
+- [x] **T03：更新 E2E / UI 测试、文档与全链路验证及节点 (d) 终审**
   - 更新 `studio/tests/e2e/env.go`、`studio/tests/e2e/chain_test.go`、`studio/tests/ui/run_release.py`、`studio/tests/ui/test_run_release.py`、`studio/tests/ui/ReleaseUITests.swift`（及 `PreviewUITests.swift` 如下载名变更）。
   - 检查并更新受影响文档：`studio/README.md`、`README.md`、`README.zh-CN.md`。
   - 运行全量验证：`mise run test:studio`、`mise run test:studio:preview`、`mise run test:studio:e2e`、`python3 -m unittest studio/tests/ui/test_run_release.py`。

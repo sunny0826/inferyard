@@ -23,10 +23,6 @@ def prepare_home(output: Path, e2e_root: Path, cli: Path) -> tuple[Path, Path]:
     settings = {
         "inferyard_path": str(cli),
         "workspace_root": str(workspace),
-        "results_root": str(workspace / "results"),
-        "models_root": str(e2e_root / "models"),
-        "model_download_name": "model",
-        "engine_download_name": "engine",
     }
     settings_path = settings_dir / "settings.json"
     settings_path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
@@ -119,10 +115,7 @@ def main() -> int:
         os.environ,
         TEST_RUNNER_INFERYARD_RELEASE_APP=str(app),
         TEST_RUNNER_INFERYARD_RELEASE_HOME=str(home),
-        TEST_RUNNER_INFERYARD_RELEASE_CLI=str(cli),
         TEST_RUNNER_INFERYARD_RELEASE_WORKSPACE=str(workspace),
-        TEST_RUNNER_INFERYARD_RELEASE_RESULTS=str(workspace / "results"),
-        TEST_RUNNER_INFERYARD_RELEASE_MODELS=str(e2e_root / "models"),
     )
     return execute(xcode_command(output, derived_data), env, output, reports[0])
 

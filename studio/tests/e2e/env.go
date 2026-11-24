@@ -51,10 +51,11 @@ func NewEnv(t *testing.T, cliPath string) *Env {
 		pythonPath += string(os.PathListSeparator) + inherited
 	}
 	t.Setenv("PYTHONPATH", pythonPath)
+	workspace := filepath.Join(root, "workspace")
 	env := &Env{
-		Workspace: filepath.Join(root, "workspace"),
-		Results:   filepath.Join(root, "results"),
-		Models:    filepath.Join(root, "models"),
+		Workspace: workspace,
+		Results:   filepath.Join(workspace, "results"),
+		Models:    filepath.Join(workspace, "models"),
 		Settings:  filepath.Join(root, "settings.json"),
 		CLIPath:   cliPath,
 	}

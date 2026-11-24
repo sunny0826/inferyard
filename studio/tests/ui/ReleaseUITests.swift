@@ -38,16 +38,16 @@ final class ReleaseUITests: XCTestCase {
         click("模型")
         expectText("已安装的模型")
         click("下载")
-        expectText("新建下载任务")
+        expectExists(app.buttons["下载设置"], timeout: 10)
         click("设备")
         expectExists(app.buttons["刷新设备"], timeout: 10)
         click("设置")
-        expectText("路径设置")
-        for key in ["INFERYARD_RELEASE_CLI", "INFERYARD_RELEASE_RESULTS"] {
-            if let value = ProcessInfo.processInfo.environment[key] {
-                expectText(value)
-            }
+        expectText("工作区目录")
+        guard let workspace = ProcessInfo.processInfo.environment["INFERYARD_RELEASE_WORKSPACE"], !workspace.isEmpty else {
+            XCTFail("Missing INFERYARD_RELEASE_WORKSPACE")
+            return
         }
+        expectText(workspace)
         keepScreenshot("Production settings")
         click("报告")
         openRealReport()

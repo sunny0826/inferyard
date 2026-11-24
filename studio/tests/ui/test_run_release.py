@@ -72,10 +72,13 @@ class TestReleaseRunner(unittest.TestCase):
             )
             self.assertEqual(settings["inferyard_path"], str(cli.resolve()))
             self.assertEqual(settings["workspace_root"], str((e2e_root / "workspace").resolve()))
-            self.assertEqual(
-                settings["results_root"], str((e2e_root / "workspace/results").resolve())
-            )
-            self.assertEqual(settings["models_root"], str((e2e_root / "models").resolve()))
+            for legacy_key in (
+                "results_root",
+                "models_root",
+                "model_download_name",
+                "engine_download_name",
+            ):
+                self.assertNotIn(legacy_key, settings)
             self.assertEqual(env["TEST_RUNNER_INFERYARD_RELEASE_APP"], str(app.resolve()))
             derived_index = command.index("-derivedDataPath") + 1
             self.assertEqual(
