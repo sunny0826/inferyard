@@ -87,5 +87,6 @@
   "err.unsupported_report_format": "Legacy report format is not supported. Regenerate the report with the current CLI.",
   "err.unsupported_runtime_profile": "Engine runtime profile is not supported.",
   "err.upstream_http_error": "Remote server returned an unexpected HTTP status. Retry later or verify the download URL.",
+  "err.workspace_artifact_unreadable": "Some benchmark artifacts in the workspace are unreadable or incompatible. Check the workspace directory or upgrade the CLI and retry.",
   "err.workspace_busy": "The workspace still has an active run or managed engine. Finish the task and stop the engine first."
 }

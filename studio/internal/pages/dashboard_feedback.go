@@ -26,6 +26,7 @@ var knownErrorKeys = map[string]string{
 	"engine_owner_remove_failed":          "err.engine_owner_remove_failed",
 	"engine_stop_failed":                  "err.engine_stop_failed",
 	"engine_stopping":                     "err.engine_stopping",
+	"workspace_artifact_unreadable":       "err.workspace_artifact_unreadable",
 	"workspace_busy":                      "err.workspace_busy",
 	"engine_host_not_loopback":            "err.engine_host_not_loopback",
 	"engine_credentials_forbidden":        "err.engine_credentials_forbidden",

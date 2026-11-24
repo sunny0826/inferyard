@@ -87,5 +87,6 @@
   "err.unsupported_report_format": "旧格式报告不受支持，请用当前 CLI 重新生成报告。",
   "err.unsupported_runtime_profile": "引擎运行时 profile 不受支持",
   "err.upstream_http_error": "远端服务器返回异常 HTTP 状态，请稍后重试或检查下载地址。",
+  "err.workspace_artifact_unreadable": "工作区中的部分测评配置文件无法读取或版本不兼容，请检查工作区目录或升级 CLI 后重试。",
   "err.workspace_busy": "当前工作区仍有运行或托管引擎，请先结束任务并停止引擎。"
 }

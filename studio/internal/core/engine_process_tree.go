@@ -165,7 +165,19 @@ func (s *Service) refreshEngineTree(owner *engineOwner, path string) error {
 		}
 	}
 	next := *owner
-	next.Workers = append([]engineProcessIdentity(nil), owner.Workers...)
+	var liveWorkers []engineProcessIdentity
+	liveKnown := map[int64]int64{owner.PID: owner.StartTicks}
+	for _, w := range owner.Workers {
+		same, err := s.sameEngineProcess(w)
+		if err != nil {
+			return err
+		}
+		if same {
+			liveWorkers = append(liveWorkers, w)
+			liveKnown[w.PID] = w.StartTicks
+		}
+	}
+	next.Workers = liveWorkers
 	for _, row := range rows {
 		if row.group != owner.ProcessGroup || row.pid == owner.PID {
 			continue
@@ -177,7 +189,7 @@ func (s *Service) refreshEngineTree(owner *engineOwner, path string) error {
 		if err != nil || ticks <= 0 {
 			return os.ErrPermission
 		}
-		if expected, exists := known[row.pid]; exists {
+		if expected, exists := liveKnown[row.pid]; exists {
 			if expected != ticks {
 				return os.ErrInvalid
 			}
@@ -191,9 +203,14 @@ func (s *Service) refreshEngineTree(owner *engineOwner, path string) error {
 		}
 		identity := engineProcessIdentity{row.pid, ticks}
 		if err := s.confirmEngineGroupMember(identity, owner.ProcessGroup); err != nil {
+			same, checkErr := s.sameEngineProcess(identity)
+			if checkErr == nil && !same {
+				continue
+			}
 			return err
 		}
 		next.Workers = append(next.Workers, identity)
+		liveKnown[identity.PID] = identity.StartTicks
 	}
 	if reflect.DeepEqual(next, *owner) {
 		return nil
