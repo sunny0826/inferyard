@@ -96,7 +96,6 @@ final class PreviewUITests: XCTestCase {
         expectText("吞吐")
         expectText("输出内容块到达间隔")
         revealInContent(text("输出内容块到达间隔"))
-        revealInContent(text("间隔详情"))
         keepScreenshot("Report throughput and output-interval cards")
         click("新任务")
         click("报告")

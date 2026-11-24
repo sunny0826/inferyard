@@ -60,19 +60,9 @@ func (s *viewState) detailView(c *ui.Context) {
 				return l10n.TR("dashboard.toast.cancel_requested"), e
 			})
 		}
-		componentFoldKeyed(c, "detail-raw-run", tr(c, "detail.raw_fields_fold"), func() { detailRawFields(c, t) })
 	})
 	card(c, tr(c, "detail.live_progress_card"), func() { s.detailProgress(c, d) })
 	s.resourceView(c, d.Resources)
-}
-
-func detailRawFields(c *ui.Context, t core.RunTask) {
-	ui.Text(c, trf(c, "detail.raw.state", "state", t.State)).Selectable()
-	ui.Text(c, trf(c, "detail.raw.kind", "kind", t.Kind)).Selectable()
-	ui.Text(c, trf(c, "detail.raw.run_id", "id", text(t.RunId))).Selectable()
-	if t.Exit != nil {
-		kvview(c, "kv-exit", t.Exit)
-	}
 }
 
 func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
@@ -111,9 +101,6 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 		values := []string{item.CaseId, stateLabel(item.State), optionalText(item.Category), caseQuality(item), formatDurationMs(item.DurationMs), caseErrorCategory(item)}
 		ui.Text(c, values[col]).Selectable()
 	}).Height(240).Label(tableLabel)
-	componentFoldKeyed(c, "detail-raw-progress", tr(c, "detail.raw_fields_fold"), func() {
-		ui.Text(c, trf(c, "detail.raw.progress_line", "phase", optionalText(p.Phase), "seq", p.LastSeq, "case_id", text(p.CurrentCaseId))).Selectable()
-	})
 }
 
 func progressHeadline(p *core.RunProgress) string {

@@ -37,13 +37,6 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 			ui.Text(c, trf(c, "dashboard.history.stop_reason", "reason", stopReasonLabel(*r.StopReason)))
 		}
 		ui.Text(c, trf(c, "dashboard.history.score_line", "score", runScore(r)))
-		componentFold(c, tr(c, "dashboard.history.raw_fold"), func() {
-			ui.Text(c, trf(c, "dashboard.history.timestamps", "start", formatTimestampOrMissingUTC(r.StartedAt), "end", formatTimestampOrMissingUTC(r.FinishedAt))).Selectable()
-			if r.StopReason != nil {
-				ui.Text(c, trf(c, "dashboard.history.raw_stop_reason", "reason", *r.StopReason)).Selectable()
-			}
-			ui.Text(c, trf(c, "dashboard.history.relation", "relation", text(r.Relation), "parent", text(r.ParentRunId))).Selectable()
-		})
 		ui.Row(c).Wrap().Gap(tokens(c).Density.CardGap).Children(func() {
 			button(c, tr(c, "dashboard.history.open_task")).OnClick(func() {
 				s.detailID = ""
@@ -260,13 +253,6 @@ func historyStarted(r core.RunSummary) string {
 		return l10n.TR("dashboard.history.unrecorded")
 	}
 	return formatTimestamp(raw)
-}
-
-func formatTimestampOrMissingUTC(p *string) string {
-	if p == nil || *p == "" {
-		return l10n.TR("detail.missing_value")
-	}
-	return formatTimestampUTC(*p)
 }
 
 func (s *viewState) historyIdentity(c *ui.Context, r core.RunSummary) {

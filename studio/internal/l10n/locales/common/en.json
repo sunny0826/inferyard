@@ -113,7 +113,6 @@
   "common.table.no_match_desc": "No records match the current filters. Adjust your filters or clear them.",
   "common.table.total_count": "Total: {count}",
   "common.table.filtered_count": "Filtered: {filtered} / {total}",
-  "common.task.details": "Task Details",
   "common.task.download_activity": "Download task activity",
   "common.task.queued": "Queued",
   "common.task.prep.awaiting_service": "Waiting for LM Studio",

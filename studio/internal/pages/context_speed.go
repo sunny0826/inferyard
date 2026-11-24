@@ -130,9 +130,6 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 		{Value: inferyard.ContextSpeed256K, Label: "256k"},
 	})
 	ui.Text(c, trf(c, "speed.select.spec_summary", "bundle", inferyard.ContextSpeedBundleID, "samples", inferyard.ContextSpeedSamples))
-	componentFold(c, tr(c, "speed.select.conditions_title"), func() {
-		ui.Text(c, tr(c, "speed.select.conditions_body"))
-	})
 	reason := s.speedStartBlockReason()
 	if engineLocked(s.engineState.State) {
 		if s.destructiveDialog(c, destructiveOption{
