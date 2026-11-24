@@ -338,7 +338,7 @@ func (s *viewState) starterPrimaryCTA(c *ui.Context, st *downloadsUIState, chose
 			s.startStarterOption(chosen, navigateToDownloads)
 		}
 	default:
-		engineInstalled := s.isEngineFamilyInstalled("llama-cpp")
+		engineInstalled := s.isStarterEngineInstalled(chosen)
 		modelInstalled := s.isStarterModelInstalled(chosen)
 		if engineInstalled && modelInstalled {
 			button(c, "已就绪").Disabled(true)

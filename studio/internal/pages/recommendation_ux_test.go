@@ -401,4 +401,87 @@ func TestRecommendationReviewRegressions(t *testing.T) {
 			t.Fatalf("expected summary to omit workspace disk when models_disk_free_bytes is missing, got %q", summary)
 		}
 	})
+
+	// 6. Installed CPU-only llama.cpp build must not mark a recommended CUDA build as ready
+	t.Run("cpu_llama_cpp_does_not_block_recommended_cuda_engine", func(t *testing.T) {
+		s := testState()
+		s.selected = "device"
+		s.device.Snapshot = json.RawMessage(`{
+			"hardware": {"platform": "Windows", "memory_total_bytes": 17179869184, "disk_free_bytes": 88046829568},
+			"starter_recommendation": {
+				"definition": "starter-recommendation.v1",
+				"status": "recommended",
+				"engine": "llama-cpp",
+				"backend": "cuda",
+				"model_id": "model-qwen3-4b-q4km",
+				"model_title": "Qwen3-4B-Q4_K_M（GGUF）",
+				"model_format": "gguf",
+				"fit_level": "fits",
+				"tier": "best",
+				"recommended_context": 8192,
+				"estimated_download_bytes": 2497280256,
+				"estimated_ram_bytes": 6442450944,
+				"reason": "fallback_llama_cpp_insufficient_vram_for_polystrata"
+			}
+		}`)
+		s.registry.Engines = []core.EngineAsset{{Name: "llama-cpu", Family: "llama-cpp", Path: "C:\\engines\\cpu\\llama-server.exe"}}
+		s.checks = core.EngineCheckOverview{
+			Supported: true,
+			Engines: map[string]core.EngineEligibility{
+				"llama-cpu": {State: core.EngineCheckEligible, Mode: "cpu", Modes: map[string]bool{"cpu": true, "metal": false}},
+			},
+		}
+		s.registry.Models = []core.ModelAsset{{Name: "Qwen3-4B-Q4_K_M.gguf", Format: "gguf", Available: true}}
+		stub := &resolvePreviewStub{}
+		s.preview = stub
+		st := s.ensureDownloadsUI()
+		st.hostPlatform = "windows/amd64"
+
+		tt := ui.NewTester(s.deviceView, 1120, 1800)
+		tt.SetPreferences(ui.Preferences{ReduceMotion: true})
+		tt.Frame()
+
+		if tt.HasText("已就绪") || !tt.HasText("下载推荐引擎") {
+			t.Fatalf("expected 下载推荐引擎 when only CPU llama.cpp is installed for CUDA recommendation: %v", tt.Texts())
+		}
+		click(t, tt, "下载推荐引擎")
+		if len(stub.intents) != 1 || stub.intents[0].(previewDownload).kind != "engine" {
+			t.Fatalf("expected 1 engine download intent, got %#v", stub.intents)
+		}
+	})
+
+	// 7. Reusing the same PolyStrata config path for another quantization must not mark the old quant ready
+	t.Run("reused_polystrata_config_path_clears_old_quant_ready_state", func(t *testing.T) {
+		s := testState()
+		s.selected = "downloads"
+		s.device.Snapshot = json.RawMessage(testRichRecommendationSnapshot)
+		cfgPath := "/tmp/engines/polystrata/strata-qwen36.json"
+		s.registry.Engines = []core.EngineAsset{{Name: "PolyStrata · local", Family: "polystrata"}}
+		s.registry.Models = []core.ModelAsset{{
+			Name:         "strata-qwen36.json",
+			Format:       "strata_pack",
+			Path:         cfgPath,
+			Available:    true,
+			CoveredPaths: []string{"/tmp/polystrata-data/models/Qwen3.6-35B-A3B-UD-Q3_K_M.gguf"},
+		}}
+		s.downloads = []core.DownloadTask{{
+			TaskId:          "ps-q4-old",
+			Kind:            "polystrata",
+			DisplayName:     "PolyStrata · qwen36 · UD-Q4_K_M",
+			State:           "done",
+			ModelConfigPath: &cfgPath,
+		}}
+		st := s.ensureDownloadsUI()
+		st.hostPlatform = "darwin/arm64"
+		s.setStarterPanelExpanded(true)
+
+		tt := ui.NewTester(s.downloadsPageView, 1120, 2600)
+		tt.SetPreferences(ui.Preferences{ReduceMotion: true})
+		tt.Frame()
+
+		opts := starterOptions(s.starterRecommendation())
+		if s.isStarterOptionInstalled(opts[0]) || tt.HasText("已就绪") || !tt.HasText("安装所选 PolyStrata 模型") {
+			t.Fatalf("old Q4 quant must not be treated as ready when config path now points to Q3: %v", tt.Texts())
+		}
+	})
 }
