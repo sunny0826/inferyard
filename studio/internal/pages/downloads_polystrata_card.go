@@ -163,18 +163,28 @@ func (s *viewState) polystrataDownloadTaskCard(c *ui.Context, task core.Download
 
 	active := task.State == "downloading" && !hasByteProgress && !hasPercent
 	color := downloadStateColor(c, task.State)
+	pendingHere := s.pendingDestructive.kind == string(destructiveCancelDownload) && s.pendingDestructive.id == task.TaskId
+	var headerRight func()
+	if task.State == "downloading" || pendingHere {
+		headerRight = func() { s.polystrataInstallHeaderAction(c, task) }
+	}
+	var actions func()
+	if task.State == "done" || task.State == "failed" || task.State == "cancelled" {
+		actions = func() { s.polystrataDownloadActions(c, task) }
+	}
 	ui.Column(c.Key(task.TaskId)).Children(func() {
 		taskCard(c, taskCardOptions{
 			kind: "PolyStrata 引导安装", name: downloadDisplayName(task), state: polystrataStateLabel(task.State), color: color,
-			active:  active,
-			metrics: metrics,
+			active:      active,
+			metrics:     metrics,
+			headerRight: headerRight,
 			notice: func() {
 				if task.State == "downloading" {
 					phaseProgress(c, phaseProgressOptions{
 						Labels:   polystrataPhaseLabels,
 						Current:  polystrataPhaseIndex(task),
 						RowLabel: "PolyStrata 安装阶段",
-						BarLabel: "安装阶段进度",
+						HideBar:  true,
 					})
 					if hasPercent {
 						ratio := math.Max(0, math.Min(1, *task.Percent/100))
@@ -191,38 +201,18 @@ func (s *viewState) polystrataDownloadTaskCard(c *ui.Context, task core.Download
 					ui.Text(c, strings.TrimSpace(*task.Detail)).SingleLine().FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 				}
 				if task.LogPath != nil && strings.TrimSpace(*task.LogPath) != "" {
-					logPath := strings.TrimSpace(*task.LogPath)
-					componentFoldKeyed(c, "polystrata-live-log-"+task.TaskId, "查看安装日志", func() {
-						s.renderDownloadLogTail(c, task.TaskId, logPath)
-					})
+					s.polystrataInstallLogSection(c, task.TaskId, strings.TrimSpace(*task.LogPath))
 				}
 				s.downloadErrorView(c, task.Error)
 				s.polystrataRuntimeProxyGuidance(c, task)
 			},
-			actions: func() { s.polystrataDownloadActions(c, task) },
-			details: func() { s.downloadDetails(c, task) },
+			actions: actions,
 		})
 	})
 }
 
 func (s *viewState) polystrataDownloadActions(c *ui.Context, task core.DownloadTask) {
 	t := tokens(c)
-	pendingHere := s.pendingDestructive.kind == string(destructiveCancelDownload) && s.pendingDestructive.id == task.TaskId
-	if task.State == "downloading" || pendingHere {
-		if s.destructiveAction(c, destructiveOption{
-			kind: destructiveCancelDownload, id: task.TaskId, label: "取消安装", confirmLabel: "确认取消安装",
-			prompt:   "取消本次安装？已下载文件将保留。",
-			disabled: s.busy,
-		}) {
-			if s.simulate(previewCancelDownload{id: task.TaskId}) {
-				return
-			}
-			s.workDownload(func() (string, *core.ApiError) {
-				_, e := s.service.CancelDownload(task.TaskId)
-				return "已请求取消安装", e
-			})
-		}
-	}
 	if task.State == "done" {
 		if primaryButton(c, "前往开始测评").Disabled(s.busy).Clicked() {
 			s.startBenchmarkFromPolystrataTask(task)
@@ -397,18 +387,4 @@ func (s *viewState) openPolystrataRecoveryDrawer(task core.DownloadTask) {
 		}
 	}
 	s.openPolystrataConfigDrawer(fam.ID, rel.ID, build.Platform, build.ID)
-}
-
-func (s *viewState) renderDownloadLogTail(c *ui.Context, taskID, logPath string) {
-	var snippet string
-	if s.preview != nil {
-		snippet = s.preview.downloadLogTail(taskID)
-	} else {
-		snippet = readLogTail(logPath, 4096)
-	}
-	if snippet == "" {
-		ui.Text(c, "暂无可显示的日志内容。").FontSize(tokens(c).Type.Caption).TextColor(tokens(c).Color.FgSecondary)
-		return
-	}
-	ui.Text(c, snippet).Selectable().FontSize(tokens(c).Type.Caption)
 }

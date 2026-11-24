@@ -52,6 +52,12 @@ func destructiveDismissLabel(option destructiveOption) string {
 }
 
 func (s *viewState) destructiveAction(c *ui.Context, option destructiveOption) bool {
+	return s.destructiveActionWithTrigger(c, option, false, func(bool) ui.Element {
+		return dangerButton(c, option.label).AlignSelf(ui.Start).Disabled(option.disabled)
+	})
+}
+
+func (s *viewState) destructiveActionWithTrigger(c *ui.Context, option destructiveOption, alignRight bool, renderTrigger func(open bool) ui.Element) bool {
 	t := tokens(c)
 	request := destructiveRequest{kind: string(option.kind), id: option.id}
 	if option.kind == destructiveStopEngine {
@@ -59,17 +65,21 @@ func (s *viewState) destructiveAction(c *ui.Context, option destructiveOption) b
 		s.dropStaleStopPrompt()
 	}
 	c.Key("popconfirm-" + string(option.kind) + "-" + option.id)
-	trigger := dangerButton(c, option.label).AlignSelf(ui.Start).Disabled(option.disabled)
+	open := s.pendingDestructive == request
+	trigger := renderTrigger(open)
 	if trigger.Clicked() {
 		if s.pendingDestructive == request {
 			s.pendingDestructive = destructiveRequest{}
 		} else {
 			s.pendingDestructive = request
 		}
+		open = s.pendingDestructive == request
 	}
-	open := s.pendingDestructive == request
 	confirmed := false
 	components.Popover(c, trigger, &open, func(panel ui.Element) {
+		if alignRight {
+			panel.AttachTo(trigger, ui.AnchorBottomRight, ui.AnchorTopRight)
+		}
 		panel.Width(c.Theme().Space(78)).MaxWidthPercent(100).Label(option.confirmLabel)
 		panel.Children(func() {
 			ui.Column(c).Gap(t.Density.Row).Children(func() {

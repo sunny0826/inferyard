@@ -254,7 +254,41 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 	}
 }
 
+func (p *previewSession) tickPolystrataModelPreview(id string) {
+	p.after("download/"+id, time.Second, func() {
+		s := p.state
+		for i := range s.downloads {
+			task := &s.downloads[i]
+			if task.TaskId != id || task.State != "downloading" {
+				continue
+			}
+			delta := int64(22502441)
+			if task.TotalBytes != nil && *task.TotalBytes > 0 {
+				if task.DownloadedBytes+delta >= *task.TotalBytes {
+					task.DownloadedBytes = 4456028569
+				} else {
+					task.DownloadedBytes += delta
+				}
+			}
+			p.tickPolystrataModelPreview(id)
+			return
+		}
+	})
+}
+
 func (p *previewSession) downloadLogTail(taskID string) string {
+	if taskID == "preview-polystrata-model-live" {
+		return strings.Join([]string{
+			"07:31:02 [1/4 preflight] Apple Silicon · Xcode CLT / CMake 3.31 就绪",
+			"07:31:04 [1/4 preflight] 磁盘可用 218.4 GiB >= 需要 42.0 GiB",
+			"07:31:05 [2/4 runtime] 下载 PolyStrata v0.1.45-poly.10 运行时归档",
+			"07:31:18 [2/4 runtime] 解压并校验 SHA-256 完成",
+			"07:31:19 [3/4 setup_engine] 构建 Metal 推理后端（ninja -j10）",
+			"07:33:41 [3/4 setup_engine] polystrata-server 构建就绪",
+			"07:33:42 [4/4 download] 拉取模型分片（2 个文件，共 35.04 GiB）",
+			"07:36:35 [download] Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf 4.15 / 35.04 GiB (21.46 MiB/s)",
+		}, "\n")
+	}
 	return "[preview] setup_engine: building strata runtime\n[preview] downloading_model: waiting for weights"
 }
 

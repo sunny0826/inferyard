@@ -108,7 +108,7 @@ func TestPreviewScenesAllLoadAndSaveSettingsPreservesProxy(t *testing.T) {
 	tt := previewTester(p, 1120, 2200)
 	for i, scene := range previewScenes {
 		p.loadScene(i)
-		if scene.label != "下载 · 进行中与失败" && scene.label != "下载 · PolyStrata 引导安装" && len(p.state.downloads) != 0 {
+		if scene.label != "下载 · 进行中与失败" && scene.label != "下载 · PolyStrata 引导安装" && scene.label != "下载 · PolyStrata 模型下载" && len(p.state.downloads) != 0 {
 			t.Fatalf("scene %q unexpectedly seeded %d downloads", scene.label, len(p.state.downloads))
 		}
 		p.themeMode = 1
@@ -235,6 +235,34 @@ func TestPreviewPolystrataStarterAndManagedSetup(t *testing.T) {
 	retryID := p.state.downloads[0].TaskId
 	if got := p.polystrataReqs[retryID]; got != origReq {
 		t.Fatalf("preview retry lost original request fields: got %+v want %+v", got, origReq)
+	}
+
+	// Long-running model download preview advances smoothly, shows subtle log, and cancels via merged header button
+	p.loadScene(previewSceneIndex(t, "下载 · PolyStrata 模型下载"))
+	tt.Frame()
+	beforeBytes := p.state.downloads[0].DownloadedBytes
+	for _, want := range []string{"PolyStrata · qwen · Q2_0", "4 / 4", "下载模型", "安装中", "Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf"} {
+		if !tt.HasText(want) {
+			t.Fatalf("missing %q in model download preview scene: %v", want, tt.Texts())
+		}
+	}
+	if tt.HasText("任务详情") {
+		t.Fatalf("PolyStrata model download preview must not show 任务详情: %v", tt.Texts())
+	}
+	p.advance(2 * time.Second)
+	tt.Frame()
+	if p.state.downloads[0].DownloadedBytes <= beforeBytes {
+		t.Fatalf("expected preview model download bytes to advance: before=%d after=%d", beforeBytes, p.state.downloads[0].DownloadedBytes)
+	}
+	click(t, tt, "查看安装日志")
+	if !tt.HasText("polystrata-server 构建就绪") {
+		t.Fatalf("expected simulated PolyStrata install log lines: %v", tt.Texts())
+	}
+	click(t, tt, "取消安装")
+	click(t, tt, "确认取消安装")
+	tt.Frame()
+	if p.state.downloads[0].State != "cancelled" || !tt.HasText("继续安装") {
+		t.Fatalf("expected cancelled state and 继续安装 action after confirming header cancel: state=%q texts=%v", p.state.downloads[0].State, tt.Texts())
 	}
 }
 

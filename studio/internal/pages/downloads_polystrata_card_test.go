@@ -45,16 +45,22 @@ func TestPolystrataTaskCardPhaseBarCompactDetailAndTopLevelLog(t *testing.T) {
 	if _, ok := tt.Find("PolyStrata 安装阶段"); !ok {
 		t.Fatalf("missing phaseProgress row label: %v", tt.Texts())
 	}
-	if _, ok := tt.Find("安装阶段进度"); !ok {
-		t.Fatalf("missing phaseProgress bar label: %v", tt.Texts())
+	if _, ok := tt.Find("安装阶段进度"); ok {
+		t.Fatalf("stage progress bar should be hidden on PolyStrata card: %v", tt.Texts())
+	}
+	if tt.HasText("任务详情") {
+		t.Fatalf("PolyStrata card must not render 任务详情 fold: %v", tt.Texts())
 	}
 	// Long detail must be rendered as compact single-line caption, never promoted to metric tile "当前".
 	if tt.HasText("当前") {
 		t.Fatalf("detail must not render in giant metric tile: %v", tt.Texts())
 	}
 
-	if !tt.HasText("安装中") || !tt.HasText("取消安装") {
-		t.Fatalf("expected install-oriented status and cancel label on active PolyStrata card: %v", tt.Texts())
+	if !tt.HasText("安装中") {
+		t.Fatalf("expected install-oriented status on merged header button: %v", tt.Texts())
+	}
+	if _, ok := tt.Find("取消安装"); !ok {
+		t.Fatalf("expected merged header button to expose 取消安装 action: %v", tt.Texts())
 	}
 	if tt.HasText("下载中") || tt.HasText("取消下载") {
 		t.Fatalf("active PolyStrata card must not use download-oriented labels: %v", tt.Texts())
@@ -64,10 +70,9 @@ func TestPolystrataTaskCardPhaseBarCompactDetailAndTopLevelLog(t *testing.T) {
 	if !tt.HasText("[50%] Linking CXX executable") {
 		t.Fatalf("expected top-level install log content: %v", tt.Texts())
 	}
-
-	click(t, tt, "任务详情")
-	if !tt.HasText("已下载 536870912 / 1073741824 bytes") || tt.HasText("文件：—") {
-		t.Fatalf("unexpected PolyStrata details during model download: %v", tt.Texts())
+	click(t, tt, "复制安装日志")
+	if got := tt.Clipboard(); got != "pip install numpy\n[50%] Linking CXX executable" {
+		t.Fatalf("unexpected copied install log: %q", got)
 	}
 
 	// Stage transition to verifying_installation updates UI without stalling at done.
@@ -80,9 +85,6 @@ func TestPolystrataTaskCardPhaseBarCompactDetailAndTopLevelLog(t *testing.T) {
 	tt.Frame()
 	if !tt.HasText("核验安装") || !tt.HasText("注册并核验引擎安装") {
 		t.Fatalf("expected verifying_installation stage and detail: %v", tt.Texts())
-	}
-	if tt.HasText("文件：—") || tt.HasText("已下载 0 bytes") {
-		t.Fatalf("non-transfer PolyStrata details must hide empty file row and zero bytes noise: %v", tt.Texts())
 	}
 
 	click(t, tt, "取消安装")
@@ -256,5 +258,58 @@ func TestPolystrataTaskCardZeroRoundedAndUnknownTotalProgress(t *testing.T) {
 	wantBytes := formatDownloadBytes(8_400_000)
 	if !tt.HasText("下载模型") || !tt.HasText(wantBytes) || !tt.HasText("next-shard.gguf") {
 		t.Fatalf("expected unknown-total download card with %q and next-shard.gguf, got %v", wantBytes, tt.Texts())
+	}
+}
+
+func TestPolystrataHeaderCancelFlowAndLogToggleEmptyState(t *testing.T) {
+	emptyLog := filepath.Join(t.TempDir(), ".inferyard-setup.log")
+	if err := os.WriteFile(emptyLog, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	stub := &resolvePreviewStub{}
+	s := testState()
+	s.preview = stub
+	s.downloads = []core.DownloadTask{{
+		TaskId:          "ps-cancel-header",
+		Kind:            "polystrata",
+		DisplayName:     "PolyStrata · qwen · Q2_0",
+		State:           "downloading",
+		Stage:           "downloading_model",
+		Step:            ptr(4),
+		StepTotal:       ptr(4),
+		DownloadedBytes: 4 << 30,
+		TotalBytes:      ptr(int64(35 << 30)),
+		OutName:         "polystrata-qwen",
+		LogPath:         ptr(emptyLog),
+	}}
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1120, 2200)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
+	tt.Frame()
+
+	// Toggle empty log open and closed.
+	click(t, tt, "查看安装日志")
+	if !tt.HasText("收起安装日志") || !tt.HasText("暂无可显示的日志内容。") {
+		t.Fatalf("expected expanded empty log state: %v", tt.Texts())
+	}
+	if _, ok := tt.Find("复制安装日志"); ok {
+		t.Fatalf("empty log must not show copy button: %v", tt.Texts())
+	}
+	click(t, tt, "查看安装日志")
+	if tt.HasText("暂无可显示的日志内容。") {
+		t.Fatalf("expected log panel to collapse after second toggle: %v", tt.Texts())
+	}
+
+	// Open cancel popover from merged header button, verify button switches to cancel label, then confirm.
+	click(t, tt, "取消安装")
+	if !tt.HasText("取消安装") || !tt.HasText("确认取消安装") || !tt.HasText("继续安装") {
+		t.Fatalf("expected merged header button and confirm popover: %v", tt.Texts())
+	}
+	click(t, tt, "确认取消安装")
+	if len(stub.intents) != 1 {
+		t.Fatalf("expected 1 cancel intent, got %#v", stub.intents)
+	}
+	cancelIntent, ok := stub.intents[0].(previewCancelDownload)
+	if !ok || cancelIntent.id != "ps-cancel-header" {
+		t.Fatalf("unexpected cancel intent: %#v", stub.intents[0])
 	}
 }
