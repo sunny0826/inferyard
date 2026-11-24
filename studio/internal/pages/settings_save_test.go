@@ -186,8 +186,8 @@ func TestFirstRunDefaultWorkspaceCanSaveAndWorkspaceIsolation(t *testing.T) {
 	}
 
 	// Finding 7: When Effective.ModelsRoot is empty, index-0 extra model root must still be removable.
-	if !isExtraModelRoot("/extra/models", "") {
-		t.Fatal("isExtraModelRoot must treat extra root as removable when primaryRoot is empty")
+	if !s.isExtraModelRootDir("/extra/models", "") {
+		t.Fatal("isExtraModelRootDir must treat extra root as removable when primaryRoot is empty")
 	}
 
 	// Finding 4: Active download in wsA must not mark wsB catalog/retry buttons as downloading.

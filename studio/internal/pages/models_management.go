@@ -66,13 +66,6 @@ func sameModelRoot(a, b string) bool {
 	return errA == nil && errB == nil && ea == eb
 }
 
-func isExtraModelRoot(dir, primaryRoot string) bool {
-	if strings.TrimSpace(primaryRoot) == "" {
-		return true
-	}
-	return !sameModelRoot(dir, primaryRoot)
-}
-
 func (s *viewState) isExtraModelRootDir(dir, primaryRoot string) bool {
 	if strings.TrimSpace(primaryRoot) == "" {
 		return true
