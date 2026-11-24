@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.14
+
+- chore(studio): remove unused isExtraModelRoot helper and TASKS.md (#219)
+- test(studio): align e2e, ui tests, and docs with unified workspace directory
+- refactor(studio-ui): expose only workspace directory in settings and allow in-place init
+- refactor(studio-core): unify workspace directory derivation and remove legacy path settings
+- fix(polystrata): rebind cross-install worker configs and align macOS SMC safety ceiling (#218)
+
 ## 0.0.13
 
 - docs: document animated SVG report showcase in Studio and READMEs
