@@ -5,7 +5,11 @@ on:
     - cron: "13 3 * * *"
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 env:
+  MISE_DISABLE_TOOLS: go
   MODEL_URL: https://huggingface.co/unsloth/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf
   ENGINE_BASE: https://github.com/PrismML-Eng/llama.cpp/releases/download/prism-b10743-adfffbe
 defaults:
@@ -15,6 +19,7 @@ jobs:
   e2e:
     name: e2e (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -24,6 +29,15 @@ jobs:
         with:
           persist-credentials: false
       - uses: jdx/mise-action@v5.2.4
+      - name: Cache uv
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/uv
+            ~/AppData/Local/uv/cache
+          key: uv-${{ runner.os }}-${{ hashFiles('cli/uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
       - run: mise exec -- uv sync --frozen
       - name: Select engine archive
         shell: bash
@@ -73,3 +87,4 @@ jobs:
           name: model-e2e-${{ matrix.os }}
           path: cli/e2e-output
           if-no-files-found: warn
+          retention-days: 7

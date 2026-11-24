@@ -80,7 +80,7 @@ func (s *viewState) destructiveActionWithTrigger(c *ui.Context, option destructi
 		if alignRight {
 			panel.AttachTo(trigger, ui.AnchorBottomRight, ui.AnchorTopRight)
 		}
-		panel.Width(c.Theme().Space(78)).MaxWidthPercent(100).Label(option.confirmLabel)
+		panel.Width(c.Theme().Space(78)).MaxWidthPercent(100).Label(option.prompt)
 		panel.Children(func() {
 			ui.Column(c).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, option.prompt)

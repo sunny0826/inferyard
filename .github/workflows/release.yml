@@ -14,9 +14,13 @@ on:
         type: boolean
         default: false
 permissions: {}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   metadata:
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     permissions:
       contents: read
     outputs:
@@ -28,7 +32,11 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: jdx/mise-action@v5.2.4
+          sparse-checkout: |
+            cli/pyproject.toml
+            cli/src/inferyard/__init__.py
+            studio/mygo.config.ts
+          sparse-checkout-cone-mode: false
       - name: Read and validate CLI and Studio versions
         id: version
         shell: bash
@@ -38,7 +46,7 @@ jobs:
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
         run: |
-          mise exec -- python -c '
+          python3 -c '
           import os, re, tomllib
           from pathlib import Path
           cli_version = tomllib.loads(Path("cli/pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
@@ -79,8 +87,11 @@ jobs:
   cli:
     needs: metadata
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     permissions:
       contents: read
+    env:
+      MISE_DISABLE_TOOLS: go
     defaults:
       run:
         working-directory: cli
@@ -89,10 +100,17 @@ jobs:
         with:
           persist-credentials: false
       - uses: jdx/mise-action@v5.2.4
+      - name: Cache uv
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('cli/uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
       - run: mise exec -- uv sync --frozen
-      - run: mise exec -- uv run --frozen pytest -n auto -q
       - run: mise exec -- uv run --frozen ruff check src tests scripts
       - run: mise exec -- uv run --frozen python scripts/export_schemas.py --check
+      - run: mise exec -- uv run --frozen pytest -n auto -q
       - name: Build CLI wheel and sdist
         run: mise exec -- uv build --out-dir dist/cli
       - name: Smoke-test installed wheel in a clean environment
@@ -128,10 +146,12 @@ jobs:
     name: Studio (${{ matrix.target }})
     needs: metadata
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     permissions:
       contents: read
     env:
       CGO_ENABLED: "0"
+      MISE_DISABLE_TOOLS: uv
     defaults:
       run:
         working-directory: studio
@@ -150,6 +170,17 @@ jobs:
         with:
           persist-credentials: false
       - uses: jdx/mise-action@v5.2.4
+      - name: Cache Go modules and build cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/Library/Caches/go-build
+            ~/AppData/Local/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('studio/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-
       - name: Check release packaging and debug exclusion
         shell: bash
         run: |
@@ -281,6 +312,7 @@ jobs:
     needs: [metadata, cli, studio]
     if: needs.metadata.outputs.allow_release == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     environment: github-release
     permissions:
       contents: write
@@ -391,6 +423,7 @@ jobs:
       (needs.metadata.outputs.is_tag_push == 'true' ||
         (github.event_name == 'workflow_dispatch' && inputs.publish_pypi == true && inputs.draft != true))
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     environment:
       name: pypi
       url: https://pypi.org/p/inferyard
