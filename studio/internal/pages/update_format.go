@@ -2,16 +2,13 @@ package pages
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
-	"unicode/utf8"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 )
-
-var releaseHTMLCommentRe = regexp.MustCompile(`(?s)<!--.*?-->`)
 
 func updateBadgePresentation(st core.UpdateState) (label string, kind stateKind, icon func() *ui.SVG, animated bool) {
 	switch st.State {
@@ -133,31 +130,32 @@ func formatUpdateWorkloadWarning(w core.UpdateActiveWorkloads) string {
 	return "当前有 " + strings.Join(parts, "和 ") + "正在运行，安装更新前需先中止。"
 }
 
-func summarizeReleaseNotes(notes string) string {
-	cleaned := releaseHTMLCommentRe.ReplaceAllString(notes, "")
-	lines := strings.Split(strings.ReplaceAll(cleaned, "\r\n", "\n"), "\n")
-	out := make([]string, 0, 12)
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" {
-			continue
-		}
-		out = append(out, trimmed)
-		if len(out) >= 12 {
-			break
-		}
+func updateReleaseURL(rel *core.UpdateRelease) string {
+	if rel == nil {
+		return ""
 	}
-	if len(out) == 0 {
-		return "暂无发布说明。"
+	raw := strings.TrimSpace(rel.ReleaseURL)
+	if strings.HasPrefix(raw, "https://") {
+		return raw
 	}
-	summary := strings.Join(out, "\n")
-	if len(lines) > len(out) {
-		summary += "\n…"
+	return ""
+}
+
+func updateChangelogURL(st core.UpdateState) string {
+	if releaseURL := updateReleaseURL(st.Release); releaseURL != "" {
+		return releaseURL
 	}
-	const maxRunes = 600
-	if utf8.RuneCountInString(summary) > maxRunes {
-		runes := []rune(summary)
-		return string(runes[:maxRunes-1]) + "…"
+	return core.DefaultReleasesURL
+}
+
+func formatReleasePublishedDate(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
 	}
-	return summary
+	parsed, err := time.Parse(time.RFC3339, trimmed)
+	if err != nil {
+		return ""
+	}
+	return parsed.UTC().Format("2006-01-02")
 }
