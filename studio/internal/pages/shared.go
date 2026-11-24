@@ -168,12 +168,6 @@ func (s *viewState) historyRuns() []core.RunSummary {
 	}
 	return runs
 }
-func number[T ~int64 | ~float64](v *T) string {
-	if v == nil {
-		return l10n.TR("common.missing")
-	}
-	return fmt.Sprint(*v)
-}
 
 func formatRate(v float64) string {
 	switch {

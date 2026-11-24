@@ -8,6 +8,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func chartSample(seq int64, metric, source string, seconds int, value *float64) core.ResourceSample {
@@ -73,3 +74,105 @@ func TestResourceLineDataPreservesSourceGapsAndUnits(t *testing.T) {
 		t.Fatal("missing / non-finite point accepted")
 	}
 }
+
+func TestResourceViewFormatsValuesToTwoDecimalsAndReadableDates(t *testing.T) {
+	oldLocal := time.Local
+	time.Local = time.FixedZone("UTC+8", 8*3600)
+	t.Cleanup(func() { time.Local = oldLocal })
+
+	samples := []core.ResourceSample{
+		{
+			Source: core.ResourceSource{Metric: "system_mem_available", Name: "fixture:available", Unit: "bytes", ClockID: "clock", Collector: "fixture"},
+			Utc:    "2026-10-20T09:21:05.571234Z", Seq: 1, ReadStartedNs: 1e9, ReadFinishedNs: 1e9 + 1e6,
+			Value: ptr(3250585600.0), // 3.02734375 GiB -> 3.03 GiB
+		},
+		{
+			Source: core.ResourceSource{Metric: "service_rss", Name: "fixture:rss", Unit: "bytes", ClockID: "clock", Collector: "fixture"},
+			Utc:    "2026-10-20T09:21:05.571234Z", Seq: 2, ReadStartedNs: 1e9, ReadFinishedNs: 1e9 + 1e6,
+			Value: ptr(1932735283.2), // 1.800000000... GiB -> 1.80 GiB
+		},
+		{
+			Source: core.ResourceSource{Metric: "service_cpu_percent", Name: "fixture:cpu", Unit: "%", ClockID: "clock", Collector: "fixture"},
+			Utc:    "2026-10-20T09:21:05.571234Z", Seq: 3, ReadStartedNs: 1e9, ReadFinishedNs: 1e9 + 1e6,
+			Value: ptr(124.8391029384712), // -> 124.84%
+		},
+		{
+			Source: core.ResourceSource{Metric: "temperature", Name: "AppleSMC:Tp0C", Unit: "celsius", ClockID: "clock", Collector: "fixture"},
+			Utc:    "2026-10-20T09:21:05.571234Z", Seq: 4, ReadStartedNs: 1e9, ReadFinishedNs: 1e9 + 1e6,
+			Value: ptr(54.37890625), // -> 54.38 °C
+		},
+		{
+			Source: core.ResourceSource{Metric: "temperature", Name: "AppleSMC:Tp0C", Unit: "celsius", ClockID: "clock", Collector: "fixture"},
+			Utc:    "2026-10-20T09:21:06.120000Z", Seq: 5, ReadStartedNs: 2e9, ReadFinishedNs: 2e9 + 1e6,
+			MissingReason: ptr("smc_source_unavailable"),
+		},
+	}
+
+	s := testState()
+	tt := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).Width(1080).Children(func() { s.resourceView(c, samples) })
+	}, 1120, 1400)
+	tt.Frame()
+
+	for _, item := range []struct {
+		plotLabel string
+		wantTip   string
+	}{
+		{"可用内存 GiB曲线", "2026-10-20 17:21:05 · 3.03 GiB"},
+		{"服务 RSS GiB曲线", "2026-10-20 17:21:05 · 1.80 GiB"},
+		{"服务 CPU %曲线", "2026-10-20 17:21:05 · 124.84%"},
+		{"传感器温度 °C曲线", "2026-10-20 17:21:05 · 54.38 °C"},
+	} {
+		r, ok := tt.Find(item.plotLabel)
+		if !ok {
+			t.Fatalf("plot %q not found in %v", item.plotLabel, tt.Texts())
+		}
+		tt.ClickAt(r.X+r.W/2, r.Y+r.H/2)
+		tt.Move(0, 0)
+		tt.Key(0, ui.KeyHome)
+		if !tt.HasText(item.wantTip) {
+			t.Fatalf("plot %q tooltip mismatch: want %q in %v", item.plotLabel, item.wantTip, tt.Texts())
+		}
+	}
+
+	// Missing sample tooltip keeps readable timestamp and omits trailing unit.
+	tt.Key(0, ui.KeyRight)
+	if !tt.HasText("2026-10-20 17:21:06 · 缺测：smc_source_unavailable") {
+		t.Fatalf("missing sample tooltip mismatch: %v", tt.Texts())
+	}
+
+	click(t, tt, "原始采样数值")
+	tt.Frame()
+	for _, want := range []string{"时间", "2026-10-20 17:21:05", "3.03", "1.80", "GiB", "124.84", "%", "54.38", "°C", "缺测", "smc_source_unavailable"} {
+		if !tt.HasText(want) {
+			t.Fatalf("sample table missing %q in %v", want, tt.Texts())
+		}
+	}
+	for _, unwanted := range []string{"2026-10-20T09:21:05Z", "54.37890625", "124.8391029384712", "3250585600", "celsius", "bytes", "UTC"} {
+		if tt.HasText(unwanted) {
+			t.Fatalf("sample table still shows raw unformatted text %q in %v", unwanted, tt.Texts())
+		}
+	}
+	if v, u := formatResourceSample(nil, core.ResourceSample{
+		Source: core.ResourceSource{Metric: "temperature", Unit: "celsius"},
+		Value:  ptr(-0.001),
+	}); v != "0.00" || u != "°C" {
+		t.Fatalf("negative near-zero sample formatted as %q %q, want 0.00 °C", v, u)
+	}
+
+	restoreEn := l10n.SetTestLocale(l10n.LanguageEn)
+	defer restoreEn()
+	ttEn := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).Width(1080).Children(func() { s.resourceView(c, samples) })
+	}, 1120, 1400)
+	ttEn.SetLocale(l10n.LanguageEn)
+	ttEn.Frame()
+	click(t, ttEn, "Raw Sample Values")
+	ttEn.Frame()
+	for _, want := range []string{"Time", "Missing", "2026-10-20 17:21:05", "54.38", "°C"} {
+		if !ttEn.HasText(want) {
+			t.Fatalf("english sample table missing %q in %v", want, ttEn.Texts())
+		}
+	}
+}
+
