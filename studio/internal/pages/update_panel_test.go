@@ -62,7 +62,7 @@ func TestUpdateDialogActionsActiveWorkloadWarningAndFallback(t *testing.T) {
 
 	tt := ui.NewTester(s.contentView, 1120, 800)
 	tt.Frame()
-	if !tt.HasText("v0.0.8 → v0.10.0") || !tt.HasText("v0.10.0 更新日志") || !tt.HasText("前往 Release") {
+	if !tt.HasText("v0.0.8 → v0.10.0") || !tt.HasText("v0.10.0 更新日志") || !tt.HasText("2026-11-24") || !tt.HasText("前往 Release") {
 		t.Fatalf("unexpected dialog content: %v", tt.Texts())
 	}
 	for _, rawNote := range []string{"Highlights", "one-click update", "comment"} {
