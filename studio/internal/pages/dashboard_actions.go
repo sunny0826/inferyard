@@ -403,12 +403,6 @@ func prepareEnvironmentSteps(ctx context.Context, readiness func() core.Readines
 	if r.CLI.Status != "ok" {
 		return core.Err("cli_unavailable")
 	}
-	if !r.Results.Exists || !r.Models.Exists {
-		if e := provision(); e != nil {
-			return e
-		}
-		r = readiness()
-	}
 	if !r.Workspace.Initialized {
 		out := suggestInitDir(emptyText(r.Workspace.Path), r.Workspace.Exists, r.Workspace.Initialized)
 		if pathError(out) != "" {
@@ -420,6 +414,12 @@ func prepareEnvironmentSteps(ctx context.Context, readiness func() core.Readines
 		}
 		if result.ExitCode != 0 {
 			return wizardFailure(result)
+		}
+		r = readiness()
+	}
+	if !r.Results.Exists || !r.Models.Exists {
+		if e := provision(); e != nil {
+			return e
 		}
 		r = readiness()
 	}

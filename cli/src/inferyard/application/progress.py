@@ -11,7 +11,11 @@ def execute(request):
     from inferyard.application.workspace_progress import inspect_workspace
 
     try:
-        details = inspect_workspace(request.workspace)
+        details = inspect_workspace(
+            request.workspace,
+            results_root=request.results_root,
+            reports_root=request.reports_root,
+        )
     except (
         PreparationError,
         ContractError,

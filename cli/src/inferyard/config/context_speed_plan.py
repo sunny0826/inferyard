@@ -51,4 +51,7 @@ def freeze(loaded, destination=None):
             workload[kind] = {"path": name, "sha256": hashlib.sha256(raw).hexdigest()}
         source = root / "preset.json"
         source.write_bytes(json_bytes(experiment))
-        return prepare_plan(source)[0] if destination is None else write_plan(source, destination)
+        origin = loaded.source.parent.resolve() if loaded.source is not None else None
+        if destination is None:
+            return prepare_plan(source, source_directory=origin)[0]
+        return write_plan(source, destination, source_directory=origin)

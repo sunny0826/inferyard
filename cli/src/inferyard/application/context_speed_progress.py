@@ -6,16 +6,23 @@ from inferyard.config.workspace_inputs import latest
 from inferyard.application.context_speed_evidence import read_inputs
 
 
-def update(workspace, result, bundle, bound):
-    from inferyard.application.workspace_progress import command, new_output
+def update(workspace, result, bundle, bound, *, results_root=None):
+    from inferyard.application.workspace_progress import (
+        command,
+        new_output,
+        plan_belongs_to_workspace,
+    )
 
     batches = []
-    results = workspace / "results"
+    results = results_root if results_root is not None else workspace / "results"
+    external_results = results_root is not None and results_root != workspace / "results"
     if results.is_dir():
         for path in results.iterdir():
             if not path.is_dir() or not (path / "batch.json").exists():
                 continue
             plan, loaded = read_frozen_plan(path / "frozen-plan/plan.json")
+            if external_results and not plan_belongs_to_workspace(workspace, plan):
+                continue
             if not any(
                 classify_verified_inputs(plan, item.config.to_dict(), item.bundle.to_dict())
                 for item in loaded.values()
@@ -39,6 +46,8 @@ def update(workspace, result, bundle, bound):
                 if not path.is_dir() or not (path / "plan.json").exists():
                     continue
                 plan, loaded = read_frozen_plan(path / "plan.json")
+                if external_results and not plan_belongs_to_workspace(workspace, plan):
+                    continue
                 if all(
                     classify_verified_inputs(plan, item.config.to_dict(), item.bundle.to_dict())
                     and item.bundle.to_dict() == bundle
@@ -67,7 +76,7 @@ def update(workspace, result, bundle, bound):
                 "--config",
                 bound["config"],
                 "--out",
-                new_output(workspace / "results", "speed-plan"),
+                new_output(results, "speed-plan"),
             ),
         )
     elif result["next_action"] == "prepare_candidate":

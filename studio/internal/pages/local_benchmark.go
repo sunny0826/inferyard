@@ -16,7 +16,12 @@ func prepareLocalCombination(ctx context.Context, service *core.Service, request
 		return startChainResult{}, failure
 	}
 	settings := service.Settings()
-	result := startChainResult{localCandidates: candidates, localRequest: &request, workspace: emptyText(settings.Effective.WorkspaceRoot)}
+	result := startChainResult{
+		localCandidates: candidates,
+		localRequest:    &request,
+		workspace:       emptyText(settings.Effective.WorkspaceRoot),
+		reportsRoot:     emptyText(settings.Effective.ReportsRoot),
+	}
 	if len(candidates) == 0 {
 		return result, core.Err("candidate_mismatch")
 	}
@@ -124,7 +129,7 @@ func runLocalBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result
 		}
 		paths = append(paths, path)
 	}
-	return finishBenchmarkReport(ctx, backend, result.workspace, names, paths, announce, report)
+	return finishBenchmarkReport(ctx, backend, result.workspace, result.reportsRoot, names, paths, announce, report)
 }
 
 func causeRank(e *core.ApiError) int {

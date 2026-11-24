@@ -67,10 +67,10 @@ def bindings(workspace):
     return records
 
 
-def run_records(workspace):
+def run_records(workspace, results_root=None):
     from inferyard.analysis.ledger import read_trial
 
-    root = workspace / "results"
+    root = results_root if results_root is not None else workspace / "results"
     if not root.exists():
         return []
     if not root.is_dir():
@@ -103,12 +103,13 @@ def run_records(workspace):
     return records
 
 
-def report_state(workspace, completed):
+def report_state(workspace, completed, reports_root=None):
     from inferyard.evidence.source_locations import resolve_source
     from inferyard.reporting.studio_report import read_studio_report
 
+    root = reports_root if reports_root is not None else workspace / "reports"
     matching = []
-    for marker in artifact_paths(workspace / "reports", "studio.json"):
+    for marker in artifact_paths(root, "studio.json"):
         saved = read_studio_report(marker.parent)
         paths = [str(resolve_source(marker.parent, run["source"]["path"])) for run in saved["runs"]]
         if set(completed).issubset(paths) and completed:
@@ -185,7 +186,55 @@ def resume_command(path, data, bound):
     )
 
 
-def bundle_state(workspace, name, bundle_path, preflight, candidate_records, bound_records, runs):
+def _path_in_workspace(workspace, raw):
+    if not isinstance(raw, str) or not raw:
+        return False
+    candidate = Path(raw)
+    if not candidate.is_absolute():
+        return False
+    try:
+        return candidate.resolve().is_relative_to(workspace)
+    except OSError:
+        return False
+
+
+def plan_belongs_to_workspace(workspace, plan):
+    bindings = plan.get("runtime_bindings") if isinstance(plan, dict) else None
+    if isinstance(bindings, list) and bindings:
+        return any(
+            isinstance(item, dict) and _path_in_workspace(workspace, item.get("source_directory"))
+            for item in bindings
+        )
+    return False
+
+
+def run_belongs_to_workspace(workspace, bundle_path, data):
+    if plan_belongs_to_workspace(workspace, data.get("plan")):
+        return True
+    config = data.get("config")
+    if isinstance(config, dict):
+        bundle_cfg = config.get("bundle")
+        if isinstance(bundle_cfg, dict):
+            raw = bundle_cfg.get("path")
+            if isinstance(raw, str) and raw and Path(raw).is_absolute():
+                try:
+                    resolved = Path(raw).resolve()
+                    return resolved == bundle_path or resolved.is_relative_to(workspace)
+                except OSError:
+                    return False
+    return False
+
+
+def bundle_state(
+    workspace,
+    name,
+    bundle_path,
+    preflight,
+    candidate_records,
+    bound_records,
+    runs,
+    results_root=None,
+):
     bundle = read_json(bundle_path)
     candidate_paths = {
         path: record
@@ -202,10 +251,13 @@ def bundle_state(workspace, name, bundle_path, preflight, candidate_records, bou
     }
     bound_path = latest(bound_paths)
     bound = bound_paths.get(bound_path)
+    external_results = results_root is not None and results_root != workspace / "results"
     matching = [
         (path, data, state)
         for path, data, state in runs
-        if data["bundle"] == bundle and not data["run"]["diagnostic"]
+        if data["bundle"] == bundle
+        and not data["run"]["diagnostic"]
+        and (not external_results or run_belongs_to_workspace(workspace, bundle_path, data))
     ]
     states = [state for _, _, state in matching]
     report_runs = None
@@ -227,8 +279,11 @@ def bundle_state(workspace, name, bundle_path, preflight, candidate_records, bou
         system = report["hardware"]["platform"]
         option = "--runtime-receipt" if system == "Windows" else "--engine"
         variable = "INFERYARD_RUNTIME_RECEIPT" if system == "Windows" else "INFERYARD_ENGINE"
+        create_parts = ["config", "create", "--workspace", workspace, "--bundle", name]
+        if results_root is not None and results_root != workspace / "results":
+            create_parts.extend(["--results", results_root])
         result["next_command"] = (
-            command("config", "create", "--workspace", workspace, "--bundle", name)
+            command(*create_parts)
             + f' {option} "${{{variable}:?Set {variable} to the existing local asset}}" '
             + shlex.join(["--out", str(new_output(workspace / "candidates", name))])
         )
@@ -265,7 +320,7 @@ def bundle_state(workspace, name, bundle_path, preflight, candidate_records, bou
     if name == "zh-context-speed":
         from inferyard.application.context_speed_progress import update
 
-        return update(workspace, result, bundle, bound)
+        return update(workspace, result, bundle, bound, results_root=results_root)
     return result, report_runs
 
 
@@ -273,8 +328,10 @@ def device_command(workspace):
     return command("device-check", "--json", "--out", new_output(workspace / "preflight", "device"))
 
 
-def inspect_workspace(path):
+def inspect_workspace(path, *, results_root=None, reports_root=None):
     workspace = path.resolve(strict=True)
+    results = results_root.resolve() if results_root is not None else workspace / "results"
+    reports = reports_root.resolve() if reports_root is not None else workspace / "reports"
     initialized = preparation(workspace / "preparation.json", "community_init.v1")
     for preflight in preflight_files(workspace):
         report = read_json(preflight)
@@ -287,7 +344,7 @@ def inspect_workspace(path):
             raise PreparationError("workspace_artifact_unreadable")
     preflight = latest_preflight(workspace)
     candidate_records, bound_records = candidates(workspace), bindings(workspace)
-    runs = run_records(workspace)
+    runs = run_records(workspace, results)
     names = initialized["bundles"]
     if (
         type(names) is not list
@@ -303,12 +360,12 @@ def inspect_workspace(path):
         name = item["bundle"]
         bundle_path = (workspace / "bundles" / (name + ".json")).resolve(strict=True)
         state, report_runs = bundle_state(
-            workspace, name, bundle_path, preflight, candidate_records, bound_records, runs
+            workspace, name, bundle_path, preflight, candidate_records, bound_records, runs, results
         )
         bundles.append(state)
         report_sources.extend(report_runs or ())
     completed = report_sources if all(b["phase"] == "run_complete" for b in bundles) else []
-    report = report_state(workspace, completed)
+    report = report_state(workspace, completed, reports)
     pending = next((bundle for bundle in bundles if bundle["next_action"] != "none"), None)
     if pending:
         action = "run" if pending["next_action"] == "resume" else pending["next_action"]
@@ -316,7 +373,7 @@ def inspect_workspace(path):
     elif report["status"] == "missing":
         action = "report"
         next_command = command(
-            "report", "--runs", *completed, "--out", new_output(workspace / "reports", "summary")
+            "report", "--runs", *completed, "--out", new_output(reports, "summary")
         )
     else:
         action, next_command = "done", None

@@ -19,15 +19,49 @@ type Readiness struct {
 	Models    DirectoryReadiness `json:"models"`
 }
 
+func inferyardBaseDir() (string, bool) {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return "", false
+	}
+	return filepath.Join(home, ".inferyard"), true
+}
+
 func workspaceRoot(u UserSettings) *string {
 	if u.WorkspaceRoot != nil {
 		return u.WorkspaceRoot
 	}
-	home, err := os.UserHomeDir()
-	if err != nil {
+	base, ok := inferyardBaseDir()
+	if !ok {
 		return nil
 	}
-	return ptr(filepath.Join(home, ".inferyard"))
+	return ptr(filepath.Join(base, "workspace"))
+}
+
+func defaultResultsRoot(u UserSettings) *string {
+	if u.ResultsRoot != nil {
+		return u.ResultsRoot
+	}
+	if base, ok := inferyardBaseDir(); ok {
+		return ptr(filepath.Join(base, "results"))
+	}
+	if w := workspaceRoot(u); w != nil {
+		return ptr(filepath.Join(*w, "results"))
+	}
+	return nil
+}
+
+func defaultModelsRoot(u UserSettings) *string {
+	if u.ModelsRoot != nil {
+		return u.ModelsRoot
+	}
+	if base, ok := inferyardBaseDir(); ok {
+		return ptr(filepath.Join(base, "models"))
+	}
+	if w := workspaceRoot(u); w != nil {
+		return ptr(filepath.Join(*w, "models"))
+	}
+	return nil
 }
 func directoryReadiness(path *string, configured bool) DirectoryReadiness {
 	r := DirectoryReadiness{Path: path, Configured: configured}
@@ -65,14 +99,16 @@ func (s *Service) Provision() (SettingsResponse, *ApiError) {
 	if u.WorkspaceRoot == nil {
 		return SettingsResponse{}, Err("internal_error")
 	}
+	u.ResultsRoot = defaultResultsRoot(u)
 	if u.ResultsRoot == nil {
-		u.ResultsRoot = ptr(filepath.Join(*u.WorkspaceRoot, "results"))
+		return SettingsResponse{}, Err("internal_error")
 	}
+	u.ModelsRoot = defaultModelsRoot(u)
 	if u.ModelsRoot == nil {
-		u.ModelsRoot = ptr(filepath.Join(*u.WorkspaceRoot, "models"))
+		return SettingsResponse{}, Err("internal_error")
 	}
-	for _, path := range []*string{u.WorkspaceRoot, u.ResultsRoot, u.ModelsRoot} {
-		if err := os.MkdirAll(*path, 0700); err != nil {
+	for _, path := range []string{filepath.Dir(*u.WorkspaceRoot), *u.ResultsRoot, *u.ModelsRoot} {
+		if err := os.MkdirAll(path, 0700); err != nil {
 			return SettingsResponse{}, Err("internal_error")
 		}
 	}

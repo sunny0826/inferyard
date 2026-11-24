@@ -8,6 +8,8 @@ def add_commands(commands):
         "progress", help="read onboarding progress without writing files"
     )
     progress.add_argument("--workspace", type=Path, required=True)
+    progress.add_argument("--results", dest="results_root", type=Path)
+    progress.add_argument("--reports", dest="reports_root", type=Path)
     memory = commands.add_parser("memory-check", help="inspect macOS/Windows process memory")
     memory.add_argument("--protect-pid", type=int, action="append", dest="protect_pids")
     memory.add_argument("--out", type=Path, help="save diagnostic JSON to a new directory")
