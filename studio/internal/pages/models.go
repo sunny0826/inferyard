@@ -251,6 +251,27 @@ func (s *viewState) adoptDownloadedEngine() {
 	if s.engine != "" {
 		return
 	}
+	for _, task := range s.downloads {
+		if task.State != "done" || (task.Kind != "polystrata" && task.Kind != "engine") {
+			continue
+		}
+		wantPath := cleanMatchPath(emptyText(task.InstallationPath))
+		if wantPath == "" {
+			wantPath = cleanMatchPath(emptyText(task.EnginePath))
+		}
+		if wantPath == "" {
+			continue
+		}
+		for _, e := range s.registry.Engines {
+			if cleanMatchPath(e.Path) != wantPath {
+				continue
+			}
+			if s.checks.Engines[e.Name].State == core.EngineCheckEligible || !s.checks.Supported {
+				s.engine = e.Name
+				return
+			}
+		}
+	}
 	for _, e := range s.registry.Engines {
 		if s.checks.Engines[e.Name].State == core.EngineCheckEligible {
 			s.engine = e.Name

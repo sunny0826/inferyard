@@ -1346,7 +1346,7 @@
             "max_temperature_celsius": {
               "type": "number",
               "minimum": 1,
-              "maximum": 85
+              "maximum": 100
             },
             "require_temperature": {
               "type": "boolean"

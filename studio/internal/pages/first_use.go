@@ -1,6 +1,8 @@
 package pages
 
 import (
+	"path/filepath"
+
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
@@ -94,9 +96,22 @@ func (s *viewState) adoptOnlyModel() {
 			return
 		}
 	}
+	selectedEngPath := ""
+	if localEng := s.localEngine(); localEng != nil && localEng.Family == "polystrata" {
+		selectedEngPath = cleanMatchPath(localEng.Path)
+	}
 	for _, task := range s.downloads {
 		if task.Kind != "polystrata" || task.State != "done" || task.ModelConfigPath == nil {
 			continue
+		}
+		if selectedEngPath != "" {
+			taskInst := cleanMatchPath(emptyText(task.InstallationPath))
+			if taskInst == "" {
+				taskInst = cleanMatchPath(emptyText(task.EnginePath))
+			}
+			if taskInst != "" && taskInst != selectedEngPath {
+				continue
+			}
 		}
 		wantPath := cleanMatchPath(*task.ModelConfigPath)
 		if wantPath == "" {
@@ -113,6 +128,23 @@ func (s *viewState) adoptOnlyModel() {
 				s.model = model.Name
 				return
 			}
+		}
+	}
+	if localEng := s.localEngine(); localEng != nil && localEng.Family == "polystrata" && localEng.Path != "" {
+		engDir := filepath.Dir(cleanMatchPath(localEng.Path))
+		colocated := ""
+		colocatedCount := 0
+		for _, model := range s.registry.Models {
+			if !model.Available || model.Format != "strata_pack" || !s.compatibleModel(model) {
+				continue
+			}
+			if filepath.Dir(cleanMatchPath(model.Path)) == engDir {
+				colocated = model.Name
+				colocatedCount++
+			}
+		}
+		if colocatedCount == 1 {
+			s.model = colocated
 		}
 	}
 }
