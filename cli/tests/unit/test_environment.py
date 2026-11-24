@@ -2,9 +2,26 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.analysis.environment import FIELDS, assess_environment, assess_schedule
-from inferyard.errors import EvidenceError
-from tests.unit.test_cpu_policy import inventory
+from inferyard.analysis.environment import FIELDS, assess_environment
+
+
+def inventory():
+    return {
+        "source": "linux.sysfs.cpufreq.policy.v1",
+        "online_cpus": [0, 1],
+        "policies": [
+            {
+                "policy_id": "policy0",
+                "affected_cpus": [0, 1],
+                "related_cpus": [0, 1],
+                "scaling_driver": "driver",
+                "scaling_governor": "performance",
+                "energy_performance_preference": "performance",
+                "scaling_min_freq": 400000,
+                "scaling_max_freq": 3000000,
+            }
+        ],
+    }
 
 
 def state():

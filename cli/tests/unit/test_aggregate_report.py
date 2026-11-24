@@ -1,38 +1,14 @@
 """Unified sealed evidence, failure accounting, reports and comparison boundaries."""
 
-import hashlib
-import json
 from copy import deepcopy
 
 import pytest
 
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.comparison import compare_trials
-from inferyard.errors import EvidenceError
-from inferyard.analysis.ledger import read_trial
-from inferyard.evidence.storage import read_jsonl
 from inferyard.analysis.comparison_input import comparison_input
-from inferyard.reporting.comparison_report import build_comparison
-from inferyard.reporting.studio_report import write_studio_report
+from inferyard.analysis.ledger import read_trial
 from tests.helpers import fixture_run
-
-
-def digest_tree(root):
-    return {
-        str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in root.rglob("*")
-        if path.is_file()
-    }
-
-
-def rewrite_events(root, rows):
-    """Simulate an unsealed crash log without leaving unrelated sequence faults."""
-    (root / "manifest.json").unlink()
-    for seq, row in enumerate(rows, 1):
-        row["seq"] = seq
-    (root / "events.jsonl").write_text(
-        "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows)
-    )
 
 
 def comparable_run(root, **kwargs):

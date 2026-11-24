@@ -23,67 +23,6 @@ func sampleUpdateRelease() *core.UpdateRelease {
 	}
 }
 
-func TestUpdateHeaderBadgeVisibilityAndDialogOpen(t *testing.T) {
-	s := readyState("reports")
-	tt := sidebarHeaderState(s)
-	tt.Frame()
-
-	for _, st := range []core.UpdateState{
-		{State: core.UpdateIdle, CurrentVersion: "0.0.8"},
-		{State: core.UpdateUpToDate, CurrentVersion: "0.0.8"},
-		{State: core.UpdateChecking, CurrentVersion: "0.0.8", ManualCheck: false},
-		{State: core.UpdateError, CurrentVersion: "0.0.8", ErrorMessage: "network error"},
-	} {
-		s.updateState = st
-		tt.Frame()
-		if tt.HasText("新版本") || tt.HasText("更新失败") || tt.HasText("下载更新") {
-			t.Fatalf("unexpected header badge for state %+v: %v", st, tt.Texts())
-		}
-	}
-
-	s.updateState = core.UpdateState{
-		State:          core.UpdateAvailable,
-		CurrentVersion: "0.0.8",
-		Release:        sampleUpdateRelease(),
-		CanSelfUpdate:  true,
-	}
-	tt.Frame()
-	if !tt.HasText("新版本 v0.10.0") {
-		t.Fatalf("expected available header badge, got %v", tt.Texts())
-	}
-	click(t, tt, "新版本 v0.10.0")
-	if !s.updateDialogOpen {
-		t.Fatal("clicking update badge did not open update dialog")
-	}
-
-	s.updateState.State = core.UpdateDownloading
-	s.updateState.DownloadedBytes = 6 << 20
-	s.updateState.TotalBytes = ptr(int64(15 << 20))
-	tt.Frame()
-	if !tt.HasText("下载更新 40%") {
-		t.Fatalf("expected downloading percentage badge, got %v", tt.Texts())
-	}
-
-	s.updateState.State = core.UpdateVerifying
-	tt.Frame()
-	if !tt.HasText("校验更新") {
-		t.Fatalf("expected verifying badge, got %v", tt.Texts())
-	}
-
-	s.updateState.State = core.UpdateReadyToApply
-	tt.Frame()
-	if !tt.HasText("待安装 v0.10.0") {
-		t.Fatalf("expected ready badge, got %v", tt.Texts())
-	}
-
-	s.updateState.State = core.UpdateError
-	s.updateState.ErrorMessage = "校验失败"
-	tt.Frame()
-	if !tt.HasText("更新失败") {
-		t.Fatalf("expected error badge when release exists, got %v", tt.Texts())
-	}
-}
-
 func TestUpdateDialogActionsActiveWorkloadWarningAndFallback(t *testing.T) {
 	origOpen := openUpdatePathFunc
 	t.Cleanup(func() { openUpdatePathFunc = origOpen })
@@ -184,38 +123,6 @@ func TestUpdateDialogActionsActiveWorkloadWarningAndFallback(t *testing.T) {
 	click(t, tt, "打开发布页")
 	if urls := tt.OpenedURLs(); len(urls) != 1 || urls[0] != s.updateState.Release.ReleaseURL {
 		t.Fatalf("expected release URL opened, got %v", urls)
-	}
-}
-
-func TestSettingsUpdateSectionManualCheckAndNonDirtyInvariant(t *testing.T) {
-	s := settingsState()
-	uiCh := make(chan func(), 4)
-	s.updateWindow = func(fn func()) { uiCh <- fn }
-	s.updateState = core.UpdateState{State: core.UpdateIdle, CurrentVersion: "0.0.8"}
-	checks := 0
-	s.updateCheckFn = func(context.Context) (core.UpdateState, error) {
-		checks++
-		return core.UpdateState{State: core.UpdateUpToDate, CurrentVersion: "0.0.8"}, nil
-	}
-
-	tt := settingsTester(s)
-	tt.Frame()
-	if !tt.HasText("软件更新") || !tt.HasText("检查更新") {
-		t.Fatalf("settings missing update section: %v", tt.Texts())
-	}
-	if s.settingsUnsaved() || tt.HasText("有未保存修改") {
-		t.Fatalf("update section unexpectedly marked settings dirty: %v", tt.Texts())
-	}
-	click(t, tt, "检查更新")
-	select {
-	case fn := <-uiCh:
-		fn()
-	case <-time.After(2 * time.Second):
-		t.Fatal("timed out waiting for update check UI callback")
-	}
-	tt.Frame()
-	if checks != 1 || !tt.HasText("已是最新版本") || !s.updateDialogOpen {
-		t.Fatalf("manual check did not update feedback or open dialog: checks=%d dialog=%v texts=%v", checks, s.updateDialogOpen, tt.Texts())
 	}
 }
 

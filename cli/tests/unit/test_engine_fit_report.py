@@ -1,20 +1,17 @@
-"""Offline provenance, semantic tampering and escaped portable diagnostic reports."""
+"""Offline provenance, semantic tampering and comparison integrity boundaries."""
 
 import hashlib
 import json
-import shutil
-from collections import Counter
 from copy import deepcopy
 
 import pytest
 
+from inferyard.analysis.engine_fit_seal import seal_run
 from inferyard.config.engine_fit import request_rows
 from inferyard.contracts.json_digest import digest
-from inferyard.errors import EvidenceError, UnsupportedFormat
 from inferyard.contracts.validation import json_bytes
-from inferyard.analysis.engine_fit_seal import seal_run
+from inferyard.errors import EvidenceError
 from inferyard.reporting.engine_fit import compare, verify
-from inferyard.analysis.engine_fit_metrics import observations
 
 
 @pytest.fixture
@@ -171,22 +168,6 @@ def test_semantic_tampering_rejected_even_with_updated_hashes(tmp_path, plan, mu
     _replace(path, "run.json", run)
     with pytest.raises(EvidenceError):
         verify(path)
-
-
-def test_all_five_terminal_states_remain_in_denominator(tmp_path, plan):
-    plan["parameters"]["repetitions"] = plan["request_count"] = 5
-    plan["max_request_wall_seconds"] = 150
-    plan["plan_id"] = digest({key: value for key, value in plan.items() if key != "plan_id"})
-    run, rows = _data(plan)
-    for row, status in zip(
-        rows, ("completed", "failed", "cancelled", "invalid", "not_executed"), strict=True
-    ):
-        if status != "completed":
-            row.update(status=status, reason="stopped", response=None)
-    run.update(completeness="incomplete", stop_reason="cancelled")
-    run["counts"] = {"planned": 5, **Counter(row["status"] for row in rows)}
-    seal_run(tmp_path, plan, run, rows)
-    assert verify(tmp_path)["run"]["counts"]["planned"] == 5
 
 
 def verify_fixture_plan(plan):

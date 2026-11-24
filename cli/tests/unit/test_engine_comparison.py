@@ -1,9 +1,6 @@
-from copy import deepcopy
-
 import pytest
 
 from inferyard.analysis.comparison import compare_trials
-from inferyard.contracts.engine_comparison import PENDING
 from tests.unit.test_comparison import trial
 
 
@@ -25,10 +22,6 @@ def local(family, **model):
     return data
 
 
-def statuses(result):
-    return {row["field"]: row["status"] for row in result["conditions"]}
-
-
 @pytest.mark.parametrize(
     "left,right,blocker",
     [
@@ -48,11 +41,3 @@ def test_engine_mode_rejections(left, right, blocker):
         assert "config.model.content_sha256:different" in result["blockers"]
     else:
         assert blocker in result["blockers"]
-
-
-def real_local_shape(family, **model):
-    data = local(family, **model)
-    data["identity"]["runtime_library_hashes"] = None
-    data["config"]["model"]["sha256"] = None
-    data["config"]["conditions"]["cache_policy"] = "unknown"
-    return data

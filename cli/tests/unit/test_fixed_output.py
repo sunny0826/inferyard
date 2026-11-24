@@ -1,13 +1,6 @@
-from copy import deepcopy
-
-import pytest
-
-from inferyard.config.planning import compile_plan
-from inferyard.errors import ContractError, PreflightError
+from inferyard.analysis.comparison import compare_trials
 from inferyard.analysis.output_budget import target_rate
-from inferyard.contracts.fixed_output import validate_inputs
-from inferyard.evidence.fixed_output import verify_probe
-from tests.unit.phase2_contract_helpers import experiment
+from tests.unit.test_comparison import trial
 
 
 def response(count=16, state="completed", finish="length"):
@@ -34,9 +27,6 @@ def test_strict_rate_retains_failed_denominator_and_does_not_use_finish_alone():
 
 
 def test_strict_and_natural_workloads_cannot_be_compared_as_same_protocol():
-    from inferyard.analysis.comparison import compare_trials
-    from tests.unit.test_comparison import trial
-
     left, right = trial(), trial()
     for d in (left, right):
         d["plan"]["experiment"]["workloads"][0]["purpose"] = "performance"

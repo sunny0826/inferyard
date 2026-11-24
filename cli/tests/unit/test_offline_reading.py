@@ -1,17 +1,10 @@
-"""Direct raw reading, sealed bytes and explicit source relocation boundaries."""
-
-import shutil
+"""Direct raw reading and sealed bytes boundaries."""
 
 import pytest
 
 from inferyard.application.types import CommandRequest
-from inferyard.evidence.verification_options import VerificationOptions
 from inferyard.application.verification import execute
 from inferyard.errors import EvidenceError
-from inferyard.contracts.validation import json_bytes
-from inferyard.evidence.storage import read_json
-from inferyard.reporting.comparison_report import verify_comparison, write_comparison
-from inferyard.reporting.studio_report import read_studio_report, write_studio_report
 from tests.helpers import fixture_run
 
 

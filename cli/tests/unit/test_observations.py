@@ -2,12 +2,10 @@
 
 from copy import deepcopy
 
-import pytest
-
 from inferyard.analysis.observations import build_observations
 from inferyard.analysis.scoring import score_case
 from inferyard.contracts.validation import validate_document
-from tests.unit.test_scoring_contract import POLICY, case, structured
+from tests.unit.test_scoring_contract import POLICY, case
 
 RUN = {
     "origin": "measured",

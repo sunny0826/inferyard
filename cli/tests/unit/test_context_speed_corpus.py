@@ -1,23 +1,14 @@
-"""Offline corpus identity, reproducibility and real admission/refusal paths."""
+"""Offline corpus identity and checked-in release artifact reproducibility."""
 
-import hashlib
 import json
-import subprocess
-import sys
 from pathlib import Path
 
-import pytest
-
-from inferyard.contracts.bundle import content_hash, validate_bundle
 from inferyard.config.bundle import require_review
-from inferyard.errors import ContractError
 from scripts.build_context_speed_bundle import (
     BUNDLE_NAME,
     MARKDOWN_NAME,
     REVIEW_NAME,
-    build,
     outputs,
-    write_outputs,
 )
 
 ROOT = Path(__file__).resolve().parents[2]

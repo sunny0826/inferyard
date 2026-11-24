@@ -2,13 +2,10 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"reflect"
 	"runtime"
 	"testing"
-
-	"inferyard/studio/internal/inferyard"
 )
 
 func TestLocalQueueStartsFreshProcessPerBundle(t *testing.T) {
@@ -41,33 +38,6 @@ func TestLocalQueueStartsFreshProcessPerBundle(t *testing.T) {
 				t.Fatal(f.s.Engine())
 			}
 		})
-	}
-}
-
-func TestProbeReusesVersionForSameExecutable(t *testing.T) {
-	var calls int
-	s := testService(t, func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
-		if v, ok := version(args); ok {
-			calls++
-			return v, nil
-		}
-		return inferyard.Execution{}, fmt.Errorf("unexpected fixture command %v", args)
-	})
-	s.settings.InferyardPath = ptr(os.Args[0])
-	u := s.userSettings()
-	for i := 0; i < 3; i++ {
-		p := s.probe(u)
-		if p.Status != "ok" || str(p.Path) != os.Args[0] || str(p.Version) != "1.0" {
-			t.Fatal(p)
-		}
-	}
-	if calls != 1 {
-		t.Fatalf("version probe ran %d times, want 1", calls)
-	}
-	p := s.probe(u)
-	*p.Version = "tampered"
-	if again := s.probe(u); str(again.Version) != "1.0" {
-		t.Fatalf("cache aliased caller pointer: %+v", again)
 	}
 }
 

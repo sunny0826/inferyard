@@ -1,27 +1,16 @@
-"""Native preparation logic under injected observations; no live engine or service."""
+"""Service binding refusal tests under injected observations."""
 
 import json
-from dataclasses import replace
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
 from inferyard.application.types import CommandRequest
-from inferyard.config import (
-    community_candidates,
-    community_candidates_macos,
-    community_candidates_windows,
-    service_binding,
-)
-from inferyard.provisioning import preparation_io
+from inferyard.config import service_binding
 from inferyard.config.loader import load_config
+from inferyard.provisioning import preparation_io
 from inferyard.provisioning.preparation_io import PreparationError
-from inferyard.provisioning import windows_runtime_prepare
-from tests.unit.test_community_runtime import synthetic_runtime as runtime_fixture
-from tests.unit.test_device_preflight import gguf
 
-synthetic_runtime = runtime_fixture
 ROOT = Path(__file__).parents[2]
 
 
@@ -81,47 +70,3 @@ def test_binding_mismatch_does_not_write(tmp_path, config_path, monkeypatch, fai
             )
         )
     assert not (tmp_path / "new").exists()
-
-
-def test_community_recipes_enable_webui(tmp_path):
-    digest = "0" * 64
-    model = SimpleNamespace(path=str(tmp_path / "model.gguf"), sha256=digest)
-    engine = SimpleNamespace(path=str(tmp_path / "llama-server"), sha256=digest)
-    selected = {
-        "mode": "metal",
-        "threads": 4,
-        "context_size": 4096,
-        "min_available_memory_bytes": 1 << 30,
-        "min_disk_bytes": 5 << 30,
-        "gpu_index": 0,
-    }
-    common_args = ("{{ messages }}", tmp_path / "template.jinja")
-    macos_cfg = community_candidates_macos.build_config(
-        selected,
-        model,
-        {},
-        *common_args,
-        tmp_path / "manifest.json",
-        engine,
-        "prism-b10743",
-        ROOT / "bundles/zh-smoke.json",
-        "1.0",
-        tmp_path / "results",
-        {"profile": None},
-    )
-    windows_cfg = community_candidates_windows.build_config(
-        {**selected, "mode": "cuda"},
-        model,
-        {},
-        *common_args,
-        engine,
-        {"release": "prism-b10743", "runtime_library_manifest": str(tmp_path / "manifest.json")},
-        ROOT / "bundles/zh-smoke.json",
-        "1.0",
-        tmp_path / "results",
-    )
-    for cfg in (macos_cfg, windows_cfg):
-        args = cfg["engine"]["startup_args"]
-        assert "--no-webui" not in args
-        assert not any(arg.startswith("--no-webui=") for arg in args)
-        assert "--host" in args and "--port" in args

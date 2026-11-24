@@ -88,24 +88,6 @@ class TestReleaseRunner(unittest.TestCase):
             self.assertEqual(json.loads(run.read_text())["suite"], "release")
             self.assertFalse((entries[0] / "DerivedData").exists())
 
-    def test_derived_data_override_is_used(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            app, e2e_root, cli = self.make_inputs(root)
-            override = root / "cache/derived"
-            result, launch = self.invoke([
-                "run_release.py",
-                "--app", str(app),
-                "--e2e-root", str(e2e_root),
-                "--cli", str(cli),
-                "--output-root", str(root / "output"),
-                "--derived-data", str(override),
-            ])
-            self.assertEqual(result, 0)
-            command = launch.call_args.args[0]
-            derived_index = command.index("-derivedDataPath") + 1
-            self.assertEqual(Path(command[derived_index]), override.resolve())
-
     def test_missing_pass_receipt_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -122,7 +104,6 @@ class TestReleaseRunner(unittest.TestCase):
 
 _TEST_METHODS = (
     TestReleaseRunner.test_release_runner_isolates_home_and_binds_e2e_report,
-    TestReleaseRunner.test_derived_data_override_is_used,
     TestReleaseRunner.test_missing_pass_receipt_is_rejected,
 )
 

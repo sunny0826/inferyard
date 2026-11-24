@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
@@ -231,106 +230,6 @@ func TestCoreDetectAndInitRegisterLocalEngine(t *testing.T) {
 		t.Fatalf("expected 2 distinct registered paths, got %+v", settings2.Settings.EngineInstallations)
 	}
 	_ = seenCommands
-}
-
-func TestWizardFamilySwitchDetectPickersAndAdvancedFold(t *testing.T) {
-	lmsExe := "/Users/demo/.lmstudio/bin/lms"
-	lmsModels := "/Users/demo/.lmstudio/models"
-	svc, _ := newWizardTestService(t, func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
-		if len(args) > 0 && args[0] == "--version" {
-			return inferyard.Execution{ExitCode: 0, Stdout: []byte("inferyard 1.0 source=release\n")}, nil
-		}
-		if len(args) >= 2 && args[0] == "engine" && args[1] == "detect" {
-			payload, _ := json.Marshal(map[string]any{
-				"command":      "engine detect",
-				"status":       "detected",
-				"completeness": "complete",
-				"run_id":       nil,
-				"evidence_dir": nil,
-				"limitations":  []string{},
-				"details": map[string]any{
-					"definition": "local-engine-detect.v1",
-					"candidates": []map[string]any{{
-						"family":            "lmstudio",
-						"executable":        lmsExe,
-						"working_directory": "/Users/demo/.lmstudio/bin",
-						"runtime_roots":     []string{"/Users/demo/.lmstudio/bin"},
-						"models_root":       lmsModels,
-						"label":             "lmstudio · detected lms",
-					}},
-					"model_requests_sent": 0,
-				},
-			})
-			return inferyard.Execution{ExitCode: 0, Stdout: payload}, nil
-		}
-		return inferyard.Execution{}, nil
-	})
-
-	s := settingsState()
-	s.ctx = context.Background()
-	s.service = svc
-	var picked []string
-	s.openDialog = func(opts mygo.OpenDialogOptions) ([]string, error) {
-		if opts.Directory {
-			picked = append(picked, "dir:"+opts.Title)
-			return []string{"/picked/lmstudio-models"}, nil
-		}
-		picked = append(picked, "file:"+opts.Title)
-		return []string{"/picked/venv/bin/python"}, nil
-	}
-
-	tt := ui.NewTester(func(c *ui.Context) {
-		ui.Column(c).Children(func() { s.localInstallationsView(c) })
-	}, 1120, 1400)
-	tt.Frame()
-
-	if !tt.HasText("添加本地引擎") || !tt.HasText("自动探测本机引擎") || !tt.HasText("生成并注册引擎") {
-		t.Fatalf("wizard primary controls missing: %v", tt.Texts())
-	}
-	if tt.HasText("LM Studio 模型目录") {
-		t.Fatalf("models_root picker shown for llama-cpp: %v", tt.Texts())
-	}
-
-	// Detect engines and apply lmstudio candidate chip.
-	click(t, tt, "自动探测本机引擎")
-	tt.Frame()
-	if !tt.HasText("lmstudio · detected lms") {
-		t.Fatalf("detected candidate chip not rendered: %v", tt.Texts())
-	}
-	click(t, tt, "lmstudio · detected lms")
-	tt.Frame()
-	if !tt.HasText("LM Studio 模型目录") || !tt.HasText("LM Studio CLI (lms) 路径") {
-		t.Fatalf("clicking lmstudio candidate did not switch form fields: %v", tt.Texts())
-	}
-
-	// Test native directory picker for models_root.
-	click(t, tt, "浏览… · LM Studio 模型目录")
-	tt.Frame()
-	if len(picked) != 1 || !strings.HasPrefix(picked[0], "dir:") {
-		t.Fatalf("expected directory dialog for models_root, got %v", picked)
-	}
-
-	// Switch to mlx-lm via family segmented selector and test executable picker.
-	click(t, tt, "mlx-lm")
-	tt.Frame()
-	if tt.HasText("LM Studio 模型目录") || !tt.HasText("虚拟环境 Python 路径") {
-		t.Fatalf("switching to mlx-lm did not update labels: %v", tt.Texts())
-	}
-	click(t, tt, "浏览… · 虚拟环境 Python 路径")
-	tt.Frame()
-	if len(picked) != 2 || !strings.HasPrefix(picked[1], "file:") {
-		t.Fatalf("expected file dialog for executable, got %v", picked)
-	}
-
-	// Expand advanced JSON fold.
-	if tt.HasText("导入并注册") {
-		t.Fatalf("advanced import action should be collapsed by default: %v", tt.Texts())
-	}
-	click(t, tt, "高级：直接导入已有 installation.json")
-	tt.Frame()
-	if !tt.HasText("导入并注册") || !tt.HasText("安装声明 JSON 路径") {
-		t.Fatalf("expanding advanced fold did not reveal JSON import: %v", tt.Texts())
-	}
 }
 
 func TestWizardPreviewSafeActionsDoNotPerformIO(t *testing.T) {

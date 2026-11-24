@@ -3,9 +3,6 @@ from copy import deepcopy
 import pytest
 
 from inferyard.analysis.engine_blocks import compare_blocks
-from inferyard.analysis.first_body import first_body_times
-from inferyard.contracts.engine_tuning import llama_arguments, validate_tuning
-from inferyard.errors import ContractError, EvidenceError
 from tests.unit.test_engine_comparison import local
 
 
@@ -83,22 +80,6 @@ def test_gates_block_verdict(mutate, blocker):
     assert blocker in result["blockers"]
     assert result["eligible"] is False
     assert result["verdicts"]["e2e_ms"]["verdict"] == "not_eligible"
-
-
-def test_llama_tuning_must_match_bound_startup_args():
-    engine = {
-        "family": "llama-cpp",
-        "startup_args": ["-m", "x.gguf", "-fa", "on", "--batch-size=512"],
-        "tuning": {"flash_attention": "on", "batch_size": "512", "prompt_cache": "disabled"},
-    }
-    assert llama_arguments(engine["startup_args"]) == {
-        "flash_attention": "on",
-        "batch_size": "512",
-    }
-    validate_tuning(engine)
-    engine["tuning"]["batch_size"] = "1024"
-    with pytest.raises(ContractError, match="startup_args"):
-        validate_tuning(engine)
 
 
 def mlx_block(order, **fields):

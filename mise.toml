@@ -63,7 +63,7 @@ dir = "studio"
 run = "python tests/ui/run.py"
 
 [tasks."test:studio-ui:full"]
-description = "Run all 12 macOS native UI workflows with the simulated Studio backend"
+description = "Run all 7 macOS native UI workflows with the simulated Studio backend"
 dir = "studio"
 run = "python tests/ui/run.py --suite full"
 

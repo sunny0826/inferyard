@@ -1,6 +1,3 @@
-import pytest
-
-from inferyard.errors import EvidenceError
 from inferyard.evidence.conditional_events import queue_delay, startup, token_intervals
 
 

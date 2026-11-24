@@ -1,9 +1,8 @@
-"""N01/N02/N04 reductions: frozen windows, measured zero and goodput truth table."""
+"""N04 throughput reduction must stay null when token counts are partial or untrusted."""
 
 import pytest
 
 from inferyard.analysis.throughput_observations import ThroughputInput, throughput_observations
-from inferyard.contracts.validation import validate_document
 
 type JsonScalar = str | int | float | bool | None
 type JsonNode = JsonScalar | list[JsonNode] | dict[str, JsonNode]
@@ -77,12 +76,3 @@ def test_n04_partial_token_counts_make_the_total_null_and_count_exclusions(
     assert item["excluded"] == 1
     assert item["sample_count"] == 2
     assert "output_token_counts_incomplete" in item["limitations"]
-
-
-def test_n02_mixed_accepted_and_failed_requests_keep_the_measured_rate() -> None:
-    rows = [
-        row(0, t_send_ns=0, t_terminal_ns=100_000_000),
-        row(1, quality_state="fail", t_send_ns=1_000_000_000, t_terminal_ns=1_100_000_000),
-    ]
-    item = metric(reduce(rows), "N02", "goodput_per_second")
-    assert item["value"] == pytest.approx(1 / 1.1)

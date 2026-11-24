@@ -1,4 +1,3 @@
-import asyncio
 import json
 import os
 import sys
@@ -8,7 +7,6 @@ import pytest
 import inferyard.runtime.lock as locking
 from inferyard.errors import PreflightError
 from inferyard.runtime.lock import HostLock
-from tests.helpers import python_worker, readline_timeout, symlink_or_skip
 
 
 @pytest.fixture
@@ -19,6 +17,7 @@ def paths(tmp_path, monkeypatch):
 
     initialize()
     if sys.platform not in ("linux", "win32", "darwin"):
+
         def fixture_start_ticks(pid):
             if pid == os.getpid():
                 return 456

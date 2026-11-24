@@ -1,20 +1,60 @@
 """Probe and formal CLI persist/replay usage without inventing missing counters."""
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
+import httpx
 import pytest
 
 import inferyard.runtime.lock as locking
 import inferyard.runtime.runner as running
-from inferyard.cli import main
 from inferyard.analysis.ledger import read_trial
+from inferyard.cli import main
+from inferyard.contracts.validation import Document
 from inferyard.evidence.storage import read_json, read_jsonl
-from tests.integration.test_lab_cli import lab_scenario, write_config  # noqa: F401
-from tests.integration.test_native_cli import native_scenario as _native_scenario
+from inferyard.registry import adapter_factory
 from tests.integration.test_runner import scenario  # noqa: F401
+from tests.lab_service import lab_config
+from tests.native_service import NativeService
 
-native_scenario = _native_scenario
+
+def _toml_value(value):
+    if isinstance(value, dict):
+        return "{" + ", ".join(f"{key} = {_toml_value(item)}" for key, item in value.items()) + "}"
+    if isinstance(value, list):
+        return "[" + ", ".join(_toml_value(item) for item in value) + "]"
+    return json.dumps(value, ensure_ascii=False)
+
+
+def write_config(command, path):
+    config = command.config.config.to_dict()
+    config["bundle"]["path"] = str(path.parent / "bundle.json")
+    (path.parent / "bundle.json").write_text(
+        json.dumps(command.config.bundle.to_dict()), encoding="utf-8"
+    )
+    lines = ["schema_version = 3"]
+    for section, values in config.items():
+        if isinstance(values, dict):
+            lines.append(f"[{section}]")
+            lines.extend(f"{key} = {_toml_value(value)}" for key, value in values.items())
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return config
+
+
+@pytest.fixture(params=["kvmem", "ninfer"])
+def native_scenario(scenario, request):  # noqa: F811
+    command, deps, _, _ = scenario
+    config = lab_config(command.config.config.to_dict(), request.param)
+    config["engine"]["observation_mode"] = "auto"
+    service = NativeService(config)
+    deps.adapter = lambda origin, secret: adapter_factory(request.param)(
+        origin, secret=secret, transport=httpx.MockTransport(service)
+    )
+    command = replace(
+        command, config=replace(command.config, config=Document.parse("config", config))
+    )
+    return command, deps, service
 
 
 @pytest.mark.parametrize("phase", ["probe", "run"])

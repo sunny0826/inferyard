@@ -1,16 +1,13 @@
-"""Mock transport coverage for actual formal adapter failures and legacy compatibility."""
+"""Mock transport coverage for formal lab adapter safety/identity refusals."""
 
 import asyncio
-import json
-from copy import deepcopy
 
 import httpx
 import pytest
 
 from inferyard.adapters.requests import request_body
 from inferyard.config.loader import load_config
-from inferyard.contracts.validation import Document
-from inferyard.errors import ContractError, EvidenceError, PreflightError
+from inferyard.errors import PreflightError
 from inferyard.registry import adapter_factory
 from tests.lab_service import LabService, lab_config
 

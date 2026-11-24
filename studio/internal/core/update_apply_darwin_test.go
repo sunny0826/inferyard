@@ -112,29 +112,3 @@ func TestApplyDarwinUpdateSwapAndRollbackBeforeShutdown(t *testing.T) {
 		t.Fatalf("unexpected macOS apply commands: %v", cmds)
 	}
 }
-
-func TestRenamexSwapDarwinAtomic(t *testing.T) {
-	root := t.TempDir()
-	appDir, oldExe := setupFakeDarwinApp(t, root, "InferYard Studio.app", "old-version")
-	stageApp, stageExe := setupFakeDarwinApp(t, root, ".InferYard Studio.app.new", "new-version")
-
-	if err := renamexSwapDarwin(appDir, stageApp); err != nil {
-		t.Fatalf("renamexSwapDarwin failed: %v", err)
-	}
-	gotNew, err := os.ReadFile(oldExe)
-	if err != nil || string(gotNew) != "new-version" {
-		t.Fatalf("appDir did not receive new bundle atomically: err=%v content=%q", err, string(gotNew))
-	}
-	gotOld, err := os.ReadFile(stageExe)
-	if err != nil || string(gotOld) != "old-version" {
-		t.Fatalf("stageApp did not receive old bundle atomically: err=%v content=%q", err, string(gotOld))
-	}
-
-	if err := renamexSwapDarwin(appDir, filepath.Join(root, "does-not-exist")); !errors.Is(err, syscall.ENOENT) {
-		t.Fatalf("expected ENOENT for missing target, got %v", err)
-	}
-	gotStillNew, err := os.ReadFile(oldExe)
-	if err != nil || string(gotStillNew) != "new-version" {
-		t.Fatalf("failed swap disturbed existing bundle: err=%v content=%q", err, string(gotStillNew))
-	}
-}

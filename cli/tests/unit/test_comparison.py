@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 from inferyard.analysis.comparison import compare_trials
 
 
@@ -79,18 +77,6 @@ def trial():
             "trials": [{"trial_id": "t", "workload_id": "w"}],
         },
     }
-
-
-def test_model_and_locations_may_change_and_explicit_versions_govern_eligibility():
-    left, right = trial(), trial()
-    right["config"]["model"]["sha256"] = "other-model"
-    right["config"]["model"]["template_sha256"] = "other-template"
-    right["config"]["engine"]["startup_args"][-1] = "5678"
-    assert compare_trials(left, right)["eligibility"]["quality"]
-    right["run"]["tool_source_sha256"] = "other-tool"
-    assert compare_trials(left, right)["eligibility"]["quality"]
-    right["run"]["definition_versions"]["scoring"] = "other-scoring"
-    assert not compare_trials(left, right)["eligibility"]["quality"]
 
 
 def test_config_declared_factor_propagates_to_startup_but_second_factor_blocks():

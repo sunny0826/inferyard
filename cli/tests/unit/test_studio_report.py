@@ -7,18 +7,15 @@ from copy import deepcopy
 import pytest
 from jsonschema import Draft202012Validator
 
-from inferyard.contracts.schemas import export_schema
-from inferyard.contracts.validation import validate_document
-from inferyard.errors import ContractError, EvidenceError
 from inferyard.analysis.comparison_input import comparison_input
+from inferyard.contracts.schemas import export_schema
+from inferyard.errors import ContractError, EvidenceError
 from inferyard.reporting.studio_report import (
     build_studio_report,
     read_studio_report,
     write_studio_report,
 )
 from tests.helpers import fixture_run
-
-CATEGORIES = ("instruction", "extraction", "qa", "math", "classification", "structured")
 
 
 def loaded(root, **kwargs):

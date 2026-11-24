@@ -1,18 +1,14 @@
 """Mac rejection tests for the Windows lab process handle and binding."""
 
 import hashlib
-import json
 import time
+from types import SimpleNamespace
 
 import pytest
 
 from inferyard.errors import PreflightError
-from inferyard.platforms import windows_lab_checks as checks
 from inferyard.platforms.windows_lab_api import override_windows_lab_api
-from inferyard.platforms.windows_lab_process import (
-    ProcessHandle,
-    verify_process_binding,
-)
+from inferyard.platforms.windows_lab_process import verify_process_binding
 
 ARGV = [r"C:\engine\server.exe", "--port", "8080"]
 CWD = r"C:\work"
@@ -111,25 +107,7 @@ def _soon():
     return time.monotonic() + 30
 
 
-def _raises(proc, call):
-    with override_windows_lab_api(proc), pytest.raises(PreflightError) as caught:
-        call()
-    return caught.value
-
-
-def _hold_clock(monkeypatch):
-    clock = {"expire": False}
-
-    def monotonic():
-        return 100.0 if clock["expire"] else 1.0
-
-    monkeypatch.setattr(checks.time, "monotonic", monotonic)
-    return clock
-
-
 def test_details_scan_cannot_hide_pid_reuse_exit_or_file_replacement():
-    from types import SimpleNamespace
-
     for change in ("pid", "exit", "file"):
         proc = Proc()
         unchanged = [True]

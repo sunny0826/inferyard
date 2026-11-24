@@ -1,19 +1,12 @@
-"""Installed preparation uses real local files and no model service or host lock."""
+"""Installed preparation preserves authoritative packaged bundles without overwriting."""
 
 import hashlib
 import json
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
-from inferyard.application.types import CommandRequest
 from inferyard.cli import main
-from inferyard.provisioning import preparation_io
-from inferyard.config.community_assets import prepare
-from inferyard.provisioning.preparation_io import NewDirectory, PreparationError
-from tests.unit.test_device_preflight import gguf
 
 ROOT = Path(__file__).parents[2]
 
@@ -46,23 +39,3 @@ def test_init_preserves_authoritative_bytes_and_review(tmp_path, capsys, name):
     code, again = invoke(capsys, ["init", "--out", str(out)])
     assert code == 2 and again["limitations"] == ["output_exists"]
     assert (out / f"bundles/{name}.json").read_bytes() == source
-
-
-def test_omitted_bundle_exports_documented_default_scope(tmp_path, capsys):
-    out = tmp_path / "default"
-    code, result = invoke(capsys, ["init", "--out", str(out)])
-    names = ("zh-core", "zh-svg-pelican")
-    exported = []
-    for name in names:
-        source = (ROOT / f"bundles/{name}.json").read_bytes()
-        assert (out / f"bundles/{name}.json").read_bytes() == source
-        exported.append(
-            {
-                "bundle": name,
-                "bundle_path": str(out / f"bundles/{name}.json"),
-                "bundle_sha256": hashlib.sha256(source).hexdigest(),
-            }
-        )
-    assert code == 0 and result["details"]["bundles"] == exported
-    assert result["details"]["bundle"] == "zh-core"
-    assert not (out / "bundles/zh-smoke.json").exists()

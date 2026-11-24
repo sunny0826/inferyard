@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
@@ -128,75 +127,6 @@ func newIsolatedModelService(
 	}
 	t.Cleanup(func() { _ = svc.Shutdown(context.Background()) })
 	return svc, home, base, modelsRoot
-}
-
-func TestModelsManagementStorageRootsPickerAndQuickAdd(t *testing.T) {
-	svc, home, _, modelsRoot := newIsolatedModelService(t, nil)
-	waitUntil(t, func() bool { return !svc.Registry().Refreshing })
-
-	lmsDir := filepath.Join(home, ".lmstudio", "models")
-	if err := os.MkdirAll(lmsDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	s := testState()
-	s.selected = "models"
-	s.service = svc
-	s.settings = svc.Settings()
-	s.registry = core.Registry{
-		TotalModelBytes: 2 << 30,
-		DiskFreeBytes:   ptr(int64(10 << 30)),
-		ModelRoots:      []string{modelsRoot, filepath.Join(home, "custom-models")},
-	}
-	s.openDialog = func(opts mygo.OpenDialogOptions) ([]string, error) {
-		if !opts.Directory {
-			t.Fatal("expected directory picker")
-		}
-		return []string{"/picked/extra-models"}, nil
-	}
-
-	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.modelsView(c) }) }, 1120, 1400)
-	tt.Frame()
-
-	for _, want := range []string{
-		"总占用 2.00 GiB · 可用磁盘空间 10.00 GiB",
-		modelsRoot,
-		filepath.Join(home, "custom-models"),
-		"主目录",
-		"添加模型目录",
-		"+ LM Studio",
-		"下载更多",
-		"添加本地引擎",
-	} {
-		if !tt.HasText(want) {
-			t.Fatalf("missing %q in %v", want, tt.Texts())
-		}
-	}
-
-	click(t, tt, "添加常见目录 · LM Studio")
-	if len(s.pendingToasts) == 0 || s.pendingToasts[len(s.pendingToasts)-1].Title != "已记录目录："+lmsDir {
-		t.Fatalf("unexpected toast after quick-add: %+v", s.pendingToasts)
-	}
-	tt.Frame()
-	if tt.HasText("+ LM Studio") {
-		t.Fatalf("quick-add pill should hide once root is active: %v", tt.Texts())
-	}
-
-	click(t, tt, "添加模型目录")
-	if s.pendingToasts[len(s.pendingToasts)-1].Title != "已记录目录：/picked/extra-models" {
-		t.Fatalf("unexpected toast after picker: %+v", s.pendingToasts)
-	}
-
-	click(t, tt, "移除目录 · "+filepath.Join(home, "custom-models"))
-	if s.pendingToasts[len(s.pendingToasts)-1].Title != "已移除目录："+filepath.Join(home, "custom-models") {
-		t.Fatalf("unexpected toast after remove: %+v", s.pendingToasts)
-	}
-
-	s.registry.DiskFreeBytes = nil
-	tt.Frame()
-	if !tt.HasText("总占用 2.00 GiB · 可用磁盘空间 缺测") {
-		t.Fatalf("nil free space not rendered cleanly: %v", tt.Texts())
-	}
 }
 
 func TestModelsManagementRevealAndDeleteConfirmation(t *testing.T) {

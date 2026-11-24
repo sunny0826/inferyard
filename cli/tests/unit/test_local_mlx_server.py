@@ -1,12 +1,11 @@
 """Synthetic formal MLX HTTP checks; no model or MLX installation is used."""
 
 import importlib.util
-import json
 import threading
 from contextlib import contextmanager
 from pathlib import Path
 
-from tests.unit.test_engine_fit_mlx_server import SyntheticBackend, request
+from tests.unit.test_engine_fit_mlx_server import SyntheticBackend
 
 SCRIPT = Path(__file__).parents[2] / "src/inferyard/data/local_engine/mlx_server.py"
 SPEC = importlib.util.spec_from_file_location("synthetic_formal_mlx", SCRIPT)

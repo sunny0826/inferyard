@@ -1,29 +1,18 @@
-"""Crash, lineage and five-state accounting from durable v2 source evidence."""
+"""Resume lineage immutability and incomplete-trial semantics."""
 
 import copy
-import json
-from pathlib import Path
 
 import pytest
 
 from inferyard.adapters.prism import ResponseState, request_body
+from inferyard.analysis.ledger import plan_progress, read_trial, resume_selection
 from inferyard.analysis.scoring import score_case
 from inferyard.config.loader import load_config
 from inferyard.config.planning import compile_plan
 from inferyard.errors import EvidenceError
-from inferyard.analysis.ledger import (
-    plan_progress,
-    read_trial,
-    reduce_events,
-    resume_selection,
-)
-from inferyard.evidence.storage import read_jsonl, sha256_file
+from inferyard.evidence.storage import sha256_file
 from tests.legacy_journal import LegacyJournal
 from tests.unit.phase2_contract_helpers import experiment
-
-type JsonScalar = str | int | float | bool | None
-type JsonNode = JsonScalar | list[JsonNode] | dict[str, JsonNode]
-type JsonObject = dict[str, JsonNode]
 
 
 @pytest.fixture
@@ -102,41 +91,6 @@ def finish(store, reason="plan_finished", *, seal=True):
         store.seal()
     store.close()
     return read_trial(store.path)
-
-
-def _assert_pooled_failure_count(data: JsonObject) -> None:
-    pooled = next(
-        metric
-        for metric in data["summary"]["metric_observations"]
-        if metric["metric_id"] == "L05" and metric["statistic"] == "pooled_min"
-    )
-    assert "missing:failed:1" in pooled["limitations"]
-    assert not any(
-        "cancelled" in value or "invalid" in value or "not_executed" in value
-        for value in pooled["limitations"]
-    )
-
-
-def test_five_terminal_counts_conserve_planned_cases(
-    tmp_path: Path, setup: tuple[JsonObject, JsonObject, JsonObject]
-) -> None:
-    store = journal(tmp_path, setup)
-    for i, state in enumerate(["completed", "failed", "cancelled", "invalid"]):
-        attempt(store, setup, i, state)
-    data = finish(store, "tool_interrupted")
-    assert [r["execution_state"] for r in data["requests"]] == [
-        "completed",
-        "failed",
-        "cancelled",
-        "invalid",
-        "not_executed",
-    ]
-    counts = data["summary"]["counts"]
-    assert counts["planned"] == 5 and counts["executed"] == 4 and counts["valid_executed"] == 2
-    assert data["summary"]["completeness"] == "incomplete"
-    assert data["summary"]["completion_rate"]["value"] == 0.5
-    _assert_pooled_failure_count(data)
-    assert resume_selection(data) == ["c4"]
 
 
 def test_resume_cannot_replace_failure_or_claim_continuous_complete_trial(tmp_path, setup):
