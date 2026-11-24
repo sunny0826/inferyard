@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.12
+
+- feat(studio): auto-upgrade outdated CLI on update and show banner only on failure (#210)
+- fix: support local-engine workspace progress and harden macOS PolyStrata worker tracking (#209)
+- feat(studio): replace raw release notes with release changelog links (#208)
+- feat(studio): add i18n support, refresh documentation, and add PR copy/docs workflow (#207)
+- docs(release): allow agent to execute release directly without preview confirmation (#206)
+
 ## 0.0.11
 
 - style(studio): unify concentric corner radii and 4px grid in shared tokens and components (#204)
