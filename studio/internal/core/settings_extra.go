@@ -81,6 +81,11 @@ func (s *Service) Theme() string {
 	return NormalizeTheme(s.userSettings().Theme)
 }
 
+// MinimizeToTray returns whether closing the window minimizes to the system tray.
+func (s *Service) MinimizeToTray() bool {
+	return s.userSettings().MinimizeToTray
+}
+
 func applySettingsPatchExtra(u *UserSettings, key string, raw json.RawMessage) (bool, *ApiError) {
 	switch key {
 	case "download_proxy":
@@ -116,6 +121,13 @@ func applySettingsPatchExtra(u *UserSettings, key string, raw json.RawMessage) (
 		default:
 			return true, Err("invalid_request")
 		}
+		return true, nil
+	case "minimize_to_tray":
+		var enabled *bool
+		if json.Unmarshal(raw, &enabled) != nil {
+			return true, Err("invalid_request")
+		}
+		u.MinimizeToTray = enabled != nil && *enabled
 		return true, nil
 	case "extra_models_roots":
 		var roots []string

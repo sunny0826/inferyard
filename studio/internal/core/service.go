@@ -251,6 +251,7 @@ func (s *Service) Settings() SettingsResponse {
 		ExtraModelsRoots: append([]string(nil), u.ExtraModelsRoots...),
 		DownloadProxy:    u.DownloadProxy,
 		Theme:            NormalizeTheme(u.Theme),
+		MinimizeToTray:   u.MinimizeToTray,
 		ReportsRoot:      reportsRoot(u),
 	}}
 }
@@ -259,7 +260,7 @@ func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResp
 	defer s.settingsMu.Unlock()
 	u := s.userSettings()
 	for k, v := range patch {
-		if s.paths != nil && k != "model_download_name" && k != "engine_download_name" && k != "download_proxy" && k != "theme" {
+		if s.paths != nil && k != "model_download_name" && k != "engine_download_name" && k != "download_proxy" && k != "theme" && k != "minimize_to_tray" {
 			return SettingsResponse{}, Conflict("paths_bound")
 		}
 		if handled, apiErr := applySettingsPatchExtra(&u, k, v); handled {

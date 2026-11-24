@@ -36,6 +36,7 @@ type UserSettings struct {
 	EngineDownloadName  string   `json:"engine_download_name"`
 	DownloadProxy       *string  `json:"download_proxy,omitempty"`
 	Theme               string   `json:"theme,omitempty"`
+	MinimizeToTray      bool     `json:"minimize_to_tray,omitempty"`
 	WorkspaceRoot       *string  `json:"workspace_root"`
 	InferyardPath       *string  `json:"inferyard_path"`
 	ResultsRoot         *string  `json:"results_root"`
@@ -53,6 +54,7 @@ type EffectiveSettings struct {
 	ExtraModelsRoots []string `json:"extra_models_roots,omitempty"`
 	DownloadProxy    *string  `json:"download_proxy,omitempty"`
 	Theme            string   `json:"theme"`
+	MinimizeToTray   bool     `json:"minimize_to_tray"`
 	ReportsRoot      *string  `json:"reports_root"`
 }
 

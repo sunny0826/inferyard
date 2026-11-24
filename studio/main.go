@@ -73,7 +73,17 @@ func runMain() (exitCode int) {
 		mygo.App.SetWindowStateStore(windowStates)
 	}
 	runApp(ctx, func() {
-		suppress := pages.New(ctx, service, "")
+		suppress := pages.New(ctx, service, "", pages.WindowHooks{
+			BindTray: func(win *mygo.Window) func(bool) error {
+				tray := desktop.NewTrayController(desktop.TrayConfig{
+					Window:  win,
+					IconPNG: appIconPNG,
+					ToolTip: win.Title(),
+					Logf:    log.Printf,
+				})
+				return tray.SetEnabled
+			},
+		})
 		service.SetUpdateQuitHook(func() { mygo.App.Quit() })
 		service.StartBackgroundUpdateCheck()
 		desktop.SubscribeWithFilter(ctx, service.Bus, suppress, func(message desktop.Message) error {
