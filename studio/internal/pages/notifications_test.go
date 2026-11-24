@@ -204,3 +204,55 @@ func TestTopRightNotificationOverflowQueueAndKeyRefreshReset(t *testing.T) {
 		t.Fatalf("expected refreshed notification to auto-dismiss after full window")
 	}
 }
+
+func TestTopRightNotificationEvictedCardResumesRemainingTime(t *testing.T) {
+	s := readyState("dashboard")
+	s.pushNotification(studioNotification{
+		Key:   "dl:a",
+		Title: "下载 A 完成",
+		Body:  "模型 A 已就绪。",
+		Kind:  stateSuccess,
+	})
+
+	tt := ui.NewTester(s.contentView, 1120, 800)
+	tt.Frame()
+
+	// Notification A displays for 1s, leaving ~5s remaining.
+	tt.Advance(1 * time.Second)
+	if !tt.HasText("模型 A 已就绪。") {
+		t.Fatalf("expected notification A visible at 1s")
+	}
+
+	// Three newer notifications arrive at the front of the stack, evicting A
+	// from the top-3 visible window while it waits in the queue.
+	for _, key := range []string{"dl:b", "dl:c", "dl:d"} {
+		s.pushNotification(studioNotification{
+			Key:   key,
+			Title: "下载 " + key,
+			Body:  "正文 " + key,
+			Kind:  stateSuccess,
+		})
+	}
+	tt.Frame()
+
+	// After 6s, the 3 newer notifications auto-dismiss and A returns to the
+	// screen; its queued time must not have counted against its remaining ~5s.
+	tt.Advance(6 * time.Second)
+	screen := s.notifications().screenItems()
+	if len(screen) != 1 || screen[0].Key != "dl:a" {
+		t.Fatalf("expected notification A to return to screen after newer batch expires, got %+v", screen)
+	}
+
+	// Still visible 4s after returning (1s before eviction + 4s after = 5s < 6s).
+	tt.Advance(4 * time.Second)
+	if len(s.notifications().screenItems()) != 1 {
+		t.Fatalf("expected notification A still visible with ~1s remaining after re-entering screen")
+	}
+
+	// Auto-dismisses once the remaining ~1s elapses.
+	tt.Advance(1500 * time.Millisecond)
+	if len(s.notifications().screenItems()) != 0 {
+		t.Fatalf("expected notification A auto-dismissed after completing remaining window")
+	}
+}
+

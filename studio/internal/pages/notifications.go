@@ -180,8 +180,21 @@ func (nc *notificationCenter) advanceScreenTimers(now time.Time, maxVisible int,
 		return 0
 	}
 	visible := screen
+	var hidden []*studioNotification
 	if len(visible) > maxVisible {
+		hidden = visible[maxVisible:]
 		visible = visible[:maxVisible]
+	}
+	for _, item := range hidden {
+		if !nc.screenPaused && !item.screenLastTick.IsZero() {
+			if delta := now.Sub(item.screenLastTick); delta > 0 {
+				item.screenElapsed += delta
+			}
+		}
+		item.screenLastTick = time.Time{}
+		if item.screenElapsed >= item.screenDuration() {
+			item.VisibleOnScreen = false
+		}
 	}
 	if paused {
 		for _, item := range visible {
