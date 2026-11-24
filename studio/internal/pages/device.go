@@ -145,7 +145,11 @@ func (s *viewState) deviceView(c *ui.Context) {
 			s.deviceRecommendationCard(c, rec)
 		}
 	}
-	errorRecoveryBanner(c, s.device.LastError, func() {
+	deviceErr := s.device.LastError
+	if s.suppressOutdatedCLIError(deviceErr) {
+		deviceErr = nil
+	}
+	errorRecoveryBanner(c, deviceErr, func() {
 		s.deviceRefreshButton(c, tr(c, "device.action.retry"))
 		if button(c, tr(c, "device.action.open_settings")).Clicked() {
 			s.selected = "settings"

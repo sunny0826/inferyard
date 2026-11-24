@@ -44,6 +44,7 @@
   "core.err.output_name_exhausted": "前 1000 个目录名均已占用，请更换目录名或工作区。",
   "core.install.err.archive_corrupted": "安装包损坏，已中止安装。",
   "core.install.err.auto_install_failed": "CLI 自动安装失败，可改用「手动指定路径」。",
+  "core.install.err.auto_upgrade_failed": "CLI 自动升级失败，可重试或在设置中手动指定路径。",
   "core.install.err.checksum_file_invalid": "校验文件内容异常，已中止安装。",
   "core.install.err.checksum_mismatch": "下载内容与官方校验和不一致，已中止安装。",
   "core.install.err.download_failed": "下载失败，请检查网络后重试。",

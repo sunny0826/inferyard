@@ -439,6 +439,14 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 			return
 		}
 		s.applyUpdateState(payload.Update)
+	case "cli.upgrade":
+		var payload struct {
+			CLIUpgrade core.CLIUpgradeState `json:"cli_upgrade"`
+		}
+		if json.Unmarshal(event.Data, &payload) != nil {
+			return
+		}
+		s.applyCLIUpgradeState(payload.CLIUpgrade)
 	case "engine.check":
 		var payload struct {
 			Engine      string                 `json:"engine"`

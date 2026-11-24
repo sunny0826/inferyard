@@ -259,6 +259,8 @@ type viewState struct {
 	settingsEpochMu                                                                     sync.Mutex
 	settingsEpoch                                                                       uint64
 	updateState                                                                         core.UpdateState
+	cliUpgrade                                                                          core.CLIUpgradeState
+	cliUpgradeDismissedSeq                                                              uint64
 	updateDialogOpen                                                                    bool
 	updateReadyPromptDismissedVersion                                                   string
 	updateCheckFn                                                                       func(context.Context) (core.UpdateState, error)
@@ -316,6 +318,7 @@ func (s *viewState) refresh(full bool) {
 	}
 	settings = s.service.Settings()
 	updateState := s.service.UpdateStatus()
+	cliUpgrade := s.service.CLIUpgradeStatus()
 	if full {
 		history, he = s.service.History()
 		_, reports, re = s.service.Reports()
@@ -350,7 +353,7 @@ func (s *viewState) refresh(full bool) {
 			id: id, detail: detail, detailError: de, settings: settings,
 			history: history, reports: reports, historyError: he, reportsError: re,
 			ready: ready, prepLocations: prepLocations, hasPrepLocations: hasPrepLocations, progress: progress, progressError: pe, dashboard: dashboard, registry: registry,
-			updateState: updateState,
+			updateState: updateState, cliUpgrade: cliUpgrade,
 		}
 		if !s.applyRefreshBatch(batch) {
 			return
@@ -387,6 +390,7 @@ type refreshBatch struct {
 	dashboard                  dashboardSnapshot
 	registry                   core.Registry
 	updateState                core.UpdateState
+	cliUpgrade                 core.CLIUpgradeState
 }
 
 func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
@@ -433,6 +437,7 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	s.engineState = s.service.Engine()
 	s.checks = s.service.EngineChecks()
 	s.applyUpdateState(b.updateState)
+	s.applyCLIUpgradeState(b.cliUpgrade)
 	s.adoptDownloadedEngine()
 	if !skipModelAdopt {
 		s.adoptOnlyModel()

@@ -196,6 +196,7 @@ func (p *previewSession) prepareEnvironment() {
 			return
 		}
 		s.ready.CLI.Status = "ok"
+		s.cliUpgrade = core.CLIUpgradeState{State: core.CLIUpgradeIdle}
 		s.ready.Workspace.Exists, s.ready.Workspace.Initialized = true, true
 		s.ready.Results.Exists, s.ready.Models.Exists = true, true
 		s.progress = previewBase(p.ctx).progress

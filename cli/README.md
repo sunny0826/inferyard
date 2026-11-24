@@ -51,7 +51,7 @@ uv tool upgrade inferyard
 3. Run `zh-core` and `zh-svg-pelican` separately, verify each raw run, and generate one combined report. If the `zh-core` run is already complete, add only the missing `zh-svg-pelican` run.
 4. Open `studio.json` in Studio. For handoff, copy the sealed runs along with the report (or produce a redacted evidence bundle with `inferyard public package`).
 
-The desktop workflow starts on the [Studio Tasks page](../studio/README.md#pages-and-first-launch). Studio can reuse an existing CLI, upgrade it with one click, and manage services it starts.
+The desktop workflow starts on the [Studio Tasks page](../studio/README.md#pages-and-first-launch). Studio can reuse an existing CLI, automatically upgrade it after Studio updates, and manage services it starts.
 
 ## Read more
 

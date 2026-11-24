@@ -48,7 +48,7 @@ uv tool upgrade inferyard
 3. 分别运行 `zh-core` 与 `zh-svg-pelican` 题包，核验各自的原始 run，再生成一份汇总报告。已有完整 `zh-core` 结果时，只补缺少的 `zh-svg-pelican` 运行。
 4. 在 Studio 阅读 `studio.json`。交付时一并复制封存的 run 和报告（如需脱敏公开证据可使用 `inferyard public package`）。
 
-桌面工作流从 [Studio 任务页](../studio/README.md#pages-and-first-launch) 开始。Studio 可以复用已有 CLI、一键升级 CLI，并管理自己启动的服务。
+桌面工作流从 [Studio 任务页](../studio/README.md#pages-and-first-launch) 开始。Studio 可以复用已有 CLI、在更新后自动升级 CLI，并管理自己启动的服务。
 
 ## 继续阅读
 

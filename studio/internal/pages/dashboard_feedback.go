@@ -1,6 +1,8 @@
 package pages
 
 import (
+	"strings"
+
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
@@ -54,6 +56,7 @@ var knownErrorKeys = map[string]string{
 	"install_checksum_failed":             "err.install_checksum_failed",
 	"install_unpack_failed":               "err.install_unpack_failed",
 	"install_failed":                      "err.install_failed",
+	"cli_upgrade_failed":                  "err.cli_upgrade_failed",
 	"install_version_unknown":             "err.install_version_unknown",
 	"ac_power_required":                   "err.ac_power_required",
 	"chat_template_unavailable":           "err.chat_template_unavailable",
@@ -188,31 +191,89 @@ func (s *viewState) feedback(c *ui.Context) {
 			},
 		})
 	}
-	s.outdatedCLIBanner(c)
+	s.cliUpgradeBanner(c)
 }
 
-func (s *viewState) outdatedCLIBanner(c *ui.Context) {
-	if !s.loaded || s.ready.CLI.Status != "outdated" || (s.selected == "dashboard" && s.detailID == "") {
+func (s *viewState) applyCLIUpgradeState(next core.CLIUpgradeState) {
+	if next.State == "" {
 		return
 	}
-	msg := cliOutdatedSummary(s.ready.CLI.Version)
-	if s.cliInstallStatus != "" {
-		msg = s.cliInstallStatus
+	if s.cliUpgrade.State == "" || next.Seq >= s.cliUpgrade.Seq {
+		s.cliUpgrade = next
+		if next.State != core.CLIUpgradeFailed {
+			s.cliUpgradeDismissedSeq = 0
+		}
+	}
+}
+
+func (s *viewState) cliAutoUpgradeActive() bool {
+	return s.cliUpgrade.State == core.CLIUpgradeChecking || s.cliUpgrade.State == core.CLIUpgradeUpgrading
+}
+
+func (s *viewState) suppressOutdatedCLIError(e *core.ApiError) bool {
+	return e != nil && e.Code == "cli_outdated" && (s.cliAutoUpgradeActive() || s.cliUpgradeErrorVisible())
+}
+
+func (s *viewState) cliUpgradeErrorVisible() bool {
+	if s.cliUpgrade.State != core.CLIUpgradeFailed || s.cliUpgrade.Error == nil {
+		return false
+	}
+	if s.cliUpgrade.Seq != 0 && s.cliUpgradeDismissedSeq == s.cliUpgrade.Seq {
+		return false
+	}
+	if s.cliUpgrade.Seq == 0 && s.cliUpgradeDismissedSeq != 0 {
+		return false
+	}
+	return true
+}
+
+func (s *viewState) cliUpgradeErrorMessage(c *ui.Context, e *core.ApiError) string {
+	if e == nil {
+		return ""
+	}
+	if e.Code == "cli_upgrade_failed" {
+		return tr(c, "err.cli_upgrade_failed")
+	}
+	detail := strings.TrimSpace(e.Message)
+	if detail == "" {
+		detail = human(e.Code)
+	}
+	return trf(c, "onboarding.cli.auto_upgrade_failed", "error", detail)
+}
+
+func (s *viewState) cliUpgradeBanner(c *ui.Context) {
+	if s.cliUpgradeErrorVisible() {
+		bannerErr := *s.cliUpgrade.Error
+		bannerErr.Message = s.cliUpgradeErrorMessage(c, s.cliUpgrade.Error)
+		ui.Column(c.Key("cli-upgrade-error-banner")).FillWidth().Children(func() {
+			errorRecoveryBanner(c, &bannerErr, func() {
+				upgrading := s.actionBusy("upgrade-cli") || s.cliAutoUpgradeActive()
+				if primaryActionButton(c, tr(c, "dashboard.feedback.retry"), upgrading).Disabled(s.busy || upgrading).Clicked() {
+					s.upgradeCLI()
+				}
+				if s.selected != "settings" {
+					if button(c, tr(c, "onboarding.setup.open_settings")).Disabled(s.busy).Clicked() {
+						s.navigateTo("settings", "")
+					}
+				}
+				if ghostButton(c, tr(c, "dashboard.feedback.close")).Clicked() {
+					if s.cliUpgrade.Seq != 0 {
+						s.cliUpgradeDismissedSeq = s.cliUpgrade.Seq
+					} else {
+						s.cliUpgradeDismissedSeq = 1
+					}
+				}
+			})
+		})
+		return
 	}
 	bound := s.service != nil && s.service.BoundPaths() != nil
-	var actions func()
-	if !bound {
-		actions = func() {
-			upgrading := s.actionBusy("upgrade-cli")
-			if primaryActionButton(c, tr(c, "onboarding.cli.upgrade_button"), upgrading).Disabled(s.busy).Clicked() {
-				s.upgradeCLI()
-			}
-		}
+	if !bound || !s.loaded || s.ready.CLI.Status != "outdated" || (s.selected == "dashboard" && s.detailID == "") {
+		return
 	}
 	noticeBanner(c, noticeBannerOptions{
 		Kind:    stateWarning,
 		Size:    bannerCompact,
-		Message: msg,
-		Actions: actions,
+		Message: cliOutdatedSummary(s.ready.CLI.Version),
 	})
 }
