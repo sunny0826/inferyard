@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.0.13
+
+- docs: document animated SVG report showcase in Studio and READMEs
+- feat(studio): render animated SVG outputs in report detail WebView
+- feat(report): export and validate svg_outputs in studio report
+- fix(studio,cli): use ~/.inferyard/workspace and ~/.inferyard/results as default directories (#216)
+- refactor(studio): remove redundant card detail folds (#215)
+- fix: eliminate macOS local-engine per-request stall and auto-recover replaced dirty services (#213)
+- fix(studio): move notification close button to top-right and auto-dismiss popups (#214)
+- fix(studio): format resource curve values to 2 decimals and readable timestamps (#212)
+
 ## 0.0.12
 
 - feat(studio): auto-upgrade outdated CLI on update and show banner only on failure (#210)

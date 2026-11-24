@@ -3,6 +3,6 @@ import { defineConfig } from 'mygo-cli';
 export default defineConfig({
   name: 'InferYard Studio',
   identifier: 'com.inferyard.studio',
-  version: '0.0.12',
+  version: '0.0.13',
   out: 'build',
 });
