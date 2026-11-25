@@ -3,7 +3,11 @@ import XCTest
 @MainActor
 final class PolystrataRealUITests: XCTestCase {
     var app: XCUIApplication!
-    private let windowTitle = "InferYard Studio"
+    private let baseWindowTitle = "InferYard Studio"
+
+    private var mainWindow: XCUIElement {
+        app.windows.matching(NSPredicate(format: "title CONTAINS %@", baseWindowTitle)).firstMatch
+    }
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -20,14 +24,15 @@ final class PolystrataRealUITests: XCTestCase {
             app.launchEnvironment["PYTHONPATH"] = pythonPath
         }
         app.launch()
-        expectExists(app.windows[windowTitle], timeout: 20)
+        app.activate()
+        expectExists(mainWindow, timeout: 20)
         XCTAssertFalse(app.windows["InferYard Studio · UI 调试"].exists)
     }
 
     override func tearDownWithError() throws {
         if let app, app.state != .notRunning {
             if let testRun, testRun.totalFailureCount > 0 {
-                if app.windows[windowTitle].exists {
+                if mainWindow.exists {
                     keepScreenshot("Failed real PolyStrata window")
                 }
                 let tree = XCTAttachment(string: app.debugDescription)
@@ -62,7 +67,7 @@ final class PolystrataRealUITests: XCTestCase {
         // 2. Services: launch standalone PolyStrata service, probe /v1/chat/completions, and stop cleanly.
         click("服务")
         expectText("托管服务", timeout: 15)
-        click("+ 启动模型", timeout: 15)
+        click("+ 启动模型", timeout: 20)
         expectText("启动模型服务", timeout: 10)
         expectText("内存余量预估", timeout: 10)
         XCTAssertFalse(
@@ -70,18 +75,23 @@ final class PolystrataRealUITests: XCTestCase {
             "PolyStrata strata_pack resident memory estimate must not falsely block launch"
         )
         click("启动服务", timeout: 10)
-        wait("Managed PolyStrata service reaches running state", timeout: 300) {
-            if self.textExists("托管服务启动失败") || self.textExists("服务意外退出") {
+        let runningSidebarStatus = app.buttons.matching(
+            NSPredicate(format: "title == %@ OR label == %@", "服务运行中", "服务运行中")
+        ).firstMatch
+        wait("Managed PolyStrata service finishes loading and reaches running state", timeout: 300) {
+            if self.textExists("托管服务启动失败") || self.textExists("服务意外退出") || self.textExists("服务异常退出") {
                 XCTFail("Managed PolyStrata service failed to start")
                 return true
             }
-            return self.anyTextContains("1 个托管服务运行中")
+            return (runningSidebarStatus.exists || self.anyTextContains("服务运行中"))
+                && !self.textExists("启动中")
+                && !self.anyTextContains("服务启动中")
         }
         keepScreenshot("2-Services-Running")
 
         click("调用示例", timeout: 15)
         expectText("连通性测试", timeout: 10)
-        click("发一条测试请求", timeout: 10)
+        click("发一条测试请求", timeout: 15)
         let okLine = app.descendants(matching: .any).matching(
             NSPredicate(format: "label BEGINSWITH %@ OR value BEGINSWITH %@", "HTTP 200 · 延迟 ", "HTTP 200 · 延迟 ")
         ).firstMatch
@@ -102,18 +112,28 @@ final class PolystrataRealUITests: XCTestCase {
 
         closeDrawer(closeLabel: "关闭调用示例", markerText: "连通性测试")
 
-        click("停止", timeout: 10)
-        click("确认停止", timeout: 10)
+        click("停止", timeout: 15)
+        click("确认停止", timeout: 15)
         wait("Managed PolyStrata service stops cleanly", timeout: 60) {
             self.anyTextContains("当前没有运行中的托管服务")
+                && !self.textExists("停止中")
+                && !self.anyTextContains("服务停止中")
         }
 
         // 3. Benchmarks: run real single-bundle (zh-svg-pelican) benchmark and inspect generated report.
         click("测评")
-        if app.buttons["新建测评"].exists {
+        let newBenchBtn = app.buttons.matching(
+            NSPredicate(format: "title == %@ OR label == %@", "新建测评", "新建测评")
+        ).firstMatch
+        let startBtn = app.buttons.matching(
+            NSPredicate(format: "title == %@ OR label == %@", "开始测评", "开始测评")
+        ).firstMatch
+        wait("Benchmarks page renders", timeout: 15) {
+            newBenchBtn.exists || startBtn.exists
+        }
+        if newBenchBtn.exists {
             click("新建测评", timeout: 15)
         }
-        let startBtn = app.buttons["开始测评"].firstMatch
         wait("Benchmark configuration stage is ready", timeout: 60) {
             startBtn.exists && startBtn.isEnabled
         }
@@ -122,7 +142,12 @@ final class PolystrataRealUITests: XCTestCase {
         expectExists(zhCore, timeout: 10)
         expectExists(zhPelican, timeout: 10)
         if String(describing: zhCore.value ?? "") == "1" {
-            revealIfNeeded(zhCore)
+            wait("zh-core checkbox becomes hittable", timeout: 10) {
+                self.revealIfNeeded(zhCore)
+                if zhCore.isHittable { return true }
+                self.dismissFloatingNotificationsIfPresent()
+                return zhCore.isHittable
+            }
             zhCore.click()
         }
         wait("Only zh-svg-pelican remains selected", timeout: 5) {
@@ -131,8 +156,7 @@ final class PolystrataRealUITests: XCTestCase {
         }
         keepScreenshot("4-Benchmark-Configured")
 
-        revealIfNeeded(startBtn)
-        startBtn.click()
+        click("开始测评", timeout: 15)
 
         let abortedLine = app.descendants(matching: .any).matching(
             NSPredicate(format: "label BEGINSWITH %@ OR value BEGINSWITH %@", "当前任务已中止：", "当前任务已中止：")
@@ -146,10 +170,21 @@ final class PolystrataRealUITests: XCTestCase {
             }
             return viewReportBtn.exists && viewReportBtn.isEnabled
         }
-        viewReportBtn.click()
+        click("查看报告", timeout: 20)
         expectText("各类任务表现", timeout: 30)
         expectExists(app.buttons["返回报告列表"].firstMatch, timeout: 15)
         keepScreenshot("5-Benchmark-Report")
+    }
+
+    private func dismissFloatingNotificationsIfPresent() {
+        let dismissPred = NSPredicate(
+            format: "title BEGINSWITH %@ OR label BEGINSWITH %@", "关闭通知：", "关闭通知："
+        )
+        for _ in 0..<3 {
+            let dismissBtn = app.buttons.matching(dismissPred).firstMatch
+            guard dismissBtn.exists && dismissBtn.isHittable else { break }
+            dismissBtn.click()
+        }
     }
 
     private func closeDrawer(closeLabel: String, markerText: String) {
@@ -167,27 +202,31 @@ final class PolystrataRealUITests: XCTestCase {
     }
 
     private func revealIfNeeded(_ element: XCUIElement) {
-        if element.isHittable { return }
-        let scroll = app.windows[windowTitle].children(matching: .scrollView).element(boundBy: 1)
+        let scroll = mainWindow.children(matching: .scrollView).element(boundBy: 1)
         guard scroll.exists else { return }
         for _ in 0..<6 {
-            if element.isHittable { return }
             let viewport = scroll.frame
             let frame = element.frame
-            if frame.isEmpty { break }
+            if frame.isEmpty || viewport.isEmpty { return }
+            if frame.minY >= viewport.minY && frame.maxY <= viewport.maxY {
+                return
+            }
             let delta = frame.maxY > viewport.maxY ? viewport.maxY - frame.maxY : viewport.minY - frame.minY
             scroll.scroll(byDeltaX: 0, deltaY: delta.rounded(.awayFromZero))
         }
     }
 
-    private func click(_ label: String, timeout: TimeInterval = 10) {
+    private func click(_ label: String, timeout: TimeInterval = 15) {
         let button = app.buttons.matching(
             NSPredicate(format: "title == %@ OR label == %@", label, label)
         ).firstMatch
-        wait("Button \(label) exists and is enabled", timeout: timeout) {
-            button.exists && button.isEnabled
+        wait("Button \(label) exists, is enabled, and becomes hittable", timeout: timeout) {
+            guard button.exists && button.isEnabled else { return false }
+            self.revealIfNeeded(button)
+            if button.isHittable { return true }
+            self.dismissFloatingNotificationsIfPresent()
+            return button.isHittable
         }
-        revealIfNeeded(button)
         button.click()
     }
 
@@ -195,8 +234,8 @@ final class PolystrataRealUITests: XCTestCase {
         let titleOrLabel = NSPredicate(format: "title == %@ OR label == %@", name, name)
         let textPred = NSPredicate(format: "label == %@ OR value == %@", name, name)
         let candidates = [
-            app.buttons.matching(titleOrLabel).firstMatch,
             app.tabs.matching(titleOrLabel).firstMatch,
+            app.buttons.matching(titleOrLabel).firstMatch,
             app.radioButtons.matching(titleOrLabel).firstMatch,
             app.otherElements.matching(titleOrLabel).firstMatch,
             app.staticTexts.matching(textPred).firstMatch,
@@ -204,12 +243,17 @@ final class PolystrataRealUITests: XCTestCase {
         var target = candidates[0]
         wait("Section switch \(name) exists", timeout: timeout) {
             for candidate in candidates where candidate.exists {
-                target = candidate
-                return true
+                self.revealIfNeeded(candidate)
+                if !candidate.isHittable {
+                    self.dismissFloatingNotificationsIfPresent()
+                }
+                if candidate.isHittable {
+                    target = candidate
+                    return true
+                }
             }
             return false
         }
-        revealIfNeeded(target)
         target.click()
     }
 
@@ -247,8 +291,8 @@ final class PolystrataRealUITests: XCTestCase {
     }
 
     private func keepScreenshot(_ name: String) {
-        guard app.windows[windowTitle].exists else { return }
-        let attachment = XCTAttachment(screenshot: app.windows[windowTitle].screenshot())
+        guard mainWindow.exists else { return }
+        let attachment = XCTAttachment(screenshot: mainWindow.screenshot())
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)

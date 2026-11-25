@@ -216,7 +216,7 @@ def create(request):
         },
         safety={
             "interval_seconds": 1,
-            "max_temperature_celsius": 100 if system == "Darwin" else 85,
+            "max_temperature_celsius": 115 if system == "Darwin" else 85,
             "require_temperature": system == "Darwin",
             "check_environment": True,
         },

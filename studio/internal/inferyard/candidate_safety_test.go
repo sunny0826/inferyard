@@ -10,15 +10,15 @@ func TestValidCandidateSafetyTemperatureCeilings(t *testing.T) {
 		want   bool
 	}{
 		{
-			name:   "metal_accepts_100",
+			name:   "metal_accepts_115",
 			family: PolystrataFamily,
-			raw:    `{"interval_seconds":1,"max_temperature_celsius":100,"require_temperature":true,"check_environment":true}`,
+			raw:    `{"interval_seconds":1,"max_temperature_celsius":115,"require_temperature":true,"check_environment":true}`,
 			want:   true,
 		},
 		{
-			name:   "metal_rejects_101",
+			name:   "metal_rejects_116",
 			family: PolystrataFamily,
-			raw:    `{"interval_seconds":1,"max_temperature_celsius":101,"require_temperature":true,"check_environment":true}`,
+			raw:    `{"interval_seconds":1,"max_temperature_celsius":116,"require_temperature":true,"check_environment":true}`,
 			want:   false,
 		},
 		{

@@ -161,7 +161,7 @@ class TestPolystrataRealRunner(unittest.TestCase):
             self.assertFalse(settings["keep_services_on_quit"])
             workspace = Path(settings["workspace_root"])
             self.assertTrue(workspace.is_relative_to(output.resolve()))
-            staged_inst = Path(settings["engine_installations"][0]["path"])
+            staged_inst = Path(settings["engine_installations"][0])
             self.assertTrue(staged_inst.is_relative_to(workspace))
             self.assertTrue((workspace / "engines/polystrata/strata-small.json").is_file())
             self.assertFalse((workspace / "engines/polystrata/strata-large.json").exists())

@@ -99,6 +99,9 @@ func (s *viewState) startBenchmark() {
 			e = s.runBenchmark(ctx, result, names, announce)
 		}
 		s.runOnUI(func() {
+			if s.service != nil {
+				s.tasks = s.service.RunTasks()
+			}
 			s.task.failure = e
 			if e != nil {
 				s.failedBundle = s.task.bindings.failedBundle
@@ -378,6 +381,9 @@ func (s *viewState) retryBenchmark() {
 		defer cancel()
 		e := s.runBenchmark(ctx, result, names, func(stage string) { s.win.Update(func() { s.task.stage = stage }) })
 		s.win.Update(func() {
+			if s.service != nil {
+				s.tasks = s.service.RunTasks()
+			}
 			s.task.failure = e
 			if e != nil {
 				s.failedBundle = s.task.bindings.failedBundle

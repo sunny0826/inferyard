@@ -275,12 +275,7 @@ def prepare_environment(
         "inferyard_path": str(cli),
         "workspace_root": str(workspace),
         "keep_services_on_quit": False,
-        "engine_installations": [
-            {
-                "path": str(staged.installation_path),
-                "enabled": True,
-            }
-        ],
+        "engine_installations": [str(staged.installation_path)],
     }
     settings_path = settings_dir / "settings.json"
     settings_path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
@@ -390,6 +385,31 @@ def main() -> int:
             exit_code = 65
             print("PolystrataRealUITests did not report a passing result", flush=True)
         reports = sorted(workspace.glob("reports/*/studio.json"))
+        run_summaries: list[dict[str, object]] = []
+        for mf in sorted(workspace.glob("results/*/manifest.json")):
+            try:
+                mdoc = json.loads(mf.read_text(encoding="utf-8"))
+                stop_reason = mdoc.get("stop_reason")
+                ev_path = mf.parent / "events.jsonl"
+                last_events: list[object] = []
+                if ev_path.is_file():
+                    for line in ev_path.read_text(encoding="utf-8", errors="replace").splitlines()[-8:]:
+                        ev = json.loads(line)
+                        last_events.append({
+                            "kind": ev.get("kind"),
+                            "phase": ev.get("phase"),
+                            "data": ev.get("data"),
+                        })
+                run_summaries.append(
+                    {
+                        "run_dir": mf.parent.name,
+                        "manifest_keys": sorted(mdoc.keys()),
+                        "stop_reason": stop_reason,
+                        "tail_events": last_events,
+                    }
+                )
+            except (OSError, json.JSONDecodeError):
+                pass
         copied_report = ""
         if exit_code == 0:
             if not reports:
@@ -411,10 +431,13 @@ def main() -> int:
             "exit_code": exit_code,
             "app": str(app),
             "report": copied_report,
+            "runs": run_summaries,
         }
         (output / "run.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
         status = "passed" if exit_code == 0 else "failed"
         print(f"PolyStrata real UI E2E {status}; build and test: {elapsed:.1f}s", flush=True)
+        if run_summaries:
+            print(f"Run manifests: {json.dumps(run_summaries, ensure_ascii=False)}", flush=True)
         if exit_code:
             if "Timed out while enabling automation mode" in log_text:
                 print(

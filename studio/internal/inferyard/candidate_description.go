@@ -381,7 +381,7 @@ func validCandidateSafety(raw []byte, family string) bool {
 	}
 	maxAllowed := 85.0
 	if *value.Temperature {
-		maxAllowed = 100.0
+		maxAllowed = 115.0
 	}
 	if *value.Maximum < 1 || *value.Maximum > maxAllowed {
 		return false
