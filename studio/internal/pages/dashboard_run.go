@@ -106,7 +106,7 @@ func (w *viewState) candidateFields(c *ui.Context) {
 			ui.Text(c, tr(c, "dashboard.candidate.no_engines"))
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 				button(c, tr(c, "onboarding.assets.go_downloads")).OnClick(func() { w.selected = "downloads" })
-				button(c, tr(c, "dashboard.candidate.register_engine")).OnClick(func() { w.selected = "settings" })
+				button(c, tr(c, "dashboard.candidate.register_engine")).OnClick(func() { w.openGeneralSettings() })
 			})
 		}
 		createDisabled = true

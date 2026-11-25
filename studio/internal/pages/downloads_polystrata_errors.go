@@ -46,7 +46,7 @@ func (s *viewState) polystrataRuntimeProxyGuidance(c *ui.Context, task core.Down
 	applyMaterial(c, ui.Column(c.Key("polystrata-proxy-guidance-"+task.TaskId)).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Inset), materialInset).Children(func() {
 		ui.Text(c, hint).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		outlineButton(c, tr(c, "downloads.polystrata.proxy_hint.action")).Label(trf(c, "downloads.polystrata.proxy_hint.action_label", "taskId", task.TaskId)).OnClick(func() {
-			s.selected = "settings"
+			s.openGeneralSettings()
 		})
 	})
 }

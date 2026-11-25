@@ -134,3 +134,27 @@ func TestSettingsAboutTabEnglishHasNoChineseLeakage(t *testing.T) {
 		}
 	}
 }
+
+func TestDirectedSettingsShortcutReturnsToGeneralTabFromAbout(t *testing.T) {
+	s := settingsState()
+	tt := ui.NewTester(s.view, 1200, 1800)
+	tt.Frame()
+
+	click(t, tt, "关于")
+	if s.settingsTab != settingsTabAbout {
+		t.Fatalf("expected settingsTabAbout, got %d", s.settingsTab)
+	}
+
+	click(t, tt, "下载")
+	if s.selected != "downloads" {
+		t.Fatalf("expected downloads page, got %q", s.selected)
+	}
+
+	click(t, tt, "下载设置")
+	if s.selected != "settings" || s.settingsTab != settingsTabGeneral {
+		t.Fatalf("directed settings button did not open General tab: selected=%q tab=%d", s.selected, s.settingsTab)
+	}
+	if !tt.HasText("网络与代理") || tt.HasText("关于 InferYard Studio") {
+		t.Fatalf("expected General settings content after Download Settings shortcut: %v", tt.Texts())
+	}
+}

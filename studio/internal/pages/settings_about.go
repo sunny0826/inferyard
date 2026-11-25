@@ -52,6 +52,11 @@ func formatAboutCommit(commit string, dirty bool) string {
 	return v
 }
 
+type aboutInfoRow struct {
+	label string
+	value string
+}
+
 func aboutFieldValue(locale, value string) string {
 	if value == "" {
 		return l10n.T(locale, "settings.about.unknown")
@@ -59,12 +64,21 @@ func aboutFieldValue(locale, value string) string {
 	return value
 }
 
+func aboutInfoRows(locale string, info core.BuildInfo) []aboutInfoRow {
+	return []aboutInfoRow{
+		{label: l10n.T(locale, "settings.about.version"), value: aboutFieldValue(locale, formatAboutVersion(info.Version))},
+		{label: l10n.T(locale, "settings.about.build_time"), value: aboutFieldValue(locale, formatAboutBuildTime(info.BuildTime))},
+		{label: l10n.T(locale, "settings.about.git_commit"), value: aboutFieldValue(locale, formatAboutCommit(info.GitCommit, info.Dirty))},
+	}
+}
+
 func formatAboutCopyText(locale string, info core.BuildInfo) string {
-	return strings.Join([]string{
-		fmt.Sprintf("%s: %s", l10n.T(locale, "settings.about.version"), aboutFieldValue(locale, formatAboutVersion(info.Version))),
-		fmt.Sprintf("%s: %s", l10n.T(locale, "settings.about.build_time"), aboutFieldValue(locale, formatAboutBuildTime(info.BuildTime))),
-		fmt.Sprintf("%s: %s", l10n.T(locale, "settings.about.git_commit"), aboutFieldValue(locale, formatAboutCommit(info.GitCommit, info.Dirty))),
-	}, "\n")
+	rows := aboutInfoRows(locale, info)
+	lines := make([]string, len(rows))
+	for i, row := range rows {
+		lines[i] = fmt.Sprintf("%s: %s", row.label, row.value)
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (s *viewState) copyAboutInfo(c *ui.Context, info core.BuildInfo) {
@@ -84,12 +98,12 @@ func (s *viewState) copyAboutInfo(c *ui.Context, info core.BuildInfo) {
 
 func (s *viewState) aboutSettingsView(c *ui.Context) {
 	info := s.aboutBuildInfo()
-	loc := contextLocale(c)
+	rows := aboutInfoRows(contextLocale(c), info)
 	t := tokens(c)
 	card(c, tr(c, "settings.about.title"), func() {
-		keyValueRow(c, tr(c, "settings.about.version"), aboutFieldValue(loc, formatAboutVersion(info.Version)), true)
-		keyValueRow(c, tr(c, "settings.about.build_time"), aboutFieldValue(loc, formatAboutBuildTime(info.BuildTime)), true)
-		keyValueRow(c, tr(c, "settings.about.git_commit"), aboutFieldValue(loc, formatAboutCommit(info.GitCommit, info.Dirty)), true)
+		for _, row := range rows {
+			keyValueRow(c, row.label, row.value, true)
+		}
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Tight, 0, 0, 0).Children(func() {
 			if outlineButton(c, tr(c, "settings.about.copy")).Clicked() {
 				s.copyAboutInfo(c, info)
