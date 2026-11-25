@@ -325,6 +325,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             cli/CHANGELOG.md
+            tools/release_manifest.py
             tools/release_notes.py
           sparse-checkout-cone-mode: false
       - uses: actions/download-artifact@v8
@@ -418,6 +419,34 @@ jobs:
             args+=(--draft)
           fi
           gh "${args[@]}"
+      - name: Publish latest.json to Cloudflare R2
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.draft == true) }}
+        shell: bash
+        env:
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.metadata.outputs.tag }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          for name in R2_ACCOUNT_ID R2_BUCKET AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "Missing required Cloudflare R2 secret: $name" >&2
+              exit 1
+            fi
+          done
+          python3 tools/release_manifest.py \
+            --tag "$TAG" \
+            --repo "$GH_REPO" \
+            --notes-file release-notes.md \
+            --assets-dir release-assets \
+            --out latest.json
+          aws s3 cp latest.json "s3://${R2_BUCKET}/latest.json" \
+            --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" \
+            --content-type "application/json; charset=utf-8" \
+            --cache-control "public, max-age=300"
 
   pypi:
     needs: [metadata, cli, github-release]

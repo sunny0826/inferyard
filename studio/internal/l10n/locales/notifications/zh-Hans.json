@@ -80,5 +80,11 @@
   "notif.engine.orphaned.title": "检测到遗留模型服务",
   "notif.engine.orphaned.body": "上次运行的托管服务或记录尚未清理，请先处理后再继续测评。",
   "notif.engine_check.ineligible.title": "当前所选引擎不可用",
-  "notif.engine_check.ineligible.body": "{engine} 未通过核验：{reason}。"
+  "notif.engine_check.ineligible.body": "{engine} 未通过核验：{reason}。",
+  "notif.engine_updates.available.title": "发现引擎更新",
+  "notif.engine_updates.available.body": "{count} 个引擎有可用新版本（{engines}），可在引擎页一键更新。",
+  "notif.engine_update.done.title": "引擎更新完成",
+  "notif.engine_update.done.body": "{target} 已完成更新并重新核验。",
+  "notif.engine_update.failed.title": "引擎更新失败",
+  "notif.engine_update.failed.body": "{target} 更新未完成，请查看详情并重试。"
 }

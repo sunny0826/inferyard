@@ -95,6 +95,7 @@ func runMain() (exitCode int) {
 		})
 		service.SetUpdateQuitHook(func() { mygo.App.Quit() })
 		service.StartBackgroundUpdateCheck()
+		service.StartBackgroundEngineUpdateCheck()
 		desktop.SubscribeWithFilter(ctx, service.Bus, suppress, func(message desktop.Message) error {
 			return mygo.NewNotification(mygo.NotificationOptions{Title: message.Title, Body: message.Body}).Show()
 		}, log.Printf)

@@ -362,6 +362,9 @@ func (s *Service) startManagedServiceLocked(startup Startup, slug, serviceID str
 	if s.runsActiveLocked() {
 		return EngineState{}, Err("run_active")
 	}
+	if s.isEngineUpgradingLocked(startup.EngineName, startup.Path) {
+		return EngineState{}, engineUpdatingError()
+	}
 	w := workspaceRoot(s.settings)
 	if w == nil {
 		return EngineState{}, Conflict("settings_incomplete")

@@ -185,6 +185,10 @@ type viewState struct {
 	pendingExclusivityMode                                                              string
 	modelEvidence                                                                       map[string]core.ModelEvidenceSummary
 	engineUpdates                                                                       map[string]core.EngineUpdateInfo
+	engineUpdateStatus                                                                  core.EngineUpdatesStatus
+	engineUpdateNotifiedSig                                                             string
+	engineUpdateCheckFn                                                                 func(context.Context) (core.EngineUpdatesStatus, *core.ApiError)
+	engineUpdateRunFn                                                                   func(string) (core.DownloadTask, *core.ApiError)
 	reportExclusivities                                                                 map[string]string
 	probeServiceConnFunc                                                                func(context.Context, string) core.ExternalConnProbe
 	probeEndpointConnFunc                                                               func(context.Context, string) core.ExternalConnProbe

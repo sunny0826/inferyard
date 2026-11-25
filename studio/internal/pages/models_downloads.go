@@ -42,8 +42,8 @@ func (s *viewState) orderedDownloads() []core.DownloadTask {
 		if a.priority != b.priority {
 			return cmp.Compare(a.priority, b.priority)
 		}
-		aEngine := a.task.Kind == "engine" || a.task.Kind == "polystrata"
-		bEngine := b.task.Kind == "engine" || b.task.Kind == "polystrata"
+		aEngine := a.task.Kind == "engine" || a.task.Kind == "polystrata" || a.task.Kind == "engine_update"
+		bEngine := b.task.Kind == "engine" || b.task.Kind == "polystrata" || b.task.Kind == "engine_update"
 		if aEngine && !bEngine {
 			return -1
 		}
@@ -92,6 +92,8 @@ func downloadStageLabel(stage string) string {
 		return l10n.TR("downloads.stage.downloading_runtime")
 	case "setup_engine":
 		return l10n.TR("downloads.stage.setup_engine")
+	case "upgrading":
+		return l10n.TR("downloads.stage.upgrading")
 	case "downloading_model":
 		return l10n.TR("downloads.stage.downloading_model")
 	case "verifying_installation":
@@ -148,8 +150,10 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 	kind := tr(c, "downloads.kind.model")
 	if task.Kind == "engine" {
 		kind = tr(c, "downloads.kind.engine")
+	} else if task.Kind == "engine_update" {
+		kind = tr(c, "downloads.kind.engine_update")
 	}
-	engineIndeterminate := task.Kind == "engine" && task.TotalBytes == nil && task.DownloadedBytes == 0 && task.BytesPerSecond == nil && task.Stage == ""
+	engineIndeterminate := (task.Kind == "engine" && task.TotalBytes == nil && task.DownloadedBytes == 0 && task.BytesPerSecond == nil && task.Stage == "") || task.Kind == "engine_update"
 	var metrics []taskMetric
 	var status string
 	active := task.State == "downloading"
@@ -212,6 +216,19 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 }
 
 func engineTaskStatus(task core.DownloadTask) string {
+	if task.Kind == "engine_update" {
+		switch task.State {
+		case "downloading":
+			return l10n.TR("downloads.engine_update.downloading")
+		case "done":
+			return l10n.TR("downloads.engine_update.done")
+		case "failed":
+			return l10n.TR("downloads.engine_update.failed")
+		case "cancelled":
+			return l10n.TR("downloads.engine_update.cancelled")
+		}
+		return l10n.TR("downloads.engine_update.unknown")
+	}
 	switch task.State {
 	case "downloading":
 		return l10n.TR("downloads.engine_archive.downloading")
@@ -288,6 +305,9 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 				return l10n.TR("downloads.toast.cancel_requested"), e
 			})
 		}
+	}
+	if task.Kind == "engine_update" {
+		return
 	}
 	retryDisabled := s.busy || s.downloadRetryActive(task)
 	if task.State == "cancelled" {

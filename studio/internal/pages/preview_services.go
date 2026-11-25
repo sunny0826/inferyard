@@ -384,11 +384,55 @@ func seedPreviewEngineUpdates(engine string) map[string]core.EngineUpdateInfo {
 	return map[string]core.EngineUpdateInfo{
 		engine: {
 			Engine:           engine,
+			Family:           "llama-cpp",
 			InstalledVersion: "b4800",
 			LatestVersion:    "b5400",
+			DownloadURL:      "https://example.invalid/llama-b5400-bin-macos-arm64.tar.gz",
+			Source:           "remote",
+			Action:           core.EngineUpdateActionDownload,
 			HasUpdate:        true,
 		},
 	}
+}
+
+func (p *previewSession) checkEngineUpdates() {
+	if p.state == nil {
+		return
+	}
+	count := 0
+	for _, upd := range p.state.engineUpdates {
+		if upd.HasUpdate {
+			count++
+		}
+	}
+	if count > 0 {
+		p.state.enqueueStatusToast(l10n.TRf("models.engine.toast.check_found", "count", strconv.Itoa(count)))
+	} else {
+		p.state.enqueueStatusToast(l10n.TR("models.engine.toast.check_up_to_date"))
+	}
+}
+
+func (p *previewSession) startEngineUpdate(eng core.EngineAsset, upd core.EngineUpdateInfo) {
+	if p.state == nil {
+		return
+	}
+	task := core.DownloadTask{
+		Kind:        "engine_update",
+		DisplayName: fmt.Sprintf("%s · %s", eng.Name, upd.LatestVersion),
+		TaskId:      fmt.Sprintf("preview-engine-update-%d", time.Now().UnixNano()),
+		State:       "done",
+		OutName:     eng.Name,
+		SourceUrl:   upd.DownloadURL,
+		StartedAt:   time.Now().UTC().Format(time.RFC3339),
+	}
+	p.state.downloads = append([]core.DownloadTask{task}, p.state.downloads...)
+	if cur, ok := p.state.engineUpdates[eng.Name]; ok {
+		cur.InstalledVersion = cur.LatestVersion
+		cur.HasUpdate = false
+		cur.Action = core.EngineUpdateActionNone
+		p.state.engineUpdates[eng.Name] = cur
+	}
+	p.state.enqueueStatusToast(l10n.TRf("models.engine.toast.update_started_preview", "name", eng.Name))
 }
 
 func seedPreviewReportExclusivities() map[string]string {
