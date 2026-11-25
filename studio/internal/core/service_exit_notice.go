@@ -5,11 +5,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"inferyard/studio/internal/l10n"
 )
 
-const exitNoticeLogTailLines = 12
+const (
+	exitNoticeLogTailLines = 12
+	// ExitHintOOM is the structured reason code indicating a likely out-of-memory exit.
+	ExitHintOOM = "oom"
+)
 
 // ServiceExitNotice records an unexpected standalone service exit for UI presentation.
 type ServiceExitNotice struct {
@@ -22,7 +24,8 @@ type ServiceExitNotice struct {
 	Threads     *int     `json:"threads,omitempty"`
 	ExtraArgs   []string `json:"extra_args,omitempty"`
 	LogPath     string   `json:"log_path,omitempty"`
-	ExitedAt    string   `json:"exited_at"`
+	ExitedAt    string   `json:"exited_at,omitempty"`
+	DetectedAt  string   `json:"detected_at,omitempty"`
 	ExitCode    *int     `json:"exit_code,omitempty"`
 	WhileAway   bool     `json:"while_away"`
 	LogTail     []string `json:"log_tail,omitempty"`
@@ -78,10 +81,10 @@ func detectServiceExitHint(lines []string) string {
 			strings.Contains(lower, "cannot allocate memory"),
 			strings.Contains(lower, "insufficient memory"),
 			strings.Contains(lower, "vk_error_out_of_device_memory"):
-			return l10n.TR("core.service.exit_hint.oom")
+			return ExitHintOOM
 		case strings.Contains(lower, "metal") &&
 			(strings.Contains(lower, "memory") || strings.Contains(lower, "alloc") || strings.Contains(lower, "buffer")):
-			return l10n.TR("core.service.exit_hint.oom")
+			return ExitHintOOM
 		}
 	}
 	return ""
@@ -133,7 +136,7 @@ func readExitNoticeFile(path string) *ServiceExitNotice {
 	return &notice
 }
 
-func (s *Service) recordExitedWhileAwayLocked(workspace string, owner engineOwner) {
+func (s *Service) recordExitedWhileAwayLocked(workspace string, owner engineOwner) error {
 	logPath := ""
 	if owner.LogFile != "" {
 		logPath = filepath.Join(workspace, "logs", owner.LogFile)
@@ -161,17 +164,20 @@ func (s *Service) recordExitedWhileAwayLocked(workspace string, owner engineOwne
 		Threads:     cloneIntPtr(owner.Threads),
 		ExtraArgs:   append([]string(nil), owner.ExtraArgs...),
 		LogPath:     logPath,
-		ExitedAt:    now(),
+		DetectedAt:  now(),
 		ExitCode:    nil,
 		WhileAway:   true,
 		LogTail:     logTail,
 		Hint:        detectServiceExitHint(logTail),
 		Dismissed:   false,
 	}
-	_ = writeExitNoticeFile(exitNoticePath(workspace), notice)
+	if err := writeExitNoticeFile(exitNoticePath(workspace), notice); err != nil {
+		return err
+	}
 	cp := clone(notice)
 	s.exitNotice = &cp
 	s.Bus.Publish("service.exited", map[string]any{"notice": clone(notice)})
+	return nil
 }
 
 func (s *Service) recordUnexpectedStandaloneExit(e *engineEntry, exitCode *int) {

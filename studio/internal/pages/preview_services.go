@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"inferyard/studio/internal/core"
-	"inferyard/studio/internal/l10n"
 )
 
 func seedPreviewRecentServices(model, engine string) []core.ServicePreset {
@@ -42,7 +41,7 @@ func previewServiceExitedScene(s *viewState) {
 		ContextSize: 32768,
 		GPULayers:   &gpuAll,
 		LogPath:     "/preview/logs/standalone.log",
-		ExitedAt:    "2026-11-25T05:42:10Z",
+		DetectedAt:  "2026-11-25T05:42:10Z",
 		ExitCode:    &code,
 		WhileAway:   true,
 		LogTail: []string{
@@ -50,7 +49,7 @@ func previewServiceExitedScene(s *viewState) {
 			"ggml_metal_buffer_init: failed to allocate buffer (out of memory)",
 			"process terminated with signal SIGKILL",
 		},
-		Hint: l10n.TR("core.service.exit_hint.oom"),
+		Hint: core.ExitHintOOM,
 	}
 }
 

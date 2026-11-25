@@ -26,6 +26,7 @@ type Startup struct {
 	WebUIDisabled    bool              `json:"webui_disabled,omitempty"`
 	EngineName       string            `json:"engine_name,omitempty"`
 	ModelName        string            `json:"model_name,omitempty"`
+	ServedModel      string            `json:"served_model,omitempty"`
 	GPULayers        *int              `json:"gpu_layers,omitempty"`
 	Threads          *int              `json:"threads,omitempty"`
 	ExtraArgs        []string          `json:"extra_args,omitempty"`
@@ -55,11 +56,15 @@ func (s *Service) Startup(candidate string) (Startup, *ApiError) {
 		Endpoint:         description.Endpoint.URL,
 		ModelPath:        modelPath,
 		ModelKind:        description.Assets.Model.Kind,
+		ServedModel:      strings.TrimSpace(launch.ServedModel),
 		ContextSize:      description.Conditions.ContextSize,
 		Args:             []string{},
 	}
 	if launch.Kind == "direct_process" {
 		result.Path, result.Args = launch.Argv[0], launch.Argv[1:]
+	}
+	if result.ServedModel == "" {
+		result.ServedModel = extractServedModelFromArgs(result.Args)
 	}
 	for _, arg := range result.Args {
 		if arg == "--no-webui" || strings.HasPrefix(arg, "--no-webui=") {
@@ -68,6 +73,24 @@ func (s *Service) Startup(candidate string) (Startup, *ApiError) {
 		}
 	}
 	return result, nil
+}
+
+func extractServedModelFromArgs(args []string) string {
+	served := ""
+	for i := 0; i < len(args); i++ {
+		key, value, inline := strings.Cut(args[i], "=")
+		switch key {
+		case "--alias", "-a", "--served-model-name":
+			if !inline && i+1 < len(args) {
+				value = args[i+1]
+				i++
+			}
+			if trimmed := strings.TrimSpace(value); trimmed != "" {
+				served = trimmed
+			}
+		}
+	}
+	return served
 }
 func (s *Service) Processes(ctx context.Context) ([]ProcessCandidate, *ApiError) {
 	result := []ProcessCandidate{}

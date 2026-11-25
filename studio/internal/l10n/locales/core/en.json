@@ -15,6 +15,7 @@
   "core.context_speed.err.resource_budget_blocked": "Device resource budget check failed. The benchmark was not started.",
   "core.download.kind.engine": "Engine",
   "core.download.kind.model": "Model",
+  "core.engine.err.exit_notice_write_failed": "The background service exited while Studio was closed, but the exit notice could not be saved. Ownership record preserved.",
   "core.engine.err.exited": "The engine process exited. Check the logs, then restart and rebind manually.",
   "core.engine.err.exited_owner_remove_failed": "The engine exited, but the orphaned service record could not be cleared. You can remove only the record without terminating any process.",
   "core.engine.err.handle_orphan_first": "Resolve the orphaned service or invalid record before starting the engine.",

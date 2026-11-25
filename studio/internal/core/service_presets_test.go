@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"strconv"
 	"sync/atomic"
@@ -162,4 +163,71 @@ func TestKeepServicesOnQuitSettingDefaultAndPatch(t *testing.T) {
 		t.Fatalf("expected KeepServicesOnQuit=true when reset to null")
 	}
 	_ = time.Second
+}
+
+func TestServicePresetRejectsPlaintextCredentials(t *testing.T) {
+	var calls atomic.Int32
+	s, _, model, engine := setupStandaloneTestService(t, true, &calls, nil)
+
+	forbidden := [][]string{
+		{"--api-key", "secret123"},
+		{"--api-key=secret123"},
+		{"--hf-token", "hf_123"},
+		{"--alias", "sk-live-secret"},
+	}
+	for _, extra := range forbidden {
+		err := s.SaveServicePreset(ServicePreset{
+			Model:       model,
+			Engine:      engine,
+			ContextSize: 8192,
+			ExtraArgs:   extra,
+		})
+		var apiErr *ApiError
+		if !errors.As(err, &apiErr) || apiErr.Code != "engine_credentials_forbidden" {
+			t.Fatalf("expected engine_credentials_forbidden for %v, got %v", extra, err)
+		}
+	}
+	if got := s.RecentServices(); len(got) != 0 {
+		t.Fatalf("expected no presets written when credentials rejected, got %+v", got)
+	}
+
+	if _, apiErr := s.StartStandalone(context.Background(), StandaloneStartRequest{
+		Model:       model,
+		Engine:      engine,
+		ContextSize: 8192,
+		ExtraArgs:   []string{"--api-key", "secret123"},
+	}); apiErr == nil || apiErr.Code != "engine_credentials_forbidden" {
+		t.Fatalf("expected StartStandalone engine_credentials_forbidden, got %+v", apiErr)
+	}
+}
+
+func TestStartStandaloneAutoPortPreservesZeroInPresetAndRecordsServedModel(t *testing.T) {
+	var calls atomic.Int32
+	s, _, model, engine := setupStandaloneTestService(t, true, &calls, nil)
+
+	st, apiErr := s.StartStandalone(context.Background(), StandaloneStartRequest{
+		Model:       model,
+		Engine:      engine,
+		ContextSize: 8192,
+		Port:        0,
+		ExtraArgs:   []string{"--alias", "qwen3-custom-alias"},
+	})
+	if apiErr != nil {
+		t.Fatalf("StartStandalone(port=0) failed: %+v", apiErr)
+	}
+	st = waitEngineState(t, s, "running")
+	if st.Port <= 0 {
+		t.Fatalf("expected dynamic runtime port > 0, got %+v", st)
+	}
+	if st.ServedModel != "qwen3-custom-alias" {
+		t.Fatalf("expected ServedModel=qwen3-custom-alias, got %q", st.ServedModel)
+	}
+
+	preset, ok := s.ServicePresetFor(model, engine)
+	if !ok {
+		t.Fatalf("expected preset saved after StartStandalone")
+	}
+	if preset.Port != 0 {
+		t.Fatalf("expected auto port preserved as 0 in preset, got %d", preset.Port)
+	}
 }

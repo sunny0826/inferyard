@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 
@@ -28,6 +29,7 @@ type serviceParamsDrawerState struct {
 	gpuLayersText string
 	threadsText   string
 	extraArgsText string
+	saveError     string
 }
 
 func (s *viewState) openServiceParamsDrawerForNew() {
@@ -234,6 +236,7 @@ func (s *viewState) serviceParamsDrawer(c *ui.Context) {
 				modelAsset, hasModel := s.findModelAsset(st.model)
 				engineOpts := s.serviceParamsEngineOptions(modelAsset, hasModel, st.engine)
 				if len(engineOpts) == 0 {
+					st.engine = ""
 					noticeBanner(c, noticeBannerOptions{
 						Kind:    stateWarning,
 						Size:    bannerCompact,
@@ -241,7 +244,11 @@ func (s *viewState) serviceParamsDrawer(c *ui.Context) {
 					})
 				} else {
 					if !hasSelectOption(engineOpts, st.engine) {
-						st.engine = engineOpts[0].Value
+						if hasModel {
+							st.engine = s.defaultStandaloneEngine(modelAsset, engineOpts)
+						} else {
+							st.engine = engineOpts[0].Value
+						}
 					}
 					selectField(c, tr(c, "services.params.engine_label"), "", &st.engine, engineOpts)
 				}
@@ -274,14 +281,19 @@ func (s *viewState) serviceParamsDrawer(c *ui.Context) {
 				if validationErr != "" {
 					noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: validationErr})
 				}
+				memErr := ""
 				if hasModel {
-					if memErr := s.standaloneMemoryShortfall(modelAsset); memErr != "" {
+					memErr = s.standaloneMemoryShortfall(modelAsset)
+					if memErr != "" {
 						noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: memErr})
 					}
 				}
+				if st.saveError != "" {
+					noticeBanner(c, noticeBannerOptions{Kind: stateDanger, Size: bannerCompact, Message: st.saveError})
+				}
 
-				valid := validationErr == "" && st.model != "" && st.engine != "" && len(engineOpts) > 0
-				canStart := valid && !s.busy && !s.standalone.preparing && (s.serveSupported || s.preview != nil)
+				valid := validationErr == "" && st.model != "" && st.engine != "" && len(engineOpts) > 0 && hasSelectOption(engineOpts, st.engine)
+				canStart := valid && memErr == "" && !s.busy && !s.standalone.preparing && (s.serveSupported || s.preview != nil)
 				startLabel := tr(c, "services.params.action.start")
 				if st.mode == serviceParamsModeRunning {
 					startLabel = tr(c, "services.params.action.save_restart")
@@ -292,12 +304,13 @@ func (s *viewState) serviceParamsDrawer(c *ui.Context) {
 						st.open = false
 					}
 					if outlineButton(c, tr(c, "services.params.action.save_only")).Disabled(!valid).Clicked() {
-						s.saveServicePresetFromRequest(req)
-						st.open = false
+						if s.saveServicePresetFromRequest(req) {
+							st.open = false
+						}
 					}
 					if primaryButton(c, startLabel).Disabled(!canStart).Clicked() {
-						s.saveServicePresetFromRequest(req)
-						s.startStandaloneWithStopIfNeeded(req)
+						st.saveError = ""
+						s.requestStandaloneLaunchWithConfirm(req, st.mode == serviceParamsModeRunning)
 					}
 				})
 			})
@@ -317,13 +330,12 @@ func (s *viewState) availableModelSelectOptions() []components.NativeSelectOptio
 }
 
 func (s *viewState) serviceParamsEngineOptions(model core.ModelAsset, hasModel bool, current string) []components.NativeSelectOption[string] {
-	var opts []components.NativeSelectOption[string]
 	if hasModel {
-		opts = s.standaloneEngineOptions(model)
-	} else {
-		for _, eng := range s.registry.Engines {
-			opts = append(opts, components.NativeSelectOption[string]{Value: eng.Name, Label: eng.Name})
-		}
+		return s.standaloneEngineOptions(model)
+	}
+	var opts []components.NativeSelectOption[string]
+	for _, eng := range s.registry.Engines {
+		opts = append(opts, components.NativeSelectOption[string]{Value: eng.Name, Label: eng.Name})
 	}
 	if current != "" && !hasSelectOption(opts, current) {
 		opts = append(opts, components.NativeSelectOption[string]{Value: current, Label: current})
@@ -397,7 +409,7 @@ func (s *viewState) parseServiceParamsRequest(model core.ModelAsset, hasModel bo
 	}, ""
 }
 
-func (s *viewState) saveServicePresetFromRequest(req core.StandaloneStartRequest) {
+func (s *viewState) saveServicePresetFromRequest(req core.StandaloneStartRequest) bool {
 	preset := core.ServicePreset{
 		Model:       req.Model,
 		Engine:      req.Engine,
@@ -408,20 +420,34 @@ func (s *viewState) saveServicePresetFromRequest(req core.StandaloneStartRequest
 		ExtraArgs:   append([]string(nil), req.ExtraArgs...),
 	}
 	if s.simulate(previewSaveServicePreset{preset: preset}) {
+		s.serviceParams.saveError = ""
 		s.enqueueStatusToast(l10n.TR("services.params.toast.saved"))
-		return
+		return true
 	}
-	s.upsertRecentServiceLocal(preset)
 	if s.service == nil {
+		s.upsertRecentServiceLocal(preset)
+		s.serviceParams.saveError = ""
 		s.enqueueStatusToast(l10n.TR("services.params.toast.saved"))
-		return
+		return true
 	}
 	if err := s.service.SaveServicePreset(preset); err != nil {
+		var apiErr *core.ApiError
+		if errors.As(err, &apiErr) && apiErr != nil {
+			if apiErr.Message != "" {
+				s.serviceParams.saveError = apiErr.Message
+			} else {
+				s.serviceParams.saveError = human(apiErr.Code)
+			}
+		} else {
+			s.serviceParams.saveError = l10n.TR("services.params.toast.save_failed")
+		}
 		s.enqueueStatusToast(l10n.TR("services.params.toast.save_failed"))
-		return
+		return false
 	}
+	s.serviceParams.saveError = ""
 	s.recentServices = s.service.RecentServices()
 	s.enqueueStatusToast(l10n.TR("services.params.toast.saved"))
+	return true
 }
 
 func (s *viewState) upsertRecentServiceLocal(preset core.ServicePreset) {

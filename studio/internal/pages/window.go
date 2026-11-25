@@ -283,6 +283,8 @@ type viewState struct {
 	keepServicesMu                                                                      sync.Mutex
 	keepServicesWanted                                                                  bool
 	keepServicesWantedSeq                                                               uint64
+	keepServicesWorkerRunning                                                           bool
+	keepServicesWorkerDone                                                              chan struct{}
 	persistKeepServices                                                                 func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
 	historyTable                                                                        pageTableState
 	downloadsUI                                                                         *downloadsUIState

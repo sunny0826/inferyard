@@ -72,6 +72,7 @@ func servePlanToStartup(plan inferyard.ServePlan) Startup {
 		Endpoint:         plan.Endpoint,
 		ModelPath:        plan.ModelPath,
 		ModelKind:        plan.ModelKind,
+		ServedModel:      extractServedModelFromArgs(args),
 		ContextSize:      plan.ContextSize,
 	}
 	for _, arg := range result.Args {
@@ -397,14 +398,10 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 	s.clearExitNoticeLocked()
 	s.mu.Unlock()
 
-	actualPort := state.Port
-	if actualPort <= 0 {
-		actualPort = portFromEndpoint(state.Endpoint)
-	}
 	_ = s.SaveServicePreset(ServicePreset{
 		Model:         req.Model,
 		Engine:        req.Engine,
-		Port:          actualPort,
+		Port:          req.Port,
 		ContextSize:   req.ContextSize,
 		GPULayers:     cloneIntPtr(req.GPULayers),
 		Threads:       cloneIntPtr(req.Threads),

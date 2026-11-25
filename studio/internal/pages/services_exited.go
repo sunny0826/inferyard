@@ -58,18 +58,20 @@ func (s *viewState) renderExitedServiceCard(c *ui.Context) {
 		}
 		if notice.ExitedAt != "" {
 			metaParts = append(metaParts, trf(c, "services.exited.exited_at", "time", formatTimestampShort(notice.ExitedAt)))
+		} else if notice.DetectedAt != "" {
+			metaParts = append(metaParts, trf(c, "services.exited.detected_at", "time", formatTimestampShort(notice.DetectedAt)))
 		}
 		ui.Text(c, joinParts(metaParts)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgPrimary)
 
 		if notice.WhileAway {
 			ui.Text(c, tr(c, "services.exited.while_away_desc")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		}
-		if strings.TrimSpace(notice.Hint) != "" {
+		if hintText := serviceExitHintText(c, notice.Hint); hintText != "" {
 			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).
 				Padding(t.Density.Tight, t.Density.Row).Radius(innerR).
 				Background(t.Color.Surface).Border(1, scale.Border).Children(func() {
 				components.Icon(c, lucide.Info).Size(14, 14).TextColor(scale.Fg)
-				ui.Text(c, notice.Hint).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1)
+				ui.Text(c, hintText).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1)
 			})
 		}
 		if len(notice.LogTail) > 0 {
@@ -104,6 +106,18 @@ func (s *viewState) renderExitedServiceCard(c *ui.Context) {
 	})
 }
 
+func serviceExitHintText(c *ui.Context, hint string) string {
+	trimmed := strings.TrimSpace(hint)
+	switch trimmed {
+	case "":
+		return ""
+	case core.ExitHintOOM:
+		return tr(c, "core.service.exit_hint.oom")
+	default:
+		return trimmed
+	}
+}
+
 func (s *viewState) restartFromExitNotice(notice core.ServiceExitNotice) {
 	ctxSize := notice.ContextSize
 	if ctxSize <= 0 {
@@ -118,8 +132,7 @@ func (s *viewState) restartFromExitNotice(notice core.ServiceExitNotice) {
 		Threads:     cloneIntPtrUI(notice.Threads),
 		ExtraArgs:   append([]string(nil), notice.ExtraArgs...),
 	}
-	s.dismissExitedServiceNotice()
-	s.startStandaloneWithStopIfNeeded(req)
+	s.requestStandaloneLaunchWithConfirm(req, false)
 }
 
 func (s *viewState) dismissExitedServiceNotice() {
@@ -133,6 +146,20 @@ func (s *viewState) dismissExitedServiceNotice() {
 	go func() {
 		_ = s.service.DismissExitedServiceNotice()
 	}()
+}
+
+func (s *viewState) requestStandaloneLaunchWithConfirm(req core.StandaloneStartRequest, directRestart bool) {
+	if !directRestart && s.managedServiceActive() {
+		s.serviceParams.open = false
+		s.standalone.switchConfirm = true
+		s.standalone.switchModel = req.Model
+		s.standalone.switchPrefill = false
+		s.standalone.switchAction = func() {
+			s.launchStandaloneRequest(req)
+		}
+		return
+	}
+	s.startStandaloneWithStopIfNeeded(req)
 }
 
 func (s *viewState) startStandaloneWithStopIfNeeded(req core.StandaloneStartRequest) {
@@ -273,7 +300,7 @@ func (s *viewState) startFromPreset(preset core.ServicePreset) {
 	if ctxSize <= 0 {
 		ctxSize = 8192
 	}
-	s.startStandaloneWithStopIfNeeded(core.StandaloneStartRequest{
+	s.requestStandaloneLaunchWithConfirm(core.StandaloneStartRequest{
 		Model:       preset.Model,
 		Engine:      preset.Engine,
 		ContextSize: ctxSize,
@@ -281,7 +308,7 @@ func (s *viewState) startFromPreset(preset core.ServicePreset) {
 		GPULayers:   cloneIntPtrUI(preset.GPULayers),
 		Threads:     cloneIntPtrUI(preset.Threads),
 		ExtraArgs:   append([]string(nil), preset.ExtraArgs...),
-	})
+	}, false)
 }
 
 func splitExtraArgs(raw string) ([]string, bool) {

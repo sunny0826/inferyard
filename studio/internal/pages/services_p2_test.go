@@ -76,11 +76,11 @@ func TestServicesExitedCardAndSidebarAlert(t *testing.T) {
 		ContextSize: 16384,
 		GPULayers:   &gpu,
 		LogPath:     "/tmp/service.log",
-		ExitedAt:    "2026-11-25T05:10:00Z",
+		DetectedAt:  "2026-11-25T05:10:00Z",
 		ExitCode:    &exitCode,
 		WhileAway:   true,
 		LogTail:     []string{"ggml_metal: out of memory"},
-		Hint:        l10n.TR("core.service.exit_hint.oom"),
+		Hint:        core.ExitHintOOM,
 	}
 
 	tt := newServicesTester(s)

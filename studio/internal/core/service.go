@@ -358,6 +358,7 @@ func (s *Service) persistSettings(u UserSettings, forceCLIRefresh bool) (Setting
 	}
 	if workspaceChanged {
 		s.engine = nil
+		s.exitNotice = nil
 	}
 	s.settings = u
 	if changed {

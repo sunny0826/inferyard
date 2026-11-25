@@ -205,7 +205,11 @@ func (s *viewState) renderRunningManagedCard(c *ui.Context) {
 			}
 			if hasLoopback {
 				if inlineButton(c, components.ButtonOutline, tr(c, "services.card.action.usage")).Clicked() {
-					s.openServiceUsageDrawer(validURL, modelName, engineTitle)
+					apiModel := strings.TrimSpace(state.ServedModel)
+					if apiModel == "" {
+						apiModel = modelName
+					}
+					s.openServiceUsageDrawer(validURL, apiModel, engineTitle)
 				}
 			}
 			if state.Origin == core.EngineOriginStandalone || s.serveSupported || s.preview != nil {

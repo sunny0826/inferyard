@@ -191,6 +191,12 @@ func (s *viewState) finishMinimizeToTrayPersist(seq uint64, lastSaved *core.Sett
 	}
 }
 
+func (s *viewState) currentKeepServicesSeq() uint64 {
+	s.keepServicesMu.Lock()
+	defer s.keepServicesMu.Unlock()
+	return s.keepServicesWantedSeq
+}
+
 func (s *viewState) changeKeepServicesOnQuit(enabled bool) {
 	if enabled == s.keepServicesOnQuit {
 		return
@@ -213,39 +219,81 @@ func (s *viewState) changeKeepServicesOnQuit(enabled bool) {
 
 	s.keepServicesMu.Lock()
 	s.keepServicesWantedSeq++
-	seq := s.keepServicesWantedSeq
 	s.keepServicesWanted = enabled
+	startWorker := !s.keepServicesWorkerRunning
+	if startWorker {
+		s.keepServicesWorkerRunning = true
+		s.keepServicesWorkerDone = make(chan struct{})
+	}
 	s.keepServicesMu.Unlock()
 
-	go func() {
-		value, apiErr := update(patch)
-		if s.ctx != nil && s.ctx.Err() != nil {
+	if startWorker {
+		go s.runKeepServicesPersistWorker(update)
+	}
+}
+
+func (s *viewState) waitKeepServicesPersist() {
+	s.keepServicesMu.Lock()
+	done := s.keepServicesWorkerDone
+	s.keepServicesMu.Unlock()
+	if done != nil {
+		<-done
+	}
+}
+
+func (s *viewState) runKeepServicesPersistWorker(update func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)) {
+	var lastSaved *core.SettingsResponse
+	for {
+		s.keepServicesMu.Lock()
+		enabled := s.keepServicesWanted
+		seq := s.keepServicesWantedSeq
+		s.keepServicesMu.Unlock()
+
+		raw, _ := json.Marshal(enabled)
+		value, apiErr := update(map[string]json.RawMessage{"keep_services_on_quit": raw})
+		if apiErr == nil {
+			v := value
+			lastSaved = &v
+		}
+
+		s.keepServicesMu.Lock()
+		latest := seq == s.keepServicesWantedSeq
+		if latest {
+			s.keepServicesWorkerRunning = false
+			done := s.keepServicesWorkerDone
+			s.keepServicesWorkerDone = nil
+			s.keepServicesMu.Unlock()
+			if s.ctx == nil || s.ctx.Err() == nil {
+				s.runOnUI(func() { s.finishKeepServicesPersist(seq, lastSaved, value, apiErr) })
+			}
+			if done != nil {
+				close(done)
+			}
 			return
 		}
-		s.runOnUI(func() {
-			s.keepServicesMu.Lock()
-			latest := seq == s.keepServicesWantedSeq
-			s.keepServicesMu.Unlock()
-			if apiErr == nil {
-				s.settings.Settings.KeepServicesOnQuit = value.Settings.KeepServicesOnQuit
-				s.settings.Effective.KeepServicesOnQuit = value.Effective.KeepServicesOnQuit
-				s.bumpSettingsEpoch()
-			}
-			if !latest {
-				return
-			}
-			s.keepServicesSaving = false
-			if apiErr != nil {
-				s.keepServicesOnQuit = s.settings.Effective.KeepServicesOnQuit
-				s.failure = apiErr
-				s.failurePage = s.selected
-				return
-			}
-			s.keepServicesOnQuit = value.Effective.KeepServicesOnQuit
-			if s.failurePage == "settings" {
-				s.failure = nil
-				s.failurePage = ""
-			}
-		})
-	}()
+		s.keepServicesMu.Unlock()
+	}
+}
+
+func (s *viewState) finishKeepServicesPersist(seq uint64, lastSaved *core.SettingsResponse, value core.SettingsResponse, apiErr *core.ApiError) {
+	if lastSaved != nil {
+		s.settings.Settings.KeepServicesOnQuit = lastSaved.Settings.KeepServicesOnQuit
+		s.settings.Effective.KeepServicesOnQuit = lastSaved.Effective.KeepServicesOnQuit
+		s.bumpSettingsEpoch()
+	}
+	if seq != s.currentKeepServicesSeq() {
+		return
+	}
+	s.keepServicesSaving = false
+	if apiErr != nil {
+		s.keepServicesOnQuit = s.settings.Effective.KeepServicesOnQuit
+		s.failure = apiErr
+		s.failurePage = s.selected
+		return
+	}
+	s.keepServicesOnQuit = value.Effective.KeepServicesOnQuit
+	if s.failurePage == "settings" {
+		s.failure = nil
+		s.failurePage = ""
+	}
 }

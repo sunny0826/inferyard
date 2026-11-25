@@ -44,6 +44,7 @@
   "services.exited.while_away_desc": "This background service stopped while Studio was closed. Studio will not restart it automatically.",
   "services.exited.exit_code": "Exit code {code}",
   "services.exited.exited_at": "Exited at {time}",
+  "services.exited.detected_at": "Detected at {time}",
   "services.exited.log_tail": "Recent log output",
   "services.exited.action.restart_same": "Restart with Same Params",
   "services.exited.action.adjust_params": "Adjust Params & Start",

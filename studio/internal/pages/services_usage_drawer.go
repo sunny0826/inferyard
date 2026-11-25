@@ -1,9 +1,10 @@
 package pages
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -237,6 +238,23 @@ func (s *viewState) copyUsageText(c *ui.Context, text string) {
 	})
 }
 
+func shellSingleQuote(raw string) string {
+	return "'" + strings.ReplaceAll(raw, "'", `'\''`) + "'"
+}
+
+func marshalJSONNoEscape(v any, indent string) string {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if indent != "" {
+		enc.SetIndent("", indent)
+	}
+	if err := enc.Encode(v); err != nil {
+		return `""`
+	}
+	return strings.TrimRight(buf.String(), "\n")
+}
+
 func buildUsageSnippet(tab, baseURL, model string) string {
 	if strings.TrimSpace(baseURL) == "" {
 		baseURL = "http://127.0.0.1:8080/v1"
@@ -250,25 +268,42 @@ func buildUsageSnippet(tab, baseURL, model string) string {
 
 client = OpenAI(
     base_url=%s,
-    api_key=%q,
+    api_key=%s,
 )
 
 resp = client.chat.completions.create(
     model=%s,
     messages=[{"role": "user", "content": "Hello!"}],
 )
-print(resp.choices[0].message.content)`, strconv.Quote(baseURL), serviceUsageDefaultAPIKey, strconv.Quote(model))
+print(resp.choices[0].message.content)`,
+			marshalJSONNoEscape(baseURL, ""),
+			marshalJSONNoEscape(serviceUsageDefaultAPIKey, ""),
+			marshalJSONNoEscape(model, ""),
+		)
 	case "env":
 		return fmt.Sprintf(`export OPENAI_BASE_URL=%s
-export OPENAI_API_KEY=%q
-export OPENAI_MODEL=%s`, strconv.Quote(baseURL), serviceUsageDefaultAPIKey, strconv.Quote(model))
+export OPENAI_API_KEY=%s
+export OPENAI_MODEL=%s`,
+			shellSingleQuote(baseURL),
+			shellSingleQuote(serviceUsageDefaultAPIKey),
+			shellSingleQuote(model),
+		)
 	default:
-		return fmt.Sprintf(`curl %s/chat/completions \
+		payload := struct {
+			Model    string              `json:"model"`
+			Messages []map[string]string `json:"messages"`
+		}{
+			Model:    model,
+			Messages: []map[string]string{{"role": "user", "content": "Hello!"}},
+		}
+		body := marshalJSONNoEscape(payload, "  ")
+		return fmt.Sprintf(`curl %s \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer %s" \
-  -d '{
-    "model": %s,
-    "messages": [{"role": "user", "content": "Hello!"}]
-  }'`, baseURL, serviceUsageDefaultAPIKey, strconv.Quote(model))
+  -H %s \
+  -d %s`,
+			shellSingleQuote(baseURL+"/chat/completions"),
+			shellSingleQuote("Authorization: Bearer "+serviceUsageDefaultAPIKey),
+			shellSingleQuote(body),
+		)
 	}
 }

@@ -73,8 +73,12 @@ func validateStandaloneStartRequest(req StandaloneStartRequest) *ApiError {
 	if req.Threads != nil && *req.Threads <= 0 {
 		return Err("invalid_input")
 	}
-	if _, ok := sanitizeExtraArgs(req.ExtraArgs); !ok {
+	cleaned, ok := sanitizeExtraArgs(req.ExtraArgs)
+	if !ok {
 		return Err("invalid_input")
+	}
+	if apiErr := validateEngineArgsCredentials(cleaned); apiErr != nil {
+		return apiErr
 	}
 	return nil
 }
@@ -142,6 +146,9 @@ func applyStandaloneArgs(startup Startup, req StandaloneStartRequest) Startup {
 	startup.Threads = cloneIntPtr(req.Threads)
 	if cleaned, ok := sanitizeExtraArgs(req.ExtraArgs); ok {
 		startup.ExtraArgs = cleaned
+	}
+	if served := extractServedModelFromArgs(startup.Args); served != "" {
+		startup.ServedModel = served
 	}
 	return startup
 }
@@ -252,23 +259,44 @@ func (s *Service) ServicePresetFor(model, engine string) (ServicePreset, bool) {
 	return ServicePreset{}, false
 }
 
-// SaveServicePreset persists or updates launch parameters for a (Model, Engine) combination.
-func (s *Service) SaveServicePreset(preset ServicePreset) error {
+func normalizeServicePreset(preset ServicePreset) (ServicePreset, error) {
 	preset.Model = strings.TrimSpace(preset.Model)
 	preset.Engine = strings.TrimSpace(preset.Engine)
 	if preset.Model == "" || preset.Engine == "" {
-		return errors.New("model and engine are required")
+		return ServicePreset{}, errors.New("model and engine are required")
+	}
+	if preset.Port < 0 || preset.Port > 65535 {
+		return ServicePreset{}, Err("invalid_input")
+	}
+	if preset.GPULayers != nil && *preset.GPULayers < -1 {
+		return ServicePreset{}, Err("invalid_input")
+	}
+	if preset.Threads != nil && *preset.Threads <= 0 {
+		return ServicePreset{}, Err("invalid_input")
+	}
+	cleaned, ok := sanitizeExtraArgs(preset.ExtraArgs)
+	if !ok {
+		return ServicePreset{}, errors.New("invalid extra_args")
+	}
+	if apiErr := validateEngineArgsCredentials(cleaned); apiErr != nil {
+		return ServicePreset{}, apiErr
 	}
 	if preset.LastStartedAt == "" {
 		preset.LastStartedAt = now()
 	}
 	preset.GPULayers = cloneIntPtr(preset.GPULayers)
 	preset.Threads = cloneIntPtr(preset.Threads)
-	if cleaned, ok := sanitizeExtraArgs(preset.ExtraArgs); ok {
-		preset.ExtraArgs = cleaned
-	} else {
-		return errors.New("invalid extra_args")
+	preset.ExtraArgs = cleaned
+	return preset, nil
+}
+
+// SaveServicePreset persists or updates launch parameters for a (Model, Engine) combination.
+func (s *Service) SaveServicePreset(preset ServicePreset) error {
+	normalized, err := normalizeServicePreset(preset)
+	if err != nil {
+		return err
 	}
+	preset = normalized
 
 	s.presetsMu.Lock()
 	defer s.presetsMu.Unlock()

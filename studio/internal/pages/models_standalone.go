@@ -37,6 +37,7 @@ type standaloneServeState struct {
 	switchConfirm    bool
 	switchModel      string
 	switchPrefill    bool
+	switchAction     func()
 	benchmarkConfirm bool
 	benchmarkAction  func()
 }

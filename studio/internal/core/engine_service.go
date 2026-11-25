@@ -50,6 +50,7 @@ type EngineState struct {
 	Model         string    `json:"model,omitempty"`
 	ModelName     string    `json:"model_name,omitempty"`
 	ModelKind     string    `json:"model_kind,omitempty"`
+	ServedModel   string    `json:"served_model,omitempty"`
 	Port          int       `json:"port,omitempty"`
 	ContextSize   int64     `json:"context_size,omitempty"`
 	GPULayers     *int      `json:"gpu_layers,omitempty"`
@@ -222,6 +223,7 @@ func (s *Service) startFromStartupLocked(startup Startup, origin, ref string) (E
 			Model:         startup.ModelPath,
 			ModelName:     startup.ModelName,
 			ModelKind:     startup.ModelKind,
+			ServedModel:   startup.ServedModel,
 			Port:          port,
 			ContextSize:   startup.ContextSize,
 			GPULayers:     cloneIntPtr(startup.GPULayers),

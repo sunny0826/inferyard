@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"inferyard/studio/internal/inferyard"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -197,8 +200,11 @@ func TestExitedWhileAwayPersistsNoticeWithOOMHintAndDismiss(t *testing.T) {
 	if notice.ExitCode != nil {
 		t.Fatalf("expected nil exit_code for exited-while-away, got %v", *notice.ExitCode)
 	}
-	if len(notice.LogTail) < 2 || notice.Hint == "" {
-		t.Fatalf("expected log tail and OOM hint, got tail=%v hint=%q", notice.LogTail, notice.Hint)
+	if notice.ExitedAt != "" || notice.DetectedAt == "" {
+		t.Fatalf("expected empty exited_at and non-empty detected_at for while_away, got exited_at=%q detected_at=%q", notice.ExitedAt, notice.DetectedAt)
+	}
+	if len(notice.LogTail) < 2 || notice.Hint != ExitHintOOM {
+		t.Fatalf("expected log tail and OOM reason code hint, got tail=%v hint=%q", notice.LogTail, notice.Hint)
 	}
 
 	if err := s.DismissExitedServiceNotice(); err != nil {
@@ -258,22 +264,22 @@ func TestAdoptedStandaloneUnexpectedExitPublishesNotice(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = s.Shutdown(context.Background()) })
 
-	if st := s.Engine(); st.State != "running" || !st.Adopted {
-		t.Fatalf("expected adopted running service, got %+v", st)
+	if st := s.Engine(); st.State != "starting" || !st.Adopted {
+		t.Fatalf("expected adopted starting service before health ready, got %+v", st)
 	}
 
 	_, unsub, cursor := s.Bus.Subscribe()
 	defer unsub()
 
-	// Simulate unexpected crash of adopted process.
+	// Simulate unexpected crash of adopted process while still starting.
 	f.set(0, nil)
 
 	pollEngine(t, s, "failed")
 	assertOwnerGone(t, ownerPath(workspace))
 
 	notice := s.ExitedServiceNotice()
-	if notice == nil || notice.WhileAway || notice.Hint == "" {
-		t.Fatalf("expected in-session unexpected exit notice with OOM hint, got %+v", notice)
+	if notice == nil || notice.WhileAway || notice.ExitedAt == "" || notice.Hint != ExitHintOOM {
+		t.Fatalf("expected in-session unexpected exit notice with OOM reason code, got %+v", notice)
 	}
 
 	events, _, _ := s.Bus.Since(cursor)
@@ -286,5 +292,167 @@ func TestAdoptedStandaloneUnexpectedExitPublishesNotice(t *testing.T) {
 	}
 	if !gotEvent {
 		t.Fatalf("expected service.exited event in bus replay, got %+v", events)
+	}
+}
+
+func TestAdoptedStandaloneBecomesRunningWhenHealthReady(t *testing.T) {
+	var ready atomic.Bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/health" && ready.Load() {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+
+	f := &ownerFixture{ticks: 123}
+	workspace := t.TempDir()
+	record := engineOwner{
+		PID:         4242,
+		StartTicks:  123,
+		Origin:      EngineOriginStandalone,
+		Family:      "llama-cpp",
+		Engine:      "llama-cpp",
+		Model:       "/models/qwen.gguf",
+		ModelName:   "qwen.gguf",
+		ServedModel: "qwen-alias",
+		Endpoint:    srv.URL,
+		LogFile:     "engine-live.log",
+		Candidate:   "qwen-llama-8192",
+	}
+	if err := writeEngineOwner(ownerPath(workspace), record); err != nil {
+		t.Fatal(err)
+	}
+	settingsPath := filepath.Join(t.TempDir(), "settings.json")
+	raw, _ := json.Marshal(UserSettings{WorkspaceRoot: &workspace})
+	if err := os.WriteFile(settingsPath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s, err := New(context.Background(), Options{
+		SettingsPath:      settingsPath,
+		ProcessStartTicks: f.read,
+		SignalProcess:     f.signal,
+		OrphanStopTimeout: time.Millisecond,
+		Execute: func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
+			if v, ok := version(args); ok {
+				return v, nil
+			}
+			return inferyard.Execution{}, errors.New("unexpected CLI call")
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.adoptPollInterval = 25 * time.Millisecond
+	t.Cleanup(func() { _ = s.Shutdown(context.Background()) })
+
+	st := s.Engine()
+	if st.State != "starting" || !st.Adopted || st.ServedModel != "qwen-alias" {
+		t.Fatalf("expected adopted starting service with served_model, got %+v", st)
+	}
+
+	ready.Store(true)
+	st = pollEngine(t, s, "running")
+	if !st.Adopted || st.ServedModel != "qwen-alias" {
+		t.Fatalf("expected adopted running service after health ready, got %+v", st)
+	}
+}
+
+func TestExitedWhileAwayWriteFailurePreservesOwner(t *testing.T) {
+	workspace := t.TempDir()
+	// Make service-exit-notice.json a directory so writing the notice fails.
+	if err := os.MkdirAll(exitNoticePath(workspace), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	record := engineOwner{
+		PID:        999998,
+		StartTicks: 123,
+		Origin:     EngineOriginStandalone,
+		Family:     "llama-cpp",
+		Engine:     "llama-cpp",
+		Model:      "/models/qwen.gguf",
+		ModelName:  "qwen.gguf",
+		Endpoint:   "http://127.0.0.1:48998",
+		LogFile:    "engine.log",
+		Candidate:  "qwen-llama-8192",
+	}
+	if err := writeEngineOwner(ownerPath(workspace), record); err != nil {
+		t.Fatal(err)
+	}
+	settingsPath := filepath.Join(t.TempDir(), "settings.json")
+	raw, _ := json.Marshal(UserSettings{WorkspaceRoot: &workspace})
+	if err := os.WriteFile(settingsPath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s, err := New(context.Background(), Options{
+		SettingsPath: settingsPath,
+		ProcessStartTicks: func(int64) (int64, error) {
+			return 0, os.ErrNotExist
+		},
+		Execute: func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
+			if v, ok := version(args); ok {
+				return v, nil
+			}
+			return inferyard.Execution{}, errors.New("unexpected CLI call")
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Shutdown(context.Background()) })
+
+	if _, err := os.Stat(ownerPath(workspace)); err != nil {
+		t.Fatalf("expected engine-owner.json preserved when exit notice write fails: %v", err)
+	}
+	got := s.Engine()
+	if got.State != "orphaned" || got.Error == nil || got.Error.Code != "service_exit_notice_write_failed" {
+		t.Fatalf("expected orphaned with service_exit_notice_write_failed, got %+v", got)
+	}
+}
+
+func TestWorkspaceSwitchClearsExitNoticeCache(t *testing.T) {
+	wsA := t.TempDir()
+	wsB := t.TempDir()
+	noticeA := ServiceExitNotice{
+		ID:         "notice-a",
+		Model:      "model-a.gguf",
+		Engine:     "llama-cpp",
+		DetectedAt: "2026-11-25T05:00:00Z",
+		WhileAway:  true,
+		Hint:       ExitHintOOM,
+	}
+	if err := writeExitNoticeFile(exitNoticePath(wsA), noticeA); err != nil {
+		t.Fatal(err)
+	}
+	settingsPath := filepath.Join(t.TempDir(), "settings.json")
+	raw, _ := json.Marshal(UserSettings{WorkspaceRoot: &wsA})
+	if err := os.WriteFile(settingsPath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s, err := New(context.Background(), Options{
+		SettingsPath: settingsPath,
+		Execute: func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
+			if v, ok := version(args); ok {
+				return v, nil
+			}
+			return inferyard.Execution{}, errors.New("unexpected CLI call")
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Shutdown(context.Background()) })
+
+	if got := s.ExitedServiceNotice(); got == nil || got.ID != "notice-a" {
+		t.Fatalf("expected workspace A notice loaded, got %+v", got)
+	}
+
+	rawB, _ := json.Marshal(wsB)
+	if _, apiErr := s.UpdateSettings(map[string]json.RawMessage{"workspace_root": rawB}); apiErr != nil {
+		t.Fatalf("UpdateSettings(wsB) failed: %+v", apiErr)
+	}
+	if got := s.ExitedServiceNotice(); got != nil {
+		t.Fatalf("expected exitNotice cleared after switching to empty workspace B, got %+v", got)
 	}
 }

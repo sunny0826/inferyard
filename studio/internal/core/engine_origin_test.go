@@ -162,8 +162,8 @@ func TestOrphanRecoveryPreservesOriginAndCompatFallback(t *testing.T) {
 
 			got := s.Engine()
 			if tc.name == "standalone_origin_preserved" {
-				if got.State != "running" || !got.Adopted {
-					t.Fatalf("expected adopted running standalone, got %+v", got)
+				if got.State != "starting" || !got.Adopted {
+					t.Fatalf("expected adopted starting standalone (probe not ready), got %+v", got)
 				}
 			} else if got.State != "orphaned" {
 				t.Fatalf("expected orphaned, got %+v", got)

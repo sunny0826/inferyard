@@ -44,6 +44,7 @@
   "services.exited.while_away_desc": "该后台服务在 Studio 关闭期间已退出，Studio 不会自动重启它。",
   "services.exited.exit_code": "退出码 {code}",
   "services.exited.exited_at": "退出时间 {time}",
+  "services.exited.detected_at": "发现时间 {time}",
   "services.exited.log_tail": "最近日志输出",
   "services.exited.action.restart_same": "用相同参数重启",
   "services.exited.action.adjust_params": "调整参数后启动",

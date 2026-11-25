@@ -20,6 +20,7 @@ type engineOwner struct {
 	Model        string                  `json:"model,omitempty"`
 	ModelName    string                  `json:"model_name,omitempty"`
 	ModelKind    string                  `json:"model_kind,omitempty"`
+	ServedModel  string                  `json:"served_model,omitempty"`
 	Port         int                     `json:"port,omitempty"`
 	ContextSize  int64                   `json:"context_size,omitempty"`
 	GPULayers    *int                    `json:"gpu_layers,omitempty"`
@@ -60,6 +61,7 @@ func (s *Service) persistEngineOwner(e *engineEntry, workspace string) *ApiError
 		Model:       e.state.Model,
 		ModelName:   e.state.ModelName,
 		ModelKind:   e.state.ModelKind,
+		ServedModel: e.state.ServedModel,
 		Port:        e.state.Port,
 		ContextSize: e.state.ContextSize,
 		GPULayers:   cloneIntPtr(e.state.GPULayers),
@@ -211,12 +213,16 @@ func (s *Service) detectEngineOwnerLocked() {
 		same, err := s.ownedTreeAlive(&owner, path)
 		if err == nil && !same {
 			if normalizeEngineOrigin(owner.Origin) == EngineOriginStandalone {
-				s.recordExitedWhileAwayLocked(workspace, owner)
+				if writeErr := s.recordExitedWhileAwayLocked(workspace, owner); writeErr != nil {
+					failure = &ApiError{Code: "service_exit_notice_write_failed", Message: l10n.TR("core.engine.err.exit_notice_write_failed")}
+				}
 			}
-			if err := removeEngineOwner(path, owner); err == nil {
-				return
+			if failure == nil {
+				if err := removeEngineOwner(path, owner); err == nil {
+					return
+				}
+				failure = &ApiError{Code: "engine_owner_remove_failed", Message: l10n.TR("core.engine.err.owner_remove_failed")}
 			}
-			failure = &ApiError{Code: "engine_owner_remove_failed", Message: l10n.TR("core.engine.err.owner_remove_failed")}
 		} else if err == nil && same {
 			if normalizeEngineOrigin(owner.Origin) == EngineOriginStandalone {
 				s.adoptStandaloneLocked(workspace, path, owner)
