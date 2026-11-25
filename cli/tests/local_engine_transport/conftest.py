@@ -103,6 +103,10 @@ def rig():
             }
         state = SimpleNamespace(
             config=config,
+            start_ticks=lambda pid: {
+                row["pid"]: row["start_ticks"]
+                for row in (state.binding, *state.binding.get("workers", ()))
+            }[pid],
             binding=binding,
             metrics=METRICS[family],
             posts=[],
@@ -158,6 +162,7 @@ def rig():
             transport=httpx.MockTransport(handler),
             binding_verifier=lambda _: deepcopy(state.binding),
             observer=observer if family == "lmstudio" else None,
+            start_ticks=lambda pid: state.start_ticks(pid),
         )
         return state
 

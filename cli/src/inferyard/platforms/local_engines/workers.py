@@ -158,7 +158,8 @@ def _observe_workers_once(
     first = native._children(root)
     python_root = None
     bootstrap = str(files("inferyard").joinpath("data/local_engine/bootstrap.py"))
-    if first and any(item.path == str(Path(bootstrap).resolve()) for item in runtime_files):
+    resolved_bootstrap = str(Path(bootstrap).resolve())
+    if first and any(item.path == resolved_bootstrap for item in runtime_files):
         root_state = native.service_process_state(pid, psutil)
         if root_state[1][1:5] == ["-I", "-S", "-B", bootstrap]:
             python_root = root_state
@@ -197,11 +198,12 @@ def _observe_workers_once(
             stat = os.stat(executable)
         except OSError as exc:
             raise PreflightError("identity_file_unreadable") from exc
+        resolved_executable = str(Path(executable).resolve())
         identity = next(
             (
                 item
                 for item in runtime_files
-                if item.path == str(Path(executable).resolve())
+                if item.path == resolved_executable
                 and item.device == stat.st_dev
                 and item.inode == stat.st_ino
             ),

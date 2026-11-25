@@ -87,10 +87,17 @@ def local_run(scenario, local_config, rig, tmp_path):  # noqa: F811
 
 def test_formal_local_run_seals_and_renders_offline(local_run, tmp_path, capsys):
     command, deps, state = local_run
+    verified, guarded = [], []
+    verifier, guard = state.adapter._verify_binding, deps.guard
+    state.adapter._verify_binding = lambda config: verified.append(None) or verifier(config)
+    deps = replace(deps, guard=lambda config, files: guarded.append(None) or guard(config, files))
     code, result = asyncio.run(execute_async(command, deps))
     root = Path(result.evidence_dir)
     data = read_trial(root)
     assert code == 0, result.limitations
+    # Discovery verifies twice and the run end once; requests only re-check incarnations.
+    assert len(verified) == 3
+    assert len(guarded) == 2
     assert data["summary"]["counts"]["completed"] == len(command.config.bundle.to_dict()["cases"])
     assert len(state.posts) == 2 + data["summary"]["counts"]["planned"]
     assert read_json(locking.STATE_PATH)["dirty"] is False
