@@ -101,6 +101,7 @@ func (s *viewState) modelsView(c *ui.Context) {
 			s.discoveryView(c, false)
 		})
 	})
+	s.standaloneDrawer(c)
 	s.assetDeleteDialog(c, pending)
 }
 

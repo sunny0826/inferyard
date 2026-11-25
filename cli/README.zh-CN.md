@@ -34,6 +34,7 @@ uv tool upgrade inferyard
 | `inferyard engine detect` / `engine init-installation` | 探测本机引擎二进制或 Python 虚拟环境，并生成通过校验的 `installation.json` |
 | `inferyard model acquire` / `model resolve` | 解析或下载固定版本的 Hugging Face / ModelScope 模型（支持单/多分片 GGUF 与目录模型、断点续传与代理） |
 | `inferyard assets scan` | 只读扫描本地模型与引擎目录 |
+| `inferyard serve prepare` | 生成回环 `serve-plan.json`（`serve_plan` schema），无需创建测评任务即可启动本地 OpenAI 兼容模型服务（`--model`、`--installation \| --engine \| --runtime-receipt`、`--context-size`、`--port`、`--out`、`--json`） |
 | `inferyard service discover` | 只读发现本机回环地址上正在运行的推理服务（`/health`、`/v1/models`） |
 | `inferyard plan` | 预览（`--dry-run`）或冻结离线实验计划（支持 `--preset context-speed` 用于长上下文速度测试） |
 | `inferyard probe` / `run` / `resume` | 探测已绑定服务、执行单次/计划测评，或断点续跑未执行用例 |

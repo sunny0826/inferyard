@@ -509,7 +509,8 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 	case "engine.state":
 		var payload struct {
 			Engine struct {
-				State string `json:"state"`
+				State  string `json:"state"`
+				Origin string `json:"origin"`
 			} `json:"engine"`
 		}
 		if json.Unmarshal(event.Data, &payload) != nil {
@@ -526,6 +527,12 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 				s.dismissToast(s.engineStartToastID)
 				s.engineStartToastID = ""
 			}
+			primaryLabel := l10n.TR("notif.action.go_tasks")
+			primaryTarget := "services"
+			if payload.Engine.Origin == core.EngineOriginStandalone {
+				primaryLabel = l10n.TR("models.serve.action.go_models")
+				primaryTarget = "library"
+			}
 			s.pushNotification(studioNotification{
 				Key:           "engine:failed",
 				Title:         l10n.TR("notif.engine.failed.title"),
@@ -533,8 +540,13 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 				Kind:          stateDanger,
 				NeedsDecision: true,
 				Primary: &notificationAction{
-					Label:   l10n.TR("notif.action.go_tasks"),
-					OnClick: func() { s.navigateTo("services", "") },
+					Label: primaryLabel,
+					OnClick: func() {
+						if primaryTarget == "library" {
+							s.libraryTab = 0
+						}
+						s.navigateTo(primaryTarget, "")
+					},
 				},
 			})
 		case "orphaned":

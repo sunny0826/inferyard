@@ -112,7 +112,7 @@ func (w *viewState) candidateFields(c *ui.Context) {
 					w.libraryTab = 1
 					w.navigateTo("library", "")
 				})
-				button(c, tr(c, "dashboard.candidate.register_engine")).OnClick(func() { w.selected = "settings" })
+				button(c, tr(c, "dashboard.candidate.register_engine")).OnClick(func() { w.openGeneralSettings() })
 			})
 		}
 		createDisabled = true

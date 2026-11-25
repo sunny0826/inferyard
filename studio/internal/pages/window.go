@@ -161,6 +161,8 @@ type viewState struct {
 	discovering, discoveryLoaded                                                        bool
 	registry                                                                            core.Registry
 	checks                                                                              core.EngineCheckOverview
+	serveSupported                                                                      bool
+	standalone                                                                          standaloneServeState
 	installationPath, localPID, localEndpoint, localBindingTask                         string
 	wizardOpenRequested                                                                 bool
 	wizardPresetFamily                                                                  string
@@ -186,6 +188,8 @@ type viewState struct {
 	openedReport                                                                        *reportViewState
 	newSVGStage                                                                         func() (svgStageView, error)
 	reportsTab                                                                          int
+	settingsTab                                                                         int
+	buildInfo                                                                           func() core.BuildInfo
 	refreshMu                                                                           sync.Mutex
 	detailMu                                                                            sync.Mutex
 	requestedDetail                                                                     string
@@ -346,6 +350,7 @@ func (s *viewState) refresh(full bool) {
 	if full {
 		registry = s.service.Registry()
 	}
+	serveSupported := s.service.ServeSupported(s.ctx)
 	if s.ctx.Err() != nil {
 		return
 	}
@@ -361,7 +366,7 @@ func (s *viewState) refresh(full bool) {
 			id: id, detail: detail, detailError: de, settings: settings,
 			history: history, reports: reports, historyError: he, reportsError: re,
 			ready: ready, progress: progress, progressError: pe, dashboard: dashboard, registry: registry,
-			updateState: updateState, cliUpgrade: cliUpgrade,
+			updateState: updateState, cliUpgrade: cliUpgrade, serveSupported: serveSupported,
 		}
 		if !s.applyRefreshBatch(batch) {
 			return
@@ -398,6 +403,7 @@ type refreshBatch struct {
 	registry                   core.Registry
 	updateState                core.UpdateState
 	cliUpgrade                 core.CLIUpgradeState
+	serveSupported             bool
 }
 
 func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
@@ -443,6 +449,7 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	s.applyDashboard(b.dashboard, b.progressError)
 	s.engineState = s.service.Engine()
 	s.checks = s.service.EngineChecks()
+	s.serveSupported = b.serveSupported
 	s.applyUpdateState(b.updateState)
 	s.applyCLIUpgradeState(b.cliUpgrade)
 	if !skipEngineAdopt {
@@ -581,6 +588,7 @@ func (s *viewState) contentView(c *ui.Context) {
 	}
 	s.resumeDialog(c)
 	s.settingsDiscardDialog(c)
+	s.standaloneDialogs(c)
 	s.updateDialog(c)
 	s.updateReadyPrompt(c)
 	s.studioNotifications(c)

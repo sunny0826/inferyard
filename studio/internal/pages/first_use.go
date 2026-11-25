@@ -220,7 +220,7 @@ func (s *viewState) taskAssetsView(c *ui.Context) {
 			} else if !hasStarter {
 				primaryButton(c, tr(c, "onboarding.assets.go_downloads")).OnClick(func() { s.navigateTo("library", "") })
 			}
-			button(c, tr(c, "onboarding.assets.use_existing")).OnClick(func() { s.navigateTo("settings", "") })
+			button(c, tr(c, "onboarding.assets.use_existing")).OnClick(func() { s.openGeneralSettings() })
 		})
 	})
 	if hasStarter && s.activeDownloadCount() == 0 {

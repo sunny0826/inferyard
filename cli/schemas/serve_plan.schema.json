@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:local-ai-bench:schema:v3:serve_plan",
+  "title": "InferYard serve_plan v3",
+  "type": "object",
+  "properties": {
+    "argv": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "working_directory": {
+      "type": "string",
+      "minLength": 1
+    },
+    "endpoint": {
+      "type": "string",
+      "pattern": "^http://(127\\.0\\.0\\.1|localhost|\\[::1\\]):(?:[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$"
+    },
+    "model_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model_kind": {
+      "type": "string",
+      "enum": [
+        "gguf",
+        "directory",
+        "strata_pack"
+      ]
+    },
+    "context_size": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "family": {
+      "type": "string",
+      "enum": [
+        "llama-cpp",
+        "mlx-lm",
+        "vllm",
+        "sglang",
+        "polystrata"
+      ]
+    },
+    "adapter": {
+      "type": "string",
+      "enum": [
+        "local_openai_v1",
+        "prism_llama_server_v1"
+      ]
+    },
+    "local": {
+      "type": "boolean"
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 3
+    }
+  },
+  "required": [
+    "schema_version",
+    "argv",
+    "environment",
+    "working_directory",
+    "endpoint",
+    "model_path",
+    "model_kind",
+    "context_size",
+    "family",
+    "adapter",
+    "local"
+  ],
+  "additionalProperties": false
+}

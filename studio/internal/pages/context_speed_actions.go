@@ -13,6 +13,9 @@ func (s *viewState) startSpeed() {
 	if w == nil || s.speedStartBlockReason() != "" || !inferyard.ValidContextSpeedContext(w.context) {
 		return
 	}
+	if !s.guardStandaloneForBenchmark(func() { s.startSpeed() }) {
+		return
+	}
 	if s.simulate(previewSpeedStart{model: s.model, engine: s.engine, context: w.context}) {
 		return
 	}

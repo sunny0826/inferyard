@@ -85,6 +85,9 @@ func (s *viewState) pageScroll() *ui.ScrollState {
 	if key == "reports" && s.openedReport != nil {
 		key = "report/" + s.openedReport.reference
 	}
+	if key == "settings" && s.settingsTab == settingsTabAbout {
+		key = "settings/about"
+	}
 	if s.scrolls[key] == nil {
 		s.scrolls[key] = &ui.ScrollState{}
 	}

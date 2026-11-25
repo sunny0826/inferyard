@@ -258,7 +258,7 @@ func (s *viewState) cliUpgradeBanner(c *ui.Context) {
 				}
 				if s.selected != "settings" {
 					if button(c, tr(c, "onboarding.setup.open_settings")).Disabled(s.busy).Clicked() {
-						s.navigateTo("settings", "")
+						s.openGeneralSettings()
 					}
 				}
 				if ghostButton(c, tr(c, "dashboard.feedback.close")).Clicked() {

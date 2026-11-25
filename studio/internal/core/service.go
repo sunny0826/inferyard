@@ -85,6 +85,12 @@ type Service struct {
 	probeModTime      int64
 	probeCheckedAt    time.Time
 	probeResult       InferyardProbe
+	serveProbePath    string
+	serveProbeVersion string
+	serveProbeSize    int64
+	serveProbeModTime int64
+	serveProbeChecked time.Time
+	serveSupported    bool
 	updater           *updateManager
 	cliInstallMu      sync.Mutex
 	cliUpgradeMu      sync.Mutex

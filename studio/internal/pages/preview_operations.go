@@ -19,6 +19,10 @@ func (p *previewSession) dispatch(intent previewIntent) {
 	switch op := intent.(type) {
 	case previewManagedEngine:
 		p.startService(false, op.candidate)
+	case previewStandaloneStart:
+		p.startPreviewStandalone(op)
+	case previewStopEngineThen:
+		p.stopPreviewEngine(op.after)
 	case previewSpeedStart:
 		p.startSpeed(op)
 	case previewSpeedCancel:
@@ -126,19 +130,7 @@ func (p *previewSession) dispatchStep(op previewStep) {
 	case previewBind:
 		p.startService(true, s.candidate)
 	case previewStopEngine:
-		if s.running() != nil || (s.speed != nil && s.speed.current != nil && s.speed.current.active()) {
-			s.failure = core.Err("run_active")
-			return
-		}
-		if p.takeFailure() {
-			s.failure = core.Err("engine_stop_failed")
-			return
-		}
-		p.cancelEvents("service")
-		s.engineState.State = "stopping"
-		p.after("service", 400*time.Millisecond, func() {
-			s.engineState = core.EngineState{State: "stopped"}
-		})
+		p.stopPreviewEngine(nil)
 	case previewRefreshDevice:
 		fail := p.takeFailure()
 		s.device.Refreshing, s.device.LastError = true, nil
@@ -196,6 +188,7 @@ func (p *previewSession) prepareEnvironment() {
 			return
 		}
 		s.ready.CLI.Status = "ok"
+		s.serveSupported = true
 		s.cliUpgrade = core.CLIUpgradeState{State: core.CLIUpgradeIdle}
 		s.ready.Workspace.Exists, s.ready.Workspace.Initialized = true, true
 		s.ready.Results.Exists, s.ready.Models.Exists = true, true
@@ -462,6 +455,120 @@ func (p *previewSession) activateScene() {
 	if s.updateState.State == core.UpdateDownloading {
 		p.tickUpdateDownload(false, 2, false)
 	}
+}
+
+func (p *previewSession) startPreviewStandalone(op previewStandaloneStart) {
+	s := p.state
+	fail := p.takeFailure()
+	modelPath := op.model
+	modelKind := "gguf"
+	for _, m := range s.registry.Models {
+		if m.Name == op.model {
+			if m.Path != "" {
+				modelPath = m.Path
+			}
+			if m.Format != "" {
+				modelKind = m.Format
+			}
+			break
+		}
+	}
+	family := "llama-cpp"
+	localEngine := false
+	for _, e := range s.registry.Engines {
+		if e.Name == op.engine {
+			if e.Family != "" {
+				family = e.Family
+			}
+			localEngine = e.Kind == "local_installation"
+			break
+		}
+	}
+	adapter := "prism_llama_server_v1"
+	if localEngine {
+		adapter = "local_openai_v1"
+	}
+	executable := "llama-server"
+	if family == "polystrata" || family == "vllm" || family == "sglang" {
+		executable = "python"
+	}
+	p.cancelEvents("service")
+	p.after("service", 300*time.Millisecond, func() {
+		s.standalone.preparing = false
+		s.standalone.preparingModel = ""
+		if fail {
+			err := core.Err("engine_start_failed")
+			s.standalone.lastError = err
+			s.failure = err
+			s.failurePage = s.selected
+			s.engineState = core.EngineState{
+				State:       "failed",
+				Local:       localEngine,
+				Origin:      core.EngineOriginStandalone,
+				Family:      family,
+				Adapter:     adapter,
+				Executable:  executable,
+				Model:       modelPath,
+				ModelKind:   modelKind,
+				ContextSize: op.contextSize,
+				LogPath:     "/preview/logs/standalone.log",
+				Candidate:   "preview-standalone",
+				Error:       err,
+			}
+			return
+		}
+		s.engineState = core.EngineState{
+			State:       "starting",
+			Local:       localEngine,
+			Origin:      core.EngineOriginStandalone,
+			Family:      family,
+			Adapter:     adapter,
+			Executable:  executable,
+			Model:       modelPath,
+			ModelKind:   modelKind,
+			ContextSize: op.contextSize,
+			Pid:         42001,
+			Endpoint:    "http://127.0.0.1:48857",
+			LogPath:     "/preview/logs/standalone.log",
+			Candidate:   "preview-standalone",
+		}
+		p.after("service", 500*time.Millisecond, func() {
+			s.engineState.State = "running"
+		})
+	})
+}
+
+func (p *previewSession) stopPreviewEngine(after func()) {
+	s := p.state
+	if s.running() != nil || (s.speed != nil && s.speed.current != nil && s.speed.current.active()) {
+		s.failure = core.Err("run_active")
+		return
+	}
+	if p.takeFailure() {
+		s.failure = core.Err("engine_stop_failed")
+		return
+	}
+	p.cancelEvents("service")
+	s.engineState.State = "stopping"
+	p.after("service", 400*time.Millisecond, func() {
+		if s.engineState.Origin == core.EngineOriginStandalone {
+			s.engineState = core.EngineState{
+				State:       "stopped",
+				Origin:      core.EngineOriginStandalone,
+				Model:       s.engineState.Model,
+				ModelKind:   s.engineState.ModelKind,
+				Family:      s.engineState.Family,
+				Adapter:     s.engineState.Adapter,
+				ContextSize: s.engineState.ContextSize,
+				Candidate:   s.engineState.Candidate,
+			}
+		} else {
+			s.engineState = core.EngineState{State: "stopped"}
+		}
+		if after != nil {
+			after()
+		}
+	})
 }
 
 var _ previewMode = (*previewSession)(nil)

@@ -7,6 +7,7 @@ import (
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
+	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -58,6 +59,11 @@ func (s *viewState) navigateTo(page, detail string) {
 		return
 	}
 	s.navigateToNow(page, detail)
+}
+
+func (s *viewState) openGeneralSettings() {
+	s.settingsTab = settingsTabGeneral
+	s.navigateTo("settings", "")
 }
 
 func (s *viewState) selectPageNow(id string) {
@@ -204,7 +210,7 @@ func (s *viewState) roundWorkActive() bool {
 	if s.busy || s.newTaskPending || s.binding || s.running() != nil || s.queueActivity().active() {
 		return true
 	}
-	if s.engineState.State == "starting" || s.engineState.State == "stopping" {
+	if s.engineState.Origin != core.EngineOriginStandalone && (s.engineState.State == "starting" || s.engineState.State == "stopping") {
 		return true
 	}
 	if s.speed != nil && s.speed.current != nil && s.speed.current.active() {

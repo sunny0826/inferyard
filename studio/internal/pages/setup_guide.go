@@ -87,7 +87,7 @@ func (s *viewState) setupGuide(c *ui.Context) {
 					if primaryActionButton(c, tr(c, "onboarding.cli.upgrade_button"), upgrading).Disabled(s.busy).Clicked() {
 						s.upgradeCLI()
 					}
-					button(c, tr(c, "onboarding.setup.open_settings")).Disabled(s.busy).OnClick(func() { s.selected = "settings" })
+					button(c, tr(c, "onboarding.setup.open_settings")).Disabled(s.busy).OnClick(func() { s.openGeneralSettings() })
 				})
 				if showProgress {
 					progressBar(c, -1, tr(c, "onboarding.cli.upgrade_progress"))
@@ -118,7 +118,7 @@ func (s *viewState) setupGuide(c *ui.Context) {
 			if primaryActionButton(c, tr(c, "onboarding.setup.prepare_button"), preparing).Disabled(s.busy).Clicked() {
 				s.prepareEnvironment()
 			}
-			button(c, tr(c, "onboarding.setup.open_settings")).Disabled(s.busy).OnClick(func() { s.selected = "settings" })
+			button(c, tr(c, "onboarding.setup.open_settings")).Disabled(s.busy).OnClick(func() { s.openGeneralSettings() })
 		})
 		if showProgress {
 			progressBar(c, -1, tr(c, "onboarding.setup.progress_label"))

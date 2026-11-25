@@ -26,6 +26,9 @@ type engineProcessRow struct{ pid, parent, group int64 }
 
 func configureEngineProcess(cmd *exec.Cmd, startup Startup) error {
 	if !startup.Local {
+		if startup.WorkingDirectory != "" {
+			cmd.Dir = startup.WorkingDirectory
+		}
 		return nil
 	}
 	cmd.Dir = startup.WorkingDirectory

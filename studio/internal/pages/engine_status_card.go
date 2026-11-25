@@ -164,7 +164,9 @@ func (s *viewState) engineCardSummary() []engineInfoRow {
 	case state.Pid > 0:
 		rows = append(rows, engineInfoRow{label: l10n.TR("engine.info.process"), value: fmt.Sprintf("PID %d", state.Pid), tabular: true})
 	}
-	if candidateRaw != "" {
+	if state.Origin == core.EngineOriginStandalone {
+		rows = append(rows, engineInfoRow{label: l10n.TR("engine.origin.label"), value: engineOriginLabel(state.Origin)})
+	} else if candidateRaw != "" {
 		rows = append(rows, engineInfoRow{label: l10n.TR("engine.info.config"), value: displayName(candidateRaw)})
 	}
 	return rows
@@ -211,23 +213,49 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 		}
 	case "orphaned":
 	default:
-		startDisabled := !s.canStartManagedEngine()
-		startTip := tr(c, "engine.tooltip.click_start")
-		if s.managedEngineCandidate() == "" {
-			startTip = tr(c, "engine.tooltip.need_candidate")
-		} else if startDisabled {
-			startTip = tr(c, "engine.tooltip.cannot_start")
+		if state.Origin == core.EngineOriginStandalone {
+			isRetry := state.State == "failed"
+			actionLabel := tr(c, "engine.action.start")
+			if isRetry {
+				actionLabel = tr(c, "models.serve.action.retry")
+			}
+			disabled := s.standaloneStartBlockReason() != "" || s.busy || s.standalone.preparing
+			tip := s.standaloneStartBlockReason()
+			if tip == "" {
+				tip = tr(c, "engine.tooltip.click_start")
+			}
+			headerOpts.action = &engineHeaderActionOptions{
+				statusText:  stateLabel(label),
+				actionLabel: actionLabel,
+				kind:        kind,
+				action:      "start",
+				busy:        s.standalone.preparing,
+				disabled:    disabled,
+				tooltip:     tip,
+			}
+			headerOpts.onClick = func() {
+				s.openStandaloneFromHeader(isRetry)
+				close()
+			}
+		} else {
+			startDisabled := !s.canStartManagedEngine()
+			startTip := tr(c, "engine.tooltip.click_start")
+			if s.managedEngineCandidate() == "" {
+				startTip = tr(c, "engine.tooltip.need_candidate")
+			} else if startDisabled {
+				startTip = tr(c, "engine.tooltip.cannot_start")
+			}
+			headerOpts.action = &engineHeaderActionOptions{
+				statusText:  stateLabel(label),
+				actionLabel: tr(c, "engine.action.start"),
+				kind:        kind,
+				action:      "start",
+				busy:        s.actionBusy("start-engine"),
+				disabled:    startDisabled,
+				tooltip:     startTip,
+			}
+			headerOpts.onClick = s.startManagedEngine
 		}
-		headerOpts.action = &engineHeaderActionOptions{
-			statusText:  stateLabel(label),
-			actionLabel: tr(c, "engine.action.start"),
-			kind:        kind,
-			action:      "start",
-			busy:        s.actionBusy("start-engine"),
-			disabled:    startDisabled,
-			tooltip:     startTip,
-		}
-		headerOpts.onClick = s.startManagedEngine
 	}
 
 	ui.Column(c).FillWidth().Gap(t.Density.Stack).Children(func() {
@@ -245,6 +273,11 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 		}
 		switch state.State {
 		case "starting", "running", "stopping":
+			if state.Origin == core.EngineOriginStandalone && state.LogPath != "" {
+				outlineButton(c, tr(c, "engine.action.open_log")).FillWidth().Padding(theme.Space(1.75), theme.Space(3.5)).Radius(theme.Space(2.5)).OnClick(func() {
+					s.openEngineCardLog(state.LogPath)
+				})
+			}
 			if runActive {
 				ui.Text(c, tr(c, "engine.notice.stop_after_run")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
 			}
@@ -265,7 +298,7 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 					s.openEngineCardLog(state.LogPath)
 				})
 			}
-			if s.managedEngineCandidate() == "" {
+			if s.managedEngineCandidate() == "" && state.Origin != core.EngineOriginStandalone {
 				ui.Text(c, tr(c, "engine.notice.need_candidate")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 				button(c, tr(c, "engine.action.go_dashboard")).FillWidth().Padding(theme.Space(1.75), theme.Space(3.5)).Radius(theme.Space(2.5)).OnClick(func() {
 					s.openBenchmarksFlow()

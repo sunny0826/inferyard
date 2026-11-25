@@ -28,6 +28,7 @@ func (s *viewState) resetWorkspace() {
 	s.resumeDiscardConfirm = false
 	s.settingsLeaveConfirm, s.pendingNavAction = false, nil
 	s.reportsTab = reportsTabList
+	s.settingsTab = settingsTabGeneral
 	s.closeOpenedReport()
 	s.denied = map[string]bool{}
 }

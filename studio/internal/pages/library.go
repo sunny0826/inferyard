@@ -26,7 +26,7 @@ func (s *viewState) libraryView(c *ui.Context) {
 			ui.Box(c).Grow(1)
 			refreshButton(c, tr(c, "models.action.rescan"), s.registry.Refreshing).
 				Disabled(s.busy || s.registry.Refreshing).OnClick(s.refreshAssetsAction)
-			button(c, tr(c, "downloads.page.settings")).OnClick(func() { s.navigateTo("settings", "") })
+			button(c, tr(c, "downloads.page.settings")).OnClick(func() { s.openGeneralSettings() })
 		})
 
 		s.downloadTaskGuide(c)
@@ -45,6 +45,7 @@ func (s *viewState) libraryView(c *ui.Context) {
 		}
 	})
 
+	s.standaloneDrawer(c)
 	s.assetDeleteDialog(c, pending)
 	s.downloadsEngineDrawer(c)
 	s.downloadsModelDrawer(c)
@@ -124,7 +125,7 @@ func (s *viewState) libraryHardwareDetails(c *ui.Context, snapshot deviceObject,
 	errorRecoveryBanner(c, deviceErr, func() {
 		s.deviceRefreshButton(c, tr(c, "device.action.retry"))
 		if button(c, tr(c, "device.action.open_settings")).Clicked() {
-			s.navigateTo("settings", "")
+			s.openGeneralSettings()
 		}
 	})
 	if parseError != nil {
@@ -133,7 +134,7 @@ func (s *viewState) libraryHardwareDetails(c *ui.Context, snapshot deviceObject,
 			Message: tr(c, "device.error.unreadable_snapshot"),
 			Actions: func() {
 				s.deviceRefreshButton(c, tr(c, "device.action.recollect"))
-				button(c, tr(c, "device.action.check_settings")).OnClick(func() { s.navigateTo("settings", "") })
+				button(c, tr(c, "device.action.check_settings")).OnClick(func() { s.openGeneralSettings() })
 			},
 		})
 		return
