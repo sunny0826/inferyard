@@ -21,6 +21,7 @@ type StandaloneStartRequest struct {
 	Engine      string   `json:"engine"`
 	ContextSize int64    `json:"context_size"`
 	Port        int      `json:"port,omitempty"`
+	LANAccess   bool     `json:"lan_access,omitempty"`
 	GPULayers   *int     `json:"gpu_layers,omitempty"`
 	Threads     *int     `json:"threads,omitempty"`
 	ExtraArgs   []string `json:"extra_args,omitempty"`
@@ -287,18 +288,24 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 	}
 
 	slug := standaloneSlug(req.Model, req.Engine, req.ContextSize)
+	serviceID := ServiceIDFor(req.Model, req.Engine)
 
-	// Check active running state first so same-combination idempotency never touches CLI.
+	// Check active running state for this serviceID first so same-combination idempotency never touches CLI.
 	s.mu.Lock()
 	if s.orphan != nil {
 		state := clone(s.orphan.state)
 		s.mu.Unlock()
 		return state, Err("engine_orphaned")
 	}
-	if s.engine != nil && (s.engine.state.State == "starting" || s.engine.state.State == "running" || s.engine.state.State == "stopping") {
-		state := clone(s.engine.state)
+	if orphan, exists := s.orphanedServices[serviceID]; exists && orphan != nil {
+		state := clone(orphan.state)
 		s.mu.Unlock()
-		if state.Origin == EngineOriginStandalone && state.Candidate == slug {
+		return state, Err("engine_orphaned")
+	}
+	if existing, exists := s.services[serviceID]; exists && existing != nil && isActiveServiceState(existing.state.State) {
+		state := clone(existing.state)
+		s.mu.Unlock()
+		if state.Candidate == slug && state.LANAccess == req.LANAccess {
 			runningPort := state.Port
 			if runningPort <= 0 {
 				runningPort = portFromEndpoint(state.Endpoint)
@@ -309,11 +316,33 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 		}
 		return state, Err("engine_candidate_mismatch")
 	}
+	occupied := s.occupiedPortsLocked()
 	s.mu.Unlock()
 
+	budget := s.checkServiceMemoryBudgetWithRegistry(req.Model, req.Engine, req.ContextSize, reg)
+	if budget.Known && !budget.Enough {
+		return EngineState{}, &ApiError{
+			Code: "insufficient_memory",
+			Message: l10n.TRf("core.engine.err.insufficient_memory",
+				"required", fmt.Sprintf("%.1f", budget.EstimatedGB),
+				"remaining", fmt.Sprintf("%.1f", budget.RemainingGB),
+			),
+			Details: map[string]any{
+				"required_gb":  budget.EstimatedGB,
+				"remaining_gb": budget.RemainingGB,
+				"available_gb": budget.AvailableGB,
+				"used_gb":      budget.UsedGB,
+			},
+		}
+	}
+
+	bindHost := "127.0.0.1"
+	if req.LANAccess {
+		bindHost = "0.0.0.0"
+	}
 	if req.Port > 0 {
-		if _, err := reservePortFunc(req.Port); err != nil {
-			return EngineState{}, &ApiError{Code: "engine_port_in_use", Message: l10n.TR("core.engine.err.port_in_use")}
+		if occupied[req.Port] || checkBindPortAvailable(bindHost, req.Port) != nil {
+			return EngineState{}, portInUseError(req.Port)
 		}
 	}
 
@@ -331,18 +360,33 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 	}
 	planPath := filepath.Join(serveDir, "serve-plan.json")
 	startup, reused := reusableStandalonePlan(planPath, modelEntry.path, *engEntry, req.ContextSize)
-	if reused && req.Port > 0 && portFromEndpoint(startup.Endpoint) != req.Port {
-		reused = false
+	if reused {
+		cachedPort := portFromEndpoint(startup.Endpoint)
+		if (req.Port > 0 && cachedPort != req.Port) || occupied[cachedPort] {
+			reused = false
+		}
 	}
+	reservedPort := 0
+	defer func() {
+		if reservedPort > 0 {
+			s.mu.Lock()
+			delete(s.reservedPorts, reservedPort)
+			s.mu.Unlock()
+		}
+	}()
 	if !reused {
 		port := req.Port
 		if port == 0 {
 			var err error
-			port, err = ChooseFreeLoopbackPort(DefaultBenchmarkPort)
+			port, err = ChooseFreePortExcluding(DefaultBenchmarkPort, occupied)
 			if err != nil {
-				return EngineState{}, Err("engine_port_in_use")
+				return EngineState{}, portInUseError(0)
 			}
 		}
+		s.mu.Lock()
+		s.reservedPorts[port] = true
+		reservedPort = port
+		s.mu.Unlock()
 		args := []string{
 			"serve", "prepare",
 			"--model", modelEntry.path,
@@ -389,19 +433,26 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 	}
 
 	startup = applyStandaloneArgs(startup, req)
-	state, apiErr := s.startFromStartupLocked(startup, EngineOriginStandalone, slug)
+	startup, lanErr := applyLANAccess(startup, serveDir, req.LANAccess)
+	if lanErr != nil {
+		return EngineState{}, lanErr
+	}
+	startup.ServiceID = serviceID
+	startup.EstimatedMemoryGB = budget.EstimatedGB
+	state, apiErr := s.startManagedServiceLocked(startup, slug, serviceID)
 	if apiErr != nil {
 		return state, apiErr
 	}
 
 	s.mu.Lock()
-	s.clearExitNoticeLocked()
+	s.clearExitNoticesForServiceLocked(serviceID, req.Model, req.Engine)
 	s.mu.Unlock()
 
 	_ = s.SaveServicePreset(ServicePreset{
 		Model:         req.Model,
 		Engine:        req.Engine,
 		Port:          req.Port,
+		LANAccess:     req.LANAccess,
 		ContextSize:   req.ContextSize,
 		GPULayers:     cloneIntPtr(req.GPULayers),
 		Threads:       cloneIntPtr(req.Threads),

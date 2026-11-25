@@ -37,6 +37,7 @@ func TestServiceEndpoint(ctx context.Context, baseURL, model string) ServiceTest
 	if trimmed == "" {
 		return ServiceTestResult{OK: false, Error: "base URL is required"}
 	}
+	trimmed = localHealthEndpoint(trimmed)
 	parsed, err := url.Parse(trimmed)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
 		return ServiceTestResult{OK: false, Error: "invalid base URL"}
@@ -127,6 +128,7 @@ func TestServiceEndpoint(ctx context.Context, baseURL, model string) ServiceTest
 }
 
 func checkEngineHealth(client *http.Client, endpoint string, local bool, family string) bool {
+	endpoint = localHealthEndpoint(endpoint)
 	if family == "polystrata" {
 		resp, err := client.Get(endpoint + "/health")
 		if err != nil {
@@ -155,6 +157,7 @@ func checkEngineHealth(client *http.Client, endpoint string, local bool, family 
 }
 
 func unloadPolystrata(endpoint string) bool {
+	endpoint = localHealthEndpoint(endpoint)
 	client := &http.Client{
 		Timeout: 2 * time.Second,
 		CheckRedirect: func(*http.Request, []*http.Request) error {

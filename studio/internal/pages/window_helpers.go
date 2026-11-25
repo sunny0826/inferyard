@@ -5,6 +5,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/shells/sidebar"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -107,4 +108,74 @@ func (s *viewState) openLocalEngineWizard(family string) {
 	s.wizardPresetFamily = family
 	s.libraryTab = 1
 	s.navigateTo("library", "")
+}
+
+func (s *viewState) contentView(c *ui.Context) {
+	page := canonicalPageID(s.selected)
+	if page != "reports" && s.openedReport != nil && s.openedReport.svgStage != nil {
+		s.openedReport.releaseSVGStage()
+	}
+	s.consumeFeedback(c)
+	s.dropStaleStopPrompt()
+	s.clearPromptOnNavigation()
+	ui.Column(c).Grow(1).MinWidth(0).Fill().Padding(sidebar.HeaderHeight(c), 0, 0, 0).Children(func() {
+		ui.Scroll(c.Key(page)).Grow(1).TrackScroll(s.pageScroll()).Padding(tokens(c).Density.Page).Children(func() {
+			ui.Column(c).Gap(tokens(c).Density.Section).Children(func() {
+				s.feedback(c)
+				if !s.loaded {
+					s.loadingView(c)
+					return
+				}
+				switch page {
+				case "services":
+					s.servicesView(c)
+				case "library":
+					s.libraryView(c)
+				case "benchmarks":
+					if s.detailID != "" {
+						s.detailView(c)
+					} else {
+						s.benchmarksView(c)
+					}
+				case "reports":
+					s.reportsView(c)
+				case "settings":
+					s.settingsView(c)
+				default:
+					s.servicesView(c)
+				}
+			})
+		})
+	})
+	q := s.queueActivity()
+	if s.destructiveDialogModal(c, destructiveOption{
+		kind: destructiveStopEngine, id: "header", label: tr(c, "shell.header.stop_engine.label"), confirmLabel: tr(c, "shell.header.stop_engine.confirm"),
+		prompt:   tr(c, "common.confirm.stop_engine.prompt"),
+		disabled: !s.stopEnabled(true, q.active()),
+	}) {
+		s.stopEngine()
+	}
+	if destructiveKind(s.pendingDestructive.kind) == destructiveStopService {
+		targetID := s.pendingDestructive.id
+		if svc, ok := s.findManagedServiceByID(targetID); ok {
+			if s.destructiveDialogModal(c, destructiveOption{
+				kind:         destructiveStopService,
+				id:           targetID,
+				label:        tr(c, "services.card.stop_confirm_title"),
+				confirmLabel: tr(c, "services.card.stop_confirm_action"),
+				prompt:       trf(c, "services.card.stop_confirm_prompt", "model", s.serviceModelTitle(c, svc)),
+				disabled:     !s.serviceStopEnabled(svc, q.active()),
+			}) {
+				s.stopManagedServiceByID(svc.ServiceID)
+			}
+		}
+	}
+	s.resumeDialog(c)
+	s.settingsDiscardDialog(c)
+	s.standaloneDialogs(c)
+	s.serviceDrawersAndDialogs(c)
+	s.updateDialog(c)
+	s.updateReadyPrompt(c)
+	s.studioNotifications(c)
+	studioToasts(c)
 }

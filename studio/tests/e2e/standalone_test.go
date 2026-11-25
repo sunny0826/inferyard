@@ -326,11 +326,11 @@ func TestStandaloneServeLifecycle(t *testing.T) {
 		t.Fatalf("fake engine received wrong args: n_ctx=%d (want %d), model=%q (want %q)", props.Settings.NCtx, wantCtx, gotModelPath, wantModelPath)
 	}
 
-	// Verify owner file records origin == "standalone".
-	ownerFile := filepath.Join(env.Workspace, "logs", "engine-owner.json")
+	// Verify per-service owner file records origin == "standalone".
+	ownerFile := filepath.Join(env.Workspace, "engine-owners", core.ServiceIDFor(modelName, engineName)+".json")
 	rawOwner, err := os.ReadFile(ownerFile)
 	if err != nil {
-		t.Fatalf("expected engine-owner.json while running: %v", err)
+		t.Fatalf("expected per-service owner file while running: %v", err)
 	}
 	if !strings.Contains(string(rawOwner), `"origin":"standalone"`) {
 		t.Fatalf("owner file missing standalone origin: %s", string(rawOwner))

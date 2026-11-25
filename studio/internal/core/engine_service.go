@@ -39,21 +39,24 @@ func normalizeEngineOrigin(origin string) string {
 }
 
 type EngineState struct {
-	StartTicks    int64     `json:"start_ticks"`
-	Local         bool      `json:"local"`
-	Adopted       bool      `json:"adopted,omitempty"`
-	Origin        string    `json:"origin,omitempty"`
-	Family        string    `json:"family,omitempty"`
-	Adapter       string    `json:"adapter,omitempty"`
-	Executable    string    `json:"executable,omitempty"`
-	EngineName    string    `json:"engine_name,omitempty"`
-	Model         string    `json:"model,omitempty"`
-	ModelName     string    `json:"model_name,omitempty"`
-	ModelKind     string    `json:"model_kind,omitempty"`
-	ServedModel   string    `json:"served_model,omitempty"`
-	Port          int       `json:"port,omitempty"`
-	RequestedPort int       `json:"requested_port,omitempty"`
-	ContextSize   int64     `json:"context_size,omitempty"`
+	ServiceID         string    `json:"service_id,omitempty"`
+	StartTicks        int64     `json:"start_ticks"`
+	Local             bool      `json:"local"`
+	Adopted           bool      `json:"adopted,omitempty"`
+	Origin            string    `json:"origin,omitempty"`
+	Family            string    `json:"family,omitempty"`
+	Adapter           string    `json:"adapter,omitempty"`
+	Executable        string    `json:"executable,omitempty"`
+	EngineName        string    `json:"engine_name,omitempty"`
+	Model             string    `json:"model,omitempty"`
+	ModelName         string    `json:"model_name,omitempty"`
+	ModelKind         string    `json:"model_kind,omitempty"`
+	ServedModel       string    `json:"served_model,omitempty"`
+	Port              int       `json:"port,omitempty"`
+	RequestedPort     int       `json:"requested_port,omitempty"`
+	LANAccess         bool      `json:"lan_access,omitempty"`
+	EstimatedMemoryGB float64   `json:"estimated_memory_gb,omitempty"`
+	ContextSize       int64     `json:"context_size,omitempty"`
 	GPULayers     *int      `json:"gpu_layers,omitempty"`
 	Threads       *int      `json:"threads,omitempty"`
 	ExtraArgs     []string  `json:"extra_args,omitempty"`
@@ -87,10 +90,10 @@ func (s *Service) Engine() EngineState {
 	if s.orphan != nil {
 		return clone(s.orphan.state)
 	}
-	if s.engine == nil {
-		return EngineState{State: "stopped"}
+	if s.engine != nil {
+		return clone(s.engine.state)
 	}
-	return clone(s.engine.state)
+	return s.primaryManagedServiceLocked()
 }
 
 func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
@@ -267,11 +270,11 @@ func (s *Service) StopEngine() (EngineState, *ApiError) {
 	if s.runsActiveLocked() {
 		return EngineState{}, Err("run_active")
 	}
-	if s.engine == nil {
-		return EngineState{State: "stopped"}, nil
+	if s.engine != nil {
+		s.stopEngineLocked(s.engine)
+		return clone(s.engine.state), nil
 	}
-	s.stopEngineLocked(s.engine)
-	return clone(s.engine.state), nil
+	return s.stopPrimaryManagedServiceLocked(), nil
 }
 
 func (s *Service) stopEngineLocked(e *engineEntry) {
@@ -296,6 +299,9 @@ func (s *Service) detachEngineLocked(e *engineEntry) {
 
 func (s *Service) publishEngineLocked(e *engineEntry) {
 	s.Bus.Publish("engine.state", map[string]any{"engine": clone(e.state)})
+	if e.state.ServiceID != "" || normalizeEngineOrigin(e.state.Origin) == EngineOriginStandalone {
+		s.publishServicesStateLocked()
+	}
 }
 
 func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
@@ -315,10 +321,10 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 		defer s.mu.Unlock()
 		if treeErr != nil {
 			state, err = "failed", treeErr
-			s.orphan = &orphanEngine{owner: e.owner, path: e.ownerPath, state: EngineState{State: "orphaned", Origin: normalizeEngineOrigin(e.owner.Origin), Family: e.owner.Family, Model: e.owner.Model, Pid: e.owner.PID, StartTicks: e.owner.StartTicks, Local: e.owner.Local, Endpoint: e.owner.Endpoint, Candidate: e.owner.Candidate, Error: err}}
+			s.recordOrphanFromEntryLocked(e, err)
 		} else if removeErr := removeEngineOwner(e.ownerPath, e.owner); removeErr != nil {
 			state, err = "failed", &ApiError{Code: "engine_owner_remove_failed", Message: l10n.TR("core.engine.err.exited_owner_remove_failed")}
-			s.orphan = &orphanEngine{owner: e.owner, path: e.ownerPath, state: EngineState{State: "orphaned", Origin: normalizeEngineOrigin(e.owner.Origin), Family: e.owner.Family, Model: e.owner.Model, Error: err}}
+			s.recordOrphanFromEntryLocked(e, err)
 		}
 		e.state.State, e.state.Error = state, err
 		s.publishEngineLocked(e)

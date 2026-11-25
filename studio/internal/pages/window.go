@@ -169,6 +169,11 @@ type viewState struct {
 	standalone                                                                          standaloneServeState
 	recentServices                                                                      []core.ServicePreset
 	exitedNotice                                                                        *core.ServiceExitNotice
+	managedServices                                                                     []core.EngineState
+	exitedNotices                                                                       []core.ServiceExitNotice
+	memorySummary                                                                       core.ServiceMemoryBudget
+	expandedServices                                                                    map[string]bool
+	serviceLogTargetID                                                                  string
 	serviceUsage                                                                        serviceUsageDrawerState
 	serviceParams                                                                       serviceParamsDrawerState
 	quitDialog                                                                          quitServiceDialogState
@@ -369,7 +374,9 @@ func (s *viewState) refresh(full bool) {
 	}
 	serveSupported := s.service.ServeSupported(s.ctx)
 	recentServices := s.service.RecentServices()
-	exitedNotice := s.service.ExitedServiceNotice()
+	exitedNotices := s.service.ExitedServiceNotices()
+	managedServices := s.service.ManagedServices()
+	memorySummary := s.service.CurrentServiceMemorySummary()
 	if s.ctx.Err() != nil {
 		return
 	}
@@ -386,7 +393,8 @@ func (s *viewState) refresh(full bool) {
 			history: history, reports: reports, historyError: he, reportsError: re,
 			ready: ready, progress: progress, progressError: pe, dashboard: dashboard, registry: registry,
 			updateState: updateState, cliUpgrade: cliUpgrade, serveSupported: serveSupported,
-			recentServices: recentServices, exitedNotice: exitedNotice,
+			recentServices: recentServices, exitedNotices: exitedNotices,
+			managedServices: managedServices, memorySummary: memorySummary,
 		}
 		if !s.applyRefreshBatch(batch) {
 			return
@@ -425,7 +433,9 @@ type refreshBatch struct {
 	cliUpgrade                 core.CLIUpgradeState
 	serveSupported             bool
 	recentServices             []core.ServicePreset
-	exitedNotice               *core.ServiceExitNotice
+	exitedNotices              []core.ServiceExitNotice
+	managedServices            []core.EngineState
+	memorySummary              core.ServiceMemoryBudget
 }
 
 func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
@@ -473,7 +483,9 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	s.checks = s.service.EngineChecks()
 	s.serveSupported = b.serveSupported
 	s.recentServices = b.recentServices
-	s.exitedNotice = b.exitedNotice
+	s.managedServices = b.managedServices
+	s.memorySummary = b.memorySummary
+	s.syncExitedNotices(b.exitedNotices)
 	s.applyUpdateState(b.updateState)
 	s.applyCLIUpgradeState(b.cliUpgrade)
 	if !skipEngineAdopt {
@@ -563,59 +575,4 @@ func (s *viewState) view(c *ui.Context) {
 		ui.Column(c).Width(205).Shrink(0).Children(func() { s.leftNav(c) })
 		s.contentView(c)
 	})
-}
-
-func (s *viewState) contentView(c *ui.Context) {
-	page := canonicalPageID(s.selected)
-	if page != "reports" && s.openedReport != nil && s.openedReport.svgStage != nil {
-		s.openedReport.releaseSVGStage()
-	}
-	s.consumeFeedback(c)
-	s.dropStaleStopPrompt()
-	s.clearPromptOnNavigation()
-	ui.Column(c).Grow(1).MinWidth(0).Fill().Padding(sidebar.HeaderHeight(c), 0, 0, 0).Children(func() {
-		ui.Scroll(c.Key(page)).Grow(1).TrackScroll(s.pageScroll()).Padding(tokens(c).Density.Page).Children(func() {
-			ui.Column(c).Gap(tokens(c).Density.Section).Children(func() {
-				s.feedback(c)
-				if !s.loaded {
-					s.loadingView(c)
-					return
-				}
-				switch page {
-				case "services":
-					s.servicesView(c)
-				case "library":
-					s.libraryView(c)
-				case "benchmarks":
-					if s.detailID != "" {
-						s.detailView(c)
-					} else {
-						s.benchmarksView(c)
-					}
-				case "reports":
-					s.reportsView(c)
-				case "settings":
-					s.settingsView(c)
-				default:
-					s.servicesView(c)
-				}
-			})
-		})
-	})
-	q := s.queueActivity()
-	if s.destructiveDialogModal(c, destructiveOption{
-		kind: destructiveStopEngine, id: "header", label: tr(c, "shell.header.stop_engine.label"), confirmLabel: tr(c, "shell.header.stop_engine.confirm"),
-		prompt:   tr(c, "common.confirm.stop_engine.prompt"),
-		disabled: !s.stopEnabled(true, q.active()),
-	}) {
-		s.stopEngine()
-	}
-	s.resumeDialog(c)
-	s.settingsDiscardDialog(c)
-	s.standaloneDialogs(c)
-	s.serviceDrawersAndDialogs(c)
-	s.updateDialog(c)
-	s.updateReadyPrompt(c)
-	s.studioNotifications(c)
-	studioToasts(c)
 }

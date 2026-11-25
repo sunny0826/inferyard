@@ -32,6 +32,7 @@ type previewStandaloneStart struct {
 	model, engine string
 	contextSize   int64
 	port          int
+	lanAccess     bool
 	gpuLayers     *int
 	threads       *int
 	extraArgs     []string
@@ -45,9 +46,16 @@ type previewSaveServicePreset struct {
 
 func (previewSaveServicePreset) previewIntent() {}
 
-type previewDismissExitNotice struct{}
+type previewDismissExitNotice struct{ id string }
 
 func (previewDismissExitNotice) previewIntent() {}
+
+type previewStopManagedService struct {
+	serviceID string
+	after     func()
+}
+
+func (previewStopManagedService) previewIntent() {}
 
 type previewTestServiceEndpoint struct {
 	baseURL, model string

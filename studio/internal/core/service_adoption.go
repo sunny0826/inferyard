@@ -19,7 +19,31 @@ func (s *Service) adoptPollPeriod() time.Duration {
 	return defaultAdoptPollInterval
 }
 
-func (s *Service) adoptStandaloneLocked(workspace, path string, owner engineOwner) {
+func (s *Service) adoptStandaloneServiceLocked(workspace, path string, owner engineOwner, migrateLegacy bool) {
+	serviceID := owner.ServiceID
+	if serviceID == "" {
+		modelKey := owner.ModelName
+		if modelKey == "" {
+			modelKey = owner.Model
+		}
+		engineKey := owner.Engine
+		if engineKey == "" {
+			engineKey = owner.Family
+		}
+		if modelKey != "" && engineKey != "" {
+			serviceID = ServiceIDFor(modelKey, engineKey)
+		} else {
+			serviceID = sanitizeSlugPart(owner.Candidate, 48)
+		}
+		owner.ServiceID = serviceID
+	}
+	if migrateLegacy && workspace != "" {
+		newPath := serviceOwnerPath(workspace, serviceID)
+		if err := writeEngineOwner(newPath, owner); err == nil {
+			_ = os.Remove(path)
+			path = newPath
+		}
+	}
 	port := owner.Port
 	if port <= 0 {
 		port = portFromEndpoint(owner.Endpoint)
@@ -44,33 +68,36 @@ func (s *Service) adoptStandaloneLocked(workspace, path string, owner engineOwne
 		detach:     make(chan struct{}),
 		done:       make(chan struct{}),
 		state: EngineState{
-			State:       initialState,
-			Adopted:     true,
-			Local:       owner.Local,
-			Origin:      EngineOriginStandalone,
-			Family:      owner.Family,
-			Adapter:     owner.Adapter,
-			Executable:  owner.Executable,
-			EngineName:  owner.Engine,
-			Model:       owner.Model,
-			ModelName:   owner.ModelName,
-			ModelKind:   owner.ModelKind,
-			ServedModel:   owner.ServedModel,
-			Port:          port,
-			RequestedPort: owner.RequestedPort,
-			ContextSize: owner.ContextSize,
-			GPULayers:   cloneIntPtr(owner.GPULayers),
-			Threads:     cloneIntPtr(owner.Threads),
-			ExtraArgs:   append([]string(nil), owner.ExtraArgs...),
-			StartedAt:   owner.StartedAt,
-			Pid:         owner.PID,
-			StartTicks:  owner.StartTicks,
-			Endpoint:    owner.Endpoint,
-			LogPath:     logPath,
-			Candidate:   owner.Candidate,
+			ServiceID:         serviceID,
+			State:             initialState,
+			Adopted:           true,
+			Local:             owner.Local,
+			Origin:            EngineOriginStandalone,
+			Family:            owner.Family,
+			Adapter:           owner.Adapter,
+			Executable:        owner.Executable,
+			EngineName:        owner.Engine,
+			Model:             owner.Model,
+			ModelName:         owner.ModelName,
+			ModelKind:         owner.ModelKind,
+			ServedModel:       owner.ServedModel,
+			Port:              port,
+			RequestedPort:     owner.RequestedPort,
+			LANAccess:         owner.LANAccess,
+			EstimatedMemoryGB: owner.EstimatedMemoryGB,
+			ContextSize:       owner.ContextSize,
+			GPULayers:         cloneIntPtr(owner.GPULayers),
+			Threads:           cloneIntPtr(owner.Threads),
+			ExtraArgs:         append([]string(nil), owner.ExtraArgs...),
+			StartedAt:         owner.StartedAt,
+			Pid:               owner.PID,
+			StartTicks:        owner.StartTicks,
+			Endpoint:          owner.Endpoint,
+			LogPath:           logPath,
+			Candidate:         owner.Candidate,
 		},
 	}
-	s.engine = entry
+	s.services[serviceID] = entry
 	s.publishEngineLocked(entry)
 	go s.monitorAdoptedEngine(entry)
 }
@@ -94,10 +121,8 @@ func (s *Service) monitorAdoptedEngine(e *engineEntry) {
 			}
 			if failure != nil {
 				e.state.State, e.state.Error = "failed", failure
-				orphanState := clone(e.state)
-				orphanState.State = "orphaned"
-				s.orphan = &orphanEngine{owner: e.owner, path: e.ownerPath, state: orphanState}
-				s.Bus.Publish("engine.state", map[string]any{"engine": clone(orphanState)})
+				s.recordOrphanFromEntryLocked(e, failure)
+				s.publishEngineLocked(e)
 			} else {
 				e.state.State, e.state.Error = "stopped", nil
 				s.publishEngineLocked(e)
@@ -110,10 +135,14 @@ func (s *Service) monitorAdoptedEngine(e *engineEntry) {
 				s.mu.Lock()
 				failure := orphanIdentityError()
 				e.state.State, e.state.Error = "orphaned", failure
-				orphanState := clone(e.state)
-				s.orphan = &orphanEngine{owner: e.owner, path: e.ownerPath, state: orphanState}
-				s.engine = nil
-				s.Bus.Publish("engine.state", map[string]any{"engine": clone(orphanState)})
+				s.recordOrphanFromEntryLocked(e, failure)
+				if s.engine == e {
+					s.engine = nil
+				}
+				if e.state.ServiceID != "" && s.services[e.state.ServiceID] == e {
+					delete(s.services, e.state.ServiceID)
+				}
+				s.publishEngineLocked(e)
 				s.mu.Unlock()
 				return
 			}
@@ -123,9 +152,7 @@ func (s *Service) monitorAdoptedEngine(e *engineEntry) {
 				var failure *ApiError
 				if removeErr := removeEngineOwner(e.ownerPath, e.owner); removeErr != nil {
 					failure = &ApiError{Code: "engine_owner_remove_failed", Message: l10n.TR("core.engine.err.exited_owner_remove_failed")}
-					orphanState := clone(e.state)
-					orphanState.State, orphanState.Error = "orphaned", failure
-					s.orphan = &orphanEngine{owner: e.owner, path: e.ownerPath, state: orphanState}
+					s.recordOrphanFromEntryLocked(e, failure)
 				} else {
 					failure = &ApiError{Code: "engine_exited", Message: l10n.TR("core.engine.err.exited")}
 				}

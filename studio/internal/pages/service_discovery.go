@@ -36,17 +36,25 @@ func (s *viewState) refreshDiscovery() {
 }
 
 func (s *viewState) managedServiceActive() bool {
-	switch s.engineState.State {
-	case "starting", "running", "stopping":
-		return true
-	default:
-		return false
-	}
+	return len(s.activeManagedServices()) > 0
 }
 
 func (s *viewState) managedEndpoint(service inferyard.DiscoveredService, endpoint inferyard.DiscoveredEndpoint) bool {
-	return s.managedServiceActive() && s.engineState.Pid > 0 && service.PID == s.engineState.Pid &&
-		s.engineState.Endpoint != "" && endpoint.URL == s.engineState.Endpoint && !endpoint.AmbiguousListener
+	if endpoint.AmbiguousListener {
+		return false
+	}
+	for _, st := range s.activeManagedServices() {
+		if st.Pid <= 0 || service.PID != st.Pid {
+			continue
+		}
+		if st.Endpoint != "" && endpoint.URL == st.Endpoint {
+			return true
+		}
+		if localURL, ok := serviceLocalURL(st); ok && endpoint.URL == localURL {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *viewState) managedServiceView(c *ui.Context) {

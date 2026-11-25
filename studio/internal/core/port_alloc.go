@@ -27,17 +27,41 @@ func listenLoopbackPort(port int) (int, error) {
 // ChooseFreeLoopbackPort returns preferred if it can be bound on 127.0.0.1,
 // or falls back to an available ephemeral loopback port when preferred is occupied.
 func ChooseFreeLoopbackPort(preferred int) (int, error) {
-	if preferred >= 1 && preferred <= 65535 {
-		if port, err := reservePortFunc(preferred); err == nil && port > 0 {
+	return ChooseFreePortExcluding(preferred, nil)
+}
+
+// ChooseFreePortExcluding returns preferred if it is not in exclude and can be bound,
+// otherwise allocates an ephemeral loopback port not in exclude.
+func ChooseFreePortExcluding(preferred int, exclude map[int]bool) (int, error) {
+	if preferred >= 1 && preferred <= 65535 && !exclude[preferred] {
+		if port, err := reservePortFunc(preferred); err == nil && port > 0 && !exclude[port] {
 			return port, nil
 		}
 	}
-	port, err := reservePortFunc(0)
+	for range 32 {
+		port, err := reservePortFunc(0)
+		if err != nil {
+			return 0, err
+		}
+		if port > 0 && !exclude[port] {
+			return port, nil
+		}
+	}
+	return 0, errors.New("no free loopback port available")
+}
+
+func checkBindPortAvailable(host string, port int) error {
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	if host == "127.0.0.1" || host == "localhost" {
+		_, err := reservePortFunc(port)
+		return err
+	}
+	ln, err := net.Listen("tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
-		return 0, err
+		return err
 	}
-	if port <= 0 {
-		return 0, errors.New("no free loopback port available")
-	}
-	return port, nil
+	_ = ln.Close()
+	return nil
 }

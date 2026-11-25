@@ -51,6 +51,7 @@
   "preview.scene.resources_cpu_sensors": "资源 · CPU 与多路温度",
   "preview.scene.resources_dense_missing": "资源 · 密集采样与缺测",
   "preview.scene.service_exited": "服务 · 意外退出与最近启动",
+  "preview.scene.services_multi": "服务 · 多服务并行与局域网开放",
   "preview.scene.task_completed": "任务 · 已完成",
   "preview.scene.task_failed": "任务 · 失败",
   "preview.scene.task_preparation": "任务 · 准备",

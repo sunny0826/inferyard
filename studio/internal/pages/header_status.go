@@ -8,6 +8,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
+	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -70,20 +71,32 @@ func (s *viewState) sidebarStatusArea(c *ui.Context) {
 func (s *viewState) sidebarServiceRow(c *ui.Context) {
 	t := tokens(c)
 	q := s.queueActivity()
+	active := s.activeManagedServices()
+	exited := s.effectiveExitedNotices()
 	state := s.engineState.State
 	if state == "" {
 		state = "stopped"
 	}
-	exitedAlert := s.hasActiveExitNotice() && state != "running" && state != "starting" && state != "stopping"
+	if len(active) > 0 {
+		state = active[0].State
+	}
+	exitedAlert := len(exited) > 0 && len(active) == 0
 	kind := engineStateKind(state)
 	label := tr(c, "sidebar.status.service_idle")
 	highlight := false
 	var onClick func()
 	if exitedAlert {
 		kind = stateDanger
-		label = tr(c, "sidebar.status.service_exited")
+		if len(exited) > 1 {
+			label = trf(c, "sidebar.status.services_exited_count", "count", len(exited))
+		} else {
+			label = tr(c, "sidebar.status.service_exited")
+		}
 		highlight = true
 		onClick = func() { s.navigateTo("services", "") }
+	} else if len(active) > 1 {
+		kind = stateSuccess
+		label = trf(c, "sidebar.status.services_running_count", "count", len(active))
 	} else {
 		switch state {
 		case "running":
@@ -101,10 +114,10 @@ func (s *viewState) sidebarServiceRow(c *ui.Context) {
 		}
 	}
 	aria := trf(c, "shell.header.engine_label", "status", stateLabelFor(contextLocale(c), state))
-	if exitedAlert {
+	if exitedAlert || len(active) > 1 {
 		aria = label
 	}
-	animated := !exitedAlert && (state == "running" || state == "starting" || state == "stopping")
+	animated := !exitedAlert && (len(active) > 0 || state == "running" || state == "starting" || state == "stopping")
 	s.sidebarStatusRow(c, sidebarStatusSpec{
 		key:       "sidebar-engine-status",
 		label:     label,
@@ -112,7 +125,7 @@ func (s *viewState) sidebarServiceRow(c *ui.Context) {
 		kind:      kind,
 		highlight: highlight,
 		progress:  -1,
-		popWidth:  c.Theme().Space(88),
+		popWidth:  c.Theme().Space(92),
 		onClick:   onClick,
 		leading: func() {
 			cDot := stateColor(c, kind)
@@ -132,12 +145,70 @@ func (s *viewState) sidebarServiceRow(c *ui.Context) {
 		},
 		open: &s.sidebarServiceOpen,
 		pop: func(close func()) {
-			s.engineStatusPanel(c, q.active(), close)
+			if len(active) > 1 || (len(active) == 1 && active[0].Origin == core.EngineOriginStandalone) {
+				s.sidebarManagedServicesPopover(c, active, q.active(), close)
+			} else {
+				s.engineStatusPanel(c, q.active(), close)
+			}
 			button(c, tr(c, "sidebar.status.open_services")).AlignSelf(ui.Start).OnClick(func() {
 				s.navigateTo("services", "")
 				close()
 			})
 		},
+	})
+}
+
+func (s *viewState) sidebarManagedServicesPopover(c *ui.Context, active []core.EngineState, runActive bool, close func()) {
+	t := tokens(c)
+	ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
+		heading(c, trf(c, "sidebar.popover.title", "count", len(active)), 3)
+		for _, svc := range active {
+			key := serviceKey(svc)
+			modelName := s.serviceModelTitle(c, svc)
+			uiURL, canOpen, _ := serviceWebUIInfo(svc)
+			_, hasEndpoint := serviceEndpointDisplay(svc)
+			portText := ""
+			if svc.Port > 0 {
+				portText = fmt.Sprintf(":%d", svc.Port)
+			}
+			applyMaterial(c, ui.Column(c.Key("sidebar-svc-"+key)).FillWidth().Padding(t.Density.Row).Gap(t.Density.Tight), materialSunken).Children(func() {
+				ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+					ui.Text(c, modelName).Bold().FontSize(t.Type.Caption).Grow(1).MinWidth(0).SingleLine()
+					if svc.LANAccess {
+						inlineBadge(c, tr(c, "services.card.badge.lan"), stateWarning, badgeOptions{Size: sizeSM})
+					}
+					if portText != "" {
+						ui.Text(c, portText).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
+					}
+				})
+				ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+					if canOpen {
+						if inlineButton(c, components.ButtonOutline, tr(c, "sidebar.popover.web")).
+							Label(tr(c, "sidebar.popover.web") + " · " + modelName).Clicked() {
+							s.openEngineWebUI(c, uiURL)
+						}
+					}
+					if hasEndpoint {
+						if inlineButton(c, components.ButtonOutline, tr(c, "sidebar.popover.copy")).
+							Label(tr(c, "sidebar.popover.copy") + " · " + modelName).Clicked() {
+							s.copyServiceEndpoint(c, svc)
+						}
+					}
+					ui.Box(c).Grow(1)
+					stopDisabled := !s.serviceStopEnabled(svc, runActive)
+					if inlineDangerButton(c, tr(c, "sidebar.popover.stop")).
+						Label(tr(c, "sidebar.popover.stop") + " · " + modelName).
+						Disabled(stopDisabled).Clicked() {
+						if svc.ServiceID != "" {
+							s.pendingDestructive = s.destructiveRequestFor(destructiveOption{kind: destructiveStopService, id: svc.ServiceID})
+						} else {
+							s.pendingDestructive = s.destructiveRequestFor(destructiveOption{kind: destructiveStopEngine, id: "header"})
+						}
+						close()
+					}
+				})
+			})
+		}
 	})
 }
 
