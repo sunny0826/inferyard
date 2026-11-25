@@ -65,13 +65,15 @@ func (s *viewState) sidebarStatusArea(c *ui.Context) {
 
 func (s *viewState) shellContentTitle(c *ui.Context, leading func(*ui.Context)) {
 	t := tokens(c)
-	ui.Row(c).Fill().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+	row := ui.Row(c.Key("content-title-bar")).Fill().AlignItems(ui.Center).Gap(t.Density.Row)
+	availWidth := row.LayoutBounds().W
+	row.Children(func() {
 		if leading != nil {
 			leading(c)
 		}
 		ui.Spacer(c)
 		s.updateHeaderBadge(c)
-		s.notificationBell(c)
+		s.notificationBell(c, availWidth)
 	})
 }
 

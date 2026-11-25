@@ -266,7 +266,7 @@ func notificationCardButton(c *ui.Context, label string, primary bool) ui.Elemen
 	return components.Button(c, label, variant).Height(32).Padding(0, t.Density.Stack).Radius(t.Radius.Control).FontSize(13)
 }
 
-func (s *viewState) notificationBell(c *ui.Context) {
+func (s *viewState) notificationBell(c *ui.Context, maxCanvasWidth float32) {
 	t := tokens(c)
 	theme := c.Theme()
 	nc := s.notifications()
@@ -328,10 +328,14 @@ func (s *viewState) notificationBell(c *ui.Context) {
 			components.Tooltip(c, anchor, label)
 		}
 		studioPopover(c, anchor, &nc.bellOpen, func(panel ui.Element) {
+			popWidth := float32(344)
+			if maxCanvasWidth > 0 {
+				popWidth = min(popWidth, max(float32(200), maxCanvasWidth))
+			}
 			panel.AttachTo(anchor, ui.AnchorBottomRight, ui.AnchorTopRight).
 				Margin(t.Density.Row, 0, 0, 0).
 				Padding(0).Gap(0).
-				Width(344).MaxWidthPercent(100).Label(tr(c, "notif.list_label"))
+				Width(popWidth).MaxWidthPercent(100).Label(tr(c, "notif.list_label"))
 			panel.Children(func() {
 				s.notificationInboxPanel(c)
 			})

@@ -61,10 +61,7 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 			Effective: core.EffectiveSettings{Theme: initialTheme, Language: initialLanguage, MinimizeToTray: initialMinimizeToTray, KeepServicesOnQuit: initialKeepServices},
 		},
 	}
-	options := pageShellOptions(title, "inferyard-studio-main", s.leftNav, s.contentView)
-	options.ContentTitle = func(c *ui.Context) { s.shellContentTitle(c, nil) }
-	options.Theme = s.themeFor
-	shell := sidebar.NewShell(options)
+	shell := sidebar.NewShell(s.shellOptions(title))
 	w := shell.Window()
 	s.win = w
 	if len(hooks) > 0 && hooks[0].BindTray != nil {
@@ -392,6 +389,13 @@ func (s *viewState) selectTask(id string) {
 	s.requestedDetail = id
 	s.detailMu.Unlock()
 	go s.refresh(false)
+}
+
+func (s *viewState) shellOptions(title string) sidebar.ShellOptions {
+	options := pageShellOptions(title, "inferyard-studio-main", s.leftNav, s.contentView)
+	options.ContentTitle = func(c *ui.Context) { s.shellContentTitle(c, nil) }
+	options.Theme = s.themeFor
+	return options
 }
 
 func (s *viewState) view(c *ui.Context) {
