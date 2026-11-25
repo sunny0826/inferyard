@@ -210,4 +210,25 @@ inferyard run --plan bench-ops-ctx/plans/ctx-64k/plan.json --output-root bench-o
 inferyard speed-results --batch bench-ops-ctx/results/ctx-64k-batch
 ```
 
+### 单独启动本地模型服务（无需测评任务）
+
+仅需拉起本地 OpenAI 兼容模型服务、不建测评任务时，使用 `inferyard serve prepare` 生成回环启动计划 `<out>/serve-plan.json`（不计算模型哈希、无需题包或设备预检，上下文长度可设为任意不超过模型上限的正整数）：
+
+```bash
+# 引擎来源三选一：--installation <dir|installation.json> / --engine <path> / --runtime-receipt <path>
+inferyard serve prepare \
+  --model /path/to/model.gguf \
+  --engine /path/to/llama-server \
+  --context-size 16384 \
+  --port 48857 \
+  --out ./serve-out \
+  --json
+```
+
+该命令会写入 `<out>/serve-plan.json` 并准备引擎所需的配套文件，不会自动拉起进程；保留输出目录，按计划中的 `working_directory`、`environment` 与 `argv` 另行启动服务。查询 `serve_plan` 契约定义：
+
+```bash
+inferyard --schema serve_plan
+```
+
 退出码约定：`0` 完成、`2` 输入或身份预检阻断、`3` 运行不完整、`4` IO 或工具错误、`130` 取消。

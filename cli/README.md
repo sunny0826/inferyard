@@ -37,6 +37,7 @@ uv tool upgrade inferyard
 | `inferyard engine detect` / `engine init-installation` | Detect local engine binaries/venvs and generate a validated `installation.json` |
 | `inferyard model acquire` / `model resolve` | Resolve or download pinned Hugging Face / ModelScope models (single/multi-shard GGUF or directory models, with resume & proxy) |
 | `inferyard assets scan` | Read-only scan of local model and engine directories |
+| `inferyard serve prepare` | Generate a loopback `serve-plan.json` (`serve_plan` schema) to launch a local OpenAI-compatible model service without creating a benchmark task (`--model`, `--installation \| --engine \| --runtime-receipt`, `--context-size`, `--port`, `--out`, `--json`) |
 | `inferyard service discover` | Read-only discovery of running loopback inference services (`/health`, `/v1/models`) |
 | `inferyard plan` | Preview (`--dry-run`) or freeze an experiment plan, including `--preset context-speed` for `zh-context-speed` |
 | `inferyard probe` / `run` / `resume` | Probe a bound service, run a serial or planned benchmark, or resume unexecuted cases |
