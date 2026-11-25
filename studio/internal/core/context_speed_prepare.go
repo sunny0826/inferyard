@@ -181,7 +181,7 @@ func (s *Service) prepareContextSpeed(ctx context.Context, t *runEntry, req Star
 		return e
 	}
 	s.speedStage(t, "binding")
-	engine, e := s.StartEngine(candidate)
+	engine, e := s.startCandidateEngine(candidate, EngineOriginContextSpeed)
 	if e != nil {
 		return e
 	}

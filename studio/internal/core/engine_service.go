@@ -18,9 +18,32 @@ import (
 	"time"
 )
 
+const (
+	EngineOriginBenchmark    = "benchmark"
+	EngineOriginContextSpeed = "context_speed"
+	EngineOriginStandalone   = "standalone"
+)
+
+func validEngineOrigin(origin string) bool {
+	switch origin {
+	case EngineOriginBenchmark, EngineOriginContextSpeed, EngineOriginStandalone:
+		return true
+	default:
+		return false
+	}
+}
+
+func normalizeEngineOrigin(origin string) string {
+	if validEngineOrigin(origin) {
+		return origin
+	}
+	return EngineOriginBenchmark
+}
+
 type EngineState struct {
 	StartTicks    int64     `json:"start_ticks"`
 	Local         bool      `json:"local"`
+	Origin        string    `json:"origin,omitempty"`
 	Family        string    `json:"family,omitempty"`
 	Adapter       string    `json:"adapter,omitempty"`
 	Executable    string    `json:"executable,omitempty"`
@@ -61,6 +84,10 @@ func (s *Service) Engine() EngineState {
 }
 
 func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
+	return s.startCandidateEngine(candidate, EngineOriginBenchmark)
+}
+
+func (s *Service) startCandidateEngine(candidate, origin string) (EngineState, *ApiError) {
 	s.settingsMu.Lock()
 	defer s.settingsMu.Unlock()
 	s.mu.Lock()
@@ -76,6 +103,34 @@ func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
 	startup, e := s.Startup(candidate)
 	if e != nil {
 		return EngineState{}, e
+	}
+	return s.startFromStartupLocked(startup, origin, candidate)
+}
+
+func (s *Service) startFromStartup(startup Startup, origin, ref string) (EngineState, *ApiError) {
+	s.settingsMu.Lock()
+	defer s.settingsMu.Unlock()
+	return s.startFromStartupLocked(startup, origin, ref)
+}
+
+func (s *Service) startFromStartupLocked(startup Startup, origin, ref string) (EngineState, *ApiError) {
+	origin = normalizeEngineOrigin(origin)
+	baseRef := filepath.Base(ref)
+	if ref == "" || baseRef == "." || baseRef == ".." || baseRef == string(filepath.Separator) {
+		return EngineState{}, Err("invalid_input")
+	}
+	if origin == EngineOriginStandalone && ref != baseRef {
+		return EngineState{}, Err("invalid_input")
+	}
+	s.mu.Lock()
+	closing := s.closing
+	deleting := s.deletingAssets > 0
+	s.mu.Unlock()
+	if closing {
+		return EngineState{}, Err("service_closing")
+	}
+	if deleting {
+		return EngineState{}, workspaceBusyError()
 	}
 	host, port, e := validateStartup(startup)
 	if e != nil {
@@ -97,7 +152,7 @@ func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
 		return clone(s.orphan.state), &ApiError{Code: "engine_orphaned", Message: l10n.TR("core.engine.err.handle_orphan_first")}
 	}
 	if s.engine != nil && (s.engine.state.State == "starting" || s.engine.state.State == "running" || s.engine.state.State == "stopping") {
-		if s.engine.state.Candidate != candidate {
+		if s.engine.state.Candidate != ref || normalizeEngineOrigin(s.engine.state.Origin) != origin {
 			return clone(s.engine.state), Err("engine_candidate_mismatch")
 		}
 		return clone(s.engine.state), nil
@@ -144,6 +199,7 @@ func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
 		state: EngineState{
 			State:         "starting",
 			Local:         startup.Local,
+			Origin:        origin,
 			Family:        startup.Family,
 			Adapter:       startup.Adapter,
 			Executable:    executable,
@@ -154,7 +210,7 @@ func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
 			Pid:           int64(cmd.Process.Pid),
 			Endpoint:      endpoint,
 			LogPath:       logPath,
-			Candidate:     candidate,
+			Candidate:     ref,
 		},
 	}
 	if failure := s.persistEngineOwner(entry, *w); failure != nil {
@@ -222,10 +278,10 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 		defer s.mu.Unlock()
 		if treeErr != nil {
 			state, err = "failed", treeErr
-			s.orphan = &orphanEngine{owner: e.owner, path: e.ownerPath, state: EngineState{State: "orphaned", Pid: e.owner.PID, StartTicks: e.owner.StartTicks, Local: e.owner.Local, Endpoint: e.owner.Endpoint, Candidate: e.owner.Candidate, Error: err}}
+			s.orphan = &orphanEngine{owner: e.owner, path: e.ownerPath, state: EngineState{State: "orphaned", Origin: normalizeEngineOrigin(e.owner.Origin), Family: e.owner.Family, Model: e.owner.Model, Pid: e.owner.PID, StartTicks: e.owner.StartTicks, Local: e.owner.Local, Endpoint: e.owner.Endpoint, Candidate: e.owner.Candidate, Error: err}}
 		} else if removeErr := removeEngineOwner(e.ownerPath, e.owner); removeErr != nil {
 			state, err = "failed", &ApiError{Code: "engine_owner_remove_failed", Message: l10n.TR("core.engine.err.exited_owner_remove_failed")}
-			s.orphan = &orphanEngine{owner: e.owner, path: e.ownerPath, state: EngineState{State: "orphaned", Error: err}}
+			s.orphan = &orphanEngine{owner: e.owner, path: e.ownerPath, state: EngineState{State: "orphaned", Origin: normalizeEngineOrigin(e.owner.Origin), Family: e.owner.Family, Model: e.owner.Model, Error: err}}
 		}
 		e.state.State, e.state.Error = state, err
 		s.publishEngineLocked(e)
