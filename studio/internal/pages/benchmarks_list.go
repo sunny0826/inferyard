@@ -77,7 +77,7 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 			found = true
 			s.renderBenchmarkTaskRow(c, extraSpeed)
 		}
-		if !found && s.hasActiveBenchmarkFlow() {
+		if !found && s.shouldRenderActiveFlowRow() {
 			found = true
 			s.renderActiveFlowRow(c)
 		}
@@ -120,6 +120,21 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 			}
 			s.renderBenchmarkTaskRow(c, task)
 		}
+		if s.speed != nil {
+			speedCount := 0
+			for _, r := range s.speed.history {
+				if speedCount >= 5 {
+					break
+				}
+				if r == nil || r.active() || seenRuns[r.id] {
+					continue
+				}
+				found = true
+				speedCount++
+				seenRuns[r.id] = true
+				s.renderBenchmarkTaskRow(c, r.toRunTask())
+			}
+		}
 		reportCount := 0
 		for _, rep := range s.reports {
 			if reportCount >= 5 {
@@ -149,6 +164,24 @@ func (s *viewState) unlistedCurrentSpeedTask() (core.RunTask, bool) {
 		}
 	}
 	return cur.toRunTask(), true
+}
+
+func (s *viewState) shouldRenderActiveFlowRow() bool {
+	if s.speed != nil && s.speed.current != nil {
+		return false
+	}
+	if s.binding {
+		return true
+	}
+	if s.task.stage != "" && s.task.stage != "done" {
+		for _, task := range s.tasks {
+			if !terminal(task.State) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 func (s *viewState) hasActiveBenchmarkFlow() bool {

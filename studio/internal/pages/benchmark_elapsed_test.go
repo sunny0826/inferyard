@@ -178,4 +178,48 @@ func TestContextSpeedMeasuringShowsElapsedAndReturnsToList(t *testing.T) {
 	if !s.benchFlowOpen || !strings.Contains(reopenedTexts, want53s) {
 		t.Fatalf("expected reopening context speed flow to show %q, got benchFlowOpen=%v:\n%s", want53s, s.benchFlowOpen, reopenedTexts)
 	}
+
+	// Queued context speed must appear only under Queued, never fabricating an "In Setup" row under Running.
+	s.benchFlowOpen = false
+	queuedSpeed := speedRun
+	queuedSpeed.State = "starting"
+	queuedSpeed.Queued = true
+	queuedSpeed.StartedAt = nil
+	queuedSpeed.ContextSpeed = &core.ContextSpeedTask{
+		Model:   "Qwen3-8B.gguf",
+		Engine:  "llama-server",
+		Context: inferyard.ContextSpeed128K,
+		Stage:   "queued",
+	}
+	s.tasks = []core.RunTask{queuedSpeed}
+	s.syncSpeedTasks(s.tasks)
+	tt.Frame()
+	queuedTexts := strings.Join(tt.Texts(), "\n")
+	if !strings.Contains(queuedTexts, l10n.TR("benchmarks.group.running_empty")) || strings.Contains(queuedTexts, l10n.TR("benchmarks.badge.active_flow")) {
+		t.Fatalf("expected Running section to stay empty while context speed is queued, got:\n%s", queuedTexts)
+	}
+
+	// Once the sole context speed task finishes and syncs back into speed.current,
+	// Running must show empty state (no stale "In Setup" row) while Recent lists the finished run.
+	doneSpeed := speedRun
+	doneSpeed.State = "done"
+	doneSpeed.FinishedAt = ptr(baseNow.UTC().Format(time.RFC3339Nano))
+	doneSpeed.ContextSpeed = &core.ContextSpeedTask{
+		Model:     "Qwen3-8B.gguf",
+		Engine:    "llama-server",
+		Context:   inferyard.ContextSpeed128K,
+		Stage:     "done",
+		Completed: 5,
+		Batch:     &core.SpeedBatchRef{Path: "/w/results/speed-1"},
+	}
+	s.tasks = []core.RunTask{doneSpeed}
+	s.syncSpeedTasks(s.tasks)
+	tt.Frame()
+	doneListTexts := strings.Join(tt.Texts(), "\n")
+	if !strings.Contains(doneListTexts, l10n.TR("benchmarks.group.running_empty")) || strings.Contains(doneListTexts, l10n.TR("benchmarks.badge.active_flow")) {
+		t.Fatalf("expected Running section empty after context speed finishes, got:\n%s", doneListTexts)
+	}
+	if strings.Contains(doneListTexts, l10n.TR("benchmarks.group.recent_empty")) {
+		t.Fatalf("expected Recent section to list completed context speed task, got:\n%s", doneListTexts)
+	}
 }

@@ -272,4 +272,26 @@ func TestPreviewBenchmarkElapsedUsesVirtualClock(t *testing.T) {
 	if !strings.Contains(textsAt2300ms, want1s) {
 		t.Fatalf("expected preview virtual clock elapsed %q at 1.1s into run, got:\n%s", want1s, textsAt2300ms)
 	}
+
+	// Verify preview context speed return-to-list -> completion -> open result from Recent row.
+	p.loadScene(1)
+	p.state.speed.selected = true
+	p.startSpeed(previewSpeedStart{
+		model:   p.state.model,
+		engine:  p.state.engine,
+		context: inferyard.ContextSpeed64K,
+	})
+	p.state.benchFlowOpen = false
+	// Advance past all 5 samples + reading stage so speed task finishes while user is on Benchmarks list.
+	p.advance(10 * time.Second)
+	tt.Frame()
+	afterSpeedDone := strings.Join(tt.Texts(), "\n")
+	if !strings.Contains(afterSpeedDone, l10n.TR("benchmarks.group.running_empty")) || strings.Contains(afterSpeedDone, l10n.TR("benchmarks.badge.active_flow")) {
+		t.Fatalf("expected preview Benchmarks list Running section empty after speed completion, got:\n%s", afterSpeedDone)
+	}
+	click(t, tt, l10n.TR("shell.header.context_speed"))
+	tt.Frame()
+	if p.state.selected != "reports" || p.state.speed.opened == nil {
+		t.Fatalf("expected clicking completed speed row in Recent to open speed result, got selected=%q opened=%v", p.state.selected, p.state.speed.opened)
+	}
 }
