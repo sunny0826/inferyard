@@ -273,7 +273,8 @@ func (s *viewState) cliUpgradeBanner(c *ui.Context) {
 		return
 	}
 	bound := s.service != nil && s.service.BoundPaths() != nil
-	if !bound || !s.loaded || s.ready.CLI.Status != "outdated" || (s.selected == "dashboard" && s.detailID == "") {
+	curPage := canonicalPageID(s.selected)
+	if !bound || !s.loaded || s.ready.CLI.Status != "outdated" || (curPage == "benchmarks" && s.detailID == "") || curPage == "services" {
 		return
 	}
 	noticeBanner(c, noticeBannerOptions{

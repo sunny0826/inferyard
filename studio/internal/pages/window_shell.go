@@ -14,7 +14,7 @@ func pageShellOptions(title, stateKey string, left, content func(*ui.Context)) s
 		MinWidth:  800,
 		MinHeight: 600,
 		StateKey:  stateKey,
-		LeftWidth: 205,
+		LeftWidth: 232,
 		Left:      left,
 		Content:   content,
 		Theme:     studioTheme,

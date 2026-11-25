@@ -108,7 +108,8 @@ func (s *viewState) newBenchmark() {
 		if s.openedReport != nil {
 			s.openedReport.releaseSVGStage()
 		}
-		s.selected = "dashboard"
+		s.selected = "benchmarks"
+		s.benchFlowOpen = true
 	}
 	if s.service == nil && s.cancelRound == nil {
 		finish()

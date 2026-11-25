@@ -25,7 +25,7 @@ type previewLocalTask struct {
 }
 
 func previewLocalEngines(s *viewState) {
-	s.selected, s.task.stage = "dashboard", "prepare_candidate"
+	s.selected, s.benchFlowOpen, s.task.stage = "benchmarks", true, "prepare_candidate"
 	s.registry.Models = []core.ModelAsset{
 		{Name: "local.gguf", Path: "/preview/models/local.gguf", Format: "gguf", Available: true},
 		{Name: "strata-qwen36-ud-q4-k-m.json", Path: "/preview/models/strata-qwen36-ud-q4-k-m.json", Format: "strata_pack", Available: true},

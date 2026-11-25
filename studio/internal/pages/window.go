@@ -9,24 +9,20 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
-	"inferyard/studio/internal/l10n"
 )
 
 var navigation = []struct {
 	id, labelKey string
 	icon         func() *ui.SVG
 }{
-	{"dashboard", "nav.dashboard", lucide.Play},
+	{"benchmarks", "nav.benchmarks", lucide.Play},
+	{"services", "nav.services", lucide.Server},
+	{"library", "nav.library", lucide.Layers},
 	{"reports", "nav.reports", lucide.FileText},
-	{"models", "nav.models", lucide.Layers},
-	{"downloads", "nav.downloads", lucide.Download},
-	{"device", "nav.device", lucide.Cpu},
-	{"settings", "nav.settings", lucide.Settings},
 }
 
 type WindowHooks struct {
@@ -130,22 +126,27 @@ func firstOpen(page string, first bool) string {
 		return pageID(page)
 	}
 	if first {
-		return "dashboard"
+		return "services"
 	}
-	return "reports"
+	return "services"
+}
+
+func canonicalPageID(page string) string {
+	page = strings.TrimPrefix(strings.TrimSpace(page), "/")
+	switch page {
+	case "benchmarks", "services", "library", "reports", "settings":
+		return page
+	case "dashboard":
+		return "benchmarks"
+	case "models", "downloads", "device":
+		return "library"
+	default:
+		return "services"
+	}
 }
 
 func pageID(page string) string {
-	page = strings.TrimPrefix(page, "/")
-	for _, n := range navigation {
-		if page == n.id {
-			return page
-		}
-	}
-	if page == "dashboard" {
-		return page
-	}
-	return "reports"
+	return canonicalPageID(page)
 }
 
 type viewState struct {
@@ -193,6 +194,10 @@ type viewState struct {
 	detailMu                                                                            sync.Mutex
 	requestedDetail                                                                     string
 	selected, detailID                                                                  string
+	libraryTab                                                                          int
+	libraryHwExpanded                                                                   bool
+	benchFlowOpen                                                                       bool
+	sidebarServiceOpen, sidebarQueueOpen, sidebarDownloadOpen                           bool
 	settings                                                                            core.SettingsResponse
 	ready                                                                               core.Readiness
 	progress                                                                            *inferyard.WorkspaceProgress
@@ -366,8 +371,9 @@ func (s *viewState) refresh(full bool) {
 		if !s.applyRefreshBatch(batch) {
 			return
 		}
-		verifyVisible = s.selected == "models" ||
-			(s.selected == "dashboard" && s.progress != nil && !s.progress.DefaultScopeComplete && s.progress.NextAction == "prepare_candidate")
+		curPage := canonicalPageID(s.selected)
+		verifyVisible = curPage == "library" ||
+			(curPage == "benchmarks" && s.progress != nil && !s.progress.DefaultScopeComplete && s.progress.NextAction == "prepare_candidate")
 	})
 	if s.shouldVerifyEngines(full, verifyVisible, time.Now()) {
 		s.service.VerifyEngines()
@@ -536,44 +542,50 @@ func (s *viewState) view(c *ui.Context) {
 }
 
 func (s *viewState) contentView(c *ui.Context) {
-	if s.selected != "reports" && s.openedReport != nil && s.openedReport.svgStage != nil {
+	page := canonicalPageID(s.selected)
+	if page != "reports" && s.openedReport != nil && s.openedReport.svgStage != nil {
 		s.openedReport.releaseSVGStage()
 	}
 	s.consumeFeedback(c)
 	s.dropStaleStopPrompt()
 	s.clearPromptOnNavigation()
 	ui.Column(c).Grow(1).MinWidth(0).Fill().Padding(sidebar.HeaderHeight(c), 0, 0, 0).Children(func() {
-		s.cornerStatus(c)
-		ui.Scroll(c.Key(s.selected)).Grow(1).TrackScroll(s.pageScroll()).Padding(tokens(c).Density.Page).Children(func() {
+		ui.Scroll(c.Key(page)).Grow(1).TrackScroll(s.pageScroll()).Padding(tokens(c).Density.Page).Children(func() {
 			ui.Column(c).Gap(tokens(c).Density.Section).Children(func() {
 				s.feedback(c)
 				if !s.loaded {
 					s.loadingView(c)
 					return
 				}
-				switch s.selected {
-				case "device":
-					s.deviceView(c)
-				case "models":
-					s.modelsView(c)
-				case "downloads":
-					s.downloadsPageView(c)
-				case "dashboard":
+				switch page {
+				case "services":
+					s.servicesView(c)
+				case "library":
+					s.libraryView(c)
+				case "benchmarks":
 					if s.detailID != "" {
 						s.detailView(c)
 					} else {
-						s.dashboardView(c)
+						s.benchmarksView(c)
 					}
 				case "reports":
 					s.reportsView(c)
 				case "settings":
 					s.settingsView(c)
 				default:
-					s.dashboardView(c)
+					s.servicesView(c)
 				}
 			})
 		})
 	})
+	q := s.queueActivity()
+	if s.destructiveDialogModal(c, destructiveOption{
+		kind: destructiveStopEngine, id: "header", label: tr(c, "shell.header.stop_engine.label"), confirmLabel: tr(c, "shell.header.stop_engine.confirm"),
+		prompt:   tr(c, "common.confirm.stop_engine.prompt"),
+		disabled: !s.stopEnabled(true, q.active()),
+	}) {
+		s.stopEngine()
+	}
 	s.resumeDialog(c)
 	s.settingsDiscardDialog(c)
 	s.standaloneDialogs(c)
@@ -581,95 +593,4 @@ func (s *viewState) contentView(c *ui.Context) {
 	s.updateReadyPrompt(c)
 	s.studioNotifications(c)
 	studioToasts(c)
-}
-
-func (s *viewState) loadingView(c *ui.Context) {
-	title := tr(c, "shell.loading.getting_started")
-	if s.selected == "dashboard" {
-		title = ""
-		if s.detailID != "" {
-			title = tr(c, "shell.page.run_detail")
-		}
-	}
-	for _, n := range navigation {
-		if n.id == s.selected {
-			title = tr(c, n.labelKey)
-		}
-	}
-	if title != "" {
-		s.header(c, title)
-	}
-	if s.failure != nil || s.refreshFailure != "" {
-		button(c, tr(c, "shell.loading.retry_page")).AlignSelf(ui.Start).OnClick(s.refreshAction)
-		return
-	}
-	host := ui.Column(c.Key("page-loading")).FillWidth().Gap(tokens(c).Density.Section)
-	show := delayedVisible(c, host, "page-load", !s.loaded)
-	host.Children(func() {
-		if show {
-			pageLoadingSkeleton(c)
-		}
-	})
-}
-
-func (s *viewState) refreshAction() {
-	if s.simulate(previewReload) {
-		return
-	}
-	if !s.busy {
-		go s.refresh(true)
-	}
-}
-func (s *viewState) header(c *ui.Context, title string) {
-	heading(c, title, 1)
-}
-func field(c *ui.Context, label string, value *string) ui.Element {
-	return ui.Field(c, label, func() { components.TextBox(c, value, components.TextBoxOptions{}) })
-}
-func text(p *string) string {
-	if p == nil || *p == "" {
-		return l10n.TR("common.missing")
-	}
-	return *p
-}
-func emptyText(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}
-func terminal(state string) bool { return state == "done" || state == "failed" || state == "cancelled" }
-
-func (s *viewState) pageScroll() *ui.ScrollState {
-	if s.scrolls == nil {
-		s.scrolls = map[string]*ui.ScrollState{}
-	}
-	key := s.selected
-	if key == "dashboard" && s.detailID != "" {
-		key = "detail"
-	}
-	if key == "reports" && s.openedReport != nil {
-		key = "report/" + s.openedReport.reference
-	}
-	if key == "settings" && s.settingsTab == settingsTabAbout {
-		key = "settings/about"
-	}
-	if s.scrolls[key] == nil {
-		s.scrolls[key] = &ui.ScrollState{}
-	}
-	return s.scrolls[key]
-}
-
-func (s *viewState) shouldVerifyEngines(full, visible bool, now time.Time) bool {
-	if !visible || (!full && !s.lastEngineVerification.IsZero() && now.Sub(s.lastEngineVerification) < 5*time.Second) {
-		return false
-	}
-	s.lastEngineVerification = now
-	return true
-}
-
-func (s *viewState) openLocalEngineWizard(family string) {
-	s.wizardOpenRequested = true
-	s.wizardPresetFamily = family
-	s.navigateTo("models", "")
 }

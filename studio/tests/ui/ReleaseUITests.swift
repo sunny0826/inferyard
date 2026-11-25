@@ -33,14 +33,16 @@ final class ReleaseUITests: XCTestCase {
     }
 
     func testProductionPagesAndRealReport() {
+        click("报告")
         expectTab("测评报告")
         openRealReport()
-        click("模型")
+        click("模型库")
         expectText("已安装的模型")
-        click("下载")
         expectExists(app.buttons["下载设置"], timeout: 10)
-        click("设备")
+        click("硬件详情")
         expectExists(app.buttons["刷新设备"], timeout: 10)
+        click("服务")
+        expectText("托管服务")
         click("设置")
         expectText("工作区目录")
         guard let workspace = ProcessInfo.processInfo.environment["INFERYARD_RELEASE_WORKSPACE"], !workspace.isEmpty else {

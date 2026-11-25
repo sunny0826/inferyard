@@ -208,8 +208,8 @@ func TestStandaloneSwitchAndBenchmarkConflictGuards(t *testing.T) {
 	}
 	s.engineState = core.EngineState{State: "failed", Origin: core.EngineOriginStandalone, Model: "/models/m1.gguf"}
 	s.openStandaloneFromHeader(true)
-	if s.selected != "models" || !s.standalone.drawerOpen || s.standalone.modelName != "m1.gguf" || s.standalone.engineName != "llama-b" || s.standalone.customContext != "12000" {
-		t.Fatalf("expected header retry to restore m1.gguf params (llama-b, 12000), got selected=%q standalone=%+v", s.selected, s.standalone)
+	if s.selected != "library" || s.libraryTab != 0 || !s.standalone.drawerOpen || s.standalone.modelName != "m1.gguf" || s.standalone.engineName != "llama-b" || s.standalone.customContext != "12000" {
+		t.Fatalf("expected header retry to restore m1.gguf params (llama-b, 12000), got selected=%q libraryTab=%d standalone=%+v", s.selected, s.libraryTab, s.standalone)
 	}
 
 	// Normal start (prefillLast=false) uses recommended default (8192) instead of previous 12000.

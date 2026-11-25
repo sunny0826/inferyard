@@ -65,7 +65,7 @@ func (s *viewState) activeTaskFailure() *core.ApiError {
 }
 
 func (s *viewState) stepOwnsError(e *core.ApiError) bool {
-	if e == nil || s.selected != "dashboard" || s.detailID != "" {
+	if e == nil || canonicalPageID(s.selected) != "benchmarks" || s.detailID != "" {
 		return false
 	}
 	if s.awaitingLocalService() {
@@ -83,7 +83,7 @@ func (s *viewState) handoffOwnsError(task core.RunTask) bool {
 }
 
 func (s *viewState) stepOwnsTaskError(task core.RunTask) bool {
-	if task.Error == nil || s.selected != "dashboard" || s.detailID != "" {
+	if task.Error == nil || canonicalPageID(s.selected) != "benchmarks" || s.detailID != "" {
 		return false
 	}
 	if s.handoffOwnsError(task) {

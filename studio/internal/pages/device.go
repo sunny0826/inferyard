@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
 )
@@ -132,59 +131,6 @@ func parseDeviceSnapshot(raw json.RawMessage) (deviceObject, error) {
 	return snapshot, parseError
 }
 
-func (s *viewState) deviceView(c *ui.Context) {
-	t := tokens(c)
-	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		heading(c, tr(c, "device.title"), 1).Grow(1)
-		s.deviceRefreshButton(c, tr(c, "device.action.refresh"))
-	})
-	snapshot, parseError := parseDeviceSnapshot(s.device.Snapshot)
-	if snapshot != nil && parseError == nil {
-		deviceHardware(c, snapshot.object("hardware"))
-		if rec, ok := core.ParseStarterRecommendation(s.device.Snapshot); ok {
-			s.deviceRecommendationCard(c, rec)
-		}
-	}
-	deviceErr := s.device.LastError
-	if s.suppressOutdatedCLIError(deviceErr) {
-		deviceErr = nil
-	}
-	errorRecoveryBanner(c, deviceErr, func() {
-		s.deviceRefreshButton(c, tr(c, "device.action.retry"))
-		if button(c, tr(c, "device.action.open_settings")).Clicked() {
-			s.openGeneralSettings()
-		}
-	})
-	if parseError != nil {
-		noticeBanner(c, noticeBannerOptions{
-			Kind:    stateDanger,
-			Message: tr(c, "device.error.unreadable_snapshot"),
-			Actions: func() {
-				s.deviceRefreshButton(c, tr(c, "device.action.recollect"))
-				button(c, tr(c, "device.action.check_settings")).OnClick(func() { s.openGeneralSettings() })
-			},
-		})
-		return
-	}
-	if snapshot == nil && s.device.LastError == nil && !s.device.Refreshing {
-		emptyGuideCard(c, emptyGuideOptions{
-			Icon:        lucide.Cpu,
-			Title:       tr(c, "device.empty.title"),
-			Description: tr(c, "device.empty.description"),
-			Surface:     emptyCard,
-			Action: func() {
-				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
-					if primaryButton(c, tr(c, "device.action.collect")).Disabled(s.deviceCollectionBlocked()).Clicked() {
-						s.refreshDevice()
-					}
-					if button(c, tr(c, "device.action.open_settings")).Clicked() {
-						s.openGeneralSettings()
-					}
-				})
-			},
-		})
-	}
-}
 func deviceHardware(c *ui.Context, hw deviceObject) {
 	card(c, tr(c, "device.hardware.title"), func() {
 		deviceRow(c, tr(c, "device.hardware.cpu"), trf(c, "device.hardware.cpu_value", "model", deviceMeasurementFor(c, hw, "cpu_model", false), "cores", deviceMeasurementFor(c, hw, "logical_cpus", false)))
@@ -247,56 +193,5 @@ func deviceHardware(c *ui.Context, hw deviceObject) {
 			architecture = trf(c, "device.hardware.architecture_apple_silicon", "arch", architecture)
 		}
 		deviceRow(c, tr(c, "device.hardware.architecture"), architecture)
-	})
-}
-
-func (s *viewState) deviceRecommendationCard(c *ui.Context, rec core.StarterRecommendation) {
-	t := tokens(c)
-	card(c, tr(c, "device.recommendation.title"), func() {
-		if rec.Status == "blocked" {
-			deviceRow(c, tr(c, "device.recommendation.status"), deviceLabelFor(c, rec.Reason))
-			if notes := localizedDeviceNotesFor(c, rec.Notes); len(notes) > 0 {
-				deviceRow(c, tr(c, "device.recommendation.notes"), strings.Join(notes, tr(c, "device.recommendation.note_separator")))
-			}
-			return
-		}
-		engineText := starterEngineLabel(rec.Engine)
-		if rec.Backend != "" {
-			engineText += " · " + deviceLabelFor(c, rec.Backend)
-		}
-		if rec.FitLevel != "" {
-			engineText += " · " + deviceLabelFor(c, rec.FitLevel)
-		}
-		deviceRow(c, tr(c, "device.recommendation.engine"), engineText)
-		if rec.ModelTitle != "" {
-			modelText := rec.ModelTitle
-			if ctx := starterContextLabel(rec.RecommendedContext); ctx != "" {
-				modelText += " · " + ctx
-			}
-			deviceRow(c, tr(c, "device.recommendation.model"), modelText)
-		}
-		if rec.EstimatedDownloadBytes > 0 {
-			downloadText := formatDownloadBytes(rec.EstimatedDownloadBytes)
-			if rec.EstimatedRAMBytes > 0 {
-				downloadText = trf(c, "device.recommendation.estimated_download_with_ram", "download", downloadText, "ram", formatDownloadBytes(rec.EstimatedRAMBytes))
-			}
-			deviceRow(c, tr(c, "device.recommendation.estimated_download"), downloadText)
-		}
-		if rec.Reason != "" && rec.Reason != "polystrata_hardware_fit" {
-			deviceRow(c, tr(c, "device.recommendation.reason"), deviceLabelFor(c, rec.Reason))
-		}
-		if notes := localizedDeviceNotesFor(c, rec.Notes); len(notes) > 0 {
-			deviceRow(c, tr(c, "device.recommendation.notes"), strings.Join(notes, tr(c, "device.recommendation.note_separator")))
-		}
-		opts := starterOptions(rec)
-		st := s.ensureDownloadsUI()
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			if len(opts) > 0 {
-				s.starterPrimaryCTA(c, st, opts[0], true)
-			}
-			button(c, tr(c, "device.recommendation.view_all")).OnClick(func() {
-				s.openDownloadsWithStarterExpanded()
-			})
-		})
 	})
 }

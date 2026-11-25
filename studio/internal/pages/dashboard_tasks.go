@@ -42,7 +42,8 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 				s.detailID = ""
 				s.resumeSource = nil
 				s.focusedRun = r.Path
-				s.selected = "dashboard"
+				s.benchFlowOpen = true
+				s.selected = "benchmarks"
 			})
 			if button(c, tr(c, "dashboard.history.resume_button")).AlignSelf(ui.Start).Disabled(s.busy || r.BatchId == nil || !r.Resumable || s.denied[r.Path]).Clicked() {
 				source := r
@@ -54,7 +55,7 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 			for _, task := range s.tasks {
 				if emptyText(task.RunPath) == r.Path && button(c, tr(c, "dashboard.history.live_detail")).AlignSelf(ui.Start).Clicked() {
 					s.selectTask(task.TaskId)
-					s.selected = "dashboard"
+					s.selected = "benchmarks"
 				}
 			}
 		})
@@ -160,7 +161,7 @@ func (s *viewState) resume() {
 				return
 			}
 			s.closeResumeDialog()
-			s.selected = "dashboard"
+			s.selected = "benchmarks"
 			s.selectTask(task.TaskId)
 		})
 		return l10n.TR("dashboard.toast.resume_queued"), e

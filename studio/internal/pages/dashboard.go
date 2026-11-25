@@ -251,7 +251,10 @@ func (s *viewState) stageView(c *ui.Context) {
 		stepTrack(c, "2", tr(c, "dashboard.stage.device_check"), func() {
 			ui.Text(c, tr(c, "dashboard.device_check.running"))
 			s.checkWorkspaceDevice()
-			button(c, tr(c, "dashboard.device_check.open_device")).OnClick(func() { s.selected = "device" })
+			button(c, tr(c, "dashboard.device_check.open_device")).OnClick(func() {
+				s.libraryHwExpanded = true
+				s.navigateTo("library", "")
+			})
 		})
 	case "prepare_candidate":
 		ui.Column(c.Key("config-stage")).Gap(tokens(c).Density.CardGap).Children(func() {

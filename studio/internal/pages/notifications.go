@@ -310,15 +310,16 @@ func (s *viewState) shouldSuppressOSNotification(event core.Event) bool {
 	if s.win == nil || !s.win.IsFocused() {
 		return false
 	}
+	cur := canonicalPageID(s.selected)
 	switch event.Type {
 	case "report.created":
-		return s.selected == "reports" || s.selected == "dashboard"
+		return cur == "reports" || cur == "benchmarks"
 	case "run.state":
-		return s.selected == "dashboard"
+		return cur == "benchmarks"
 	case "download.state":
-		return s.selected == "downloads"
+		return cur == "library"
 	case "engine.state":
-		return s.selected == "dashboard"
+		return cur == "services" || cur == "benchmarks"
 	default:
 		return false
 	}
@@ -401,7 +402,7 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 						if task.Kind == "context_speed" {
 							s.openSpeed(task.TaskId)
 						} else {
-							s.navigateTo("dashboard", "")
+							s.navigateTo("benchmarks", "")
 							s.selectTask(task.TaskId)
 						}
 					},
@@ -417,7 +418,7 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 				Primary: &notificationAction{
 					Label: l10n.TR("notif.action.troubleshoot"),
 					OnClick: func() {
-						s.navigateTo("dashboard", "")
+						s.navigateTo("benchmarks", "")
 						if task.Kind != "context_speed" {
 							s.selectTask(task.TaskId)
 						}
@@ -466,7 +467,7 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 					NeedsDecision: true,
 					Primary: &notificationAction{
 						Label:   l10n.TR("notif.action.view_and_retry"),
-						OnClick: func() { s.navigateTo("downloads", "") },
+						OnClick: func() { s.navigateTo("library", "") },
 					},
 				})
 			}
@@ -489,7 +490,7 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 				Kind:  stateSuccess,
 				Primary: &notificationAction{
 					Label:   l10n.TR("notif.action.go_downloads"),
-					OnClick: func() { s.navigateTo("downloads", "") },
+					OnClick: func() { s.navigateTo("library", "") },
 				},
 			})
 		case "failed":
@@ -501,7 +502,7 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 				NeedsDecision: true,
 				Primary: &notificationAction{
 					Label:   l10n.TR("notif.action.view_and_retry"),
-					OnClick: func() { s.navigateTo("downloads", "") },
+					OnClick: func() { s.navigateTo("library", "") },
 				},
 			})
 		}
@@ -527,10 +528,10 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 				s.engineStartToastID = ""
 			}
 			primaryLabel := l10n.TR("notif.action.go_tasks")
-			primaryTarget := "dashboard"
+			primaryTarget := "services"
 			if payload.Engine.Origin == core.EngineOriginStandalone {
 				primaryLabel = l10n.TR("models.serve.action.go_models")
-				primaryTarget = "models"
+				primaryTarget = "library"
 			}
 			s.pushNotification(studioNotification{
 				Key:           "engine:failed",
@@ -539,8 +540,13 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 				Kind:          stateDanger,
 				NeedsDecision: true,
 				Primary: &notificationAction{
-					Label:   primaryLabel,
-					OnClick: func() { s.navigateTo(primaryTarget, "") },
+					Label: primaryLabel,
+					OnClick: func() {
+						if primaryTarget == "library" {
+							s.libraryTab = 0
+						}
+						s.navigateTo(primaryTarget, "")
+					},
 				},
 			})
 		case "orphaned":
@@ -552,7 +558,7 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 				NeedsDecision: true,
 				Primary: &notificationAction{
 					Label:   l10n.TR("notif.action.resolve"),
-					OnClick: func() { s.navigateTo("dashboard", "") },
+					OnClick: func() { s.navigateTo("services", "") },
 				},
 			})
 		}
@@ -589,7 +595,10 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 				NeedsDecision: true,
 				Primary: &notificationAction{
 					Label:   l10n.TR("notif.action.view_engines"),
-					OnClick: func() { s.navigateTo("models", "") },
+					OnClick: func() {
+						s.libraryTab = 1
+						s.navigateTo("library", "")
+					},
 				},
 			})
 		}

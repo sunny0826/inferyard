@@ -145,9 +145,9 @@ func TestDirectedSettingsShortcutReturnsToGeneralTabFromAbout(t *testing.T) {
 		t.Fatalf("expected settingsTabAbout, got %d", s.settingsTab)
 	}
 
-	click(t, tt, "下载")
-	if s.selected != "downloads" {
-		t.Fatalf("expected downloads page, got %q", s.selected)
+	click(t, tt, "模型库")
+	if s.selected != "library" {
+		t.Fatalf("expected library page, got %q", s.selected)
 	}
 
 	click(t, tt, "下载设置")

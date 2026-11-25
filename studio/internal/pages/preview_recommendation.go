@@ -9,7 +9,10 @@ import (
 )
 
 func previewRecEmptyHost(s *viewState, page, hostPlatform string, snapshot string) {
-	s.selected = page
+	s.selected = canonicalPageID(page)
+	if s.selected == "benchmarks" {
+		s.benchFlowOpen = true
+	}
 	s.registry = core.Registry{}
 	s.model, s.engine = "", ""
 	s.checks = core.EngineCheckOverview{Supported: true}
@@ -36,7 +39,8 @@ func previewRecRTX4070Tight(s *viewState) {
 }
 
 func previewRecExistingAssetsCollapsed(s *viewState) {
-	s.selected = "downloads"
+	s.selected = "library"
+	s.libraryTab = 1
 	s.downloads = nil
 	s.device.Snapshot = json.RawMessage(previewSnapshotMac48)
 	st := s.ensureDownloadsUI()

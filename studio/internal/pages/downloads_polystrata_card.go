@@ -293,9 +293,10 @@ func (s *viewState) startBenchmarkFromPolystrataTask(task core.DownloadTask) {
 			s.detailMu.Unlock()
 			s.failure = nil
 		}
-		s.navigateToNow("dashboard", "")
+		s.benchFlowOpen = true
+		s.navigateToNow("benchmarks", "")
 	}
-	if s.guardLeaveSettings("dashboard", run) {
+	if s.guardLeaveSettings("benchmarks", run) {
 		return
 	}
 	run()

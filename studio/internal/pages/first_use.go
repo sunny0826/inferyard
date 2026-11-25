@@ -216,9 +216,9 @@ func (s *viewState) taskAssetsView(c *ui.Context) {
 		}
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			if s.activeDownloadCount() > 0 {
-				primaryButton(c, tr(c, "onboarding.assets.view_install")).OnClick(func() { s.selected = "downloads" })
+				primaryButton(c, tr(c, "onboarding.assets.view_install")).OnClick(func() { s.navigateTo("library", "") })
 			} else if !hasStarter {
-				primaryButton(c, tr(c, "onboarding.assets.go_downloads")).OnClick(func() { s.selected = "downloads" })
+				primaryButton(c, tr(c, "onboarding.assets.go_downloads")).OnClick(func() { s.navigateTo("library", "") })
 			}
 			button(c, tr(c, "onboarding.assets.use_existing")).OnClick(func() { s.openGeneralSettings() })
 		})
@@ -280,7 +280,7 @@ func (s *viewState) downloadTaskGuide(c *ui.Context) {
 		Padding(t.Density.Stack, t.Card.Padding), materialCard).
 		Children(func() {
 			ui.Text(c, s.downloadGuideStatus()).Grow(1).MinWidth(0).TextColor(t.Color.FgSecondary)
-			button(c, tr(c, "onboarding.guide.back_dashboard")).Shrink(0).OnClick(func() { s.selected = "dashboard" })
+			button(c, tr(c, "onboarding.guide.back_dashboard")).Shrink(0).OnClick(func() { s.openBenchmarksFlow() })
 		})
 }
 

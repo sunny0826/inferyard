@@ -335,7 +335,8 @@ func (p *previewSession) resetTask(model, engine string) {
 		}
 		s.clearBenchmark()
 		s.failure, s.busy = nil, false
-		s.selected, s.detailID, s.focusedRun = "dashboard", "", ""
+		s.selected, s.detailID, s.focusedRun = "benchmarks", "", ""
+		s.benchFlowOpen = true
 		s.detail, s.resumeSource, s.runProgress = nil, nil, nil
 		s.closeOpenedReport()
 		s.model, s.engine = model, engine
