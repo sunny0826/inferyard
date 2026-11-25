@@ -48,7 +48,7 @@ func (s *viewState) modelsView(c *ui.Context) {
 					Title:   tr(c, "models.empty.no_models"),
 					Surface: emptySunken,
 					Action: func() {
-						button(c, tr(c, "models.action.go_downloads")).OnClick(func() { s.selected = "downloads" })
+						button(c, tr(c, "models.action.go_downloads")).OnClick(func() { s.navigateTo("library", "") })
 					},
 				})
 				return
@@ -73,7 +73,7 @@ func (s *viewState) modelsView(c *ui.Context) {
 					Surface: emptySunken,
 					Action: func() {
 						ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
-							button(c, tr(c, "models.action.goto_downloads")).OnClick(func() { s.selected = "downloads" })
+							button(c, tr(c, "models.action.goto_downloads")).OnClick(func() { s.navigateTo("library", "") })
 							button(c, tr(c, "models.action.configure_local_engine")).OnClick(func() { *wizardOpen = true })
 						})
 					},

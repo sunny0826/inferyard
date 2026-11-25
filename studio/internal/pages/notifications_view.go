@@ -305,7 +305,7 @@ func (s *viewState) notificationBell(c *ui.Context) {
 			components.Tooltip(c, anchor, label)
 		}
 		studioPopover(c, anchor, &nc.bellOpen, func(panel ui.Element) {
-			panel.AttachTo(anchor, ui.AnchorBottomRight, ui.AnchorTopRight).
+			panel.AttachTo(anchor, ui.AnchorTopRight, ui.AnchorBottomLeft).
 				Padding(t.Density.Row).Radius(t.Radius.Modal).
 				Width(360).MaxWidthPercent(100).Label(tr(c, "notif.list_label"))
 			panel.Children(func() {

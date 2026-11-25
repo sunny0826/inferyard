@@ -65,18 +65,17 @@ final class PreviewUITests: XCTestCase {
         expectText("架构 llama · 约 4.0 GiB")
         expectBundleLabels()
         keepScreenshot("Benchmark setup with single stage heading")
-        click("下载")
-        selectTab("模型")
+        click("模型库")
+        click("模型")
         click("下载模型 · model-qwen3-0.6b-q8")
         expectText("已结束")
-        click("模型")
         let downloadedModel = "Qwen3-0.6B-Q8_0 · Qwen3-0.6B-Q8_0.gguf"
         let downloadedModelLabel = downloadedModel + " · GGUF"
         expectText(downloadedModelLabel)
         XCTAssertFalse(app.popUpButtons["模型"].exists, "Models must not offer an inline pair selector")
-        // The sidebar task entry switches to the current task without resetting
-        // or confirming; the pair is chosen on the task page.
-        click("任务")
+        // The sidebar benchmark entry switches to benchmarks without resetting
+        // or confirming; the pair is chosen on the benchmark flow page.
+        click("测评")
         chooseModel(downloadedModelLabel)
         XCTAssertFalse(app.buttons["确认开始新任务"].exists, "Task nav must not ask to confirm")
         click("开始测评")

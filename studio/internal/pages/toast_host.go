@@ -10,7 +10,6 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
-	"github.com/oneo-me/onevra/source/shells/sidebar"
 )
 
 type toastKind int
@@ -224,7 +223,7 @@ func studioToasts(c *ui.Context) {
 	t := tokens(c)
 	dark := c.Theme().Dark
 	reduced := c.Preferences().ReduceMotion
-	topInset := sidebar.HeaderHeight(c) + 12
+	const topInset float32 = 8
 
 	enterMotion := &ui.Motion{Y: -10, Scale: .96, Blur: 8, Opacity: 0}
 	exitMotion := &ui.Motion{Y: -6, Blur: 6, Opacity: 0}

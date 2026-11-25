@@ -136,20 +136,22 @@ func (s *viewState) consumeFeedback(c *ui.Context) {
 }
 
 func (s *viewState) announceChanges(c *ui.Context) {
-	page := s.selected
-	if page == "dashboard" && s.detailID != "" {
+	cur := canonicalPageID(s.selected)
+	page := cur
+	if page == "benchmarks" && s.detailID != "" {
 		page += "/" + s.detailID
 	}
 	if page != s.announcedPage {
 		title := tr(c, "shell.page.run_detail")
-		if s.detailID == "" || s.selected != "dashboard" {
-			for _, n := range navigation {
-				if n.id == s.selected {
-					title = tr(c, n.labelKey)
+		if s.detailID == "" || cur != "benchmarks" {
+			if cur == "settings" {
+				title = tr(c, "nav.settings")
+			} else {
+				for _, n := range navigation {
+					if n.id == cur {
+						title = tr(c, n.labelKey)
+					}
 				}
-			}
-			if s.selected == "dashboard" && s.detailID == "" {
-				title = tr(c, "nav.dashboard")
 			}
 		}
 		c.Announce(title)
@@ -168,20 +170,20 @@ func (s *viewState) announceChanges(c *ui.Context) {
 	if s.cliUpgradeErrorVisible() {
 		add(s.cliUpgrade.Error)
 	}
-	switch s.selected {
-	case "device":
+	switch cur {
+	case "services":
+		add(s.engineState.Error)
+	case "library":
 		if !s.suppressOutdatedCLIError(s.device.LastError) {
 			add(s.device.LastError)
 		}
 		if _, err := parseDeviceSnapshot(s.device.Snapshot); err != nil {
 			errors = append(errors, tr(c, "shell.announce.device_snapshot_unreadable"))
 		}
-	case "models":
-		add(s.engineState.Error)
 		for _, d := range s.downloads {
 			add(d.Error)
 		}
-	case "dashboard":
+	case "benchmarks":
 		if s.detailID != "" {
 			add(s.detailError)
 			if s.detail != nil {
@@ -197,7 +199,7 @@ func (s *viewState) announceChanges(c *ui.Context) {
 		add(s.historyError)
 		add(s.reportsError)
 	}
-	if s.progress != nil && (s.selected == "dashboard" && s.detailID == "") {
+	if s.progress != nil && (cur == "benchmarks" && s.detailID == "") {
 		for _, bundle := range s.progress.Bundles {
 			if bundle.BlockedReason != nil && bundle.Phase != "run_incomplete" {
 				errors = append(errors, trf(c, "shell.announce.bundle_blocked", "bundle", bundle.Bundle, "reason", human(*bundle.BlockedReason)))

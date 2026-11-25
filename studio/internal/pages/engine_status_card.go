@@ -255,7 +255,7 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 				Message: tr(c, "engine.notice.orphan_unconfirmed"),
 			})
 			button(c, tr(c, "engine.action.go_dashboard")).FillWidth().Padding(theme.Space(1.75), theme.Space(3.5)).Radius(theme.Space(2.5)).OnClick(func() {
-				s.navigateTo("dashboard", "")
+				s.navigateTo("services", "")
 				close()
 			})
 		default:
@@ -268,7 +268,7 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 			if s.managedEngineCandidate() == "" {
 				ui.Text(c, tr(c, "engine.notice.need_candidate")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 				button(c, tr(c, "engine.action.go_dashboard")).FillWidth().Padding(theme.Space(1.75), theme.Space(3.5)).Radius(theme.Space(2.5)).OnClick(func() {
-					s.navigateTo("dashboard", "")
+					s.openBenchmarksFlow()
 					close()
 				})
 			}

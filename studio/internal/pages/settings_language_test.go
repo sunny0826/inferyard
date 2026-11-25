@@ -73,11 +73,10 @@ func TestAllMainPagesRenderEnglishWithoutChineseLeakage(t *testing.T) {
 		id           string
 		expectedText string
 	}{
-		{"dashboard", "Tasks"},
+		{"benchmarks", "Benchmarks"},
+		{"services", "Services"},
+		{"library", "Library"},
 		{"reports", "Reports"},
-		{"models", "Models"},
-		{"downloads", "Downloads"},
-		{"device", "Device"},
 		{"settings", "Settings"},
 	}
 

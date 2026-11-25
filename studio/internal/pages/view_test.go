@@ -64,7 +64,6 @@ func sidebarHeaderState(s *viewState) *ui.Tester {
 	return ui.NewTester(func(c *ui.Context) {
 		ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
 			ui.Column(c).Width(205).Shrink(0).Children(func() { s.leftNav(c) })
-			ui.Column(c).Grow(1).Children(func() { s.cornerStatus(c) })
 		})
 	}, 1120, 700)
 }

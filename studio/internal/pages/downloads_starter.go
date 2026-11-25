@@ -557,7 +557,7 @@ func (s *viewState) starterCardVisible() bool {
 
 func (s *viewState) openDownloadsWithStarterExpanded() {
 	s.setStarterPanelExpanded(true)
-	s.selected = "downloads"
+	s.selected = "library"
 }
 
 func (s *viewState) startStarterOption(opt starterOption, navigateToDownloads bool) {
@@ -566,7 +566,7 @@ func (s *viewState) startStarterOption(opt starterOption, navigateToDownloads bo
 	case "polystrata":
 		if navigateToDownloads {
 			s.setStarterPanelExpanded(false)
-			s.selected = "downloads"
+			s.selected = "library"
 		}
 		s.acquirePolystrataSetup(polystrataRequestForOption(opt, st.polystrataModelSource))
 	default:
@@ -582,24 +582,24 @@ func (s *viewState) startStarterOption(opt starterOption, navigateToDownloads bo
 		case engineInstalled && modelURL != "":
 			if navigateToDownloads {
 				s.setStarterPanelExpanded(false)
-				s.selected = "downloads"
+				s.selected = "library"
 			}
 			s.acquireModelSource(modelURL, "")
 		case modelInstalled && engineURL != "":
 			if navigateToDownloads {
 				s.setStarterPanelExpanded(false)
-				s.selected = "downloads"
+				s.selected = "library"
 			}
 			s.acquireEngine(engineURL, "")
 		case !engineInstalled && !modelInstalled && engineURL != "" && modelURL != "":
 			if navigateToDownloads {
 				s.setStarterPanelExpanded(false)
-				s.selected = "downloads"
+				s.selected = "library"
 			}
 			s.acquireStarterBundle(engineURL, modelURL)
 		default:
 			if navigateToDownloads {
-				s.selected = "downloads"
+				s.selected = "library"
 			}
 			relID, buildID := starterLlamaCppDrawerTarget(s.engineCatalogRegistry(), hostPlatform, opt.Backend)
 			st.openEngineDrawer("llama-cpp", relID, hostPlatform, buildID)

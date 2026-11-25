@@ -79,7 +79,8 @@ var previewScenes = []struct {
 }
 
 func previewDownloadsPolystrata(s *viewState) {
-	s.selected = "downloads"
+	s.selected = "library"
+	s.libraryTab = 1
 	s.registry.Engines = nil
 	s.registry.Models = nil
 	blockerErr := core.Err("polystrata_preflight_blocked")
@@ -123,7 +124,8 @@ func previewDownloadsPolystrata(s *viewState) {
 }
 
 func previewDownloadsPolystrataModel(s *viewState) {
-	s.selected = "downloads"
+	s.selected = "library"
+	s.libraryTab = 1
 	s.registry.Engines = nil
 	s.registry.Models = nil
 	totalBytes := int64(37623912858) // 35.04 GiB
@@ -150,7 +152,8 @@ func previewDownloadsPolystrataModel(s *viewState) {
 }
 
 func previewDownloadsActiveAndFailed(s *viewState) {
-	s.selected = "downloads"
+	s.selected = "library"
+	s.libraryTab = 0
 	ws := emptyText(s.settings.Effective.WorkspaceRoot)
 	modelsRoot := emptyText(s.settings.Effective.ModelsRoot)
 	engineOutDir := "/preview/engines/preview-engine"
@@ -220,7 +223,7 @@ func previewBase(ctx context.Context) *viewState {
 	reportsRoot := previewValue(filepath.Join(root, "reports"))
 	s := &viewState{
 		speed: &speedWorkspace{context: inferyard.ContextSpeed64K},
-		ctx:   ctx, selected: "dashboard", loaded: true, settingsLoaded: true,
+		ctx:   ctx, selected: "benchmarks", benchFlowOpen: true, loaded: true, settingsLoaded: true,
 		denied: map[string]bool{}, model: model, engine: engine, discoveryLoaded: true,
 		engineState: core.EngineState{State: "stopped"},
 		ready: core.Readiness{

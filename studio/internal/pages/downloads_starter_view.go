@@ -108,7 +108,10 @@ func (s *viewState) renderStarterRecommendationPanel(c *ui.Context, contextMode 
 				})
 				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 					outlineButton(c, tr(c, "downloads.starter.redetect")).Disabled(s.deviceCollectionBlocked()).OnClick(func() { s.refreshDevice() })
-					button(c, tr(c, "downloads.starter.view_device")).OnClick(func() { s.selected = "device" })
+					button(c, tr(c, "downloads.starter.view_device")).OnClick(func() {
+						s.libraryHwExpanded = true
+						s.selected = "library"
+					})
 					if showCollapse {
 						ghostButton(c, tr(c, "downloads.starter.collapse")).OnClick(func() { s.setStarterPanelExpanded(false) })
 					}
@@ -138,7 +141,10 @@ func (s *viewState) renderStarterRecommendationPanel(c *ui.Context, contextMode 
 					components.Icon(c, lucide.Cpu).Size(14, 14).TextColor(t.Color.FgSecondary)
 					ui.Text(c, trf(c, "downloads.starter.hw_line", "summary", hwSummary)).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).FontFeatures("tnum")
 				})
-				ghostButton(c, tr(c, "downloads.starter.device_details")).OnClick(func() { s.selected = "device" })
+				ghostButton(c, tr(c, "downloads.starter.device_details")).OnClick(func() {
+					s.libraryHwExpanded = true
+					s.selected = "library"
+				})
 			})
 		}
 
@@ -214,14 +220,14 @@ func (s *viewState) renderStarterRecommendationPanel(c *ui.Context, contextMode 
 					outlineButton(c, tr(c, "downloads.starter.more_config")).Label(tr(c, "downloads.starter.more_polystrata_config_label")).OnClick(func() {
 						st.polystrataDrawerModelID = chosen.ModelID
 						if contextMode == "dashboard" {
-							s.selected = "downloads"
+							s.selected = "library"
 						}
 						s.openPolystrataDrawerForCurrentHost()
 					})
 				}
 				if contextMode == "dashboard" {
 					outlineButton(c, tr(c, "downloads.starter.go_downloads")).OnClick(func() {
-						s.selected = "downloads"
+						s.selected = "library"
 					})
 				}
 				s.starterPrimaryCTA(c, st, chosen, contextMode == "dashboard")
@@ -365,7 +371,7 @@ func (s *viewState) starterPrimaryCTA(c *ui.Context, st *downloadsUIState, chose
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 				primaryButton(c, tr(c, "downloads.starter.cta.view_engine_install")).OnClick(func() {
 					if navigateToDownloads {
-						s.selected = "downloads"
+						s.selected = "library"
 					}
 					relID, buildID := starterLlamaCppDrawerTarget(s.engineCatalogRegistry(), hostPlatform, chosen.Backend)
 					st.openEngineDrawer("llama-cpp", relID, hostPlatform, buildID)
@@ -374,7 +380,7 @@ func (s *viewState) starterPrimaryCTA(c *ui.Context, st *downloadsUIState, chose
 					outlineButton(c, tr(c, "downloads.starter.cta.download_model")).Disabled(s.busy).OnClick(func() {
 						if navigateToDownloads {
 							s.setStarterPanelExpanded(false)
-							s.selected = "downloads"
+							s.selected = "library"
 						}
 						s.acquireModelSource(modelURL, "")
 					})

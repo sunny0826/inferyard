@@ -16,7 +16,7 @@ func TestTopRightNotificationCloseButtonPositionAndDismiss(t *testing.T) {
 		Kind:  stateSuccess,
 	})
 
-	tt := ui.NewTester(s.contentView, 1120, 800)
+	tt := ui.NewTester(s.view, 1120, 800)
 	tt.Frame()
 
 	cardInfo, ok := tt.AccessByRole(ui.RoleStatus, "报告已生成")
@@ -77,7 +77,7 @@ func TestTopRightNotificationAutoDismissesAndPreservesInbox(t *testing.T) {
 		NeedsDecision: true,
 	})
 
-	tt := ui.NewTester(s.contentView, 1120, 800)
+	tt := ui.NewTester(s.view, 1120, 800)
 	tt.Frame()
 	if len(s.notifications().screenItems()) != 2 {
 		t.Fatalf("expected 2 notifications on screen initially, got %d", len(s.notifications().screenItems()))
@@ -132,7 +132,7 @@ func TestTopRightNotificationHoverPausesAutoDismiss(t *testing.T) {
 		Kind:  stateSuccess,
 	})
 
-	tt := ui.NewTester(s.contentView, 1120, 800)
+	tt := ui.NewTester(s.view, 1120, 800)
 	tt.Frame()
 
 	// Let 3 seconds pass, then hover over the card.
@@ -174,7 +174,7 @@ func TestTopRightNotificationOverflowQueueAndKeyRefreshReset(t *testing.T) {
 		})
 	}
 
-	tt := ui.NewTester(s.contentView, 1120, 800)
+	tt := ui.NewTester(s.view, 1120, 800)
 	tt.Frame()
 
 	// First 3 (k4, k3, k2) expire after 6s; queued oldest item (k1) then enters
@@ -214,7 +214,7 @@ func TestTopRightNotificationEvictedCardResumesRemainingTime(t *testing.T) {
 		Kind:  stateSuccess,
 	})
 
-	tt := ui.NewTester(s.contentView, 1120, 800)
+	tt := ui.NewTester(s.view, 1120, 800)
 	tt.Frame()
 
 	// Notification A displays for 1s, leaving ~5s remaining.

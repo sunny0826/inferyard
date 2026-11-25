@@ -270,8 +270,8 @@ func (s *viewState) downloadDownloading(id string) bool {
 }
 
 func (s *viewState) clearPromptOnNavigation() {
-	page := s.selected
-	if s.selected == "dashboard" && s.detailID != "" {
+	page := canonicalPageID(s.selected)
+	if page == "benchmarks" && s.detailID != "" {
 		page += "/" + s.detailID
 	}
 	if page == s.promptPage {

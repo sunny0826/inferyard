@@ -99,13 +99,19 @@ func (w *viewState) candidateFields(c *ui.Context) {
 			statusBadge(c, tr(c, "dashboard.candidate.revoked_badge"), stateColor(c, stateWarning))
 			ui.Text(c, trf(c, "dashboard.candidate.revoked_reason", "engine", w.engine, "reason", human(el.Reason)))
 		})
-		button(c, tr(c, "dashboard.candidate.view_engines")).AlignSelf(ui.Start).OnClick(func() { w.selected = "models" })
+		button(c, tr(c, "dashboard.candidate.view_engines")).AlignSelf(ui.Start).OnClick(func() {
+			w.libraryTab = 1
+			w.navigateTo("library", "")
+		})
 		createDisabled = true
 	} else if !hasEligible {
 		if w.checks.Checking == 0 {
 			ui.Text(c, tr(c, "dashboard.candidate.no_engines"))
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-				button(c, tr(c, "onboarding.assets.go_downloads")).OnClick(func() { w.selected = "downloads" })
+				button(c, tr(c, "onboarding.assets.go_downloads")).OnClick(func() {
+					w.libraryTab = 1
+					w.navigateTo("library", "")
+				})
 				button(c, tr(c, "dashboard.candidate.register_engine")).OnClick(func() { w.selected = "settings" })
 			})
 		}
@@ -113,7 +119,10 @@ func (w *viewState) candidateFields(c *ui.Context) {
 	}
 	if w.model == "" && len(modelOptions) == 1 {
 		ui.Text(c, tr(c, "dashboard.candidate.no_models"))
-		button(c, tr(c, "dashboard.candidate.download_model")).OnClick(func() { w.selected = "downloads" })
+		button(c, tr(c, "dashboard.candidate.download_model")).OnClick(func() {
+			w.libraryTab = 0
+			w.navigateTo("library", "")
+		})
 	}
 	if w.engineState.State == "orphaned" {
 		w.stopOrphanButton(c)

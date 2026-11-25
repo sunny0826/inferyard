@@ -314,7 +314,10 @@ func (s *viewState) deleteManagedAssetVerified(kind, name, expectedPath, expecte
 func (s *viewState) modelsPageActions(c *ui.Context, wizardOpen *bool) {
 	t := tokens(c)
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
-		button(c, tr(c, "models.action.download_more")).OnClick(func() { s.selected = "downloads" })
+		button(c, tr(c, "models.action.download_more")).OnClick(func() {
+			s.libraryTab = 0
+			s.navigateTo("library", "")
+		})
 		button(c, tr(c, "models.action.add_model_dir")).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
 			s.pickExtraModelsRoot(emptyText(s.settings.Effective.ModelsRoot))
 		})
