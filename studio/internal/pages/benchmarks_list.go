@@ -180,10 +180,7 @@ func (s *viewState) renderBenchmarkTaskRow(c *ui.Context, task core.RunTask) {
 			title = base + " · " + title
 		}
 	}
-	sub := taskLabelFor(contextLocale(c), task)
-	if task.StartedAt != nil && *task.StartedAt != "" {
-		sub += " · " + formatTimestamp(*task.StartedAt)
-	}
+	sub := s.benchmarkTaskSubtitle(c, task)
 	kind := stateNeutral
 	switch task.State {
 	case "running", "starting":
@@ -244,6 +241,30 @@ func (s *viewState) renderRecentReportRow(c *ui.Context, rep core.ReportSummary)
 			OnClick: func() { s.openReport(repCopy.ReportId) },
 		})
 	})
+}
+
+func (s *viewState) benchmarkTaskSubtitle(c *ui.Context, task core.RunTask) string {
+	sub := taskLabelFor(contextLocale(c), task)
+	if terminal(task.State) || task.Queued || task.State == "queued" {
+		if task.StartedAt != nil && *task.StartedAt != "" {
+			sub += " · " + formatTimestamp(*task.StartedAt)
+		}
+		return sub
+	}
+	if task.ContextSpeed != nil && task.ContextSpeed.Stage == "measuring" {
+		sub += " · " + trf(c, "speed.task.completed_count", "completed", task.ContextSpeed.Completed)
+	} else if active := s.running(); active != nil && active.TaskId == task.TaskId && s.runProgress != nil && s.runProgress.Total != nil && *s.runProgress.Total > 0 {
+		sub += " · " + trf(c, "dashboard.run.cases_progress", "done", s.runProgress.Done, "total", *s.runProgress.Total)
+	}
+	if task.State != "cancelling" && !task.AwaitingService {
+		if elapsed := s.formatTaskElapsed(c, emptyText(task.StartedAt)); elapsed != "" {
+			return sub + " · " + elapsed
+		}
+	}
+	if task.StartedAt != nil && *task.StartedAt != "" {
+		sub += " · " + formatTimestamp(*task.StartedAt)
+	}
+	return sub
 }
 
 func reportAlreadyListed(rep core.ReportSummary, seen map[string]bool) bool {

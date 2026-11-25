@@ -78,8 +78,12 @@ func (p *previewSession) nextID(kind string) string {
 	return fmt.Sprintf("preview-%s-%03d", kind, p.serial)
 }
 
+func (p *previewSession) now() time.Time {
+	return time.Date(2026, 10, 17, 0, 0, 0, 0, time.UTC).Add(p.clock)
+}
+
 func (p *previewSession) timestamp() string {
-	return time.Date(2026, 10, 17, 0, 0, 0, 0, time.UTC).Add(p.clock).Format(time.RFC3339)
+	return p.now().Format(time.RFC3339)
 }
 
 func (p *previewSession) takeFailure() bool {

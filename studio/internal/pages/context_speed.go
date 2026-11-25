@@ -41,6 +41,7 @@ type speedTask struct {
 	completed                       int
 	budget                          float64
 	id, model, engine               string
+	startedAt                       string
 	context                         int
 	stage                           speedStage
 	samples                         []speedSample
@@ -230,15 +231,15 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 		step = "✓"
 	}
 	stepTrack(c, step, r.label(), func() {
-		row := ui.Row(c.Key("speed-eta-" + r.id)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row)
-		eta := ""
+		row := ui.Row(c.Key("speed-elapsed-" + r.id)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row)
+		elapsed := ""
 		if r.stage == speedMeasuring {
-			eta = formatETA(c, row, "speed-"+r.id, int64(r.completed), 5)
+			elapsed = s.formatTaskElapsed(c, r.startedAt)
 		}
 		row.Children(func() {
 			ui.Text(c, trf(c, "speed.task.completed_count", "completed", r.completed))
-			if eta != "" {
-				ui.Text(c, "· "+eta).TextColor(c.Theme().TextMuted)
+			if elapsed != "" {
+				ui.Text(c, "· "+elapsed).TextColor(c.Theme().TextMuted)
 			}
 		})
 		progressBar(c, float64(r.completed)/5, tr(c, "speed.task.progress_bar_label"))

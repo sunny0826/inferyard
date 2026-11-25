@@ -82,6 +82,7 @@ func speedFromTask(t core.RunTask) *speedTask {
 	if v.Batch != nil {
 		r.completed = v.Completed
 	}
+	r.startedAt = emptyText(t.StartedAt)
 	if t.Error != nil {
 		r.reason = t.Error.Message
 		if r.reason == "" {

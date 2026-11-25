@@ -2,6 +2,7 @@ package pages
 
 import (
 	"math"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -167,46 +168,38 @@ func detailLoadingSkeleton(c *ui.Context) {
 	skeletonCard(c, tr(c, "common.loading.resource_chart_title"), 3, tr(c, "common.loading.resource_samples_label"))
 }
 
-type etaTracker struct {
-	key       string
-	startedAt time.Time
+func (s *viewState) currentClock(c *ui.Context) time.Time {
+	if s != nil && s.preview != nil {
+		if pm, ok := s.preview.(previewClockMode); ok {
+			return pm.now()
+		}
+	}
+	return c.Now()
 }
 
-func formatETA(c *ui.Context, host ui.Element, key string, done, total int64) string {
-	state := ui.Local(host, "eta-"+key, func() etaTracker { return etaTracker{} })
-	now := c.Now()
-	if state.key != key || done <= 0 {
-		if state.key != key {
-			state.key = key
-			state.startedAt = now
-		}
-		if total > 0 && done < total {
-			c.After(time.Second)
-			return tr(c, "common.eta.estimating")
-		}
+func (s *viewState) formatTaskElapsed(c *ui.Context, startedAt string) string {
+	raw := strings.TrimSpace(startedAt)
+	if raw == "" {
 		return ""
 	}
-	if total <= 0 || done >= total {
+	started, err := time.Parse(time.RFC3339Nano, raw)
+	if err != nil {
 		return ""
 	}
-	elapsed := now.Sub(state.startedAt)
-	if elapsed < time.Second {
-		c.After(time.Second - elapsed)
-		return tr(c, "common.eta.estimating")
+	elapsed := max(time.Duration(0), s.currentClock(c).Sub(started))
+	nextTick := time.Second - (elapsed % time.Second)
+	if nextTick <= 0 {
+		nextTick = time.Second
 	}
-	remaining := time.Duration(float64(elapsed) * float64(total-done) / float64(done))
-	return trf(c, "common.eta.remaining", "duration", formatRemainingDurationFor(contextLocale(c), remaining))
+	c.After(nextTick)
+	return trf(c, "common.elapsed.running", "duration", formatElapsedDurationFor(contextLocale(c), elapsed))
 }
 
-func formatRemainingDuration(d time.Duration) string {
-	return formatRemainingDurationFor("", d)
-}
-
-func formatRemainingDurationFor(locale string, d time.Duration) string {
+func formatElapsedDurationFor(locale string, d time.Duration) string {
 	if d < time.Second {
 		return l10n.T(locale, "common.duration.under_second")
 	}
-	secs := int64(math.Round(d.Seconds()))
+	secs := int64(d / time.Second)
 	if secs < 60 {
 		return l10n.Tf(locale, "common.duration.seconds", "seconds", secs)
 	}

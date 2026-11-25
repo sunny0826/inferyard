@@ -7,11 +7,13 @@ import (
 	"encoding/json"
 	"io/fs"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -236,5 +238,27 @@ func TestPreviewCreateReportCancelledPelicanDoesNotFabricateOKSVG(t *testing.T) 
 	}
 	if len(noDetailReport.Runs[0].SVGOutputs) != 0 {
 		t.Fatalf("run without svg request details must not fabricate SVG outputs, got %+v", noDetailReport.Runs[0].SVGOutputs)
+	}
+}
+
+func TestPreviewBenchmarkElapsedUsesVirtualClock(t *testing.T) {
+	p := newPreviewSession(context.Background())
+	p.loadScene(1)
+	// Advance to a running benchmark via preview clock.
+	p.beginBenchmark(previewBenchmark{
+		model:   p.state.model,
+		engine:  p.state.engine,
+		bundles: []string{inferyard.DefaultBundlePelican},
+	})
+	// 400ms (prepare->bind) + 800ms (bind->running) = 1.2s, then +1.1s into the 1.5s pelican run = 2.3s total.
+	p.advance(2300 * time.Millisecond)
+
+	tt := ui.NewTester(p.content, 1120, 800)
+	tt.Frame()
+
+	want1s := l10n.TRf("common.elapsed.running", "duration", formatElapsedDurationFor(l10n.LanguageZhHans, time.Second))
+	texts := strings.Join(tt.Texts(), "\n")
+	if !strings.Contains(texts, want1s) {
+		t.Fatalf("expected preview virtual clock elapsed %q, got:\n%s", want1s, texts)
 	}
 }

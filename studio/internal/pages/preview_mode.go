@@ -1,6 +1,8 @@
 package pages
 
 import (
+	"time"
+
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
 )
@@ -14,6 +16,10 @@ type previewMode interface {
 	resolveModelURL(raw string) inferyard.ModelResolve
 	detectedEngines() []inferyard.DetectedEngine
 	downloadLogTail(taskID string) string
+}
+
+type previewClockMode interface {
+	now() time.Time
 }
 
 type previewExclusivityMode interface {

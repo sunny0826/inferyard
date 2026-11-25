@@ -69,6 +69,7 @@ func (p *previewSession) startSpeed(op previewSpeedStart) {
 			r.stage = speedQueued
 			p.after("speed", 400*time.Millisecond, func() {
 				r.stage = speedMeasuring
+				r.startedAt = p.timestamp()
 				p.speedMissingTiming = false
 				p.tickSpeed(r, missing)
 			})
