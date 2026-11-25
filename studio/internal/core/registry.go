@@ -29,6 +29,7 @@ type ModelAsset struct {
 	Name          string
 	Format        string
 	SizeBytes     *int64
+	ResidentBytes *int64
 	Architecture  string
 	ContextLength *int64
 	Available     bool

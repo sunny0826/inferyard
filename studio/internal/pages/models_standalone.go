@@ -194,7 +194,8 @@ func standaloneContextOptions(model core.ModelAsset) []components.NativeSelectOp
 }
 
 func (s *viewState) standaloneMemoryShortfall(model core.ModelAsset) string {
-	if model.SizeBytes == nil || *model.SizeBytes <= 0 {
+	memBytes := model.EffectiveMemoryBytes()
+	if memBytes == nil || *memBytes <= 0 {
 		return ""
 	}
 	snap, err := parseDeviceSnapshot(s.device.Snapshot)
@@ -209,11 +210,11 @@ func (s *viewState) standaloneMemoryShortfall(model core.ModelAsset) string {
 	if !ok || avail <= 0 {
 		return ""
 	}
-	if *model.SizeBytes > avail {
+	if *memBytes > avail {
 		return l10n.TRf(
 			"models.serve.drawer.insufficient_memory",
 			"avail", fmt.Sprintf("%.1f GiB", float64(avail)/(1<<30)),
-			"size", fmt.Sprintf("%.1f GiB", float64(*model.SizeBytes)/(1<<30)),
+			"size", fmt.Sprintf("%.1f GiB", float64(*memBytes)/(1<<30)),
 		)
 	}
 	return ""

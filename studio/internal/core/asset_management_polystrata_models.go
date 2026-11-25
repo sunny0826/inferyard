@@ -350,6 +350,9 @@ func planPolystrataModelDelete(u UserSettings, paths *BoundPaths, wsEnginesRoot,
 			return polystrataModelDeletePlan{}, errAssetNotDeletable()
 		}
 		plan.files = append(plan.files, f.path)
+		if doneMarker := f.path + ".done"; isRegularNonSymlink(doneMarker) && !prot.touchesFile(doneMarker) && !overlapsResultsRoot(doneMarker, resultsRoot) {
+			plan.files = append(plan.files, doneMarker)
+		}
 	}
 
 	reclaimFiles := append([]string(nil), plan.files...)

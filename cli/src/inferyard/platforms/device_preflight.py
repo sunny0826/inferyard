@@ -240,7 +240,11 @@ def recommend(hardware, models, *, model_loaded=False):
 
 
 def discover_models(roots, model_path=None):
-    from inferyard.platforms.asset_scan import inspect_gguf_entries, parse_gguf_shard_filename
+    from inferyard.platforms.asset_scan import (
+        inspect_gguf_entries,
+        is_polystrata_auxiliary_gguf,
+        parse_gguf_shard_filename,
+    )
 
     if model_path:
         target = Path(model_path)
@@ -250,7 +254,14 @@ def discover_models(roots, model_path=None):
             paths = sorted(target.parent.glob(f"{prefix}-*-of-{total:05d}.gguf")) or [target]
             return inspect_gguf_entries(paths, metadata_reader=read_metadata)
         return inspect_gguf_entries([target], metadata_reader=read_metadata)
-    paths = sorted({p for root in roots for p in Path(root).rglob("*.gguf")})
+    paths = sorted(
+        {
+            p
+            for root in roots
+            for p in Path(root).rglob("*.gguf")
+            if not is_polystrata_auxiliary_gguf(p)
+        }
+    )
     return inspect_gguf_entries(paths, metadata_reader=read_metadata)
 
 

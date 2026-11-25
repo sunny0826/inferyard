@@ -529,6 +529,7 @@ func resolvePolystrataConfigRefsWithBases(args []string, rawMap map[string]any, 
 				continue
 			}
 			if isDir {
+				canonPath = expandPolystrataAssetDir(canonPath)
 				if !slices.ContainsFunc(dirs, func(prev string) bool { return sameFileOrPath(prev, canonPath) }) {
 					dirs = append(dirs, canonPath)
 				}

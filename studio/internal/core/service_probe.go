@@ -108,15 +108,24 @@ func TestServiceEndpoint(ctx context.Context, baseURL, model string) ServiceTest
 		Choices []struct {
 			Text    string `json:"text"`
 			Message struct {
-				Content string `json:"content"`
+				Content          string `json:"content"`
+				ReasoningContent string `json:"reasoning_content"`
+				Reasoning        string `json:"reasoning"`
 			} `json:"message"`
 		} `json:"choices"`
 	}
 	reply := ""
 	if json.Unmarshal(raw, &parsedResp) == nil && len(parsedResp.Choices) > 0 {
-		reply = strings.TrimSpace(parsedResp.Choices[0].Message.Content)
-		if reply == "" {
-			reply = strings.TrimSpace(parsedResp.Choices[0].Text)
+		msg := parsedResp.Choices[0].Message
+		for _, candidate := range []string{msg.Content, parsedResp.Choices[0].Text, msg.ReasoningContent, msg.Reasoning} {
+			if trimmedCandidate := strings.TrimSpace(candidate); trimmedCandidate != "" {
+				runes := []rune(trimmedCandidate)
+				if len(runes) > 160 {
+					trimmedCandidate = string(runes[:160]) + "…"
+				}
+				reply = trimmedCandidate
+				break
+			}
 		}
 	}
 	return ServiceTestResult{

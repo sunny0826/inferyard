@@ -232,6 +232,20 @@ func (s *viewState) serviceParamsEngineOptions(model core.ModelAsset, hasModel b
 	return s.standaloneEngineOptions(model)
 }
 
+func (s *viewState) engineSupportsLlamaFlags(engineName string) bool {
+	target := strings.TrimSpace(engineName)
+	if target == "" {
+		return true
+	}
+	for _, eng := range s.registry.Engines {
+		if eng.Name == target {
+			fam := strings.TrimSpace(eng.Family)
+			return fam == "" || fam == "llama-cpp"
+		}
+	}
+	return true
+}
+
 func hasSelectOption(opts []components.NativeSelectOption[string], value string) bool {
 	for _, opt := range opts {
 		if opt.Value == value {

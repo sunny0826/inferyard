@@ -199,6 +199,15 @@ func estimateModelMemoryGB(sizeBytes int64, contextSize int64) (float64, bool) {
 	return roundMemoryGB(total), true
 }
 
+// EffectiveMemoryBytes returns the estimated resident weight footprint when present,
+// falling back to on-disk SizeBytes.
+func (m ModelAsset) EffectiveMemoryBytes() *int64 {
+	if m.ResidentBytes != nil && *m.ResidentBytes > 0 {
+		return m.ResidentBytes
+	}
+	return m.SizeBytes
+}
+
 func modelSizeBytesFromRegistry(reg registryData, model string) (int64, bool) {
 	target := strings.TrimSpace(model)
 	if target == "" {
@@ -207,8 +216,8 @@ func modelSizeBytesFromRegistry(reg registryData, model string) (int64, bool) {
 	normTarget := normalizedPath(target)
 	for _, entry := range reg.models {
 		if entry.model.Name == target || entry.path == target || (normTarget != "" && normalizedPath(entry.path) == normTarget) {
-			if entry.model.SizeBytes != nil && *entry.model.SizeBytes > 0 {
-				return *entry.model.SizeBytes, true
+			if memBytes := entry.model.EffectiveMemoryBytes(); memBytes != nil && *memBytes > 0 {
+				return *memBytes, true
 			}
 			return 0, false
 		}

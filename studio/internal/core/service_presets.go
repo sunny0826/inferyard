@@ -129,13 +129,20 @@ func replaceOrAppendFlag(args []string, names []string, flag string, value strin
 	return out
 }
 
+func startupSupportsLlamaFlags(family string) bool {
+	f := strings.TrimSpace(family)
+	return f == "" || f == "llama-cpp"
+}
+
 func applyStandaloneArgs(startup Startup, req StandaloneStartRequest) Startup {
 	args := append([]string(nil), startup.Args...)
-	if req.GPULayers != nil {
-		args = replaceOrAppendFlag(args, []string{"--n-gpu-layers", "-ngl"}, "--n-gpu-layers", strconv.Itoa(*req.GPULayers))
-	}
-	if req.Threads != nil {
-		args = replaceOrAppendFlag(args, []string{"--threads", "-t"}, "--threads", strconv.Itoa(*req.Threads))
+	if startupSupportsLlamaFlags(startup.Family) {
+		if req.GPULayers != nil {
+			args = replaceOrAppendFlag(args, []string{"--n-gpu-layers", "-ngl"}, "--n-gpu-layers", strconv.Itoa(*req.GPULayers))
+		}
+		if req.Threads != nil {
+			args = replaceOrAppendFlag(args, []string{"--threads", "-t"}, "--threads", strconv.Itoa(*req.Threads))
+		}
 	}
 	if cleaned, ok := sanitizeExtraArgs(req.ExtraArgs); ok && len(cleaned) > 0 {
 		args = append(args, cleaned...)
