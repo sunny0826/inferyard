@@ -278,6 +278,20 @@ func (s *Service) activeServicesMemoryForPoolLocked(reg registryData, hw hardwar
 		accumulate(e)
 	}
 	accumulate(s.engine)
+	for id, prep := range s.preparingServices {
+		if excludeServiceID != "" && id == excludeServiceID {
+			continue
+		}
+		if e, ok := s.services[id]; ok && e != nil && (e.state.State == "starting" || e.state.State == "running") {
+			continue
+		}
+		if hw.Known && !serviceUsesMemoryPool(hw, prep.gpuLayers) {
+			continue
+		}
+		if prep.estimatedMemoryGB > 0 {
+			usedGB += prep.estimatedMemoryGB
+		}
+	}
 	return roundMemoryGB(usedGB), roundMemoryGB(reflectedUsedGB), roundMemoryGB(excludedReflectedGB)
 }
 
@@ -296,6 +310,12 @@ func (s *Service) CheckServiceMemoryBudgetForRequest(req StandaloneStartRequest)
 }
 
 func (s *Service) checkServiceMemoryBudgetWithRegistry(model, engine string, contextSize int64, gpuLayers *int, reg registryData) ServiceMemoryBudget {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.checkServiceMemoryBudgetLocked(model, engine, contextSize, gpuLayers, reg)
+}
+
+func (s *Service) checkServiceMemoryBudgetLocked(model, engine string, contextSize int64, gpuLayers *int, reg registryData) ServiceMemoryBudget {
 	model = strings.TrimSpace(model)
 	engine = strings.TrimSpace(engine)
 	excludeID := ""
@@ -303,10 +323,8 @@ func (s *Service) checkServiceMemoryBudgetWithRegistry(model, engine string, con
 		excludeID = ServiceIDFor(model, engine)
 	}
 
-	s.mu.Lock()
 	hw := parseHardwareMemoryBudget(s.device.Snapshot, isCPUOnlyGPULayers(gpuLayers))
 	used, reflectedUsed, excludedReflected := s.activeServicesMemoryForPoolLocked(reg, hw, excludeID, s.device.CapturedAt)
-	s.mu.Unlock()
 
 	availGB := effectiveAvailableMemoryGB(hw, reflectedUsed, excludedReflected)
 	var est float64

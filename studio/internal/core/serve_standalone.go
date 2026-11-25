@@ -169,106 +169,123 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 		return EngineState{}, Err("cancelled")
 	}
 
-	s.settingsMu.Lock()
-	defer s.settingsMu.Unlock()
-	if ctx.Err() != nil {
-		return EngineState{}, Err("cancelled")
-	}
-
-	s.mu.Lock()
-	closing := s.closing
-	deleting := s.deletingAssets > 0
-	runsActive := s.runsActiveLocked()
-	s.mu.Unlock()
-	if closing {
-		return EngineState{}, Err("service_closing")
-	}
-	if deleting {
-		return EngineState{}, workspaceBusyError()
-	}
-	if runsActive {
-		return EngineState{}, Err("run_active")
-	}
-
-	u := s.userSettings()
-	w := workspaceRoot(u)
-	if w == nil {
-		return EngineState{}, Conflict("settings_incomplete")
-	}
-
-	reg := s.registry()
-	var modelEntry *registryEntry
-	for i := range reg.models {
-		if reg.models[i].model.Name == req.Model {
-			modelEntry = &reg.models[i]
-			break
-		}
-	}
-	if modelEntry == nil {
-		return EngineState{}, Err("not_found")
-	}
-	if !modelEntry.model.Available {
-		return EngineState{}, Err("model_unavailable")
-	}
-	var engEntry *registryEntry
-	for i := range reg.engines {
-		if reg.engines[i].engine.Name == req.Engine {
-			engEntry = &reg.engines[i]
-			break
-		}
-	}
-	if engEntry == nil {
-		return EngineState{}, Err("not_found")
-	}
-
 	slug := standaloneSlug(req.Model, req.Engine, req.ContextSize)
 	serviceID := ServiceIDFor(req.Model, req.Engine)
 
-	// Check active running state for this serviceID first so same-combination idempotency never touches CLI.
-	s.mu.Lock()
-	if s.orphan != nil {
-		state := clone(s.orphan.state)
-		s.mu.Unlock()
-		return state, Err("engine_orphaned")
-	}
-	if orphan, exists := s.orphanedServices[serviceID]; exists && orphan != nil {
-		state := clone(orphan.state)
-		s.mu.Unlock()
-		return state, Err("engine_orphaned")
-	}
-	if existing, exists := s.services[serviceID]; exists && existing != nil && isActiveServiceState(existing.state.State) {
-		state := clone(existing.state)
-		s.mu.Unlock()
-		if state.Candidate == slug && state.LANAccess == req.LANAccess {
-			runningPort := state.Port
-			if runningPort <= 0 {
-				runningPort = portFromEndpoint(state.Endpoint)
-			}
-			if req.Port == 0 || req.Port == runningPort {
-				return state, nil
+	var (
+		u          UserSettings
+		workspace  string
+		modelEntry registryEntry
+		engEntry   registryEntry
+		budget     ServiceMemoryBudget
+		occupied   map[int]bool
+	)
+	earlyState, earlyErr, shouldReturn := func() (EngineState, *ApiError, bool) {
+		s.settingsMu.Lock()
+		defer s.settingsMu.Unlock()
+		if ctx.Err() != nil {
+			return EngineState{}, Err("cancelled"), true
+		}
+		u = s.userSettings()
+		w := workspaceRoot(u)
+		if w == nil {
+			return EngineState{}, Conflict("settings_incomplete"), true
+		}
+		workspace = *w
+		reg := s.registry()
+		var mFound, eFound bool
+		for i := range reg.models {
+			if reg.models[i].model.Name == req.Model {
+				modelEntry = reg.models[i]
+				mFound = true
+				break
 			}
 		}
-		return state, Err("engine_candidate_mismatch")
-	}
-	occupied := s.occupiedPortsLocked()
-	s.mu.Unlock()
+		if !mFound {
+			return EngineState{}, Err("not_found"), true
+		}
+		if !modelEntry.model.Available {
+			return EngineState{}, Err("model_unavailable"), true
+		}
+		for i := range reg.engines {
+			if reg.engines[i].engine.Name == req.Engine {
+				engEntry = reg.engines[i]
+				eFound = true
+				break
+			}
+		}
+		if !eFound {
+			return EngineState{}, Err("not_found"), true
+		}
 
-	budget := s.checkServiceMemoryBudgetWithRegistry(req.Model, req.Engine, req.ContextSize, req.GPULayers, reg)
-	if budget.Known && !budget.Enough {
-		return EngineState{}, &ApiError{
-			Code: "insufficient_memory",
-			Message: l10n.TRf("core.engine.err.insufficient_memory",
-				"required", fmt.Sprintf("%.1f", budget.EstimatedGB),
-				"remaining", fmt.Sprintf("%.1f", budget.RemainingGB),
-			),
-			Details: map[string]any{
-				"required_gb":  budget.EstimatedGB,
-				"remaining_gb": budget.RemainingGB,
-				"available_gb": budget.AvailableGB,
-				"used_gb":      budget.UsedGB,
-			},
+		// Atomically validate active/preparing state and reserve memory budget under s.mu before releasing settingsMu.
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		if s.closing {
+			return EngineState{}, Err("service_closing"), true
 		}
+		if s.deletingAssets > 0 {
+			return EngineState{}, workspaceBusyError(), true
+		}
+		if s.runsActiveLocked() {
+			return EngineState{}, Err("run_active"), true
+		}
+		if s.orphan != nil {
+			return clone(s.orphan.state), Err("engine_orphaned"), true
+		}
+		if orphan, exists := s.orphanedServices[serviceID]; exists && orphan != nil {
+			return clone(orphan.state), Err("engine_orphaned"), true
+		}
+		if existing, exists := s.services[serviceID]; exists && existing != nil && isActiveServiceState(existing.state.State) {
+			state := clone(existing.state)
+			if state.Candidate == slug && state.LANAccess == req.LANAccess {
+				runningPort := state.Port
+				if runningPort <= 0 {
+					runningPort = portFromEndpoint(state.Endpoint)
+				}
+				if req.Port == 0 || req.Port == runningPort {
+					return state, nil, true
+				}
+			}
+			return state, Err("engine_candidate_mismatch"), true
+		}
+		if s.preparingServices == nil {
+			s.preparingServices = map[string]preparingService{}
+		}
+		if _, busy := s.preparingServices[serviceID]; busy {
+			return EngineState{}, Err("engine_candidate_mismatch"), true
+		}
+		budget = s.checkServiceMemoryBudgetLocked(req.Model, req.Engine, req.ContextSize, req.GPULayers, reg)
+		if budget.Known && !budget.Enough {
+			return EngineState{}, &ApiError{
+				Code: "insufficient_memory",
+				Message: l10n.TRf("core.engine.err.insufficient_memory",
+					"required", fmt.Sprintf("%.1f", budget.EstimatedGB),
+					"remaining", fmt.Sprintf("%.1f", budget.RemainingGB),
+				),
+				Details: map[string]any{
+					"required_gb":  budget.EstimatedGB,
+					"remaining_gb": budget.RemainingGB,
+					"available_gb": budget.AvailableGB,
+					"used_gb":      budget.UsedGB,
+				},
+			}, true
+		}
+		s.preparingServices[serviceID] = preparingService{
+			estimatedMemoryGB: budget.EstimatedGB,
+			gpuLayers:         cloneIntPtr(req.GPULayers),
+		}
+		occupied = s.occupiedPortsLocked()
+		return EngineState{}, nil, false
+	}()
+	if shouldReturn {
+		return earlyState, earlyErr
 	}
+	defer func() {
+		s.mu.Lock()
+		delete(s.preparingServices, serviceID)
+		s.mu.Unlock()
+	}()
 
 	bindHost := "127.0.0.1"
 	if req.LANAccess {
@@ -280,7 +297,7 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 		}
 	}
 
-	serveDir, dirErr := safeServeDir(*w, slug)
+	serveDir, dirErr := safeServeDir(workspace, slug)
 	if dirErr != nil {
 		return EngineState{}, dirErr
 	}
@@ -296,7 +313,7 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 
 	var startup Startup
 	reused := false
-	if cached, _, cachedPort, ok := loadCachedStandalonePlan(planPath, modelEntry.path, *engEntry, req.ContextSize); ok {
+	if cached, _, cachedPort, ok := loadCachedStandalonePlan(planPath, modelEntry.path, engEntry, req.ContextSize); ok {
 		if (req.Port == 0 || req.Port == cachedPort) && s.tryReservePort(bindHost, cachedPort) {
 			reservedPort = cachedPort
 			startup = cached
@@ -382,7 +399,7 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 	}
 	startup.ServiceID = serviceID
 	startup.EstimatedMemoryGB = budget.EstimatedGB
-	state, apiErr := s.startManagedServiceLocked(startup, slug, serviceID)
+	state, apiErr := s.startManagedServiceLocked(startup, slug, serviceID, reservedPort, workspace)
 	if apiErr != nil {
 		return state, apiErr
 	}

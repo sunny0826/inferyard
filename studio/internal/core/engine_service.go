@@ -180,6 +180,9 @@ func (s *Service) startFromStartupLocked(startup Startup, origin, ref string) (E
 		}
 		return clone(s.engine.state), nil
 	}
+	if s.reservedPorts[port] {
+		return EngineState{}, &ApiError{Code: "engine_port_in_use", Message: l10n.TR("core.engine.err.port_in_use")}
+	}
 	endpoint := "http://" + net.JoinHostPort(host, strconv.Itoa(port))
 	listen, err := net.Listen("tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
