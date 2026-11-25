@@ -20,7 +20,7 @@
   "preview.polystrata.blocker.xcode_clt": "Xcode Command Line Tools are required to build PolyStrata.",
   "preview.polystrata.log.line1": "07:31:02 [1/4 preflight] Apple Silicon · Xcode CLT / CMake 3.31 ready",
   "preview.polystrata.log.line2": "07:31:04 [1/4 preflight] Available disk 218.4 GiB >= required 42.0 GiB",
-  "preview.polystrata.log.line3": "07:31:05 [2/4 runtime] Downloading PolyStrata v0.1.45-poly.10 runtime archive",
+  "preview.polystrata.log.line3": "07:31:05 [2/4 runtime] Downloading PolyStrata v0.2.20-poly.5 runtime archive",
   "preview.polystrata.log.line4": "07:31:18 [2/4 runtime] Extracted and verified SHA-256",
   "preview.polystrata.log.line5": "07:31:19 [3/4 setup_engine] Building Metal inference backend (ninja -j10)",
   "preview.polystrata.log.line6": "07:33:41 [3/4 setup_engine] polystrata-server build ready",

@@ -3,6 +3,7 @@
 from importlib.resources import files
 from pathlib import Path
 
+from inferyard.platforms.local_engines.detect_polystrata import resolve_polystrata_server_script
 from inferyard.provisioning.preparation_io import PreparationError
 
 
@@ -23,8 +24,11 @@ def startup(
     if family == "polystrata":
         if polystrata_config is None:
             raise PreparationError("polystrata_config_required")
+        server_py = resolve_polystrata_server_script(Path(cwd)) or (
+            Path(cwd) / "serve" / "server.py"
+        )
         return [
-            str(Path(cwd) / "serve" / "server.py"),
+            str(server_py),
             "--engine",
             "strata",
             "--config",

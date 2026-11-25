@@ -190,7 +190,7 @@ def stage_local_polystrata(src_inst_path: Path, workspace: Path) -> StagedPolyst
     rewrite_prefixes(dst_inst, replacements)
 
     configs: list[tuple[int, str, Path]] = []
-    for search_dir in (dst_work, dst_data, dst_data / "models"):
+    for search_dir in (dst_work, dst_work / "terminal", dst_data, dst_data / "models"):
         if not search_dir.is_dir():
             continue
         for entry in sorted(search_dir.iterdir()):

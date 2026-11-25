@@ -54,12 +54,7 @@ func engineUpdateDisplayTitle(familyID, engineName string) string {
 }
 
 func readPolystrataBackend(dir string) string {
-	for _, sub := range []string{
-		filepath.Join("engine-poly", "BUILD.json"),
-		filepath.Join("engine", "BUILD.json"),
-		filepath.Join("build-metal", "BUILD.json"),
-		"BUILD.json",
-	} {
+	for _, sub := range polystrataBuildJSONSubpaths() {
 		raw, err := os.ReadFile(filepath.Join(dir, sub))
 		if err != nil {
 			continue
@@ -226,18 +221,31 @@ func (s *Service) UpdateEngine(engineName string) (DownloadTask, *ApiError) {
 				Message: l10n.TR("core.engine_update.err.manual_required"),
 			}
 		}
-		var dataDir, backend string
+		var dataDir, backend, family, model, ggufPath string
+		var contextLen int
 		if hasEntry && entry.installation != "" {
-			instDir := filepath.Dir(entry.installation)
-			dataDir = existingPolystrataDataDir(instDir)
+			declWorkDir, declDataDir := readPolystrataInstallDirs(entry.installation)
+			instDir := strings.TrimSpace(declWorkDir)
+			if instDir == "" {
+				instDir = filepath.Dir(entry.installation)
+			}
+			dataDir = strings.TrimSpace(declDataDir)
+			if dataDir == "" || !filepath.IsAbs(dataDir) {
+				dataDir = existingPolystrataDataDir(instDir)
+			}
 			backend = readPolystrataBackend(instDir)
+			family, model, ggufPath, contextLen = inferPolystrataUpdateSpec(instDir, dataDir)
 		}
 		outName := sanitizeEngineUpdateOutName("polystrata", info.LatestVersion)
 		return s.CreatePolystrataSetup(PolystrataSetupRequest{
-			Source:  info.DownloadURL,
-			OutName: outName,
-			DataDir: dataDir,
-			Backend: backend,
+			Family:   family,
+			Model:    model,
+			Context:  contextLen,
+			GGUFPath: ggufPath,
+			Source:   info.DownloadURL,
+			OutName:  outName,
+			DataDir:  dataDir,
+			Backend:  backend,
 		})
 
 	case EngineUpdateActionVenv:

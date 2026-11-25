@@ -7,6 +7,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from inferyard.platforms.local_engines.detect_polystrata import (
+    POLYSTRATA_BUILD_JSON_NAMES,
     _is_usable_binary,
     find_polystrata_engine_binaries,
     read_build_backend,
@@ -99,7 +100,12 @@ def _rebind_vision(
         vdict["exe"] = str(resolved_vexe)
         return vdict, False
     vexe_name = "strata-vision.exe" if system == "Windows" else "strata-vision"
-    for cand in (target_exe.parent / vexe_name, *(r / vexe_name for r in runtime_roots)):
+    vexe_candidates = [
+        target_exe.parent / vexe_name,
+        *(r / vexe_name for r in runtime_roots),
+        *(r / "bin" / vexe_name for r in runtime_roots),
+    ]
+    for cand in vexe_candidates:
         if not cand.parent.is_symlink() and _is_usable_binary(cand, system):
             res = cand.resolve(strict=True)
             if _in_roots(res, runtime_roots):
@@ -121,15 +127,26 @@ def _resolve_expert_profile(
     if not trimmed:
         return raw_val, False
     resolved_ep = resolve_ref(trimmed, orig_bases)
-    inst_ep = inst_root / "data" / Path(trimmed).name
-    inst_ep_ok = inst_ep.is_file() and not inst_ep.is_symlink()
+    ep_name = Path(trimmed).name
+    inst_ep: Path | None = None
+    for cand_dir in (inst_root / "terminal" / "data", inst_root / "data"):
+        cand = cand_dir / ep_name
+        if not cand_dir.is_symlink() and cand.is_file() and not cand.is_symlink():
+            inst_ep = cand
+            break
     if resolved_ep is None:
-        if inst_ep_ok:
+        if inst_ep is not None:
             return str(inst_ep.resolve(strict=True)), True
         return raw_val, False
     in_inst = resolved_ep.is_relative_to(inst_root)
     in_data = data_dir is not None and resolved_ep.is_relative_to(data_dir)
-    if not in_inst and not in_data and exe_rebound and resolved_ep.parent.name == "data" and inst_ep_ok:
+    if (
+        not in_inst
+        and not in_data
+        and exe_rebound
+        and resolved_ep.parent.name == "data"
+        and inst_ep is not None
+    ):
         return str(inst_ep.resolve(strict=True)), True
     return str(resolved_ep), False
 
@@ -184,20 +201,22 @@ def _rewrite_args(
 
 def _rebind_lib_dirs(payload: dict, target_exe: Path, inst_root: Path) -> list[str]:
     result: list[str] = []
-    build_json = target_exe.parent / "BUILD.json"
-    if build_json.is_file() and not build_json.is_symlink():
-        try:
-            meta = json.loads(build_json.read_text(encoding="utf-8"))
-        except (OSError, ValueError, UnicodeError):
-            meta = None
-        if isinstance(meta, dict) and isinstance(meta.get("lib_dirs"), list):
-            for rel in meta["lib_dirs"]:
-                if isinstance(rel, str) and rel.strip():
-                    cand = (target_exe.parent / rel.strip())
-                    if cand.is_dir() and not cand.is_symlink():
-                        s = str(cand.resolve(strict=True))
-                        if s not in result:
-                            result.append(s)
+    for fname in POLYSTRATA_BUILD_JSON_NAMES:
+        build_json = target_exe.parent / fname
+        if build_json.is_file() and not build_json.is_symlink():
+            try:
+                meta = json.loads(build_json.read_text(encoding="utf-8"))
+            except (OSError, ValueError, UnicodeError):
+                meta = None
+            if isinstance(meta, dict) and isinstance(meta.get("lib_dirs"), list):
+                for rel in meta["lib_dirs"]:
+                    if isinstance(rel, str) and rel.strip():
+                        cand = target_exe.parent / rel.strip()
+                        if cand.is_dir() and not cand.is_symlink():
+                            s = str(cand.resolve(strict=True))
+                            if s not in result:
+                                result.append(s)
+            break
     orig_checkout: Path | None = None
     raw_cwd = payload.get("cwd")
     if isinstance(raw_cwd, str) and raw_cwd.strip() and Path(raw_cwd.strip()).is_absolute():
@@ -285,7 +304,11 @@ def rebind_or_keep_polystrata_config(
     raw_cwd = payload.get("cwd")
     if isinstance(raw_cwd, str) and raw_cwd.strip():
         cwd_p = Path(raw_cwd.strip())
-        if not cwd_p.is_dir() or cwd_p.is_symlink() or cwd_p.resolve(strict=True) != inst_root:
+        if (
+            not cwd_p.is_dir()
+            or cwd_p.is_symlink()
+            or not cwd_p.resolve(strict=True).is_relative_to(inst_root)
+        ):
             cwd_mismatch = True
 
     rewritten_args: list[str] | None = None
@@ -317,7 +340,8 @@ def rebind_or_keep_polystrata_config(
     derived["model_name"] = resolved_served
     if rebound_vision is not None:
         derived["vision"] = rebound_vision
-    if exe_rebound and ("lib_dirs" in derived or (target_exe.parent / "BUILD.json").is_file()):
+    has_build_meta = any((target_exe.parent / n).is_file() for n in POLYSTRATA_BUILD_JSON_NAMES)
+    if exe_rebound and ("lib_dirs" in derived or has_build_meta):
         new_libs = _rebind_lib_dirs(payload, target_exe, inst_root)
         if new_libs or "lib_dirs" in derived:
             derived["lib_dirs"] = new_libs

@@ -195,7 +195,7 @@ func stageLocalPolystrata(t *testing.T, workspace string) stagedPolystrata {
 		bytes int64
 	}
 	var configs []cfgCandidate
-	for _, searchDir := range []string{dstWorkDir, dstDataDir, filepath.Join(dstDataDir, "models")} {
+	for _, searchDir := range []string{dstWorkDir, filepath.Join(dstWorkDir, "terminal"), dstDataDir, filepath.Join(dstDataDir, "models")} {
 		entries, err := os.ReadDir(searchDir)
 		if err != nil {
 			continue

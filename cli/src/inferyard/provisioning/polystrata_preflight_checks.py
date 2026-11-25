@@ -101,6 +101,13 @@ def _disk_free_bytes(path: Path, disk_usage_fn=shutil.disk_usage) -> tuple[int |
     return free, dev
 
 
+_FAMILY_TAG_PREFIX = {
+    "qwen36-strata": "qwen36s",
+    "kolibri": "kolibri1",
+    "deepseek": "dsv4",
+}
+
+
 def _existing_resume_model_bytes(
     data_dir: Path,
     family: str | None,
@@ -113,13 +120,16 @@ def _existing_resume_model_bytes(
     models_root = data_dir / "models"
     if not models_root.is_dir() or linked(models_root):
         return 0
-    expected_file = (
-        str((entry.get("gguf_sources") or {}).get("filename") or "").lower()
-        if entry is not None
-        else ""
-    )
+    gguf_sources = (entry.get("gguf_sources") or {}) if entry is not None else {}
+    expected_files = {
+        Path(str(raw)).name.lower()
+        for raw in (gguf_sources.get("filename"), gguf_sources.get("draft_filename"))
+        if raw
+    }
     fam_token = family.strip().lower()
     size_token = model.strip().lower()
+    tag_prefix = _FAMILY_TAG_PREFIX.get(fam_token, fam_token)
+    expected_tag = size_token if fam_token == "qwen" else f"{tag_prefix}-{size_token}"
     total = 0
     stack = [models_root]
     while stack:
@@ -136,10 +146,14 @@ def _existing_resume_model_bytes(
                         if not lower.endswith((".part", ".gguf")):
                             continue
                         base_name = lower[:-5] if lower.endswith(".part") else lower
-                        rel_dir = str(current.relative_to(models_root)).lower()
-                        matched = (
-                            bool(expected_file) and base_name == expected_file
-                        ) or (fam_token in rel_dir and size_token in rel_dir)
+                        rel_parts = current.relative_to(models_root).parts
+                        top_dir = rel_parts[0].lower() if rel_parts else ""
+                        if expected_files:
+                            matched = base_name in expected_files
+                        else:
+                            matched = top_dir == expected_tag and (
+                                fam_token != "qwen" or not base_name.startswith("swift-")
+                            )
                         if matched:
                             try:
                                 total += item.stat(follow_symlinks=False).st_size
@@ -179,12 +193,16 @@ def _estimate_model_disk_bytes(
     )
     base = _entry_disk_bytes(best_entry, system=system, gguf_path=gguf_path, avx512=avx512)
     exact = gguf_path is not None or bool(family and model)
-    if resume and gguf_path is None:
-        download_cap = int(best_entry.get("download_bytes") or 0)
+    if gguf_path is None and (resume or (data_dir.is_dir() and not linked(data_dir))):
+        gguf_sources = best_entry.get("gguf_sources") or {}
+        download_cap = int(best_entry.get("download_bytes") or 0) + int(
+            gguf_sources.get("draft_bytes") or 0
+        )
         already = min(
             download_cap, _existing_resume_model_bytes(data_dir, family, model, best_entry)
         )
-        return max(GGUF_WORK_DISK_BYTES, base - already), exact
+        if already > 0 or resume:
+            return max(GGUF_WORK_DISK_BYTES, base - already), exact
     return base, exact
 
 
@@ -415,7 +433,10 @@ def _detect_sibling_migration_risk(out: Path, data_dir: Path) -> list[dict]:
             resolved = cand.resolve(strict=True)
         except OSError:
             continue
-        if resolved == out_norm or resolved in seen or not (resolved / "setup.py").is_file():
+        has_setup = (resolved / "setup.py").is_file() or (
+            resolved / "terminal" / "setup.py"
+        ).is_file()
+        if resolved == out_norm or resolved in seen or not has_setup:
             continue
         seen.add(resolved)
         for check_dir in (resolved, resolved / "PolyStrata-data"):

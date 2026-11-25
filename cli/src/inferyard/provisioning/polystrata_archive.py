@@ -27,14 +27,14 @@ from inferyard.provisioning.transfer_progress import (
     open_output_directory,
 )
 
-POLYSTRATA_PINNED_TAG = "v0.1.45-poly.10"
-POLYSTRATA_PINNED_COMMIT = "3e1642161198c50ff1abed4046f4e4f476099dbb"
+POLYSTRATA_PINNED_TAG = "v0.2.20-poly.5"
+POLYSTRATA_PINNED_COMMIT = "d62dfacbe185dfbb447e79c5fb1091ae189afc64"
 DEFAULT_POLYSTRATA_SOURCE_URL = (
     f"https://github.com/simplexai-labs/PolyStrata/archive/{POLYSTRATA_PINNED_COMMIT}.tar.gz"
 )
-DEFAULT_POLYSTRATA_SOURCE_BYTES = 25747544
+DEFAULT_POLYSTRATA_SOURCE_BYTES = 50443059
 DEFAULT_POLYSTRATA_SOURCE_SHA256 = (
-    "aeced362c54ae3534a66646f1befffe4dc62f0f20cc4869c74ccfa2d90384a92"
+    "7618eb62d56daec9b3d4d41155d5e5c1f90f0b3278616e3cc18a38d87c753dbf"
 )
 SETUP_LOG_NAME = ".inferyard-setup.log"
 INSTALLATION_FILE_NAME = "installation.json"
@@ -78,16 +78,20 @@ def resolve_polystrata_source(source: str | None) -> tuple[EngineSource | None, 
     return None, local_path.resolve(strict=True), _archive_kind(local_path.name)
 
 
+def _has_archive_layout(entries: set[str] | dict[str, zipfile.ZipInfo]) -> bool:
+    return ("setup.py" in entries and "serve/server.py" in entries) or (
+        "terminal/setup.py" in entries and "terminal/serve/server.py" in entries
+    )
+
+
 def _strip_prefix_candidate(names: list[str]) -> str | None:
     if not names:
         return None
     roots = {name.split("/", 1)[0] for name in names}
-    if len(roots) != 1:
+    if len(roots) != 1 or any("/" not in name for name in names):
         return None
     prefix = next(iter(roots))
-    if any("/" not in name for name in names):
-        return None
-    if f"{prefix}/setup.py" in names:
+    if f"{prefix}/setup.py" in names or f"{prefix}/terminal/setup.py" in names:
         return prefix + "/"
     return None
 
@@ -161,7 +165,7 @@ def _extract_polystrata_tar(archive_path: Path, out: Path) -> NewDirectory:
         else:
             raise PreparationError("unsafe_archive_entry")
 
-    if "setup.py" not in files or "serve/server.py" not in files:
+    if not _has_archive_layout(files):
         raise PreparationError("polystrata_runtime_invalid")
     _resolve_virtual_symlinks(symlinks)
 
@@ -219,7 +223,7 @@ def _extract_polystrata_zip(archive_path: Path, out: Path) -> NewDirectory:
                 if rel.casefold() in _RESERVED_ARCHIVE_NAMES:
                     raise PreparationError("unsafe_archive_entry")
                 mapped[rel] = info
-            if "setup.py" not in mapped or "serve/server.py" not in mapped:
+            if not _has_archive_layout(mapped):
                 raise PreparationError("polystrata_runtime_invalid")
             output = NewDirectory(out)
             for rel, info in sorted(mapped.items()):
@@ -238,6 +242,20 @@ def _is_regular_non_symlink(path: Path) -> bool:
     except OSError:
         return False
     return not linked(path) and stat.S_ISREG(info.st_mode)
+
+
+def has_extracted_polystrata_files(out: Path) -> bool:
+    if _is_regular_non_symlink(out / "setup.py") and _is_regular_non_symlink(
+        out / "serve" / "server.py"
+    ):
+        return True
+    term = out / "terminal"
+    return (
+        not linked(term)
+        and term.is_dir()
+        and _is_regular_non_symlink(term / "setup.py")
+        and _is_regular_non_symlink(term / "serve" / "server.py")
+    )
 
 
 def _source_key(remote_source: EngineSource | None, local_archive: Path | None) -> str:
@@ -340,10 +358,7 @@ def acquire_runtime_tree(
                 if linked(out) or not out.is_dir():
                     raise PreparationError("output_exists")
                 receipt = _read_runtime_receipt(out)
-                if receipt is None or not (
-                    _is_regular_non_symlink(out / "setup.py")
-                    and _is_regular_non_symlink(out / "serve" / "server.py")
-                ):
+                if receipt is None or not has_extracted_polystrata_files(out):
                     raise PreparationError("output_exists")
                 if receipt["archive_sha256"] != local_digest:
                     raise PreparationError(
@@ -353,33 +368,17 @@ def acquire_runtime_tree(
                 if receipt["source"] != source_id:
                     raise PreparationError("output_exists")
                 emitter.update(
-                    "downloading_runtime",
-                    0,
-                    None,
-                    step=2,
-                    step_total=4,
-                    percent=100.0,
-                    detail="reusing extracted runtime",
-                    force=True,
+                    "downloading_runtime", 0, None, step=2, step_total=4,
+                    percent=100.0, detail="reusing extracted runtime", force=True,
                 )
                 return True
             emitter.update(
-                "downloading_runtime",
-                local_size,
-                local_size,
-                step=2,
-                step_total=4,
-                percent=100.0,
-                detail="extracting local archive",
-                force=True,
+                "downloading_runtime", local_size, local_size, step=2, step_total=4,
+                percent=100.0, detail="extracting local archive", force=True,
             )
             _extract_and_publish(
-                staged_archive,
-                out,
-                kind=kind,
-                source_id=source_id,
-                archive_sha256=local_digest,
-                staging_dir=staging,
+                staged_archive, out, kind=kind, source_id=source_id,
+                archive_sha256=local_digest, staging_dir=staging,
             )
             return False
         finally:
@@ -390,10 +389,7 @@ def acquire_runtime_tree(
             raise PreparationError("output_exists")
         receipt = _read_runtime_receipt(out)
         if receipt is not None:
-            if not (
-                _is_regular_non_symlink(out / "setup.py")
-                and _is_regular_non_symlink(out / "serve" / "server.py")
-            ):
+            if not has_extracted_polystrata_files(out):
                 raise PreparationError("output_exists")
             if expected_sha256 is not None and receipt["archive_sha256"] != expected_sha256:
                 raise PreparationError(
@@ -403,14 +399,8 @@ def acquire_runtime_tree(
             if receipt["source"] != source_id:
                 raise PreparationError("output_exists")
             emitter.update(
-                "downloading_runtime",
-                0,
-                None,
-                step=2,
-                step_total=4,
-                percent=100.0,
-                detail="reusing extracted runtime",
-                force=True,
+                "downloading_runtime", 0, None, step=2, step_total=4,
+                percent=100.0, detail="reusing extracted runtime", force=True,
             )
             return True
 
@@ -426,7 +416,12 @@ def acquire_runtime_tree(
                     out,
                     resume=True,
                     allowed_parts={part_name},
-                    final_names={"setup.py", INSTALLATION_FILE_NAME, RUNTIME_RECEIPT_NAME},
+                    final_names={
+                        "setup.py",
+                        "polystrata.py",
+                        INSTALLATION_FILE_NAME,
+                        RUNTIME_RECEIPT_NAME,
+                    },
                 )
                 try:
                     _, archive_digest = download_resumable_part(

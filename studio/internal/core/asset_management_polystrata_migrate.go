@@ -95,72 +95,82 @@ func snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir string, 
 	if len(managedDataDirs) == 0 {
 		return nil, nil
 	}
-	entries, err := os.ReadDir(installDir)
-	if err != nil {
-		return nil, err
+	configDirs := []string{installDir}
+	termDir := filepath.Join(installDir, "terminal")
+	if tInfo, tErr := os.Lstat(termDir); tErr == nil && tInfo.Mode()&os.ModeSymlink == 0 && tInfo.IsDir() {
+		configDirs = append(configDirs, termDir)
 	}
 	var plans []migratedPolystrataConfig
-	for _, item := range entries {
-		name := item.Name()
-		if item.IsDir() || !strings.HasPrefix(name, "strata-") || !strings.HasSuffix(name, ".json") {
-			continue
-		}
-		srcPath := filepath.Join(installDir, name)
-		info, err := os.Lstat(srcPath)
+	for _, cfgDir := range configDirs {
+		entries, err := os.ReadDir(cfgDir)
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", name, err)
-		}
-		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			if cfgDir == installDir {
+				return nil, err
+			}
 			continue
 		}
-		if info.Size() > maxStrataConfigBytes {
-			return nil, fmt.Errorf("%s exceeds max config size", name)
-		}
-		raw, err := os.ReadFile(srcPath)
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", name, err)
-		}
-		var cfg struct {
-			Exe  string   `json:"exe"`
-			Args []string `json:"args"`
-			Cwd  string   `json:"cwd"`
-		}
-		if json.Unmarshal(raw, &cfg) != nil || strings.TrimSpace(cfg.Exe) == "" || cfg.Args == nil {
-			continue
-		}
-		var rawMap map[string]any
-		if json.Unmarshal(raw, &rawMap) != nil || rawMap == nil {
-			continue
-		}
-
-		origBases := polystrataConfigBases(cfg.Cwd, declWorkDir, installDir, declDataDir)
-		origLenFiles, origLenDirs := resolvePolystrataConfigRefsWithBases(cfg.Args, rawMap, installDir, origBases)
-		origRefs := extractPolystrataAssetRefs(cfg.Args, rawMap)
-		origValidFiles, origValidDirs, origValidOK := validatePolystrataAssets(origRefs, installDir, origBases)
-
-		for _, dd := range managedDataDirs {
-			if isSymlinkPath(dd) {
+		for _, item := range entries {
+			name := item.Name()
+			if item.IsDir() || !strings.HasPrefix(name, "strata-") || !strings.HasSuffix(name, ".json") {
 				continue
 			}
-			if !polystrataRefsScopedToDataDir(origLenFiles, origLenDirs, installDir, dd) {
-				continue
-			}
-			if field, hasCred := findPolystrataPlaintextCredentialField(rawMap, cfg.Args); hasCred {
-				return nil, &polystrataCredentialError{configName: name, field: field}
-			}
-
-			clonedMap, rewrittenArgs := rewritePolystrataConfigMapForDataDir(rawMap, cfg.Args, origBases, installDir)
-			rewrittenBytes, err := json.MarshalIndent(clonedMap, "", "  ")
+			srcPath := filepath.Join(cfgDir, name)
+			info, err := os.Lstat(srcPath)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("%s: %w", name, err)
 			}
-			rewrittenBytes = append(rewrittenBytes, '\n')
+			if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+				continue
+			}
+			if info.Size() > maxStrataConfigBytes {
+				return nil, fmt.Errorf("%s exceeds max config size", name)
+			}
+			raw, err := os.ReadFile(srcPath)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", name, err)
+			}
+			var cfg struct {
+				Exe  string   `json:"exe"`
+				Args []string `json:"args"`
+				Cwd  string   `json:"cwd"`
+			}
+			if json.Unmarshal(raw, &cfg) != nil || strings.TrimSpace(cfg.Exe) == "" || cfg.Args == nil {
+				continue
+			}
+			var rawMap map[string]any
+			if json.Unmarshal(raw, &rawMap) != nil || rawMap == nil {
+				continue
+			}
 
-			if err := verifyMigratedPolystrataConfig(dd, origLenFiles, origLenDirs, origValidFiles, origValidDirs, origValidOK, rewrittenArgs, clonedMap); err != nil {
-				return nil, err
+			origBases := polystrataConfigBases(cfg.Cwd, declWorkDir, cfgDir, declDataDir)
+			origLenFiles, origLenDirs := resolvePolystrataConfigRefsWithBases(cfg.Args, rawMap, cfgDir, origBases)
+			origRefs := extractPolystrataAssetRefs(cfg.Args, rawMap)
+			origValidFiles, origValidDirs, origValidOK := validatePolystrataAssets(origRefs, cfgDir, origBases)
+
+			for _, dd := range managedDataDirs {
+				if isSymlinkPath(dd) {
+					continue
+				}
+				if !polystrataRefsScopedToDataDir(origLenFiles, origLenDirs, installDir, dd) {
+					continue
+				}
+				if field, hasCred := findPolystrataPlaintextCredentialField(rawMap, cfg.Args); hasCred {
+					return nil, &polystrataCredentialError{configName: name, field: field}
+				}
+
+				clonedMap, rewrittenArgs := rewritePolystrataConfigMapForDataDir(rawMap, cfg.Args, origBases, installDir)
+				rewrittenBytes, err := json.MarshalIndent(clonedMap, "", "  ")
+				if err != nil {
+					return nil, err
+				}
+				rewrittenBytes = append(rewrittenBytes, '\n')
+
+				if err := verifyMigratedPolystrataConfig(dd, origLenFiles, origLenDirs, origValidFiles, origValidDirs, origValidOK, rewrittenArgs, clonedMap); err != nil {
+					return nil, err
+				}
+				plans = append(plans, migratedPolystrataConfig{dd: dd, name: name, payload: rewrittenBytes})
+				break
 			}
-			plans = append(plans, migratedPolystrataConfig{dd: dd, name: name, payload: rewrittenBytes})
-			break
 		}
 	}
 	return plans, nil
@@ -401,68 +411,6 @@ func writeFileAtomic(dir, destPath string, payload []byte, mode os.FileMode) err
 		return err
 	}
 	return nil
-}
-
-func expandSplitGGUFShardsLenient(canonPath string) []assetFileSize {
-	m := splitGGUFPattern.FindStringSubmatch(filepath.Base(canonPath))
-	if m != nil {
-		stem, idxStr, totalStr, ext := m[1], m[2], m[3], m[4]
-		index, err1 := strconv.Atoi(idxStr)
-		total, err2 := strconv.Atoi(totalStr)
-		if err1 == nil && err2 == nil && total >= 2 && total <= 256 && index >= 1 && index <= total {
-			dir := filepath.Dir(canonPath)
-			var shards []assetFileSize
-			for i := 1; i <= total; i++ {
-				shardPath := filepath.Join(dir, fmt.Sprintf("%s-%05d-of-%05d%s", stem, i, total, ext))
-				info, err := os.Lstat(shardPath)
-				if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
-					continue
-				}
-				canonShard, cerr := canonical(shardPath)
-				if cerr != nil {
-					canonShard = shardPath
-				}
-				appendUniqueAssetFile(&shards, assetFileSize{path: canonShard, size: info.Size()})
-			}
-			return shards
-		}
-	}
-	info, err := os.Lstat(canonPath)
-	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
-		return nil
-	}
-	return []assetFileSize{{path: canonPath, size: info.Size()}}
-}
-
-func collectBrokenSplitGGUFShards(ref string, bases []string) []assetFileSize {
-	baseName := filepath.Base(ref)
-	if !splitGGUFPattern.MatchString(baseName) {
-		return nil
-	}
-	var candidateDirs []string
-	if filepath.IsAbs(ref) {
-		candidateDirs = []string{filepath.Dir(ref)}
-	} else {
-		relDir := filepath.Dir(ref)
-		for _, b := range bases {
-			candidateDirs = append(candidateDirs, filepath.Join(b, relDir))
-		}
-	}
-	var shards []assetFileSize
-	for _, dir := range candidateDirs {
-		info, err := os.Lstat(dir)
-		if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
-			continue
-		}
-		canonDir, cerr := canonical(dir)
-		if cerr != nil {
-			continue
-		}
-		for _, sh := range expandSplitGGUFShardsLenient(filepath.Join(canonDir, baseName)) {
-			appendUniqueAssetFile(&shards, sh)
-		}
-	}
-	return shards
 }
 
 func parseAndResolvePolystrataRefs(cfgPath, declWorkDir, declDataDir string, includeNonRelCwd bool) ([]assetFileSize, []string, bool) {
