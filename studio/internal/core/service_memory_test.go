@@ -190,3 +190,124 @@ func TestServiceMemoryBudgetRespectsSnapshotAvailableCeiling(t *testing.T) {
 		t.Fatalf("expected GPU AvailableGB capped at 3.0 GiB, got %+v", gpuInfo)
 	}
 }
+
+func TestServiceMemoryBudgetDiscreteGPUSeparatesCPUAndGPUPools(t *testing.T) {
+	// 64 GiB host RAM + 8 GiB discrete GPU VRAM:
+	// Starting a 12 GiB model with GPULayers=0 (host RAM pool) must NOT block
+	// starting a 4 GiB model on the discrete GPU VRAM pool.
+	hw := json.RawMessage(`{
+		"kind": "device_preflight.v1",
+		"hardware": {
+			"apple_silicon": false,
+			"memory_total_bytes": 68719476736,
+			"gpu": {
+				"devices": [
+					{"name": "RTX 4060", "memory_kind": "dedicated", "memory_total_bytes": 8589934592}
+				]
+			}
+		}
+	}`)
+	const giB = int64(1024 * 1024 * 1024)
+	s, _, engine := setupMultiServiceTestEnv(t, map[string]int64{
+		"cpu-12g.gguf": 12 * giB,
+		"gpu-4g.gguf":  4 * giB,
+	}, hw)
+
+	cpuLayers := 0
+	stCPU, apiErr := s.StartStandaloneEngine(StandaloneStartRequest{
+		Model:       "cpu-12g.gguf",
+		Engine:      engine,
+		ContextSize: 8192,
+		GPULayers:   &cpuLayers,
+	})
+	if apiErr != nil {
+		t.Fatalf("expected CPU-only 12 GiB start to succeed, got %+v", apiErr)
+	}
+	waitManagedServiceState(t, s, stCPU.ServiceID, "running")
+
+	// GPU budget must ignore the running CPU-only service (UsedGB == 0) and allow gpu-4g.
+	gpuBudget := s.CheckServiceMemoryBudget("gpu-4g.gguf", engine, 8192)
+	if !gpuBudget.Known || !gpuBudget.Enough || gpuBudget.UsedGB != 0 {
+		t.Fatalf("expected GPU budget to exclude CPU-only service and allow gpu-4g, got %+v", gpuBudget)
+	}
+	stGPU, apiErr := s.StartStandaloneEngine(StandaloneStartRequest{
+		Model:       "gpu-4g.gguf",
+		Engine:      engine,
+		ContextSize: 8192,
+	})
+	if apiErr != nil {
+		t.Fatalf("expected GPU 4 GiB start to succeed alongside CPU-only 12 GiB service, got %+v", apiErr)
+	}
+	waitManagedServiceState(t, s, stGPU.ServiceID, "running")
+}
+
+func TestServiceMemoryBudgetDeviceRefreshDoesNotDoubleCountRunningService(t *testing.T) {
+	// 24 GiB discrete GPU VRAM:
+	// 1. Start a 10 GiB model (~12.3 GiB estimated).
+	// 2. Refresh device snapshot reporting 12 GiB free VRAM (already reflecting the running service).
+	// 3. Starting a 4 GiB model (~4.92 GiB estimated) must be allowed instead of double-subtracting 12.3 GiB.
+	const giB = int64(1024 * 1024 * 1024)
+	initialHW := json.RawMessage(`{
+		"kind": "device_preflight.v1",
+		"hardware": {
+			"apple_silicon": false,
+			"memory_total_bytes": 68719476736,
+			"gpu": {
+				"devices": [
+					{"name": "RTX 4090", "memory_kind": "dedicated", "memory_total_bytes": 25769803776}
+				]
+			}
+		}
+	}`)
+	s, _, engine := setupMultiServiceTestEnv(t, map[string]int64{
+		"big-10g.gguf":  10 * giB,
+		"small-4g.gguf": 4 * giB,
+	}, initialHW)
+
+	stBig, apiErr := s.StartStandaloneEngine(StandaloneStartRequest{
+		Model:       "big-10g.gguf",
+		Engine:      engine,
+		ContextSize: 8192,
+	})
+	if apiErr != nil {
+		t.Fatalf("start big-10g failed: %+v", apiErr)
+	}
+	waitManagedServiceState(t, s, stBig.ServiceID, "running")
+
+	// Simulate a device refresh captured after big-10g started, reporting 12 GiB free VRAM.
+	refreshedHW := json.RawMessage(`{
+		"kind": "device_preflight.v1",
+		"hardware": {
+			"apple_silicon": false,
+			"memory_total_bytes": 68719476736,
+			"gpu": {
+				"devices": [
+					{
+						"name": "RTX 4090",
+						"memory_kind": "dedicated",
+						"memory_total_bytes": 25769803776,
+						"memory_free_bytes": 12884901888
+					}
+				]
+			}
+		}
+	}`)
+	s.mu.Lock()
+	s.device.Snapshot = refreshedHW
+	s.device.CapturedAt = ptr(now())
+	s.mu.Unlock()
+
+	budgetSmall := s.CheckServiceMemoryBudget("small-4g.gguf", engine, 8192)
+	if !budgetSmall.Known || !budgetSmall.Enough || budgetSmall.RemainingGB < 5 {
+		t.Fatalf("expected small-4g allowed after device refresh (no double counting), got %+v", budgetSmall)
+	}
+	stSmall, apiErr := s.StartStandaloneEngine(StandaloneStartRequest{
+		Model:       "small-4g.gguf",
+		Engine:      engine,
+		ContextSize: 8192,
+	})
+	if apiErr != nil {
+		t.Fatalf("expected small-4g start to succeed after device refresh, got %+v", apiErr)
+	}
+	waitManagedServiceState(t, s, stSmall.ServiceID, "running")
+}

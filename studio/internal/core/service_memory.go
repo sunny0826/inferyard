@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math"
 	"strings"
+	"time"
 )
 
 const bytesPerGiB = 1024.0 * 1024.0 * 1024.0
@@ -22,9 +23,14 @@ type ServiceMemoryBudget struct {
 }
 
 type hardwareMemoryInfo struct {
-	TotalGB     float64
-	AvailableGB float64
-	Known       bool
+	TotalGB         float64
+	AvailableGB     float64
+	CapGB           float64
+	SnapshotFreeGB  float64
+	HasSnapshotFree bool
+	Unified         bool
+	UsingHostPool   bool
+	Known           bool
 }
 
 func roundMemoryGB(v float64) float64 {
@@ -36,6 +42,42 @@ func roundMemoryGB(v float64) float64 {
 
 func isCPUOnlyGPULayers(gpuLayers *int) bool {
 	return gpuLayers != nil && *gpuLayers == 0
+}
+
+func serviceUsesMemoryPool(hw hardwareMemoryInfo, svcGPULayers *int) bool {
+	if hw.Unified {
+		return true
+	}
+	return isCPUOnlyGPULayers(svcGPULayers) == hw.UsingHostPool
+}
+
+func parseMemoryTimestamp(raw string) (time.Time, bool) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return time.Time{}, false
+	}
+	if ts, err := time.Parse(time.RFC3339Nano, trimmed); err == nil {
+		return ts, true
+	}
+	if ts, err := time.Parse(time.RFC3339, trimmed); err == nil {
+		return ts, true
+	}
+	return time.Time{}, false
+}
+
+func serviceReflectedInSnapshot(startedAt string, capturedAt *string) bool {
+	if capturedAt == nil {
+		return false
+	}
+	capTime, okCap := parseMemoryTimestamp(*capturedAt)
+	if !okCap {
+		return false
+	}
+	startTime, okStart := parseMemoryTimestamp(startedAt)
+	if !okStart {
+		return false
+	}
+	return !startTime.After(capTime)
 }
 
 func parseHardwareMemoryBudget(snapshot json.RawMessage, forceHostMemory bool) hardwareMemoryInfo {
@@ -64,7 +106,7 @@ func parseHardwareMemoryBudget(snapshot json.RawMessage, forceHostMemory bool) h
 	var discreteVRAMBytes int64
 	var discreteFreeBytes int64
 	hasDiscreteFree := false
-	if !doc.Hardware.AppleSilicon && !forceHostMemory {
+	if !doc.Hardware.AppleSilicon {
 		for _, dev := range doc.Hardware.GPU.Devices {
 			if dev.MemoryKind == "shared_host" {
 				continue
@@ -78,42 +120,63 @@ func parseHardwareMemoryBudget(snapshot json.RawMessage, forceHostMemory bool) h
 			}
 		}
 	}
-	if discreteVRAMBytes > 0 {
+	hasDiscreteGPU := !doc.Hardware.AppleSilicon && discreteVRAMBytes > 0
+	if hasDiscreteGPU && !forceHostMemory {
 		total := float64(discreteVRAMBytes) / bytesPerGiB
-		avail := total * 0.90
+		capGB := total * 0.90
+		avail := capGB
+		var snapFree float64
 		if hasDiscreteFree {
-			freeGB := float64(discreteFreeBytes) / bytesPerGiB
-			if freeGB < avail {
-				avail = freeGB
+			snapFree = float64(discreteFreeBytes) / bytesPerGiB
+			if snapFree < avail {
+				avail = snapFree
 			}
 		}
 		return hardwareMemoryInfo{
-			TotalGB:     roundMemoryGB(total),
-			AvailableGB: roundMemoryGB(avail),
-			Known:       true,
+			TotalGB:         roundMemoryGB(total),
+			AvailableGB:     roundMemoryGB(avail),
+			CapGB:           roundMemoryGB(capGB),
+			SnapshotFreeGB:  roundMemoryGB(snapFree),
+			HasSnapshotFree: hasDiscreteFree,
+			Unified:         false,
+			UsingHostPool:   false,
+			Known:           true,
 		}
 	}
 	if doc.Hardware.MemoryTotalBytes != nil && *doc.Hardware.MemoryTotalBytes > 0 {
 		total := float64(*doc.Hardware.MemoryTotalBytes) / bytesPerGiB
-		avail := total * 0.75
-		if doc.Hardware.MemoryAvailableBytes != nil && *doc.Hardware.MemoryAvailableBytes >= 0 {
-			freeGB := float64(*doc.Hardware.MemoryAvailableBytes) / bytesPerGiB
-			if freeGB < avail {
-				avail = freeGB
+		capGB := total * 0.75
+		avail := capGB
+		var snapFree float64
+		hasHostFree := doc.Hardware.MemoryAvailableBytes != nil && *doc.Hardware.MemoryAvailableBytes >= 0
+		if hasHostFree {
+			snapFree = float64(*doc.Hardware.MemoryAvailableBytes) / bytesPerGiB
+			if snapFree < avail {
+				avail = snapFree
 			}
 		}
 		return hardwareMemoryInfo{
-			TotalGB:     roundMemoryGB(total),
-			AvailableGB: roundMemoryGB(avail),
-			Known:       true,
+			TotalGB:         roundMemoryGB(total),
+			AvailableGB:     roundMemoryGB(avail),
+			CapGB:           roundMemoryGB(capGB),
+			SnapshotFreeGB:  roundMemoryGB(snapFree),
+			HasSnapshotFree: hasHostFree,
+			Unified:         !hasDiscreteGPU,
+			UsingHostPool:   true,
+			Known:           true,
 		}
 	}
 	if doc.Hardware.MemoryAvailableBytes != nil && *doc.Hardware.MemoryAvailableBytes > 0 {
 		avail := float64(*doc.Hardware.MemoryAvailableBytes) / bytesPerGiB
 		return hardwareMemoryInfo{
-			TotalGB:     roundMemoryGB(avail),
-			AvailableGB: roundMemoryGB(avail),
-			Known:       true,
+			TotalGB:         roundMemoryGB(avail),
+			AvailableGB:     roundMemoryGB(avail),
+			CapGB:           roundMemoryGB(avail),
+			SnapshotFreeGB:  roundMemoryGB(avail),
+			HasSnapshotFree: true,
+			Unified:         !hasDiscreteGPU,
+			UsingHostPool:   true,
+			Known:           true,
 		}
 	}
 	return hardwareMemoryInfo{}
@@ -153,9 +216,37 @@ func modelSizeBytesFromRegistry(reg registryData, model string) (int64, bool) {
 	return 0, false
 }
 
-func (s *Service) activeServicesMemoryGBLocked(reg registryData, excludeServiceID string) float64 {
-	var used float64
+func effectiveAvailableMemoryGB(hw hardwareMemoryInfo, reflectedUsedGB, excludedReflectedGB float64) float64 {
+	if !hw.Known {
+		return 0
+	}
+	avail := hw.CapGB
+	if hw.HasSnapshotFree {
+		snapCeiling := hw.SnapshotFreeGB + reflectedUsedGB + excludedReflectedGB
+		if snapCeiling < avail {
+			avail = snapCeiling
+		}
+	}
+	return roundMemoryGB(avail)
+}
+
+func (s *Service) activeServicesMemoryForPoolLocked(reg registryData, hw hardwareMemoryInfo, excludeServiceID string, capturedAt *string) (usedGB, reflectedUsedGB, excludedReflectedGB float64) {
 	seen := map[*engineEntry]bool{}
+	entryUsage := func(e *engineEntry) float64 {
+		if e.state.EstimatedMemoryGB > 0 {
+			return e.state.EstimatedMemoryGB
+		}
+		modelKey := e.state.ModelName
+		if modelKey == "" {
+			modelKey = e.state.Model
+		}
+		if sizeBytes, ok := modelSizeBytesFromRegistry(reg, modelKey); ok {
+			if est, ok := estimateModelMemoryGB(sizeBytes, e.state.ContextSize); ok {
+				return est
+			}
+		}
+		return 0
+	}
 	accumulate := func(e *engineEntry) {
 		if e == nil || seen[e] {
 			return
@@ -164,28 +255,30 @@ func (s *Service) activeServicesMemoryGBLocked(reg registryData, excludeServiceI
 		if e.state.State != "starting" && e.state.State != "running" {
 			return
 		}
+		if hw.Known && !serviceUsesMemoryPool(hw, e.state.GPULayers) {
+			return
+		}
+		usage := entryUsage(e)
+		if usage <= 0 {
+			return
+		}
+		reflected := serviceReflectedInSnapshot(e.state.StartedAt, capturedAt)
 		if excludeServiceID != "" && e.state.ServiceID == excludeServiceID {
-			return
-		}
-		if e.state.EstimatedMemoryGB > 0 {
-			used += e.state.EstimatedMemoryGB
-			return
-		}
-		modelKey := e.state.ModelName
-		if modelKey == "" {
-			modelKey = e.state.Model
-		}
-		if sizeBytes, ok := modelSizeBytesFromRegistry(reg, modelKey); ok {
-			if est, ok := estimateModelMemoryGB(sizeBytes, e.state.ContextSize); ok {
-				used += est
+			if reflected {
+				excludedReflectedGB += usage
 			}
+			return
+		}
+		usedGB += usage
+		if reflected {
+			reflectedUsedGB += usage
 		}
 	}
 	for _, e := range s.services {
 		accumulate(e)
 	}
 	accumulate(s.engine)
-	return roundMemoryGB(used)
+	return roundMemoryGB(usedGB), roundMemoryGB(reflectedUsedGB), roundMemoryGB(excludedReflectedGB)
 }
 
 // CheckServiceMemoryBudget evaluates whether there is enough remaining inference memory
@@ -212,20 +305,21 @@ func (s *Service) checkServiceMemoryBudgetWithRegistry(model, engine string, con
 
 	s.mu.Lock()
 	hw := parseHardwareMemoryBudget(s.device.Snapshot, isCPUOnlyGPULayers(gpuLayers))
-	used := s.activeServicesMemoryGBLocked(reg, excludeID)
+	used, reflectedUsed, excludedReflected := s.activeServicesMemoryForPoolLocked(reg, hw, excludeID, s.device.CapturedAt)
 	s.mu.Unlock()
 
+	availGB := effectiveAvailableMemoryGB(hw, reflectedUsed, excludedReflected)
 	var est float64
 	var estKnown bool
 	if sizeBytes, ok := modelSizeBytesFromRegistry(reg, model); ok {
 		est, estKnown = estimateModelMemoryGB(sizeBytes, contextSize)
 	}
 
-	remaining := roundMemoryGB(math.Max(0, hw.AvailableGB-used))
+	remaining := roundMemoryGB(math.Max(0, availGB-used))
 	if !hw.Known || !estKnown {
 		return ServiceMemoryBudget{
 			TotalGB:     hw.TotalGB,
-			AvailableGB: hw.AvailableGB,
+			AvailableGB: availGB,
 			UsedGB:      used,
 			EstimatedGB: est,
 			RemainingGB: remaining,
@@ -235,7 +329,7 @@ func (s *Service) checkServiceMemoryBudgetWithRegistry(model, engine string, con
 	}
 	return ServiceMemoryBudget{
 		TotalGB:     hw.TotalGB,
-		AvailableGB: hw.AvailableGB,
+		AvailableGB: availGB,
 		UsedGB:      used,
 		EstimatedGB: est,
 		RemainingGB: remaining,
@@ -250,10 +344,11 @@ func (s *Service) CurrentServiceMemorySummary() ServiceMemoryBudget {
 	reg := s.registry()
 	s.mu.Lock()
 	hw := parseHardwareMemoryBudget(s.device.Snapshot, false)
-	used := s.activeServicesMemoryGBLocked(reg, "")
+	used, reflectedUsed, _ := s.activeServicesMemoryForPoolLocked(reg, hw, "", s.device.CapturedAt)
 	s.mu.Unlock()
 
-	remaining := roundMemoryGB(math.Max(0, hw.AvailableGB-used))
+	availGB := effectiveAvailableMemoryGB(hw, reflectedUsed, 0)
+	remaining := roundMemoryGB(math.Max(0, availGB-used))
 	if !hw.Known {
 		return ServiceMemoryBudget{
 			UsedGB: used,
@@ -263,7 +358,7 @@ func (s *Service) CurrentServiceMemorySummary() ServiceMemoryBudget {
 	}
 	return ServiceMemoryBudget{
 		TotalGB:     hw.TotalGB,
-		AvailableGB: hw.AvailableGB,
+		AvailableGB: availGB,
 		UsedGB:      used,
 		RemainingGB: remaining,
 		Enough:      remaining > 0,

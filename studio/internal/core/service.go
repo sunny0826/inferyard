@@ -423,6 +423,7 @@ func (s *Service) RefreshDevice() *ApiError {
 	}
 	s.device.Refreshing = true
 	gen := s.deviceGeneration
+	capturedAt := now()
 	s.mu.Unlock()
 	go func() {
 		p := s.probe(u)
@@ -460,7 +461,7 @@ func (s *Service) RefreshDevice() *ApiError {
 		s.device.Refreshing = false
 		if failure == nil {
 			s.device.Snapshot = snapshot
-			s.device.CapturedAt = ptr(now())
+			s.device.CapturedAt = ptr(capturedAt)
 		}
 		s.device.LastError = failure
 		s.Bus.Publish("device.updated", map[string]any{"snapshot": s.device.Snapshot, "captured_at": s.device.CapturedAt, "error": failure})

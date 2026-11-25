@@ -102,4 +102,74 @@ func TestUICheckMemoryBudgetCPUOnlyAndNoDiskScan(t *testing.T) {
 	if !cpuBudget.Known || !cpuBudget.Enough || cpuBudget.TotalGB != 64 || cpuBudget.AvailableGB != 48 {
 		t.Fatalf("expected CPU-only budget to use 64 GiB host pool, got %+v", cpuBudget)
 	}
+
+	// Running CPU-only 12 GiB service on a discrete GPU machine must not count against GPU VRAM pool.
+	s.registry.Models = append(s.registry.Models, core.ModelAsset{
+		Name: "gpu-4g.gguf", SizeBytes: int64Ptr(4 * giB), Available: true,
+	})
+	s.managedServices = []core.EngineState{
+		{
+			ServiceID:         core.ServiceIDFor("mid-12g.gguf", "llama-a"),
+			State:             "running",
+			Origin:            core.EngineOriginStandalone,
+			ModelName:         "mid-12g.gguf",
+			EngineName:        "llama-a",
+			GPULayers:         &cpuLayers,
+			EstimatedMemoryGB: 14.76,
+			StartedAt:         "2026-11-25T07:00:00Z",
+		},
+	}
+	gpuSmallBudget := s.checkMemoryBudget("gpu-4g.gguf", "llama-a", 8192, nil)
+	if !gpuSmallBudget.Known || !gpuSmallBudget.Enough || gpuSmallBudget.UsedGB != 0 {
+		t.Fatalf("expected UI GPU budget to ignore CPU-only service, got %+v", gpuSmallBudget)
+	}
+
+	// Device refresh after a GPU service starts must not double-subtract its VRAM usage.
+	capturedAt := "2026-11-25T07:05:00Z"
+	s.device = core.DeviceResponse{
+		CapturedAt: &capturedAt,
+		Snapshot: json.RawMessage(`{
+			"kind": "device_preflight.v1",
+			"hardware": {
+				"apple_silicon": false,
+				"memory_total_bytes": 68719476736,
+				"gpu": {
+					"devices": [
+						{
+							"name": "RTX 4090",
+							"memory_kind": "dedicated",
+							"memory_total_bytes": 25769803776,
+							"memory_free_bytes": 12884901888
+						}
+					]
+				}
+			}
+		}`),
+	}
+	s.managedServices = []core.EngineState{
+		{
+			ServiceID:         core.ServiceIDFor("big-10g.gguf", "llama-a"),
+			State:             "running",
+			Origin:            core.EngineOriginStandalone,
+			ModelName:         "big-10g.gguf",
+			EngineName:        "llama-a",
+			EstimatedMemoryGB: 12.3,
+			StartedAt:         "2026-11-25T07:00:00Z",
+		},
+	}
+	refreshedBudget := s.checkMemoryBudget("gpu-4g.gguf", "llama-a", 8192, nil)
+	if !refreshedBudget.Known || !refreshedBudget.Enough || refreshedBudget.RemainingGB < 5 {
+		t.Fatalf("expected UI GPU budget after refresh not to double-count running service, got %+v", refreshedBudget)
+	}
+}
+
+func TestStandaloneHandoffCopyKeysSingleVsMulti(t *testing.T) {
+	tk, mk, ck := standaloneHandoffCopyKeys(1)
+	if tk != "models.serve.handoff.title" || mk != "models.serve.handoff.message" || ck != "models.serve.handoff.confirm" {
+		t.Fatalf("unexpected single-service handoff keys: %q %q %q", tk, mk, ck)
+	}
+	tk2, mk2, ck2 := standaloneHandoffCopyKeys(2)
+	if tk2 != "models.serve.handoff.multi_title" || mk2 != "models.serve.handoff.multi_message" || ck2 != "models.serve.handoff.multi_confirm" {
+		t.Fatalf("unexpected multi-service handoff keys: %q %q %q", tk2, mk2, ck2)
+	}
 }

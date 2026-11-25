@@ -271,6 +271,58 @@ func (p *previewSession) stopPreviewEngine(after func()) {
 		return
 	}
 	p.cancelEvents("service")
+	stoppedID := s.engineState.ServiceID
+	s.engineState.State = "stopping"
+	for i := range s.managedServices {
+		if stoppedID != "" && s.managedServices[i].ServiceID == stoppedID {
+			s.managedServices[i].State = "stopping"
+		}
+	}
+	p.after("service", 400*time.Millisecond, func() {
+		if stoppedID != "" {
+			remaining := make([]core.EngineState, 0, len(s.managedServices))
+			for _, st := range s.managedServices {
+				if st.ServiceID != stoppedID {
+					remaining = append(remaining, st)
+				}
+			}
+			s.managedServices = remaining
+		}
+		if len(s.managedServices) > 0 {
+			s.engineState = s.managedServices[0]
+		} else if s.engineState.Origin == core.EngineOriginStandalone {
+			s.engineState = core.EngineState{
+				State:       "stopped",
+				Origin:      core.EngineOriginStandalone,
+				Model:       s.engineState.Model,
+				ModelKind:   s.engineState.ModelKind,
+				Family:      s.engineState.Family,
+				Adapter:     s.engineState.Adapter,
+				ContextSize: s.engineState.ContextSize,
+				Candidate:   s.engineState.Candidate,
+			}
+		} else {
+			s.engineState = core.EngineState{State: "stopped"}
+		}
+		s.memorySummary = core.ServiceMemoryBudget{}
+		s.memorySummary = s.currentMemorySummary()
+		if after != nil {
+			after()
+		}
+	})
+}
+
+func (p *previewSession) stopAllPreviewServices(after func()) {
+	s := p.state
+	if s.running() != nil || (s.speed != nil && s.speed.current != nil && s.speed.current.active()) {
+		s.failure = core.Err("run_active")
+		return
+	}
+	if p.takeFailure() {
+		s.failure = core.Err("engine_stop_failed")
+		return
+	}
+	p.cancelEvents("service")
 	s.engineState.State = "stopping"
 	for i := range s.managedServices {
 		if engineLocked(s.managedServices[i].State) {

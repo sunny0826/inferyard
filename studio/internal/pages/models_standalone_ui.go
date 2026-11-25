@@ -121,12 +121,18 @@ func (s *viewState) standaloneDialogs(c *ui.Context) {
 	}
 
 	c.Key("standalone-benchmark-handoff-dialog")
-	handoffTitle := tr(c, "models.serve.handoff.title")
+	activeCount := len(s.activeStandaloneServices())
+	titleKey, msgKey, confirmKey := standaloneHandoffCopyKeys(activeCount)
+	handoffTitle := tr(c, titleKey)
+	handoffMsg := tr(c, msgKey)
+	if activeCount > 1 {
+		handoffMsg = trf(c, msgKey, "count", strconv.Itoa(activeCount))
+	}
 	handoffRes := components.AlertDialog(c, &s.standalone.benchmarkConfirm, components.AlertDialogOptions{
 		DialogOptions: components.DialogOptions{Label: handoffTitle},
 		Title:         handoffTitle,
-		Message:       tr(c, "models.serve.handoff.message"),
-		ConfirmLabel:  tr(c, "models.serve.handoff.confirm"),
+		Message:       handoffMsg,
+		ConfirmLabel:  tr(c, confirmKey),
 		CancelLabel:   tr(c, "models.serve.action.cancel"),
 	})
 	switch handoffRes {
@@ -139,6 +145,13 @@ func (s *viewState) standaloneDialogs(c *ui.Context) {
 		s.standalone.benchmarkConfirm = false
 		s.standalone.benchmarkAction = nil
 	}
+}
+
+func standaloneHandoffCopyKeys(activeCount int) (titleKey, msgKey, confirmKey string) {
+	if activeCount > 1 {
+		return "models.serve.handoff.multi_title", "models.serve.handoff.multi_message", "models.serve.handoff.multi_confirm"
+	}
+	return "models.serve.handoff.title", "models.serve.handoff.message", "models.serve.handoff.confirm"
 }
 
 func (s *viewState) modelStandaloneActions(c *ui.Context, m core.ModelAsset) {

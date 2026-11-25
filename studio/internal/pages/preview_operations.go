@@ -30,7 +30,7 @@ func (p *previewSession) dispatch(intent previewIntent) {
 	case previewTestServiceEndpoint:
 		p.testPreviewServiceEndpoint(op)
 	case previewStopEngineThen:
-		p.stopPreviewEngine(op.after)
+		p.stopAllPreviewServices(op.after)
 	case previewSpeedStart:
 		p.startSpeed(op)
 	case previewSpeedCancel:
