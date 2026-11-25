@@ -43,24 +43,26 @@ type UserSettings struct {
 	Theme               string   `json:"theme,omitempty"`
 	Language            string   `json:"language,omitempty"`
 	MinimizeToTray      bool     `json:"minimize_to_tray,omitempty"`
+	KeepServicesOnQuit  *bool    `json:"keep_services_on_quit,omitempty"`
 	WorkspaceRoot       *string  `json:"workspace_root"`
 	InferyardPath       *string  `json:"inferyard_path"`
 	ExtraModelsRoots    []string `json:"extra_models_roots,omitempty"`
 }
 
 type EffectiveSettings struct {
-	WorkspaceRoot    *string  `json:"workspace_root"`
-	InferyardPath    *string  `json:"inferyard_path"`
-	InferyardVersion *string  `json:"inferyard_version"`
-	InferyardStatus  string   `json:"inferyard_status"`
-	ResultsRoot      *string  `json:"results_root"`
-	ModelsRoot       *string  `json:"models_root"`
-	ExtraModelsRoots []string `json:"extra_models_roots,omitempty"`
-	DownloadProxy    *string  `json:"download_proxy,omitempty"`
-	Theme            string   `json:"theme"`
-	Language         string   `json:"language"`
-	MinimizeToTray   bool     `json:"minimize_to_tray"`
-	ReportsRoot      *string  `json:"reports_root"`
+	WorkspaceRoot      *string  `json:"workspace_root"`
+	InferyardPath      *string  `json:"inferyard_path"`
+	InferyardVersion   *string  `json:"inferyard_version"`
+	InferyardStatus    string   `json:"inferyard_status"`
+	ResultsRoot        *string  `json:"results_root"`
+	ModelsRoot         *string  `json:"models_root"`
+	ExtraModelsRoots   []string `json:"extra_models_roots,omitempty"`
+	DownloadProxy      *string  `json:"download_proxy,omitempty"`
+	Theme              string   `json:"theme"`
+	Language           string   `json:"language"`
+	MinimizeToTray     bool     `json:"minimize_to_tray"`
+	KeepServicesOnQuit bool     `json:"keep_services_on_quit"`
+	ReportsRoot        *string  `json:"reports_root"`
 }
 
 type SettingsResponse struct {

@@ -27,19 +27,26 @@ func startupAddress(args []string) (string, int) {
 	return host, port
 }
 
+func validateEngineArgsCredentials(args []string) *ApiError {
+	for _, arg := range args {
+		option, value, _ := strings.Cut(strings.ToLower(strings.TrimSpace(arg)), "=")
+		switch option {
+		case "--api-key", "--api-key-file", "--password", "--token", "-hft", "--hf-token":
+			return Err("engine_credentials_forbidden")
+		}
+		if strings.HasPrefix(option, "sk-") || strings.HasPrefix(value, "sk-") {
+			return Err("engine_credentials_forbidden")
+		}
+	}
+	return nil
+}
+
 func validateStartup(startup Startup) (string, int, *ApiError) {
 	if startup.Kind == "lmstudio" {
 		return "", 0, Err("local_engine_external_binding_required")
 	}
-	for _, arg := range startup.Args {
-		option, value, _ := strings.Cut(strings.ToLower(arg), "=")
-		switch option {
-		case "--api-key", "--api-key-file", "--password", "--token", "-hft", "--hf-token":
-			return "", 0, Err("engine_credentials_forbidden")
-		}
-		if strings.HasPrefix(option, "sk-") || strings.HasPrefix(value, "sk-") {
-			return "", 0, Err("engine_credentials_forbidden")
-		}
+	if apiErr := validateEngineArgsCredentials(startup.Args); apiErr != nil {
+		return "", 0, apiErr
 	}
 	host, port := startupAddress(startup.Args)
 	if startup.Local {

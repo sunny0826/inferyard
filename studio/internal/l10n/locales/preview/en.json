@@ -50,6 +50,7 @@
   "preview.scene.reset": "Reset Scene",
   "preview.scene.resources_cpu_sensors": "Resources · CPU & Multi-Sensor Temps",
   "preview.scene.resources_dense_missing": "Resources · Dense Sampling & Missing Data",
+  "preview.scene.service_exited": "Services · Unexpected Exit & Recent Presets",
   "preview.scene.task_completed": "Task · Completed",
   "preview.scene.task_failed": "Task · Failed",
   "preview.scene.task_preparation": "Task · Preparation",

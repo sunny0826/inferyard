@@ -2,10 +2,9 @@ package core
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"inferyard/studio/internal/l10n"
-	"io"
 	"net"
 	"net/http"
 	"os"
@@ -13,7 +12,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 )
@@ -43,13 +41,23 @@ func normalizeEngineOrigin(origin string) string {
 type EngineState struct {
 	StartTicks    int64     `json:"start_ticks"`
 	Local         bool      `json:"local"`
+	Adopted       bool      `json:"adopted,omitempty"`
 	Origin        string    `json:"origin,omitempty"`
 	Family        string    `json:"family,omitempty"`
 	Adapter       string    `json:"adapter,omitempty"`
 	Executable    string    `json:"executable,omitempty"`
+	EngineName    string    `json:"engine_name,omitempty"`
 	Model         string    `json:"model,omitempty"`
+	ModelName     string    `json:"model_name,omitempty"`
 	ModelKind     string    `json:"model_kind,omitempty"`
+	ServedModel   string    `json:"served_model,omitempty"`
+	Port          int       `json:"port,omitempty"`
+	RequestedPort int       `json:"requested_port,omitempty"`
 	ContextSize   int64     `json:"context_size,omitempty"`
+	GPULayers     *int      `json:"gpu_layers,omitempty"`
+	Threads       *int      `json:"threads,omitempty"`
+	ExtraArgs     []string  `json:"extra_args,omitempty"`
+	StartedAt     string    `json:"started_at,omitempty"`
 	WebUIDisabled bool      `json:"webui_disabled,omitempty"`
 	State         string    `json:"state"`
 	Pid           int64     `json:"pid"`
@@ -64,10 +72,12 @@ type engineEntry struct {
 	owner      engineOwner
 	family     string
 	wasHealthy bool
+	adopted    bool
 	cmd        *exec.Cmd
 	logFile    *os.File
 	state      EngineState
 	stop       chan struct{}
+	detach     chan struct{}
 	done       chan struct{}
 }
 
@@ -161,6 +171,12 @@ func (s *Service) startFromStartupLocked(startup Startup, origin, ref string) (E
 	if s.orphan != nil {
 		return clone(s.orphan.state), Err("engine_orphaned")
 	}
+	if s.engine != nil && (s.engine.state.State == "starting" || s.engine.state.State == "running" || s.engine.state.State == "stopping") {
+		if s.engine.state.Candidate != ref || normalizeEngineOrigin(s.engine.state.Origin) != origin {
+			return clone(s.engine.state), Err("engine_candidate_mismatch")
+		}
+		return clone(s.engine.state), nil
+	}
 	endpoint := "http://" + net.JoinHostPort(host, strconv.Itoa(port))
 	listen, err := net.Listen("tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
@@ -195,6 +211,7 @@ func (s *Service) startFromStartupLocked(startup Startup, origin, ref string) (E
 		cmd:     cmd,
 		logFile: logFile,
 		stop:    make(chan struct{}),
+		detach:  make(chan struct{}),
 		done:    make(chan struct{}),
 		state: EngineState{
 			State:         "starting",
@@ -203,9 +220,18 @@ func (s *Service) startFromStartupLocked(startup Startup, origin, ref string) (E
 			Family:        startup.Family,
 			Adapter:       startup.Adapter,
 			Executable:    executable,
+			EngineName:    startup.EngineName,
 			Model:         startup.ModelPath,
+			ModelName:     startup.ModelName,
 			ModelKind:     startup.ModelKind,
+			ServedModel:   startup.ServedModel,
+			Port:          port,
+			RequestedPort: startup.RequestedPort,
 			ContextSize:   startup.ContextSize,
+			GPULayers:     cloneIntPtr(startup.GPULayers),
+			Threads:       cloneIntPtr(startup.Threads),
+			ExtraArgs:     append([]string(nil), startup.ExtraArgs...),
+			StartedAt:     now(),
 			WebUIDisabled: startup.WebUIDisabled,
 			Pid:           int64(cmd.Process.Pid),
 			Endpoint:      endpoint,
@@ -257,6 +283,17 @@ func (s *Service) stopEngineLocked(e *engineEntry) {
 	s.publishEngineLocked(e)
 }
 
+func (s *Service) detachEngineLocked(e *engineEntry) {
+	if e.detach == nil {
+		return
+	}
+	select {
+	case <-e.detach:
+	default:
+		close(e.detach)
+	}
+}
+
 func (s *Service) publishEngineLocked(e *engineEntry) {
 	s.Bus.Publish("engine.state", map[string]any{"engine": clone(e.state)})
 }
@@ -288,17 +325,31 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 	}
 	for {
 		select {
+		case <-e.detach:
+			return
 		case <-e.stop:
 			s.terminateEngine(e, waitCh)
 			finish("stopped", nil)
 			return
-		case <-waitCh:
+		case waitErr := <-waitCh:
 			s.mu.Lock()
 			stopping := e.state.State == "stopping"
 			s.mu.Unlock()
 			if stopping {
 				finish("stopped", nil)
 			} else {
+				var exitCode *int
+				if e.cmd != nil && e.cmd.ProcessState != nil {
+					code := e.cmd.ProcessState.ExitCode()
+					exitCode = &code
+				} else {
+					var ee *exec.ExitError
+					if errors.As(waitErr, &ee) {
+						code := ee.ExitCode()
+						exitCode = &code
+					}
+				}
+				s.recordUnexpectedStandaloneExit(e, exitCode)
 				finish("failed", &ApiError{Code: "engine_exited", Message: l10n.TR("core.engine.err.exited")})
 			}
 			return
@@ -365,55 +416,6 @@ func (s *Service) terminateEngine(e *engineEntry, waitCh <-chan error) {
 	}
 }
 
-func checkEngineHealth(client *http.Client, endpoint string, local bool, family string) bool {
-	if family == "polystrata" {
-		resp, err := client.Get(endpoint + "/health")
-		if err != nil {
-			return false
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return false
-		}
-		raw, err := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
-		if err != nil {
-			return false
-		}
-		var payload struct {
-			Service string `json:"service"`
-			Loaded  *bool  `json:"loaded"`
-		}
-		return json.Unmarshal(raw, &payload) == nil && payload.Service == "strata" && payload.Loaded != nil && *payload.Loaded
-	}
-	resp, err := client.Get(endpoint + engineHealthPath(local))
-	if err != nil {
-		return false
-	}
-	_ = resp.Body.Close()
-	return resp.StatusCode >= 200 && resp.StatusCode < 300
-}
-
-func unloadPolystrata(endpoint string) bool {
-	client := &http.Client{
-		Timeout: 2 * time.Second,
-		CheckRedirect: func(*http.Request, []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-	req, err := http.NewRequest(http.MethodPost, endpoint+"/unload", strings.NewReader("{}"))
-	if err != nil {
-		return false
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
-	if err != nil {
-		return false
-	}
-	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-	_ = resp.Body.Close()
-	return resp.StatusCode >= 200 && resp.StatusCode < 300
-}
-
 func signalEngine(e *engineEntry, sig os.Signal) {
 	if runtime.GOOS == "windows" || sig == os.Kill {
 		_ = e.cmd.Process.Kill()
@@ -427,13 +429,6 @@ func (s *Service) engineStartTimeout() time.Duration {
 		return s.engineTimeout
 	}
 	return 10 * time.Minute
-}
-
-func engineHealthPath(local bool) string {
-	if local {
-		return "/v1/models"
-	}
-	return "/health"
 }
 
 func (s *Service) stopEngineForHandoff(ctx context.Context) *ApiError {

@@ -39,6 +39,7 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 	initialTheme := service.Theme()
 	initialLanguage := service.Language()
 	initialMinimizeToTray := service.MinimizeToTray()
+	initialKeepServices := service.EffectiveKeepServicesOnQuit()
 	syncNativeTheme(initialTheme)
 	syncNativeLocale(initialLanguage)
 	s := &viewState{
@@ -54,9 +55,10 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 		appliedLanguageMode:   initialLanguage,
 		minimizeToTray:        initialMinimizeToTray,
 		appliedMinimizeToTray: false,
+		keepServicesOnQuit:    initialKeepServices,
 		settings: core.SettingsResponse{
 			Settings:  core.UserSettings{Theme: initialTheme, Language: initialLanguage, MinimizeToTray: initialMinimizeToTray},
-			Effective: core.EffectiveSettings{Theme: initialTheme, Language: initialLanguage, MinimizeToTray: initialMinimizeToTray},
+			Effective: core.EffectiveSettings{Theme: initialTheme, Language: initialLanguage, MinimizeToTray: initialMinimizeToTray, KeepServicesOnQuit: initialKeepServices},
 		},
 	}
 	options := pageShellOptions(title, "inferyard-studio-main", s.leftNav, s.contentView)
@@ -90,7 +92,9 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 			w.Invalidate()
 		}
 	})
+	offClose := w.OnClose(s.handleWindowClose)
 	w.OnClosed(func() {
+		offClose()
 		offHide()
 		offShow()
 		s.closeOpenedReport()
@@ -163,6 +167,11 @@ type viewState struct {
 	checks                                                                              core.EngineCheckOverview
 	serveSupported                                                                      bool
 	standalone                                                                          standaloneServeState
+	recentServices                                                                      []core.ServicePreset
+	exitedNotice                                                                        *core.ServiceExitNotice
+	serviceUsage                                                                        serviceUsageDrawerState
+	serviceParams                                                                       serviceParamsDrawerState
+	quitDialog                                                                          quitServiceDialogState
 	installationPath, localPID, localEndpoint, localBindingTask                         string
 	wizardOpenRequested                                                                 bool
 	wizardPresetFamily                                                                  string
@@ -269,6 +278,14 @@ type viewState struct {
 	minimizeToTrayWorkerDone                                                            chan struct{}
 	applyMinimizeToTray                                                                 func(bool) error
 	persistMinimizeToTray                                                               func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
+	keepServicesOnQuit                                                                  bool
+	keepServicesSaving                                                                  bool
+	keepServicesMu                                                                      sync.Mutex
+	keepServicesWanted                                                                  bool
+	keepServicesWantedSeq                                                               uint64
+	keepServicesWorkerRunning                                                           bool
+	keepServicesWorkerDone                                                              chan struct{}
+	persistKeepServices                                                                 func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
 	historyTable                                                                        pageTableState
 	downloadsUI                                                                         *downloadsUIState
 	engineCatalog                                                                       *core.EngineCatalogRegistry
@@ -351,6 +368,8 @@ func (s *viewState) refresh(full bool) {
 		registry = s.service.Registry()
 	}
 	serveSupported := s.service.ServeSupported(s.ctx)
+	recentServices := s.service.RecentServices()
+	exitedNotice := s.service.ExitedServiceNotice()
 	if s.ctx.Err() != nil {
 		return
 	}
@@ -367,6 +386,7 @@ func (s *viewState) refresh(full bool) {
 			history: history, reports: reports, historyError: he, reportsError: re,
 			ready: ready, progress: progress, progressError: pe, dashboard: dashboard, registry: registry,
 			updateState: updateState, cliUpgrade: cliUpgrade, serveSupported: serveSupported,
+			recentServices: recentServices, exitedNotice: exitedNotice,
 		}
 		if !s.applyRefreshBatch(batch) {
 			return
@@ -404,6 +424,8 @@ type refreshBatch struct {
 	updateState                core.UpdateState
 	cliUpgrade                 core.CLIUpgradeState
 	serveSupported             bool
+	recentServices             []core.ServicePreset
+	exitedNotice               *core.ServiceExitNotice
 }
 
 func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
@@ -450,6 +472,8 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	s.engineState = s.service.Engine()
 	s.checks = s.service.EngineChecks()
 	s.serveSupported = b.serveSupported
+	s.recentServices = b.recentServices
+	s.exitedNotice = b.exitedNotice
 	s.applyUpdateState(b.updateState)
 	s.applyCLIUpgradeState(b.cliUpgrade)
 	if !skipEngineAdopt {
@@ -589,6 +613,7 @@ func (s *viewState) contentView(c *ui.Context) {
 	s.resumeDialog(c)
 	s.settingsDiscardDialog(c)
 	s.standaloneDialogs(c)
+	s.serviceDrawersAndDialogs(c)
 	s.updateDialog(c)
 	s.updateReadyPrompt(c)
 	s.studioNotifications(c)

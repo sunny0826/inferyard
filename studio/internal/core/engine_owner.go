@@ -14,7 +14,21 @@ type engineOwner struct {
 	Local        bool                    `json:"local,omitempty"`
 	Origin       string                  `json:"origin,omitempty"`
 	Family       string                  `json:"family,omitempty"`
+	Adapter      string                  `json:"adapter,omitempty"`
+	Executable   string                  `json:"executable,omitempty"`
+	Engine       string                  `json:"engine,omitempty"`
 	Model        string                  `json:"model,omitempty"`
+	ModelName    string                  `json:"model_name,omitempty"`
+	ModelKind    string                  `json:"model_kind,omitempty"`
+	ServedModel   string                  `json:"served_model,omitempty"`
+	Port          int                     `json:"port,omitempty"`
+	RequestedPort int                     `json:"requested_port,omitempty"`
+	ContextSize  int64                   `json:"context_size,omitempty"`
+	GPULayers    *int                    `json:"gpu_layers,omitempty"`
+	Threads      *int                    `json:"threads,omitempty"`
+	ExtraArgs    []string                `json:"extra_args,omitempty"`
+	WebURL       string                  `json:"web_url,omitempty"`
+	StartedAt    string                  `json:"started_at,omitempty"`
 	ProcessGroup int64                   `json:"process_group,omitempty"`
 	Workers      []engineProcessIdentity `json:"workers,omitempty"`
 	PID          int64                   `json:"pid"`
@@ -33,15 +47,33 @@ type orphanEngine struct {
 func ownerPath(workspace string) string { return filepath.Join(workspace, "logs", "engine-owner.json") }
 
 func (s *Service) persistEngineOwner(e *engineEntry, workspace string) *ApiError {
+	webURL := ""
+	if !e.state.WebUIDisabled && e.state.Endpoint != "" {
+		webURL = e.state.Endpoint
+	}
 	owner := engineOwner{
-		PID:       e.state.Pid,
-		Local:     e.state.Local,
-		Origin:    normalizeEngineOrigin(e.state.Origin),
-		Family:    e.state.Family,
-		Model:     e.state.Model,
-		Endpoint:  e.state.Endpoint,
-		LogFile:   filepath.Base(e.state.LogPath),
-		Candidate: filepath.Base(e.state.Candidate),
+		PID:         e.state.Pid,
+		Local:       e.state.Local,
+		Origin:      normalizeEngineOrigin(e.state.Origin),
+		Family:      e.state.Family,
+		Adapter:     e.state.Adapter,
+		Executable:  e.state.Executable,
+		Engine:      e.state.EngineName,
+		Model:       e.state.Model,
+		ModelName:   e.state.ModelName,
+		ModelKind:   e.state.ModelKind,
+		ServedModel:   e.state.ServedModel,
+		Port:          e.state.Port,
+		RequestedPort: e.state.RequestedPort,
+		ContextSize: e.state.ContextSize,
+		GPULayers:   cloneIntPtr(e.state.GPULayers),
+		Threads:     cloneIntPtr(e.state.Threads),
+		ExtraArgs:   append([]string(nil), e.state.ExtraArgs...),
+		WebURL:      webURL,
+		StartedAt:   e.state.StartedAt,
+		Endpoint:    e.state.Endpoint,
+		LogFile:     filepath.Base(e.state.LogPath),
+		Candidate:   filepath.Base(e.state.Candidate),
 	}
 	if owner.Local {
 		owner.ProcessGroup = owner.PID
@@ -182,10 +214,22 @@ func (s *Service) detectEngineOwnerLocked() {
 	} else {
 		same, err := s.ownedTreeAlive(&owner, path)
 		if err == nil && !same {
-			if err := removeEngineOwner(path, owner); err == nil {
+			if normalizeEngineOrigin(owner.Origin) == EngineOriginStandalone {
+				if writeErr := s.recordExitedWhileAwayLocked(workspace, owner); writeErr != nil {
+					failure = &ApiError{Code: "service_exit_notice_write_failed", Message: l10n.TR("core.engine.err.exit_notice_write_failed")}
+				}
+			}
+			if failure == nil {
+				if err := removeEngineOwner(path, owner); err == nil {
+					return
+				}
+				failure = &ApiError{Code: "engine_owner_remove_failed", Message: l10n.TR("core.engine.err.owner_remove_failed")}
+			}
+		} else if err == nil && same {
+			if normalizeEngineOrigin(owner.Origin) == EngineOriginStandalone {
+				s.adoptStandaloneLocked(workspace, path, owner)
 				return
 			}
-			failure = &ApiError{Code: "engine_owner_remove_failed", Message: l10n.TR("core.engine.err.owner_remove_failed")}
 		} else if err != nil {
 			failure = &ApiError{Code: "service_identity_unreadable", Message: l10n.TR("core.engine.err.orphan_identity_unreadable")}
 		}

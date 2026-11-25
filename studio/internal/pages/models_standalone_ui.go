@@ -86,18 +86,25 @@ func (s *viewState) standaloneDialogs(c *ui.Context) {
 	case components.DialogConfirmed:
 		targetName := s.standalone.switchModel
 		prefill := s.standalone.switchPrefill
+		action := s.standalone.switchAction
 		s.standalone.switchConfirm = false
 		s.standalone.switchModel = ""
 		s.standalone.switchPrefill = false
-		s.stopActiveServiceThen(func() {
-			if target, ok := s.findModelAsset(targetName); ok {
-				s.openStandaloneDrawer(target, prefill)
-			}
-		})
+		s.standalone.switchAction = nil
+		if action != nil {
+			s.stopActiveServiceThen(action)
+		} else {
+			s.stopActiveServiceThen(func() {
+				if target, ok := s.findModelAsset(targetName); ok {
+					s.openStandaloneDrawer(target, prefill)
+				}
+			})
+		}
 	case components.DialogCancelled:
 		s.standalone.switchConfirm = false
 		s.standalone.switchModel = ""
 		s.standalone.switchPrefill = false
+		s.standalone.switchAction = nil
 	}
 
 	c.Key("standalone-benchmark-handoff-dialog")

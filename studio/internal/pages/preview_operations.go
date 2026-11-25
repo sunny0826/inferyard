@@ -4,6 +4,7 @@ package pages
 
 import (
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"slices"
 	"time"
@@ -21,6 +22,12 @@ func (p *previewSession) dispatch(intent previewIntent) {
 		p.startService(false, op.candidate)
 	case previewStandaloneStart:
 		p.startPreviewStandalone(op)
+	case previewSaveServicePreset:
+		p.savePreviewServicePreset(op.preset)
+	case previewDismissExitNotice:
+		p.dismissPreviewExitNotice()
+	case previewTestServiceEndpoint:
+		p.testPreviewServiceEndpoint(op)
 	case previewStopEngineThen:
 		p.stopPreviewEngine(op.after)
 	case previewSpeedStart:
@@ -271,6 +278,10 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 			_ = s.syncMinimizeToTrayIfNeeded()
 			s.failurePage = s.selected
 		}
+		if _, hasKeep := patch["keep_services_on_quit"]; hasKeep {
+			s.keepServicesOnQuit = s.settings.Effective.KeepServicesOnQuit
+			s.failurePage = s.selected
+		}
 		s.failure = &core.ApiError{Code: "preview_save_failed", Message: l10n.TR("preview.error.save_failed")}
 		return
 	}
@@ -291,9 +302,10 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		InferyardPath:    value.InferyardPath,
 		ExtraModelsRoots: slices.Clone(value.ExtraModelsRoots),
 		DownloadProxy:    value.DownloadProxy,
-		Theme:            value.Theme,
-		Language:         value.Language,
-		MinimizeToTray:   value.MinimizeToTray,
+		Theme:              value.Theme,
+		Language:           value.Language,
+		MinimizeToTray:     value.MinimizeToTray,
+		KeepServicesOnQuit: core.EffectiveKeepServicesOnQuitValue(value),
 	}
 	s.syncSavedGroups(patch, s.settingsDraft(), s.settings)
 	if _, hasTheme := patch["theme"]; hasTheme {
@@ -311,6 +323,9 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 	if _, hasTray := patch["minimize_to_tray"]; hasTray {
 		s.minimizeToTray = value.MinimizeToTray
 		_ = s.syncMinimizeToTrayIfNeeded()
+	}
+	if _, hasKeep := patch["keep_services_on_quit"]; hasKeep {
+		s.keepServicesOnQuit = s.settings.Effective.KeepServicesOnQuit
 	}
 	s.ready.Workspace.Path, s.ready.Results.Path, s.ready.Models.Path = value.WorkspaceRoot, resultsRoot, modelsRoot
 	if workspaceChanged {
@@ -517,6 +532,12 @@ func (p *previewSession) startPreviewStandalone(op previewStandaloneStart) {
 			}
 			return
 		}
+		port := op.port
+		if port <= 0 {
+			port = 48857
+		}
+		endpoint := fmt.Sprintf("http://127.0.0.1:%d", port)
+		s.exitedNotice = nil
 		s.engineState = core.EngineState{
 			State:       "starting",
 			Local:       localEngine,
@@ -524,14 +545,30 @@ func (p *previewSession) startPreviewStandalone(op previewStandaloneStart) {
 			Family:      family,
 			Adapter:     adapter,
 			Executable:  executable,
+			EngineName:  op.engine,
+			ModelName:   op.model,
 			Model:       modelPath,
 			ModelKind:   modelKind,
+			Port:        port,
 			ContextSize: op.contextSize,
+			GPULayers:   cloneIntPtrUI(op.gpuLayers),
+			Threads:     cloneIntPtrUI(op.threads),
+			ExtraArgs:   append([]string(nil), op.extraArgs...),
+			StartedAt:   time.Now().UTC().Format(time.RFC3339),
 			Pid:         42001,
-			Endpoint:    "http://127.0.0.1:48857",
+			Endpoint:    endpoint,
 			LogPath:     "/preview/logs/standalone.log",
 			Candidate:   "preview-standalone",
 		}
+		p.savePreviewServicePreset(core.ServicePreset{
+			Model:       op.model,
+			Engine:      op.engine,
+			Port:        op.port,
+			ContextSize: op.contextSize,
+			GPULayers:   cloneIntPtrUI(op.gpuLayers),
+			Threads:     cloneIntPtrUI(op.threads),
+			ExtraArgs:   append([]string(nil), op.extraArgs...),
+		})
 		p.after("service", 500*time.Millisecond, func() {
 			s.engineState.State = "running"
 		})

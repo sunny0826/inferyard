@@ -76,6 +76,7 @@ var previewScenes = []struct {
 	{"preview.scene.update_downloading", previewUpdateDownloading},
 	{"preview.scene.update_ready", previewUpdateReadyToApply},
 	{"preview.scene.update_error", previewUpdateError},
+	{"preview.scene.service_exited", previewServiceExitedScene},
 }
 
 func previewDenseResources(s *viewState) {
@@ -128,8 +129,10 @@ func previewBase(ctx context.Context) *viewState {
 		},
 		settings: core.SettingsResponse{Settings: settings, Effective: core.EffectiveSettings{
 			WorkspaceRoot: settings.WorkspaceRoot, ResultsRoot: resultsRoot, ModelsRoot: modelsRoot, ReportsRoot: reportsRoot,
-			Theme: core.ThemeSystem,
+			Theme: core.ThemeSystem, KeepServicesOnQuit: true,
 		}},
+		keepServicesOnQuit: true,
+		recentServices:     seedPreviewRecentServices(model, engine),
 		registry: core.Registry{
 			Models: []core.ModelAsset{
 				{

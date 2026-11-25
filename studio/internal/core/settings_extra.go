@@ -97,6 +97,19 @@ func (s *Service) MinimizeToTray() bool {
 	return s.userSettings().MinimizeToTray
 }
 
+// EffectiveKeepServicesOnQuitValue resolves the effective keep-services-on-quit setting (defaults to true).
+func EffectiveKeepServicesOnQuitValue(u UserSettings) bool {
+	if u.KeepServicesOnQuit == nil {
+		return true
+	}
+	return *u.KeepServicesOnQuit
+}
+
+// EffectiveKeepServicesOnQuit returns whether standalone services stay alive when Studio quits.
+func (s *Service) EffectiveKeepServicesOnQuit() bool {
+	return EffectiveKeepServicesOnQuitValue(s.userSettings())
+}
+
 func (s *Service) applySettingsPatchExtra(u *UserSettings, key string, raw json.RawMessage) (bool, *ApiError) {
 	switch key {
 	case "download_proxy":
@@ -154,6 +167,13 @@ func (s *Service) applySettingsPatchExtra(u *UserSettings, key string, raw json.
 			return true, Err("invalid_request")
 		}
 		u.MinimizeToTray = enabled != nil && *enabled
+		return true, nil
+	case "keep_services_on_quit":
+		var enabled *bool
+		if json.Unmarshal(raw, &enabled) != nil {
+			return true, Err("invalid_request")
+		}
+		u.KeepServicesOnQuit = enabled
 		return true, nil
 	case "extra_models_roots":
 		var roots []string

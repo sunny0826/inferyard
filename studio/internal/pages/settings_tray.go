@@ -26,6 +26,12 @@ func (s *viewState) syncMinimizeToTrayIfNeeded() error {
 }
 
 func (s *viewState) loadTraySettings(v core.SettingsResponse) {
+	if !s.keepServicesSaving {
+		s.keepServicesOnQuit = core.EffectiveKeepServicesOnQuitValue(v.Settings)
+		if v.Settings.KeepServicesOnQuit == nil {
+			s.keepServicesOnQuit = v.Effective.KeepServicesOnQuit
+		}
+	}
 	if s.minimizeToTraySaving {
 		return
 	}
@@ -49,6 +55,18 @@ func (s *viewState) traySettingsView(c *ui.Context) {
 			components.Switch(c, &enabled, tr(c, "settings.tray.switch_label"), components.SwitchOptions{HideLabel: true})
 			if enabled != s.minimizeToTray {
 				s.changeMinimizeToTray(enabled)
+			}
+		})
+		ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+				ui.Text(c, tr(c, "settings.keep_services.label")).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary)
+				ui.Text(c, tr(c, "settings.keep_services.desc")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			})
+			keep := s.keepServicesOnQuit
+			components.Switch(c, &keep, tr(c, "settings.keep_services.switch_label"), components.SwitchOptions{HideLabel: true})
+			if keep != s.keepServicesOnQuit {
+				s.changeKeepServicesOnQuit(keep)
 			}
 		})
 	})
@@ -167,6 +185,113 @@ func (s *viewState) finishMinimizeToTrayPersist(seq uint64, lastSaved *core.Sett
 	}
 	s.minimizeToTray = value.Settings.MinimizeToTray
 	_ = s.syncMinimizeToTrayIfNeeded()
+	if s.failurePage == "settings" {
+		s.failure = nil
+		s.failurePage = ""
+	}
+}
+
+func (s *viewState) currentKeepServicesSeq() uint64 {
+	s.keepServicesMu.Lock()
+	defer s.keepServicesMu.Unlock()
+	return s.keepServicesWantedSeq
+}
+
+func (s *viewState) changeKeepServicesOnQuit(enabled bool) {
+	if enabled == s.keepServicesOnQuit {
+		return
+	}
+	s.keepServicesOnQuit = enabled
+	raw, _ := json.Marshal(enabled)
+	patch := map[string]json.RawMessage{"keep_services_on_quit": raw}
+	if s.simulate(previewSettings{patch: patch}) {
+		return
+	}
+	update := s.persistKeepServices
+	if update == nil && s.service != nil {
+		update = s.service.UpdateSettings
+	}
+	if update == nil {
+		return
+	}
+	s.keepServicesSaving = true
+	s.bumpSettingsEpoch()
+
+	s.keepServicesMu.Lock()
+	s.keepServicesWantedSeq++
+	s.keepServicesWanted = enabled
+	startWorker := !s.keepServicesWorkerRunning
+	if startWorker {
+		s.keepServicesWorkerRunning = true
+		s.keepServicesWorkerDone = make(chan struct{})
+	}
+	s.keepServicesMu.Unlock()
+
+	if startWorker {
+		go s.runKeepServicesPersistWorker(update)
+	}
+}
+
+func (s *viewState) waitKeepServicesPersist() {
+	s.keepServicesMu.Lock()
+	done := s.keepServicesWorkerDone
+	s.keepServicesMu.Unlock()
+	if done != nil {
+		<-done
+	}
+}
+
+func (s *viewState) runKeepServicesPersistWorker(update func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)) {
+	var lastSaved *core.SettingsResponse
+	for {
+		s.keepServicesMu.Lock()
+		enabled := s.keepServicesWanted
+		seq := s.keepServicesWantedSeq
+		s.keepServicesMu.Unlock()
+
+		raw, _ := json.Marshal(enabled)
+		value, apiErr := update(map[string]json.RawMessage{"keep_services_on_quit": raw})
+		if apiErr == nil {
+			v := value
+			lastSaved = &v
+		}
+
+		s.keepServicesMu.Lock()
+		latest := seq == s.keepServicesWantedSeq
+		if latest {
+			s.keepServicesWorkerRunning = false
+			done := s.keepServicesWorkerDone
+			s.keepServicesWorkerDone = nil
+			s.keepServicesMu.Unlock()
+			if s.ctx == nil || s.ctx.Err() == nil {
+				s.runOnUI(func() { s.finishKeepServicesPersist(seq, lastSaved, value, apiErr) })
+			}
+			if done != nil {
+				close(done)
+			}
+			return
+		}
+		s.keepServicesMu.Unlock()
+	}
+}
+
+func (s *viewState) finishKeepServicesPersist(seq uint64, lastSaved *core.SettingsResponse, value core.SettingsResponse, apiErr *core.ApiError) {
+	if lastSaved != nil {
+		s.settings.Settings.KeepServicesOnQuit = lastSaved.Settings.KeepServicesOnQuit
+		s.settings.Effective.KeepServicesOnQuit = lastSaved.Effective.KeepServicesOnQuit
+		s.bumpSettingsEpoch()
+	}
+	if seq != s.currentKeepServicesSeq() {
+		return
+	}
+	s.keepServicesSaving = false
+	if apiErr != nil {
+		s.keepServicesOnQuit = s.settings.Effective.KeepServicesOnQuit
+		s.failure = apiErr
+		s.failurePage = s.selected
+		return
+	}
+	s.keepServicesOnQuit = value.Effective.KeepServicesOnQuit
 	if s.failurePage == "settings" {
 		s.failure = nil
 		s.failurePage = ""

@@ -15,6 +15,7 @@
   "core.context_speed.err.resource_budget_blocked": "设备资源预算未通过检查，测评未启动。",
   "core.download.kind.engine": "引擎",
   "core.download.kind.model": "模型",
+  "core.engine.err.exit_notice_write_failed": "后台服务在 Studio 关闭期间已退出，但退出记录写入失败；所有权记录已保留。",
   "core.engine.err.exited": "引擎进程已退出，请检查日志后手动重启并重新绑定。",
   "core.engine.err.exited_owner_remove_failed": "引擎已退出，但遗留服务记录未能清除；可仅删除记录（不终止进程）。",
   "core.engine.err.handle_orphan_first": "请先处理遗留服务或无效记录，再启动引擎。",
@@ -84,5 +85,6 @@
   "core.report.err.unsupported_format": "旧格式报告不受支持，请用当前 CLI 重新生成报告。",
   "core.score.gap.incomplete": "运行不完整",
   "core.score.gap.missing": "缺评分",
-  "core.score.gap.unscorable": "不可评分"
+  "core.score.gap.unscorable": "不可评分",
+  "core.service.exit_hint.oom": "日志中检测到可能的内存不足错误，建议调低上下文长度、减少 GPU 层数或改用更小的量化版本。"
 }

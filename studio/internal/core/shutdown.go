@@ -2,6 +2,19 @@ package core
 
 import "context"
 
+// SetKeepServicesOnShutdown overrides whether standalone services stay running during Shutdown.
+func (s *Service) SetKeepServicesOnShutdown(keep bool) {
+	s.mu.Lock()
+	s.keepServicesOnShutdown = ptr(keep)
+	s.mu.Unlock()
+}
+
+// ShutdownWithOptions shuts down the service while explicitly choosing whether to stop standalone services.
+func (s *Service) ShutdownWithOptions(ctx context.Context, stopServices bool) error {
+	s.SetKeepServicesOnShutdown(!stopServices)
+	return s.Shutdown(ctx)
+}
+
 func (s *Service) Shutdown(ctx context.Context) error {
 	s.beginShutdown()
 	select {
@@ -35,12 +48,22 @@ func (s *Service) beginShutdown() {
 			<-s.queueDone
 			s.mu.Lock()
 			e := s.engine
+			keepStandalone := EffectiveKeepServicesOnQuitValue(s.settings)
+			if s.keepServicesOnShutdown != nil {
+				keepStandalone = *s.keepServicesOnShutdown
+			}
 			var orphanDone <-chan struct{}
 			if s.orphan != nil && s.orphan.state.State == "stopping" {
 				orphanDone = s.orphan.done
 			}
 			if e != nil {
-				s.stopEngineLocked(e)
+				if normalizeEngineOrigin(e.state.Origin) == EngineOriginStandalone &&
+					keepStandalone &&
+					(e.state.State == "starting" || e.state.State == "running") {
+					s.detachEngineLocked(e)
+				} else {
+					s.stopEngineLocked(e)
+				}
 			}
 			s.mu.Unlock()
 			if e != nil {

@@ -75,7 +75,7 @@ func TestStartFromStartupStandaloneOriginOwnerAndShutdown(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := s.Shutdown(ctx); err != nil {
+	if err := s.ShutdownWithOptions(ctx, true); err != nil {
 		t.Fatalf("shutdown failed: %v", err)
 	}
 	assertOwnerGone(t, ownerPath(workspace))
@@ -161,7 +161,11 @@ func TestOrphanRecoveryPreservesOriginAndCompatFallback(t *testing.T) {
 			t.Cleanup(func() { _ = s.Shutdown(context.Background()) })
 
 			got := s.Engine()
-			if got.State != "orphaned" {
+			if tc.name == "standalone_origin_preserved" {
+				if got.State != "starting" || !got.Adopted {
+					t.Fatalf("expected adopted starting standalone (probe not ready), got %+v", got)
+				}
+			} else if got.State != "orphaned" {
 				t.Fatalf("expected orphaned, got %+v", got)
 			}
 			if got.Origin != tc.wantOrigin {

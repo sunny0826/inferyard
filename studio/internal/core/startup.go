@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -24,6 +25,13 @@ type Startup struct {
 	ModelKind        string            `json:"model_kind,omitempty"`
 	ContextSize      int64             `json:"context_size,omitempty"`
 	WebUIDisabled    bool              `json:"webui_disabled,omitempty"`
+	EngineName       string            `json:"engine_name,omitempty"`
+	ModelName        string            `json:"model_name,omitempty"`
+	ServedModel      string            `json:"served_model,omitempty"`
+	RequestedPort    int               `json:"requested_port,omitempty"`
+	GPULayers        *int              `json:"gpu_layers,omitempty"`
+	Threads          *int              `json:"threads,omitempty"`
+	ExtraArgs        []string          `json:"extra_args,omitempty"`
 }
 type ProcessCandidate struct {
 	PID  int64  `json:"pid"`
@@ -50,11 +58,15 @@ func (s *Service) Startup(candidate string) (Startup, *ApiError) {
 		Endpoint:         description.Endpoint.URL,
 		ModelPath:        modelPath,
 		ModelKind:        description.Assets.Model.Kind,
+		ServedModel:      strings.TrimSpace(launch.ServedModel),
 		ContextSize:      description.Conditions.ContextSize,
 		Args:             []string{},
 	}
 	if launch.Kind == "direct_process" {
 		result.Path, result.Args = launch.Argv[0], launch.Argv[1:]
+	}
+	if result.ServedModel == "" {
+		result.ServedModel = extractServedModelFromArgs(result.Args)
 	}
 	for _, arg := range result.Args {
 		if arg == "--no-webui" || strings.HasPrefix(arg, "--no-webui=") {
@@ -63,6 +75,57 @@ func (s *Service) Startup(candidate string) (Startup, *ApiError) {
 		}
 	}
 	return result, nil
+}
+
+func extractServedModelFromArgs(args []string) string {
+	served := ""
+	configPath := ""
+	for i := 0; i < len(args); i++ {
+		key, value, inline := strings.Cut(args[i], "=")
+		switch key {
+		case "--alias", "-a", "--served-model-name":
+			if !inline && i+1 < len(args) {
+				value = args[i+1]
+				i++
+			}
+			if trimmed := strings.TrimSpace(value); trimmed != "" {
+				served = trimmed
+			}
+		case "--config":
+			if !inline && i+1 < len(args) {
+				value = args[i+1]
+				i++
+			}
+			if trimmed := strings.TrimSpace(value); trimmed != "" {
+				configPath = trimmed
+			}
+		}
+	}
+	if served != "" {
+		return served
+	}
+	if configPath != "" {
+		return extractServedModelFromConfig(configPath)
+	}
+	return ""
+}
+
+func extractServedModelFromConfig(path string) string {
+	info, err := os.Stat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Size() > 1<<20 {
+		return ""
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	var cfg struct {
+		ModelName string `json:"model_name"`
+	}
+	if json.Unmarshal(raw, &cfg) != nil {
+		return ""
+	}
+	return strings.TrimSpace(cfg.ModelName)
 }
 func (s *Service) Processes(ctx context.Context) ([]ProcessCandidate, *ApiError) {
 	result := []ProcessCandidate{}

@@ -2,10 +2,7 @@ package core
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
 	"log"
@@ -47,10 +44,14 @@ type Service struct {
 	shutdownDone      chan struct{}
 	queueDone         chan struct{}
 	speedPreparing    sync.WaitGroup
-	mu                sync.Mutex
-	settingsMu        sync.Mutex
-	reportMu          sync.Mutex
-	settings          UserSettings
+	mu                     sync.Mutex
+	settingsMu             sync.Mutex
+	reportMu               sync.Mutex
+	presetsMu              sync.Mutex
+	settings               UserSettings
+	keepServicesOnShutdown *bool
+	exitNotice             *ServiceExitNotice
+	adoptPollInterval      time.Duration
 	settingsPath      string
 	exec              Executor
 	execStream        func(context.Context, func(string), string, ...string) (inferyard.Execution, error)
@@ -171,24 +172,6 @@ func New(ctx context.Context, o Options) (*Service, error) {
 	}
 	return s, nil
 }
-func ptr[T any](v T) *T { return &v }
-func str(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}
-func now() string { return time.Now().UTC().Format(time.RFC3339Nano) }
-func uuid() string {
-	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		panic(err)
-	}
-	b[6] = (b[6] & 15) | 64
-	b[8] = (b[8] & 63) | 128
-	return hex.EncodeToString(b[:])
-}
-func clone[T any](v T) T { raw, _ := json.Marshal(v); var c T; _ = json.Unmarshal(raw, &c); return c }
 func Err(code string) *ApiError {
 	if code == "output_name_exhausted" {
 		return &ApiError{Code: code, Message: l10n.TR("core.err.output_name_exhausted")}
@@ -265,31 +248,32 @@ func (s *Service) Settings() SettingsResponse {
 	u := s.userSettings()
 	p := s.probe(u)
 	return SettingsResponse{u, EffectiveSettings{
-		WorkspaceRoot:    workspaceRoot(u),
-		InferyardPath:    p.Path,
-		InferyardVersion: p.Version,
-		InferyardStatus:  p.Status,
-		ResultsRoot:      s.resultsRoot(u),
-		ModelsRoot:       s.modelsRoot(u),
-		ExtraModelsRoots: append([]string(nil), u.ExtraModelsRoots...),
-		DownloadProxy:    u.DownloadProxy,
-		Theme:            NormalizeTheme(u.Theme),
-		Language:         NormalizeLanguage(u.Language),
-		MinimizeToTray:   u.MinimizeToTray,
-		ReportsRoot:      s.reportsRoot(u),
+		WorkspaceRoot:      workspaceRoot(u),
+		InferyardPath:      p.Path,
+		InferyardVersion:   p.Version,
+		InferyardStatus:    p.Status,
+		ResultsRoot:        s.resultsRoot(u),
+		ModelsRoot:         s.modelsRoot(u),
+		ExtraModelsRoots:   append([]string(nil), u.ExtraModelsRoots...),
+		DownloadProxy:      u.DownloadProxy,
+		Theme:              NormalizeTheme(u.Theme),
+		Language:           NormalizeLanguage(u.Language),
+		MinimizeToTray:     u.MinimizeToTray,
+		KeepServicesOnQuit: EffectiveKeepServicesOnQuitValue(u),
+		ReportsRoot:        s.reportsRoot(u),
 	}}
 }
 func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResponse, *ApiError) {
 	s.settingsMu.Lock()
 	defer s.settingsMu.Unlock()
 	for k := range patch {
-		if k != "inferyard_path" && k != "workspace_root" && k != "download_proxy" && k != "theme" && k != "language" && k != "minimize_to_tray" && k != "extra_models_roots" {
+		if k != "inferyard_path" && k != "workspace_root" && k != "download_proxy" && k != "theme" && k != "language" && k != "minimize_to_tray" && k != "keep_services_on_quit" && k != "extra_models_roots" {
 			return SettingsResponse{}, Err("invalid_request")
 		}
 	}
 	if s.paths != nil {
 		for k := range patch {
-			if k != "download_proxy" && k != "theme" && k != "language" && k != "minimize_to_tray" {
+			if k != "download_proxy" && k != "theme" && k != "language" && k != "minimize_to_tray" && k != "keep_services_on_quit" {
 				return SettingsResponse{}, Conflict("paths_bound")
 			}
 		}
@@ -310,7 +294,7 @@ func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResp
 			u.InferyardPath = p
 		}
 	}
-	for _, k := range []string{"extra_models_roots", "download_proxy", "theme", "language", "minimize_to_tray"} {
+	for _, k := range []string{"extra_models_roots", "download_proxy", "theme", "language", "minimize_to_tray", "keep_services_on_quit"} {
 		v, ok := patch[k]
 		if !ok {
 			continue
@@ -374,6 +358,7 @@ func (s *Service) persistSettings(u UserSettings, forceCLIRefresh bool) (Setting
 	}
 	if workspaceChanged {
 		s.engine = nil
+		s.exitNotice = nil
 	}
 	s.settings = u
 	if changed {
@@ -476,44 +461,4 @@ func (s *Service) RefreshDevice() *ApiError {
 	return nil
 }
 
-func Resolve(root, path string) (string, error) {
-	if root == "" || path == "" || strings.ContainsRune(path, 0) {
-		return "", errors.New("invalid path")
-	}
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(root, path)
-	}
-	root, e := canonical(root)
-	if e != nil {
-		return "", e
-	}
-	path, e = canonical(path)
-	if e != nil {
-		return "", e
-	}
-	rel, e := filepath.Rel(root, path)
-	if e != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", errors.New("outside root")
-	}
-	return path, nil
-}
-func canonical(p string) (string, error) {
-	p = filepath.Clean(p)
-	resolved, e := filepath.EvalSymlinks(p)
-	if e == nil {
-		return resolved, nil
-	}
-	if !os.IsNotExist(e) {
-		return "", e
-	}
-	parent := filepath.Dir(p)
-	if parent == p {
-		return "", e
-	}
-	r, e := canonical(parent)
-	if e != nil {
-		return "", e
-	}
-	return filepath.Join(r, filepath.Base(p)), nil
-}
 func terminal(state string) bool { return state == "done" || state == "failed" || state == "cancelled" }

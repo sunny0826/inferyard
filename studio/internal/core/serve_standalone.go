@@ -7,155 +7,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type StandaloneStartRequest struct {
-	Model       string `json:"model"`
-	Engine      string `json:"engine"`
-	ContextSize int64  `json:"context_size"`
-}
-
-func (s *Service) configuredCLIPath(u UserSettings) string {
-	path := str(u.InferyardPath)
-	if s.paths != nil {
-		path = s.paths.CLI
-	}
-	if path == "" {
-		path = "inferyard"
-	}
-	return path
-}
-
-func (s *Service) clearServeSupport() {
-	s.probeMu.Lock()
-	s.serveProbePath = ""
-	s.serveProbeVersion = ""
-	s.serveProbeSize = 0
-	s.serveProbeModTime = 0
-	s.serveProbeChecked = time.Time{}
-	s.serveSupported = false
-	s.probeMu.Unlock()
-}
-
-func (s *Service) ServeSupported(ctx context.Context) bool {
-	u := s.userSettings()
-	rawPath := s.configuredCLIPath(u)
-	found, lookErr := exec.LookPath(rawPath)
-	if lookErr != nil {
-		s.clearServeSupport()
-		return false
-	}
-	absPath, _ := filepath.Abs(found)
-	st, statErr := os.Stat(absPath)
-	if statErr == nil {
-		s.probeMu.Lock()
-		cached := !s.serveProbeChecked.IsZero() &&
-			s.serveProbePath == absPath &&
-			s.serveProbeVersion == Version &&
-			s.serveProbeSize == st.Size() &&
-			s.serveProbeModTime == st.ModTime().UnixNano() &&
-			time.Since(s.serveProbeChecked) < probeTTL
-		ok := s.serveSupported
-		s.probeMu.Unlock()
-		if cached {
-			return ok
-		}
-	}
-	p := s.probe(u)
-	if p.Status != "ok" || p.Path == nil || *p.Path == "" {
-		if statErr == nil && ctx.Err() == nil {
-			s.probeMu.Lock()
-			s.serveProbePath = absPath
-			s.serveProbeVersion = Version
-			s.serveProbeSize = st.Size()
-			s.serveProbeModTime = st.ModTime().UnixNano()
-			s.serveProbeChecked = time.Now()
-			s.serveSupported = false
-			s.probeMu.Unlock()
-		} else {
-			s.clearServeSupport()
-		}
-		return false
-	}
-	return s.checkServeSupported(ctx, *p.Path)
-}
-
-func (s *Service) checkServeSupported(ctx context.Context, cliPath string) bool {
-	st, statErr := os.Stat(cliPath)
-	if statErr == nil {
-		s.probeMu.Lock()
-		cached := !s.serveProbeChecked.IsZero() &&
-			s.serveProbePath == cliPath &&
-			s.serveProbeVersion == Version &&
-			s.serveProbeSize == st.Size() &&
-			s.serveProbeModTime == st.ModTime().UnixNano() &&
-			time.Since(s.serveProbeChecked) < probeTTL
-		ok := s.serveSupported
-		s.probeMu.Unlock()
-		if cached {
-			return ok
-		}
-	}
-	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	out, err := s.exec(probeCtx, cliPath, "--schema", "serve_plan")
-	supported := err == nil && out.ExitCode == 0 && inferyard.SupportsServePlanSchema(out.Stdout)
-	if probeCtx.Err() == nil && statErr == nil {
-		s.probeMu.Lock()
-		s.serveProbePath = cliPath
-		s.serveProbeVersion = Version
-		s.serveProbeSize = st.Size()
-		s.serveProbeModTime = st.ModTime().UnixNano()
-		s.serveProbeChecked = time.Now()
-		s.serveSupported = supported
-		s.probeMu.Unlock()
-	}
-	return supported
-}
-
-// resolveServeCLI verifies the CLI supports standalone serve; when the binary
-// fingerprint matches a previously confirmed positive probe, it skips spawning
-// CLI subprocesses even after probeTTL expires.
-func (s *Service) resolveServeCLI(ctx context.Context, u UserSettings) (string, *ApiError) {
-	rawPath := s.configuredCLIPath(u)
-	found, err := exec.LookPath(rawPath)
-	if err != nil {
-		s.clearServeSupport()
-		return "", Err("cli_unavailable")
-	}
-	absPath, _ := filepath.Abs(found)
-	if st, statErr := os.Stat(absPath); statErr == nil {
-		s.probeMu.Lock()
-		fingerprintOK := s.serveSupported &&
-			s.serveProbePath == absPath &&
-			s.serveProbeVersion == Version &&
-			s.serveProbeSize == st.Size() &&
-			s.serveProbeModTime == st.ModTime().UnixNano()
-		s.probeMu.Unlock()
-		if fingerprintOK {
-			return absPath, nil
-		}
-	}
-	p := s.probe(u)
-	if p.Status != "ok" || p.Path == nil || *p.Path == "" {
-		s.clearServeSupport()
-		return "", cliProbeError(p)
-	}
-	if !s.checkServeSupported(ctx, *p.Path) {
-		if ctx.Err() != nil {
-			return "", Err("cancelled")
-		}
-		return "", cliOutdatedError(p.Version)
-	}
-	return *p.Path, nil
+	Model       string   `json:"model"`
+	Engine      string   `json:"engine"`
+	ContextSize int64    `json:"context_size"`
+	Port        int      `json:"port,omitempty"`
+	GPULayers   *int     `json:"gpu_layers,omitempty"`
+	Threads     *int     `json:"threads,omitempty"`
+	ExtraArgs   []string `json:"extra_args,omitempty"`
 }
 
 func sanitizeSlugPart(raw string, limit int) string {
@@ -204,6 +72,7 @@ func servePlanToStartup(plan inferyard.ServePlan) Startup {
 		Endpoint:         plan.Endpoint,
 		ModelPath:        plan.ModelPath,
 		ModelKind:        plan.ModelKind,
+		ServedModel:      extractServedModelFromArgs(args),
 		ContextSize:      plan.ContextSize,
 	}
 	for _, arg := range result.Args {
@@ -358,8 +227,8 @@ func reusableStandalonePlan(planPath string, modelPath string, eng registryEntry
 func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartRequest) (EngineState, *ApiError) {
 	req.Model = strings.TrimSpace(req.Model)
 	req.Engine = strings.TrimSpace(req.Engine)
-	if req.Model == "" || req.Engine == "" || req.ContextSize <= 0 {
-		return EngineState{}, Err("invalid_input")
+	if apiErr := validateStandaloneStartRequest(req); apiErr != nil {
+		return EngineState{}, apiErr
 	}
 	if ctx.Err() != nil {
 		return EngineState{}, Err("cancelled")
@@ -430,11 +299,23 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 		state := clone(s.engine.state)
 		s.mu.Unlock()
 		if state.Origin == EngineOriginStandalone && state.Candidate == slug {
-			return state, nil
+			runningPort := state.Port
+			if runningPort <= 0 {
+				runningPort = portFromEndpoint(state.Endpoint)
+			}
+			if req.Port == 0 || req.Port == runningPort {
+				return state, nil
+			}
 		}
 		return state, Err("engine_candidate_mismatch")
 	}
 	s.mu.Unlock()
+
+	if req.Port > 0 {
+		if _, err := reservePortFunc(req.Port); err != nil {
+			return EngineState{}, &ApiError{Code: "engine_port_in_use", Message: l10n.TR("core.engine.err.port_in_use")}
+		}
+	}
 
 	cliPath, cliErr := s.resolveServeCLI(ctx, u)
 	if cliErr != nil {
@@ -450,10 +331,17 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 	}
 	planPath := filepath.Join(serveDir, "serve-plan.json")
 	startup, reused := reusableStandalonePlan(planPath, modelEntry.path, *engEntry, req.ContextSize)
+	if reused && req.Port > 0 && portFromEndpoint(startup.Endpoint) != req.Port {
+		reused = false
+	}
 	if !reused {
-		port, err := ChooseFreeLoopbackPort(DefaultBenchmarkPort)
-		if err != nil {
-			return EngineState{}, Err("engine_port_in_use")
+		port := req.Port
+		if port == 0 {
+			var err error
+			port, err = ChooseFreeLoopbackPort(DefaultBenchmarkPort)
+			if err != nil {
+				return EngineState{}, Err("engine_port_in_use")
+			}
 		}
 		args := []string{
 			"serve", "prepare",
@@ -500,5 +388,25 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 		return EngineState{}, Err("cancelled")
 	}
 
-	return s.startFromStartupLocked(startup, EngineOriginStandalone, slug)
+	startup = applyStandaloneArgs(startup, req)
+	state, apiErr := s.startFromStartupLocked(startup, EngineOriginStandalone, slug)
+	if apiErr != nil {
+		return state, apiErr
+	}
+
+	s.mu.Lock()
+	s.clearExitNoticeLocked()
+	s.mu.Unlock()
+
+	_ = s.SaveServicePreset(ServicePreset{
+		Model:         req.Model,
+		Engine:        req.Engine,
+		Port:          req.Port,
+		ContextSize:   req.ContextSize,
+		GPULayers:     cloneIntPtr(req.GPULayers),
+		Threads:       cloneIntPtr(req.Threads),
+		ExtraArgs:     append([]string(nil), startup.ExtraArgs...),
+		LastStartedAt: now(),
+	})
+	return state, nil
 }
