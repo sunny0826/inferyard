@@ -157,16 +157,12 @@ func (s *viewState) libraryTabBar(c *ui.Context) {
 	}
 
 	ui.Column(c.Key("library-tabbar")).FillWidth().Children(func() {
-		ui.Row(c).FillWidth().AlignItems(ui.End).Gap(t.Density.Section).
+		bar := ui.TabsBase(c, &s.libraryTab, len(tabs))
+		bar.List.FillWidth().AlignItems(ui.End).Gap(t.Density.Section).
 			BorderWidth(0, 0, 1, 0).BorderColor(t.Color.BorderDefault).Children(func() {
-			for _, tab := range tabs {
-				tab := tab
+			for i, tab := range tabs {
 				active := s.libraryTab == tab.idx
-				item := ui.Column(c.Key(fmt.Sprintf("lib-tab-%d", tab.idx))).
-					AlignItems(ui.Center).Label(tab.label)
-				if item.Clicked() {
-					s.libraryTab = tab.idx
-				}
+				item := bar.Tab(i).Column().AlignItems(ui.Center).Label(tab.label)
 				fg := t.Color.FgSecondary
 				if active {
 					fg = t.Color.FgPrimary

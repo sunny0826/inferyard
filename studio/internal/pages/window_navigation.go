@@ -137,35 +137,63 @@ func (s *viewState) leftNav(c *ui.Context) {
 func (s *viewState) sidebarNavRow(c *ui.Context, id, label string, icon func() *ui.SVG, trailing func()) {
 	t := tokens(c)
 	active := canonicalPageID(s.selected) == id
-	row := ui.Row(c.Key("nav-"+id)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
-		Padding(t.Density.Inset, t.Density.Row).Radius(t.Radius.Control).Label(label)
-	if active {
-		row.Background(t.Color.AccentSelection)
-	} else if row.Hovered() {
-		row.Background(t.Color.SurfaceHover)
-	}
-	if row.Clicked() {
+	onSelect := func() {
 		s.pendingDestructive = destructiveRequest{}
 		if id == "benchmarks" {
 			s.detailID = ""
 		}
 		s.selectPage(id)
 	}
-	row.Children(func() {
-		fg := t.Color.FgSecondary
+	fg := t.Color.FgSecondary
+	if active {
+		fg = t.Color.FgPrimary
+	}
+	if trailing == nil {
+		row := ui.Row(c.Key("nav-"+id)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
+			Padding(t.Density.Inset, t.Density.Row).Radius(t.Radius.Control).
+			Role(ui.RoleButton).Focusable().Label(label)
 		if active {
-			fg = t.Color.FgPrimary
+			row.Background(t.Color.AccentSelection)
+		} else if row.Hovered() {
+			row.Background(t.Color.SurfaceHover)
 		}
-		sidebarIconSlot(c, func() {
-			components.Icon(c, icon).Size(15, 15).TextColor(fg)
+		if row.Clicked() {
+			onSelect()
+		}
+		row.Children(func() {
+			sidebarIconSlot(c, func() {
+				components.Icon(c, icon).Size(15, 15).TextColor(fg)
+			})
+			txt := ui.Text(c, label).FontSize(t.Type.Body).TextColor(fg).Grow(1).SingleLine()
+			if active {
+				txt.Bold()
+			}
 		})
-		txt := ui.Text(c, label).FontSize(t.Type.Body).TextColor(fg).Grow(1).SingleLine()
-		if active {
-			txt.Bold()
+		return
+	}
+	row := ui.Row(c.Key("nav-"+id)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).
+		Padding(t.Density.Inset, t.Density.Row).Radius(t.Radius.Control)
+	if active {
+		row.Background(t.Color.AccentSelection)
+	} else if row.Hovered() {
+		row.Background(t.Color.SurfaceHover)
+	}
+	row.Children(func() {
+		btn := ui.Row(c.Key("nav-btn-"+id)).Grow(1).MinWidth(0).AlignItems(ui.Center).Gap(t.Density.Row).
+			Role(ui.RoleButton).Focusable().Label(label)
+		if btn.Clicked() {
+			onSelect()
 		}
-		if trailing != nil {
-			trailing()
-		}
+		btn.Children(func() {
+			sidebarIconSlot(c, func() {
+				components.Icon(c, icon).Size(15, 15).TextColor(fg)
+			})
+			txt := ui.Text(c, label).FontSize(t.Type.Body).TextColor(fg).Grow(1).SingleLine()
+			if active {
+				txt.Bold()
+			}
+		})
+		trailing()
 	})
 }
 

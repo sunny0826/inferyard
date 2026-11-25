@@ -25,8 +25,12 @@ extension PreviewUITests {
         XCTFail("Scene option could not be scrolled into view: \(label), option: \(option.frame), list: \(list.frame)")
     }
 
+    private var contentScrollView: XCUIElement {
+        app.windows["InferYard Studio · UI 调试"].children(matching: .scrollView).element(boundBy: 1)
+    }
+
     func revealInContent(_ element: XCUIElement) {
-        let content = app.scrollViews.element(boundBy: 1)
+        let content = contentScrollView
         for _ in 0..<5 {
             let viewport = content.frame
             let frame = element.frame
@@ -105,7 +109,7 @@ extension PreviewUITests {
     }
 
     func click(_ label: String, timeout: TimeInterval = 5) {
-        let contentButton = app.scrollViews.element(boundBy: 1).buttons[label].firstMatch
+        let contentButton = contentScrollView.buttons[label].firstMatch
         let button = contentButton.exists ? contentButton : app.buttons[label].firstMatch
         wait("button \(label) is enabled", timeout: timeout) {
             button.exists && button.isEnabled && (contentButton.exists || button.isHittable)
@@ -122,6 +126,9 @@ extension PreviewUITests {
     /// choice took effect.
     func selectTab(_ name: String, timeout: TimeInterval = 5) {
         let tab = waitForTab(name, timeout: timeout)
+        if !tab.isHittable {
+            revealInContent(tab)
+        }
         wait("Tab \(name) is hittable", timeout: timeout) { tab.exists && tab.isHittable }
         tab.click()
     }
