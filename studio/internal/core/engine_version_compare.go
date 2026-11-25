@@ -8,12 +8,13 @@ import (
 
 var (
 	buildVersionPattern  = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])b(\d{3,})(?:[^0-9]|$)`)
-	semverVersionPattern = regexp.MustCompile(`(?i)^v?(\d+)\.(\d+)(?:\.(\d+))?(?:-([0-9a-zA-Z.-]+))?(?:\+[0-9a-zA-Z.-]+)?$`)
+	semverVersionPattern = regexp.MustCompile(`(?i)^v?(\d+)\.(\d+)(?:\.(\d+))?(?:-([0-9a-zA-Z.-]+))?(?:\.post(\d+))?(?:\+[0-9a-zA-Z.-]+)?$`)
 )
 
 type parsedSemver struct {
 	major, minor, patch int
 	pre                 string
+	post                int
 }
 
 func parseBuildVersion(raw string) (int, bool) {
@@ -47,14 +48,18 @@ func parseSemverVersion(raw string) (parsedSemver, bool) {
 	major, err1 := strconv.Atoi(m[1])
 	minor, err2 := strconv.Atoi(m[2])
 	patch := 0
-	var err3 error
+	post := 0
+	var err3, err4 error
 	if m[3] != "" {
 		patch, err3 = strconv.Atoi(m[3])
 	}
-	if err1 != nil || err2 != nil || err3 != nil || major < 0 || minor < 0 || patch < 0 {
+	if len(m) > 5 && m[5] != "" {
+		post, err4 = strconv.Atoi(m[5])
+	}
+	if err1 != nil || err2 != nil || err3 != nil || err4 != nil || major < 0 || minor < 0 || patch < 0 || post < 0 {
 		return parsedSemver{}, false
 	}
-	return parsedSemver{major: major, minor: minor, patch: patch, pre: m[4]}, true
+	return parsedSemver{major: major, minor: minor, patch: patch, pre: m[4], post: post}, true
 }
 
 // compareEngineVersions compares two engine version strings.
@@ -105,6 +110,12 @@ func compareEngineSemver(a, b parsedSemver) (int, bool) {
 		return 1, true
 	}
 	if a.pre == b.pre {
+		if a.post != b.post {
+			if a.post < b.post {
+				return -1, true
+			}
+			return 1, true
+		}
 		return 0, true
 	}
 	if a.pre == "" {
@@ -113,7 +124,17 @@ func compareEngineSemver(a, b parsedSemver) (int, bool) {
 	if b.pre == "" {
 		return -1, true
 	}
-	return comparePrerelease(a.pre, b.pre)
+	cmp, ok := comparePrerelease(a.pre, b.pre)
+	if !ok || cmp != 0 {
+		return cmp, ok
+	}
+	if a.post != b.post {
+		if a.post < b.post {
+			return -1, true
+		}
+		return 1, true
+	}
+	return 0, true
 }
 
 func comparePrerelease(a, b string) (int, bool) {

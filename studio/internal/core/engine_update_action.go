@@ -123,6 +123,40 @@ func (s *Service) isEngineActiveLocked(engineName string, entry registryEntry) b
 	return false
 }
 
+func (s *Service) hasActiveVenvUpgradeLocked() bool {
+	for _, d := range s.downloads {
+		if d != nil && d.Task.Kind == "engine_update" && d.Task.State == "downloading" {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Service) isEngineUpgradingLocked(engineName, exePath string) bool {
+	cleanExe := filepath.Clean(strings.TrimSpace(exePath))
+	for _, d := range s.downloads {
+		if d == nil || d.Task.Kind != "engine_update" || d.Task.State != "downloading" {
+			continue
+		}
+		if engineName != "" && d.Task.OutName == engineName {
+			return true
+		}
+		if cleanExe != "" && d.Task.OutDir != "" {
+			if rel, err := filepath.Rel(filepath.Clean(d.Task.OutDir), cleanExe); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func engineUpdatingError() *ApiError {
+	return &ApiError{
+		Code:    "engine_updating",
+		Message: l10n.TR("core.engine_update.err.engine_updating"),
+	}
+}
+
 func (s *Service) UpdateEngine(engineName string) (DownloadTask, *ApiError) {
 	name := strings.TrimSpace(engineName)
 	if name == "" {
@@ -133,7 +167,7 @@ func (s *Service) UpdateEngine(engineName string) (DownloadTask, *ApiError) {
 	if !ok {
 		return DownloadTask{}, Err("not_found")
 	}
-	if !info.HasUpdate {
+	if !info.HasUpdate || info.LatestInstalled {
 		return DownloadTask{}, &ApiError{
 			Code:    "engine_up_to_date",
 			Message: l10n.TR("core.engine_update.err.up_to_date"),

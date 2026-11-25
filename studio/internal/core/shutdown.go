@@ -103,6 +103,9 @@ func (s *Service) admitRunLocked() *ApiError {
 	if s.deletingAssets > 0 {
 		return workspaceBusyError()
 	}
+	if s.hasActiveVenvUpgradeLocked() {
+		return engineUpdatingError()
+	}
 	for _, t := range s.runs {
 		if t.Task.ContextSpeed != nil && !terminal(t.Task.State) {
 			return Conflict("context_speed_preparing")

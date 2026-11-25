@@ -34,11 +34,12 @@ type EngineUpdateInfo struct {
 	Source           string             `json:"source,omitempty"`
 	Action           EngineUpdateAction `json:"action,omitempty"`
 	HintCommand      string             `json:"hint_command,omitempty"`
+	LatestInstalled  bool               `json:"latest_installed,omitempty"`
 	HasUpdate        bool               `json:"has_update"`
 }
 
 func (u EngineUpdateInfo) CanOneClickUpdate() bool {
-	return u.HasUpdate && (u.Action == EngineUpdateActionDownload ||
+	return u.HasUpdate && !u.LatestInstalled && (u.Action == EngineUpdateActionDownload ||
 		u.Action == EngineUpdateActionManaged ||
 		u.Action == EngineUpdateActionVenv)
 }
@@ -251,8 +252,8 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 	}
 
 	catalog := DefaultEngineCatalog()
-	evaluate := func(name, eligFamily, eligVersion, eligRelease string) {
-		familyID := normalizeCatalogFamilyID(eligFamily, familyByName[name], name)
+	evaluate := func(name string, elig EngineEligibility) {
+		familyID := normalizeCatalogFamilyID(elig.Family, familyByName[name], name)
 		if familyID == "" {
 			return
 		}
@@ -261,16 +262,22 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 			return
 		}
 		entry, hasEntry := entryByName[name]
+		// Only trust elig.Release as an installed release when verification succeeded;
+		// for ineligible checks, elig.Release holds the expected target rather than the binary's actual version.
+		verifiedRelease := ""
+		if elig.State == EngineCheckEligible {
+			verifiedRelease = strings.TrimSpace(elig.Release)
+		}
 		candidates := []string{
-			strings.TrimSpace(eligVersion),
-			strings.TrimSpace(eligRelease),
+			strings.TrimSpace(elig.Version),
 			strings.TrimSpace(versionByName[name]),
+			verifiedRelease,
 		}
 
 		dist := ""
 		remoteKey := familyID
 		if familyID == "llama-cpp" {
-			dist = detectLlamaDistribution(entry, versionByName[name], eligRelease)
+			dist = detectLlamaDistribution(entry, versionByName[name], verifiedRelease)
 			remoteKey = "llama-cpp:" + dist
 		}
 
@@ -320,6 +327,7 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 					latest = remVer
 					hasUpdate = cmp < 0
 					source = "remote"
+					releaseID = matchingCatalogReleaseID(family, remVer)
 					if strings.TrimSpace(rem.ReleaseURL) != "" {
 						releaseURL = strings.TrimSpace(rem.ReleaseURL)
 					}
@@ -364,7 +372,7 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 	}
 
 	for name, elig := range checks.Engines {
-		evaluate(name, elig.Family, elig.Version, elig.Release)
+		evaluate(name, elig)
 	}
 	for _, entry := range reg.engines {
 		name := entry.engine.Name
@@ -374,13 +382,55 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 		if _, exists := out[name]; exists {
 			continue
 		}
-		evaluate(name, entry.engine.Family, "", "")
+		evaluate(name, EngineEligibility{Family: entry.engine.Family})
 	}
+	markSideBySideLatestInstalled(out)
 	return out
 }
 
+func matchingCatalogReleaseID(family EngineFamilyCatalog, version string) string {
+	want := strings.TrimSpace(version)
+	if want == "" {
+		return ""
+	}
+	for _, rel := range family.Releases {
+		if strings.EqualFold(strings.TrimSpace(rel.Version), want) {
+			return rel.ID
+		}
+	}
+	return ""
+}
+
+func markSideBySideLatestInstalled(updates map[string]EngineUpdateInfo) {
+	covered := map[string]bool{}
+	groupKey := func(info EngineUpdateInfo) string {
+		k := info.Family
+		if k == "" {
+			k = info.Engine
+		}
+		if info.Distribution != "" {
+			k += ":" + info.Distribution
+		}
+		return k
+	}
+	for _, info := range updates {
+		if !info.HasUpdate && strings.TrimSpace(info.InstalledVersion) != "" && strings.TrimSpace(info.LatestVersion) != "" {
+			if cmp, ok := compareEngineVersions(info.InstalledVersion, info.LatestVersion); ok && cmp >= 0 {
+				covered[groupKey(info)] = true
+			}
+		}
+	}
+	for name, info := range updates {
+		if info.HasUpdate && covered[groupKey(info)] {
+			info.LatestInstalled = true
+			info.Action = EngineUpdateActionNone
+			updates[name] = info
+		}
+	}
+}
+
 func resolveEngineUpdateAction(info EngineUpdateInfo, entry registryEntry, hasEntry bool, platform string) (EngineUpdateAction, string) {
-	if !info.HasUpdate {
+	if !info.HasUpdate || info.LatestInstalled {
 		return EngineUpdateActionNone, ""
 	}
 	switch info.Family {
@@ -389,6 +439,14 @@ func resolveEngineUpdateAction(info EngineUpdateInfo, entry registryEntry, hasEn
 			return EngineUpdateActionDrawer, "brew upgrade llama.cpp"
 		}
 		if strings.TrimSpace(info.DownloadURL) != "" {
+			// On Windows, legacy llama-server requires a CLI-generated runtime-receipt.json
+			// produced only when the archive matches a known catalog runtime profile.
+			if platform == "windows/amd64" {
+				catEntry, ok := CatalogEntryByURL(info.DownloadURL)
+				if !ok || strings.TrimSpace(catEntry.Profile) == "" {
+					return EngineUpdateActionDrawer, ""
+				}
+			}
 			return EngineUpdateActionDownload, ""
 		}
 		return EngineUpdateActionDrawer, ""

@@ -2,11 +2,9 @@ package core
 
 import (
 	"context"
-	"encoding/json"
 	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
 	"net/http"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -80,6 +78,7 @@ type engineUpdateManager struct {
 	startupOnce    sync.Once
 	cacheLoaded    bool
 	checking       bool
+	checkDone      chan struct{}
 	state          string
 	checkedAt      *string
 	lastErr        *ApiError
@@ -113,84 +112,6 @@ func newEngineUpdateManager(s *Service, opts EngineUpdateOptions) *engineUpdateM
 		remote:         map[string]remoteEngineRelease{},
 		binaryVersions: map[string]binaryVersionCacheEntry{},
 	}
-}
-
-func (m *engineUpdateManager) cachePath() string {
-	if strings.TrimSpace(m.opts.CachePath) != "" {
-		return m.opts.CachePath
-	}
-	if m.service != nil && m.service.settingsPath != "" {
-		if cfgDir, err := os.UserConfigDir(); err == nil {
-			defaultSettings := filepath.Join(cfgDir, "InferYard Studio", "settings.json")
-			if filepath.Clean(m.service.settingsPath) != filepath.Clean(defaultSettings) {
-				return filepath.Join(filepath.Dir(m.service.settingsPath), engineUpdateCacheFileName)
-			}
-		} else {
-			return filepath.Join(filepath.Dir(m.service.settingsPath), engineUpdateCacheFileName)
-		}
-	}
-	cacheDir, err := os.UserCacheDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(cacheDir, "InferYard Studio", engineUpdateCacheFileName)
-}
-
-func (m *engineUpdateManager) loadCacheOnce() {
-	m.mu.Lock()
-	if m.cacheLoaded {
-		m.mu.Unlock()
-		return
-	}
-	m.cacheLoaded = true
-	path := m.cachePath()
-	m.mu.Unlock()
-
-	if path == "" {
-		return
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return
-	}
-	var doc engineUpdateDiskCache
-	if json.Unmarshal(raw, &doc) != nil || doc.Version != 1 || len(doc.Entries) == 0 {
-		return
-	}
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	for k, entry := range doc.Entries {
-		if strings.TrimSpace(entry.Version) == "" {
-			continue
-		}
-		if existing, ok := m.remote[k]; !ok || entry.FetchedAt.After(existing.FetchedAt) {
-			m.remote[k] = entry
-		}
-	}
-}
-
-func (m *engineUpdateManager) saveCacheLocked() {
-	path := m.cachePath()
-	if path == "" {
-		return
-	}
-	doc := engineUpdateDiskCache{
-		Version: 1,
-		Entries: make(map[string]remoteEngineRelease, len(m.remote)),
-	}
-	for k, v := range m.remote {
-		doc.Entries[k] = v
-	}
-	data, err := json.MarshalIndent(doc, "", "  ")
-	if err != nil {
-		return
-	}
-	_ = os.MkdirAll(filepath.Dir(path), 0o700)
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o600); err != nil {
-		return
-	}
-	_ = os.Rename(tmp, path)
 }
 
 func (m *engineUpdateManager) remoteSnapshot() map[string]remoteEngineRelease {
@@ -307,13 +228,17 @@ func (s *Service) collectInstalledUpstreamTargets(ctx context.Context, probeBina
 			continue
 		}
 		elig := checks.Engines[entry.engine.Name]
+		verifiedRelease := ""
+		if elig.State == EngineCheckEligible {
+			verifiedRelease = elig.Release
+		}
 		installed := ""
 		if probeBinaries {
 			installed = s.extractInstalledVersion(ctx, entry, fam, true)
 		}
 		dist := ""
 		if fam == "llama-cpp" {
-			dist = detectLlamaDistribution(entry, installed, elig.Release)
+			dist = detectLlamaDistribution(entry, installed, verifiedRelease)
 		}
 		addTarget(fam, dist)
 	}
@@ -323,7 +248,7 @@ func (s *Service) collectInstalledUpstreamTargets(ctx context.Context, probeBina
 			continue
 		}
 		dist := ""
-		if fam == "llama-cpp" && (strings.Contains(strings.ToLower(elig.Release), "prism") || strings.Contains(strings.ToLower(name), "prism")) {
+		if fam == "llama-cpp" && ((elig.State == EngineCheckEligible && strings.Contains(strings.ToLower(elig.Release), "prism")) || strings.Contains(strings.ToLower(name), "prism")) {
 			dist = "PrismML"
 		}
 		addTarget(fam, dist)
@@ -345,15 +270,27 @@ func (s *Service) checkEngineUpdatesInternal(ctx context.Context, manual bool) (
 	m := s.engineUpdater
 	m.loadCacheOnce()
 
-	m.mu.Lock()
-	if m.checking {
+	for {
+		m.mu.Lock()
+		if !m.checking {
+			m.checking = true
+			m.checkDone = make(chan struct{})
+			m.state = EngineUpdateCheckChecking
+			m.lastErr = nil
+			m.mu.Unlock()
+			break
+		}
+		doneCh := m.checkDone
 		m.mu.Unlock()
-		return s.EngineUpdateStatus(), nil
+		if !manual || doneCh == nil {
+			return s.EngineUpdateStatus(), nil
+		}
+		select {
+		case <-ctx.Done():
+			return s.EngineUpdateStatus(), Err("cancelled")
+		case <-doneCh:
+		}
 	}
-	m.checking = true
-	m.state = EngineUpdateCheckChecking
-	m.lastErr = nil
-	m.mu.Unlock()
 	if manual {
 		s.publishEngineUpdatesEvent(true)
 	}
@@ -361,6 +298,10 @@ func (s *Service) checkEngineUpdatesInternal(ctx context.Context, manual bool) (
 	defer func() {
 		m.mu.Lock()
 		m.checking = false
+		if m.checkDone != nil {
+			close(m.checkDone)
+			m.checkDone = nil
+		}
 		m.mu.Unlock()
 	}()
 

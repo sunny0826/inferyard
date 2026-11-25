@@ -167,7 +167,7 @@ func (s *viewState) reportExclusivity(ref string) string {
 
 func (s *viewState) renderEngineUpdateBadgeAndAction(c *ui.Context, eng core.EngineAsset) {
 	upd, ok := s.engineUpdates[eng.Name]
-	if !ok || !upd.HasUpdate || strings.TrimSpace(upd.LatestVersion) == "" {
+	if !ok || !upd.HasUpdate || upd.LatestInstalled || strings.TrimSpace(upd.LatestVersion) == "" {
 		return
 	}
 	inlineBadge(c, trf(c, "models.engine.update_available", "version", upd.LatestVersion), stateInfo, badgeOptions{Size: sizeSM})
@@ -190,7 +190,11 @@ func (s *viewState) renderEngineUpdateBadgeAndAction(c *ui.Context, eng core.Eng
 		Label(trf(c, "models.engine.action.update_label", "name", eng.Name)).
 		Disabled(s.busy)
 	if btn.Clicked() {
-		if upd.Action == core.EngineUpdateActionExternal && strings.TrimSpace(upd.ReleaseURL) != "" {
+		if strings.TrimSpace(upd.HintCommand) != "" {
+			s.copyDownloadText(c, tr(c, "downloads.copy_subject.install_cmd"), upd.HintCommand)
+			return
+		}
+		if (upd.Action == core.EngineUpdateActionExternal || (upd.Source == "remote" && strings.TrimSpace(upd.ReleaseID) == "")) && strings.TrimSpace(upd.ReleaseURL) != "" {
 			s.openDownloadURL(c, eng.Name, upd.ReleaseURL)
 			return
 		}

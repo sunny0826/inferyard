@@ -27,11 +27,16 @@ type binaryVersionCacheEntry struct {
 // extractInstalledVersion resolves the installed engine version without spawning subprocesses
 // unless allowProbe is true and static/metadata sources do not yield a version.
 func (s *Service) extractInstalledVersion(ctx context.Context, entry registryEntry, familyID string, allowProbe bool) string {
-	if ver := installedVersionFromRegistryEntry(entry); ver != "" {
-		return ver
-	}
 	if familyID == "" {
 		familyID = normalizeCatalogFamilyID(entry.engine.Family, entry.family, entry.engine.Name, entry.path)
+	}
+	if familyID == "llama-cpp" {
+		if ver := readLlamaPrepareSourceVersion(entry); ver != "" {
+			return ver
+		}
+	}
+	if ver := installedVersionFromRegistryEntry(entry); ver != "" {
+		return ver
 	}
 	switch familyID {
 	case "mlx-lm", "vllm", "sglang":
@@ -39,9 +44,6 @@ func (s *Service) extractInstalledVersion(ctx context.Context, entry registryEnt
 			return ver
 		}
 	case "llama-cpp":
-		if ver := readLlamaPrepareSourceVersion(entry); ver != "" {
-			return ver
-		}
 		binPath := resolveEngineExecutablePath(entry)
 		if binPath != "" {
 			if cached, ok := s.cachedBinaryVersion(binPath); ok {

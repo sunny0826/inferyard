@@ -8,9 +8,89 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 )
+
+func (m *engineUpdateManager) cachePath() string {
+	if strings.TrimSpace(m.opts.CachePath) != "" {
+		return m.opts.CachePath
+	}
+	if m.service != nil && m.service.settingsPath != "" {
+		if cfgDir, err := os.UserConfigDir(); err == nil {
+			defaultSettings := filepath.Join(cfgDir, "InferYard Studio", "settings.json")
+			if filepath.Clean(m.service.settingsPath) != filepath.Clean(defaultSettings) {
+				return filepath.Join(filepath.Dir(m.service.settingsPath), engineUpdateCacheFileName)
+			}
+		} else {
+			return filepath.Join(filepath.Dir(m.service.settingsPath), engineUpdateCacheFileName)
+		}
+	}
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(cacheDir, "InferYard Studio", engineUpdateCacheFileName)
+}
+
+func (m *engineUpdateManager) loadCacheOnce() {
+	m.mu.Lock()
+	if m.cacheLoaded {
+		m.mu.Unlock()
+		return
+	}
+	m.cacheLoaded = true
+	path := m.cachePath()
+	m.mu.Unlock()
+
+	if path == "" {
+		return
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	var doc engineUpdateDiskCache
+	if json.Unmarshal(raw, &doc) != nil || doc.Version != 1 || len(doc.Entries) == 0 {
+		return
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for k, entry := range doc.Entries {
+		if strings.TrimSpace(entry.Version) == "" {
+			continue
+		}
+		if existing, ok := m.remote[k]; !ok || entry.FetchedAt.After(existing.FetchedAt) {
+			m.remote[k] = entry
+		}
+	}
+}
+
+func (m *engineUpdateManager) saveCacheLocked() {
+	path := m.cachePath()
+	if path == "" {
+		return
+	}
+	doc := engineUpdateDiskCache{
+		Version: 1,
+		Entries: make(map[string]remoteEngineRelease, len(m.remote)),
+	}
+	for k, v := range m.remote {
+		doc.Entries[k] = v
+	}
+	data, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return
+	}
+	_ = os.MkdirAll(filepath.Dir(path), 0o700)
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+		return
+	}
+	_ = os.Rename(tmp, path)
+}
 
 func (m *engineUpdateManager) httpClient() (*http.Client, *ApiError) {
 	if m.opts.HTTPClient != nil {

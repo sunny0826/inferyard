@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
@@ -17,11 +18,23 @@ func TestEngineUpdatesUIButtonOneClickAndNotifications(t *testing.T) {
 	s, _ := servicesP2State(t)
 	s.selected = "library"
 	s.libraryTab = 1
-	s.updateWindow = func(fn func()) { fn() }
 
-	checkCalled := false
+	uiQueue := make(chan func(), 8)
+	s.updateWindow = func(fn func()) { uiQueue <- fn }
+	drainUI := func() {
+		for {
+			select {
+			case fn := <-uiQueue:
+				fn()
+			default:
+				return
+			}
+		}
+	}
+
+	checkDone := make(chan struct{}, 1)
 	s.engineUpdateCheckFn = func(context.Context) (core.EngineUpdatesStatus, *core.ApiError) {
-		checkCalled = true
+		checkDone <- struct{}{}
 		return core.EngineUpdatesStatus{
 			State:          core.EngineUpdateCheckReady,
 			UpdatableCount: 1,
@@ -38,9 +51,9 @@ func TestEngineUpdatesUIButtonOneClickAndNotifications(t *testing.T) {
 			},
 		}, nil
 	}
-	updatedEngine := ""
+	updatedCh := make(chan string, 1)
 	s.engineUpdateRunFn = func(name string) (core.DownloadTask, *core.ApiError) {
-		updatedEngine = name
+		updatedCh <- name
 		return core.DownloadTask{
 			TaskId:      "upd-1",
 			Kind:        "engine",
@@ -73,10 +86,22 @@ func TestEngineUpdatesUIButtonOneClickAndNotifications(t *testing.T) {
 
 	// Click One-Click Update -> directly invokes engineUpdateRunFn without opening drawer.
 	click(t, tt, "更新 llama-cpp-default")
-	tt.Frame()
-	if updatedEngine != "llama-cpp-default" {
-		t.Fatalf("expected one-click update for llama-cpp-default, got %q", updatedEngine)
+	select {
+	case updatedEngine := <-updatedCh:
+		if updatedEngine != "llama-cpp-default" {
+			t.Fatalf("expected one-click update for llama-cpp-default, got %q", updatedEngine)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for engineUpdateRunFn")
 	}
+	select {
+	case fn := <-uiQueue:
+		fn()
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for workDownload UI callback")
+	}
+	drainUI()
+	tt.Frame()
 	if s.downloadsUI != nil && s.downloadsUI.engineDrawerOpen {
 		t.Fatal("expected one-click update not to open engine download drawer")
 	}
@@ -96,11 +121,22 @@ func TestEngineUpdatesUIButtonOneClickAndNotifications(t *testing.T) {
 	}
 
 	// Click manual Check Engine Updates button.
-	s.busy = false
 	click(t, tt, "检查引擎更新")
-	if !checkCalled {
-		t.Fatal("expected clicking 检查引擎更新 to call engineUpdateCheckFn")
+	select {
+	case <-checkDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for engineUpdateCheckFn")
 	}
+	// Drain both applyEngineUpdatesStatus and finishWork callbacks.
+	for i := 0; i < 2; i++ {
+		select {
+		case fn := <-uiQueue:
+			fn()
+		case <-time.After(2 * time.Second):
+			t.Fatal("timed out waiting for checkEngineUpdates UI callback")
+		}
+	}
+	drainUI()
 }
 
 func TestEngineUpdatesNotificationSummaryAndDedupe(t *testing.T) {
