@@ -351,45 +351,83 @@ func (m *updateManager) fetchLatestRelease(ctx context.Context, currentVerRaw, p
 			message: l10n.TRf("core.update.err.version_invalid", "version", strconv.Quote(currentVerRaw)),
 		}
 	}
-	if !validateUpdateURL(m.opts.APIURL, m.opts.AllowInsecureHTTP) {
-		return UpdateRelease{}, false, &updateCheckError{
-			code:    "update_invalid_url",
-			message: l10n.TR("core.update.err.invalid_url"),
-		}
-	}
 	client, err := m.httpClient(proxyRaw, m.opts.CheckTimeout)
 	if err != nil {
 		return UpdateRelease{}, false, err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, m.opts.APIURL, nil)
-	if err != nil {
-		return UpdateRelease{}, false, &updateCheckError{code: "update_check_failed", message: l10n.TR("core.update.err.check_request_failed"), cause: err}
+
+	hasFallback := strings.TrimSpace(m.opts.FallbackAPIURL) != ""
+	rel, newer, notFound, err := m.fetchReleaseFromURL(ctx, client, m.opts.APIURL, currentVer)
+	if err == nil && !notFound {
+		return rel, newer, nil
 	}
-	req.Header.Set("Accept", "application/vnd.github+json")
+	if errors.Is(err, context.Canceled) {
+		return UpdateRelease{}, false, err
+	}
+	if !hasFallback {
+		if notFound {
+			return UpdateRelease{}, false, nil
+		}
+		return UpdateRelease{}, false, err
+	}
+
+	fbRel, fbNewer, fbNotFound, fbErr := m.fetchReleaseFromURL(ctx, client, m.opts.FallbackAPIURL, currentVer)
+	if fbErr == nil {
+		if fbNotFound {
+			return UpdateRelease{}, false, nil
+		}
+		return fbRel, fbNewer, nil
+	}
+	if err != nil {
+		return UpdateRelease{}, false, err
+	}
+	return UpdateRelease{}, false, fbErr
+}
+
+func acceptHeaderForUpdateURL(raw string) string {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err == nil && strings.EqualFold(u.Hostname(), "api.github.com") {
+		return "application/vnd.github+json"
+	}
+	return "application/json"
+}
+
+func (m *updateManager) fetchReleaseFromURL(ctx context.Context, client *http.Client, targetURL string, currentVer semver) (UpdateRelease, bool, bool, error) {
+	if !validateUpdateURL(targetURL, m.opts.AllowInsecureHTTP) {
+		return UpdateRelease{}, false, false, &updateCheckError{
+			code:    "update_invalid_url",
+			message: l10n.TR("core.update.err.invalid_url"),
+		}
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
+	if err != nil {
+		return UpdateRelease{}, false, false, &updateCheckError{code: "update_check_failed", message: l10n.TR("core.update.err.check_request_failed"), cause: err}
+	}
+	req.Header.Set("Accept", acceptHeaderForUpdateURL(targetURL))
 	req.Header.Set("User-Agent", "InferYard-Studio/"+currentVer.string())
 
 	resp, err := client.Do(req)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
-			return UpdateRelease{}, false, err
+			return UpdateRelease{}, false, false, err
 		}
 		if errors.Is(err, context.DeadlineExceeded) {
-			return UpdateRelease{}, false, &updateCheckError{code: "update_timeout", message: l10n.TR("core.update.err.check_timeout"), cause: err}
+			return UpdateRelease{}, false, false, &updateCheckError{code: "update_timeout", message: l10n.TR("core.update.err.check_timeout"), cause: err}
 		}
-		return UpdateRelease{}, false, &updateCheckError{code: "update_network_error", message: l10n.TR("core.update.err.network_error"), cause: err}
+		return UpdateRelease{}, false, false, &updateCheckError{code: "update_network_error", message: l10n.TR("core.update.err.network_error"), cause: err}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return UpdateRelease{}, false, nil
+		return UpdateRelease{}, false, true, nil
 	}
 	if resp.StatusCode == http.StatusTooManyRequests ||
 		(resp.StatusCode == http.StatusForbidden &&
 			(resp.Header.Get("X-RateLimit-Remaining") == "0" || strings.TrimSpace(resp.Header.Get("Retry-After")) != "")) {
-		return UpdateRelease{}, false, &updateCheckError{code: "update_rate_limited", message: l10n.TR("core.update.err.rate_limited")}
+		return UpdateRelease{}, false, false, &updateCheckError{code: "update_rate_limited", message: l10n.TR("core.update.err.rate_limited")}
 	}
 	if resp.StatusCode != http.StatusOK {
-		return UpdateRelease{}, false, &updateCheckError{
+		return UpdateRelease{}, false, false, &updateCheckError{
 			code:    "update_check_failed",
 			message: l10n.TRf("core.update.err.check_http_status", "status", strconv.Itoa(resp.StatusCode)),
 		}
@@ -397,21 +435,21 @@ func (m *updateManager) fetchLatestRelease(ctx context.Context, currentVerRaw, p
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if err != nil {
-		return UpdateRelease{}, false, &updateCheckError{code: "update_network_error", message: l10n.TR("core.update.err.read_release_failed"), cause: err}
+		return UpdateRelease{}, false, false, &updateCheckError{code: "update_network_error", message: l10n.TR("core.update.err.read_release_failed"), cause: err}
 	}
 	var payload githubReleasePayload
 	if err := json.Unmarshal(body, &payload); err != nil {
-		return UpdateRelease{}, false, &updateCheckError{code: "update_parse_failed", message: l10n.TR("core.update.err.parse_failed"), cause: err}
+		return UpdateRelease{}, false, false, &updateCheckError{code: "update_parse_failed", message: l10n.TR("core.update.err.parse_failed"), cause: err}
 	}
 	if payload.Draft || payload.Prerelease {
-		return UpdateRelease{}, false, nil
+		return UpdateRelease{}, false, false, nil
 	}
 	latestVer, ok := parseSemver(payload.TagName)
 	if !ok {
-		return UpdateRelease{}, false, nil
+		return UpdateRelease{}, false, false, nil
 	}
 	if compareSemver(latestVer, currentVer) <= 0 {
-		return UpdateRelease{}, false, nil
+		return UpdateRelease{}, false, false, nil
 	}
 
 	rel := UpdateRelease{
@@ -439,5 +477,5 @@ func (m *updateManager) fetchLatestRelease(ctx context.Context, currentVerRaw, p
 			rel.ChecksumsURL = asset.BrowserDownloadURL
 		}
 	}
-	return rel, true, nil
+	return rel, true, false, nil
 }
