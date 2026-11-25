@@ -93,11 +93,23 @@ func (s *viewState) refresh(full bool) {
 		}
 		curPage := canonicalPageID(s.selected)
 		verifyVisible = curPage == "library" ||
-			(curPage == "benchmarks" && s.progress != nil && !s.progress.DefaultScopeComplete && s.progress.NextAction == "prepare_candidate")
+			(curPage == "services" && (s.serviceParams.open || s.standalone.drawerOpen)) ||
+			(curPage == "benchmarks" && s.benchmarkNeedsEngineVerify())
 	})
 	if s.shouldVerifyEngines(full, verifyVisible, time.Now()) {
 		s.service.VerifyEngines()
 	}
+}
+
+func (s *viewState) benchmarkNeedsEngineVerify() bool {
+	if s.task.stage == "prepare_candidate" {
+		return true
+	}
+	if s.progress == nil || s.progress.DefaultScopeComplete {
+		return false
+	}
+	return s.progress.NextAction == "prepare_candidate" ||
+		(s.progress.NextAction == "device_check" && s.hasLocalEngine())
 }
 
 type refreshBatch struct {

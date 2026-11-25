@@ -50,6 +50,7 @@ func (s *viewState) clearBenchmark() {
 		s.taskCancel = nil
 	}
 	s.task = benchmarkTask{}
+	s.skipAutoModelAdopt = false
 	s.selectedBundles = nil
 	s.focusedRun = ""
 	s.newTaskPending = false

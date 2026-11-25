@@ -287,6 +287,7 @@ func (s *viewState) standaloneStartBlockReason() string {
 }
 
 func (s *viewState) openStandaloneDrawer(model core.ModelAsset, prefillLast bool) {
+	s.verifyTaskEngines()
 	s.adoptDownloadedEngine()
 	options := s.standaloneEngineOptions(model)
 	rec := s.recommendedStandaloneContext(model)

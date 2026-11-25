@@ -30,6 +30,19 @@ func (s *viewState) startBenchmarkForManagedService(svc core.EngineState) {
 		modelName = displayName(svc.Model)
 	}
 	engineName := strings.TrimSpace(svc.EngineName)
+	if engineName == "" && svc.Family != "" {
+		match := ""
+		count := 0
+		for _, eng := range s.registry.Engines {
+			if eng.Family == svc.Family {
+				match = eng.Name
+				count++
+			}
+		}
+		if count == 1 {
+			engineName = match
+		}
+	}
 	ctxSize := svc.ContextSize
 	gpuLayers := svc.GPULayers
 	serviceID := strings.TrimSpace(svc.ServiceID)
@@ -130,9 +143,51 @@ func (s *viewState) pendingExclusivityMatchesTarget() bool {
 	return true
 }
 
+func (s *viewState) applyServiceBenchmarkTarget(modelName, engineName string) {
+	unmatchedModel := false
+	if modelName != "" {
+		resolvedModel := ""
+		if m, ok := s.findModelAsset(modelName); ok && m.Available {
+			resolvedModel = m.Name
+		} else {
+			unmatchedModel = true
+		}
+		s.model = resolvedModel
+	}
+	if engineName != "" {
+		resolvedEngine := ""
+		for _, eng := range s.registry.Engines {
+			if eng.Name == engineName {
+				resolvedEngine = eng.Name
+				break
+			}
+		}
+		s.engine = resolvedEngine
+	} else if unmatchedModel {
+		s.engine = ""
+	}
+	if s.speed != nil {
+		s.speed.selected = false
+	}
+	if !s.roundWorkActive() && s.running() == nil {
+		s.clearBenchmark()
+		if s.speed != nil {
+			s.speed.current, s.speed.opened = nil, nil
+		}
+		s.task.stage = "prepare_candidate"
+		s.resumeSource = nil
+		s.detailMu.Lock()
+		s.requestedDetail = ""
+		s.detailMu.Unlock()
+		s.failure = nil
+	}
+	s.skipAutoModelAdopt = unmatchedModel
+}
+
 func (s *viewState) handleExtConnProbeResult(serviceID, modelName, engineName, endpoint string, ctxSize int64, gpuLayers *int, probe core.ExternalConnProbe) {
 	if probe.Status != core.ExclusivityExternal {
 		s.clearPendingExclusivity()
+		s.applyServiceBenchmarkTarget(modelName, engineName)
 		s.openBenchmarksFlow()
 		return
 	}
@@ -197,19 +252,11 @@ func (s *viewState) extConnCheckDialog(c *ui.Context) {
 		}
 
 		applyBenchmarkTarget := func(mode, exclusivity string) {
-			if d.modelName != "" {
-				s.model = d.modelName
-			}
-			if d.engineName != "" {
-				s.engine = d.engineName
-			}
+			s.applyServiceBenchmarkTarget(d.modelName, d.engineName)
 			s.pendingExclusivityMode = mode
 			s.pendingExclusivity = exclusivity
 			s.pendingExclusivityModel = strings.TrimSpace(d.modelName)
 			s.pendingExclusivityEngine = strings.TrimSpace(d.engineName)
-			if s.speed != nil {
-				s.speed.selected = false
-			}
 			s.openBenchmarksFlow()
 		}
 

@@ -50,15 +50,20 @@ func (s *viewState) serviceParamsDrawer(c *ui.Context) {
 						Message: tr(c, "services.params.model_missing"),
 					})
 				}
+				s.verifyTaskEngines()
 				engineOpts := s.serviceParamsEngineOptions(modelAsset, hasModel)
 				if len(engineOpts) == 0 {
 					st.engine = ""
 					if hasModel {
-						noticeBanner(c, noticeBannerOptions{
-							Kind:    stateWarning,
-							Size:    bannerCompact,
-							Message: tr(c, "models.serve.drawer.no_engine"),
-						})
+						if s.checks.Checking > 0 {
+							ui.Text(c, trf(c, "dashboard.candidate.verifying_engines", "count", s.checks.Checking)).TextColor(c.Theme().TextMuted)
+						} else if !s.engineVerifyPending {
+							noticeBanner(c, noticeBannerOptions{
+								Kind:    stateWarning,
+								Size:    bannerCompact,
+								Message: tr(c, "models.serve.drawer.no_engine"),
+							})
+						}
 					}
 				} else {
 					if !hasSelectOption(engineOpts, st.engine) {

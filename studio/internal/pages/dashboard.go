@@ -8,7 +8,7 @@ func (w *viewState) step() int {
 	if w.task.stage != "" {
 		switch w.task.stage {
 		case "prepare_candidate":
-			if w.localEngine() == nil && w.progress != nil && w.progress.DevicePreflight.Status == "missing" {
+			if w.localEngine() == nil && !w.hasLocalEngine() && w.progress != nil && w.progress.DevicePreflight.Status == "missing" {
 				return 1
 			}
 			return 2
@@ -36,6 +36,9 @@ func (w *viewState) step() int {
 	}
 	switch w.progress.NextAction {
 	case "device_check":
+		if w.hasLocalEngine() {
+			return 2
+		}
 		return 1
 	case "prepare_candidate":
 		return 2
