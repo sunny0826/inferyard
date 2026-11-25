@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/egoist/mygo/ui"
+	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
 )
 
@@ -65,7 +66,15 @@ func (s *viewState) managedServiceView(c *ui.Context) {
 		ui.Text(c, tr(c, "engine.service.none_managed")).TextColor(tokens(c).Color.FgSecondary)
 		return
 	}
-	if state.Candidate != "" {
+	keyValueRow(c, tr(c, "engine.origin.label"), engineOriginLabel(state.Origin), false)
+	if state.Origin == core.EngineOriginStandalone {
+		if state.Model != "" {
+			keyValueRow(c, tr(c, "engine.info.model"), displayName(state.Model), false)
+		}
+		if ctxStr := formatContextTokens(state.ContextSize); ctxStr != "" {
+			keyValueRow(c, tr(c, "engine.info.context"), ctxStr, true)
+		}
+	} else if state.Candidate != "" {
 		keyValueRow(c, tr(c, "engine.service.candidate_label"), displayName(state.Candidate), false)
 	}
 	if state.Pid > 0 {
@@ -73,6 +82,27 @@ func (s *viewState) managedServiceView(c *ui.Context) {
 	}
 	if state.Endpoint != "" {
 		keyValueRow(c, tr(c, "engine.service.endpoint_label"), loopbackEndpoint(state.Endpoint), false)
+	}
+	if s.managedServiceActive() {
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+			if _, ok := validLoopbackURL(state.Endpoint); ok {
+				outlineButton(c, tr(c, "engine.action.copy_endpoint")).OnClick(func() {
+					s.copyEngineEndpoint(c, state.Endpoint)
+				})
+			}
+			if _, canOpen, _ := engineWebUIInfo(state); canOpen {
+				outlineButton(c, tr(c, "engine.action.open_webui")).OnClick(func() {
+					s.openEngineWebUI(c, state.Endpoint)
+				})
+			}
+			if state.LogPath != "" {
+				outlineButton(c, tr(c, "engine.action.open_log")).OnClick(func() {
+					s.openEngineCardLog(state.LogPath)
+				})
+			}
+			runActive := s.roundWorkActive()
+			dangerButton(c, tr(c, "models.serve.action.stop")).Disabled(state.State == "stopping" || runActive || s.busy).OnClick(s.stopStandaloneService)
+		})
 	}
 }
 

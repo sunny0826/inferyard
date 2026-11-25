@@ -54,6 +54,13 @@ def build_request(
         raise ArgumentError("--config requires --preset and vice versa")
     if args.command == "compare-plan":
         _comparison_experiment_id(values)
+    if args.command == "serve prepare":
+        context = values.get("context_size")
+        if type(context) is not int or context <= 0:
+            raise ArgumentError("--context-size must be positive")
+        port = values.get("port")
+        if port is not None and (type(port) is not int or not 1 <= port <= 65535):
+            raise ArgumentError("invalid port")
     if args.command == "config create":
         local = values.get("installation") is not None
         if local:
@@ -176,6 +183,7 @@ def build_request(
         or args.command == "engine detect"
         or args.command == "engine init-installation"
         or args.command == "assets scan"
+        or args.command == "serve prepare"
         or args.command.startswith("engine-fit ")
     )
     if args.command == "config create" and options.get("workspace") is not None:

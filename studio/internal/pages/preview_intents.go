@@ -28,6 +28,17 @@ type previewManagedEngine struct{ candidate string }
 
 func (previewManagedEngine) previewIntent() {}
 
+type previewStandaloneStart struct {
+	model, engine string
+	contextSize   int64
+}
+
+func (previewStandaloneStart) previewIntent() {}
+
+type previewStopEngineThen struct{ after func() }
+
+func (previewStopEngineThen) previewIntent() {}
+
 type previewBenchmark struct {
 	model, engine string
 	bundles       []string

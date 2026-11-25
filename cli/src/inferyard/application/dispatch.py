@@ -16,6 +16,10 @@ def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
         from inferyard.application.service_discovery import execute
 
         return execute(request)
+    if request.command == "serve prepare":
+        from inferyard.application.serve import execute
+
+        return execute(request)
     if request.command == "progress":
         from inferyard.application.progress import execute
 

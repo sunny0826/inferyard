@@ -32,7 +32,7 @@ mise run test:studio-ui
 mise run test:studio-ui:full
 ```
 
-修改对外边界 schema 定义（`bundle`、`config_input`、`context_speed_result`、`engine_check`、`manifest`、`studio_report`）后，运行 `scripts/export_schemas.py` 重新生成，不要手改生成产物。
+修改对外边界 schema 定义（`bundle`、`config_input`、`context_speed_result`、`engine_check`、`manifest`、`serve_plan`、`studio_report`）后，运行 `scripts/export_schemas.py` 重新生成，不要手改生成产物。
 
 ## 工程原则（以代码为准，避免文档驱动内耗）
 

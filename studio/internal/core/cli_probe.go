@@ -218,6 +218,12 @@ func (s *Service) clearProbeCache() {
 	s.probeModTime = 0
 	s.probeCheckedAt = time.Time{}
 	s.probeResult = InferyardProbe{}
+	s.serveProbePath = ""
+	s.serveProbeVersion = ""
+	s.serveProbeSize = 0
+	s.serveProbeModTime = 0
+	s.serveProbeChecked = time.Time{}
+	s.serveSupported = false
 }
 
 func copyProbe(v InferyardProbe) InferyardProbe {

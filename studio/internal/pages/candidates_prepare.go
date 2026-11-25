@@ -60,6 +60,9 @@ func (s *viewState) startBenchmark() {
 	if s.environmentMissing() || !s.preflightReady() || s.busy || len(names) == 0 || s.model == "" || s.engine == "" || s.engineState.State == "orphaned" || s.localSelectionError() != "" {
 		return
 	}
+	if !s.guardStandaloneForBenchmark(func() { s.startBenchmark() }) {
+		return
+	}
 	s.beginAttempt()
 	if s.simulate(previewBenchmark{model: s.model, engine: s.engine, bundles: names}) {
 		return
@@ -339,6 +342,12 @@ func (s *viewState) beginRetry() bool {
 }
 
 func (s *viewState) retryBenchmark() {
+	if s.busy || (s.task.stage != "bind" && len(s.task.start.localCandidates) == 0) || s.task.failure == nil {
+		return
+	}
+	if !s.guardStandaloneForBenchmark(func() { s.retryBenchmark() }) {
+		return
+	}
 	if s.simulate(previewRetryBenchmark) {
 		return
 	}

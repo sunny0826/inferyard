@@ -21,6 +21,7 @@ from inferyard.cli.commands import (
     repetition,
     reporting,
     scoring,
+    serve,
     service,
     verification,
 )
@@ -75,5 +76,6 @@ def parser() -> Parser:
     model.add_commands(commands)
     engine.add_commands(commands)
     assets.add_commands(commands)
+    serve.add_commands(commands)
     service.add_commands(commands)
     return result

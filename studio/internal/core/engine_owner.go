@@ -12,6 +12,9 @@ import (
 
 type engineOwner struct {
 	Local        bool                    `json:"local,omitempty"`
+	Origin       string                  `json:"origin,omitempty"`
+	Family       string                  `json:"family,omitempty"`
+	Model        string                  `json:"model,omitempty"`
 	ProcessGroup int64                   `json:"process_group,omitempty"`
 	Workers      []engineProcessIdentity `json:"workers,omitempty"`
 	PID          int64                   `json:"pid"`
@@ -30,7 +33,16 @@ type orphanEngine struct {
 func ownerPath(workspace string) string { return filepath.Join(workspace, "logs", "engine-owner.json") }
 
 func (s *Service) persistEngineOwner(e *engineEntry, workspace string) *ApiError {
-	owner := engineOwner{PID: e.state.Pid, Local: e.state.Local, Endpoint: e.state.Endpoint, LogFile: filepath.Base(e.state.LogPath), Candidate: filepath.Base(e.state.Candidate)}
+	owner := engineOwner{
+		PID:       e.state.Pid,
+		Local:     e.state.Local,
+		Origin:    normalizeEngineOrigin(e.state.Origin),
+		Family:    e.state.Family,
+		Model:     e.state.Model,
+		Endpoint:  e.state.Endpoint,
+		LogFile:   filepath.Base(e.state.LogPath),
+		Candidate: filepath.Base(e.state.Candidate),
+	}
 	if owner.Local {
 		owner.ProcessGroup = owner.PID
 	}
@@ -119,6 +131,9 @@ func writeEngineOwner(path string, owner engineOwner) error {
 }
 
 func validOwner(owner engineOwner) bool {
+	if owner.Origin != "" && !validEngineOrigin(owner.Origin) {
+		return false
+	}
 	if owner.Local && owner.ProcessGroup != owner.PID || !owner.Local && (owner.ProcessGroup != 0 || len(owner.Workers) != 0) {
 		return false
 	}
@@ -175,7 +190,19 @@ func (s *Service) detectEngineOwnerLocked() {
 			failure = &ApiError{Code: "service_identity_unreadable", Message: l10n.TR("core.engine.err.orphan_identity_unreadable")}
 		}
 	}
-	state := EngineState{State: "orphaned", Pid: owner.PID, StartTicks: owner.StartTicks, Local: owner.Local, Endpoint: owner.Endpoint, LogPath: owner.LogFile, Candidate: owner.Candidate, Error: failure}
+	state := EngineState{
+		State:      "orphaned",
+		Origin:     normalizeEngineOrigin(owner.Origin),
+		Family:     owner.Family,
+		Model:      owner.Model,
+		Pid:        owner.PID,
+		StartTicks: owner.StartTicks,
+		Local:      owner.Local,
+		Endpoint:   owner.Endpoint,
+		LogPath:    owner.LogFile,
+		Candidate:  owner.Candidate,
+		Error:      failure,
+	}
 	s.orphan = &orphanEngine{owner: owner, path: path, state: state}
 	s.Bus.Publish("engine.state", map[string]any{"engine": clone(state)})
 }

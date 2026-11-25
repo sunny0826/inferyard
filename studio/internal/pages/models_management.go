@@ -375,6 +375,7 @@ func (s *viewState) modelRowTrailing(c *ui.Context, m core.ModelAsset, pending *
 		if !m.Available {
 			badge(c, tr(c, "models.badge.unavailable"), stateWarning, badgeOptions{Style: badgeDot, Size: sizeSM})
 		}
+		s.modelStandaloneActions(c, m)
 		modelTaskAction(c, s, m)
 		s.assetRowActions(c, "model", m.Name, m.Path, m.Format, "", m.SizeBytes, m.Deletable, pending)
 	})

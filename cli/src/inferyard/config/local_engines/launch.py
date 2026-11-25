@@ -15,6 +15,7 @@ def startup(
     service_pid=None,
     *,
     polystrata_config=None,
+    standalone=False,
 ):
     family = installation["family"]
     network = ["--host", "127.0.0.1", "--port", str(port)]
@@ -31,6 +32,8 @@ def startup(
             *network,
         ], cwd
     if family == "lmstudio":
+        if standalone:
+            raise PreparationError("serve_family_unsupported")
         if service_pid is None:
             raise PreparationError("local_engine_lmstudio_background_pid_required")
         from inferyard.platforms.engine_fit_macos import service_process_state, psutil_module
@@ -40,6 +43,19 @@ def startup(
             raise PreparationError("service_identity_changed")
         return state[1], str(state[4])
     if family == "llama-cpp":
+        if standalone:
+            return [
+                "-m",
+                str(model),
+                "-ngl",
+                "99",
+                "-c",
+                str(context),
+                "--metrics",
+                "--alias",
+                served_model,
+                *network,
+            ], cwd
         return [
             "-m",
             str(model),
@@ -58,6 +74,8 @@ def startup(
     entry = str(files("inferyard").joinpath("data/local_engine/bootstrap.py"))
     prefix = ["-I", "-S", "-B", entry, family]
     if family == "mlx-lm":
+        if standalone:
+            raise PreparationError("serve_family_unsupported")
         args = ["--model", str(model), "--max-model-len", str(context)]
     elif family == "vllm":
         args = [
@@ -65,8 +83,7 @@ def startup(
             str(model),
             "--max-model-len",
             str(context),
-            "--max-num-seqs",
-            "1",
+            *([] if standalone else ["--max-num-seqs", "1"]),
             "--gpu-memory-utilization",
             "0.20",
         ]
@@ -76,8 +93,7 @@ def startup(
             str(model),
             "--context-length",
             str(context),
-            "--max-running-requests",
-            "1",
+            *([] if standalone else ["--max-running-requests", "1"]),
             "--enable-metrics",
             "--disable-cuda-graph",
             "--mem-fraction-static",
