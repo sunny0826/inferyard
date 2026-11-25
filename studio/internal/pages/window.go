@@ -62,6 +62,7 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 		},
 	}
 	options := pageShellOptions(title, "inferyard-studio-main", s.leftNav, s.contentView)
+	options.ContentTitle = func(c *ui.Context) { s.shellContentTitle(c, nil) }
 	options.Theme = s.themeFor
 	shell := sidebar.NewShell(options)
 	w := shell.Window()
@@ -396,6 +397,12 @@ func (s *viewState) selectTask(id string) {
 func (s *viewState) view(c *ui.Context) {
 	ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
 		ui.Column(c).Width(205).Shrink(0).Children(func() { s.leftNav(c) })
-		s.contentView(c)
+		ui.Box(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
+			s.contentView(c)
+			ui.Row(c).Absolute().Top(0).Left(0).Right(0).Height(sidebar.HeaderHeight(c)).
+				AlignItems(ui.Center).Padding(6, 16, 6, 16).Children(func() {
+				s.shellContentTitle(c, nil)
+			})
+		})
 	})
 }

@@ -256,3 +256,40 @@ func TestTopRightNotificationEvictedCardResumesRemainingTime(t *testing.T) {
 	}
 }
 
+func TestNotificationBellTopRightPlacementAndPopoverGeometry(t *testing.T) {
+	s := readyState("services")
+	tt := ui.NewTester(s.view, 1120, 800)
+	tt.Frame()
+
+	bellInfo, ok := tt.AccessByRole(ui.RoleButton, "通知")
+	if !ok {
+		t.Fatalf("expected notification bell button, texts=%v", tt.Texts())
+	}
+	bellRect := bellInfo.Bounds
+	// Bell must sit in the top-right header area of the main canvas, not inside the 205px sidebar.
+	if bellRect.X < 900 || bellRect.Y > 48 {
+		t.Fatalf("expected bell button in top-right header area, got %+v", bellRect)
+	}
+
+	click(t, tt, "通知")
+	tt.Frame()
+
+	popInfo, ok := tt.AccessByRole(ui.RolePopup, "通知列表")
+	if !ok {
+		t.Fatalf("expected notification inbox popover open after clicking bell, texts=%v", tt.Texts())
+	}
+	popRect := popInfo.Bounds
+	if popRect.X < 205 {
+		t.Fatalf("expected notification popover completely inside main canvas (not crossing sidebar), got %+v", popRect)
+	}
+	if popRect.Y < bellRect.Y+bellRect.H {
+		t.Fatalf("expected notification popover below bell button: pop=%+v bell=%+v", popRect, bellRect)
+	}
+	if popRect.X+popRect.W > 1120 {
+		t.Fatalf("expected notification popover within window right edge, got %+v", popRect)
+	}
+	if !tt.HasText("暂无未处理通知。") {
+		t.Fatalf("expected empty state copy inside inbox popover, texts=%v", tt.Texts())
+	}
+}
+

@@ -388,8 +388,10 @@ func studioAlertDialog(c *ui.Context, open *bool, options components.AlertDialog
 
 func studioPopover(c *ui.Context, anchor ui.Element, open *bool, build func(panel ui.Element)) ui.Element {
 	t := tokens(c)
-	return components.Popover(c, anchor, open, func(panel ui.Element) {
-		panel.Padding(t.Card.Padding).Gap(t.Density.Stack).Radius(t.Radius.Surface)
+	return ui.PopoverBase(c, anchor, open, func(panel ui.Element) {
+		applyMaterial(c, panel.Column().Padding(t.Card.Padding).Gap(t.Density.Stack).
+			Margin(t.Density.Row, 0, 0, 0).TextColor(t.Color.FgPrimary).Clip().
+			AttachEdgeMargin(t.Density.Stack), materialFloating)
 		if build != nil {
 			build(panel)
 		}

@@ -52,7 +52,7 @@ func (s *viewState) updateHeaderBadge(c *ui.Context) {
 	t := tokens(c)
 	color := stateColor(c, kind)
 	b := components.Button(c, "", components.ButtonGhost).
-		Padding(t.Density.Tight, t.Density.Row).Radius(t.Radius.Full).
+		Height(max(float32(32), theme.Rem(2))).Padding(0, t.Density.Row).Radius(t.Radius.Control).
 		Label(label)
 	b.Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
