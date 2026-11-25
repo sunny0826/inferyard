@@ -239,5 +239,12 @@
   "models.evidence.untested": "尚未测评",
   "models.engine.update_available": "有新版 {version}",
   "models.engine.action.update": "更新",
-  "models.engine.action.update_label": "更新 {name}"
+  "models.engine.action.one_click_update": "一键更新",
+  "models.engine.action.updating": "更新中…",
+  "models.engine.action.update_label": "更新 {name}",
+  "models.engine.action.check_updates": "检查引擎更新",
+  "models.engine.toast.check_up_to_date": "所有引擎已是最新版本",
+  "models.engine.toast.check_found": "发现 {count} 个引擎有可用更新",
+  "models.engine.toast.update_started": "已开始更新 {name}",
+  "models.engine.toast.update_started_preview": "已模拟开始更新 {name}"
 }

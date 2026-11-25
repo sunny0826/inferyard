@@ -171,10 +171,29 @@ func (s *viewState) renderEngineUpdateBadgeAndAction(c *ui.Context, eng core.Eng
 		return
 	}
 	inlineBadge(c, trf(c, "models.engine.update_available", "version", upd.LatestVersion), stateInfo, badgeOptions{Size: sizeSM})
+	if s.engineUpdateTaskActive(eng, upd) {
+		inlineButton(c, components.ButtonOutline, tr(c, "models.engine.action.updating")).
+			Label(trf(c, "models.engine.action.update_label", "name", eng.Name)).
+			Disabled(true)
+		return
+	}
+	if upd.CanOneClickUpdate() {
+		btn := inlineButton(c, components.ButtonPrimary, tr(c, "models.engine.action.one_click_update")).
+			Label(trf(c, "models.engine.action.update_label", "name", eng.Name)).
+			Disabled(s.busy)
+		if btn.Clicked() {
+			s.startOneClickEngineUpdate(eng, upd)
+		}
+		return
+	}
 	btn := inlineButton(c, components.ButtonOutline, tr(c, "models.engine.action.update")).
 		Label(trf(c, "models.engine.action.update_label", "name", eng.Name)).
 		Disabled(s.busy)
 	if btn.Clicked() {
+		if upd.Action == core.EngineUpdateActionExternal && strings.TrimSpace(upd.ReleaseURL) != "" {
+			s.openDownloadURL(c, eng.Name, upd.ReleaseURL)
+			return
+		}
 		s.triggerEngineUpdate(eng, upd)
 	}
 }

@@ -27,6 +27,7 @@ type Options struct {
 	HostStatePath      string
 	EngineStartTimeout time.Duration
 	Update             UpdateOptions
+	EngineUpdate       EngineUpdateOptions
 }
 
 type Service struct {
@@ -99,6 +100,7 @@ type Service struct {
 	serveProbeChecked time.Time
 	serveSupported    bool
 	updater           *updateManager
+	engineUpdater     *engineUpdateManager
 	cliInstallMu      sync.Mutex
 	cliUpgradeMu      sync.Mutex
 	cliUpgrade        CLIUpgradeState
@@ -147,6 +149,7 @@ func New(ctx context.Context, o Options) (*Service, error) {
 	serviceCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 	s := &Service{ctx: serviceCtx, cancel: cancel, shutdownDone: make(chan struct{}), queueDone: make(chan struct{}), settingsPath: o.SettingsPath, exec: o.Execute, execStream: o.ExecStream, Bus: NewEventBus(), wake: make(chan struct{}, 1), hostStatePath: o.HostStatePath, engineTimeout: o.EngineStartTimeout, services: map[string]*engineEntry{}, orphanedServices: map[string]*orphanEngine{}, reservedPorts: map[int]bool{}, checks: map[string]engineCheckEntry{}, checkInflight: map[string]bool{}, checkSupported: true, checkSem: make(chan struct{}, 2), checkRetry: time.Minute}
 	s.updater = newUpdateManager(s, o.Update)
+	s.engineUpdater = newEngineUpdateManager(s, o.EngineUpdate)
 	raw, err := os.ReadFile(o.SettingsPath)
 	if err == nil {
 		if err = json.Unmarshal(raw, &s.settings); err != nil {

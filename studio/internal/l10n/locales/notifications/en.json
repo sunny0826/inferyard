@@ -80,5 +80,11 @@
   "notif.engine.orphaned.title": "Orphaned model service detected",
   "notif.engine.orphaned.body": "A managed service or record from a previous run remains. Resolve it before continuing.",
   "notif.engine_check.ineligible.title": "Selected engine unavailable",
-  "notif.engine_check.ineligible.body": "{engine} failed verification: {reason}."
+  "notif.engine_check.ineligible.body": "{engine} failed verification: {reason}.",
+  "notif.engine_updates.available.title": "Engine updates available",
+  "notif.engine_updates.available.body": "{count} engine(s) have updates available ({engines}). Open Engines for one-click update.",
+  "notif.engine_update.done.title": "Engine update completed",
+  "notif.engine_update.done.body": "{target} has been updated and re-verified.",
+  "notif.engine_update.failed.title": "Engine update failed",
+  "notif.engine_update.failed.body": "{target} update did not complete. Check details and retry."
 }

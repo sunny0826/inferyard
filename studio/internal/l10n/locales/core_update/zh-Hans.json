@@ -1,4 +1,9 @@
 {
+  "core.engine_update.err.check_failed": "检查引擎更新失败，请检查网络或代理设置后重试。",
+  "core.engine_update.err.engine_in_use": "该引擎正在运行服务或测评，请先停止后再更新。",
+  "core.engine_update.err.manual_required": "当前引擎需要手动更新，请在引擎详情中查看升级方式。",
+  "core.engine_update.err.up_to_date": "当前引擎已是最新版本。",
+  "core.engine_update.err.upgrade_failed": "更新引擎失败，请查看详情或稍后重试。",
   "core.update.err.apply_checksum_mismatch": "安装包 SHA-256 校验未通过，已删除异常文件。",
   "core.update.err.apply_failed": "安装更新失败，现有安装未受影响。",
   "core.update.err.applying_busy": "正在安装更新，请稍候。",

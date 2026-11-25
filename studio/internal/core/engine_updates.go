@@ -1,187 +1,46 @@
 package core
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strconv"
 	"strings"
 )
 
-type EngineUpdateInfo struct {
-	Engine           string `json:"engine"`
-	InstalledVersion string `json:"installed_version"`
-	LatestVersion    string `json:"latest_version"`
-	ReleaseID        string `json:"release_id,omitempty"`
-	ReleaseVersion   string `json:"release_version,omitempty"`
-	HasUpdate        bool   `json:"has_update"`
-}
+type EngineUpdateAction string
 
-var (
-	buildVersionPattern  = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])b(\d{3,})(?:[^0-9]|$)`)
-	semverVersionPattern = regexp.MustCompile(`(?i)^v?(\d+)\.(\d+)(?:\.(\d+))?(?:-([0-9a-zA-Z.-]+))?(?:\+[0-9a-zA-Z.-]+)?$`)
+const (
+	EngineUpdateActionNone     EngineUpdateAction = ""
+	EngineUpdateActionDownload EngineUpdateAction = "download"
+	EngineUpdateActionManaged  EngineUpdateAction = "managed"
+	EngineUpdateActionVenv     EngineUpdateAction = "venv"
+	EngineUpdateActionDrawer   EngineUpdateAction = "drawer"
+	EngineUpdateActionExternal EngineUpdateAction = "external"
 )
 
-type parsedSemver struct {
-	major, minor, patch int
-	pre                 string
+type EngineUpdateInfo struct {
+	Engine           string             `json:"engine"`
+	Family           string             `json:"family,omitempty"`
+	InstalledVersion string             `json:"installed_version"`
+	LatestVersion    string             `json:"latest_version"`
+	ReleaseID        string             `json:"release_id,omitempty"`
+	ReleaseVersion   string             `json:"release_version,omitempty"`
+	ReleaseURL       string             `json:"release_url,omitempty"`
+	DownloadURL      string             `json:"download_url,omitempty"`
+	AssetName        string             `json:"asset_name,omitempty"`
+	AssetBytes       int64              `json:"asset_bytes,omitempty"`
+	Distribution     string             `json:"distribution,omitempty"`
+	Source           string             `json:"source,omitempty"`
+	Action           EngineUpdateAction `json:"action,omitempty"`
+	HintCommand      string             `json:"hint_command,omitempty"`
+	HasUpdate        bool               `json:"has_update"`
 }
 
-func parseBuildVersion(raw string) (int, bool) {
-	s := strings.TrimSpace(raw)
-	if s == "" {
-		return 0, false
-	}
-	// Do not misclassify semver strings as build numbers.
-	if _, ok := parseSemverVersion(s); ok {
-		return 0, false
-	}
-	m := buildVersionPattern.FindStringSubmatch(s)
-	if len(m) < 2 {
-		return 0, false
-	}
-	n, err := strconv.Atoi(m[1])
-	if err != nil || n <= 0 {
-		return 0, false
-	}
-	return n, true
-}
-
-func parseSemverVersion(raw string) (parsedSemver, bool) {
-	s := strings.TrimSpace(raw)
-	if s == "" {
-		return parsedSemver{}, false
-	}
-	m := semverVersionPattern.FindStringSubmatch(s)
-	if len(m) < 3 {
-		return parsedSemver{}, false
-	}
-	major, err1 := strconv.Atoi(m[1])
-	minor, err2 := strconv.Atoi(m[2])
-	patch := 0
-	var err3 error
-	if m[3] != "" {
-		patch, err3 = strconv.Atoi(m[3])
-	}
-	if err1 != nil || err2 != nil || err3 != nil || major < 0 || minor < 0 || patch < 0 {
-		return parsedSemver{}, false
-	}
-	return parsedSemver{major: major, minor: minor, patch: patch, pre: m[4]}, true
-}
-
-// compareEngineVersions compares two engine version strings.
-// Returns (-1, true) if installed < latest, (0, true) if equal, (1, true) if installed > latest,
-// and (0, false) if either version cannot be parsed or the two versions use incompatible schemes.
-func compareEngineVersions(installed, latest string) (int, bool) {
-	if a, okA := parseSemverVersion(installed); okA {
-		b, okB := parseSemverVersion(latest)
-		if !okB {
-			return 0, false
-		}
-		return compareEngineSemver(a, b)
-	}
-	if a, okA := parseBuildVersion(installed); okA {
-		b, okB := parseBuildVersion(latest)
-		if !okB {
-			return 0, false
-		}
-		switch {
-		case a < b:
-			return -1, true
-		case a > b:
-			return 1, true
-		default:
-			return 0, true
-		}
-	}
-	return 0, false
-}
-
-func compareEngineSemver(a, b parsedSemver) (int, bool) {
-	if a.major != b.major {
-		if a.major < b.major {
-			return -1, true
-		}
-		return 1, true
-	}
-	if a.minor != b.minor {
-		if a.minor < b.minor {
-			return -1, true
-		}
-		return 1, true
-	}
-	if a.patch != b.patch {
-		if a.patch < b.patch {
-			return -1, true
-		}
-		return 1, true
-	}
-	if a.pre == b.pre {
-		return 0, true
-	}
-	if a.pre == "" {
-		return 1, true
-	}
-	if b.pre == "" {
-		return -1, true
-	}
-	return comparePrerelease(a.pre, b.pre)
-}
-
-func comparePrerelease(a, b string) (int, bool) {
-	partsA := strings.Split(strings.ToLower(a), ".")
-	partsB := strings.Split(strings.ToLower(b), ".")
-	n := len(partsA)
-	if len(partsB) < n {
-		n = len(partsB)
-	}
-	for i := 0; i < n; i++ {
-		if partsA[i] == partsB[i] {
-			continue
-		}
-		numA, errA := strconv.Atoi(partsA[i])
-		numB, errB := strconv.Atoi(partsB[i])
-		if errA == nil && errB == nil {
-			if numA < numB {
-				return -1, true
-			}
-			return 1, true
-		}
-		// Different non-numeric prerelease labels (e.g. "alpha" vs "poly") are not safely ordered.
-		return 0, false
-	}
-	if len(partsA) != len(partsB) {
-		if len(partsA) < len(partsB) {
-			return -1, true
-		}
-		return 1, true
-	}
-	return 0, true
-}
-
-func normalizeCatalogFamilyID(candidates ...string) string {
-	for _, raw := range candidates {
-		lower := strings.ToLower(strings.TrimSpace(raw))
-		if lower == "" {
-			continue
-		}
-		switch {
-		case lower == "llama-cpp" || lower == "llama.cpp" || lower == "llama_cpp" || strings.Contains(lower, "llama-server") || strings.Contains(lower, "llama"):
-			return "llama-cpp"
-		case lower == "polystrata" || strings.Contains(lower, "polystrata"):
-			return "polystrata"
-		case lower == "mlx-lm" || lower == "mlx_lm" || strings.Contains(lower, "mlx"):
-			return "mlx-lm"
-		case lower == "vllm" || strings.Contains(lower, "vllm"):
-			return "vllm"
-		case lower == "sglang" || strings.Contains(lower, "sglang"):
-			return "sglang"
-		case lower == "lmstudio" || lower == "lm studio" || lower == "lm-studio" || strings.Contains(lower, "lmstudio"):
-			return "lmstudio"
-		}
-	}
-	return ""
+func (u EngineUpdateInfo) CanOneClickUpdate() bool {
+	return u.HasUpdate && (u.Action == EngineUpdateActionDownload ||
+		u.Action == EngineUpdateActionManaged ||
+		u.Action == EngineUpdateActionVenv)
 }
 
 func latestComparableCatalogVersion(family EngineFamilyCatalog, installed string) (latest, releaseID string, hasUpdate, comparable bool) {
@@ -207,7 +66,6 @@ func latestComparableCatalogVersion(family EngineFamilyCatalog, installed string
 		cmp, ok := compareEngineVersions(installed, bestComparable)
 		return bestComparable, bestReleaseID, ok && cmp < 0, true
 	}
-	// No comparable version in catalog: surface primary release version without false-positive update.
 	for _, rel := range family.Releases {
 		ver := strings.TrimSpace(rel.Version)
 		if ver != "" {
@@ -283,22 +141,112 @@ func readInstallationVersion(instPath string) string {
 	return ""
 }
 
-// EngineUpdates compares locally checked/registered engine versions against the built-in
-// engine catalog and reports whether a newer comparable version is available.
+func venvUpgradeSupported(familyID, platform string) bool {
+	switch familyID {
+	case "mlx-lm":
+		return true
+	case "vllm", "sglang":
+		return platform != "darwin/arm64" && platform != "darwin/amd64"
+	default:
+		return false
+	}
+}
+
+func catalogDirectArtifactFor(family EngineFamilyCatalog, releaseID, platform string, wantCUDA bool) (string, string, int64, string) {
+	for _, rel := range family.Releases {
+		if releaseID != "" && rel.ID != releaseID {
+			continue
+		}
+		var fallback *EnginePlatformBuild
+		for i := range rel.Builds {
+			b := &rel.Builds[i]
+			if !b.CanDirectDownloadOn(platform) && b.AcquireMode != EngineAcquireManagedSetup {
+				continue
+			}
+			if b.Platform != platform && b.Platform != "any" {
+				continue
+			}
+			isCUDA := strings.Contains(strings.ToLower(b.Variant), "cuda") || strings.Contains(strings.ToLower(b.Profile), "cuda")
+			if wantCUDA == isCUDA && len(b.Artifacts) > 0 {
+				a := b.Artifacts[0]
+				return a.URL, a.Filename, b.TotalBytes(), rel.ReleaseURL
+			}
+			if fallback == nil && len(b.Artifacts) > 0 {
+				fallback = b
+			}
+		}
+		if fallback != nil {
+			a := fallback.Artifacts[0]
+			return a.URL, a.Filename, fallback.TotalBytes(), rel.ReleaseURL
+		}
+		return "", "", 0, rel.ReleaseURL
+	}
+	return "", "", 0, family.ReleasesURL
+}
+
+func countUpdatableEngineTargets(updates map[string]EngineUpdateInfo) int {
+	if len(updates) == 0 {
+		return 0
+	}
+	type groupState struct {
+		hasUpdate  bool
+		hasCurrent bool
+	}
+	groups := map[string]groupState{}
+	for _, info := range updates {
+		key := info.Family
+		if key == "" {
+			key = info.Engine
+		}
+		if info.Distribution != "" {
+			key += ":" + info.Distribution
+		}
+		st := groups[key]
+		if info.HasUpdate {
+			st.hasUpdate = true
+		} else if strings.TrimSpace(info.InstalledVersion) != "" && strings.TrimSpace(info.LatestVersion) != "" {
+			if cmp, ok := compareEngineVersions(info.InstalledVersion, info.LatestVersion); ok && cmp >= 0 {
+				st.hasCurrent = true
+			}
+		}
+		groups[key] = st
+	}
+	count := 0
+	for _, st := range groups {
+		if st.hasUpdate && !st.hasCurrent {
+			count++
+		}
+	}
+	return count
+}
+
+// EngineUpdates compares locally checked/registered engine versions against cached upstream
+// releases and the built-in engine catalog, reporting update availability and actionable modes.
 func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 	out := map[string]EngineUpdateInfo{}
 	checks := s.EngineChecks()
 	reg := s.registry()
 
+	entryByName := make(map[string]registryEntry, len(reg.engines))
 	familyByName := make(map[string]string, len(reg.engines))
 	versionByName := make(map[string]string, len(reg.engines))
 	for _, entry := range reg.engines {
+		entryByName[entry.engine.Name] = entry
 		fam := normalizeCatalogFamilyID(entry.engine.Family, entry.family, entry.engine.Name, entry.path)
 		if fam != "" {
 			familyByName[entry.engine.Name] = fam
 		}
-		if ver := installedVersionFromRegistryEntry(entry); ver != "" {
+		if ver := s.extractInstalledVersion(context.Background(), entry, fam, false); ver != "" {
 			versionByName[entry.engine.Name] = ver
+		}
+	}
+
+	var remote map[string]remoteEngineRelease
+	platform := CurrentPlatform()
+	if s != nil && s.engineUpdater != nil {
+		remote = s.engineUpdater.remoteSnapshot()
+		if strings.TrimSpace(s.engineUpdater.opts.Platform) != "" {
+			platform = s.engineUpdater.opts.Platform
 		}
 	}
 
@@ -312,11 +260,21 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 		if !ok {
 			return
 		}
+		entry, hasEntry := entryByName[name]
 		candidates := []string{
 			strings.TrimSpace(eligVersion),
 			strings.TrimSpace(eligRelease),
 			strings.TrimSpace(versionByName[name]),
 		}
+
+		dist := ""
+		remoteKey := familyID
+		if familyID == "llama-cpp" {
+			dist = detectLlamaDistribution(entry, versionByName[name], eligRelease)
+			remoteKey = "llama-cpp:" + dist
+		}
+
+		// 1. Evaluate catalog baseline.
 		var installed, latest, releaseID string
 		var hasUpdate, matched bool
 		for _, cand := range candidates {
@@ -335,14 +293,74 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 		if !matched {
 			latest, releaseID, hasUpdate, _ = latestComparableCatalogVersion(family, installed)
 		}
-		out[name] = EngineUpdateInfo{
+
+		source := "catalog"
+		wantCUDA := hasEntry && isCUDAEngineEntry(entry)
+		downloadURL, assetName, assetBytes, releaseURL := catalogDirectArtifactFor(family, releaseID, platform, wantCUDA)
+
+		// 2. Overlay remote upstream release when available and comparable.
+		if rem, ok := remote[remoteKey]; ok && strings.TrimSpace(rem.Version) != "" {
+			remVer := strings.TrimSpace(rem.Version)
+			for _, cand := range candidates {
+				if cand == "" {
+					continue
+				}
+				cmp, comparable := compareEngineVersions(cand, remVer)
+				if !comparable {
+					continue
+				}
+				preferRemote := !matched
+				if !preferRemote && latest != "" {
+					if rCmp, ok2 := compareEngineVersions(latest, remVer); ok2 && rCmp <= 0 {
+						preferRemote = true
+					}
+				}
+				if preferRemote {
+					installed = cand
+					latest = remVer
+					hasUpdate = cmp < 0
+					source = "remote"
+					if strings.TrimSpace(rem.ReleaseURL) != "" {
+						releaseURL = strings.TrimSpace(rem.ReleaseURL)
+					}
+					if strings.TrimSpace(rem.Distribution) != "" {
+						dist = strings.TrimSpace(rem.Distribution)
+					}
+					if familyID == "llama-cpp" {
+						if asset, okAsset := matchLlamaReleaseAsset(rem.Assets, platform, wantCUDA); okAsset {
+							downloadURL = asset.URL
+							assetName = asset.Name
+							assetBytes = asset.Bytes
+						} else {
+							downloadURL, assetName, assetBytes = "", "", 0
+						}
+					} else if familyID == "polystrata" && strings.TrimSpace(rem.DownloadURL) != "" {
+						downloadURL = strings.TrimSpace(rem.DownloadURL)
+						assetName = filepath.Base(downloadURL)
+						assetBytes = 0
+					}
+				}
+				break
+			}
+		}
+
+		info := EngineUpdateInfo{
 			Engine:           name,
+			Family:           familyID,
 			InstalledVersion: installed,
 			LatestVersion:    latest,
 			ReleaseID:        releaseID,
 			ReleaseVersion:   latest,
+			ReleaseURL:       releaseURL,
+			DownloadURL:      downloadURL,
+			AssetName:        assetName,
+			AssetBytes:       assetBytes,
+			Distribution:     dist,
+			Source:           source,
 			HasUpdate:        hasUpdate,
 		}
+		info.Action, info.HintCommand = resolveEngineUpdateAction(info, entry, hasEntry, platform)
+		out[name] = info
 	}
 
 	for name, elig := range checks.Engines {
@@ -359,4 +377,34 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 		evaluate(name, entry.engine.Family, "", "")
 	}
 	return out
+}
+
+func resolveEngineUpdateAction(info EngineUpdateInfo, entry registryEntry, hasEntry bool, platform string) (EngineUpdateAction, string) {
+	if !info.HasUpdate {
+		return EngineUpdateActionNone, ""
+	}
+	switch info.Family {
+	case "llama-cpp":
+		if hasEntry && isHomebrewEnginePath(resolveEngineExecutablePath(entry)) {
+			return EngineUpdateActionDrawer, "brew upgrade llama.cpp"
+		}
+		if strings.TrimSpace(info.DownloadURL) != "" {
+			return EngineUpdateActionDownload, ""
+		}
+		return EngineUpdateActionDrawer, ""
+	case "polystrata":
+		if strings.TrimSpace(info.DownloadURL) != "" {
+			return EngineUpdateActionManaged, ""
+		}
+		return EngineUpdateActionDrawer, ""
+	case "mlx-lm", "vllm", "sglang":
+		if hasEntry && venvUpgradeSupported(info.Family, platform) && venvPythonPath(entry) != "" {
+			return EngineUpdateActionVenv, ""
+		}
+		return EngineUpdateActionDrawer, ""
+	case "lmstudio":
+		return EngineUpdateActionExternal, ""
+	default:
+		return EngineUpdateActionDrawer, ""
+	}
 }

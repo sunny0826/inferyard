@@ -252,6 +252,7 @@ func (s *viewState) libraryEnginesTab(c *ui.Context, pending *pendingAssetDelete
 			btnLabel = tr(c, "models.action.collapse_local_engine")
 		}
 		button(c, btnLabel).OnClick(func() { *wizardOpen = !*wizardOpen })
+		s.renderEngineUpdateCheckButton(c)
 	})
 	if *wizardOpen {
 		card(c, tr(c, "models.wizard.card_title"), func() {

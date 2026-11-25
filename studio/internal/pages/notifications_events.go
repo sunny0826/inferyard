@@ -147,6 +147,44 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 			return
 		}
 		task := payload.Task
+		if task.Kind == "engine_update" {
+			target := strings.TrimSpace(task.DisplayName)
+			if target == "" {
+				target = strings.TrimSpace(task.OutName)
+			}
+			switch task.State {
+			case "done":
+				s.pushNotification(studioNotification{
+					Key:   "dl:" + task.TaskId + ":done",
+					Title: l10n.TR("notif.engine_update.done.title"),
+					Body:  l10n.TRf("notif.engine_update.done.body", "target", target),
+					Kind:  stateSuccess,
+					Primary: &notificationAction{
+						Label: l10n.TR("notif.action.view_engines"),
+						OnClick: func() {
+							s.libraryTab = 1
+							s.navigateTo("library", "")
+						},
+					},
+				})
+			case "failed":
+				s.pushNotification(studioNotification{
+					Key:           "dl:" + task.TaskId + ":failed",
+					Title:         l10n.TR("notif.engine_update.failed.title"),
+					Body:          l10n.TRf("notif.engine_update.failed.body", "target", target),
+					Kind:          stateDanger,
+					NeedsDecision: true,
+					Primary: &notificationAction{
+						Label: l10n.TR("notif.action.view_engines"),
+						OnClick: func() {
+							s.libraryTab = 1
+							s.navigateTo("library", "")
+						},
+					},
+				})
+			}
+			return
+		}
 		if task.Kind == "polystrata" {
 			label := strings.TrimSpace(task.DisplayName)
 			if label == "" {
@@ -284,6 +322,15 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 			return
 		}
 		s.applyCLIUpgradeState(payload.CLIUpgrade)
+	case "engine.updates":
+		var payload struct {
+			Status core.EngineUpdatesStatus `json:"status"`
+			Manual bool                     `json:"manual"`
+		}
+		if json.Unmarshal(event.Data, &payload) != nil {
+			return
+		}
+		s.applyEngineUpdatesStatus(payload.Status, payload.Manual)
 	case "engine.check":
 		var payload struct {
 			Engine      string                 `json:"engine"`

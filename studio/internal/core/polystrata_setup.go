@@ -427,7 +427,10 @@ func (s *Service) runPolystrataSetup(ctx context.Context, binary string, d *down
 			}
 			s.Bus.Publish("download.state", map[string]any{"task": taskSnap})
 			if doneOK {
-				go func() { _ = s.RefreshAssets() }()
+				go func() {
+					_ = s.RefreshAssets()
+					s.publishEngineUpdatesEvent(false)
+				}()
 			}
 			return
 		}

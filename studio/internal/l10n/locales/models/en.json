@@ -239,5 +239,12 @@
   "models.evidence.untested": "Not benchmarked",
   "models.engine.update_available": "Update {version}",
   "models.engine.action.update": "Update",
-  "models.engine.action.update_label": "Update {name}"
+  "models.engine.action.one_click_update": "One-Click Update",
+  "models.engine.action.updating": "Updating…",
+  "models.engine.action.update_label": "Update {name}",
+  "models.engine.action.check_updates": "Check Engine Updates",
+  "models.engine.toast.check_up_to_date": "All engines are up to date",
+  "models.engine.toast.check_found": "{count} engine update(s) available",
+  "models.engine.toast.update_started": "Started updating {name}",
+  "models.engine.toast.update_started_preview": "Simulated updating {name}"
 }

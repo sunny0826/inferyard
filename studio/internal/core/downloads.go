@@ -338,6 +338,10 @@ func (s *Service) finishDownloadLocked(ctx context.Context, d *downloadEntry, ou
 }
 
 func (s *Service) CreateEngineDownload(source, outName string) (DownloadTask, *ApiError) {
+	return s.createEngineDownloadTask(source, outName, "", 0)
+}
+
+func (s *Service) createEngineDownloadTask(source, outName, displayName string, knownBytes int64) (DownloadTask, *ApiError) {
 	if !validEngineSource(source) || (outName != "" && !ValidDownloadName(outName)) {
 		return DownloadTask{}, Err("invalid_request")
 	}
@@ -365,16 +369,23 @@ func (s *Service) CreateEngineDownload(source, outName string) (DownloadTask, *A
 	if failure != nil {
 		return DownloadTask{}, failure
 	}
+	if strings.TrimSpace(displayName) == "" {
+		displayName = ResolveDownloadDisplayName("engine", source)
+	}
+	totalBytes := catalogTotalBytes(source)
+	if totalBytes == nil && knownBytes > 0 {
+		totalBytes = ptr(knownBytes)
+	}
 	ctx, cancel := context.WithCancel(s.ctx)
 	d := &downloadEntry{Task: DownloadTask{
 		Kind:           "engine",
-		DisplayName:    ResolveDownloadDisplayName("engine", source),
+		DisplayName:    displayName,
 		TaskId:         uuid(),
 		State:          "downloading",
 		SourceUrl:      source,
 		OutName:        outName,
 		OutDir:         dir,
-		TotalBytes:     catalogTotalBytes(source),
+		TotalBytes:     totalBytes,
 		StartedAt:      now(),
 		ProgressReason: ptr("engine_transfer_progress_unavailable"),
 	}, cancel: cancel}
@@ -442,6 +453,10 @@ func (s *Service) downloadEngine(ctx context.Context, binary string, d *download
 	doneOK := d.Task.State == "done"
 	s.mu.Unlock()
 	if doneOK {
-		go s.VerifyEngines()
+		go func() {
+			s.VerifyEngines()
+			_ = s.RefreshAssets()
+			s.publishEngineUpdatesEvent(false)
+		}()
 	}
 }

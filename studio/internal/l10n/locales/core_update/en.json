@@ -1,4 +1,9 @@
 {
+  "core.engine_update.err.check_failed": "Failed to check engine updates. Check your network or proxy settings and try again.",
+  "core.engine_update.err.engine_in_use": "This engine is currently in use by a running service or benchmark. Stop it before updating.",
+  "core.engine_update.err.manual_required": "This engine requires manual update. Open engine details for instructions.",
+  "core.engine_update.err.up_to_date": "This engine is already up to date.",
+  "core.engine_update.err.upgrade_failed": "Engine upgrade failed. Check details and try again.",
   "core.update.err.apply_checksum_mismatch": "Package SHA-256 verification failed. The invalid file has been removed.",
   "core.update.err.apply_failed": "Failed to install the update. Your existing installation was not affected.",
   "core.update.err.applying_busy": "An update is currently being installed. Please wait.",

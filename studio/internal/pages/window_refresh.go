@@ -55,7 +55,8 @@ func (s *viewState) refresh(full bool) {
 		modelEvidence = s.service.ModelBenchmarkEvidence()
 		reportExclusivities = s.service.ReportExclusivities(reports)
 	}
-	engineUpdates := s.service.EngineUpdates()
+	engineUpdateStatus := s.service.EngineUpdateStatus()
+	engineUpdates := engineUpdateStatus.Updates
 	ready = s.service.Readiness()
 	if ready.CLI.Status == "ok" && ready.Workspace.Initialized {
 		progress, pe = s.service.Progress(s.ctx)
@@ -88,7 +89,8 @@ func (s *viewState) refresh(full bool) {
 			updateState: updateState, cliUpgrade: cliUpgrade, serveSupported: serveSupported,
 			recentServices: recentServices, exitedNotices: exitedNotices,
 			managedServices: managedServices, memorySummary: memorySummary,
-			modelEvidence: modelEvidence, reportExclusivities: reportExclusivities, engineUpdates: engineUpdates,
+			modelEvidence: modelEvidence, reportExclusivities: reportExclusivities,
+			engineUpdates: engineUpdates, engineUpdateStatus: engineUpdateStatus,
 		}
 		if !s.applyRefreshBatch(batch) {
 			return
@@ -133,6 +135,7 @@ type refreshBatch struct {
 	modelEvidence              map[string]core.ModelEvidenceSummary
 	reportExclusivities        map[string]string
 	engineUpdates              map[string]core.EngineUpdateInfo
+	engineUpdateStatus         core.EngineUpdatesStatus
 }
 
 func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
@@ -182,6 +185,9 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	}
 	if b.engineUpdates != nil {
 		s.engineUpdates = b.engineUpdates
+	}
+	if b.engineUpdateStatus.State != "" || b.engineUpdateStatus.Updates != nil {
+		s.engineUpdateStatus = b.engineUpdateStatus
 	}
 	s.ready, s.progress = b.ready, b.progress.Progress
 	s.applyDashboard(b.dashboard, b.progressError)
