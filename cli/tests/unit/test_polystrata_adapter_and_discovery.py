@@ -49,7 +49,11 @@ def _polystrata_config(local_config, *, context_size: int = 32768, effort: str |
 
 
 def _fake_binding(config):
-    return {"pid": 500, "origin": config["endpoint"]["url"]}
+    return {"pid": 500, "start_ticks": 600, "origin": config["endpoint"]["url"]}
+
+
+def _fake_start_ticks(pid):
+    return {500: 600}[pid]
 
 
 def test_polystrata_status_fallback_sanitizes_tail_and_rejects_missing_queued(
@@ -104,6 +108,7 @@ def test_polystrata_status_fallback_sanitizes_tail_and_rejects_missing_queued(
             "http://127.0.0.1:48857",
             transport=httpx.MockTransport(status_only_handler),
             binding_verifier=_fake_binding,
+            start_ticks=_fake_start_ticks,
         )
         cap = await adapter.discover(cfg)
         validate_value(cap, OBSERVATION, "engine_observation")
@@ -164,6 +169,7 @@ def test_polystrata_status_fallback_sanitizes_tail_and_rejects_missing_queued(
             "http://127.0.0.1:48857",
             transport=httpx.MockTransport(missing_queued_handler),
             binding_verifier=_fake_binding,
+            start_ticks=_fake_start_ticks,
         )
         try:
             with pytest.raises(PreflightError, match="polystrata_status_invalid"):

@@ -63,7 +63,11 @@ class TrialRequests:
                 raise EvidenceError("formal_prompt_differs_from_plan")
         elif phase not in ("probe", "warmup") or index is not None:
             raise EvidenceError("invalid_request_phase")
-        self.guard(self.config, self.files)
+        if getattr(self.adapter, "local_profile", False):
+            # Service identity is verified by the local adapter's idle confirmation below.
+            self.guard(self.config, self.files, service=False)
+        else:
+            self.guard(self.config, self.files)
         if self.sampler_task.done():
             await self.sampler_task
             raise EvidenceError("sampler_stopped_early")

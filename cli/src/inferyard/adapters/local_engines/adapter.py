@@ -18,6 +18,7 @@ from inferyard.adapters.local_engines.protocol import (
 from inferyard.contracts.engine_tuning import prompt_cache_disabled
 from inferyard.errors import PreflightError
 from inferyard.platforms.engine_fit_lmstudio import LMStudioObserver
+from inferyard.platforms.identity import process_start_ticks
 from inferyard.platforms.local_engines import verify_bound_service
 
 
@@ -27,14 +28,24 @@ class LocalEngineAdapter(LabAdapter):
     observation_mode = "native"
 
     def __init__(
-        self, origin, *, secret=None, transport=None, binding_verifier=None, observer=None
+        self,
+        origin,
+        *,
+        secret=None,
+        transport=None,
+        binding_verifier=None,
+        observer=None,
+        start_ticks=None,
     ):
         super().__init__(origin, secret=secret, transport=transport)
         self._verify_binding = binding_verifier or verify_bound_service
+        self._start_ticks = start_ticks or process_start_ticks
         self._observer = observer
         self._service_binding = None
         self._config = None
         self.queue_ready = False
+        # Full binding verified since the last generation; reset by every request.
+        self._verified = False
 
     @staticmethod
     def request_body(config, prompt, *, stream=True):
@@ -52,12 +63,29 @@ class LocalEngineAdapter(LabAdapter):
         return body
 
     async def _bound(self, deadline):
+        self._verified = False
         async with asyncio.timeout_at(deadline):
             value = await asyncio.to_thread(self._verify_binding, self._config)
         if self._service_binding is not None and value != self._service_binding:
             raise PreflightError("local_engine_bound_service_changed")
         self._service_binding = deepcopy(value)
+        self._verified = True
         return value
+
+    def _same_incarnation(self):
+        """Start ticks are unique per process lifetime, so this proves no root or worker
+        was replaced since the last full verification without repeating it."""
+        service = self._service_binding
+        for row in (service, *service.get("workers", ())):
+            if self._start_ticks(row["pid"]) != row["start_ticks"]:
+                raise PreflightError("local_engine_bound_service_changed")
+
+    async def _confirm_bound(self, deadline):
+        """Fully verify once after each request; otherwise re-check only incarnations."""
+        if self._verified:
+            self._same_incarnation()
+        else:
+            await self._bound(deadline)
 
     async def _endpoint(self, path, deadline, matrix):
         record = await self.inspect_endpoint(path, deadline=deadline)
@@ -179,6 +207,7 @@ class LocalEngineAdapter(LabAdapter):
         if not self.queue_ready or self.native_uncertain:
             raise PreflightError("local_engine_queue_admission_required")
         self.queue_ready = False
+        self._verified = False
         try:
             result = await super().generate(body, timeout, emit, before_send=before_send)
         except BaseException:
@@ -214,7 +243,6 @@ class LocalEngineAdapter(LabAdapter):
                 "missing_reason": None,
             }
             try:
-                await self._bound(deadline)
                 if family == "lmstudio":
                     async with asyncio.timeout_at(deadline):
                         observed = await self._observer.idle()
@@ -234,7 +262,9 @@ class LocalEngineAdapter(LabAdapter):
                 snapshot["observation"] = queue(
                     family, snapshot["served_model"], snapshot["raw_metrics"], observed
                 )
-                await self._bound(deadline)
+                # Verify after the idle read: the same incarnation held the listener for it.
+                if snapshot["observation"]["idle"]:
+                    await self._confirm_bound(deadline)
             except asyncio.CancelledError:
                 self.native_uncertain = True
                 raise

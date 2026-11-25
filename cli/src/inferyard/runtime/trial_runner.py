@@ -128,7 +128,7 @@ async def run_trial(
     current = deadline.current
     idle_state = InitialIdle() if single else None
 
-    def check_guard(config, files, *, periodic=False):
+    def check_guard(config, files, *, periodic=False, service=True):
         config = transport_config(config, adapter)
         if single:
             deadline.check()
@@ -143,15 +143,21 @@ async def run_trial(
         if memory_available() < budget["min_available_memory_bytes"]:
             raise PreflightError("memory_safety_budget_reached")
         if not (is_local(config) and periodic):
-            deps.guard(config, files)
+            if service or not is_local(config):
+                deps.guard(config, files)
+            elif not all(item.unchanged() for item in files):
+                # The local adapter verifies the bound service at each request boundary.
+                raise PreflightError("identity_file_changed")
         if safety is not None:
             safety.check(periodic=periodic)
 
-    def guard(config, files, *, periodic=False):
+    def guard(config, files, *, periodic=False, service=True):
         if safety_trace is None:
-            return check_guard(config, files, periodic=periodic)
+            return check_guard(config, files, periodic=periodic, service=service)
         return safety_trace.check(
-            lambda: check_guard(config, files, periodic=periodic), safety, periodic=periodic
+            lambda: check_guard(config, files, periodic=periodic, service=service),
+            safety,
+            periodic=periodic,
         )
 
     def safety_stop(value):
