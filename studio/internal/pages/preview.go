@@ -218,7 +218,7 @@ func (p *previewSession) left(c *ui.Context) {
 				})
 				button(c, tr(c, "preview.scene.reset")).OnClick(func() { p.loadScene(p.scene) })
 				prevTheme := p.themeMode
-				segmentedField(c, tr(c, "preview.theme.label"), "", &p.themeMode, []components.NativeSelectOption[int]{
+				previewCompactSegmentedField(c, tr(c, "preview.theme.label"), &p.themeMode, []components.NativeSelectOption[int]{
 					{Label: tr(c, "preview.theme.system"), Value: 0},
 					{Label: tr(c, "preview.theme.light"), Value: 1},
 					{Label: tr(c, "preview.theme.dark"), Value: 2},
@@ -228,7 +228,7 @@ func (p *previewSession) left(c *ui.Context) {
 					p.syncNativeTheme()
 				}
 				prevLang := p.languageMode
-				segmentedField(c, tr(c, "preview.language.label"), "", &p.languageMode, []components.NativeSelectOption[int]{
+				previewCompactSegmentedField(c, tr(c, "preview.language.label"), &p.languageMode, []components.NativeSelectOption[int]{
 					{Label: tr(c, "preview.language.system"), Value: 0},
 					{Label: tr(c, "settings.language.en"), Value: 1},
 					{Label: tr(c, "settings.language.zh_hans"), Value: 2},
@@ -256,4 +256,52 @@ func (p *previewSession) content(c *ui.Context) {
 func (p *previewSession) showNotice() {
 	p.noticeKey = "preview.notice.unsupported"
 	p.state.failure = &core.ApiError{Code: "preview_unsupported", Message: l10n.TR("preview.notice.unsupported")}
+}
+
+func previewCompactSegmentedField[T comparable](c *ui.Context, name string, selected *T, options []components.NativeSelectOption[T]) {
+	if len(options) == 0 {
+		return
+	}
+	t := tokens(c)
+	idx := 0
+	for i, option := range options {
+		if option.Value == *selected {
+			idx = i
+			break
+		}
+	}
+	ui.Field(c, name, func() {
+		seg := ui.SegmentedBase(c, &idx, len(options))
+		trackR := t.Radius.Floating
+		trackPad := t.Density.Tight
+		itemR := concentricRadius(trackR, trackPad)
+		seg.Track.FillWidth().AlignItems(ui.Center).Gap(2).
+			Padding(trackPad).Radius(trackR).
+			Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).Label(name).
+			Children(func() {
+				for i, option := range options {
+					active := i == idx
+					item := seg.Segment(i).Grow(1).MinWidth(0).
+						AlignItems(ui.Center).Justify(ui.Center).
+						Padding(t.Density.Tight, t.Density.Tight).
+						Radius(itemR).Label(option.Label).Disabled(option.Disabled)
+					if active {
+						applyShadow(item.Background(t.Color.Surface).Border(1, t.Color.BorderSubtle), t.Elevation.XS)
+					} else if item.Hovered() && !option.Disabled {
+						item.Background(t.Color.Surface.Alpha(.6))
+					}
+					item.Children(func() {
+						label := ui.Text(c, option.Label).FontSize(t.Type.Caption).SingleLine()
+						if active {
+							label.Bold().TextColor(t.Color.FgPrimary)
+						} else {
+							label.TextColor(t.Color.FgSecondary)
+						}
+					})
+				}
+			})
+		if seg.Track.Changed() && idx >= 0 && idx < len(options) && !options[idx].Disabled {
+			*selected = options[idx].Value
+		}
+	})
 }
