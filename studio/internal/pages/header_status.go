@@ -58,13 +58,22 @@ type sidebarStatusSpec struct {
 }
 
 func (s *viewState) sidebarStatusArea(c *ui.Context) {
-	t := tokens(c)
 	s.sidebarServiceRow(c)
 	s.sidebarQueueRow(c)
 	s.sidebarDownloadRow(c)
-	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Padding(2, t.Density.Row).Children(func() {
-		s.notificationBell(c)
+}
+
+func (s *viewState) shellContentTitle(c *ui.Context, leading func(*ui.Context)) {
+	t := tokens(c)
+	row := ui.Row(c.Key("content-title-bar")).Fill().AlignItems(ui.Center).Gap(t.Density.Row)
+	availWidth := row.LayoutBounds().W
+	row.Children(func() {
+		if leading != nil {
+			leading(c)
+		}
+		ui.Spacer(c)
 		s.updateHeaderBadge(c)
+		s.notificationBell(c, availWidth)
 	})
 }
 
@@ -367,6 +376,7 @@ func (s *viewState) sidebarStatusRow(c *ui.Context, sp sidebarStatusSpec) {
 			width = c.Theme().Space(78)
 		}
 		panel.AttachTo(anchor, ui.AnchorTopRight, ui.AnchorBottomLeft).
+			Margin(0, 0, 0, t.Density.Stack).
 			Width(width).MaxWidthPercent(100).
 			Label(trf(c, "shell.header.status_panel_label", "label", aria))
 		panel.Children(func() { sp.pop(func() { *sp.open = false }) })

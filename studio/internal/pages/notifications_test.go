@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/shells/sidebar"
 )
 
 func TestTopRightNotificationCloseButtonPositionAndDismiss(t *testing.T) {
@@ -253,6 +254,69 @@ func TestTopRightNotificationEvictedCardResumesRemainingTime(t *testing.T) {
 	tt.Advance(1500 * time.Millisecond)
 	if len(s.notifications().screenItems()) != 0 {
 		t.Fatalf("expected notification A auto-dismissed after completing remaining window")
+	}
+}
+
+func TestNotificationBellTopRightPlacementAndPopoverGeometry(t *testing.T) {
+	cases := []struct {
+		name         string
+		winW, winH   int
+		sidebarWidth float32
+	}{
+		{name: "standard", winW: 1120, winH: 800, sidebarWidth: 232},
+		{name: "narrow_wide_sidebar", winW: 800, winH: 600, sidebarWidth: 480},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := readyState("services")
+			opts := s.shellOptions("InferYard Studio")
+			if opts.ContentTitle == nil {
+				t.Fatal("expected shellOptions to wire ContentTitle")
+			}
+			tt := ui.NewTester(func(c *ui.Context) {
+				ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
+					ui.Column(c).Width(tc.sidebarWidth).Shrink(0).Children(func() { opts.Left(c) })
+					ui.Box(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
+						opts.Content(c)
+						ui.Row(c).Absolute().Top(0).Left(0).Right(0).Height(sidebar.HeaderHeight(c)).
+							AlignItems(ui.Center).Padding(6, 16, 6, 16).Children(func() {
+							opts.ContentTitle(c)
+						})
+					})
+				})
+			}, tc.winW, tc.winH)
+			tt.Frame()
+
+			bellInfo, ok := tt.AccessByRole(ui.RoleButton, "通知")
+			if !ok {
+				t.Fatalf("expected notification bell button, texts=%v", tt.Texts())
+			}
+			bellRect := bellInfo.Bounds
+			if bellRect.X < tc.sidebarWidth || bellRect.Y > 48 {
+				t.Fatalf("expected bell button in top-right header area beyond sidebar %.0f, got %+v", tc.sidebarWidth, bellRect)
+			}
+
+			click(t, tt, "通知")
+			tt.Frame()
+
+			popInfo, ok := tt.AccessByRole(ui.RolePopup, "通知列表")
+			if !ok {
+				t.Fatalf("expected notification inbox popover open after clicking bell, texts=%v", tt.Texts())
+			}
+			popRect := popInfo.Bounds
+			if popRect.X < tc.sidebarWidth {
+				t.Fatalf("expected notification popover completely inside main canvas (>= %.0f), got %+v", tc.sidebarWidth, popRect)
+			}
+			if popRect.Y < bellRect.Y+bellRect.H {
+				t.Fatalf("expected notification popover below bell button: pop=%+v bell=%+v", popRect, bellRect)
+			}
+			if popRect.X+popRect.W > float32(tc.winW) {
+				t.Fatalf("expected notification popover within window right edge %d, got %+v", tc.winW, popRect)
+			}
+			if !tt.HasText("暂无未处理通知。") {
+				t.Fatalf("expected empty state copy inside inbox popover, texts=%v", tt.Texts())
+			}
+		})
 	}
 }
 

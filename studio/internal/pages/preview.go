@@ -167,7 +167,9 @@ func (p *previewSession) shellOptions() sidebar.ShellOptions {
 	options := pageShellOptions(l10n.TR("app.title.preview"), "", p.left, p.content)
 	options.Theme = p.themeFor
 	options.ContentTitle = func(c *ui.Context) {
-		ui.Text(c, tr(c, "preview.content_title")).SingleLine().TextColor(stateColor(c, stateWarning))
+		p.state.shellContentTitle(c, func(c *ui.Context) {
+			ui.Text(c, tr(c, "preview.content_title")).SingleLine().TextColor(stateColor(c, stateWarning))
+		})
 	}
 	return options
 }
