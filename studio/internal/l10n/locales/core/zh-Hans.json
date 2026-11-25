@@ -84,5 +84,6 @@
   "core.report.err.unsupported_format": "旧格式报告不受支持，请用当前 CLI 重新生成报告。",
   "core.score.gap.incomplete": "运行不完整",
   "core.score.gap.missing": "缺评分",
-  "core.score.gap.unscorable": "不可评分"
+  "core.score.gap.unscorable": "不可评分",
+  "core.service.exit_hint.oom": "日志中检测到可能的内存不足错误，建议调低上下文长度、减少 GPU 层数或改用更小的量化版本。"
 }

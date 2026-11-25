@@ -333,6 +333,16 @@ func (s *viewState) ingestCoreEvents(events []core.Event) {
 
 func (s *viewState) ingestCoreEvent(event core.Event) {
 	switch event.Type {
+	case "service.exited":
+		var payload struct {
+			Notice *core.ServiceExitNotice `json:"notice"`
+		}
+		if json.Unmarshal(event.Data, &payload) == nil && payload.Notice != nil {
+			cp := *payload.Notice
+			s.exitedNotice = &cp
+		}
+	case "service.exit_notice_cleared":
+		s.exitedNotice = nil
 	case "report.created":
 		var payload struct {
 			Report struct {

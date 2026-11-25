@@ -84,5 +84,6 @@
   "core.report.err.unsupported_format": "Legacy report format is not supported. Regenerate the report with the current CLI.",
   "core.score.gap.incomplete": "Incomplete run",
   "core.score.gap.missing": "Missing score",
-  "core.score.gap.unscorable": "Unscorable"
+  "core.score.gap.unscorable": "Unscorable",
+  "core.service.exit_hint.oom": "Possible out-of-memory error detected in logs. Try lowering the context size, reducing GPU layers, or choosing a smaller quantization."
 }

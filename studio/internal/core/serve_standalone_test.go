@@ -167,7 +167,7 @@ func setupStandaloneTestService(
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_ = s.Shutdown(ctx)
+		_ = s.ShutdownWithOptions(ctx, true)
 	})
 
 	s.registryRoots = func(w string) []string { return []string{filepath.Join(w, "engines")} }

@@ -31,9 +31,30 @@ func (previewManagedEngine) previewIntent() {}
 type previewStandaloneStart struct {
 	model, engine string
 	contextSize   int64
+	port          int
+	gpuLayers     *int
+	threads       *int
+	extraArgs     []string
 }
 
 func (previewStandaloneStart) previewIntent() {}
+
+type previewSaveServicePreset struct {
+	preset core.ServicePreset
+}
+
+func (previewSaveServicePreset) previewIntent() {}
+
+type previewDismissExitNotice struct{}
+
+func (previewDismissExitNotice) previewIntent() {}
+
+type previewTestServiceEndpoint struct {
+	baseURL, model string
+	seq            uint64
+}
+
+func (previewTestServiceEndpoint) previewIntent() {}
 
 type previewStopEngineThen struct{ after func() }
 

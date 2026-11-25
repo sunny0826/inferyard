@@ -7,6 +7,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
+	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
 )
 
@@ -17,10 +18,14 @@ func (s *viewState) servicesView(c *ui.Context) {
 			s.header(c, tr(c, "services.page.title"))
 			ui.Text(c, s.servicesSummaryLine(c)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		})
-		if s.canStartManagedEngine() {
-			if primaryActionButton(c, tr(c, "services.card.action.start"), s.actionBusy("start-engine")).Disabled(s.busy).Clicked() {
-				s.startManagedEngine()
-			}
+		canOpenLauncher := s.serveSupported || s.preview != nil
+		startModelBtn := primaryActionButton(c, tr(c, "services.page.action.start_model"), s.standalone.preparing).
+			Disabled(!canOpenLauncher || s.busy)
+		if startModelBtn.Clicked() {
+			s.openServiceParamsDrawerForNew()
+		}
+		if !canOpenLauncher {
+			components.Tooltip(c, startModelBtn, tr(c, "models.serve.blocked.cli_outdated"))
 		}
 	})
 
@@ -29,9 +34,17 @@ func (s *viewState) servicesView(c *ui.Context) {
 		return
 	}
 
+	s.renderExitedServiceCard(c)
+
 	section(c, tr(c, "services.section.managed"), func() {
 		s.managedServiceSection(c)
 	})
+
+	if len(s.recentServices) > 0 {
+		section(c, tr(c, "services.section.recent"), func() {
+			s.recentServicesSection(c)
+		})
+	}
 
 	section(c, tr(c, "services.section.discovered"), func() {
 		s.discoveredServicesSection(c)
@@ -84,7 +97,10 @@ func (s *viewState) renderRunningManagedCard(c *ui.Context) {
 	pad := t.Card.Padding
 	innerR := concentricRadius(outerR, pad)
 
-	modelName := displayName(state.Model)
+	modelName := strings.TrimSpace(state.ModelName)
+	if modelName == "" {
+		modelName = displayName(state.Model)
+	}
 	if modelName == "" && s.startup.ModelPath != "" {
 		modelName = displayName(s.startup.ModelPath)
 	}
@@ -95,7 +111,10 @@ func (s *viewState) renderRunningManagedCard(c *ui.Context) {
 		modelName = tr(c, "engine.card.title")
 	}
 
-	engineTitle := engineFamilyTitle(state.Family, state.Adapter)
+	engineTitle := strings.TrimSpace(state.EngineName)
+	if engineTitle == "" {
+		engineTitle = engineFamilyTitle(state.Family, state.Adapter)
+	}
 	if engineTitle == "" {
 		engineTitle = displayName(state.Executable)
 	}
@@ -118,6 +137,9 @@ func (s *viewState) renderRunningManagedCard(c *ui.Context) {
 				inlineBadge(c, ctxStr, stateNeutral, badgeOptions{Size: sizeSM, Style: badgeOutline})
 			}
 			inlineBadge(c, stateLabelFor(contextLocale(c), state.State), engineStateKind(state.State), badgeOptions{Size: sizeSM, Style: badgeDot})
+			if state.Adopted {
+				inlineBadge(c, tr(c, "services.card.badge.adopted"), stateInfo, badgeOptions{Size: sizeSM})
+			}
 			ui.Box(c).Grow(1)
 			if hasLoopback {
 				shortAddr := strings.TrimPrefix(strings.TrimPrefix(validURL, "http://"), "https://")
@@ -179,6 +201,16 @@ func (s *viewState) renderRunningManagedCard(c *ui.Context) {
 				})
 				if webBtn.Clicked() {
 					s.openEngineWebUI(c, uiURL)
+				}
+			}
+			if hasLoopback {
+				if inlineButton(c, components.ButtonOutline, tr(c, "services.card.action.usage")).Clicked() {
+					s.openServiceUsageDrawer(validURL, modelName, engineTitle)
+				}
+			}
+			if state.Origin == core.EngineOriginStandalone || s.serveSupported || s.preview != nil {
+				if inlineButton(c, components.ButtonOutline, tr(c, "services.card.action.params")).Clicked() {
+					s.openServiceParamsDrawerForRunning()
 				}
 			}
 			if state.LogPath != "" {
@@ -330,6 +362,13 @@ func (s *viewState) renderDiscoveredServiceCard(c *ui.Context, service inferyard
 				if validURL, ok := validLoopbackURL(endpoint.URL); ok {
 					if inlineButton(c, components.ButtonOutline, tr(c, "services.discovered.copy_url")).Clicked() {
 						s.copyEngineEndpoint(c, validURL)
+					}
+					if inlineButton(c, components.ButtonOutline, tr(c, "services.discovered.usage")).Clicked() {
+						targetModel := name
+						if len(endpoint.Models) > 0 && strings.TrimSpace(endpoint.Models[0]) != "" {
+							targetModel = endpoint.Models[0]
+						}
+						s.openServiceUsageDrawer(validURL, targetModel, name)
 					}
 				}
 				if inlineButton(c, components.ButtonSecondary, tr(c, "services.discovered.benchmark")).Clicked() {

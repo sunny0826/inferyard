@@ -51,6 +51,7 @@ type sidebarStatusSpec struct {
 	progress  float64 // < 0 hides mini bar
 	popWidth  float32
 	leading   func()
+	onClick   func()
 	open      *bool
 	pop       func(close func())
 }
@@ -73,25 +74,37 @@ func (s *viewState) sidebarServiceRow(c *ui.Context) {
 	if state == "" {
 		state = "stopped"
 	}
+	exitedAlert := s.hasActiveExitNotice() && state != "running" && state != "starting" && state != "stopping"
 	kind := engineStateKind(state)
 	label := tr(c, "sidebar.status.service_idle")
 	highlight := false
-	switch state {
-	case "running":
-		label = tr(c, "sidebar.status.service_running")
-	case "starting":
-		label = tr(c, "sidebar.status.service_starting")
-	case "stopping":
-		label = tr(c, "sidebar.status.service_stopping")
-	case "orphaned":
-		label = tr(c, "sidebar.status.service_orphaned")
+	var onClick func()
+	if exitedAlert {
+		kind = stateDanger
+		label = tr(c, "sidebar.status.service_exited")
 		highlight = true
-	case "failed":
-		label = tr(c, "sidebar.status.service_failed")
-		highlight = true
+		onClick = func() { s.navigateTo("services", "") }
+	} else {
+		switch state {
+		case "running":
+			label = tr(c, "sidebar.status.service_running")
+		case "starting":
+			label = tr(c, "sidebar.status.service_starting")
+		case "stopping":
+			label = tr(c, "sidebar.status.service_stopping")
+		case "orphaned":
+			label = tr(c, "sidebar.status.service_orphaned")
+			highlight = true
+		case "failed":
+			label = tr(c, "sidebar.status.service_failed")
+			highlight = true
+		}
 	}
 	aria := trf(c, "shell.header.engine_label", "status", stateLabelFor(contextLocale(c), state))
-	animated := state == "running" || state == "starting" || state == "stopping"
+	if exitedAlert {
+		aria = label
+	}
+	animated := !exitedAlert && (state == "running" || state == "starting" || state == "stopping")
 	s.sidebarStatusRow(c, sidebarStatusSpec{
 		key:       "sidebar-engine-status",
 		label:     label,
@@ -100,9 +113,10 @@ func (s *viewState) sidebarServiceRow(c *ui.Context) {
 		highlight: highlight,
 		progress:  -1,
 		popWidth:  c.Theme().Space(88),
+		onClick:   onClick,
 		leading: func() {
 			cDot := stateColor(c, kind)
-			if state == "failed" || state == "orphaned" {
+			if exitedAlert || state == "failed" || state == "orphaned" {
 				components.Icon(c, lucide.CircleAlert).Size(14, 14).TextColor(cDot)
 				return
 			}
@@ -243,7 +257,11 @@ func (s *viewState) sidebarStatusRow(c *ui.Context, sp sidebarStatusSpec) {
 		anchor.Background(t.Color.SurfaceHover)
 	}
 	if anchor.Clicked() {
-		*sp.open = !*sp.open
+		if sp.onClick != nil {
+			sp.onClick()
+		} else {
+			*sp.open = !*sp.open
+		}
 	}
 	anchor.Children(func() {
 		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
