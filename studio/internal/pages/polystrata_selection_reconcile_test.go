@@ -410,6 +410,32 @@ func TestManagedServiceBenchmarkHandoffAndIneligibleEngineSurfacing(t *testing.T
 		t.Fatalf("expected pendingExclusivityModel to record discovered service model id, got %q", s.pendingExclusivityModel)
 	}
 
+	// Empty model registry jumping to discovered service B, followed by full refresh discovering only model A,
+	// must keep s.model empty rather than auto-adopting A.
+	sEmpty, _ := servicesP2State(t)
+	sEmpty.registry.Models = nil
+	sEmpty.probeEndpointConnFunc = func(context.Context, string) core.ExternalConnProbe {
+		return core.ExternalConnProbe{Status: core.ExclusivityExclusive, Port: 11434}
+	}
+	sEmpty.startBenchmarkForDiscoveredService(
+		inferyard.DiscoveredService{PID: 99, ProcessName: "ollama"},
+		inferyard.DiscoveredEndpoint{URL: "http://127.0.0.1:11434", Models: []string{"model-B"}},
+	)
+	if !sEmpty.applyRefreshBatch(refreshBatch{
+		epoch:    sEmpty.settingsSequence(),
+		full:     true,
+		settings: sEmpty.settings,
+		registry: core.Registry{
+			Engines: s.registry.Engines[:1],
+			Models:  []core.ModelAsset{{Name: "Model-A.gguf", Format: "gguf", Path: "/models/Model-A.gguf", Available: true}},
+		},
+	}) {
+		t.Fatal("expected full refresh batch to apply")
+	}
+	if sEmpty.model != "" {
+		t.Fatalf("expected empty model selection after refresh discovered only Model-A, got %q", sEmpty.model)
+	}
+
 	// When s.engine is empty and all registered engines are ineligible, surface reason instead of generic no_engines.
 	sInel := testState()
 	sInel.loaded = true

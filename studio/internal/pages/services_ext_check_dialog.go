@@ -147,9 +147,7 @@ func (s *viewState) applyServiceBenchmarkTarget(modelName, engineName string) {
 	unmatchedModel := false
 	if modelName != "" {
 		resolvedModel := ""
-		if len(s.registry.Models) == 0 {
-			resolvedModel = modelName
-		} else if m, ok := s.findModelAsset(modelName); ok && m.Available {
+		if m, ok := s.findModelAsset(modelName); ok && m.Available {
 			resolvedModel = m.Name
 		} else {
 			unmatchedModel = true
@@ -158,14 +156,10 @@ func (s *viewState) applyServiceBenchmarkTarget(modelName, engineName string) {
 	}
 	if engineName != "" {
 		resolvedEngine := ""
-		if len(s.registry.Engines) == 0 {
-			resolvedEngine = engineName
-		} else {
-			for _, eng := range s.registry.Engines {
-				if eng.Name == engineName {
-					resolvedEngine = eng.Name
-					break
-				}
+		for _, eng := range s.registry.Engines {
+			if eng.Name == engineName {
+				resolvedEngine = eng.Name
+				break
 			}
 		}
 		s.engine = resolvedEngine
