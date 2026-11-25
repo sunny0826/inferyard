@@ -232,7 +232,9 @@ def build_studio_staged(root: Path, state_dir: Path) -> tuple[Path, Path]:
     env["CGO_ENABLED"] = "0"
     env["GOWORK"] = "off"
     env["GOFLAGS"] = "-mod=readonly"
-    _run(["go", "build", "-o", str(staged), "."], cwd=root / "studio", env=env)
+    build_time = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ldflags = f"-X inferyard/studio/internal/core.BuildTime={build_time}"
+    _run(["go", "build", "-ldflags", ldflags, "-o", str(staged), "."], cwd=root / "studio", env=env)
     _run([str(staged), "--help"], cwd=root, capture=True, timeout=15)
     return staged.resolve(), final_binary
 
