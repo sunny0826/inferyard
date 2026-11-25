@@ -70,10 +70,16 @@ func (s *viewState) openServiceParamsDrawerForRunning() {
 	if engineName == "" {
 		engineName = s.defaultServiceEngineForModel(modelName)
 	}
+	requestedPort := st.RequestedPort
+	if requestedPort == 0 {
+		if saved, ok := s.lookupServicePreset(modelName, engineName); ok {
+			requestedPort = saved.Port
+		}
+	}
 	preset := core.ServicePreset{
 		Model:       modelName,
 		Engine:      engineName,
-		Port:        st.Port,
+		Port:        requestedPort,
 		ContextSize: st.ContextSize,
 		GPULayers:   cloneIntPtrUI(st.GPULayers),
 		Threads:     cloneIntPtrUI(st.Threads),
@@ -96,7 +102,7 @@ func (s *viewState) openServiceParamsDrawerFromExitNotice(notice core.ServiceExi
 	preset := core.ServicePreset{
 		Model:       notice.Model,
 		Engine:      notice.Engine,
-		Port:        notice.Port,
+		Port:        notice.RequestedPort,
 		ContextSize: notice.ContextSize,
 		GPULayers:   cloneIntPtrUI(notice.GPULayers),
 		Threads:     cloneIntPtrUI(notice.Threads),
@@ -233,22 +239,28 @@ func (s *viewState) serviceParamsDrawer(c *ui.Context) {
 					keyValueRow(c, tr(c, "services.params.model_label"), st.model, false)
 				}
 
-				modelAsset, hasModel := s.findModelAsset(st.model)
-				engineOpts := s.serviceParamsEngineOptions(modelAsset, hasModel, st.engine)
-				if len(engineOpts) == 0 {
-					st.engine = ""
+				modelAsset, foundModel := s.findModelAsset(st.model)
+				hasModel := foundModel && modelAsset.Available
+				if st.mode != serviceParamsModeNew && !hasModel {
 					noticeBanner(c, noticeBannerOptions{
 						Kind:    stateWarning,
 						Size:    bannerCompact,
-						Message: tr(c, "models.serve.drawer.no_engine"),
+						Message: tr(c, "services.params.model_missing"),
 					})
+				}
+				engineOpts := s.serviceParamsEngineOptions(modelAsset, hasModel)
+				if len(engineOpts) == 0 {
+					st.engine = ""
+					if hasModel {
+						noticeBanner(c, noticeBannerOptions{
+							Kind:    stateWarning,
+							Size:    bannerCompact,
+							Message: tr(c, "models.serve.drawer.no_engine"),
+						})
+					}
 				} else {
 					if !hasSelectOption(engineOpts, st.engine) {
-						if hasModel {
-							st.engine = s.defaultStandaloneEngine(modelAsset, engineOpts)
-						} else {
-							st.engine = engineOpts[0].Value
-						}
+						st.engine = s.defaultStandaloneEngine(modelAsset, engineOpts)
 					}
 					selectField(c, tr(c, "services.params.engine_label"), "", &st.engine, engineOpts)
 				}
@@ -292,7 +304,7 @@ func (s *viewState) serviceParamsDrawer(c *ui.Context) {
 					noticeBanner(c, noticeBannerOptions{Kind: stateDanger, Size: bannerCompact, Message: st.saveError})
 				}
 
-				valid := validationErr == "" && st.model != "" && st.engine != "" && len(engineOpts) > 0 && hasSelectOption(engineOpts, st.engine)
+				valid := validationErr == "" && hasModel && st.model != "" && st.engine != "" && len(engineOpts) > 0 && hasSelectOption(engineOpts, st.engine)
 				canStart := valid && memErr == "" && !s.busy && !s.standalone.preparing && (s.serveSupported || s.preview != nil)
 				startLabel := tr(c, "services.params.action.start")
 				if st.mode == serviceParamsModeRunning {
@@ -329,18 +341,11 @@ func (s *viewState) availableModelSelectOptions() []components.NativeSelectOptio
 	return opts
 }
 
-func (s *viewState) serviceParamsEngineOptions(model core.ModelAsset, hasModel bool, current string) []components.NativeSelectOption[string] {
-	if hasModel {
-		return s.standaloneEngineOptions(model)
+func (s *viewState) serviceParamsEngineOptions(model core.ModelAsset, hasModel bool) []components.NativeSelectOption[string] {
+	if !hasModel {
+		return nil
 	}
-	var opts []components.NativeSelectOption[string]
-	for _, eng := range s.registry.Engines {
-		opts = append(opts, components.NativeSelectOption[string]{Value: eng.Name, Label: eng.Name})
-	}
-	if current != "" && !hasSelectOption(opts, current) {
-		opts = append(opts, components.NativeSelectOption[string]{Value: current, Label: current})
-	}
-	return opts
+	return s.standaloneEngineOptions(model)
 }
 
 func hasSelectOption(opts []components.NativeSelectOption[string], value string) bool {

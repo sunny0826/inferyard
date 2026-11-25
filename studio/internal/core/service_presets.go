@@ -142,6 +142,7 @@ func applyStandaloneArgs(startup Startup, req StandaloneStartRequest) Startup {
 	startup.Args = args
 	startup.EngineName = req.Engine
 	startup.ModelName = req.Model
+	startup.RequestedPort = req.Port
 	startup.GPULayers = cloneIntPtr(req.GPULayers)
 	startup.Threads = cloneIntPtr(req.Threads)
 	if cleaned, ok := sanitizeExtraArgs(req.ExtraArgs); ok {

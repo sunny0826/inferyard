@@ -93,11 +93,72 @@ func TestServicesParamsDrawerCredentialRejectionAndMemoryAndEngineCompat(t *test
 	// Incompatible engine from an old preset is NOT re-added to eligible options.
 	s.registry.Engines = append(s.registry.Engines, core.EngineAsset{Name: "vllm-dir-only", Family: "vllm"})
 	s.checks.Engines["vllm-dir-only"] = core.EngineEligibility{State: core.EngineCheckEligible}
-	opts := s.serviceParamsEngineOptions(s.registry.Models[0], true, "vllm-dir-only")
+	opts := s.serviceParamsEngineOptions(s.registry.Models[0], true)
 	for _, opt := range opts {
 		if opt.Value == "vllm-dir-only" {
 			t.Fatalf("expected incompatible engine not re-added to options, got %+v", opts)
 		}
+	}
+}
+
+func TestServicesAutoPortPolicyAndRemovedModelDisabled(t *testing.T) {
+	restore := l10n.SetTestLocale(l10n.LanguageZhHans)
+	defer restore()
+
+	s, _ := servicesP2State(t)
+	// Running service started with auto port (RequestedPort=0, actual Port=49123):
+	// opening Launch Params drawer keeps portText empty rather than baking 49123.
+	s.engineState = core.EngineState{
+		State:         "running",
+		Origin:        core.EngineOriginStandalone,
+		EngineName:    "llama-cpp-default",
+		ModelName:     "Qwen3-8B-Q4.gguf",
+		Port:          49123,
+		RequestedPort: 0,
+		ContextSize:   16384,
+		Endpoint:      "http://127.0.0.1:49123",
+	}
+	s.openServiceParamsDrawerForRunning()
+	if s.serviceParams.portText != "" {
+		t.Fatalf("expected empty portText for auto-port running service, got %q", s.serviceParams.portText)
+	}
+	s.serviceParams.open = false
+
+	// Exit notice with dynamic Port=49123 and RequestedPort=0 keeps portText empty.
+	s.openServiceParamsDrawerFromExitNotice(core.ServiceExitNotice{
+		Model:         "Qwen3-8B-Q4.gguf",
+		Engine:        "llama-cpp-default",
+		Port:          49123,
+		RequestedPort: 0,
+		ContextSize:   16384,
+	})
+	if s.serviceParams.portText != "" {
+		t.Fatalf("expected empty portText for auto-port exit notice, got %q", s.serviceParams.portText)
+	}
+	s.serviceParams.open = false
+
+	// Removed model in Recent Services disables Start button and params drawer Start button.
+	s.engineState = core.EngineState{State: "stopped"}
+	removedPreset := core.ServicePreset{
+		Model:       "Removed-Model.gguf",
+		Engine:      "llama-cpp-default",
+		Port:        0,
+		ContextSize: 8192,
+	}
+	s.recentServices = []core.ServicePreset{removedPreset}
+	tt := newServicesTester(s)
+	tt.Frame()
+	if info, ok := tt.AccessByRole(ui.RoleButton, "▶ 启动 · Removed-Model.gguf"); !ok || !info.Disabled {
+		t.Fatalf("expected Recent Start button disabled for removed model, got ok=%v info=%+v", ok, info)
+	}
+
+	s.openServiceParamsDrawerForPreset(removedPreset)
+	tt.Frame()
+	if !tt.HasText("该模型已不在当前模型库中") {
+		t.Fatalf("expected missing model warning in params drawer, got %v", tt.Texts())
+	}
+	if info, ok := tt.AccessByRole(ui.RoleButton, "启动服务"); !ok || !info.Disabled {
+		t.Fatalf("expected drawer Start button disabled for removed model, got ok=%v info=%+v", ok, info)
 	}
 }
 

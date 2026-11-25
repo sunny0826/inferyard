@@ -87,6 +87,7 @@
   "services.params.extra_args_label": "额外命令行参数",
   "services.params.extra_args_desc": "按空格分隔，含空格的值请用引号包裹",
   "services.params.no_models": "暂无可用模型，请先在模型库下载或添加模型。",
+  "services.params.model_missing": "该模型已不在当前模型库中，请先重新下载或添加后再启动。",
   "services.params.err.port": "端口须留空、为 0，或介于 1 至 65535 之间。",
   "services.params.err.gpu_layers": "GPU 层数须为大于等于 -1 的整数。",
   "services.params.err.threads": "CPU 线程数须为正整数。",

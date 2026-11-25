@@ -87,6 +87,7 @@
   "services.params.extra_args_label": "Extra CLI Arguments",
   "services.params.extra_args_desc": "Space-separated arguments; use quotes for values with spaces.",
   "services.params.no_models": "No installed models available. Download or add a model in Library first.",
+  "services.params.model_missing": "This model is no longer available in Library. Download or re-add it before starting.",
   "services.params.err.port": "Port must be empty, 0, or between 1 and 65535.",
   "services.params.err.gpu_layers": "GPU layers must be an integer >= -1.",
   "services.params.err.threads": "CPU threads must be a positive integer.",

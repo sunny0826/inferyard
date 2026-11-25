@@ -20,8 +20,9 @@ type engineOwner struct {
 	Model        string                  `json:"model,omitempty"`
 	ModelName    string                  `json:"model_name,omitempty"`
 	ModelKind    string                  `json:"model_kind,omitempty"`
-	ServedModel  string                  `json:"served_model,omitempty"`
-	Port         int                     `json:"port,omitempty"`
+	ServedModel   string                  `json:"served_model,omitempty"`
+	Port          int                     `json:"port,omitempty"`
+	RequestedPort int                     `json:"requested_port,omitempty"`
 	ContextSize  int64                   `json:"context_size,omitempty"`
 	GPULayers    *int                    `json:"gpu_layers,omitempty"`
 	Threads      *int                    `json:"threads,omitempty"`
@@ -61,8 +62,9 @@ func (s *Service) persistEngineOwner(e *engineEntry, workspace string) *ApiError
 		Model:       e.state.Model,
 		ModelName:   e.state.ModelName,
 		ModelKind:   e.state.ModelKind,
-		ServedModel: e.state.ServedModel,
-		Port:        e.state.Port,
+		ServedModel:   e.state.ServedModel,
+		Port:          e.state.Port,
+		RequestedPort: e.state.RequestedPort,
 		ContextSize: e.state.ContextSize,
 		GPULayers:   cloneIntPtr(e.state.GPULayers),
 		Threads:     cloneIntPtr(e.state.Threads),

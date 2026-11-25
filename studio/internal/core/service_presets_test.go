@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"inferyard/studio/internal/inferyard"
 	"net"
+	"os"
+	"path/filepath"
 	"strconv"
 	"sync/atomic"
 	"testing"
@@ -216,8 +219,8 @@ func TestStartStandaloneAutoPortPreservesZeroInPresetAndRecordsServedModel(t *te
 		t.Fatalf("StartStandalone(port=0) failed: %+v", apiErr)
 	}
 	st = waitEngineState(t, s, "running")
-	if st.Port <= 0 {
-		t.Fatalf("expected dynamic runtime port > 0, got %+v", st)
+	if st.Port <= 0 || st.RequestedPort != 0 {
+		t.Fatalf("expected dynamic runtime port > 0 and RequestedPort=0, got %+v", st)
 	}
 	if st.ServedModel != "qwen3-custom-alias" {
 		t.Fatalf("expected ServedModel=qwen3-custom-alias, got %q", st.ServedModel)
@@ -229,5 +232,30 @@ func TestStartStandaloneAutoPortPreservesZeroInPresetAndRecordsServedModel(t *te
 	}
 	if preset.Port != 0 {
 		t.Fatalf("expected auto port preserved as 0 in preset, got %d", preset.Port)
+	}
+}
+
+func TestServePlanPolystrataExtractsServedModelFromConfig(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "strata-serve-abc123.json")
+	cfgRaw := `{"exe":"/opt/poly","args":["--model","/models/qwen35.gguf"],"model_name":"Qwen35MoE","port":49040}`
+	if err := os.WriteFile(cfgPath, []byte(cfgRaw), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	plan := inferyard.ServePlan{
+		SchemaVersion:    3,
+		Argv:             []string{"/opt/python", "/opt/serve/server.py", "--config", cfgPath},
+		Environment:      map[string]string{},
+		WorkingDirectory: filepath.Dir(cfgPath),
+		Endpoint:         "http://127.0.0.1:49040",
+		ModelPath:        "/models/qwen35.gguf",
+		ModelKind:        "gguf",
+		ContextSize:      12000,
+		Family:           "polystrata",
+		Adapter:          "local_openai_v1",
+		Local:            true,
+	}
+	startup := servePlanToStartup(plan)
+	if startup.ServedModel != "Qwen35MoE" {
+		t.Fatalf("expected PolyStrata ServedModel=Qwen35MoE from --config, got %q", startup.ServedModel)
 	}
 }

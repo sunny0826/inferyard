@@ -344,7 +344,6 @@ func TestAdoptedStandaloneBecomesRunningWhenHealthReady(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s.adoptPollInterval = 25 * time.Millisecond
 	t.Cleanup(func() { _ = s.Shutdown(context.Background()) })
 
 	st := s.Engine()

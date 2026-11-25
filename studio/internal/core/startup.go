@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -27,6 +28,7 @@ type Startup struct {
 	EngineName       string            `json:"engine_name,omitempty"`
 	ModelName        string            `json:"model_name,omitempty"`
 	ServedModel      string            `json:"served_model,omitempty"`
+	RequestedPort    int               `json:"requested_port,omitempty"`
 	GPULayers        *int              `json:"gpu_layers,omitempty"`
 	Threads          *int              `json:"threads,omitempty"`
 	ExtraArgs        []string          `json:"extra_args,omitempty"`
@@ -77,6 +79,7 @@ func (s *Service) Startup(candidate string) (Startup, *ApiError) {
 
 func extractServedModelFromArgs(args []string) string {
 	served := ""
+	configPath := ""
 	for i := 0; i < len(args); i++ {
 		key, value, inline := strings.Cut(args[i], "=")
 		switch key {
@@ -88,9 +91,41 @@ func extractServedModelFromArgs(args []string) string {
 			if trimmed := strings.TrimSpace(value); trimmed != "" {
 				served = trimmed
 			}
+		case "--config":
+			if !inline && i+1 < len(args) {
+				value = args[i+1]
+				i++
+			}
+			if trimmed := strings.TrimSpace(value); trimmed != "" {
+				configPath = trimmed
+			}
 		}
 	}
-	return served
+	if served != "" {
+		return served
+	}
+	if configPath != "" {
+		return extractServedModelFromConfig(configPath)
+	}
+	return ""
+}
+
+func extractServedModelFromConfig(path string) string {
+	info, err := os.Stat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Size() > 1<<20 {
+		return ""
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	var cfg struct {
+		ModelName string `json:"model_name"`
+	}
+	if json.Unmarshal(raw, &cfg) != nil {
+		return ""
+	}
+	return strings.TrimSpace(cfg.ModelName)
 }
 func (s *Service) Processes(ctx context.Context) ([]ProcessCandidate, *ApiError) {
 	result := []ProcessCandidate{}

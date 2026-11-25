@@ -71,9 +71,10 @@ func TestServicesExitedCardAndSidebarAlert(t *testing.T) {
 	s.exitedNotice = &core.ServiceExitNotice{
 		ID:          "exit-1",
 		Model:       "Qwen3-8B-Q4.gguf",
-		Engine:      "llama-cpp-default",
-		Port:        8081,
-		ContextSize: 16384,
+		Engine:        "llama-cpp-default",
+		Port:          8081,
+		RequestedPort: 8081,
+		ContextSize:   16384,
 		GPULayers:   &gpu,
 		LogPath:     "/tmp/service.log",
 		DetectedAt:  "2026-11-25T05:10:00Z",

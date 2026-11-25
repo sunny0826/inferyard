@@ -17,8 +17,9 @@ const (
 type ServiceExitNotice struct {
 	ID          string   `json:"id"`
 	Model       string   `json:"model"`
-	Engine      string   `json:"engine"`
-	Port        int      `json:"port,omitempty"`
+	Engine        string   `json:"engine"`
+	Port          int      `json:"port,omitempty"`
+	RequestedPort int      `json:"requested_port,omitempty"`
 	ContextSize int64    `json:"context_size,omitempty"`
 	GPULayers   *int     `json:"gpu_layers,omitempty"`
 	Threads     *int     `json:"threads,omitempty"`
@@ -157,9 +158,10 @@ func (s *Service) recordExitedWhileAwayLocked(workspace string, owner engineOwne
 	notice := ServiceExitNotice{
 		ID:          uuid(),
 		Model:       model,
-		Engine:      engine,
-		Port:        port,
-		ContextSize: owner.ContextSize,
+		Engine:        engine,
+		Port:          port,
+		RequestedPort: owner.RequestedPort,
+		ContextSize:   owner.ContextSize,
 		GPULayers:   cloneIntPtr(owner.GPULayers),
 		Threads:     cloneIntPtr(owner.Threads),
 		ExtraArgs:   append([]string(nil), owner.ExtraArgs...),
@@ -200,9 +202,10 @@ func (s *Service) recordUnexpectedStandaloneExit(e *engineEntry, exitCode *int) 
 	notice := ServiceExitNotice{
 		ID:          uuid(),
 		Model:       model,
-		Engine:      engine,
-		Port:        port,
-		ContextSize: e.state.ContextSize,
+		Engine:        engine,
+		Port:          port,
+		RequestedPort: e.state.RequestedPort,
+		ContextSize:   e.state.ContextSize,
 		GPULayers:   cloneIntPtr(e.state.GPULayers),
 		Threads:     cloneIntPtr(e.state.Threads),
 		ExtraArgs:   append([]string(nil), e.state.ExtraArgs...),

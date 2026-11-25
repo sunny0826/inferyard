@@ -127,7 +127,7 @@ func (s *viewState) restartFromExitNotice(notice core.ServiceExitNotice) {
 		Model:       notice.Model,
 		Engine:      notice.Engine,
 		ContextSize: ctxSize,
-		Port:        notice.Port,
+		Port:        notice.RequestedPort,
 		GPULayers:   cloneIntPtrUI(notice.GPULayers),
 		Threads:     cloneIntPtrUI(notice.Threads),
 		ExtraArgs:   append([]string(nil), notice.ExtraArgs...),
@@ -243,6 +243,8 @@ func (s *viewState) recentServicesSection(c *ui.Context) {
 	canLaunch := !s.busy && !s.standalone.preparing && (s.serveSupported || s.preview != nil)
 	for _, preset := range s.recentServices {
 		running := s.isPresetRunning(preset)
+		modelAsset, foundModel := s.findModelAsset(preset.Model)
+		modelAvailable := foundModel && modelAsset.Available
 		cardEl, innerR := compactCard(c, ui.Column(c.Key("recent-svc-"+preset.Model+"-"+preset.Engine)).FillWidth().Gap(t.Density.Tight), t.Density.Stack)
 		cardEl.Children(func() {
 			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
@@ -276,7 +278,7 @@ func (s *viewState) recentServicesSection(c *ui.Context) {
 					}
 					if inlineButton(c, components.ButtonPrimary, tr(c, "services.recent.action.start")).
 						Label(tr(c, "services.recent.action.start") + " · " + preset.Model).
-						Disabled(running || !canLaunch).Clicked() {
+						Disabled(running || !canLaunch || !modelAvailable).Clicked() {
 						s.startFromPreset(preset)
 					}
 				})
