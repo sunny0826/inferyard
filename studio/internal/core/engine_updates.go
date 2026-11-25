@@ -184,7 +184,7 @@ func normalizeCatalogFamilyID(candidates ...string) string {
 	return ""
 }
 
-func latestComparableCatalogVersion(family EngineFamilyCatalog, installed string) (latest, releaseID string, hasUpdate bool) {
+func latestComparableCatalogVersion(family EngineFamilyCatalog, installed string) (latest, releaseID string, hasUpdate, comparable bool) {
 	var bestComparable, bestReleaseID string
 	for _, rel := range family.Releases {
 		ver := strings.TrimSpace(rel.Version)
@@ -205,16 +205,16 @@ func latestComparableCatalogVersion(family EngineFamilyCatalog, installed string
 	}
 	if bestComparable != "" {
 		cmp, ok := compareEngineVersions(installed, bestComparable)
-		return bestComparable, bestReleaseID, ok && cmp < 0
+		return bestComparable, bestReleaseID, ok && cmp < 0, true
 	}
 	// No comparable version in catalog: surface primary release version without false-positive update.
 	for _, rel := range family.Releases {
 		ver := strings.TrimSpace(rel.Version)
 		if ver != "" {
-			return ver, rel.ID, false
+			return ver, rel.ID, false, false
 		}
 	}
-	return "", "", false
+	return "", "", false, false
 }
 
 func installedVersionFromRegistryEntry(entry registryEntry) string {
@@ -303,7 +303,7 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 	}
 
 	catalog := DefaultEngineCatalog()
-	evaluate := func(name, eligFamily, eligVersion string) {
+	evaluate := func(name, eligFamily, eligVersion, eligRelease string) {
 		familyID := normalizeCatalogFamilyID(eligFamily, familyByName[name], name)
 		if familyID == "" {
 			return
@@ -312,11 +312,29 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 		if !ok {
 			return
 		}
-		installed := strings.TrimSpace(eligVersion)
-		if installed == "" {
-			installed = versionByName[name]
+		candidates := []string{
+			strings.TrimSpace(eligVersion),
+			strings.TrimSpace(eligRelease),
+			strings.TrimSpace(versionByName[name]),
 		}
-		latest, releaseID, hasUpdate := latestComparableCatalogVersion(family, installed)
+		var installed, latest, releaseID string
+		var hasUpdate, matched bool
+		for _, cand := range candidates {
+			if cand == "" {
+				continue
+			}
+			if installed == "" {
+				installed = cand
+			}
+			l, rID, upd, comparable := latestComparableCatalogVersion(family, cand)
+			if comparable {
+				installed, latest, releaseID, hasUpdate, matched = cand, l, rID, upd, true
+				break
+			}
+		}
+		if !matched {
+			latest, releaseID, hasUpdate, _ = latestComparableCatalogVersion(family, installed)
+		}
 		out[name] = EngineUpdateInfo{
 			Engine:           name,
 			InstalledVersion: installed,
@@ -328,7 +346,7 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 	}
 
 	for name, elig := range checks.Engines {
-		evaluate(name, elig.Family, elig.Version)
+		evaluate(name, elig.Family, elig.Version, elig.Release)
 	}
 	for _, entry := range reg.engines {
 		name := entry.engine.Name
@@ -338,7 +356,7 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 		if _, exists := out[name]; exists {
 			continue
 		}
-		evaluate(name, entry.engine.Family, "")
+		evaluate(name, entry.engine.Family, "", "")
 	}
 	return out
 }

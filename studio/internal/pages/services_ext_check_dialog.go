@@ -110,9 +110,29 @@ func (s *viewState) startBenchmarkForDiscoveredService(service inferyard.Discove
 	}()
 }
 
+func (s *viewState) clearPendingExclusivity() {
+	s.pendingExclusivity = ""
+	s.pendingExclusivityModel = ""
+	s.pendingExclusivityEngine = ""
+	s.pendingExclusivityMode = ""
+}
+
+func (s *viewState) pendingExclusivityMatchesTarget() bool {
+	if s.pendingExclusivityMode == "" {
+		return false
+	}
+	if s.pendingExclusivityModel != "" && strings.TrimSpace(s.model) != strings.TrimSpace(s.pendingExclusivityModel) {
+		return false
+	}
+	if s.pendingExclusivityEngine != "" && strings.TrimSpace(s.engine) != strings.TrimSpace(s.pendingExclusivityEngine) {
+		return false
+	}
+	return true
+}
+
 func (s *viewState) handleExtConnProbeResult(serviceID, modelName, engineName, endpoint string, ctxSize int64, gpuLayers *int, probe core.ExternalConnProbe) {
 	if probe.Status != core.ExclusivityExternal {
-		s.pendingExclusivity = ""
+		s.clearPendingExclusivity()
 		s.openBenchmarksFlow()
 		return
 	}
@@ -176,14 +196,17 @@ func (s *viewState) extConnCheckDialog(c *ui.Context) {
 			}
 		}
 
-		applyBenchmarkTarget := func(exclusivity string) {
+		applyBenchmarkTarget := func(mode, exclusivity string) {
 			if d.modelName != "" {
 				s.model = d.modelName
 			}
 			if d.engineName != "" {
 				s.engine = d.engineName
 			}
+			s.pendingExclusivityMode = mode
 			s.pendingExclusivity = exclusivity
+			s.pendingExclusivityModel = strings.TrimSpace(d.modelName)
+			s.pendingExclusivityEngine = strings.TrimSpace(d.engineName)
 			if s.speed != nil {
 				s.speed.selected = false
 			}
@@ -197,16 +220,16 @@ func (s *viewState) extConnCheckDialog(c *ui.Context) {
 				}
 				if outlineButton(c, tr(c, "services.ext_check.action.benchmark_anyway")).Clicked() {
 					s.extCheckDialog.open = false
-					applyBenchmarkTarget(core.ExclusivityExternal)
+					applyBenchmarkTarget("reuse", core.ExclusivityExternal)
 				}
 				if primaryButton(c, tr(c, "services.ext_check.action.dedicated_instance")).Clicked() {
 					s.extCheckDialog.open = false
-					applyBenchmarkTarget("")
+					applyBenchmarkTarget("isolated", "")
 				}
 			} else {
 				if outlineButton(c, tr(c, "services.ext_check.action.benchmark_anyway")).Clicked() {
 					s.extCheckDialog.open = false
-					applyBenchmarkTarget(core.ExclusivityExternal)
+					applyBenchmarkTarget("reuse", core.ExclusivityExternal)
 				}
 				if primaryButton(c, tr(c, "services.ext_check.action.cancel")).Clicked() {
 					s.extCheckDialog.open = false

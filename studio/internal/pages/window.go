@@ -179,6 +179,9 @@ type viewState struct {
 	quitDialog                                                                          quitServiceDialogState
 	extCheckDialog                                                                      extConnCheckDialogState
 	pendingExclusivity                                                                  string
+	pendingExclusivityModel                                                             string
+	pendingExclusivityEngine                                                            string
+	pendingExclusivityMode                                                              string
 	modelEvidence                                                                       map[string]core.ModelEvidenceSummary
 	engineUpdates                                                                       map[string]core.EngineUpdateInfo
 	reportExclusivities                                                                 map[string]string

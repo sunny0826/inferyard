@@ -228,3 +228,77 @@ func TestModelBenchmarkEvidencePicksMaxThroughputAndMultiKeyAliases(t *testing.T
 		t.Fatalf("expected filename lookup to hit multi-key evidence, got ok=%v rec=%+v", ok, byFilename)
 	}
 }
+
+func TestModelBenchmarkEvidenceReadsFrozenInputsFamilyAndLocalPath(t *testing.T) {
+	ws := t.TempDir()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	svc, err := New(ctx, Options{SettingsPath: filepath.Join(t.TempDir(), "settings.json")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Shutdown(context.Background())
+	wsRaw, _ := json.Marshal(ws)
+	if _, apiErr := svc.UpdateSettings(map[string]json.RawMessage{"workspace_root": wsRaw}); apiErr != nil {
+		t.Fatal(apiErr)
+	}
+	reportsRoot := filepath.Join(ws, "reports")
+
+	writeFrozenInputs := func(runDir, family, localPath string) {
+		t.Helper()
+		if err := os.MkdirAll(runDir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		doc := map[string]any{
+			"documents": map[string]any{
+				"config": map[string]any{
+					"payload": map[string]any{
+						"engine": map[string]any{
+							"family":  family,
+							"adapter": "local_openai_v1",
+						},
+						"model": map[string]any{
+							"display_name": "Qwen3-14B",
+							"local_path":   localPath,
+						},
+					},
+				},
+			},
+		}
+		raw, err := json.Marshal(doc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(runDir, "inputs.json"), raw, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	llamaRunDir := filepath.Join(ws, "results", "run-llama-local")
+	polyRunDir := filepath.Join(ws, "results", "run-poly-local")
+	writeFrozenInputs(llamaRunDir, "llama-cpp", "/models/qwen3-14b-q4_k_m.gguf")
+	writeFrozenInputs(polyRunDir, "polystrata", "/models/qwen3-14b-q4_k_m.gguf")
+
+	tpsLlama := 55.4
+	tpsPoly := 61.9
+	llamaRun := makeReportRunFixture("run-llama-local", "Qwen3-14B", "/usr/local/bin/server", "local_openai_v1", &tpsLlama)
+	llamaRun["source"] = map[string]any{"run_id": "run-llama-local", "path": llamaRunDir}
+	polyRun := makeReportRunFixture("run-poly-local", "Qwen3-14B", "/usr/local/bin/server", "local_openai_v1", &tpsPoly)
+	polyRun["source"] = map[string]any{"run_id": "run-poly-local", "path": polyRunDir}
+
+	writeStudioReportFixture(t, reportsRoot, "rep-frozen", time.Date(2026, 11, 24, 10, 0, 0, 0, time.UTC), []map[string]any{llamaRun, polyRun})
+
+	llamaRec, ok := svc.BestSpeedFor("qwen3-14b-q4_k_m.gguf", "llama-cpp")
+	if !ok || llamaRec == nil || llamaRec.Engine != "llama.cpp" || llamaRec.TokensPerSecond != 55.4 {
+		t.Fatalf("expected llama.cpp record via frozen inputs local_path/family, got ok=%v rec=%+v", ok, llamaRec)
+	}
+	polyRec, ok := svc.BestSpeedFor("qwen3-14b-q4_k_m.gguf", "polystrata")
+	if !ok || polyRec == nil || polyRec.Engine != "PolyStrata" || polyRec.TokensPerSecond != 61.9 {
+		t.Fatalf("expected PolyStrata record via frozen inputs local_path/family, got ok=%v rec=%+v", ok, polyRec)
+	}
+	ev := svc.ModelBenchmarkEvidence()
+	summary := ev[NormalizeModelEvidenceKey("qwen3-14b-q4_k_m.gguf")]
+	if len(summary.ByEngine) != 2 {
+		t.Fatalf("expected llama.cpp and PolyStrata kept distinct (not merged into local_openai_v1), got %+v", summary.ByEngine)
+	}
+}

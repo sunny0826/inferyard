@@ -137,3 +137,53 @@ func TestStartRunExclusivityLocksInitialExternalAndResumeTarget(t *testing.T) {
 	}
 	_ = os.RemoveAll(ws)
 }
+
+func TestResolveRunProbeTargetFromFrozenInputsJSON(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	svc, err := New(ctx, Options{SettingsPath: filepath.Join(t.TempDir(), "settings.json")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Shutdown(context.Background())
+
+	sourceRunDir := filepath.Join(t.TempDir(), "run-src-1")
+	if err := os.MkdirAll(sourceRunDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	inputsDoc := map[string]any{
+		"documents": map[string]any{
+			"config": map[string]any{
+				"payload": map[string]any{
+					"endpoint": map[string]any{
+						"url":                 "http://127.0.0.1:18088/v1",
+						"server_pid":          7331,
+						"process_start_ticks": 12345,
+					},
+				},
+			},
+		},
+	}
+	raw, err := json.Marshal(inputsDoc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sourceRunDir, "inputs.json"), raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	resumeEntry := &runEntry{
+		Task: RunTask{
+			TaskId:     "t-resume-frozen",
+			Kind:       "resume",
+			ResumeFrom: &sourceRunDir,
+		},
+	}
+	port, pids := svc.resolveRunProbeTarget(resumeEntry)
+	if port != 18088 {
+		t.Fatalf("expected resume port 18088 from frozen inputs.json, got %d", port)
+	}
+	if len(pids) == 0 || pids[0] != 7331 {
+		t.Fatalf("expected resume server_pid 7331 from frozen inputs.json, got %v", pids)
+	}
+}

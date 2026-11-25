@@ -60,23 +60,33 @@ func (s *viewState) startBenchmark() {
 	if s.environmentMissing() || !s.preflightReady() || s.busy || len(names) == 0 || s.model == "" || s.engine == "" || s.engineState.State == "orphaned" || s.localSelectionError() != "" {
 		return
 	}
-	if !s.guardStandaloneForBenchmark(func() { s.startBenchmark() }) {
-		return
+	matchesPending := s.pendingExclusivityMatchesTarget()
+	if !matchesPending && (s.pendingExclusivityMode != "" || s.pendingExclusivity != "") {
+		s.clearPendingExclusivity()
 	}
+	skipStandaloneGuard := matchesPending && s.pendingExclusivityMode == "isolated"
+	if !skipStandaloneGuard {
+		if !s.guardStandaloneForBenchmark(func() { s.startBenchmark() }) {
+			return
+		}
+	}
+	initialExclusivity := ""
+	if matchesPending && s.pendingExclusivityMode == "reuse" {
+		initialExclusivity = s.pendingExclusivity
+	}
+	s.clearPendingExclusivity()
 	s.beginAttempt()
 	if s.simulate(previewBenchmark{model: s.model, engine: s.engine, bundles: names}) {
 		return
 	}
 	ctx, cancel := context.WithCancel(s.ctx)
 	s.taskCancel = cancel
-	initialExclusivity := s.pendingExclusivity
-	s.pendingExclusivity = ""
 	s.task = benchmarkTask{stage: "prepare_candidate", bundles: names, bindings: &benchmarkBindings{initialExclusivity: initialExclusivity}}
 	model, engine := s.model, s.engine
 	localRequest := s.localCandidateRequest(names)
 	s.guideWork(func() (string, *core.ApiError) {
 		defer cancel()
-		announce := func(stage string) { s.win.Update(func() { s.task.stage = stage }) }
+		announce := func(stage string) { s.runOnUI(func() { s.task.stage = stage }) }
 		var result startChainResult
 		var e *core.ApiError
 		if localRequest != nil {
@@ -85,10 +95,10 @@ func (s *viewState) startBenchmark() {
 			result, e = prepareCombination(ctx, s.service, model, engine, names)
 		}
 		if e == nil {
-			s.win.Update(func() { s.task.start = result })
+			s.runOnUI(func() { s.task.start = result })
 			e = s.runBenchmark(ctx, result, names, announce)
 		}
-		s.win.Update(func() {
+		s.runOnUI(func() {
 			s.task.failure = e
 			if e != nil {
 				s.failedBundle = s.task.bindings.failedBundle

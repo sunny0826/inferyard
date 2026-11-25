@@ -358,7 +358,7 @@ func (s *Service) resolveRunProbeTarget(t *runEntry) (int, []int) {
 		}
 	}
 	if port <= 0 && t.Task.ResumeFrom != nil && *t.Task.ResumeFrom != "" {
-		cfgPort, cfgPID := readConfigEndpointTarget(filepath.Join(*t.Task.ResumeFrom, "config.toml"))
+		cfgPort, cfgPID := readInputsEndpointTarget(*t.Task.ResumeFrom)
 		if cfgPort > 0 {
 			port = cfgPort
 		}
@@ -379,6 +379,25 @@ func (s *Service) resolveRunProbeTarget(t *runEntry) (int, []int) {
 		pids = append(pids, s.managedPIDsOnPort(port)...)
 	}
 	return port, pids
+}
+
+func readInputsEndpointTarget(runDir string) (int, int) {
+	if strings.TrimSpace(runDir) == "" {
+		return 0, 0
+	}
+	raw, err := os.ReadFile(filepath.Join(runDir, "inputs.json"))
+	if err != nil {
+		return 0, 0
+	}
+	ep := obj(payload(raw, "config")["endpoint"])
+	if ep == nil {
+		return 0, 0
+	}
+	var serverPID int
+	if p := integer(ep["server_pid"]); p != nil && *p > 0 {
+		serverPID = int(*p)
+	}
+	return portFromEndpoint(str(text(ep["url"]))), serverPID
 }
 
 func readConfigEndpointTarget(configPath string) (int, int) {

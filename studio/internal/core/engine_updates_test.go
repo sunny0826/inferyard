@@ -144,3 +144,44 @@ func TestServiceEngineUpdatesPolystrataBuildJSONFallback(t *testing.T) {
 		t.Fatalf("expected PolyStrata update detected with ReleaseID/ReleaseVersion, got %+v", info)
 	}
 }
+
+func TestServiceEngineUpdatesPrismExpectedReleaseFallback(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	svc, err := New(ctx, Options{SettingsPath: filepath.Join(t.TempDir(), "settings.json")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Shutdown(context.Background())
+
+	svc.checkMu.Lock()
+	svc.checkSupported = true
+	svc.checkNames = []engineCheckTarget{
+		{name: "prism-llama", path: "/fake/prism-llama", key: "prism1"},
+	}
+	svc.checks = map[string]engineCheckEntry{
+		"/fake/prism-llama": {
+			key:      "prism1",
+			verified: true,
+			result: EngineEligibility{
+				State:   EngineCheckEligible,
+				Family:  "llama-cpp",
+				Version: "10743 adfffbe41",
+				Release: "prism-b10743-adfffbe",
+			},
+		},
+	}
+	svc.checkMu.Unlock()
+
+	updates := svc.EngineUpdates()
+	info, ok := updates["prism-llama"]
+	if !ok {
+		t.Fatalf("expected update info for prism-llama, got %+v", updates)
+	}
+	if !info.HasUpdate || info.LatestVersion != "b11146" {
+		t.Fatalf("expected Prism ExpectedRelease fallback to detect update to b11146, got %+v", info)
+	}
+	if info.InstalledVersion != "prism-b10743-adfffbe" {
+		t.Fatalf("expected InstalledVersion to fall back to prism-b10743-adfffbe, got %+v", info)
+	}
+}

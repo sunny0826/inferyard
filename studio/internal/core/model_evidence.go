@@ -135,11 +135,18 @@ func (s *Service) ModelBenchmarkEvidence() map[string]ModelEvidenceSummary {
 				continue
 			}
 			modelDisplay := strings.TrimSpace(run.Model)
-			modelKeys := collectRunModelKeys(run, summary.Path, runAliases, regAliases)
+			inputsEngineFamily, inputsModelPath := readRunInputsConfig(run.Source.Path, summary.Path)
+			modelKeys := collectRunModelKeys(run, inputsModelPath, runAliases, regAliases)
 			if len(modelKeys) == 0 {
 				continue
 			}
-			engineKey, engineDisplay := engineFromReportProfile(run.Profile.Engine)
+			var engineKey, engineDisplay string
+			if inputsEngineFamily != "" {
+				engineKey, engineDisplay = normalizeEvidenceEngine(inputsEngineFamily)
+			}
+			if engineKey == "" {
+				engineKey, engineDisplay = engineFromReportProfile(run.Profile.Engine)
+			}
 			if engineKey == "" {
 				continue
 			}
@@ -271,7 +278,7 @@ func buildRegistryModelKeyAliases(reg registryData) map[string][]string {
 	return aliases
 }
 
-func collectRunModelKeys(run ReportRun, reportDir string, runAliases, regAliases map[string][]string) []string {
+func collectRunModelKeys(run ReportRun, inputsModelPath string, runAliases, regAliases map[string][]string) []string {
 	seen := map[string]bool{}
 	var out []string
 	add := func(k string) {
@@ -287,8 +294,9 @@ func collectRunModelKeys(run ReportRun, reportDir string, runAliases, regAliases
 			add(k)
 		}
 	}
-	if modelPath := readRunInputsModelPath(run.Source.Path, reportDir); modelPath != "" {
-		add(NormalizeModelEvidenceKey(modelPath))
+	if inputsModelPath != "" {
+		add(NormalizeModelEvidenceKey(filepath.Base(inputsModelPath)))
+		add(NormalizeModelEvidenceKey(inputsModelPath))
 	}
 	for i := 0; i < len(out); i++ {
 		for _, alias := range regAliases[out[i]] {
@@ -298,17 +306,28 @@ func collectRunModelKeys(run ReportRun, reportDir string, runAliases, regAliases
 	return out
 }
 
-func readRunInputsModelPath(sourcePath, reportDir string) string {
+func readRunInputsConfig(sourcePath, reportDir string) (engineFamily, modelPath string) {
 	p := strings.TrimSpace(sourcePath)
 	if p == "" {
-		return ""
+		return "", ""
 	}
 	if !filepath.IsAbs(p) && reportDir != "" {
 		p = filepath.Join(reportDir, p)
 	}
 	raw, err := os.ReadFile(filepath.Join(p, "inputs.json"))
 	if err != nil {
-		return ""
+		return "", ""
+	}
+	if cfg := payload(raw, "config"); cfg != nil {
+		engineFamily = strings.TrimSpace(str(text(obj(cfg["engine"])["family"])))
+		if lp := strings.TrimSpace(str(text(obj(cfg["model"])["local_path"]))); lp != "" {
+			modelPath = lp
+		} else if dn := strings.TrimSpace(str(text(obj(cfg["model"])["display_name"]))); dn != "" {
+			modelPath = dn
+		}
+	}
+	if modelPath != "" {
+		return engineFamily, modelPath
 	}
 	var doc struct {
 		ModelPath string `json:"model_path"`
@@ -318,15 +337,15 @@ func readRunInputsModelPath(sourcePath, reportDir string) string {
 		} `json:"model"`
 	}
 	if json.Unmarshal(raw, &doc) != nil {
-		return ""
+		return engineFamily, ""
 	}
 	if strings.TrimSpace(doc.ModelPath) != "" {
-		return doc.ModelPath
+		return engineFamily, doc.ModelPath
 	}
 	if strings.TrimSpace(doc.Model.Path) != "" {
-		return doc.Model.Path
+		return engineFamily, doc.Model.Path
 	}
-	return doc.Model.Name
+	return engineFamily, doc.Model.Name
 }
 
 // BestSpeedFor returns the best recorded throughput for model (optionally filtered to a
