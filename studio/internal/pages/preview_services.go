@@ -4,9 +4,11 @@ package pages
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func seedPreviewRecentServices(model, engine string) []core.ServicePreset {
@@ -116,22 +118,29 @@ func (p *previewSession) dismissPreviewExitNotice(id string) {
 	p.state.removeExitedNotice(id)
 }
 
-func (p *previewSession) previewNextAvailablePort(requested int) int {
-	if requested > 0 {
-		return requested
-	}
+func (p *previewSession) previewNextAvailablePort(requested int, excludeServiceID string) (int, *core.ApiError) {
 	used := map[int]bool{}
 	for _, st := range p.state.managedServices {
-		if engineLocked(st.State) && st.Port > 0 {
+		if engineLocked(st.State) && st.Port > 0 && st.ServiceID != excludeServiceID {
 			used[st.Port] = true
 		}
 	}
+	if requested > 0 {
+		if used[requested] {
+			return 0, &core.ApiError{
+				Code:    "engine_port_in_use",
+				Message: l10n.TRf("core.engine.err.port_in_use_numbered", "port", strconv.Itoa(requested)),
+				Details: map[string]any{"port": requested},
+			}
+		}
+		return requested, nil
+	}
 	for port := 48857; port < 48957; port++ {
 		if !used[port] {
-			return port
+			return port, nil
 		}
 	}
-	return 48857
+	return 48857, nil
 }
 
 func (p *previewSession) upsertPreviewManagedService(st core.EngineState) {
@@ -263,17 +272,13 @@ func (p *previewSession) stopPreviewEngine(after func()) {
 	}
 	p.cancelEvents("service")
 	s.engineState.State = "stopping"
-	p.after("service", 400*time.Millisecond, func() {
-		stoppedID := s.engineState.ServiceID
-		if stoppedID != "" {
-			remaining := make([]core.EngineState, 0, len(s.managedServices))
-			for _, st := range s.managedServices {
-				if st.ServiceID != stoppedID {
-					remaining = append(remaining, st)
-				}
-			}
-			s.managedServices = remaining
+	for i := range s.managedServices {
+		if engineLocked(s.managedServices[i].State) {
+			s.managedServices[i].State = "stopping"
 		}
+	}
+	p.after("service", 400*time.Millisecond, func() {
+		s.managedServices = nil
 		if s.engineState.Origin == core.EngineOriginStandalone {
 			s.engineState = core.EngineState{
 				State:       "stopped",
@@ -288,6 +293,8 @@ func (p *previewSession) stopPreviewEngine(after func()) {
 		} else {
 			s.engineState = core.EngineState{State: "stopped"}
 		}
+		s.memorySummary = core.ServiceMemoryBudget{}
+		s.memorySummary = s.currentMemorySummary()
 		if after != nil {
 			after()
 		}

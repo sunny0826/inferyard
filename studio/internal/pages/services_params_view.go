@@ -105,7 +105,7 @@ func (s *viewState) serviceParamsDrawer(c *ui.Context) {
 				if budgetCtx <= 0 {
 					budgetCtx = 8192
 				}
-				budget := s.checkMemoryBudget(st.model, st.engine, budgetCtx)
+				budget := s.checkMemoryBudget(st.model, st.engine, budgetCtx, req.GPULayers)
 				if hasModel {
 					s.serviceMemoryBudgetBar(c, budget)
 				}

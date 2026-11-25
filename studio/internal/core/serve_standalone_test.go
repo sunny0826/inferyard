@@ -464,11 +464,11 @@ func TestStartStandaloneRejectsSymlinkServeRootAndInstallationExecutableChange(t
 		t.Fatal(err)
 	}
 	eng := registryEntry{installation: instPath, family: "vllm"}
-	if _, ok := reusableStandalonePlan(planPath, modelDir, eng, 8192); !ok {
+	if _, ok := reusableStandalonePlan(planPath, modelDir, eng, 8192, "127.0.0.1"); !ok {
 		t.Fatalf("expected cached venvA plan to be reusable")
 	}
 	writeInst(venvB)
-	if _, ok := reusableStandalonePlan(planPath, modelDir, eng, 8192); ok {
+	if _, ok := reusableStandalonePlan(planPath, modelDir, eng, 8192, "127.0.0.1"); ok {
 		t.Fatalf("expected cached plan to invalidate when switching venvA -> venvB symlink")
 	}
 	// Symlinked serve-plan.json must be rejected.
@@ -477,7 +477,7 @@ func TestStartStandaloneRejectsSymlinkServeRootAndInstallationExecutableChange(t
 	if err := os.Symlink(planPath, linkPlan); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := reusableStandalonePlan(linkPlan, modelDir, eng, 8192); ok {
+	if _, ok := reusableStandalonePlan(linkPlan, modelDir, eng, 8192, "127.0.0.1"); ok {
 		t.Fatalf("expected symlinked serve-plan.json to be rejected")
 	}
 }

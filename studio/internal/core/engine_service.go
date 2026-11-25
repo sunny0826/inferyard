@@ -315,16 +315,18 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 	defer ticker.Stop()
 	treeTicker := time.NewTicker(500 * time.Millisecond)
 	defer treeTicker.Stop()
-	finish := func(state string, err *ApiError) {
+	finish := func(state string, err *ApiError, keepOwner bool) {
 		treeErr := s.finishEngineTree(e)
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		if treeErr != nil {
 			state, err = "failed", treeErr
 			s.recordOrphanFromEntryLocked(e, err)
-		} else if removeErr := removeEngineOwner(e.ownerPath, e.owner); removeErr != nil {
-			state, err = "failed", &ApiError{Code: "engine_owner_remove_failed", Message: l10n.TR("core.engine.err.exited_owner_remove_failed")}
-			s.recordOrphanFromEntryLocked(e, err)
+		} else if !keepOwner {
+			if removeErr := removeEngineOwner(e.ownerPath, e.owner); removeErr != nil {
+				state, err = "failed", &ApiError{Code: "engine_owner_remove_failed", Message: l10n.TR("core.engine.err.exited_owner_remove_failed")}
+				s.recordOrphanFromEntryLocked(e, err)
+			}
 		}
 		e.state.State, e.state.Error = state, err
 		s.publishEngineLocked(e)
@@ -335,14 +337,14 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 			return
 		case <-e.stop:
 			s.terminateEngine(e, waitCh)
-			finish("stopped", nil)
+			finish("stopped", nil, false)
 			return
 		case waitErr := <-waitCh:
 			s.mu.Lock()
 			stopping := e.state.State == "stopping"
 			s.mu.Unlock()
 			if stopping {
-				finish("stopped", nil)
+				finish("stopped", nil, false)
 			} else {
 				var exitCode *int
 				if e.cmd != nil && e.cmd.ProcessState != nil {
@@ -355,8 +357,8 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 						exitCode = &code
 					}
 				}
-				s.recordUnexpectedStandaloneExit(e, exitCode)
-				finish("failed", &ApiError{Code: "engine_exited", Message: l10n.TR("core.engine.err.exited")})
+				persistErr := s.recordUnexpectedStandaloneExit(e, exitCode)
+				finish("failed", &ApiError{Code: "engine_exited", Message: l10n.TR("core.engine.err.exited")}, persistErr != nil)
 			}
 			return
 		case <-treeTicker.C:
@@ -390,7 +392,7 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 			s.mu.Unlock()
 			if timedOut {
 				s.terminateEngine(e, waitCh)
-				finish("failed", &ApiError{Code: "engine_start_timeout", Message: l10n.TR("core.engine.err.start_timeout")})
+				finish("failed", &ApiError{Code: "engine_start_timeout", Message: l10n.TR("core.engine.err.start_timeout")}, false)
 				return
 			}
 		}

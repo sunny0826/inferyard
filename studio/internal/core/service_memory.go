@@ -34,19 +34,25 @@ func roundMemoryGB(v float64) float64 {
 	return math.Round(v*100) / 100
 }
 
-func parseHardwareMemoryBudget(snapshot json.RawMessage) hardwareMemoryInfo {
+func isCPUOnlyGPULayers(gpuLayers *int) bool {
+	return gpuLayers != nil && *gpuLayers == 0
+}
+
+func parseHardwareMemoryBudget(snapshot json.RawMessage, forceHostMemory bool) hardwareMemoryInfo {
 	trimmed := bytes.TrimSpace(snapshot)
 	if len(trimmed) == 0 || trimmed[0] != '{' {
 		return hardwareMemoryInfo{}
 	}
 	var doc struct {
 		Hardware struct {
-			AppleSilicon     bool   `json:"apple_silicon"`
-			MemoryTotalBytes *int64 `json:"memory_total_bytes"`
-			GPU              struct {
+			AppleSilicon         bool   `json:"apple_silicon"`
+			MemoryTotalBytes     *int64 `json:"memory_total_bytes"`
+			MemoryAvailableBytes *int64 `json:"memory_available_bytes"`
+			GPU                  struct {
 				Devices []struct {
 					MemoryKind       string `json:"memory_kind"`
 					MemoryTotalBytes *int64 `json:"memory_total_bytes"`
+					MemoryFreeBytes  *int64 `json:"memory_free_bytes"`
 				} `json:"devices"`
 			} `json:"gpu"`
 		} `json:"hardware"`
@@ -56,7 +62,9 @@ func parseHardwareMemoryBudget(snapshot json.RawMessage) hardwareMemoryInfo {
 	}
 
 	var discreteVRAMBytes int64
-	if !doc.Hardware.AppleSilicon {
+	var discreteFreeBytes int64
+	hasDiscreteFree := false
+	if !doc.Hardware.AppleSilicon && !forceHostMemory {
 		for _, dev := range doc.Hardware.GPU.Devices {
 			if dev.MemoryKind == "shared_host" {
 				continue
@@ -64,21 +72,47 @@ func parseHardwareMemoryBudget(snapshot json.RawMessage) hardwareMemoryInfo {
 			if dev.MemoryTotalBytes != nil && *dev.MemoryTotalBytes > 0 {
 				discreteVRAMBytes += *dev.MemoryTotalBytes
 			}
+			if dev.MemoryFreeBytes != nil && *dev.MemoryFreeBytes >= 0 {
+				discreteFreeBytes += *dev.MemoryFreeBytes
+				hasDiscreteFree = true
+			}
 		}
 	}
 	if discreteVRAMBytes > 0 {
 		total := float64(discreteVRAMBytes) / bytesPerGiB
+		avail := total * 0.90
+		if hasDiscreteFree {
+			freeGB := float64(discreteFreeBytes) / bytesPerGiB
+			if freeGB < avail {
+				avail = freeGB
+			}
+		}
 		return hardwareMemoryInfo{
 			TotalGB:     roundMemoryGB(total),
-			AvailableGB: roundMemoryGB(total * 0.90),
+			AvailableGB: roundMemoryGB(avail),
 			Known:       true,
 		}
 	}
 	if doc.Hardware.MemoryTotalBytes != nil && *doc.Hardware.MemoryTotalBytes > 0 {
 		total := float64(*doc.Hardware.MemoryTotalBytes) / bytesPerGiB
+		avail := total * 0.75
+		if doc.Hardware.MemoryAvailableBytes != nil && *doc.Hardware.MemoryAvailableBytes >= 0 {
+			freeGB := float64(*doc.Hardware.MemoryAvailableBytes) / bytesPerGiB
+			if freeGB < avail {
+				avail = freeGB
+			}
+		}
 		return hardwareMemoryInfo{
 			TotalGB:     roundMemoryGB(total),
-			AvailableGB: roundMemoryGB(total * 0.75),
+			AvailableGB: roundMemoryGB(avail),
+			Known:       true,
+		}
+	}
+	if doc.Hardware.MemoryAvailableBytes != nil && *doc.Hardware.MemoryAvailableBytes > 0 {
+		avail := float64(*doc.Hardware.MemoryAvailableBytes) / bytesPerGiB
+		return hardwareMemoryInfo{
+			TotalGB:     roundMemoryGB(avail),
+			AvailableGB: roundMemoryGB(avail),
 			Known:       true,
 		}
 	}
@@ -158,10 +192,17 @@ func (s *Service) activeServicesMemoryGBLocked(reg registryData, excludeServiceI
 // to start the requested (model, engine, contextSize) alongside currently running services.
 func (s *Service) CheckServiceMemoryBudget(model, engine string, contextSize int64) ServiceMemoryBudget {
 	reg := s.registry()
-	return s.checkServiceMemoryBudgetWithRegistry(model, engine, contextSize, reg)
+	return s.checkServiceMemoryBudgetWithRegistry(model, engine, contextSize, nil, reg)
 }
 
-func (s *Service) checkServiceMemoryBudgetWithRegistry(model, engine string, contextSize int64, reg registryData) ServiceMemoryBudget {
+// CheckServiceMemoryBudgetForRequest evaluates inference memory budget for a full start request,
+// routing CPU-only launches (gpuLayers == 0) against host memory instead of discrete GPU VRAM.
+func (s *Service) CheckServiceMemoryBudgetForRequest(req StandaloneStartRequest) ServiceMemoryBudget {
+	reg := s.registry()
+	return s.checkServiceMemoryBudgetWithRegistry(req.Model, req.Engine, req.ContextSize, req.GPULayers, reg)
+}
+
+func (s *Service) checkServiceMemoryBudgetWithRegistry(model, engine string, contextSize int64, gpuLayers *int, reg registryData) ServiceMemoryBudget {
 	model = strings.TrimSpace(model)
 	engine = strings.TrimSpace(engine)
 	excludeID := ""
@@ -170,7 +211,7 @@ func (s *Service) checkServiceMemoryBudgetWithRegistry(model, engine string, con
 	}
 
 	s.mu.Lock()
-	hw := parseHardwareMemoryBudget(s.device.Snapshot)
+	hw := parseHardwareMemoryBudget(s.device.Snapshot, isCPUOnlyGPULayers(gpuLayers))
 	used := s.activeServicesMemoryGBLocked(reg, excludeID)
 	s.mu.Unlock()
 
@@ -208,7 +249,7 @@ func (s *Service) checkServiceMemoryBudgetWithRegistry(model, engine string, con
 func (s *Service) CurrentServiceMemorySummary() ServiceMemoryBudget {
 	reg := s.registry()
 	s.mu.Lock()
-	hw := parseHardwareMemoryBudget(s.device.Snapshot)
+	hw := parseHardwareMemoryBudget(s.device.Snapshot, false)
 	used := s.activeServicesMemoryGBLocked(reg, "")
 	s.mu.Unlock()
 

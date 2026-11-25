@@ -294,7 +294,7 @@ func (s *viewState) recentServicesSection(c *ui.Context) {
 		if ctxSize <= 0 {
 			ctxSize = 8192
 		}
-		budget := s.checkMemoryBudget(preset.Model, preset.Engine, ctxSize)
+		budget := s.checkMemoryBudget(preset.Model, preset.Engine, ctxSize, preset.GPULayers)
 		memBlocked := budget.Known && !budget.Enough
 		cardEl, innerR := compactCard(c, ui.Column(c.Key("recent-svc-"+preset.Model+"-"+preset.Engine)).FillWidth().Gap(t.Density.Tight), t.Density.Stack)
 		cardEl.Children(func() {

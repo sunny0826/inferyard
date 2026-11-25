@@ -534,9 +534,15 @@ func (p *previewSession) startPreviewStandalone(op previewStandaloneStart) {
 			}
 			return
 		}
-		port := p.previewNextAvailablePort(op.port)
+		port, portErr := p.previewNextAvailablePort(op.port, serviceID)
+		if portErr != nil {
+			s.standalone.lastError = portErr
+			s.failure = portErr
+			s.failurePage = s.selected
+			return
+		}
 		endpoint := p.previewEndpointURL(op.lanAccess, port)
-		budget := s.estimateLocalMemoryBudget(op.model, op.engine, op.contextSize)
+		budget := s.estimateLocalMemoryBudget(op.model, op.engine, op.contextSize, op.gpuLayers)
 		p.clearPreviewExitNoticeFor(serviceID, op.model, op.engine)
 		st := core.EngineState{
 			ServiceID:         serviceID,

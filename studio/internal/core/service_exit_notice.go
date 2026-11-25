@@ -211,12 +211,12 @@ func (s *Service) appendExitNoticeLocked(workspace string, notice ServiceExitNot
 		}
 		updated = append(updated, existing)
 	}
-	if err := writeExitNoticesFile(exitNoticePath(workspace), updated); err != nil {
-		return err
-	}
 	s.exitNotices = updated
 	s.exitNoticesLoaded = true
-	return nil
+	if workspace == "" {
+		return nil
+	}
+	return writeExitNoticesFile(exitNoticePath(workspace), updated)
 }
 
 func (s *Service) recordExitedWhileAwayLocked(workspace string, owner engineOwner) error {
@@ -264,9 +264,9 @@ func (s *Service) recordExitedWhileAwayLocked(workspace string, owner engineOwne
 	return nil
 }
 
-func (s *Service) recordUnexpectedStandaloneExit(e *engineEntry, exitCode *int) {
+func (s *Service) recordUnexpectedStandaloneExit(e *engineEntry, exitCode *int) error {
 	if normalizeEngineOrigin(e.state.Origin) != EngineOriginStandalone {
-		return
+		return nil
 	}
 	logTail := readLogTailLines(e.state.LogPath, exitNoticeLogTailLines)
 	model := e.state.ModelName
@@ -302,14 +302,15 @@ func (s *Service) recordUnexpectedStandaloneExit(e *engineEntry, exitCode *int) 
 		Dismissed:     false,
 	}
 	s.mu.Lock()
+	var persistErr error
 	if w := workspaceRoot(s.settings); w != nil && *w != "" {
-		_ = s.appendExitNoticeLocked(*w, notice)
+		persistErr = s.appendExitNoticeLocked(*w, notice)
 	} else {
-		s.exitNotices = append([]ServiceExitNotice{clone(notice)}, s.exitNotices...)
-		s.exitNoticesLoaded = true
+		persistErr = s.appendExitNoticeLocked("", notice)
 	}
 	s.Bus.Publish("service.exited", map[string]any{"notice": clone(notice)})
 	s.mu.Unlock()
+	return persistErr
 }
 
 func (s *Service) clearExitNoticesForServiceLocked(serviceID, model, engine string) {

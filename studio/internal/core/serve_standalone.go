@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
-	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -160,7 +159,7 @@ func isRegularNonSymlinkFile(path string) bool {
 	return err == nil && info.Mode().IsRegular()
 }
 
-func reusableStandalonePlan(planPath string, modelPath string, eng registryEntry, contextSize int64) (Startup, bool) {
+func reusableStandalonePlan(planPath string, modelPath string, eng registryEntry, contextSize int64, bindHost string) (Startup, bool) {
 	if !isRegularNonSymlinkFile(planPath) {
 		return Startup{}, false
 	}
@@ -217,11 +216,13 @@ func reusableStandalonePlan(planPath string, modelPath string, eng registryEntry
 	if apiErr != nil {
 		return Startup{}, false
 	}
-	ln, err := net.Listen("tcp", net.JoinHostPort(host, strconv.Itoa(port)))
-	if err != nil {
+	probeHost := host
+	if bindHost != "" {
+		probeHost = bindHost
+	}
+	if checkBindPortAvailable(probeHost, port) != nil {
 		return Startup{}, false
 	}
-	_ = ln.Close()
 	return startup, true
 }
 
@@ -319,7 +320,7 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 	occupied := s.occupiedPortsLocked()
 	s.mu.Unlock()
 
-	budget := s.checkServiceMemoryBudgetWithRegistry(req.Model, req.Engine, req.ContextSize, reg)
+	budget := s.checkServiceMemoryBudgetWithRegistry(req.Model, req.Engine, req.ContextSize, req.GPULayers, reg)
 	if budget.Known && !budget.Enough {
 		return EngineState{}, &ApiError{
 			Code: "insufficient_memory",
@@ -359,7 +360,7 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 		return EngineState{}, dirErr
 	}
 	planPath := filepath.Join(serveDir, "serve-plan.json")
-	startup, reused := reusableStandalonePlan(planPath, modelEntry.path, *engEntry, req.ContextSize)
+	startup, reused := reusableStandalonePlan(planPath, modelEntry.path, *engEntry, req.ContextSize, bindHost)
 	if reused {
 		cachedPort := portFromEndpoint(startup.Endpoint)
 		if (req.Port > 0 && cachedPort != req.Port) || occupied[cachedPort] {
@@ -378,7 +379,7 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 		port := req.Port
 		if port == 0 {
 			var err error
-			port, err = ChooseFreePortExcluding(DefaultBenchmarkPort, occupied)
+			port, err = ChooseFreePortExcluding(bindHost, DefaultBenchmarkPort, occupied)
 			if err != nil {
 				return EngineState{}, portInUseError(0)
 			}

@@ -301,7 +301,7 @@ func errAssetNotDeletable() *ApiError {
 }
 
 func (s *Service) assetWorkspaceBusyLocked() bool {
-	if s.orphan != nil || s.deletingAssets > 0 || s.runsActiveLocked() {
+	if s.orphan != nil || len(s.orphanedServices) > 0 || s.deletingAssets > 0 || s.runsActiveLocked() {
 		return true
 	}
 	for _, d := range s.downloads {
@@ -309,11 +309,11 @@ func (s *Service) assetWorkspaceBusyLocked() bool {
 			return true
 		}
 	}
-	if s.engine != nil {
-		switch s.engine.state.State {
-		case "starting", "running", "stopping":
-			return true
-		}
+	if s.engine != nil && isActiveServiceState(s.engine.state.State) {
+		return true
+	}
+	if s.hasActiveManagedServicesLocked() {
+		return true
 	}
 	return false
 }

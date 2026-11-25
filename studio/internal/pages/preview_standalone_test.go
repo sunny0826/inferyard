@@ -86,7 +86,7 @@ func TestPreviewStandaloneStartStopAndHandoff(t *testing.T) {
 	if s.engineState.State != "running" || s.engineState.Adapter != "local_openai_v1" || s.engineState.Executable != "python" {
 		t.Fatalf("unexpected vLLM preview state: %+v", s.engineState)
 	}
-	if rowState, _, _, _ := s.standaloneRowState(dirModel); rowState != "running" {
+	if rowState, _, _, _, _ := s.standaloneRowState(dirModel); rowState != "running" {
 		t.Fatalf("expected directory model row to match running state, got %q", rowState)
 	}
 

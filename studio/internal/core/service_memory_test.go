@@ -97,8 +97,96 @@ func TestServiceMemoryBudgetDiscreteGPUVRAM(t *testing.T) {
 			}
 		}
 	}`)
-	info := parseHardwareMemoryBudget(hw)
+	info := parseHardwareMemoryBudget(hw, false)
 	if !info.Known || info.TotalGB != 24 || info.AvailableGB != 21.6 {
 		t.Fatalf("unexpected discrete GPU budget: %+v", info)
+	}
+}
+
+func TestServiceMemoryBudgetCPUOnlyUsesHostMemory(t *testing.T) {
+	// 8 GiB discrete GPU VRAM + 64 GiB host RAM:
+	// Default GPU mode sees 7.2 GiB ceiling (blocks 12 GiB model),
+	// whereas CPU-only mode (gpuLayers=0) sees 48.0 GiB host ceiling (allows 12 GiB model).
+	hw := json.RawMessage(`{
+		"kind": "device_preflight.v1",
+		"hardware": {
+			"apple_silicon": false,
+			"memory_total_bytes": 68719476736,
+			"gpu": {
+				"devices": [
+					{"name": "RTX 4060", "memory_kind": "dedicated", "memory_total_bytes": 8589934592}
+				]
+			}
+		}
+	}`)
+	const giB = int64(1024 * 1024 * 1024)
+	s, _, engine := setupMultiServiceTestEnv(t, map[string]int64{
+		"mid-12g.gguf": 12 * giB,
+	}, hw)
+
+	gpuBudget := s.CheckServiceMemoryBudget("mid-12g.gguf", engine, 8192)
+	if !gpuBudget.Known || gpuBudget.Enough {
+		t.Fatalf("expected GPU budget to reject 12 GiB model on 8 GiB VRAM, got %+v", gpuBudget)
+	}
+
+	cpuLayers := 0
+	cpuBudget := s.CheckServiceMemoryBudgetForRequest(StandaloneStartRequest{
+		Model:       "mid-12g.gguf",
+		Engine:      engine,
+		ContextSize: 8192,
+		GPULayers:   &cpuLayers,
+	})
+	if !cpuBudget.Known || !cpuBudget.Enough || cpuBudget.TotalGB != 64 || cpuBudget.AvailableGB != 48 {
+		t.Fatalf("expected CPU-only budget to use 64 GiB host pool, got %+v", cpuBudget)
+	}
+
+	st, apiErr := s.StartStandaloneEngine(StandaloneStartRequest{
+		Model:       "mid-12g.gguf",
+		Engine:      engine,
+		ContextSize: 8192,
+		GPULayers:   &cpuLayers,
+	})
+	if apiErr != nil {
+		t.Fatalf("expected CPU-only start to succeed without VRAM block, got %+v", apiErr)
+	}
+	waitManagedServiceState(t, s, st.ServiceID, "running")
+}
+
+func TestServiceMemoryBudgetRespectsSnapshotAvailableCeiling(t *testing.T) {
+	// 16 GiB total RAM, but only 2 GiB actually available in snapshot -> must cap AvailableGB at 2.0 GiB.
+	hostSnap := json.RawMessage(`{
+		"kind": "device_preflight.v1",
+		"hardware": {
+			"apple_silicon": true,
+			"memory_total_bytes": 17179869184,
+			"memory_available_bytes": 2147483648
+		}
+	}`)
+	hostInfo := parseHardwareMemoryBudget(hostSnap, false)
+	if !hostInfo.Known || hostInfo.TotalGB != 16 || hostInfo.AvailableGB != 2 {
+		t.Fatalf("expected host AvailableGB capped at 2.0 GiB, got %+v", hostInfo)
+	}
+
+	// 24 GiB total discrete VRAM, but only 3 GiB free -> must cap AvailableGB at 3.0 GiB.
+	gpuSnap := json.RawMessage(`{
+		"kind": "device_preflight.v1",
+		"hardware": {
+			"apple_silicon": false,
+			"memory_total_bytes": 68719476736,
+			"gpu": {
+				"devices": [
+					{
+						"name": "RTX 4090",
+						"memory_kind": "dedicated",
+						"memory_total_bytes": 25769803776,
+						"memory_free_bytes": 3221225472
+					}
+				]
+			}
+		}
+	}`)
+	gpuInfo := parseHardwareMemoryBudget(gpuSnap, false)
+	if !gpuInfo.Known || gpuInfo.TotalGB != 24 || gpuInfo.AvailableGB != 3 {
+		t.Fatalf("expected GPU AvailableGB capped at 3.0 GiB, got %+v", gpuInfo)
 	}
 }

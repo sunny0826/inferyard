@@ -147,12 +147,16 @@ func (s *Service) monitorAdoptedEngine(e *engineEntry) {
 				return
 			}
 			if !alive {
-				s.recordUnexpectedStandaloneExit(e, nil)
+				persistErr := s.recordUnexpectedStandaloneExit(e, nil)
 				s.mu.Lock()
 				var failure *ApiError
-				if removeErr := removeEngineOwner(e.ownerPath, e.owner); removeErr != nil {
-					failure = &ApiError{Code: "engine_owner_remove_failed", Message: l10n.TR("core.engine.err.exited_owner_remove_failed")}
-					s.recordOrphanFromEntryLocked(e, failure)
+				if persistErr == nil {
+					if removeErr := removeEngineOwner(e.ownerPath, e.owner); removeErr != nil {
+						failure = &ApiError{Code: "engine_owner_remove_failed", Message: l10n.TR("core.engine.err.exited_owner_remove_failed")}
+						s.recordOrphanFromEntryLocked(e, failure)
+					} else {
+						failure = &ApiError{Code: "engine_exited", Message: l10n.TR("core.engine.err.exited")}
+					}
 				} else {
 					failure = &ApiError{Code: "engine_exited", Message: l10n.TR("core.engine.err.exited")}
 				}
