@@ -26,10 +26,11 @@ const (
 )
 
 const (
-	defaultUpdateAPIURL       = "https://api.github.com/repos/sunny0826/inferyard/releases/latest"
-	DefaultReleasesURL        = "https://github.com/sunny0826/inferyard/releases"
-	defaultUpdateStartupDelay = 2 * time.Second
-	defaultUpdateCheckTimeout = 10 * time.Second
+	defaultUpdateAPIURL         = "https://updates.guoxudong.io/latest.json"
+	defaultFallbackUpdateAPIURL = "https://api.github.com/repos/sunny0826/inferyard/releases/latest"
+	DefaultReleasesURL          = "https://github.com/sunny0826/inferyard/releases"
+	defaultUpdateStartupDelay   = 2 * time.Second
+	defaultUpdateCheckTimeout   = 10 * time.Second
 )
 
 var ErrUpdateWorkloadActive = errors.New("active workloads must be confirmed before applying update")
@@ -101,6 +102,7 @@ type platformApplyPlan struct {
 
 type UpdateOptions struct {
 	APIURL            string
+	FallbackAPIURL    string
 	CurrentVersion    string
 	GOOS              string
 	GOARCH            string
@@ -137,6 +139,9 @@ type updateManager struct {
 func newUpdateManager(s *Service, opts UpdateOptions) *updateManager {
 	if opts.APIURL == "" {
 		opts.APIURL = defaultUpdateAPIURL
+		if opts.FallbackAPIURL == "" {
+			opts.FallbackAPIURL = defaultFallbackUpdateAPIURL
+		}
 	}
 	if opts.GOOS == "" {
 		opts.GOOS = runtime.GOOS

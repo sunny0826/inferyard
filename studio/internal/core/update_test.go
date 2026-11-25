@@ -179,3 +179,84 @@ func TestUpdateDownloadVerifyChecksumRejectionCancelAndRetry(t *testing.T) {
 		t.Fatalf("retry download failed: state=%+v err=%v", st, err)
 	}
 }
+
+func TestUpdateCheckPrimaryAndFallback(t *testing.T) {
+	var primaryStatus atomic.Int32
+	primaryStatus.Store(http.StatusOK)
+	var fallbackHits atomic.Int32
+	var lastPrimaryAccept atomic.Value
+
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/latest.json":
+			lastPrimaryAccept.Store(r.Header.Get("Accept"))
+			status := int(primaryStatus.Load())
+			if status != http.StatusOK {
+				w.WriteHeader(status)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(githubReleasePayload{
+				TagName: "v0.10.0",
+				HTMLURL: srv.URL + "/releases/v0.10.0",
+				Assets: []githubReleaseAsset{
+					{Name: "inferyard-studio-v0.10.0-linux-amd64.tar.gz", BrowserDownloadURL: srv.URL + "/asset", Size: 100},
+					{Name: "SHA256SUMS", BrowserDownloadURL: srv.URL + "/SHA256SUMS", Size: 64},
+				},
+			})
+		case "/fallback":
+			fallbackHits.Add(1)
+			_ = json.NewEncoder(w).Encode(githubReleasePayload{
+				TagName: "v0.10.1",
+				HTMLURL: srv.URL + "/releases/v0.10.1",
+				Assets: []githubReleaseAsset{
+					{Name: "inferyard-studio-v0.10.1-linux-amd64.tar.gz", BrowserDownloadURL: srv.URL + "/asset-fb", Size: 120},
+					{Name: "SHA256SUMS", BrowserDownloadURL: srv.URL + "/SHA256SUMS", Size: 64},
+				},
+			})
+		}
+	}))
+	defer srv.Close()
+
+	s := newUpdateTestService(t, UpdateOptions{
+		APIURL:              srv.URL + "/latest.json",
+		FallbackAPIURL:      srv.URL + "/fallback",
+		CurrentVersion:      "0.9.9",
+		GOOS:                "linux",
+		GOARCH:              "amd64",
+		DisableAutoDownload: true,
+		InspectTarget:       func() updateInstallTarget { return updateInstallTarget{CanSelfUpdate: true, ExePath: "/opt/inferyard/inferyard-studio"} },
+	})
+
+	// Primary 200: must not hit fallback and must send application/json.
+	st, err := s.CheckForUpdate(context.Background())
+	if err != nil || st.State != UpdateAvailable || st.Release == nil || st.Release.Version != "0.10.0" {
+		t.Fatalf("primary check failed: state=%+v err=%v", st, err)
+	}
+	if fallbackHits.Load() != 0 {
+		t.Fatalf("expected 0 fallback hits on primary success, got %d", fallbackHits.Load())
+	}
+	if got, _ := lastPrimaryAccept.Load().(string); got != "application/json" {
+		t.Fatalf("expected Accept=application/json for static manifest, got %q", got)
+	}
+
+	// Primary 404 (e.g. manifest not yet published to R2): falls back cleanly.
+	primaryStatus.Store(http.StatusNotFound)
+	st, err = s.CheckForUpdate(context.Background())
+	if err != nil || st.State != UpdateAvailable || st.Release == nil || st.Release.Version != "0.10.1" {
+		t.Fatalf("fallback on 404 failed: state=%+v err=%v", st, err)
+	}
+	if fallbackHits.Load() != 1 {
+		t.Fatalf("expected 1 fallback hit after 404, got %d", fallbackHits.Load())
+	}
+
+	// Primary 503: falls back cleanly.
+	primaryStatus.Store(http.StatusServiceUnavailable)
+	st, err = s.CheckForUpdate(context.Background())
+	if err != nil || st.State != UpdateAvailable || st.Release == nil || st.Release.Version != "0.10.1" {
+		t.Fatalf("fallback on 503 failed: state=%+v err=%v", st, err)
+	}
+	if fallbackHits.Load() != 2 {
+		t.Fatalf("expected 2 fallback hits after 503, got %d", fallbackHits.Load())
+	}
+}
