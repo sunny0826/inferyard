@@ -120,7 +120,7 @@ func (s *viewState) downloadsPageView(c *ui.Context) {
 
 	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 		ui.Row(c).Grow(1).MinWidth(0).Children(func() { s.header(c, tr(c, "downloads.page.title")) })
-		button(c, tr(c, "downloads.page.settings")).OnClick(func() { s.selected = "settings" })
+		button(c, tr(c, "downloads.page.settings")).OnClick(func() { s.openGeneralSettings() })
 	})
 	s.downloadTaskGuide(c)
 	s.downloadsStarterCard(c)

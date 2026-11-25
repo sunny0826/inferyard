@@ -34,6 +34,11 @@ func (s *viewState) navigateTo(page, detail string) {
 	s.navigateToNow(page, detail)
 }
 
+func (s *viewState) openGeneralSettings() {
+	s.settingsTab = settingsTabGeneral
+	s.navigateTo("settings", "")
+}
+
 func (s *viewState) selectPageNow(id string) {
 	s.navigateToNow(id, s.detailID)
 	if id != "models" || s.service == nil {

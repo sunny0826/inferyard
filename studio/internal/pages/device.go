@@ -152,7 +152,7 @@ func (s *viewState) deviceView(c *ui.Context) {
 	errorRecoveryBanner(c, deviceErr, func() {
 		s.deviceRefreshButton(c, tr(c, "device.action.retry"))
 		if button(c, tr(c, "device.action.open_settings")).Clicked() {
-			s.selected = "settings"
+			s.openGeneralSettings()
 		}
 	})
 	if parseError != nil {
@@ -161,7 +161,7 @@ func (s *viewState) deviceView(c *ui.Context) {
 			Message: tr(c, "device.error.unreadable_snapshot"),
 			Actions: func() {
 				s.deviceRefreshButton(c, tr(c, "device.action.recollect"))
-				button(c, tr(c, "device.action.check_settings")).OnClick(func() { s.selected = "settings" })
+				button(c, tr(c, "device.action.check_settings")).OnClick(func() { s.openGeneralSettings() })
 			},
 		})
 		return
@@ -178,7 +178,7 @@ func (s *viewState) deviceView(c *ui.Context) {
 						s.refreshDevice()
 					}
 					if button(c, tr(c, "device.action.open_settings")).Clicked() {
-						s.selected = "settings"
+						s.openGeneralSettings()
 					}
 				})
 			},

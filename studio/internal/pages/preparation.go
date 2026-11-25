@@ -81,8 +81,27 @@ func (s *viewState) persistSettings(patch map[string]json.RawMessage, submitted 
 	return message, e
 }
 
+const (
+	settingsTabGeneral = iota
+	settingsTabAbout
+)
+
 func (s *viewState) settingsView(c *ui.Context) {
 	s.header(c, tr(c, "nav.settings"))
+	if s.settingsTab < settingsTabGeneral || s.settingsTab > settingsTabAbout {
+		s.settingsTab = settingsTabGeneral
+	}
+	ui.Column(c.Key("settings-tabs")).Gap(tokens(c).Density.Section).Children(func() {
+		components.Tabs(c, &s.settingsTab, components.TabsUnderline, tr(c, "settings.tab.general"), tr(c, "settings.tab.about"))
+		if s.settingsTab == settingsTabAbout {
+			s.aboutSettingsView(c)
+			return
+		}
+		s.generalSettingsView(c)
+	})
+}
+
+func (s *viewState) generalSettingsView(c *ui.Context) {
 	s.appearanceSettingsView(c)
 	s.languageSettingsView(c)
 	s.traySettingsView(c)

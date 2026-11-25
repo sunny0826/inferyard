@@ -1,12 +1,14 @@
 #!/bin/sh
 set -eu
+build_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+ldflags="-X inferyard/studio/internal/core.BuildTime=$build_time"
 for target in darwin/arm64 windows/amd64 linux/amd64; do
   os=${target%/*}
   arch=${target#*/}
   output="build/$os-$arch/inferyard-studio"
   if [ "$os" = windows ]; then output="$output.exe"; fi
   mkdir -p "build/$os-$arch"
-  CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -tags release -o "$output" .
+  CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -tags release -ldflags "$ldflags" -o "$output" .
   printf '%s: go build exit=0\n' "$target"
 done
 mise exec -- python scripts/package.py
