@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from tools.release_manifest import build_release_manifest, main
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import release_manifest  # noqa: E402
 
 
 class ReleaseManifestTest(unittest.TestCase):
@@ -16,7 +18,7 @@ class ReleaseManifestTest(unittest.TestCase):
             (assets / "inferyard-studio-v0.10.0-darwin-arm64.dmg").write_bytes(b"dmg-data")
             (assets / "SHA256SUMS").write_text("abc  inferyard-studio-v0.10.0-darwin-arm64.dmg\n", encoding="utf-8")
 
-            manifest = build_release_manifest(
+            manifest = release_manifest.build_release_manifest(
                 tag="v0.10.0",
                 repo="sunny0826/inferyard",
                 notes="## Highlights\n\n- Fixed rate limit\n",
@@ -57,7 +59,7 @@ class ReleaseManifestTest(unittest.TestCase):
             (assets / "inferyard-studio-v0.10.0-linux-amd64.tar.gz").write_bytes(b"tar")
 
             with self.assertRaisesRegex(ValueError, "SHA256SUMS"):
-                build_release_manifest(
+                release_manifest.build_release_manifest(
                     tag="v0.10.0",
                     repo="sunny0826/inferyard",
                     notes="",
@@ -74,7 +76,7 @@ class ReleaseManifestTest(unittest.TestCase):
             notes.write_text("Release body\n", encoding="utf-8")
             out = root / "out" / "latest.json"
 
-            code = main(
+            code = release_manifest.main(
                 [
                     "--tag",
                     "v0.10.1",
