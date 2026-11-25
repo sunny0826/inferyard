@@ -102,14 +102,19 @@ func TestLANAutoPortAndCachedPlanProbeWildcardHost(t *testing.T) {
 		t.Fatal(err)
 	}
 	eng := registryEntry{path: exePath, family: "llama-cpp"}
-
-	// On 0.0.0.0, port 48857 is mocked as busy -> cached plan must NOT be reused.
-	if _, ok := reusableStandalonePlan(planPath, modelPath, eng, 8192, "0.0.0.0"); ok {
-		t.Fatalf("expected cached plan on port 48857 to be rejected when 0.0.0.0:48857 is occupied")
+	_, _, cachedPort, ok := loadCachedStandalonePlan(planPath, modelPath, eng, 8192)
+	if !ok || cachedPort != 48857 {
+		t.Fatalf("expected cached plan on port 48857 to load, ok=%v port=%d", ok, cachedPort)
 	}
-	// On 127.0.0.1, port 48857 is mocked as free -> cached plan can be reused.
-	if _, ok := reusableStandalonePlan(planPath, modelPath, eng, 8192, "127.0.0.1"); !ok {
-		t.Fatalf("expected cached plan on port 48857 to be reusable on 127.0.0.1")
+	svc := &Service{reservedPorts: map[int]bool{}}
+
+	// On 0.0.0.0, port 48857 is mocked as busy -> direct port reuse must be rejected.
+	if svc.tryReservePort("0.0.0.0", cachedPort) {
+		t.Fatalf("expected cached plan port 48857 to be rejected when 0.0.0.0:48857 is occupied")
+	}
+	// On 127.0.0.1, port 48857 is mocked as free -> direct port reuse succeeds.
+	if !svc.tryReservePort("127.0.0.1", cachedPort) {
+		t.Fatalf("expected cached plan port 48857 to be reusable on 127.0.0.1")
 	}
 }
 

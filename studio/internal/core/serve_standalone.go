@@ -159,73 +159,6 @@ func isRegularNonSymlinkFile(path string) bool {
 	return err == nil && info.Mode().IsRegular()
 }
 
-func reusableStandalonePlan(planPath string, modelPath string, eng registryEntry, contextSize int64, bindHost string) (Startup, bool) {
-	if !isRegularNonSymlinkFile(planPath) {
-		return Startup{}, false
-	}
-	raw, err := os.ReadFile(planPath)
-	if err != nil {
-		return Startup{}, false
-	}
-	plan, err := inferyard.ParseServePlan(raw)
-	if err != nil {
-		return Startup{}, false
-	}
-	wantLocal := eng.installation != ""
-	if plan.Local != wantLocal || plan.ContextSize != contextSize {
-		return Startup{}, false
-	}
-	if normalizedPath(plan.ModelPath) != normalizedPath(modelPath) {
-		return Startup{}, false
-	}
-	if wantLocal && eng.family != "" && plan.Family != eng.family {
-		return Startup{}, false
-	}
-	wantExe, ok := expectedEngineExecutable(eng)
-	if !ok {
-		return Startup{}, false
-	}
-	// Preserve lexical venv Python symlinks for local installations so two venvs sharing a base interpreter do not collide.
-	if wantLocal {
-		if filepath.Clean(plan.Argv[0]) != filepath.Clean(wantExe) {
-			return Startup{}, false
-		}
-	} else if normalizedPath(plan.Argv[0]) != normalizedPath(wantExe) {
-		return Startup{}, false
-	}
-	if info, err := os.Stat(plan.Argv[0]); err != nil || info.IsDir() {
-		return Startup{}, false
-	}
-	if plan.Family == "polystrata" {
-		cfgFound := false
-		for i := 1; i+1 < len(plan.Argv); i++ {
-			if plan.Argv[i] == "--config" {
-				if !isRegularNonSymlinkFile(plan.Argv[i+1]) {
-					return Startup{}, false
-				}
-				cfgFound = true
-				break
-			}
-		}
-		if !cfgFound {
-			return Startup{}, false
-		}
-	}
-	startup := servePlanToStartup(plan)
-	host, port, apiErr := validateStartup(startup)
-	if apiErr != nil {
-		return Startup{}, false
-	}
-	probeHost := host
-	if bindHost != "" {
-		probeHost = bindHost
-	}
-	if checkBindPortAvailable(probeHost, port) != nil {
-		return Startup{}, false
-	}
-	return startup, true
-}
-
 func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartRequest) (EngineState, *ApiError) {
 	req.Model = strings.TrimSpace(req.Model)
 	req.Engine = strings.TrimSpace(req.Engine)
@@ -347,26 +280,11 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 		}
 	}
 
-	cliPath, cliErr := s.resolveServeCLI(ctx, u)
-	if cliErr != nil {
-		return EngineState{}, cliErr
-	}
-	if ctx.Err() != nil {
-		return EngineState{}, Err("cancelled")
-	}
-
 	serveDir, dirErr := safeServeDir(*w, slug)
 	if dirErr != nil {
 		return EngineState{}, dirErr
 	}
 	planPath := filepath.Join(serveDir, "serve-plan.json")
-	startup, reused := reusableStandalonePlan(planPath, modelEntry.path, *engEntry, req.ContextSize, bindHost)
-	if reused {
-		cachedPort := portFromEndpoint(startup.Endpoint)
-		if (req.Port > 0 && cachedPort != req.Port) || occupied[cachedPort] {
-			reused = false
-		}
-	}
 	reservedPort := 0
 	defer func() {
 		if reservedPort > 0 {
@@ -375,19 +293,43 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 			s.mu.Unlock()
 		}
 	}()
-	if !reused {
-		port := req.Port
-		if port == 0 {
-			var err error
-			port, err = ChooseFreePortExcluding(bindHost, DefaultBenchmarkPort, occupied)
-			if err != nil {
-				return EngineState{}, portInUseError(0)
+
+	var startup Startup
+	reused := false
+	if cached, _, cachedPort, ok := loadCachedStandalonePlan(planPath, modelEntry.path, *engEntry, req.ContextSize); ok {
+		if (req.Port == 0 || req.Port == cachedPort) && s.tryReservePort(bindHost, cachedPort) {
+			reservedPort = cachedPort
+			startup = cached
+			reused = true
+		} else if cached.Family != "polystrata" {
+			targetPort, portErr := s.reserveStandalonePort(bindHost, req.Port)
+			if portErr != nil {
+				return EngineState{}, portErr
+			}
+			reservedPort = targetPort
+			if rewritten, ok := rewriteStartupPort(cached, targetPort); ok {
+				startup = rewritten
+				reused = true
 			}
 		}
-		s.mu.Lock()
-		s.reservedPorts[port] = true
-		reservedPort = port
-		s.mu.Unlock()
+	}
+	if !reused {
+		cliPath, cliErr := s.resolveServeCLI(ctx, u)
+		if cliErr != nil {
+			return EngineState{}, cliErr
+		}
+		if ctx.Err() != nil {
+			return EngineState{}, Err("cancelled")
+		}
+		port := reservedPort
+		if port == 0 {
+			var portErr *ApiError
+			port, portErr = s.reserveStandalonePort(bindHost, req.Port)
+			if portErr != nil {
+				return EngineState{}, portErr
+			}
+			reservedPort = port
+		}
 		args := []string{
 			"serve", "prepare",
 			"--model", modelEntry.path,

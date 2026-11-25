@@ -49,6 +49,9 @@ func runEngineHelper(args []string) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
+		if body := os.Getenv("ENGINE_HELPER_HEALTH_BODY"); body != "" {
+			_, _ = w.Write([]byte(body))
+		}
 	})
 	_ = http.ListenAndServe("127.0.0.1:"+strconv.Itoa(port), mux)
 	os.Exit(1)

@@ -283,7 +283,7 @@ func TestStartStandaloneReusesDirAndReallocatesOnPortConflict(t *testing.T) {
 		t.Fatalf("expected reused endpoint %q, got %q", st1.Endpoint, st2.Endpoint)
 	}
 
-	// Stop, occupy the cached port externally, and start again: re-runs serve prepare with new port.
+	// Stop, occupy the cached port externally, and start again: rewrites port in Go without re-running CLI.
 	if _, err := s.StopEngine(); err != nil {
 		t.Fatalf("StopEngine failed: %+v", err)
 	}
@@ -296,6 +296,7 @@ func TestStartStandaloneReusesDirAndReallocatesOnPortConflict(t *testing.T) {
 	}
 	defer ln.Close()
 
+	beforeHotRewrite := totalCalls.Load()
 	st3, apiErr := s.StartStandalone(context.Background(), StandaloneStartRequest{
 		Model: model, Engine: engine, ContextSize: 12000,
 	})
@@ -303,8 +304,11 @@ func TestStartStandaloneReusesDirAndReallocatesOnPortConflict(t *testing.T) {
 		t.Fatalf("3rd StartStandalone after port occupied failed: %+v", apiErr)
 	}
 	waitEngineState(t, s, "running")
-	if calls.Load() != 2 {
-		t.Fatalf("expected re-prepare when cached port is occupied, calls=%d", calls.Load())
+	if calls.Load() != 1 {
+		t.Fatalf("expected hot port rewrite without re-running serve prepare, calls=%d", calls.Load())
+	}
+	if totalCalls.Load() != beforeHotRewrite {
+		t.Fatalf("expected 0 CLI calls on hot port rewrite, delta=%d", totalCalls.Load()-beforeHotRewrite)
 	}
 	if st3.Endpoint == st1.Endpoint {
 		t.Fatalf("expected a newly allocated endpoint, got same %q", st3.Endpoint)
@@ -464,11 +468,11 @@ func TestStartStandaloneRejectsSymlinkServeRootAndInstallationExecutableChange(t
 		t.Fatal(err)
 	}
 	eng := registryEntry{installation: instPath, family: "vllm"}
-	if _, ok := reusableStandalonePlan(planPath, modelDir, eng, 8192, "127.0.0.1"); !ok {
+	if _, _, _, ok := loadCachedStandalonePlan(planPath, modelDir, eng, 8192); !ok {
 		t.Fatalf("expected cached venvA plan to be reusable")
 	}
 	writeInst(venvB)
-	if _, ok := reusableStandalonePlan(planPath, modelDir, eng, 8192, "127.0.0.1"); ok {
+	if _, _, _, ok := loadCachedStandalonePlan(planPath, modelDir, eng, 8192); ok {
 		t.Fatalf("expected cached plan to invalidate when switching venvA -> venvB symlink")
 	}
 	// Symlinked serve-plan.json must be rejected.
@@ -477,7 +481,7 @@ func TestStartStandaloneRejectsSymlinkServeRootAndInstallationExecutableChange(t
 	if err := os.Symlink(planPath, linkPlan); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := reusableStandalonePlan(linkPlan, modelDir, eng, 8192, "127.0.0.1"); ok {
+	if _, _, _, ok := loadCachedStandalonePlan(linkPlan, modelDir, eng, 8192); ok {
 		t.Fatalf("expected symlinked serve-plan.json to be rejected")
 	}
 }
