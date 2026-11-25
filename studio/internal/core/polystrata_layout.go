@@ -193,75 +193,91 @@ func inferPolystrataUpdateSpec(instDir, dataDir string) (family, model, ggufPath
 		path    string
 		modTime time.Time
 	}
-	var candidates []candFile
-	for _, dir := range polystrataConfigSearchDirs(instDir, dataDir) {
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			continue
-		}
-		for _, item := range entries {
-			name := item.Name()
-			if item.IsDir() || !strings.HasPrefix(name, "strata-") || !strings.HasSuffix(name, ".json") || strings.Contains(name, "-retained-") {
-				continue
-			}
-			full := filepath.Join(dir, name)
-			info, err := os.Lstat(full)
-			if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() > maxStrataConfigBytes {
-				continue
-			}
-			candidates = append(candidates, candFile{path: full, modTime: info.ModTime()})
+	var localDirs []string
+	if trimmed := strings.TrimSpace(instDir); trimmed != "" {
+		localDirs = uniqueCleanPaths([]string{trimmed, filepath.Join(trimmed, "terminal")})
+	}
+	var sharedDirs []string
+	if trimmed := strings.TrimSpace(dataDir); trimmed != "" {
+		cleanDD := filepath.Clean(trimmed)
+		if !slices.Contains(localDirs, cleanDD) {
+			sharedDirs = []string{cleanDD}
 		}
 	}
-	slices.SortFunc(candidates, func(a, b candFile) int {
-		return b.modTime.Compare(a.modTime)
-	})
 	var fallbackGGUF string
 	var fallbackCtx int
-	for _, cand := range candidates {
-		raw, err := os.ReadFile(cand.path)
-		if err != nil {
-			continue
-		}
-		var cfg struct {
-			Args    []string `json:"args"`
-			Cwd     string   `json:"cwd"`
-			Context *int64   `json:"context"`
-		}
-		if json.Unmarshal(raw, &cfg) != nil {
-			continue
-		}
-		var cfgCtx int
-		if parsedCtx := parsePolystrataContextLength(cfg.Args, cfg.Context); parsedCtx != nil && *parsedCtx >= 1 && *parsedCtx <= 524288 {
-			cfgCtx = int(*parsedCtx)
-			if fallbackCtx == 0 {
-				fallbackCtx = cfgCtx
-			}
-		}
-		bases := polystrataConfigBases(cfg.Cwd, instDir, filepath.Dir(cand.path), dataDir)
-		for _, flag := range []string{"--model", "--native"} {
-			rawRef, ok := extractStrataArgValue(cfg.Args, flag)
-			if !ok {
+	for _, tier := range [][]string{localDirs, sharedDirs} {
+		var candidates []candFile
+		for _, dir := range tier {
+			entries, err := os.ReadDir(dir)
+			if err != nil {
 				continue
 			}
-			resolved := rawRef
-			if canon, _, ok2 := resolvePolystrataAssetRef(rawRef, bases); ok2 {
-				resolved = canon
-			}
-			parentDir := filepath.Dir(resolved)
-			if strings.EqualFold(filepath.Base(filepath.Dir(parentDir)), "models") {
-				if fam, mod := parsePolystrataTagDir(filepath.Base(parentDir)); fam != "" && mod != "" {
-					return fam, mod, "", cfgCtx
+			for _, item := range entries {
+				name := item.Name()
+				if item.IsDir() || !strings.HasPrefix(name, "strata-") || !strings.HasSuffix(name, ".json") || strings.Contains(name, "-retained-") {
+					continue
 				}
-			}
-			if flag == "--model" && runtime.GOOS != "darwin" && fallbackGGUF == "" &&
-				strings.HasSuffix(strings.ToLower(resolved), ".gguf") && filepath.IsAbs(resolved) && isRegularNonSymlink(resolved) {
-				fallbackGGUF = resolved
-				fallbackCtx = cfgCtx
+				full := filepath.Join(dir, name)
+				info, err := os.Lstat(full)
+				if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() > maxStrataConfigBytes {
+					continue
+				}
+				candidates = append(candidates, candFile{path: full, modTime: info.ModTime()})
 			}
 		}
-		slug := strings.TrimSuffix(strings.TrimPrefix(filepath.Base(cand.path), "strata-"), ".json")
-		if fam, mod := parsePolystrataConfigSlug(slug); fam != "" && mod != "" {
-			return fam, mod, "", cfgCtx
+		slices.SortFunc(candidates, func(a, b candFile) int {
+			return b.modTime.Compare(a.modTime)
+		})
+		for _, cand := range candidates {
+			raw, err := os.ReadFile(cand.path)
+			if err != nil {
+				continue
+			}
+			var cfg struct {
+				Args    []string `json:"args"`
+				Cwd     string   `json:"cwd"`
+				Context *int64   `json:"context"`
+			}
+			if json.Unmarshal(raw, &cfg) != nil {
+				continue
+			}
+			var cfgCtx int
+			if parsedCtx := parsePolystrataContextLength(cfg.Args, cfg.Context); parsedCtx != nil && *parsedCtx >= 1 && *parsedCtx <= 524288 {
+				cfgCtx = int(*parsedCtx)
+				if fallbackCtx == 0 {
+					fallbackCtx = cfgCtx
+				}
+			}
+			bases := polystrataConfigBases(cfg.Cwd, instDir, filepath.Dir(cand.path), dataDir)
+			for _, flag := range []string{"--model", "--native"} {
+				rawRef, ok := extractStrataArgValue(cfg.Args, flag)
+				if !ok {
+					continue
+				}
+				resolved := rawRef
+				if canon, _, ok2 := resolvePolystrataAssetRef(rawRef, bases); ok2 {
+					resolved = canon
+				}
+				parentDir := filepath.Dir(resolved)
+				if strings.EqualFold(filepath.Base(filepath.Dir(parentDir)), "models") {
+					if fam, mod := parsePolystrataTagDir(filepath.Base(parentDir)); fam != "" && mod != "" {
+						return fam, mod, "", cfgCtx
+					}
+				}
+				if flag == "--model" && runtime.GOOS != "darwin" && fallbackGGUF == "" &&
+					strings.HasSuffix(strings.ToLower(resolved), ".gguf") && filepath.IsAbs(resolved) && isRegularNonSymlink(resolved) {
+					fallbackGGUF = resolved
+					fallbackCtx = cfgCtx
+				}
+			}
+			slug := strings.TrimSuffix(strings.TrimPrefix(filepath.Base(cand.path), "strata-"), ".json")
+			if fam, mod := parsePolystrataConfigSlug(slug); fam != "" && mod != "" {
+				return fam, mod, "", cfgCtx
+			}
+		}
+		if fallbackGGUF != "" {
+			return "", "", fallbackGGUF, fallbackCtx
 		}
 	}
 	return "", "", fallbackGGUF, fallbackCtx

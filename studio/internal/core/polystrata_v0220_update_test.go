@@ -90,7 +90,9 @@ func TestPolystrataV0220OneClickUpdateAndReceiptVersion(t *testing.T) {
 		"source":         "https://github.com/simplexai-labs/PolyStrata/archive/" + polystrataLegacyPinnedCommit + ".tar.gz",
 	})
 	mustWriteFile(t, filepath.Join(oldDir, ".inferyard-runtime.json"), oldReceipt, 0o600)
-	oldInst := filepath.Join(oldDir, "installation.json")
+	// Register via wizard-style workspace/engine-installations/*.json (not <oldDir>/installation.json),
+	// and stage a newer migrated config in shared dataDir to ensure local strata-q2_0.json still wins.
+	oldInst := filepath.Join(ws, "engine-installations", "polystrata-python.json")
 	rawOldInst, _ := json.Marshal(map[string]any{
 		"schema_version":    3,
 		"definition":        "local-engine-installation.v1",
@@ -102,6 +104,11 @@ func TestPolystrataV0220OneClickUpdateAndReceiptVersion(t *testing.T) {
 	writeStrataConfigFixture(t, filepath.Join(oldDir, "strata-q2_0.json"), "qwen3.8-flash-next-q2_0", []string{
 		"--native", shard1, "--max-context", "32768",
 	})
+	sharedMigratedCfg := writeStrataConfigFixture(t, filepath.Join(dataDir, "strata-qwen36.json"), "qwen36-ud-q4-k-m", []string{
+		"--model", q36Shard, "--max-context", "16384",
+	})
+	future := time.Now().Add(10 * time.Second)
+	_ = os.Chtimes(sharedMigratedCfg, future, future)
 
 	var gotArgs []string
 	execDone := make(chan struct{})

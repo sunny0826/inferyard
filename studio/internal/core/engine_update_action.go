@@ -224,8 +224,15 @@ func (s *Service) UpdateEngine(engineName string) (DownloadTask, *ApiError) {
 		var dataDir, backend, family, model, ggufPath string
 		var contextLen int
 		if hasEntry && entry.installation != "" {
-			instDir := filepath.Dir(entry.installation)
-			dataDir = existingPolystrataDataDir(instDir)
+			declWorkDir, declDataDir := readPolystrataInstallDirs(entry.installation)
+			instDir := strings.TrimSpace(declWorkDir)
+			if instDir == "" {
+				instDir = filepath.Dir(entry.installation)
+			}
+			dataDir = strings.TrimSpace(declDataDir)
+			if dataDir == "" || !filepath.IsAbs(dataDir) {
+				dataDir = existingPolystrataDataDir(instDir)
+			}
 			backend = readPolystrataBackend(instDir)
 			family, model, ggufPath, contextLen = inferPolystrataUpdateSpec(instDir, dataDir)
 		}

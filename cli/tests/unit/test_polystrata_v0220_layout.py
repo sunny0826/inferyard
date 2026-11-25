@@ -128,9 +128,12 @@ def test_prepare_polystrata_v0220_terminal_layout_end_to_end(
         [
             ("dir", f"{prefix}/terminal"),
             ("dir", f"{prefix}/terminal/serve"),
+            ("dir", f"{prefix}/terminal/strata_cli"),
             ("dir", f"{prefix}/engine"),
             ("file", f"{prefix}/terminal/setup.py", _V0220_SETUP_PY.encode("utf-8")),
+            ("file", f"{prefix}/terminal/polystrata.py", b"APP = 'polystrata'\n"),
             ("file", f"{prefix}/terminal/serve/server.py", b"print('v0220 server')\n"),
+            ("file", f"{prefix}/terminal/strata_cli/__init__.py", b"APP_NAME = 'PolyStrata'\n"),
             ("file", f"{prefix}/engine/CMakeLists.txt", b"cmake_minimum_required(VERSION 3.20)\n"),
             ("file", f"{prefix}/engine/dummy.cpp", b"int main() { return 0; }\n"),
         ],
@@ -166,6 +169,7 @@ def test_prepare_polystrata_v0220_terminal_layout_end_to_end(
     assert str((out_dir / "engine" / "build-metal").resolve()) in runtime_roots
     assert str((out_dir / "engine" / "build-vision").resolve()) in runtime_roots
     assert str((out_dir / "terminal" / "serve").resolve()) in runtime_roots
+    assert str((out_dir / "terminal" / "strata_cli").resolve()) in runtime_roots
 
     inst_path = Path(result["installation_path"])
     snapshot = installation.freeze_installation(result["installation"])
@@ -181,6 +185,10 @@ def test_prepare_polystrata_v0220_terminal_layout_end_to_end(
     if os.name != "nt":
         monkeypatch.setattr("platform.system", lambda: "Darwin")
         monkeypatch.setattr("platform.machine", lambda: "arm64")
+        monkeypatch.setattr(
+            "inferyard.config.local_engines.candidate.environment_snapshot",
+            lambda: {"ac_online": True},
+        )
         bundle_path = _write_bundle(tmp_path / "zh-smoke.json")
         req = SimpleNamespace(
             installation=inst_path,
@@ -220,6 +228,12 @@ def test_preflight_shared_data_dir_deducts_existing_q2_0_shards_without_resume(
     shard_bytes = 8 * 1024 * 1024
     shard = shard_dir / "Qwen3.8-Flash-Next-Q2_0-00001-of-00002.gguf"
     shard.write_bytes(b"x" * shard_bytes)
+
+    # Unrelated Swift-Qwen3.8 Q2_0 shard in shared_data must NOT be deducted for qwen/Q2_0.
+    swift_dir = shared_data / "models" / "swift-Q2_0"
+    swift_dir.mkdir(parents=True)
+    swift_shard = swift_dir / "Swift-Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf"
+    swift_shard.write_bytes(b"s" * (16 * 1024 * 1024))
 
     fresh_req, exact_fresh = _estimate_model_disk_bytes(
         system="Darwin",
@@ -261,6 +275,16 @@ def test_detect_and_target_discovery_for_v0220_layout(
     )
     (root / "terminal" / "strata-q2_0.json").write_text("{}", encoding="utf-8")
 
+    # Also place a Linux/Windows-style terminal/engine binary so both root and root/terminal
+    # would validate if not normalized; passing terminal/ or terminal/setup.py must normalize
+    # to root without emitting duplicate candidates.
+    term_eng_dir = root / "terminal" / "engine"
+    term_eng_dir.mkdir(parents=True)
+    term_bin = term_eng_dir / ("strata.exe" if os.name == "nt" else "strata")
+    term_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+    if os.name != "nt":
+        term_bin.chmod(0o755)
+
     # Venv inside terminal/.venv (manual upstream install) as well as root/.venv
     term_venv_py = _make_fake_venv(root / "terminal")
     assert infer_polystrata_root(term_venv_py) == root.resolve()
@@ -268,19 +292,27 @@ def test_detect_and_target_discovery_for_v0220_layout(
     targets = [
         p.resolve()
         for p, _ in collect_polystrata_targets(
-            (str(root / "terminal" / "setup.py"), str(root / "terminal" / "serve" / "server.py")),
+            (
+                str(root / "terminal"),
+                str(root / "terminal" / "setup.py"),
+                str(root / "terminal" / "serve" / "server.py"),
+            ),
             tmp_path / "empty-home",
             tmp_path / "empty-cwd",
         )
     ]
-    assert root.resolve() in targets
+    assert {p for p in targets if p.is_relative_to(root.resolve())} == {root.resolve()}
 
-    detected = detect_local_engines(extra_paths=(str(root),))
+    detected = detect_local_engines(
+        extra_paths=(str(root / "terminal"), str(root / "terminal" / "setup.py")),
+    )
     poly_hits = [
         item
         for item in detected["candidates"]
-        if item["family"] == "polystrata" and item["working_directory"] == str(root.resolve())
+        if item["family"] == "polystrata"
+        and Path(item["working_directory"]).is_relative_to(root.resolve())
     ]
     assert len(poly_hits) == 1
+    assert poly_hits[0]["working_directory"] == str(root.resolve())
     assert poly_hits[0]["version"] == "0.2.20"
     assert str((root / "terminal" / "strata-q2_0.json").resolve()) in poly_hits[0]["model_configs"]

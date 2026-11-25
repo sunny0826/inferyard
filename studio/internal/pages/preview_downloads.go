@@ -136,7 +136,7 @@ func (p *previewSession) tickPolystrataSetup(id string, fail bool, tick int) {
 			switch tick {
 			case 0:
 				task.Stage, task.Step, task.Percent = "downloading_runtime", previewValue(2), previewValue(35.0)
-				task.Detail = previewValue("PolyStrata v0.1.45-poly.10")
+				task.Detail = previewValue("PolyStrata v0.2.20-poly.5")
 			case 1:
 				task.Stage, task.Step, task.Percent = "setup_engine", previewValue(3), previewValue(65.0)
 				task.Detail = previewValue(l10n.TR("preview.polystrata.stage.build_metal"))
@@ -200,7 +200,7 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 		return
 	}
 	if task.Kind == "polystrata" {
-		engName := "PolyStrata · v0.1.45-poly.10"
+		engName := "PolyStrata · v0.2.20-poly.5"
 		instPath := emptyText(task.InstallationPath)
 		existing := false
 		guidedSource := l10n.TR("preview.source.guided_install")
@@ -221,7 +221,7 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 		if s.checks.Engines == nil {
 			s.checks.Engines = map[string]core.EngineEligibility{}
 		}
-		s.checks.Engines[engName] = core.EngineEligibility{State: core.EngineCheckEligible, Family: "polystrata", VerificationScope: "installation", Version: "v0.1.45-poly.10"}
+		s.checks.Engines[engName] = core.EngineEligibility{State: core.EngineCheckEligible, Family: "polystrata", VerificationScope: "installation", Version: "v0.2.20-poly.5"}
 		cfgPath := emptyText(task.ModelConfigPath)
 		modelExists := false
 		for _, m := range s.registry.Models {

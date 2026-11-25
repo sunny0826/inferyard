@@ -116,17 +116,13 @@ def _lookup_disk_cache(entries: dict, path: Path, stamps: tuple) -> FileIdentity
 
 
 _POLYSTRATA_ENGINE_DIRS = (
-    "terminal/engine",
-    "terminal/engine-cuda12",
-    "terminal/engine-poly",
-    "engine/build-metal",
-    "engine/build-vision",
-    "engine",
-    "engine-poly",
-    "build-metal",
-    "build-vision",
+    "terminal/engine", "terminal/engine-cuda12", "terminal/engine-poly",
+    "engine/build-metal", "engine/build-vision",
+    "engine", "engine-poly", "build-metal", "build-vision",
 )
-_POLYSTRATA_TOP_FILES = ("BUILD.json", "polystrata.py", "setup.py", "terminal/setup.py")
+_POLYSTRATA_TOP_FILES = (
+    "BUILD.json", "polystrata.py", "setup.py", "terminal/polystrata.py", "terminal/setup.py"
+)
 
 
 def darwin():
