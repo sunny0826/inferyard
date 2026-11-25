@@ -107,12 +107,12 @@ func deduplicatePolystrataModels(entries []registryEntry, scope polystrataDedupe
 
 func polystrataInstallationDisplayName(instPath, workingDir string) string {
 	roots := uniqueCleanPaths([]string{strings.TrimSpace(workingDir), filepath.Dir(instPath)})
-	subpaths := []string{
-		filepath.Join("engine-poly", "BUILD.json"),
-		filepath.Join("engine", "BUILD.json"),
-		filepath.Join("build-metal", "BUILD.json"),
-		"BUILD.json",
+	for _, root := range roots {
+		if ver := readPolystrataReceiptVersion(root); ver != "" {
+			return "PolyStrata · " + ver
+		}
 	}
+	subpaths := polystrataBuildJSONSubpaths()
 	for _, root := range roots {
 		for _, sub := range subpaths {
 			if ver := readBuildJSONVersion(filepath.Join(root, sub)); ver != "" {
@@ -329,6 +329,10 @@ func polystrataConfigSearchDirs(workingDir, dataDir string) []string {
 	dirs := []string{}
 	if workingDir != "" {
 		dirs = append(dirs, workingDir)
+		termDir := filepath.Join(workingDir, "terminal")
+		if info, err := os.Lstat(termDir); err == nil && info.Mode()&os.ModeSymlink == 0 && info.IsDir() {
+			dirs = append(dirs, termDir)
+		}
 	}
 	if dataDir != "" {
 		modelsDir := filepath.Join(dataDir, "models")

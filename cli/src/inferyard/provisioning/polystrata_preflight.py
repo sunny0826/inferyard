@@ -14,6 +14,7 @@ import subprocess
 from inferyard.platforms.device_gpu import cpu_features_snapshot, detect_gpus
 from inferyard.platforms.local_engines.detect_polystrata import pick_venv_python
 from inferyard.provisioning.http_client import validate_proxy_origin
+from inferyard.provisioning.polystrata_archive import has_extracted_polystrata_files
 from inferyard.provisioning.polystrata_preflight_checks import (
     _DEFAULT_RUNTIME_DISK_BYTES,
     _RESUME_RUNTIME_DISK_BYTES,
@@ -402,12 +403,11 @@ def run_polystrata_preflight(
     )
 
     runtime_already_extracted = (
-        resume
-        and (out / ".inferyard-runtime.json").is_file()
-        and (out / "setup.py").is_file()
-        and (out / "serve" / "server.py").is_file()
+        resume and (out / ".inferyard-runtime.json").is_file() and has_extracted_polystrata_files(out)
     )
-    runtime_needed = _RESUME_RUNTIME_DISK_BYTES if runtime_already_extracted else _DEFAULT_RUNTIME_DISK_BYTES
+    runtime_needed = (
+        _RESUME_RUNTIME_DISK_BYTES if runtime_already_extracted else _DEFAULT_RUNTIME_DISK_BYTES
+    )
     avx512: bool | None = None
     if system in ("Linux", "Windows"):
         cpu_fn = cpu_features_probe if cpu_features_probe is not None else cpu_features_snapshot
@@ -415,22 +415,13 @@ def run_polystrata_preflight(
         raw_avx512 = (cpu_feats or {}).get("avx512")
         avx512 = raw_avx512 if isinstance(raw_avx512, bool) else None
     model_needed, disk_estimate_exact = _estimate_model_disk_bytes(
-        system=system,
-        backend=backend,
-        family=resolved_family,
-        model=resolved_model,
-        gguf_path=gguf_path,
-        resume=resume,
-        data_dir=data_dir,
-        avx512=avx512,
+        system=system, backend=backend, family=resolved_family, model=resolved_model,
+        gguf_path=gguf_path, resume=resume, data_dir=data_dir, avx512=avx512,
     )
     fallback_hint = (
         " (conservative fallback because --family/--model were not specified; "
         "pass --family and --model for an exact requirement)"
-        if not disk_estimate_exact
-        and not resolved_family
-        and not resolved_model
-        and gguf_path is None
+        if not disk_estimate_exact and not resolved_family and not resolved_model and gguf_path is None
         else ""
     )
     out_free, out_dev = _disk_free_bytes(out, disk_usage_fn=disk_usage_fn)
@@ -439,45 +430,39 @@ def run_polystrata_preflight(
     if out_free is not None and data_free is not None and out_dev is not None and out_dev == data_dev:
         combined_needed = runtime_needed + model_needed
         if out_free < combined_needed:
-            blockers.append(
-                {
-                    "code": "polystrata_disk_insufficient",
-                    "message": (
-                        f"Insufficient free disk space: {out_free / GIB:.1f} GiB available, "
-                        f"at least {combined_needed / GIB:.1f} GiB required.{fallback_hint}"
-                    ),
-                    "required_bytes": combined_needed,
-                    "free_bytes": out_free,
-                    "fix_command": None,
-                }
-            )
+            blockers.append({
+                "code": "polystrata_disk_insufficient",
+                "message": (
+                    f"Insufficient free disk space: {out_free / GIB:.1f} GiB available, "
+                    f"at least {combined_needed / GIB:.1f} GiB required.{fallback_hint}"
+                ),
+                "required_bytes": combined_needed,
+                "free_bytes": out_free,
+                "fix_command": None,
+            })
     else:
         if out_free is not None and out_free < runtime_needed:
-            blockers.append(
-                {
-                    "code": "polystrata_disk_insufficient",
-                    "message": (
-                        f"Insufficient disk space at --out: {out_free / GIB:.1f} GiB available, "
-                        f"at least {runtime_needed / GIB:.1f} GiB required."
-                    ),
-                    "required_bytes": runtime_needed,
-                    "free_bytes": out_free,
-                    "fix_command": None,
-                }
-            )
+            blockers.append({
+                "code": "polystrata_disk_insufficient",
+                "message": (
+                    f"Insufficient disk space at --out: {out_free / GIB:.1f} GiB available, "
+                    f"at least {runtime_needed / GIB:.1f} GiB required."
+                ),
+                "required_bytes": runtime_needed,
+                "free_bytes": out_free,
+                "fix_command": None,
+            })
         if data_free is not None and data_free < model_needed:
-            blockers.append(
-                {
-                    "code": "polystrata_disk_insufficient",
-                    "message": (
-                        f"Insufficient disk space at --data-dir: {data_free / GIB:.1f} GiB available, "
-                        f"at least {model_needed / GIB:.1f} GiB required.{fallback_hint}"
-                    ),
-                    "required_bytes": model_needed,
-                    "free_bytes": data_free,
-                    "fix_command": None,
-                }
-            )
+            blockers.append({
+                "code": "polystrata_disk_insufficient",
+                "message": (
+                    f"Insufficient disk space at --data-dir: {data_free / GIB:.1f} GiB available, "
+                    f"at least {model_needed / GIB:.1f} GiB required.{fallback_hint}"
+                ),
+                "required_bytes": model_needed,
+                "free_bytes": data_free,
+                "fix_command": None,
+            })
 
     if blockers:
         primary = blockers[0]["code"]

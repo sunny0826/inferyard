@@ -245,7 +245,7 @@ def _polystrata_worker_env_policy(
         return frozenset(), [], {}
     if not isinstance(payload, dict):
         return frozenset(), [], {}
-    allowed: set[str] = set()
+    allowed: set[str] = {"OMP_NUM_THREADS"}
     lib_dirs = [
         str(Path(d))
         for d in (payload.get("lib_dirs") or ())

@@ -115,8 +115,18 @@ def _lookup_disk_cache(entries: dict, path: Path, stamps: tuple) -> FileIdentity
         return None
 
 
-_POLYSTRATA_ENGINE_DIRS = ("engine", "engine-poly", "build-metal")
-_POLYSTRATA_TOP_FILES = ("BUILD.json", "polystrata.py", "setup.py")
+_POLYSTRATA_ENGINE_DIRS = (
+    "terminal/engine",
+    "terminal/engine-cuda12",
+    "terminal/engine-poly",
+    "engine/build-metal",
+    "engine/build-vision",
+    "engine",
+    "engine-poly",
+    "build-metal",
+    "build-vision",
+)
+_POLYSTRATA_TOP_FILES = ("BUILD.json", "polystrata.py", "setup.py", "terminal/setup.py")
 
 
 def darwin():
@@ -317,21 +327,29 @@ def _roots(declaration, python_roots):
             Path(str(files("inferyard").joinpath("data/engine_fit/mlx_server.py"))),
         ]
     if declaration["family"] == "polystrata":
-        from inferyard.platforms.local_engines.detect_polystrata import venv_base_python
+        from inferyard.platforms.local_engines.detect_polystrata import (
+            POLYSTRATA_BUILD_JSON_NAMES,
+            resolve_polystrata_server_script,
+            venv_base_python,
+        )
 
         root = Path(declaration["working_directory"])
-        paths.append(root / "serve" / "server.py")
-        tokenizer_tool = root / "tools" / "strata_tokenizer.py"
-        if tokenizer_tool.is_file():
-            paths.append(tokenizer_tool)
+        server_py = resolve_polystrata_server_script(root)
+        if server_py is not None:
+            paths.append(server_py)
+        for tok_rel in ("terminal/tools/strata_tokenizer.py", "tools/strata_tokenizer.py"):
+            tokenizer_tool = root / tok_rel
+            if tokenizer_tool.is_file():
+                paths.append(tokenizer_tool)
         for name in _POLYSTRATA_TOP_FILES:
             candidate = root / name
             if candidate.is_file():
                 paths.append(candidate)
         for engine_dir in _POLYSTRATA_ENGINE_DIRS:
-            build_json = root / engine_dir / "BUILD.json"
-            if build_json.is_file():
-                paths.append(build_json)
+            for build_name in POLYSTRATA_BUILD_JSON_NAMES:
+                build_json = root / engine_dir / build_name
+                if build_json.is_file():
+                    paths.append(build_json)
         exe_path = Path(declaration["executable"])
         pyvenv_cfg = exe_path.parent.parent / "pyvenv.cfg"
         if pyvenv_cfg.is_file():

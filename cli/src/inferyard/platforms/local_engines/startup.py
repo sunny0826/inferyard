@@ -146,7 +146,11 @@ def validate_arguments(config, *, bootstrap_path=None):
             server_path is None
             or cwd_path is None
             or type(server_path) is not type(cwd_path)
-            or server_path != cwd_path / "serve" / "server.py"
+            or server_path
+            not in (
+                cwd_path / "serve" / "server.py",
+                cwd_path / "terminal" / "serve" / "server.py",
+            )
         ):
             raise PreflightError("local_engine_entrypoint_mismatch")
         rest = args[1:]

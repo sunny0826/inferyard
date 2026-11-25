@@ -1,27 +1,16 @@
 package core
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"inferyard/studio/internal/l10n"
-	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"slices"
 	"strings"
 )
 
-const (
-	polystrataRuntimeDefinition  = "polystrata-runtime.v1"
-	polystrataPinnedSamplePath   = "bench/results/2026-10-09-community-gfx1151-ud-iq4xs-0.1.41/raw/events.jsonl"
-	polystrataPinnedSampleBytes  = int64(9150)
-	polystrataPinnedSampleSHA256 = "27c7f41b753d89d170cd2d1ed7af449e3cf1e8794c6ca6bb937a6ec3734540e5"
-)
+const polystrataRuntimeDefinition = "polystrata-runtime.v1"
 
 var (
 	polystrataVenvPythonName   = regexp.MustCompile(`(?i)^python(3(\.\d+)?)?(\.exe)?$`)
@@ -107,51 +96,6 @@ func readPolystrataRuntimeReceiptSHA256(dir string) (string, bool) {
 func hasPolystrataRuntimeReceipt(dir string) bool {
 	_, ok := readPolystrataRuntimeReceiptSHA256(dir)
 	return ok
-}
-
-type polystrataSampleSpec struct {
-	archiveSHA string
-	relPath    string
-	size       int64
-	sha256     string
-}
-
-var knownPolystrataSamples = []polystrataSampleSpec{{
-	archiveSHA: polystrataDefaultSourceSHA256,
-	relPath:    polystrataPinnedSamplePath,
-	size:       polystrataPinnedSampleBytes,
-	sha256:     polystrataPinnedSampleSHA256,
-}}
-
-func isKnownPolystrataArchiveSample(archiveSHA, canonRoot, fullPath string, d fs.DirEntry) bool {
-	if archiveSHA == "" || d.Type()&os.ModeSymlink != 0 || !d.Type().IsRegular() {
-		return false
-	}
-	rel, err := filepath.Rel(canonRoot, fullPath)
-	if err != nil {
-		return false
-	}
-	slashRel := filepath.ToSlash(rel)
-	info, err := d.Info()
-	if err != nil {
-		return false
-	}
-	for _, spec := range knownPolystrataSamples {
-		if archiveSHA != spec.archiveSHA || slashRel != spec.relPath || info.Size() != spec.size {
-			continue
-		}
-		f, err := os.Open(fullPath)
-		if err != nil {
-			return false
-		}
-		h := sha256.New()
-		n, copyErr := io.Copy(h, io.LimitReader(f, spec.size+1))
-		_ = f.Close()
-		if copyErr == nil && n == spec.size && hex.EncodeToString(h.Sum(nil)) == spec.sha256 {
-			return true
-		}
-	}
-	return false
 }
 
 func managedPolystrataInstallDir(rawInstPath, canonInstPath, wsEnginesRoot string, resultsRoot *string) (string, bool) {
@@ -307,127 +251,6 @@ func otherEngineSharesInstallDir(installDir, selfCanonPath string, engines []reg
 		}
 	}
 	return false
-}
-
-// isAllowedPolystrataVenvSymlink permits standard python* interpreter symlinks inside a genuine
-// non-symlink .venv/bin or .venv/Scripts directory of a managed PolyStrata runtime, while rejecting
-// unrelated or arbitrary external targets.
-func isAllowedPolystrataVenvSymlink(canonInstallDir, linkPath string, resultsRoot *string) bool {
-	venvDir := filepath.Join(canonInstallDir, ".venv")
-	venvInfo, err := os.Lstat(venvDir)
-	if err != nil || venvInfo.Mode()&os.ModeSymlink != 0 || !venvInfo.IsDir() {
-		return false
-	}
-	if !isRegularNonSymlink(filepath.Join(venvDir, "pyvenv.cfg")) {
-		return false
-	}
-	parent := filepath.Dir(linkPath)
-	if parent != filepath.Join(venvDir, "bin") && parent != filepath.Join(venvDir, "Scripts") {
-		return false
-	}
-	parentInfo, err := os.Lstat(parent)
-	if err != nil || parentInfo.Mode()&os.ModeSymlink != 0 || !parentInfo.IsDir() {
-		return false
-	}
-	if !polystrataVenvPythonName.MatchString(filepath.Base(linkPath)) {
-		return false
-	}
-	resolved, err := filepath.EvalSymlinks(linkPath)
-	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return false
-		}
-		rawTarget, rerr := os.Readlink(linkPath)
-		if rerr != nil {
-			return false
-		}
-		targetBase := filepath.Base(rawTarget)
-		return polystrataPythonTargetName.MatchString(targetBase) && !isSealedEvidenceMarker(targetBase)
-	}
-	if isSealedEvidenceMarker(filepath.Base(resolved)) || overlapsResultsRoot(resolved, resultsRoot) {
-		return false
-	}
-	info, statErr := os.Stat(resolved)
-	if statErr != nil || !info.Mode().IsRegular() {
-		return false
-	}
-	return polystrataPythonTargetName.MatchString(filepath.Base(resolved))
-}
-
-func verifyPolystrataRuntimeTreeSafe(canonInstallDir string, resultsRoot *string) error {
-	canonRoot, err := canonical(canonInstallDir)
-	if err != nil {
-		return errUnsafeAssetTree
-	}
-	archiveSHA, _ := readPolystrataRuntimeReceiptSHA256(canonRoot)
-	return filepath.WalkDir(canonRoot, func(path string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if !d.IsDir() && isSealedEvidenceMarker(d.Name()) {
-			if d.Type()&os.ModeSymlink == 0 && isKnownPolystrataArchiveSample(archiveSHA, canonRoot, path, d) {
-				return nil
-			}
-			return errUnsafeAssetTree
-		}
-		if d.Type()&os.ModeSymlink != 0 {
-			if isAllowedPolystrataVenvSymlink(canonRoot, path, resultsRoot) {
-				return nil
-			}
-			resolved, linkErr := filepath.EvalSymlinks(path)
-			if linkErr != nil || !withinCanonicalDir(canonRoot, resolved) || isSealedEvidenceMarker(filepath.Base(resolved)) || overlapsResultsRoot(resolved, resultsRoot) {
-				return errUnsafeAssetTree
-			}
-			return nil
-		}
-		return nil
-	})
-}
-
-func checkDirTreeWritable(root string) error {
-	if runtime.GOOS == "windows" {
-		return nil
-	}
-	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.Type()&os.ModeSymlink != 0 {
-			if d.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if d.IsDir() {
-			info, statErr := os.Lstat(path)
-			if statErr != nil {
-				return statErr
-			}
-			if info.Mode().Perm()&0o300 != 0o300 {
-				return errUnsafeAssetTree
-			}
-		}
-		return nil
-	})
-}
-
-func dirDiskUsageNoSymlinks(root string) int64 {
-	var total int64
-	_ = filepath.WalkDir(root, func(_ string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil || d.Type()&os.ModeSymlink != 0 {
-			if d != nil && d.Type()&os.ModeSymlink != 0 && d.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if d.Type().IsRegular() {
-			if info, err := d.Info(); err == nil {
-				total += info.Size()
-			}
-		}
-		return nil
-	})
-	return total
 }
 
 func (s *Service) findAssetRawPath(kind, name, canonPath string) string {

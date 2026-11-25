@@ -162,7 +162,7 @@ def _discover_tokenizer_dir(installation: dict, model_input: Path) -> Path | Non
     packs_roots: list[Path] = []
     if installation.get("data_dir"):
         packs_roots.append(Path(installation["data_dir"]) / "packs")
-    packs_roots.append(root / "data" / "packs")
+    packs_roots.extend((root / "terminal" / "data" / "packs", root / "data" / "packs"))
     stem_lower = model_input.stem.lower()
     for packs_dir in packs_roots:
         if not packs_dir.is_dir():

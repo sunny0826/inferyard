@@ -98,7 +98,7 @@ func (p *previewSession) startPolystrataSetup(req core.PolystrataSetupRequest) {
 		Percent:     previewValue(10.0),
 		Detail:      previewValue(l10n.TR("preview.polystrata.stage.preflight")),
 		ModelSource: strings.TrimSpace(req.ModelSource),
-		SourceUrl:   "https://github.com/simplexai-labs/PolyStrata/archive/3e1642161198c50ff1abed4046f4e4f476099dbb.tar.gz",
+		SourceUrl:   "https://github.com/simplexai-labs/PolyStrata/archive/d62dfacbe185dfbb447e79c5fb1091ae189afc64.tar.gz",
 		OutName:     outName,
 		OutDir:      outDir,
 		LogPath:     previewValue(filepath.Join(outDir, ".inferyard-setup.log")),

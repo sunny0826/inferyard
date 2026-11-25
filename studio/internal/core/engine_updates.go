@@ -126,12 +126,14 @@ func readInstallationVersion(instPath string) string {
 		return v
 	}
 	roots := uniqueCleanPaths([]string{strings.TrimSpace(decl.WorkingDirectory), filepath.Dir(instPath)})
-	subpaths := []string{
-		filepath.Join("engine-poly", "BUILD.json"),
-		filepath.Join("engine", "BUILD.json"),
-		filepath.Join("build-metal", "BUILD.json"),
-		"BUILD.json",
+	if decl.Family == "polystrata" {
+		for _, root := range roots {
+			if ver := readPolystrataReceiptVersion(root); ver != "" {
+				return ver
+			}
+		}
 	}
+	subpaths := polystrataBuildJSONSubpaths()
 	for _, root := range roots {
 		for _, sub := range subpaths {
 			if ver := readBuildJSONVersion(filepath.Join(root, sub)); ver != "" {
@@ -342,7 +344,7 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 						} else {
 							downloadURL, assetName, assetBytes = "", "", 0
 						}
-					} else if familyID == "polystrata" && strings.TrimSpace(rem.DownloadURL) != "" {
+					} else if familyID == "polystrata" && releaseID == "" && strings.TrimSpace(rem.DownloadURL) != "" {
 						downloadURL = strings.TrimSpace(rem.DownloadURL)
 						assetName = filepath.Base(downloadURL)
 						assetBytes = 0

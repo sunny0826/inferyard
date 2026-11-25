@@ -10,7 +10,26 @@ from pathlib import Path
 from inferyard.errors import PreflightError
 
 POLYSTRATA_ENGINE_DIRS = ("engine", "engine-poly", "build-metal")
+POLYSTRATA_BUILD_JSON_NAMES = ("BUILD.json", "BUILD-poly.json", "BUILD-q36.json")
 _MAX_BUILD_JSON_BYTES = 64 * 1024
+
+
+def resolve_polystrata_setup_script(root: Path) -> Path | None:
+    """Return the PolyStrata setup.py entrypoint across 0.2.16+ (terminal/) and 0.1.x layouts."""
+    for rel in (Path("terminal") / "setup.py", Path("setup.py")):
+        cand = root / rel
+        if cand.is_file() and not cand.is_symlink() and not cand.parent.is_symlink():
+            return cand
+    return None
+
+
+def resolve_polystrata_server_script(root: Path) -> Path | None:
+    """Return the PolyStrata serve/server.py entrypoint across 0.2.16+ and 0.1.x layouts."""
+    for rel in (Path("terminal") / "serve" / "server.py", Path("serve") / "server.py"):
+        cand = root / rel
+        if cand.is_file() and not cand.is_symlink() and not cand.parent.is_symlink():
+            return cand
+    return None
 
 
 def _safe_resolve(path: Path) -> Path | None:
@@ -65,19 +84,31 @@ def find_polystrata_engine_binaries(
     found: dict[str, Path] = {}
     if system == "Windows":
         poly_candidates = (
+            root / "terminal" / "engine-poly" / "strata-poly.exe",
+            root / "engine" / "build-metal" / "strata-poly.exe",
             root / "engine-poly" / "strata-poly.exe",
             root / "build-metal" / "strata-poly.exe",
         )
         strata_candidates = (
+            root / "terminal" / "engine" / "strata.exe",
+            root / "terminal" / "engine-cuda12" / "strata.exe",
+            root / "engine" / "build-metal" / "strata.exe",
             root / "engine" / "strata.exe",
             root / "build-metal" / "strata.exe",
         )
     else:
         poly_candidates = (
+            root / "terminal" / "engine-poly" / "strata-poly",
+            root / "engine" / "build-metal" / "strata-poly",
             root / "engine-poly" / "strata-poly",
             root / "build-metal" / "strata-poly",
         )
         strata_candidates = (
+            root / "terminal" / "engine" / "strata",
+            root / "terminal" / "engine-cuda12" / "strata",
+            root / "engine" / "build-metal" / "strata",
+            root / "engine" / "build-metal" / "strata-metal",
+            root / "engine" / "build-metal" / "strata-q36",
             root / "engine" / "strata",
             root / "build-metal" / "strata",
             root / "build-metal" / "strata-metal",
@@ -85,7 +116,7 @@ def find_polystrata_engine_binaries(
         )
     for role, candidates in (("poly", poly_candidates), ("strata", strata_candidates)):
         for candidate in candidates:
-            if candidate.parent.is_symlink():
+            if candidate.parent.is_symlink() or candidate.parent.parent.is_symlink():
                 continue
             if _is_usable_binary(candidate, system):
                 resolved = _safe_resolve(candidate)
@@ -130,9 +161,9 @@ def validate_polystrata_layout(
 ) -> dict[str, Path]:
     """Validate PolyStrata root, venv Python, and at least one usable engine binary."""
     system = platform_system or platform.system()
-    if not (root / "serve" / "server.py").is_file():
+    if resolve_polystrata_server_script(root) is None:
         raise PreflightError("local_engine_polystrata_server_missing")
-    if not ((root / "setup.py").is_file() or (root / "polystrata.py").is_file()):
+    if resolve_polystrata_setup_script(root) is None and not (root / "polystrata.py").is_file():
         raise PreflightError("local_engine_polystrata_layout_invalid")
     if not (executable.parent.parent / "pyvenv.cfg").is_file():
         raise PreflightError("local_engine_python_venv_required")
@@ -145,17 +176,36 @@ def validate_polystrata_layout(
 
 
 def polystrata_runtime_roots(root: Path, executable: Path | None = None) -> list[str]:
-    """Return runtime directories to freeze (excluding model weight data dirs)."""
-    dirs: list[Path] = [root / "serve"]
+    """Return runtime directories to freeze (excluding model weight and C++ source dirs)."""
+    dirs: list[Path] = [
+        root / "serve",
+        root / "terminal" / "serve",
+        root / "terminal" / "tools",
+        root / "terminal" / "strata_control",
+    ]
     if executable is not None and (executable.parent.parent / "pyvenv.cfg").is_file():
         dirs.append(executable.parent.parent)
     elif (root / ".venv" / "pyvenv.cfg").is_file():
         dirs.append(root / ".venv")
-    for name in POLYSTRATA_ENGINE_DIRS:
-        dirs.append(root / name)
+    elif (root / "terminal" / ".venv" / "pyvenv.cfg").is_file():
+        dirs.append(root / "terminal" / ".venv")
+    dirs.extend(
+        (
+            root / "terminal" / "engine",
+            root / "terminal" / "engine-cuda12",
+            root / "terminal" / "engine-poly",
+            root / "engine" / "build-metal",
+            root / "engine" / "build-vision",
+            root / "engine-poly",
+            root / "build-metal",
+            root / "build-vision",
+        )
+    )
+    if not (root / "engine" / "CMakeLists.txt").is_file():
+        dirs.append(root / "engine")
     resolved: list[str] = []
     for item in dirs:
-        if item.is_dir() and not item.is_symlink():
+        if item.is_dir() and not item.is_symlink() and not item.parent.is_symlink():
             target = _safe_resolve(item)
             if target is not None and str(target) not in resolved:
                 resolved.append(str(target))
@@ -167,21 +217,32 @@ def polystrata_runtime_roots(root: Path, executable: Path | None = None) -> list
 
 
 def _read_build_json(root: Path, *, engine_dir: Path | None = None) -> dict | None:
-    candidates: list[Path] = []
+    search_dirs: list[Path] = []
     if engine_dir is not None:
-        candidates.append(engine_dir / "BUILD.json")
-    for name in ("engine-poly", "engine", "build-metal"):
-        candidates.append(root / name / "BUILD.json")
-    candidates.append(root / "BUILD.json")
-    for build_path in candidates:
-        try:
-            if not build_path.is_file() or build_path.stat().st_size > _MAX_BUILD_JSON_BYTES:
+        search_dirs.append(engine_dir)
+    search_dirs.extend(
+        (
+            root / "terminal" / "engine-poly",
+            root / "terminal" / "engine",
+            root / "terminal" / "engine-cuda12",
+            root / "engine" / "build-metal",
+            root / "engine-poly",
+            root / "engine",
+            root / "build-metal",
+            root,
+        )
+    )
+    for directory in search_dirs:
+        for fname in POLYSTRATA_BUILD_JSON_NAMES:
+            build_path = directory / fname
+            try:
+                if not build_path.is_file() or build_path.stat().st_size > _MAX_BUILD_JSON_BYTES:
+                    continue
+                data = json.loads(build_path.read_text(encoding="utf-8"))
+                if isinstance(data, dict):
+                    return data
+            except (OSError, ValueError, UnicodeError):
                 continue
-            data = json.loads(build_path.read_text(encoding="utf-8"))
-            if isinstance(data, dict):
-                return data
-        except (OSError, ValueError, UnicodeError):
-            continue
     return None
 
 
@@ -222,6 +283,9 @@ def _default_data_dir(root: Path) -> Path | None:
 def polystrata_model_configs(root: Path, data_dir: Path | None = None) -> list[str]:
     """List strata-*.json files inside a PolyStrata root and optional data directory."""
     search_dirs: list[Path] = [root]
+    term_dir = root / "terminal"
+    if term_dir.is_dir() and not term_dir.is_symlink():
+        search_dirs.append(term_dir)
     if data_dir is not None and data_dir.is_dir():
         search_dirs.append(data_dir)
         models_sub = data_dir / "models"
@@ -255,8 +319,11 @@ def polystrata_model_configs(root: Path, data_dir: Path | None = None) -> list[s
 def is_polystrata_root(directory: Path) -> bool:
     return (
         directory.is_dir()
-        and (directory / "serve" / "server.py").is_file()
-        and ((directory / "setup.py").is_file() or (directory / "polystrata.py").is_file())
+        and resolve_polystrata_server_script(directory) is not None
+        and (
+            resolve_polystrata_setup_script(directory) is not None
+            or (directory / "polystrata.py").is_file()
+        )
     )
 
 
@@ -265,6 +332,8 @@ def infer_polystrata_root(executable: Path) -> Path | None:
     venv_dir = executable.parent.parent
     if executable.parent.name in ("bin", "Scripts") and (venv_dir / "pyvenv.cfg").is_file():
         candidate = venv_dir.parent
+        if candidate.name == "terminal" and is_polystrata_root(candidate.parent):
+            return _safe_resolve(candidate.parent)
         if is_polystrata_root(candidate):
             return _safe_resolve(candidate)
     return None
@@ -281,6 +350,8 @@ def probe_polystrata_root(
     if resolved is None or not is_polystrata_root(resolved):
         return False
     venv_dir = resolved / ".venv"
+    if not (venv_dir / "pyvenv.cfg").is_file():
+        venv_dir = resolved / "terminal" / ".venv"
     if not (venv_dir / "pyvenv.cfg").is_file():
         return False
     python_exec = pick_venv_python(venv_dir, preferred=preferred_python)
@@ -344,8 +415,13 @@ def collect_polystrata_targets(
         if path.is_file():
             name = path.name.lower()
             if name == "server.py" and path.parent.name == "serve":
-                targets.append((path.parent.parent, None))
+                parent_root = path.parent.parent
+                if parent_root.name == "terminal":
+                    targets.append((parent_root.parent, None))
+                targets.append((parent_root, None))
             elif name in ("setup.py", "polystrata.py", "build.json"):
+                if path.parent.name == "terminal":
+                    targets.append((path.parent.parent, None))
                 targets.append((path.parent, None))
             elif name.startswith("python"):
                 inferred = infer_polystrata_root(path)

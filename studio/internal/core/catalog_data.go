@@ -117,10 +117,10 @@ func catalogEntries() []CatalogEntry {
 			Reason:   l10n.TR("core.catalog.reason.lmstudio_manual"),
 		},
 		{
-			ID: "engine-polystrata", Kind: CatalogEngine, Title: "PolyStrata v0.1.45-poly.10",
+			ID: "engine-polystrata", Kind: CatalogEngine, Title: "PolyStrata v0.2.20-poly.5",
 			Family: "polystrata", URL: polystrataDefaultSourceURL,
 			Bytes: polystrataDefaultSourceBytes, SHA256: polystrataDefaultSourceSHA256,
-			Revision: "v0.1.45-poly.10", Platform: "any",
+			Revision: "v0.2.20-poly.5", Platform: "any",
 			Reason: l10n.TR("core.catalog.reason.polystrata_managed"),
 		},
 		{

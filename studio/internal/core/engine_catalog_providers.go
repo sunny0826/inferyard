@@ -3,8 +3,8 @@ package core
 import "inferyard/studio/internal/l10n"
 
 func polystrataProvider() EngineCatalogProvider {
-	releaseURL := "https://github.com/simplexai-labs/PolyStrata/releases/tag/v0.1.45-poly.10"
-	sourceArtifact := artifactFromCatalog("engine-polystrata", "source", "PolyStrata v0.1.45-poly.10", "v0.1.45-poly.10")
+	releaseURL := "https://github.com/simplexai-labs/PolyStrata/releases/tag/v0.2.20-poly.5"
+	sourceArtifact := artifactFromCatalog("engine-polystrata", "source", "PolyStrata v0.2.20-poly.5", "v0.2.20-poly.5")
 	return StaticEngineProvider{
 		Family: EngineFamilyCatalog{
 			ID:             "polystrata",
@@ -16,9 +16,9 @@ func polystrataProvider() EngineCatalogProvider {
 			ExternalApp:    false,
 			Releases: []EngineRelease{
 				{
-					ID:           "polystrata-v0.1.45-poly.10",
-					Version:      "v0.1.45-poly.10",
-					Revision:     "v0.1.45-poly.10",
+					ID:           "polystrata-v0.2.20-poly.5",
+					Version:      "v0.2.20-poly.5",
+					Revision:     "v0.2.20-poly.5",
 					Distribution: "simplexai-labs",
 					Channel:      ReleaseStable,
 					Recommended:  true,

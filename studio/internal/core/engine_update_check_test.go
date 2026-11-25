@@ -132,8 +132,8 @@ func TestCheckEngineUpdatesRemoteCacheAndHomebrew(t *testing.T) {
 		case "/repos/simplexai-labs/PolyStrata/releases/latest":
 			ghCalls.Add(1)
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"tag_name": "v0.1.46-poly.1",
-				"html_url": "https://github.com/simplexai-labs/PolyStrata/releases/tag/v0.1.46-poly.1",
+				"tag_name": "v0.2.21-poly.1",
+				"html_url": "https://github.com/simplexai-labs/PolyStrata/releases/tag/v0.2.21-poly.1",
 			})
 		case "/pypi/mlx-lm/json":
 			pypiCalls.Add(1)
@@ -237,10 +237,10 @@ func TestCheckEngineUpdatesRemoteCacheAndHomebrew(t *testing.T) {
 			}
 		case "polystrata":
 			sawPoly = true
-			if !info.HasUpdate || info.LatestVersion != "v0.1.46-poly.1" || info.Action != EngineUpdateActionManaged {
+			if !info.HasUpdate || info.LatestVersion != "v0.2.21-poly.1" || info.Action != EngineUpdateActionManaged {
 				t.Fatalf("unexpected polystrata update: %+v", info)
 			}
-			if !strings.HasSuffix(info.DownloadURL, "/archive/refs/tags/v0.1.46-poly.1.tar.gz") {
+			if !strings.HasSuffix(info.DownloadURL, "/archive/refs/tags/v0.2.21-poly.1.tar.gz") {
 				t.Fatalf("unexpected polystrata download URL: %q", info.DownloadURL)
 			}
 		case "mlx-lm":

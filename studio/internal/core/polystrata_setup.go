@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	polystrataPinnedCommit        = "3e1642161198c50ff1abed4046f4e4f476099dbb"
+	polystrataPinnedCommit        = "d62dfacbe185dfbb447e79c5fb1091ae189afc64"
 	polystrataDefaultSourceURL    = "https://github.com/simplexai-labs/PolyStrata/archive/" + polystrataPinnedCommit + ".tar.gz"
-	polystrataDefaultSourceBytes  = int64(25747544)
-	polystrataDefaultSourceSHA256 = "aeced362c54ae3534a66646f1befffe4dc62f0f20cc4869c74ccfa2d90384a92"
+	polystrataDefaultSourceBytes  = int64(50443059)
+	polystrataDefaultSourceSHA256 = "7618eb62d56daec9b3d4d41155d5e5c1f90f0b3278616e3cc18a38d87c753dbf"
 )
 
 type PolystrataSetupRequest struct {
@@ -256,8 +256,7 @@ func isManagedPolystrataDir(root string, u UserSettings, dir, sourceURL string) 
 	if err != nil || !dirInfo.IsDir() || dirInfo.Mode()&os.ModeSymlink != 0 {
 		return false
 	}
-	if !isRegularNonSymlink(filepath.Join(targetDir, "setup.py")) ||
-		!isRegularNonSymlink(filepath.Join(targetDir, "serve", "server.py")) ||
+	if !hasExtractedPolystrataFiles(targetDir) ||
 		!isRegularNonSymlink(filepath.Join(targetDir, "installation.json")) {
 		return false
 	}
