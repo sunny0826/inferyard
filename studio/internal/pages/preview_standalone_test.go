@@ -33,11 +33,11 @@ func TestPreviewStandaloneStartStopAndHandoff(t *testing.T) {
 
 	// Start standalone in preview: preparing -> starting -> running.
 	s.launchStandalone(model.Name, engine.Name, 12000)
-	if !s.standalone.preparing || s.standalone.preparingModel != model.Name {
+	if !s.standalone.isPreparing(model.Name) {
 		t.Fatalf("expected preparing state, got %+v", s.standalone)
 	}
 	p.advance(350 * time.Millisecond)
-	if s.standalone.preparing || s.engineState.State != "starting" || s.engineState.Origin != core.EngineOriginStandalone {
+	if s.standalone.isPreparing(model.Name) || s.engineState.State != "starting" || s.engineState.Origin != core.EngineOriginStandalone {
 		t.Fatalf("expected starting standalone state, got %+v", s.engineState)
 	}
 	p.advance(550 * time.Millisecond)
@@ -90,15 +90,22 @@ func TestPreviewStandaloneStartStopAndHandoff(t *testing.T) {
 		t.Fatalf("expected directory model row to match running state, got %q", rowState)
 	}
 
-	// Simulated failure on standalone start transitions preparing -> failed with Origin=standalone.
+	// Simulated failure on standalone start transitions preparing -> failed with Origin=standalone and no started toast.
 	s.engineState = core.EngineState{State: "stopped"}
+	s.pendingToasts = nil
 	p.failNext = true
 	s.launchStandalone(dirModel.Name, vllmEngine.Name, 8192)
-	if !s.standalone.preparing {
+	if !s.standalone.isPreparing(dirModel.Name) {
 		t.Fatalf("expected preparing state before failure")
 	}
+	if len(s.pendingToasts) != 0 {
+		t.Fatalf("expected no premature started toast during preparing, got %+v", s.pendingToasts)
+	}
 	p.advance(350 * time.Millisecond)
-	if s.standalone.preparing || s.engineState.State != "failed" || s.engineState.Origin != core.EngineOriginStandalone || s.standalone.lastError == nil {
+	if s.standalone.isPreparing(dirModel.Name) || s.engineState.State != "failed" || s.engineState.Origin != core.EngineOriginStandalone || s.standalone.lastErrors[dirModel.Name] == nil {
 		t.Fatalf("expected failed standalone state after preparing failure, engine=%+v standalone=%+v", s.engineState, s.standalone)
+	}
+	if len(s.pendingToasts) != 0 {
+		t.Fatalf("expected no started toast on failed start, got %+v", s.pendingToasts)
 	}
 }

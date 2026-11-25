@@ -510,11 +510,10 @@ func (p *previewSession) startPreviewStandalone(op previewStandaloneStart) {
 	}
 	serviceID := core.ServiceIDFor(op.model, op.engine)
 	p.after("service-"+serviceID, 300*time.Millisecond, func() {
-		s.standalone.preparing = false
-		s.standalone.preparingModel = ""
+		s.standalone.setPreparing(op.model, false)
 		if fail {
 			err := core.Err("engine_start_failed")
-			s.standalone.lastError = err
+			s.standalone.setLastError(op.model, err)
 			s.failure = err
 			s.failurePage = s.selected
 			s.engineState = core.EngineState{
@@ -536,11 +535,12 @@ func (p *previewSession) startPreviewStandalone(op previewStandaloneStart) {
 		}
 		port, portErr := p.previewNextAvailablePort(op.port, serviceID)
 		if portErr != nil {
-			s.standalone.lastError = portErr
+			s.standalone.setLastError(op.model, portErr)
 			s.failure = portErr
 			s.failurePage = s.selected
 			return
 		}
+		s.standalone.setLastError(op.model, nil)
 		endpoint := p.previewEndpointURL(op.lanAccess, port)
 		budget := s.estimateLocalMemoryBudget(op.model, op.engine, op.contextSize, op.gpuLayers)
 		p.clearPreviewExitNoticeFor(serviceID, op.model, op.engine)
@@ -572,6 +572,7 @@ func (p *previewSession) startPreviewStandalone(op previewStandaloneStart) {
 		}
 		p.upsertPreviewManagedService(st)
 		s.markServiceExpanded(serviceID)
+		s.enqueueStatusToast(l10n.TR("models.serve.toast.started"))
 		p.savePreviewServicePreset(core.ServicePreset{
 			Model:       op.model,
 			Engine:      op.engine,

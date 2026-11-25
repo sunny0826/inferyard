@@ -67,10 +67,7 @@ func (s *viewState) refresh(full bool) {
 		registry = s.service.Registry()
 	}
 	serveSupported := s.service.ServeSupported(s.ctx)
-	recentServices := s.service.RecentServices()
-	exitedNotices := s.service.ExitedServiceNotices()
-	managedServices := s.service.ManagedServices()
-	memorySummary := s.service.CurrentServiceMemorySummary()
+	svcSnap := s.captureServiceStateSnapshot()
 	if s.ctx.Err() != nil {
 		return
 	}
@@ -87,8 +84,7 @@ func (s *viewState) refresh(full bool) {
 			history: history, reports: reports, historyError: he, reportsError: re,
 			ready: ready, progress: progress, progressError: pe, dashboard: dashboard, registry: registry,
 			updateState: updateState, cliUpgrade: cliUpgrade, serveSupported: serveSupported,
-			recentServices: recentServices, exitedNotices: exitedNotices,
-			managedServices: managedServices, memorySummary: memorySummary,
+			serviceSnap: svcSnap,
 			modelEvidence: modelEvidence, reportExclusivities: reportExclusivities,
 			engineUpdates: engineUpdates, engineUpdateStatus: engineUpdateStatus,
 		}
@@ -128,10 +124,7 @@ type refreshBatch struct {
 	updateState                core.UpdateState
 	cliUpgrade                 core.CLIUpgradeState
 	serveSupported             bool
-	recentServices             []core.ServicePreset
-	exitedNotices              []core.ServiceExitNotice
-	managedServices            []core.EngineState
-	memorySummary              core.ServiceMemoryBudget
+	serviceSnap                serviceStateSnapshot
 	modelEvidence              map[string]core.ModelEvidenceSummary
 	reportExclusivities        map[string]string
 	engineUpdates              map[string]core.EngineUpdateInfo
@@ -191,13 +184,9 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	}
 	s.ready, s.progress = b.ready, b.progress.Progress
 	s.applyDashboard(b.dashboard, b.progressError)
-	s.engineState = s.service.Engine()
 	s.checks = s.service.EngineChecks()
 	s.serveSupported = b.serveSupported
-	s.recentServices = b.recentServices
-	s.managedServices = b.managedServices
-	s.memorySummary = b.memorySummary
-	s.syncExitedNotices(b.exitedNotices)
+	s.applyServiceStateSnapshot(b.serviceSnap)
 	s.applyUpdateState(b.updateState)
 	s.applyCLIUpgradeState(b.cliUpgrade)
 	if !skipEngineAdopt {

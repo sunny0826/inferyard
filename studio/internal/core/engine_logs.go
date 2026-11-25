@@ -64,13 +64,10 @@ func (s *Service) EngineLogTail(logPath string, maxLines int) (string, error) {
 	return ReadLogTail(resolved, maxLines)
 }
 
-// ReadLogTail reads at most the last 64 KiB of logPath and returns up to maxLines trailing non-empty lines.
-func ReadLogTail(logPath string, maxLines int) (string, error) {
+// readLogTailWindow reads at most the last 64 KiB of logPath as raw UTF-8 text.
+func readLogTailWindow(logPath string) (string, error) {
 	if strings.TrimSpace(logPath) == "" || strings.ContainsRune(logPath, 0) {
 		return "", errors.New("invalid log path")
-	}
-	if maxLines <= 0 {
-		maxLines = defaultEngineLogTailLines
 	}
 	f, err := os.Open(logPath)
 	if err != nil {
@@ -110,8 +107,19 @@ func ReadLogTail(logPath string, maxLines int) (string, error) {
 			}
 		}
 	}
+	return string(raw), nil
+}
 
-	normalized := strings.ReplaceAll(string(raw), "\r\n", "\n")
+// ReadLogTail reads at most the last 64 KiB of logPath and returns up to maxLines trailing non-empty lines.
+func ReadLogTail(logPath string, maxLines int) (string, error) {
+	if maxLines <= 0 {
+		maxLines = defaultEngineLogTailLines
+	}
+	window, err := readLogTailWindow(logPath)
+	if err != nil || window == "" {
+		return "", err
+	}
+	normalized := strings.ReplaceAll(window, "\r\n", "\n")
 	rawLines := strings.Split(normalized, "\n")
 	lines := make([]string, 0, len(rawLines))
 	for _, line := range rawLines {

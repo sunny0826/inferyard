@@ -254,3 +254,114 @@ func TestServicesP3MultipleExitNoticesDismissIndividually(t *testing.T) {
 		t.Fatalf("expected only exit-b remaining after dismissing exit-a, got %+v", remaining)
 	}
 }
+
+func TestHardwareMemoryBudgetCacheParsesOncePerSnapshot(t *testing.T) {
+	s, _ := servicesP2State(t)
+	modelSize := int64(4 * (1 << 30))
+	s.registry.Models[0].SizeBytes = &modelSize
+	s.registry.Models[1].SizeBytes = &modelSize
+	// Discrete 16 GiB VRAM + 32 GiB host RAM.
+	s.device.Snapshot = json.RawMessage(`{"hardware":{"apple_silicon":false,"memory_total_bytes":34359738368,"gpu":{"devices":[{"memory_kind":"dedicated","memory_total_bytes":17179869184}]}}}`)
+
+	zero := 0
+	bDiscrete1 := s.checkMemoryBudget("Qwen3-8B-Q4.gguf", "llama-cpp-default", 8192, nil)
+	bHost1 := s.checkMemoryBudget("Qwen3-8B-Q4.gguf", "llama-cpp-default", 8192, &zero)
+	sum1 := s.currentMemorySummary()
+	bDiscrete2 := s.checkMemoryBudget("Llama-3-8B.gguf", "llama-cpp-default", 8192, nil)
+
+	if s.hwMemoryCache.parseCount != 1 {
+		t.Fatalf("parseCount=%d want 1 for unchanged snapshot", s.hwMemoryCache.parseCount)
+	}
+	if !bDiscrete1.Known || bDiscrete1.TotalGB != 16 || !bDiscrete2.Known || bDiscrete2.TotalGB != 16 {
+		t.Fatalf("expected 16 GB discrete budget, got %+v / %+v", bDiscrete1, bDiscrete2)
+	}
+	if !bHost1.Known || bHost1.TotalGB != 32 {
+		t.Fatalf("expected 32 GB host budget for cpu-only gpuLayers=0, got %+v", bHost1)
+	}
+	if !sum1.Known || sum1.TotalGB != 16 {
+		t.Fatalf("expected 16 GB summary, got %+v", sum1)
+	}
+
+	// Same byte length (11 digits -> 11 digits) change must still invalidate cache via SHA-256 fingerprint.
+	s.device.Snapshot = json.RawMessage(`{"hardware":{"apple_silicon":false,"memory_total_bytes":68719476736,"gpu":{"devices":[{"memory_kind":"dedicated","memory_total_bytes":17179869184}]}}}`)
+	bHost2 := s.checkMemoryBudget("Qwen3-8B-Q4.gguf", "llama-cpp-default", 8192, &zero)
+	if s.hwMemoryCache.parseCount != 2 {
+		t.Fatalf("parseCount=%d want 2 after snapshot update", s.hwMemoryCache.parseCount)
+	}
+	if !bHost2.Known || bHost2.TotalGB != 64 {
+		t.Fatalf("expected updated 64 GB host budget, got %+v", bHost2)
+	}
+
+	// Repeated call after update hits cache again.
+	_ = s.currentMemorySummary()
+	if s.hwMemoryCache.parseCount != 2 {
+		t.Fatalf("parseCount=%d want 2 on subsequent cache hit", s.hwMemoryCache.parseCount)
+	}
+}
+
+func TestStandaloneParallelPreparingAndToastOnSuccessOnly(t *testing.T) {
+	restore := l10n.SetTestLocale(l10n.LanguageZhHans)
+	defer restore()
+
+	s, _ := servicesP2State(t)
+	uiCallbacks := make(chan func(), 4)
+	s.updateWindow = func(fn func()) { uiCallbacks <- fn }
+	s.standalone.setPreparing("Qwen3-8B-Q4.gguf", true)
+
+	// Model A preparing must not block opening the start drawer for Model B.
+	s.requestStandaloneStart(s.registry.Models[1], false)
+	if !s.standalone.drawerOpen || s.standalone.modelName != "Llama-3-8B.gguf" {
+		t.Fatalf("expected drawer open for Llama-3-8B.gguf while Qwen3-8B-Q4.gguf is preparing, got open=%v model=%q", s.standalone.drawerOpen, s.standalone.modelName)
+	}
+
+	// Launching Model B enters preparing without premature "started" toast.
+	s.pendingToasts = nil
+	s.launchStandaloneRequest(core.StandaloneStartRequest{
+		Model: "Llama-3-8B.gguf", Engine: "llama-cpp-default", ContextSize: 8192,
+	})
+	if len(s.pendingToasts) != 0 {
+		t.Fatalf("expected no premature started toast before StartStandalone succeeds, got %+v", s.pendingToasts)
+	}
+	if !s.standalone.isPreparing("Qwen3-8B-Q4.gguf") || !s.standalone.isPreparing("Llama-3-8B.gguf") {
+		t.Fatalf("expected both models preparing concurrently, got %+v", s.standalone.preparing)
+	}
+
+	// Drain UI callback from background StartStandalone (which fails on unseeded model) on test goroutine.
+	fn := <-uiCallbacks
+	fn()
+	if len(s.pendingToasts) != 0 {
+		t.Fatalf("expected no started toast on failed StartStandalone, got %+v", s.pendingToasts)
+	}
+	if !s.standalone.isPreparing("Qwen3-8B-Q4.gguf") || s.standalone.isPreparing("Llama-3-8B.gguf") {
+		t.Fatalf("expected Qwen3-8B-Q4.gguf still preparing and Llama-3-8B.gguf cleared, got %+v", s.standalone.preparing)
+	}
+	// Model B keeps its per-model failed row state even if lastModel points elsewhere.
+	s.standalone.lastModel = "Qwen3-8B-Q4.gguf"
+	if rowState, _, _, _, _ := s.standaloneRowState(s.registry.Models[1]); rowState != "failed" {
+		t.Fatalf("expected Llama-3-8B.gguf row state failed via per-model lastErrors, got %q", rowState)
+	}
+}
+
+func TestErrorRecoveryBannerDisplaysDetailAndLogTail(t *testing.T) {
+	restore := l10n.SetTestLocale(l10n.LanguageZhHans)
+	defer restore()
+
+	errVal := &core.ApiError{
+		Code:    "engine_exited",
+		Message: "Engine exited unexpectedly",
+		Details: map[string]any{
+			"detail":   "exec format error",
+			"log_tail": "fatal: out of memory",
+		},
+	}
+	tt := ui.NewTester(func(c *ui.Context) {
+		errorRecoveryBanner(c, errVal, nil)
+	}, 800, 600)
+	tt.Frame()
+	texts := strings.Join(tt.Texts(), "\n")
+	for _, want := range []string{"exec format error", "fatal: out of memory"} {
+		if !strings.Contains(texts, want) {
+			t.Fatalf("expected error banner to display %q, got:\n%s", want, texts)
+		}
+	}
+}

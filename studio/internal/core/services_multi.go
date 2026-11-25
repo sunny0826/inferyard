@@ -316,7 +316,32 @@ func (s *Service) occupiedPortsLocked() map[int]bool {
 	return ports
 }
 
-func (s *Service) startManagedServiceLocked(startup Startup, slug, serviceID string) (EngineState, *ApiError) {
+func (s *Service) activePortInUseLocked(port int) bool {
+	for _, other := range s.services {
+		if other == nil || !isActiveServiceState(other.state.State) {
+			continue
+		}
+		p := other.state.Port
+		if p <= 0 {
+			p = portFromEndpoint(other.state.Endpoint)
+		}
+		if p == port {
+			return true
+		}
+	}
+	if s.engine != nil && isActiveServiceState(s.engine.state.State) {
+		p := s.engine.state.Port
+		if p <= 0 {
+			p = portFromEndpoint(s.engine.state.Endpoint)
+		}
+		if p == port {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Service) startManagedServiceLocked(startup Startup, slug, serviceID string, reservedPort int, expectedWorkspace string) (EngineState, *ApiError) {
 	baseRef := filepath.Base(slug)
 	if slug == "" || baseRef != slug || baseRef == "." || baseRef == ".." || serviceID == "" {
 		return EngineState{}, Err("invalid_input")
@@ -324,10 +349,6 @@ func (s *Service) startManagedServiceLocked(startup Startup, slug, serviceID str
 	host, port, e := validateStartup(startup)
 	if e != nil {
 		return EngineState{}, e
-	}
-	w := workspaceRoot(s.userSettings())
-	if w == nil {
-		return EngineState{}, Conflict("settings_incomplete")
 	}
 
 	s.mu.Lock()
@@ -338,8 +359,21 @@ func (s *Service) startManagedServiceLocked(startup Startup, slug, serviceID str
 	if s.deletingAssets > 0 {
 		return EngineState{}, workspaceBusyError()
 	}
+	if s.runsActiveLocked() {
+		return EngineState{}, Err("run_active")
+	}
 	if s.isEngineUpgradingLocked(startup.EngineName, startup.Path) {
 		return EngineState{}, engineUpdatingError()
+	}
+	w := workspaceRoot(s.settings)
+	if w == nil {
+		return EngineState{}, Conflict("settings_incomplete")
+	}
+	if expectedWorkspace != "" && *w != expectedWorkspace {
+		return EngineState{}, workspaceBusyError()
+	}
+	if s.orphan != nil {
+		return clone(s.orphan.state), &ApiError{Code: "engine_orphaned", Message: l10n.TR("core.engine.err.handle_orphan_first")}
 	}
 	if orphan, exists := s.orphanedServices[serviceID]; exists && orphan != nil {
 		return clone(orphan.state), &ApiError{Code: "engine_orphaned", Message: l10n.TR("core.engine.err.handle_orphan_first")}
@@ -347,32 +381,25 @@ func (s *Service) startManagedServiceLocked(startup Startup, slug, serviceID str
 	if existing, exists := s.services[serviceID]; exists && existing != nil && isActiveServiceState(existing.state.State) {
 		return clone(existing.state), Err("engine_candidate_mismatch")
 	}
-	for _, other := range s.services {
-		if other == nil || !isActiveServiceState(other.state.State) {
-			continue
-		}
-		otherPort := other.state.Port
-		if otherPort <= 0 {
-			otherPort = portFromEndpoint(other.state.Endpoint)
-		}
-		if otherPort == port {
-			return EngineState{}, portInUseError(port)
-		}
-	}
-	if s.engine != nil && isActiveServiceState(s.engine.state.State) {
-		engPort := s.engine.state.Port
-		if engPort <= 0 {
-			engPort = portFromEndpoint(s.engine.state.Endpoint)
-		}
-		if engPort == port {
-			return EngineState{}, portInUseError(port)
-		}
-	}
-
 	bindHost := host
 	if startup.LANAccess {
 		bindHost = "0.0.0.0"
 	}
+	if argPort, hasArgPort, argPortValid := explicitPortArg(startup.Args); hasArgPort {
+		if !argPortValid {
+			return EngineState{}, Err("invalid_input")
+		}
+		if argPort != port {
+			if (argPort != reservedPort && s.reservedPorts[argPort]) || s.activePortInUseLocked(argPort) || checkBindPortAvailable(bindHost, argPort) != nil {
+				return EngineState{}, portInUseError(argPort)
+			}
+			return EngineState{}, Err("invalid_input")
+		}
+	}
+	if (port != reservedPort && s.reservedPorts[port]) || s.activePortInUseLocked(port) {
+		return EngineState{}, portInUseError(port)
+	}
+
 	endpoint := "http://" + net.JoinHostPort(bindHost, strconv.Itoa(port))
 	listen, err := net.Listen("tcp", net.JoinHostPort(bindHost, strconv.Itoa(port)))
 	if err != nil {
@@ -397,7 +424,11 @@ func (s *Service) startManagedServiceLocked(startup Startup, slug, serviceID str
 	cmd.Stdout, cmd.Stderr = logFile, logFile
 	if err := cmd.Start(); err != nil {
 		_ = logFile.Close()
-		return EngineState{}, &ApiError{Code: "engine_start_failed", Message: l10n.TR("core.engine.err.start_failed")}
+		apiErr := &ApiError{Code: "engine_start_failed", Message: l10n.TR("core.engine.err.start_failed")}
+		if detail := sanitizeErrorDetail(err.Error()); detail != "" {
+			apiErr.Details = map[string]any{"detail": detail}
+		}
+		return EngineState{}, apiErr
 	}
 	executable := ""
 	if startup.Path != "" {

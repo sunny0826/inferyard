@@ -128,9 +128,17 @@ func TestServiceEndpoint(ctx context.Context, baseURL, model string) ServiceTest
 }
 
 func checkEngineHealth(client *http.Client, endpoint string, local bool, family string) bool {
+	return checkEngineHealthContext(context.Background(), client, endpoint, local, family)
+}
+
+func checkEngineHealthContext(ctx context.Context, client *http.Client, endpoint string, local bool, family string) bool {
 	endpoint = localHealthEndpoint(endpoint)
 	if family == "polystrata" {
-		resp, err := client.Get(endpoint + "/health")
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+"/health", nil)
+		if err != nil {
+			return false
+		}
+		resp, err := client.Do(req)
 		if err != nil {
 			return false
 		}
@@ -148,12 +156,27 @@ func checkEngineHealth(client *http.Client, endpoint string, local bool, family 
 		}
 		return json.Unmarshal(raw, &payload) == nil && payload.Service == "strata" && payload.Loaded != nil && *payload.Loaded
 	}
-	resp, err := client.Get(endpoint + engineHealthPath(local))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+engineHealthPath(local), nil)
+	if err != nil {
+		return false
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return false
 	}
 	_ = resp.Body.Close()
 	return resp.StatusCode >= 200 && resp.StatusCode < 300
+}
+
+func startingProbeInterval(elapsed time.Duration) time.Duration {
+	switch {
+	case elapsed < 5*time.Second:
+		return 150 * time.Millisecond
+	case elapsed < 15*time.Second:
+		return 500 * time.Millisecond
+	default:
+		return time.Second
+	}
 }
 
 func unloadPolystrata(endpoint string) bool {

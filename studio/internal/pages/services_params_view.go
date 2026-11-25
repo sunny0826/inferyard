@@ -134,7 +134,7 @@ func (s *viewState) serviceParamsDrawer(c *ui.Context) {
 
 				memEnough := !budget.Known || budget.Enough
 				valid := validationErr == "" && hasModel && st.model != "" && st.engine != "" && len(engineOpts) > 0 && hasSelectOption(engineOpts, st.engine)
-				canStart := valid && memEnough && memErr == "" && !s.busy && !s.standalone.preparing && (s.serveSupported || s.preview != nil)
+				canStart := valid && memEnough && memErr == "" && !s.busy && !s.standalone.isPreparing(st.model) && (s.serveSupported || s.preview != nil)
 				startLabel := tr(c, "services.params.action.start")
 				if st.mode == serviceParamsModeRunning {
 					startLabel = tr(c, "services.params.action.save_restart")

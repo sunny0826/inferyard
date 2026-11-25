@@ -169,7 +169,10 @@ type viewState struct {
 	exitedNotice                                                                        *core.ServiceExitNotice
 	managedServices                                                                     []core.EngineState
 	exitedNotices                                                                       []core.ServiceExitNotice
+	dismissingNoticeIDs                                                                 map[string]bool
+	dismissingAllNotices                                                                bool
 	memorySummary                                                                       core.ServiceMemoryBudget
+	hwMemoryCache                                                                       uiHardwareMemoryCache
 	expandedServices                                                                    map[string]bool
 	serviceLogTargetID                                                                  string
 	serviceUsage                                                                        serviceUsageDrawerState
@@ -218,6 +221,9 @@ type viewState struct {
 	buildInfo                                                                           func() core.BuildInfo
 	refreshMu                                                                           sync.Mutex
 	detailMu                                                                            sync.Mutex
+	snapshotMu                                                                          sync.Mutex
+	snapshotSeq                                                                         uint64
+	appliedSnapshotSeq                                                                  uint64
 	requestedDetail                                                                     string
 	selected, detailID                                                                  string
 	libraryTab                                                                          int

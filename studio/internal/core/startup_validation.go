@@ -27,6 +27,29 @@ func startupAddress(args []string) (string, int) {
 	return host, port
 }
 
+func explicitPortArg(args []string) (port int, explicit bool, valid bool) {
+	for i, arg := range args {
+		key, value, inline := strings.Cut(arg, "=")
+		if key != "--port" {
+			continue
+		}
+		explicit = true
+		if !inline {
+			if i+1 >= len(args) {
+				return 0, true, false
+			}
+			value = args[i+1]
+		}
+		p, err := strconv.Atoi(value)
+		if err != nil || p <= 0 || p > 65535 {
+			return 0, true, false
+		}
+		port = p
+		valid = true
+	}
+	return port, explicit, valid
+}
+
 func validateEngineArgsCredentials(args []string) *ApiError {
 	for _, arg := range args {
 		option, value, _ := strings.Cut(strings.ToLower(strings.TrimSpace(arg)), "=")

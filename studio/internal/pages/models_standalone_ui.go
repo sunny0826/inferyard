@@ -72,7 +72,7 @@ func (s *viewState) standaloneDrawer(c *ui.Context) {
 			}
 
 			memEnough := !budget.Known || budget.Enough
-			canStart := len(engineOptions) > 0 && s.standalone.engineName != "" && ctxErr == "" && memEnough && memErr == "" && !s.busy && !s.standalone.preparing
+			canStart := len(engineOptions) > 0 && s.standalone.engineName != "" && ctxErr == "" && memEnough && memErr == "" && !s.busy && !s.standalone.isPreparing(model.Name)
 			ui.Row(c).FillWidth().Justify(ui.End).Gap(t.Density.Row).Children(func() {
 				outlineButton(c, tr(c, "models.serve.action.cancel")).OnClick(func() {
 					s.standalone.drawerOpen = false
@@ -202,14 +202,14 @@ func (s *viewState) modelStandaloneActions(c *ui.Context, m core.ModelAsset) {
 				s.openEngineCardLog(logPath)
 			})
 		}
-		retryDisabled := s.standaloneStartBlockReason() != "" || s.busy || s.standalone.preparing
+		retryDisabled := s.standaloneStartBlockReason() != "" || s.busy || s.standalone.isPreparing(m.Name)
 		button(c, tr(c, "models.serve.action.retry")).Disabled(retryDisabled).OnClick(func() {
 			s.requestStandaloneStart(m, true)
 		})
 	default:
 		label := tr(c, "models.serve.action.start")
 		reason := s.standaloneStartBlockReason()
-		disabled := reason != "" || s.busy || s.standalone.preparing
+		disabled := reason != "" || s.busy || s.standalone.isPreparing(m.Name)
 		if disabled && reason != "" {
 			wrap := ui.Box(c)
 			wrap.Children(func() {

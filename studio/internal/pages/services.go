@@ -19,7 +19,7 @@ func (s *viewState) servicesView(c *ui.Context) {
 			ui.Text(c, s.servicesSummaryLine(c)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		})
 		canOpenLauncher := s.serveSupported || s.preview != nil
-		startModelBtn := primaryActionButton(c, tr(c, "services.page.action.start_model"), s.standalone.preparing).
+		startModelBtn := primaryActionButton(c, tr(c, "services.page.action.start_model"), false).
 			Disabled(!canOpenLauncher || s.busy)
 		if startModelBtn.Clicked() {
 			s.openServiceParamsDrawerForNew()

@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-
+	"sync"
 	"testing"
 	"time"
 )
@@ -34,6 +34,9 @@ func TestMain(m *testing.M) {
 func runEngineHelper(args []string) {
 	ignoreHelperTermination()
 	if os.Getenv("ENGINE_HELPER_EXIT") == "1" {
+		if msg := os.Getenv("ENGINE_HELPER_CRASH_LOG"); msg != "" {
+			_, _ = os.Stderr.WriteString(msg)
+		}
 		os.Exit(3)
 	}
 	_, port := startupAddress(args)
@@ -41,14 +44,32 @@ func runEngineHelper(args []string) {
 		os.Exit(2)
 	}
 	delay, _ := strconv.Atoi(os.Getenv("ENGINE_HELPER_DELAY_MS"))
+	hangMs, _ := strconv.Atoi(os.Getenv("ENGINE_HELPER_HEALTH_HANG_MS"))
+	signalFile := os.Getenv("ENGINE_HELPER_HEALTH_SIGNAL_FILE")
+	var signalOnce sync.Once
 	started := time.Now()
 	mux := http.NewServeMux()
-	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		if hangMs > 0 {
+			if signalFile != "" {
+				signalOnce.Do(func() { _ = os.WriteFile(signalFile, []byte("1"), 0o600) })
+			}
+			timer := time.NewTimer(time.Duration(hangMs) * time.Millisecond)
+			select {
+			case <-timer.C:
+			case <-r.Context().Done():
+				timer.Stop()
+				return
+			}
+		}
 		if os.Getenv("ENGINE_HELPER_NOREADY") == "1" || time.Since(started) < time.Duration(delay)*time.Millisecond {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
+		if body := os.Getenv("ENGINE_HELPER_HEALTH_BODY"); body != "" {
+			_, _ = w.Write([]byte(body))
+		}
 	})
 	_ = http.ListenAndServe("127.0.0.1:"+strconv.Itoa(port), mux)
 	os.Exit(1)
@@ -159,4 +180,105 @@ func engineFixtureDescription(args []string) (inferyard.Execution, bool) {
 		"endpoint": map[string]any{"url": "http://127.0.0.1:8080", "server_pid": 1, "process_start_ticks": 1}, "conditions": map[string]any{"context_size": 4096}, "generation": map[string]any{"max_tokens": 32, "temperature": 0}}
 	result, _ := json.Marshal(map[string]any{"command": "config describe", "status": "prepared", "completeness": "complete", "run_id": nil, "evidence_dir": nil, "limitations": []string{}, "details": details})
 	return inferyard.Execution{Stdout: result}, true
+}
+
+func TestStartingProbeIntervalProgression(t *testing.T) {
+	cases := []struct {
+		elapsed time.Duration
+		want    time.Duration
+	}{
+		{0, 150 * time.Millisecond},
+		{4999 * time.Millisecond, 150 * time.Millisecond},
+		{5 * time.Second, 500 * time.Millisecond},
+		{14999 * time.Millisecond, 500 * time.Millisecond},
+		{15 * time.Second, time.Second},
+		{30 * time.Second, time.Second},
+	}
+	for _, tc := range cases {
+		if got := startingProbeInterval(tc.elapsed); got != tc.want {
+			t.Fatalf("startingProbeInterval(%v)=%v want %v", tc.elapsed, got, tc.want)
+		}
+	}
+}
+
+func TestEngineFastHealthReadinessUnder400ms(t *testing.T) {
+	t.Setenv("ENGINE_HELPER", "1")
+	t.Setenv("ENGINE_HELPER_DELAY_MS", "50")
+	port := freePort(t)
+	workspace, candidate := engineWorkspace(t, port)
+	s := engineService(t, workspace)
+
+	start := time.Now()
+	st, apiErr := s.StartEngine(candidate)
+	if apiErr != nil {
+		t.Fatalf("StartEngine failed: %+v", apiErr)
+	}
+	if st.State != "starting" {
+		t.Fatalf("initial state=%q want starting", st.State)
+	}
+	deadline := time.Now().Add(400 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		if cur := s.Engine(); cur.State == "running" {
+			elapsed := time.Since(start)
+			if elapsed >= 400*time.Millisecond {
+				t.Fatalf("engine became running in %v, want < 400ms", elapsed)
+			}
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("engine did not reach running within 400ms (state=%q elapsed=%v)", s.Engine().State, time.Since(start))
+}
+
+func TestEngineStopInterruptsSlowHealthProbe(t *testing.T) {
+	signalFile := filepath.Join(t.TempDir(), "health-received")
+	t.Setenv("ENGINE_HELPER", "1")
+	t.Setenv("ENGINE_HELPER_HEALTH_HANG_MS", "1800")
+	t.Setenv("ENGINE_HELPER_HEALTH_SIGNAL_FILE", signalFile)
+	port := freePort(t)
+	workspace, candidate := engineWorkspace(t, port)
+	s := engineService(t, workspace)
+
+	if _, apiErr := s.StartEngine(candidate); apiErr != nil {
+		t.Fatalf("StartEngine failed: %+v", apiErr)
+	}
+	sigDeadline := time.Now().Add(4 * time.Second)
+	for {
+		if _, err := os.Stat(signalFile); err == nil {
+			break
+		}
+		if time.Now().After(sigDeadline) {
+			t.Fatalf("health handler never received probe request")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	stopStart := time.Now()
+	if _, apiErr := s.StopEngine(); apiErr != nil {
+		t.Fatalf("StopEngine failed: %+v", apiErr)
+	}
+	deadline := stopStart.Add(600 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		if s.Engine().State == "stopped" {
+			return
+		}
+		time.Sleep(15 * time.Millisecond)
+	}
+	t.Fatalf("StopEngine blocked by in-flight health probe: state=%q elapsed=%v", s.Engine().State, time.Since(stopStart))
+}
+
+func TestEngineReadyRightBeforeDeadline(t *testing.T) {
+	t.Setenv("ENGINE_HELPER", "1")
+	t.Setenv("ENGINE_HELPER_DELAY_MS", "480")
+	port := freePort(t)
+	workspace, candidate := engineWorkspace(t, port)
+	s := engineService(t, workspace)
+	s.engineTimeout = 600 * time.Millisecond
+
+	if _, apiErr := s.StartEngine(candidate); apiErr != nil {
+		t.Fatalf("StartEngine failed: %+v", apiErr)
+	}
+	st := pollEngine(t, s, "running")
+	if st.State != "running" {
+		t.Fatalf("expected running when ready before deadline, got %+v", st)
+	}
 }
