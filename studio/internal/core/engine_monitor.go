@@ -76,6 +76,8 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 			cancelProbe()
 			s.mu.Lock()
 			stopping := e.state.State == "stopping"
+			wasHealthy := e.wasHealthy
+			logPath := e.state.LogPath
 			s.mu.Unlock()
 			if stopping {
 				finish("stopped", nil, false)
@@ -91,8 +93,16 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 						exitCode = &code
 					}
 				}
+				exitErr := &ApiError{Code: "engine_exited", Message: l10n.TR("core.engine.err.exited")}
+				if !wasHealthy && logPath != "" {
+					if rawTail, tailErr := readLogTailWindow(logPath); tailErr == nil {
+						if tail := summarizeLogTail(rawTail, 5); tail != "" {
+							exitErr.Details = map[string]any{"log_tail": tail}
+						}
+					}
+				}
 				persistErr := s.recordUnexpectedStandaloneExit(e, exitCode)
-				finish("failed", &ApiError{Code: "engine_exited", Message: l10n.TR("core.engine.err.exited")}, persistErr != nil)
+				finish("failed", exitErr, persistErr != nil)
 			}
 			return
 		case <-treeTicker.C:

@@ -341,3 +341,27 @@ func TestStandaloneParallelPreparingAndToastOnSuccessOnly(t *testing.T) {
 		t.Fatalf("expected Llama-3-8B.gguf row state failed via per-model lastErrors, got %q", rowState)
 	}
 }
+
+func TestErrorRecoveryBannerDisplaysDetailAndLogTail(t *testing.T) {
+	restore := l10n.SetTestLocale(l10n.LanguageZhHans)
+	defer restore()
+
+	errVal := &core.ApiError{
+		Code:    "engine_exited",
+		Message: "Engine exited unexpectedly",
+		Details: map[string]any{
+			"detail":   "exec format error",
+			"log_tail": "fatal: out of memory",
+		},
+	}
+	tt := ui.NewTester(func(c *ui.Context) {
+		errorRecoveryBanner(c, errVal, nil)
+	}, 800, 600)
+	tt.Frame()
+	texts := strings.Join(tt.Texts(), "\n")
+	for _, want := range []string{"exec format error", "fatal: out of memory"} {
+		if !strings.Contains(texts, want) {
+			t.Fatalf("expected error banner to display %q, got:\n%s", want, texts)
+		}
+	}
+}

@@ -421,7 +421,11 @@ func (s *Service) startManagedServiceLocked(startup Startup, slug, serviceID str
 	cmd.Stdout, cmd.Stderr = logFile, logFile
 	if err := cmd.Start(); err != nil {
 		_ = logFile.Close()
-		return EngineState{}, &ApiError{Code: "engine_start_failed", Message: l10n.TR("core.engine.err.start_failed")}
+		apiErr := &ApiError{Code: "engine_start_failed", Message: l10n.TR("core.engine.err.start_failed")}
+		if detail := sanitizeErrorDetail(err.Error()); detail != "" {
+			apiErr.Details = map[string]any{"detail": detail}
+		}
+		return EngineState{}, apiErr
 	}
 	executable := ""
 	if startup.Path != "" {

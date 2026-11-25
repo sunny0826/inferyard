@@ -30,11 +30,39 @@ func errorRecoveryBanner(c *ui.Context, e *core.ApiError, actions func()) {
 		Message: message,
 		Actions: actions,
 		Details: func() {
+			t := tokens(c)
 			scale := stateScale(c, stateDanger)
 			for _, v := range e.Limitations {
 				ui.Text(c, human(v)).TextColor(scale.Fg)
 			}
-			if e.Code != "" || len(e.Limitations) > 0 || len(e.Details) > 0 {
+			detailText, _ := e.Details["detail"].(string)
+			detailText = strings.TrimSpace(detailText)
+			logTailText, _ := e.Details["log_tail"].(string)
+			logTailText = strings.TrimSpace(logTailText)
+			if detailText != "" {
+				ui.Column(c).FillWidth().Padding(t.Density.Tight, t.Density.Row).Radius(t.Radius.Control).
+					Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).Children(func() {
+					ui.Text(c, detailText).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Selectable()
+				})
+			}
+			if logTailText != "" {
+				ui.Column(c).FillWidth().Gap(t.Density.Hairline).Padding(t.Density.Tight, t.Density.Row).Radius(t.Radius.Control).
+					Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).Children(func() {
+					ui.Text(c, tr(c, "services.exited.log_tail")).FontSize(t.Type.ShellLabel).TextColor(t.Color.FgSecondary)
+					ui.Text(c, logTailText).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Selectable()
+				})
+			}
+			var restDetails map[string]any
+			if len(e.Details) > 0 {
+				restDetails = make(map[string]any, len(e.Details))
+				for k, v := range e.Details {
+					if k == "detail" || k == "log_tail" {
+						continue
+					}
+					restDetails[k] = v
+				}
+			}
+			if e.Code != "" || len(e.Limitations) > 0 || len(restDetails) > 0 {
 				componentFoldKeyed(c, "error-details-"+e.Code, tr(c, "common.error.details"), func() {
 					if e.Code != "" {
 						ui.Text(c, trf(c, "common.error.code", "code", e.Code)).TextColor(scale.Fg)
@@ -42,8 +70,8 @@ func errorRecoveryBanner(c *ui.Context, e *core.ApiError, actions func()) {
 					if len(e.Limitations) > 0 {
 						ui.Text(c, trf(c, "common.error.limitations", "items", strings.Join(e.Limitations, tr(c, "common.list_separator")))).TextColor(scale.Fg)
 					}
-					if len(e.Details) > 0 {
-						kvview(c, "kv-error-details", e.Details)
+					if len(restDetails) > 0 {
+						kvview(c, "kv-error-details", restDetails)
 					}
 				})
 			}

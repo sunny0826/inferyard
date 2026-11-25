@@ -34,6 +34,9 @@ func TestMain(m *testing.M) {
 func runEngineHelper(args []string) {
 	ignoreHelperTermination()
 	if os.Getenv("ENGINE_HELPER_EXIT") == "1" {
+		if msg := os.Getenv("ENGINE_HELPER_CRASH_LOG"); msg != "" {
+			_, _ = os.Stderr.WriteString(msg)
+		}
 		os.Exit(3)
 	}
 	_, port := startupAddress(args)

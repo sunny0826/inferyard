@@ -67,25 +67,20 @@ func (s *Service) legacyExitNoticeFilePathLocked() string {
 	return legacyExitNoticePath(*w)
 }
 
-func readLogTailLines(logPath string, maxLines int) []string {
+func readExitNoticeLogAndHint(logPath string, maxLines int) ([]string, string) {
 	if strings.TrimSpace(logPath) == "" {
-		return nil
+		return nil, ""
 	}
-	tail, err := ReadLogTail(logPath, maxLines)
-	if err != nil || strings.TrimSpace(tail) == "" {
-		return nil
+	rawTail, err := readLogTailWindow(logPath)
+	if err != nil || strings.TrimSpace(rawTail) == "" {
+		return nil, ""
 	}
-	raw := strings.Split(tail, "\n")
-	lines := make([]string, 0, len(raw))
-	for _, line := range raw {
-		if strings.TrimSpace(line) != "" {
-			lines = append(lines, line)
-		}
+	cleanLines := extractCleanTailLines(rawTail, maxLines)
+	if len(cleanLines) == 0 {
+		return nil, ""
 	}
-	if len(lines) == 0 {
-		return nil
-	}
-	return lines
+	hint := detectServiceExitHint(cleanLines)
+	return summarizeLogTailLines(rawTail, maxLines), hint
 }
 
 func detectServiceExitHint(lines []string) string {
@@ -172,6 +167,9 @@ func parseExitNoticesBytes(raw []byte) []ServiceExitNotice {
 		if item.ID == "" || item.Dismissed {
 			continue
 		}
+		if len(item.LogTail) > 0 {
+			item.LogTail = summarizeLogTailLines(strings.Join(item.LogTail, "\n"), exitNoticeLogTailLines)
+		}
 		out = append(out, item)
 	}
 	return out
@@ -224,7 +222,7 @@ func (s *Service) recordExitedWhileAwayLocked(workspace string, owner engineOwne
 	if owner.LogFile != "" {
 		logPath = filepath.Join(workspace, "logs", owner.LogFile)
 	}
-	logTail := readLogTailLines(logPath, exitNoticeLogTailLines)
+	logTail, hint := readExitNoticeLogAndHint(logPath, exitNoticeLogTailLines)
 	model := owner.ModelName
 	if model == "" {
 		model = owner.Model
@@ -254,7 +252,7 @@ func (s *Service) recordExitedWhileAwayLocked(workspace string, owner engineOwne
 		ExitCode:      nil,
 		WhileAway:     true,
 		LogTail:       logTail,
-		Hint:          detectServiceExitHint(logTail),
+		Hint:          hint,
 		Dismissed:     false,
 	}
 	if err := s.appendExitNoticeLocked(workspace, notice); err != nil {
@@ -268,7 +266,7 @@ func (s *Service) recordUnexpectedStandaloneExit(e *engineEntry, exitCode *int) 
 	if normalizeEngineOrigin(e.state.Origin) != EngineOriginStandalone {
 		return nil
 	}
-	logTail := readLogTailLines(e.state.LogPath, exitNoticeLogTailLines)
+	logTail, hint := readExitNoticeLogAndHint(e.state.LogPath, exitNoticeLogTailLines)
 	model := e.state.ModelName
 	if model == "" {
 		model = e.state.Model
@@ -298,7 +296,7 @@ func (s *Service) recordUnexpectedStandaloneExit(e *engineEntry, exitCode *int) 
 		ExitCode:      cloneIntPtr(exitCode),
 		WhileAway:     false,
 		LogTail:       logTail,
-		Hint:          detectServiceExitHint(logTail),
+		Hint:          hint,
 		Dismissed:     false,
 	}
 	s.mu.Lock()

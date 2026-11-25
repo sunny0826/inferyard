@@ -373,7 +373,11 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 			if parsed, parseErr := inferyard.Parse(out.Stdout); parseErr == nil && len(parsed.Limitations) > 0 {
 				return EngineState{}, Err(parsed.Limitations[0])
 			}
-			return EngineState{}, Err("cli_error")
+			detail := summarizeStderr(out.Stderr)
+			if detail == "" && execErr != nil {
+				detail = sanitizeErrorDetail(execErr.Error())
+			}
+			return EngineState{}, apiErrorWithDetail("cli_error", detail)
 		}
 		if !isRegularNonSymlinkFile(planPath) {
 			return EngineState{}, Err("cli_error")
