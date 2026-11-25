@@ -66,7 +66,7 @@ final class PreviewUITests: XCTestCase {
         expectBundleLabels()
         keepScreenshot("Benchmark setup with single stage heading")
         click("模型库")
-        click("模型")
+        selectTab("模型")
         click("下载模型 · model-qwen3-0.6b-q8")
         expectText("已结束")
         let downloadedModel = "Qwen3-0.6B-Q8_0 · Qwen3-0.6B-Q8_0.gguf"
@@ -197,6 +197,7 @@ final class PreviewUITests: XCTestCase {
         keepScreenshot("First use with no local assets")
         click("到下载页")
         expectText("推荐组合")
+        selectTab("引擎")
         expectText("PolyStrata")
         XCTAssertFalse(text("Windows x64").exists)
         XCTAssertFalse(text("Linux x64").exists)
@@ -225,7 +226,7 @@ final class PreviewUITests: XCTestCase {
         keepScreenshot("Engine panel remains available during benchmark")
         engine.click()
         wait("engine panel closed after a second click", timeout: 5) { !self.app.buttons["停止引擎"].exists }
-        let queue = app.buttons.matching(NSPredicate(format: "title BEGINSWITH %@", "任务 · 执行 1 · 等待 ")).firstMatch
+        let queue = app.buttons.matching(NSPredicate(format: "title BEGINSWITH %@", "测评 1 · 等待 ")).firstMatch
         expectExists(queue, timeout: 5)
         queue.click()
         expectText("任务队列", timeout: 3)

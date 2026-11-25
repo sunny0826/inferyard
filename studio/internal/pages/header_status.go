@@ -330,7 +330,8 @@ func (s *viewState) sidebarStatusRow(c *ui.Context, sp sidebarStatusSpec) {
 		aria = sp.label
 	}
 	anchor := ui.Column(c.Key(sp.key)).FillWidth().Gap(4).
-		Padding(t.Density.Tight+1, t.Density.Row).Radius(t.Radius.Control).Label(aria)
+		Padding(t.Density.Tight+1, t.Density.Row).Radius(t.Radius.Control).
+		Role(ui.RoleButton).Focusable().Label(aria)
 	if sp.highlight {
 		anchor.Background(scale.SubtleBg)
 	} else if anchor.Hovered() || *sp.open {
