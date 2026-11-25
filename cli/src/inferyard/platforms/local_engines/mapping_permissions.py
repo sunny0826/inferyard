@@ -18,12 +18,16 @@ _OS_UNREADABLE_DATA_PREFIXES = ("/private/var/db/", "/var/db/")
 _NON_EXEC_CACHE: dict[tuple[int, int, tuple[int, int], str], None] = {}
 
 
-def _permission_denied(path: Path | str) -> bool:
+def _os_unreadable_data(path: Path | str) -> bool:
+    """Root-owned OS data that is unreadable or already unlinked (e.g. logd plist caches).
+
+    Only these paths may reuse a prior vmmap verdict; user paths are always re-observed.
+    """
     if not str(path).startswith(_OS_UNREADABLE_DATA_PREFIXES):
         return False
     try:
         fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
-    except PermissionError:
+    except PermissionError, FileNotFoundError:
         return True
     except OSError:
         return False
@@ -37,7 +41,7 @@ def cached_non_executable(pid: int, stamp: tuple[int, int], path: Path | str) ->
     except PreflightError:
         return False
     key = (pid, start_ticks, stamp, str(path))
-    if key not in _NON_EXEC_CACHE or not _permission_denied(path):
+    if key not in _NON_EXEC_CACHE or not _os_unreadable_data(path):
         return False
     _NON_EXEC_CACHE.pop(key, None)
     _NON_EXEC_CACHE[key] = None
@@ -45,7 +49,7 @@ def cached_non_executable(pid: int, stamp: tuple[int, int], path: Path | str) ->
 
 
 def remember_non_executable(pid: int, stamp: tuple[int, int], path: Path | str) -> None:
-    if not _permission_denied(path):
+    if not _os_unreadable_data(path):
         return
     try:
         start_ticks = process_start_ticks(pid)

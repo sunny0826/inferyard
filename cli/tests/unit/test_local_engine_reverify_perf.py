@@ -102,7 +102,7 @@ def test_permission_denied_non_exec_mapping_caches_per_process_incarnation(
     workers.mapped_closure(user_unreadable_rows, [runtime_file], exe, pid=777)
     assert observe_calls == 4
 
-    # Unlinked (FileNotFoundError) mappings are never cached across checks.
+    # Unlinked (FileNotFoundError) user paths outside /private/var/db are never cached.
     unlinked_rows = [
         {
             "p": 777,
@@ -125,6 +125,65 @@ def test_permission_denied_non_exec_mapping_caches_per_process_incarnation(
     with pytest.raises(PreflightError, match="local_engine_mapping_unverified"):
         workers.mapped_closure(unreadable_rows, [runtime_file], exe, pid=777)
     assert mapping_permissions.cached_non_executable(777, unreadable_stamp, unreadable_path) is False
+
+
+def test_unlinked_os_data_mapping_caches_per_process_incarnation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """macOS maps an unlinked logd plist cache into every process; reuse its vmmap verdict."""
+    exe = tmp_path / "strata"
+    exe.write_bytes(b"\xcf\xfa\xed\xfe\x0c\x00\x00\x01")
+    runtime_file = hash_file(exe)
+    unlinked_os_path = "/private/var/db/diagnostics/logd/.plist-cache.Vkl7CVtt"
+    stamp = (16777230, 7777777)
+
+    monkeypatch.setattr(mapping_permissions, "_NON_EXEC_CACHE", {})
+    monkeypatch.setattr(workers, "verify_libraries", lambda *_a, **_kw: [])
+    monkeypatch.setattr(workers, "mapped_native_image", lambda _p, _s: None)
+    current_ticks = 60001
+    monkeypatch.setattr(mapping_permissions, "process_start_ticks", lambda _pid: current_ticks)
+    real_open = mapping_permissions.os.open
+
+    def fake_open(path, flags, *args, **kwargs):
+        if str(path) == unlinked_os_path:
+            raise FileNotFoundError(2, "No such file", str(path))
+        return real_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(mapping_permissions.os, "open", fake_open)
+    observe_calls = 0
+    vmmap_mode = "r--/r--"
+
+    def fake_observe(pid: int) -> str:
+        nonlocal observe_calls
+        observe_calls += 1
+        return (
+            f"mapped file  100000000-100004000 [ 16K  16K   0K   0K] "
+            f"{vmmap_mode} SM=COW  {unlinked_os_path}\n"
+        )
+
+    monkeypatch.setattr(mapping_permissions, "observe", fake_observe)
+    rows = [
+        {
+            "p": 888,
+            "f": "txt",
+            "t": "REG",
+            "D": f"{stamp[0]:x}",
+            "i": str(stamp[1]),
+            "n": unlinked_os_path,
+        }
+    ]
+
+    for _ in range(5):
+        workers.mapped_closure(rows, [runtime_file], exe, pid=888)
+    assert observe_calls == 1
+
+    # A new incarnation re-observes, and an executable mapping is still rejected.
+    current_ticks = 60002
+    vmmap_mode = "r-x/r-x"
+    with pytest.raises(PreflightError, match="local_engine_mapping_unverified"):
+        workers.mapped_closure(rows, [runtime_file], exe, pid=888)
+    assert observe_calls == 2
+    assert mapping_permissions.cached_non_executable(888, stamp, unlinked_os_path) is False
 
 
 def test_verify_bound_service_reuses_asset_cache_when_bound_files_omitted(
