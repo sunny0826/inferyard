@@ -176,3 +176,48 @@ func TestResourceViewFormatsValuesToTwoDecimalsAndReadableDates(t *testing.T) {
 	}
 }
 
+func TestResourceViewOmitsTemperatureSourceDropdownAndKeepsAllSourcesInTable(t *testing.T) {
+	samples := chartSamples()
+	s := testState()
+	tt := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).Width(1080).Children(func() { s.resourceView(c, samples) })
+	}, 1120, 1400)
+	tt.Frame()
+
+	if _, found := tt.Find("传感器温度 °C来源"); found {
+		t.Fatalf("temperature source dropdown should be removed, found in %v", tt.Texts())
+	}
+	if !tt.HasText("AppleSMC:Tg0C") {
+		t.Fatalf("expected default temperature source label AppleSMC:Tg0C in %v", tt.Texts())
+	}
+	if _, ok := tt.Find("传感器温度 °C曲线"); !ok {
+		t.Fatalf("temperature plot missing in %v", tt.Texts())
+	}
+
+	click(t, tt, "原始采样数值")
+	tt.Frame()
+	for _, want := range []string{"AppleSMC:Tg0C", "AppleSMC:Tp0C"} {
+		if !tt.HasText(want) {
+			t.Fatalf("sample table missing temperature source %q in %v", want, tt.Texts())
+		}
+	}
+
+	// When the first sensor has only missing samples, default to the next sensor with valid values.
+	fallbackSamples := []core.ResourceSample{
+		chartSample(1, "temperature", "AppleSMC:Tg0C", 0, nil),
+		chartSample(2, "temperature", "AppleSMC:Tp0C", 0, ptr(58.5)),
+	}
+	sFallback := testState()
+	ttFallback := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).Width(1080).Children(func() { sFallback.resourceView(c, fallbackSamples) })
+	}, 1120, 1400)
+	ttFallback.Frame()
+
+	if !ttFallback.HasText("AppleSMC:Tp0C") {
+		t.Fatalf("expected fallback to valid temperature source AppleSMC:Tp0C in %v", ttFallback.Texts())
+	}
+	if _, ok := ttFallback.Find("传感器温度 °C曲线"); !ok {
+		t.Fatalf("fallback temperature plot missing in %v", ttFallback.Texts())
+	}
+}
+

@@ -245,22 +245,19 @@ final class PreviewUITests: XCTestCase {
         selectScene("资源 · CPU 与多路温度")
         expectText("服务 CPU %曲线")
         expectText("传感器温度 °C曲线")
-        let source = app.popUpButtons["传感器温度 °C来源"]
-        revealInContent(source)
-        XCTAssertTrue(source.isHittable)
-        keepScreenshot("CPU curve and first temperature sensor")
-        source.click()
-        text("AppleSMC:Tp0C").click()
-        expectText("AppleSMC:Tp0C")
+        XCTAssertFalse(app.popUpButtons["传感器温度 °C来源"].exists)
+        expectText("AppleSMC:Tg0C")
         let chart = text("传感器温度 °C曲线")
         revealInContent(chart)
         XCTAssertTrue(chart.isHittable)
+        keepScreenshot("CPU curve and temperature plot without source dropdown")
         // The sample table lives inside a fold; expand it before asserting rows.
         expandFold("原始采样数值")
         let table = app.tables["资源采样数值表"]
         expectExists(table, timeout: 5)
+        XCTAssertTrue(table.staticTexts.matching(NSPredicate(format: "value == %@", "AppleSMC:Tg0C")).firstMatch.exists)
         XCTAssertTrue(table.staticTexts.matching(NSPredicate(format: "value == %@", "AppleSMC:Tp0C")).firstMatch.exists)
-        keepScreenshot("Selected temperature source with its own measurements")
+        keepScreenshot("Sample table keeps all temperature sensor measurements")
     }
 
     private func lmStudioBindingFailureKeepsCompletedScope() {

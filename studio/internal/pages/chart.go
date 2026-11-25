@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/components/chart"
 	"inferyard/studio/internal/core"
 )
@@ -112,41 +111,16 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 			})
 			container.Children(func() {
 				ui.Text(c, metric.label).TextColor(metric.color)
-				current := 0
-				for i, option := range options {
-					if state.source == option.id {
-						current = i
-					}
+				chosen, data := defaultResourceSeries(options, metric.color)
+				if state.source != chosen.id {
+					state.source, state.chart.Index = chosen.id, -1
 				}
-				if state.source != options[current].id {
-					state.source, state.chart.Index = options[current].id, -1
-				}
-				if len(options) > 1 {
-					picker := components.Select(c, &state.source)
-					currentLabel := sourceLabelFor(c, options[current].source)
-					picker.Trigger.Label(trf(c, "chart.resource.source_picker_label", "metric", metric.label)).Value(currentLabel).Children(func() {
-						ui.Text(c, currentLabel).SingleLine()
-					})
-					picker.Popup(func(ui.Element) {
-						for _, option := range options {
-							optLabel := sourceLabelFor(c, option.source)
-							picker.Item(option.id).Label(optLabel).Children(func() {
-								ui.Text(c, optLabel).SingleLine()
-								ui.Text(c, option.source.Collector+" · "+option.source.ClockID).TextColor(theme.TextMuted)
-							})
-						}
-					})
-					if picker.Trigger.Changed() {
-						state.chart.Index = -1
-						s.samplesTable = pageTableState{}
-						s.resourceTablePage = 0
-					}
-				} else if label := secondarySourceLabel(c, metric.id, options[current].source); label != "" {
+				if label := secondarySourceLabel(c, metric.id, chosen.source); label != "" {
 					ui.Text(c, label).TextColor(theme.TextMuted)
 				}
-				chosen := options[current]
-				selected = append(selected, chosen.points...)
-				data := resourceLineData(chosen, metric.color)
+				for _, option := range options {
+					selected = append(selected, option.points...)
+				}
 				if !chartHasValues(data) {
 					reason := tr(c, "chart.resource.no_valid_samples")
 					for _, point := range chosen.points {
@@ -181,6 +155,21 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 		})
 		s.resourceSampleFold(c, selected)
 	})
+}
+
+func defaultResourceSeries(options []resourceSeries, color ui.Color) (resourceSeries, chart.Data) {
+	chosen := options[0]
+	chosenData := resourceLineData(chosen, color)
+	if chartHasValues(chosenData) {
+		return chosen, chosenData
+	}
+	for _, option := range options[1:] {
+		data := resourceLineData(option, color)
+		if chartHasValues(data) {
+			return option, data
+		}
+	}
+	return chosen, chosenData
 }
 
 func secondarySourceLabel(c *ui.Context, metricID string, source core.ResourceSource) string {
