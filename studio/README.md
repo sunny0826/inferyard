@@ -80,6 +80,7 @@ mise run test:studio:e2e             # Boundary E2E with synced CLI (cross-platf
 mise run test:studio:e2e:polystrata  # Real-machine PolyStrata lifecycle E2E (opt-in, uses local assets)
 mise run test:studio-ui              # macOS native UI E2E: daily 3 workflows
 mise run test:studio-ui:full         # macOS native UI E2E: all 7 workflows
+mise run test:studio-ui:polystrata   # Local-only real-window PolyStrata UI E2E (not run in CI)
 ```
 
 Additional direct checks from `studio/`:
