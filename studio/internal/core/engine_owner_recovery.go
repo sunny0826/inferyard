@@ -17,8 +17,15 @@ func (s *Service) DiscardOrphanRecord() (EngineState, *ApiError) {
 	}
 	e := s.orphan
 	if e == nil {
+		e = s.firstOrphanServiceLocked()
+	}
+	if e == nil {
 		return EngineState{}, Conflict("no_orphan_record")
 	}
+	return s.discardOrphanEntryLocked(e)
+}
+
+func (s *Service) discardOrphanEntryLocked(e *orphanEngine) (EngineState, *ApiError) {
 	if e.state.State == "stopping" {
 		return clone(e.state), Err("engine_stopping")
 	}
@@ -49,12 +56,18 @@ func (s *Service) DiscardOrphanRecord() (EngineState, *ApiError) {
 			return clone(e.state), ownerRemovalError()
 		}
 	}
-	s.orphan = nil
+	if s.orphan == e {
+		s.orphan = nil
+	}
+	if e.state.ServiceID != "" && s.orphanedServices[e.state.ServiceID] == e {
+		delete(s.orphanedServices, e.state.ServiceID)
+	}
 	if s.engine != nil && (s.engine.state.State == "failed" || s.engine.state.State == "stopped") {
 		s.engine = nil
 	}
 	state := EngineState{State: "stopped"}
-	s.Bus.Publish("engine.state", map[string]any{"engine": state})
+	s.Bus.Publish("engine.state", map[string]any{"engine": s.primaryManagedServiceLocked()})
+	s.publishServicesStateLocked()
 	return state, nil
 }
 

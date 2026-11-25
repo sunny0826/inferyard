@@ -13,14 +13,21 @@ import (
 )
 
 func (s *viewState) hasActiveExitNotice() bool {
-	return s.exitedNotice != nil && !s.exitedNotice.Dismissed
+	return len(s.effectiveExitedNotices()) > 0
 }
 
 func (s *viewState) renderExitedServiceCard(c *ui.Context) {
-	if !s.hasActiveExitNotice() {
+	notices := s.effectiveExitedNotices()
+	if len(notices) == 0 {
 		return
 	}
-	notice := *s.exitedNotice
+	multi := len(notices) > 1
+	for idx, notice := range notices {
+		s.renderSingleExitedNoticeCard(c, notice, idx, multi)
+	}
+}
+
+func (s *viewState) renderSingleExitedNoticeCard(c *ui.Context, notice core.ServiceExitNotice, idx int, multi bool) {
 	t := tokens(c)
 	scale := stateScale(c, stateDanger)
 	outerR := t.Radius.Surface
@@ -32,8 +39,12 @@ func (s *viewState) renderExitedServiceCard(c *ui.Context) {
 		modelName = tr(c, "engine.card.title")
 	}
 	engineName := strings.TrimSpace(notice.Engine)
+	cardKey := notice.ID
+	if cardKey == "" {
+		cardKey = fmt.Sprintf("idx-%d", idx)
+	}
 
-	cardBox := ui.Column(c.Key("service-exited-notice-card")).FillWidth().
+	cardBox := ui.Column(c.Key("service-exited-notice-card-"+cardKey)).FillWidth().
 		Padding(pad).Radius(outerR).Gap(t.Density.Row).
 		Background(scale.SubtleBg).Border(1, scale.Border)
 	cardBox.Children(func() {
@@ -86,21 +97,39 @@ func (s *viewState) renderExitedServiceCard(c *ui.Context) {
 
 		canLaunch := !s.busy && !s.standalone.preparing && (s.serveSupported || s.preview != nil)
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			if inlineButton(c, components.ButtonPrimary, tr(c, "services.exited.action.restart_same")).
-				Disabled(!canLaunch || notice.Model == "" || notice.Engine == "").Clicked() {
+			restartLabel := tr(c, "services.exited.action.restart_same")
+			restartBtn := inlineButton(c, components.ButtonPrimary, restartLabel).
+				Disabled(!canLaunch || notice.Model == "" || notice.Engine == "")
+			if multi {
+				restartBtn.Label(restartLabel + " · " + modelName)
+			}
+			if restartBtn.Clicked() {
 				s.restartFromExitNotice(notice)
 			}
-			if inlineButton(c, components.ButtonOutline, tr(c, "services.exited.action.adjust_params")).
-				Disabled(!canLaunch).Clicked() {
+			adjustLabel := tr(c, "services.exited.action.adjust_params")
+			adjustBtn := inlineButton(c, components.ButtonOutline, adjustLabel).Disabled(!canLaunch)
+			if multi {
+				adjustBtn.Label(adjustLabel + " · " + modelName)
+			}
+			if adjustBtn.Clicked() {
 				s.openServiceParamsDrawerFromExitNotice(notice)
 			}
-			if inlineButton(c, components.ButtonOutline, tr(c, "services.exited.action.view_log")).
-				Disabled(strings.TrimSpace(notice.LogPath) == "").Clicked() {
+			logLabel := tr(c, "services.exited.action.view_log")
+			logBtn := inlineButton(c, components.ButtonOutline, logLabel).Disabled(strings.TrimSpace(notice.LogPath) == "")
+			if multi {
+				logBtn.Label(logLabel + " · " + modelName)
+			}
+			if logBtn.Clicked() {
 				s.openEngineCardLog(notice.LogPath)
 			}
 			ui.Box(c).Grow(1)
-			if inlineButton(c, components.ButtonGhost, tr(c, "services.exited.action.dismiss")).Clicked() {
-				s.dismissExitedServiceNotice()
+			dismissLabel := tr(c, "services.exited.action.dismiss")
+			dismissBtn := inlineButton(c, components.ButtonGhost, dismissLabel)
+			if multi {
+				dismissBtn.Label(dismissLabel + " · " + modelName)
+			}
+			if dismissBtn.Clicked() {
+				s.dismissExitedServiceNoticeByID(notice.ID)
 			}
 		})
 	})
@@ -128,43 +157,42 @@ func (s *viewState) restartFromExitNotice(notice core.ServiceExitNotice) {
 		Engine:      notice.Engine,
 		ContextSize: ctxSize,
 		Port:        notice.RequestedPort,
+		LANAccess:   notice.LANAccess,
 		GPULayers:   cloneIntPtrUI(notice.GPULayers),
 		Threads:     cloneIntPtrUI(notice.Threads),
 		ExtraArgs:   append([]string(nil), notice.ExtraArgs...),
 	}
-	s.requestStandaloneLaunchWithConfirm(req, false)
+	s.launchOrRestartService(req, "")
 }
 
-func (s *viewState) dismissExitedServiceNotice() {
-	s.exitedNotice = nil
-	if s.simulate(previewDismissExitNotice{}) {
+func (s *viewState) dismissExitedServiceNoticeByID(id string) {
+	s.removeExitedNotice(id)
+	if s.simulate(previewDismissExitNotice{id: id}) {
 		return
 	}
 	if s.service == nil {
 		return
 	}
 	go func() {
-		_ = s.service.DismissExitedServiceNotice()
+		if id != "" {
+			_ = s.service.DismissExitedServiceNoticeByID(id)
+		} else {
+			_ = s.service.DismissExitedServiceNotice()
+		}
 	}()
 }
 
-func (s *viewState) requestStandaloneLaunchWithConfirm(req core.StandaloneStartRequest, directRestart bool) {
-	if !directRestart && s.managedServiceActive() {
+func (s *viewState) launchOrRestartService(req core.StandaloneStartRequest, restartServiceID string) {
+	if restartServiceID != "" {
 		s.serviceParams.open = false
-		s.standalone.switchConfirm = true
-		s.standalone.switchModel = req.Model
-		s.standalone.switchPrefill = false
-		s.standalone.switchAction = func() {
+		s.stopManagedServiceThen(restartServiceID, func() {
 			s.launchStandaloneRequest(req)
-		}
+		})
 		return
 	}
-	s.startStandaloneWithStopIfNeeded(req)
-}
-
-func (s *viewState) startStandaloneWithStopIfNeeded(req core.StandaloneStartRequest) {
-	if s.managedServiceActive() {
-		s.stopActiveServiceThen(func() {
+	if existing, ok := s.findRunningServiceByModelEngine(req.Model, req.Engine); ok {
+		s.serviceParams.open = false
+		s.stopManagedServiceThen(existing.ServiceID, func() {
 			s.launchStandaloneRequest(req)
 		})
 		return
@@ -188,6 +216,7 @@ func (s *viewState) launchStandaloneRequest(req core.StandaloneStartRequest) {
 		engine:      req.Engine,
 		contextSize: req.ContextSize,
 		port:        req.Port,
+		lanAccess:   req.LANAccess,
 		gpuLayers:   cloneIntPtrUI(req.GPULayers),
 		threads:     cloneIntPtrUI(req.Threads),
 		extraArgs:   append([]string(nil), req.ExtraArgs...),
@@ -205,12 +234,16 @@ func (s *viewState) launchStandaloneRequest(req core.StandaloneStartRequest) {
 			return
 		}
 		presets := s.service.RecentServices()
-		notice := s.service.ExitedServiceNotice()
+		notices := s.service.ExitedServiceNotices()
+		managed := s.service.ManagedServices()
+		summary := s.service.CurrentServiceMemorySummary()
 		s.runOnUI(func() {
 			s.standalone.preparing = false
 			s.standalone.preparingModel = ""
 			s.recentServices = presets
-			s.exitedNotice = notice
+			s.syncExitedNotices(notices)
+			s.managedServices = managed
+			s.memorySummary = summary
 			if apiErr != nil {
 				s.standalone.lastError = apiErr
 				s.failure = apiErr
@@ -218,6 +251,7 @@ func (s *viewState) launchStandaloneRequest(req core.StandaloneStartRequest) {
 				return
 			}
 			s.engineState = state
+			s.markServiceExpanded(serviceKey(state))
 		})
 	}()
 }
@@ -238,13 +272,30 @@ func formatTimestampShort(raw string) string {
 	return trimmed
 }
 
+func (s *viewState) hasVisibleRecentServices() bool {
+	for _, preset := range s.recentServices {
+		if !s.isPresetRunning(preset) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *viewState) recentServicesSection(c *ui.Context) {
 	t := tokens(c)
 	canLaunch := !s.busy && !s.standalone.preparing && (s.serveSupported || s.preview != nil)
 	for _, preset := range s.recentServices {
-		running := s.isPresetRunning(preset)
+		if s.isPresetRunning(preset) {
+			continue
+		}
 		modelAsset, foundModel := s.findModelAsset(preset.Model)
 		modelAvailable := foundModel && modelAsset.Available
+		ctxSize := preset.ContextSize
+		if ctxSize <= 0 {
+			ctxSize = 8192
+		}
+		budget := s.checkMemoryBudget(preset.Model, preset.Engine, ctxSize, preset.GPULayers)
+		memBlocked := budget.Known && !budget.Enough
 		cardEl, innerR := compactCard(c, ui.Column(c.Key("recent-svc-"+preset.Model+"-"+preset.Engine)).FillWidth().Gap(t.Density.Tight), t.Density.Stack)
 		cardEl.Children(func() {
 			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
@@ -253,8 +304,8 @@ func (s *viewState) recentServicesSection(c *ui.Context) {
 					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 						ui.Text(c, preset.Model).Bold().FontSize(t.Type.Section).SingleLine()
 						enginePill(c, preset.Engine)
-						if running {
-							inlineBadge(c, tr(c, "services.recent.running_badge"), stateSuccess, badgeOptions{Size: sizeSM, Style: badgeDot})
+						if preset.LANAccess {
+							inlineBadge(c, tr(c, "services.card.badge.lan"), stateWarning, badgeOptions{Size: sizeSM})
 						}
 					})
 					portLabel := tr(c, "services.recent.port_auto")
@@ -266,19 +317,21 @@ func (s *viewState) recentServicesSection(c *ui.Context) {
 						parts = append(parts, ctx)
 					}
 					ui.Text(c, joinParts(parts)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
+					if memBlocked {
+						ui.Text(c, trf(c, "services.recent.memory_insufficient",
+							"est", fmt.Sprintf("%.1f", budget.EstimatedGB),
+							"remaining", fmt.Sprintf("%.1f", budget.RemainingGB),
+						)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.Danger.Fg)
+					}
 				})
 				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 					if inlineButton(c, components.ButtonOutline, tr(c, "services.recent.action.params")).
 						Label(tr(c, "services.recent.action.params") + " · " + preset.Model).Clicked() {
-						if running {
-							s.openServiceParamsDrawerForRunning()
-						} else {
-							s.openServiceParamsDrawerForPreset(preset)
-						}
+						s.openServiceParamsDrawerForPreset(preset)
 					}
 					if inlineButton(c, components.ButtonPrimary, tr(c, "services.recent.action.start")).
 						Label(tr(c, "services.recent.action.start") + " · " + preset.Model).
-						Disabled(running || !canLaunch || !modelAvailable).Clicked() {
+						Disabled(!canLaunch || !modelAvailable || memBlocked).Clicked() {
 						s.startFromPreset(preset)
 					}
 				})
@@ -288,13 +341,8 @@ func (s *viewState) recentServicesSection(c *ui.Context) {
 }
 
 func (s *viewState) isPresetRunning(preset core.ServicePreset) bool {
-	st := s.engineState
-	if st.State != "running" && st.State != "starting" && st.State != "stopping" {
-		return false
-	}
-	modelMatch := (st.ModelName != "" && st.ModelName == preset.Model) || displayName(st.Model) == preset.Model
-	engineMatch := st.EngineName == "" || st.EngineName == preset.Engine
-	return modelMatch && engineMatch
+	_, ok := s.findRunningServiceByModelEngine(preset.Model, preset.Engine)
+	return ok
 }
 
 func (s *viewState) startFromPreset(preset core.ServicePreset) {
@@ -302,15 +350,16 @@ func (s *viewState) startFromPreset(preset core.ServicePreset) {
 	if ctxSize <= 0 {
 		ctxSize = 8192
 	}
-	s.requestStandaloneLaunchWithConfirm(core.StandaloneStartRequest{
+	s.launchOrRestartService(core.StandaloneStartRequest{
 		Model:       preset.Model,
 		Engine:      preset.Engine,
 		ContextSize: ctxSize,
 		Port:        preset.Port,
+		LANAccess:   preset.LANAccess,
 		GPULayers:   cloneIntPtrUI(preset.GPULayers),
 		Threads:     cloneIntPtrUI(preset.Threads),
 		ExtraArgs:   append([]string(nil), preset.ExtraArgs...),
-	}, false)
+	}, "")
 }
 
 func splitExtraArgs(raw string) ([]string, bool) {

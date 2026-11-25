@@ -50,7 +50,8 @@ type Service struct {
 	presetsMu              sync.Mutex
 	settings               UserSettings
 	keepServicesOnShutdown *bool
-	exitNotice             *ServiceExitNotice
+	exitNotices            []ServiceExitNotice
+	exitNoticesLoaded      bool
 	adoptPollInterval      time.Duration
 	settingsPath      string
 	exec              Executor
@@ -66,6 +67,9 @@ type Service struct {
 	downloads         []*downloadEntry
 	deletingAssets    int
 	engine            *engineEntry
+	services          map[string]*engineEntry
+	orphanedServices  map[string]*orphanEngine
+	reservedPorts     map[int]bool
 	candidateOrigins  map[string]localCandidateOrigin
 	engineTimeout     time.Duration
 	wake              chan struct{}
@@ -139,7 +143,7 @@ func New(ctx context.Context, o Options) (*Service, error) {
 		}
 	}
 	serviceCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
-	s := &Service{ctx: serviceCtx, cancel: cancel, shutdownDone: make(chan struct{}), queueDone: make(chan struct{}), settingsPath: o.SettingsPath, exec: o.Execute, execStream: o.ExecStream, Bus: NewEventBus(), wake: make(chan struct{}, 1), hostStatePath: o.HostStatePath, engineTimeout: o.EngineStartTimeout, checks: map[string]engineCheckEntry{}, checkInflight: map[string]bool{}, checkSupported: true, checkSem: make(chan struct{}, 2), checkRetry: time.Minute}
+	s := &Service{ctx: serviceCtx, cancel: cancel, shutdownDone: make(chan struct{}), queueDone: make(chan struct{}), settingsPath: o.SettingsPath, exec: o.Execute, execStream: o.ExecStream, Bus: NewEventBus(), wake: make(chan struct{}, 1), hostStatePath: o.HostStatePath, engineTimeout: o.EngineStartTimeout, services: map[string]*engineEntry{}, orphanedServices: map[string]*orphanEngine{}, reservedPorts: map[int]bool{}, checks: map[string]engineCheckEntry{}, checkInflight: map[string]bool{}, checkSupported: true, checkSem: make(chan struct{}, 2), checkRetry: time.Minute}
 	s.updater = newUpdateManager(s, o.Update)
 	raw, err := os.ReadFile(o.SettingsPath)
 	if err == nil {
@@ -315,7 +319,7 @@ func (s *Service) persistSettings(u UserSettings, forceCLIRefresh bool) (Setting
 	}
 	s.mu.Lock()
 	workspaceChanged := str(workspaceRoot(u)) != str(workspaceRoot(s.settings))
-	if workspaceChanged && (s.orphan != nil || s.runsActiveLocked() || (s.engine != nil && (s.engine.state.State == "starting" || s.engine.state.State == "running" || s.engine.state.State == "stopping"))) {
+	if workspaceChanged && (s.orphan != nil || len(s.orphanedServices) > 0 || s.runsActiveLocked() || s.hasActiveManagedServicesLocked() || (s.engine != nil && (s.engine.state.State == "starting" || s.engine.state.State == "running" || s.engine.state.State == "stopping"))) {
 		s.mu.Unlock()
 		return SettingsResponse{}, Err("workspace_busy")
 	}
@@ -358,7 +362,10 @@ func (s *Service) persistSettings(u UserSettings, forceCLIRefresh bool) (Setting
 	}
 	if workspaceChanged {
 		s.engine = nil
-		s.exitNotice = nil
+		s.services = map[string]*engineEntry{}
+		s.orphanedServices = map[string]*orphanEngine{}
+		s.exitNotices = nil
+		s.exitNoticesLoaded = false
 	}
 	s.settings = u
 	if changed {
@@ -416,6 +423,7 @@ func (s *Service) RefreshDevice() *ApiError {
 	}
 	s.device.Refreshing = true
 	gen := s.deviceGeneration
+	capturedAt := now()
 	s.mu.Unlock()
 	go func() {
 		p := s.probe(u)
@@ -453,7 +461,7 @@ func (s *Service) RefreshDevice() *ApiError {
 		s.device.Refreshing = false
 		if failure == nil {
 			s.device.Snapshot = snapshot
-			s.device.CapturedAt = ptr(now())
+			s.device.CapturedAt = ptr(capturedAt)
 		}
 		s.device.LastError = failure
 		s.Bus.Publish("device.updated", map[string]any{"snapshot": s.device.Snapshot, "captured_at": s.device.CapturedAt, "error": failure})

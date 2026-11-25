@@ -16,6 +16,7 @@ type ServicePreset struct {
 	Model         string   `json:"model"`
 	Engine        string   `json:"engine"`
 	Port          int      `json:"port,omitempty"`
+	LANAccess     bool     `json:"lan_access,omitempty"`
 	ContextSize   int64    `json:"context_size"`
 	GPULayers     *int     `json:"gpu_layers,omitempty"`
 	Threads       *int     `json:"threads,omitempty"`

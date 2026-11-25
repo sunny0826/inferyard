@@ -12,6 +12,7 @@ type destructiveKind string
 const (
 	destructiveCancelRun          destructiveKind = "cancel_run"
 	destructiveStopEngine         destructiveKind = "stop_engine"
+	destructiveStopService        destructiveKind = "stop_service"
 	destructiveStopOrphan         destructiveKind = "stop_orphan"
 	destructiveDiscardOrphan      destructiveKind = "discard_orphan"
 	destructiveCancelDownload     destructiveKind = "cancel_download"
@@ -154,13 +155,18 @@ func (s *viewState) destructiveDialogModal(c *ui.Context, option destructiveOpti
 
 func (s *viewState) dropStaleStopPrompt() {
 	pending := s.pendingDestructive
-	if destructiveKind(pending.kind) != destructiveStopEngine {
-		return
+	switch destructiveKind(pending.kind) {
+	case destructiveStopEngine:
+		if live := s.engineState.State == "starting" || s.engineState.State == "running"; live && pending.matchesEngine(s.currentEngine()) {
+			return
+		}
+		s.pendingDestructive = destructiveRequest{}
+	case destructiveStopService:
+		if svc, ok := s.findManagedServiceByID(pending.id); ok && (svc.State == "starting" || svc.State == "running") {
+			return
+		}
+		s.pendingDestructive = destructiveRequest{}
 	}
-	if live := s.engineState.State == "starting" || s.engineState.State == "running"; live && pending.matchesEngine(s.currentEngine()) {
-		return
-	}
-	s.pendingDestructive = destructiveRequest{}
 }
 
 func (s *viewState) destructiveTargetValid(request destructiveRequest) bool {
@@ -172,12 +178,24 @@ func (s *viewState) destructiveTargetValid(request destructiveRequest) bool {
 			return false
 		}
 		return request.matchesEngine(s.currentEngine())
+	case destructiveStopService:
+		svc, ok := s.findManagedServiceByID(request.id)
+		return ok && (svc.State == "starting" || svc.State == "running") && s.idleForEngineStop()
 	case destructiveStopOrphan, destructiveDiscardOrphan:
-		return s.engineState.State == "orphaned" && s.idleForEngineStop()
+		return (s.engineState.State == "orphaned" || s.hasOrphanService(request.id)) && s.idleForEngineStop()
 	case destructiveCancelDownload:
 		return s.downloadDownloading(request.id) && !s.busy
 	}
 	return true
+}
+
+func (s *viewState) hasOrphanService(id string) bool {
+	for _, st := range s.effectiveManagedServices() {
+		if st.State == "orphaned" && (id == "" || st.ServiceID == id || serviceKey(st) == id) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *viewState) cancelTargetActive(id string) bool {

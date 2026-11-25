@@ -41,6 +41,19 @@ func validateEngineArgsCredentials(args []string) *ApiError {
 	return nil
 }
 
+func isAllowedBindHost(host string, lanAccess bool) bool {
+	if host == "127.0.0.1" || host == "::1" || host == "localhost" {
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
+		return true
+	}
+	if lanAccess && (host == "0.0.0.0" || host == "::") {
+		return true
+	}
+	return false
+}
+
 func validateStartup(startup Startup) (string, int, *ApiError) {
 	if startup.Kind == "lmstudio" {
 		return "", 0, Err("local_engine_external_binding_required")
@@ -59,7 +72,7 @@ func validateStartup(startup Startup) (string, int, *ApiError) {
 		}
 		host = u.Hostname()
 		port, _ = strconv.Atoi(u.Port())
-		if host != "localhost" && !net.ParseIP(host).IsLoopback() {
+		if !isAllowedBindHost(host, startup.LANAccess) {
 			return "", 0, Err("engine_host_not_loopback")
 		}
 		st, err := os.Stat(startup.WorkingDirectory)
@@ -72,7 +85,7 @@ func validateStartup(startup Startup) (string, int, *ApiError) {
 			}
 		}
 	}
-	if host != "127.0.0.1" && host != "::1" && host != "localhost" {
+	if !isAllowedBindHost(host, startup.LANAccess) {
 		return "", 0, Err("engine_host_not_loopback")
 	}
 	for i, arg := range startup.Args {
@@ -83,7 +96,7 @@ func validateStartup(startup Startup) (string, int, *ApiError) {
 		if !inline && i+1 < len(startup.Args) {
 			value = startup.Args[i+1]
 		}
-		if value != "127.0.0.1" && value != "::1" && value != "localhost" {
+		if !isAllowedBindHost(value, startup.LANAccess) {
 			return "", 0, Err("engine_host_not_loopback")
 		}
 	}

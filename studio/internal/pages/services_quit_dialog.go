@@ -1,12 +1,9 @@
 package pages
 
 import (
-	"strings"
-
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"inferyard/studio/internal/core"
 )
 
 type quitServiceDialogState struct {
@@ -16,10 +13,7 @@ type quitServiceDialogState struct {
 }
 
 func (s *viewState) standaloneServiceRunning() bool {
-	if s.engineState.Origin != core.EngineOriginStandalone {
-		return false
-	}
-	return s.engineState.State == "running" || s.engineState.State == "starting"
+	return len(s.activeStandaloneServices()) > 0
 }
 
 func (s *viewState) shouldShowQuitServiceDialog() bool {
@@ -67,22 +61,24 @@ func (s *viewState) quitServiceDialog(c *ui.Context) {
 	}
 	t := tokens(c)
 	title := tr(c, "services.quit_dialog.title")
-	modelName := strings.TrimSpace(s.engineState.ModelName)
-	if modelName == "" {
-		modelName = displayName(s.engineState.Model)
+	active := s.activeStandaloneServices()
+	count := len(active)
+	if count == 0 {
+		count = 1
 	}
-	if modelName == "" {
-		modelName = tr(c, "engine.card.title")
+	msg := trf(c, "services.quit_dialog.message_multi", "count", count)
+	if count == 1 && len(active) == 1 {
+		msg = trf(c, "services.quit_dialog.message", "model", s.serviceModelTitle(c, active[0]))
 	}
 	studioDialog(c.Key("quit-service-confirm-dialog"), &s.quitDialog.open, components.DialogOptions{Label: title}, func(panel ui.Element) {
 		panel.Role(ui.RoleAlertDialog)
 		components.Text(c, title).Bold()
-		components.Text(c, trf(c, "services.quit_dialog.message", "model", modelName)).TextColor(t.Color.FgSecondary)
+		components.Text(c, msg).TextColor(t.Color.FgSecondary)
 		ui.Row(c).FillWidth().Wrap().Justify(ui.End).Gap(t.Density.Row).Children(func() {
 			if button(c, tr(c, "services.quit_dialog.cancel")).Clicked() {
 				s.quitDialog.open = false
 			}
-			if dangerButton(c, tr(c, "services.quit_dialog.stop_and_quit")).Clicked() {
+			if dangerButton(c, tr(c, "services.quit_dialog.stop_all_and_quit")).Clicked() {
 				s.confirmQuitWithServicePolicy(false)
 			}
 			if primaryButton(c, tr(c, "services.quit_dialog.keep_and_quit")).Clicked() {

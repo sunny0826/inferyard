@@ -77,6 +77,7 @@ var previewScenes = []struct {
 	{"preview.scene.update_ready", previewUpdateReadyToApply},
 	{"preview.scene.update_error", previewUpdateError},
 	{"preview.scene.service_exited", previewServiceExitedScene},
+	{"preview.scene.services_multi", previewMultiServicesScene},
 }
 
 func previewDenseResources(s *viewState) {
@@ -141,7 +142,7 @@ func previewBase(ctx context.Context) *viewState {
 				},
 				{
 					Name: "Preview-Small.gguf", Format: "gguf", Available: true,
-					Path: filepath.Join(root, "models", "Preview-Small.gguf"), Deletable: true,
+					SizeBytes: previewValue(int64(2 << 30)), Path: filepath.Join(root, "models", "Preview-Small.gguf"), Deletable: true,
 				},
 			},
 			Engines: []core.EngineAsset{{

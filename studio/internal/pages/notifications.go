@@ -333,16 +333,29 @@ func (s *viewState) ingestCoreEvents(events []core.Event) {
 
 func (s *viewState) ingestCoreEvent(event core.Event) {
 	switch event.Type {
+	case "services.state":
+		var payload struct {
+			Services []core.EngineState `json:"services"`
+		}
+		if json.Unmarshal(event.Data, &payload) == nil {
+			s.applyServicesStateEvent(payload.Services)
+		}
 	case "service.exited":
 		var payload struct {
 			Notice *core.ServiceExitNotice `json:"notice"`
 		}
 		if json.Unmarshal(event.Data, &payload) == nil && payload.Notice != nil {
-			cp := *payload.Notice
-			s.exitedNotice = &cp
+			s.appendExitedNotice(*payload.Notice)
 		}
 	case "service.exit_notice_cleared":
-		s.exitedNotice = nil
+		var payload struct {
+			ID string `json:"id"`
+		}
+		if json.Unmarshal(event.Data, &payload) == nil && strings.TrimSpace(payload.ID) != "" {
+			s.removeExitedNotice(strings.TrimSpace(payload.ID))
+		} else {
+			s.syncExitedNotices(nil)
+		}
 	case "report.created":
 		var payload struct {
 			Report struct {

@@ -4,7 +4,6 @@ package pages
 
 import (
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 	"slices"
 	"time"
@@ -25,11 +24,13 @@ func (p *previewSession) dispatch(intent previewIntent) {
 	case previewSaveServicePreset:
 		p.savePreviewServicePreset(op.preset)
 	case previewDismissExitNotice:
-		p.dismissPreviewExitNotice()
+		p.dismissPreviewExitNotice(op.id)
+	case previewStopManagedService:
+		p.stopPreviewManagedService(op.serviceID, op.after)
 	case previewTestServiceEndpoint:
 		p.testPreviewServiceEndpoint(op)
 	case previewStopEngineThen:
-		p.stopPreviewEngine(op.after)
+		p.stopAllPreviewServices(op.after)
 	case previewSpeedStart:
 		p.startSpeed(op)
 	case previewSpeedCancel:
@@ -507,8 +508,8 @@ func (p *previewSession) startPreviewStandalone(op previewStandaloneStart) {
 	if family == "polystrata" || family == "vllm" || family == "sglang" {
 		executable = "python"
 	}
-	p.cancelEvents("service")
-	p.after("service", 300*time.Millisecond, func() {
+	serviceID := core.ServiceIDFor(op.model, op.engine)
+	p.after("service-"+serviceID, 300*time.Millisecond, func() {
 		s.standalone.preparing = false
 		s.standalone.preparingModel = ""
 		if fail {
@@ -517,6 +518,7 @@ func (p *previewSession) startPreviewStandalone(op previewStandaloneStart) {
 			s.failure = err
 			s.failurePage = s.selected
 			s.engineState = core.EngineState{
+				ServiceID:   serviceID,
 				State:       "failed",
 				Local:       localEngine,
 				Origin:      core.EngineOriginStandalone,
@@ -532,79 +534,64 @@ func (p *previewSession) startPreviewStandalone(op previewStandaloneStart) {
 			}
 			return
 		}
-		port := op.port
-		if port <= 0 {
-			port = 48857
+		port, portErr := p.previewNextAvailablePort(op.port, serviceID)
+		if portErr != nil {
+			s.standalone.lastError = portErr
+			s.failure = portErr
+			s.failurePage = s.selected
+			return
 		}
-		endpoint := fmt.Sprintf("http://127.0.0.1:%d", port)
-		s.exitedNotice = nil
-		s.engineState = core.EngineState{
-			State:       "starting",
-			Local:       localEngine,
-			Origin:      core.EngineOriginStandalone,
-			Family:      family,
-			Adapter:     adapter,
-			Executable:  executable,
-			EngineName:  op.engine,
-			ModelName:   op.model,
-			Model:       modelPath,
-			ModelKind:   modelKind,
-			Port:        port,
-			ContextSize: op.contextSize,
-			GPULayers:   cloneIntPtrUI(op.gpuLayers),
-			Threads:     cloneIntPtrUI(op.threads),
-			ExtraArgs:   append([]string(nil), op.extraArgs...),
-			StartedAt:   time.Now().UTC().Format(time.RFC3339),
-			Pid:         42001,
-			Endpoint:    endpoint,
-			LogPath:     "/preview/logs/standalone.log",
-			Candidate:   "preview-standalone",
+		endpoint := p.previewEndpointURL(op.lanAccess, port)
+		budget := s.estimateLocalMemoryBudget(op.model, op.engine, op.contextSize, op.gpuLayers)
+		p.clearPreviewExitNoticeFor(serviceID, op.model, op.engine)
+		st := core.EngineState{
+			ServiceID:         serviceID,
+			State:             "starting",
+			Local:             localEngine,
+			Origin:            core.EngineOriginStandalone,
+			Family:            family,
+			Adapter:           adapter,
+			Executable:        executable,
+			EngineName:        op.engine,
+			ModelName:         op.model,
+			Model:             modelPath,
+			ModelKind:         modelKind,
+			Port:              port,
+			RequestedPort:     op.port,
+			LANAccess:         op.lanAccess,
+			EstimatedMemoryGB: budget.EstimatedGB,
+			ContextSize:       op.contextSize,
+			GPULayers:         cloneIntPtrUI(op.gpuLayers),
+			Threads:           cloneIntPtrUI(op.threads),
+			ExtraArgs:         append([]string(nil), op.extraArgs...),
+			StartedAt:         time.Now().UTC().Format(time.RFC3339),
+			Pid:               42001 + int64(len(s.managedServices)),
+			Endpoint:          endpoint,
+			LogPath:           "/preview/logs/standalone.log",
+			Candidate:         "preview-standalone",
 		}
+		p.upsertPreviewManagedService(st)
+		s.markServiceExpanded(serviceID)
 		p.savePreviewServicePreset(core.ServicePreset{
 			Model:       op.model,
 			Engine:      op.engine,
 			Port:        op.port,
+			LANAccess:   op.lanAccess,
 			ContextSize: op.contextSize,
 			GPULayers:   cloneIntPtrUI(op.gpuLayers),
 			Threads:     cloneIntPtrUI(op.threads),
 			ExtraArgs:   append([]string(nil), op.extraArgs...),
 		})
-		p.after("service", 500*time.Millisecond, func() {
-			s.engineState.State = "running"
-		})
-	})
-}
-
-func (p *previewSession) stopPreviewEngine(after func()) {
-	s := p.state
-	if s.running() != nil || (s.speed != nil && s.speed.current != nil && s.speed.current.active()) {
-		s.failure = core.Err("run_active")
-		return
-	}
-	if p.takeFailure() {
-		s.failure = core.Err("engine_stop_failed")
-		return
-	}
-	p.cancelEvents("service")
-	s.engineState.State = "stopping"
-	p.after("service", 400*time.Millisecond, func() {
-		if s.engineState.Origin == core.EngineOriginStandalone {
-			s.engineState = core.EngineState{
-				State:       "stopped",
-				Origin:      core.EngineOriginStandalone,
-				Model:       s.engineState.Model,
-				ModelKind:   s.engineState.ModelKind,
-				Family:      s.engineState.Family,
-				Adapter:     s.engineState.Adapter,
-				ContextSize: s.engineState.ContextSize,
-				Candidate:   s.engineState.Candidate,
+		p.after("service-ready-"+serviceID, 500*time.Millisecond, func() {
+			for i := range s.managedServices {
+				if s.managedServices[i].ServiceID == serviceID {
+					s.managedServices[i].State = "running"
+				}
 			}
-		} else {
-			s.engineState = core.EngineState{State: "stopped"}
-		}
-		if after != nil {
-			after()
-		}
+			if s.engineState.ServiceID == serviceID {
+				s.engineState.State = "running"
+			}
+		})
 	})
 }
 

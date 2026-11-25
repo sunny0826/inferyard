@@ -179,10 +179,14 @@ func TestServicesSwitchConfirmationAndExitNoticeNotDismissedEarly(t *testing.T) 
 		{Model: "Llama-3-8B.gguf", Engine: "llama-cpp-default", Port: 0, ContextSize: 8192},
 	}
 
-	// Starting another model from Recent while one is running opens switch confirm dialog instead of stopping immediately.
+	// Starting another model from Recent while one is running launches in parallel without switch confirmation.
+	s.service = nil
 	s.startFromPreset(s.recentServices[0])
-	if !s.standalone.switchConfirm || s.standalone.switchModel != "Llama-3-8B.gguf" || s.standalone.switchAction == nil {
-		t.Fatalf("expected switch confirmation dialog armed, got %+v", s.standalone)
+	if s.standalone.switchConfirm {
+		t.Fatalf("expected parallel launch without switch confirmation, got %+v", s.standalone)
+	}
+	if s.standalone.lastModel != "Llama-3-8B.gguf" {
+		t.Fatalf("expected parallel launch request for Llama-3-8B.gguf, got %+v", s.standalone)
 	}
 
 	// Restarting from exit notice does not dismiss notice before backend starts.

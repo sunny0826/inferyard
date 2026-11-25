@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
@@ -197,38 +196,62 @@ func (s *viewState) findModelAsset(name string) (core.ModelAsset, bool) {
 	return core.ModelAsset{}, false
 }
 
-func (s *viewState) standaloneRowState(m core.ModelAsset) (state string, endpoint string, logPath string, canWebUI bool) {
-	if s.standalone.preparing && s.standalone.preparingModel == m.Name {
-		return "preparing", "", "", false
+func standaloneServiceMatchesModel(st core.EngineState, m core.ModelAsset) bool {
+	if st.Origin != core.EngineOriginStandalone {
+		return false
 	}
-	st := s.engineState
-	matchedModel := st.Origin == core.EngineOriginStandalone && (m.Path != "" && cleanMatchPath(st.Model) == cleanMatchPath(m.Path) || m.Path == "" && st.Model == m.Name)
-	if matchedModel {
+	if m.Name != "" && st.ModelName != "" && st.ModelName == m.Name {
+		return true
+	}
+	if m.Name != "" && st.EngineName != "" && st.ServiceID != "" && st.ServiceID == core.ServiceIDFor(m.Name, st.EngineName) {
+		return true
+	}
+	if m.Path != "" && st.Model != "" && cleanMatchPath(st.Model) == cleanMatchPath(m.Path) {
+		return true
+	}
+	return m.Name != "" && st.Model == m.Name
+}
+
+func (s *viewState) standaloneRowState(m core.ModelAsset) (state string, svc core.EngineState, endpoint string, logPath string, canWebUI bool) {
+	if s.standalone.preparing && s.standalone.preparingModel == m.Name {
+		return "preparing", core.EngineState{}, "", "", false
+	}
+	for _, st := range s.effectiveManagedServices() {
+		if !standaloneServiceMatchesModel(st, m) {
+			continue
+		}
 		switch st.State {
 		case "starting", "running", "stopping":
-			_, ok, _ := engineWebUIInfo(st)
-			return st.State, loopbackEndpoint(st.Endpoint), st.LogPath, ok
-		case "failed":
-			return "failed", "", st.LogPath, false
+			ep, _ := serviceEndpointDisplay(st)
+			_, ok, _ := serviceWebUIInfo(st)
+			return st.State, st, ep, st.LogPath, ok
 		}
 	}
-	if s.standalone.lastError != nil && s.standalone.lastModel == m.Name {
-		return "failed", "", "", false
+	if standaloneServiceMatchesModel(s.engineState, m) && s.engineState.State == "failed" {
+		return "failed", s.engineState, "", s.engineState.LogPath, false
 	}
-	return "", "", "", false
+	if s.standalone.lastError != nil && s.standalone.lastModel == m.Name {
+		return "failed", core.EngineState{}, "", "", false
+	}
+	return "", core.EngineState{}, "", "", false
 }
 
 func (s *viewState) standaloneStartBlockReason() string {
-	switch {
-	case s.roundWorkActive():
+	if s.roundWorkActive() {
 		return l10n.TR("models.serve.blocked.run_active")
-	case s.engineState.State == "orphaned":
-		return l10n.TR("models.serve.blocked.orphaned")
-	case !s.serveSupported:
-		return l10n.TR("models.serve.blocked.cli_outdated")
-	default:
-		return ""
 	}
+	if s.engineState.State == "orphaned" {
+		return l10n.TR("models.serve.blocked.orphaned")
+	}
+	for _, st := range s.effectiveManagedServices() {
+		if st.State == "orphaned" {
+			return l10n.TR("models.serve.blocked.orphaned")
+		}
+	}
+	if !s.serveSupported {
+		return l10n.TR("models.serve.blocked.cli_outdated")
+	}
+	return ""
 }
 
 func (s *viewState) openStandaloneDrawer(model core.ModelAsset, prefillLast bool) {
@@ -299,13 +322,7 @@ func (s *viewState) requestStandaloneStart(model core.ModelAsset, prefillLast bo
 		return
 	}
 	// If the same model is already active, do not reopen drawer or stop it.
-	if rowState, _, _, _ := s.standaloneRowState(model); rowState == "preparing" || rowState == "starting" || rowState == "running" || rowState == "stopping" {
-		return
-	}
-	if s.managedServiceActive() {
-		s.standalone.switchConfirm = true
-		s.standalone.switchModel = model.Name
-		s.standalone.switchPrefill = prefillLast
+	if rowState, _, _, _, _ := s.standaloneRowState(model); rowState == "preparing" || rowState == "starting" || rowState == "running" || rowState == "stopping" {
 		return
 	}
 	s.openStandaloneDrawer(model, prefillLast)
@@ -327,44 +344,11 @@ func (s *viewState) resolvedStandaloneContext(model core.ModelAsset) (int64, str
 }
 
 func (s *viewState) launchStandalone(modelName, engineName string, contextSize int64) {
-	s.standalone.drawerOpen = false
-	s.standalone.preparing = true
-	s.standalone.preparingModel = modelName
-	s.standalone.lastModel = modelName
-	if s.standalone.lastParams == nil {
-		s.standalone.lastParams = map[string]standaloneAttempt{}
-	}
-	s.standalone.lastParams[modelName] = standaloneAttempt{engine: engineName, context: contextSize}
-	s.standalone.lastError = nil
-	if s.simulate(previewStandaloneStart{model: modelName, engine: engineName, contextSize: contextSize}) {
-		return
-	}
-	if s.service == nil {
-		s.standalone.preparing = false
-		return
-	}
-	s.enqueueStatusToast(l10n.TR("models.serve.toast.started"))
-	go func() {
-		state, apiErr := s.service.StartStandalone(s.ctx, core.StandaloneStartRequest{
-			Model:       modelName,
-			Engine:      engineName,
-			ContextSize: contextSize,
-		})
-		if s.ctx.Err() != nil {
-			return
-		}
-		s.win.Update(func() {
-			s.standalone.preparing = false
-			s.standalone.preparingModel = ""
-			if apiErr != nil {
-				s.standalone.lastError = apiErr
-				s.failure = apiErr
-				s.failurePage = s.selected
-				return
-			}
-			s.engineState = state
-		})
-	}()
+	s.launchStandaloneRequest(core.StandaloneStartRequest{
+		Model:       modelName,
+		Engine:      engineName,
+		ContextSize: contextSize,
+	})
 }
 
 func (s *viewState) stopStandaloneService() {
@@ -384,6 +368,15 @@ func (s *viewState) stopStandaloneService() {
 	})
 }
 
+func hasActiveServiceInList(list []core.EngineState) bool {
+	for _, st := range list {
+		if st.State == "starting" || st.State == "running" || st.State == "stopping" {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *viewState) stopActiveServiceThen(after func()) {
 	if s.preview != nil {
 		s.simulate(previewStopEngineThen{after: after})
@@ -393,22 +386,47 @@ func (s *viewState) stopActiveServiceThen(after func()) {
 		return
 	}
 	go func() {
-		if _, apiErr := s.service.StopEngine(); apiErr != nil {
-			s.win.Update(func() {
-				s.failure = apiErr
+		stopDone := make(chan struct{})
+		go func() {
+			s.service.StopAllManagedServices()
+			close(stopDone)
+		}()
+		deadline := time.NewTimer(15 * time.Second)
+		defer deadline.Stop()
+		select {
+		case <-stopDone:
+		case <-s.ctx.Done():
+			return
+		case <-deadline.C:
+			s.runOnUI(func() {
+				s.failure = core.Err("engine_stop_failed")
 				s.failurePage = s.selected
 			})
 			return
 		}
-		deadline := time.Now().Add(15 * time.Second)
-		for time.Now().Before(deadline) {
-			if s.ctx.Err() != nil {
+		if st := s.service.Engine(); st.State == "starting" || st.State == "running" {
+			if _, apiErr := s.service.StopEngine(); apiErr != nil {
+				s.runOnUI(func() {
+					s.failure = apiErr
+					s.failurePage = s.selected
+				})
 				return
 			}
-			st := s.service.Engine()
-			if st.State == "" || st.State == "stopped" || st.State == "failed" {
-				s.win.Update(func() {
-					s.engineState = st
+		}
+		waitDeadline := time.Now().Add(15 * time.Second)
+		for time.Now().Before(waitDeadline) {
+			if s.ctx != nil && s.ctx.Err() != nil {
+				return
+			}
+			managed := s.service.ManagedServices()
+			eng := s.service.Engine()
+			engIdle := eng.State == "" || eng.State == "stopped" || eng.State == "failed"
+			if !hasActiveServiceInList(managed) && engIdle {
+				summary := s.service.CurrentServiceMemorySummary()
+				s.runOnUI(func() {
+					s.managedServices = managed
+					s.memorySummary = summary
+					s.engineState = eng
 					if after != nil {
 						after()
 					}
@@ -417,7 +435,7 @@ func (s *viewState) stopActiveServiceThen(after func()) {
 			}
 			time.Sleep(100 * time.Millisecond)
 		}
-		s.win.Update(func() {
+		s.runOnUI(func() {
 			s.failure = core.Err("engine_stop_failed")
 			s.failurePage = s.selected
 		})
@@ -425,8 +443,7 @@ func (s *viewState) stopActiveServiceThen(after func()) {
 }
 
 func (s *viewState) standaloneRunningForBenchmarkConflict() bool {
-	return s.engineState.Origin == core.EngineOriginStandalone &&
-		(s.engineState.State == "starting" || s.engineState.State == "running")
+	return len(s.activeStandaloneServices()) > 0
 }
 
 func (s *viewState) guardStandaloneForBenchmark(action func()) bool {
@@ -436,67 +453,6 @@ func (s *viewState) guardStandaloneForBenchmark(action func()) bool {
 	s.standalone.benchmarkConfirm = true
 	s.standalone.benchmarkAction = action
 	return false
-}
-
-func (s *viewState) modelStandaloneActions(c *ui.Context, m core.ModelAsset) {
-	if !m.Available {
-		return
-	}
-	rowState, endpoint, logPath, canWebUI := s.standaloneRowState(m)
-	switch rowState {
-	case "preparing", "starting", "running", "stopping":
-		kind := stateActive
-		badgeKey := "models.serve.badge." + rowState
-		if rowState == "running" {
-			kind = stateSuccess
-		}
-		badge(c, tr(c, badgeKey), kind, badgeOptions{Style: badgeDot, Size: sizeSM})
-		if endpoint != "" {
-			ui.Text(c, endpoint).FontSize(tokens(c).Type.Caption).TextColor(tokens(c).Color.FgSecondary).SingleLine()
-			outlineButton(c, tr(c, "engine.action.copy_endpoint")).OnClick(func() {
-				s.copyEngineEndpoint(c, s.engineState.Endpoint)
-			})
-		}
-		if canWebUI {
-			outlineButton(c, tr(c, "engine.action.open_webui")).OnClick(func() {
-				s.openEngineWebUI(c, s.engineState.Endpoint)
-			})
-		}
-		if logPath != "" {
-			outlineButton(c, tr(c, "engine.action.open_log")).OnClick(func() {
-				s.openEngineCardLog(logPath)
-			})
-		}
-		if rowState != "preparing" {
-			dangerButton(c, tr(c, "models.serve.action.stop")).Disabled(rowState == "stopping" || s.busy).OnClick(s.stopStandaloneService)
-		}
-	case "failed":
-		badge(c, tr(c, "models.serve.badge.failed"), stateDanger, badgeOptions{Style: badgeDot, Size: sizeSM})
-		if logPath != "" {
-			outlineButton(c, tr(c, "engine.action.open_log")).OnClick(func() {
-				s.openEngineCardLog(logPath)
-			})
-		}
-		retryDisabled := s.standaloneStartBlockReason() != "" || s.busy || s.standalone.preparing
-		button(c, tr(c, "models.serve.action.retry")).Disabled(retryDisabled).OnClick(func() {
-			s.requestStandaloneStart(m, true)
-		})
-	default:
-		label := tr(c, "models.serve.action.start")
-		reason := s.standaloneStartBlockReason()
-		disabled := reason != "" || s.busy || s.standalone.preparing
-		if disabled && reason != "" {
-			wrap := ui.Box(c)
-			wrap.Children(func() {
-				primaryButton(c, label).Label(label + " · " + m.Name).Disabled(true).Description(reason)
-			})
-			components.Tooltip(c, wrap, reason)
-			return
-		}
-		if primaryButton(c, label).Label(label + " · " + m.Name).Disabled(disabled).Clicked() {
-			s.requestStandaloneStart(m, false)
-		}
-	}
 }
 
 

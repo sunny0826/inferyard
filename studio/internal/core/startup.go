@@ -25,13 +25,16 @@ type Startup struct {
 	ModelKind        string            `json:"model_kind,omitempty"`
 	ContextSize      int64             `json:"context_size,omitempty"`
 	WebUIDisabled    bool              `json:"webui_disabled,omitempty"`
-	EngineName       string            `json:"engine_name,omitempty"`
-	ModelName        string            `json:"model_name,omitempty"`
-	ServedModel      string            `json:"served_model,omitempty"`
-	RequestedPort    int               `json:"requested_port,omitempty"`
-	GPULayers        *int              `json:"gpu_layers,omitempty"`
-	Threads          *int              `json:"threads,omitempty"`
-	ExtraArgs        []string          `json:"extra_args,omitempty"`
+	EngineName        string            `json:"engine_name,omitempty"`
+	ModelName         string            `json:"model_name,omitempty"`
+	ServedModel       string            `json:"served_model,omitempty"`
+	ServiceID         string            `json:"service_id,omitempty"`
+	RequestedPort     int               `json:"requested_port,omitempty"`
+	LANAccess         bool              `json:"lan_access,omitempty"`
+	EstimatedMemoryGB float64           `json:"estimated_memory_gb,omitempty"`
+	GPULayers         *int              `json:"gpu_layers,omitempty"`
+	Threads           *int              `json:"threads,omitempty"`
+	ExtraArgs         []string          `json:"extra_args,omitempty"`
 }
 type ProcessCandidate struct {
 	PID  int64  `json:"pid"`

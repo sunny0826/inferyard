@@ -132,10 +132,10 @@ func TestStandaloneSwitchAndBenchmarkConflictGuards(t *testing.T) {
 		t.Fatalf("expected same-model start to be idempotent, got %+v", s.standalone)
 	}
 
-	// Different model: opens switch confirmation dialog.
+	// Different model: P3 multi-service opens drawer directly for parallel start (no switch confirmation).
 	s.requestStandaloneStart(m2, false)
-	if !s.standalone.switchConfirm || s.standalone.switchModel != "m2.gguf" {
-		t.Fatalf("expected switch confirmation for m2.gguf, got %+v", s.standalone)
+	if !s.standalone.drawerOpen || s.standalone.modelName != "m2.gguf" || s.standalone.switchConfirm {
+		t.Fatalf("expected parallel start drawer for m2.gguf without switchConfirm, got %+v", s.standalone)
 	}
 
 	// Standalone running blocks direct benchmark start and opens handoff confirm.
@@ -165,7 +165,7 @@ func TestStandaloneSwitchAndBenchmarkConflictGuards(t *testing.T) {
 		t.Fatalf("expected standalone origin row in engineCardSummary, got %+v", rows)
 	}
 
-	// Standalone starting does NOT count as benchmark roundWorkActive; switch confirm still triggers.
+	// Standalone starting does NOT count as benchmark roundWorkActive; parallel drawer opens directly.
 	s.serveSupported = true
 	s.standalone = standaloneServeState{}
 	s.engineState.State = "starting"
@@ -173,8 +173,8 @@ func TestStandaloneSwitchAndBenchmarkConflictGuards(t *testing.T) {
 		t.Fatalf("standalone starting must not block roundWorkActive")
 	}
 	s.requestStandaloneStart(m2, false)
-	if !s.standalone.switchConfirm || s.standalone.switchModel != "m2.gguf" {
-		t.Fatalf("expected switch confirm while standalone is starting, got %+v", s.standalone)
+	if !s.standalone.drawerOpen || s.standalone.modelName != "m2.gguf" || s.standalone.switchConfirm {
+		t.Fatalf("expected parallel start drawer while another standalone is starting, got %+v", s.standalone)
 	}
 
 	// retryBenchmark is intercepted while standalone service is running/starting.

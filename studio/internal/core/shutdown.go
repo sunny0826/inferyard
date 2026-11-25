@@ -47,16 +47,17 @@ func (s *Service) beginShutdown() {
 			s.speedPreparing.Wait()
 			<-s.queueDone
 			s.mu.Lock()
-			e := s.engine
 			keepStandalone := EffectiveKeepServicesOnQuitValue(s.settings)
 			if s.keepServicesOnShutdown != nil {
 				keepStandalone = *s.keepServicesOnShutdown
 			}
-			var orphanDone <-chan struct{}
-			if s.orphan != nil && s.orphan.state.State == "stopping" {
-				orphanDone = s.orphan.done
-			}
-			if e != nil {
+			var waitEntries []*engineEntry
+			seenEntries := map[*engineEntry]bool{}
+			handleEntry := func(e *engineEntry) {
+				if e == nil || seenEntries[e] {
+					return
+				}
+				seenEntries[e] = true
 				if normalizeEngineOrigin(e.state.Origin) == EngineOriginStandalone &&
 					keepStandalone &&
 					(e.state.State == "starting" || e.state.State == "running") {
@@ -64,13 +65,27 @@ func (s *Service) beginShutdown() {
 				} else {
 					s.stopEngineLocked(e)
 				}
+				waitEntries = append(waitEntries, e)
+			}
+			handleEntry(s.engine)
+			for _, svc := range s.services {
+				handleEntry(svc)
+			}
+			var orphanDones []<-chan struct{}
+			if s.orphan != nil && s.orphan.state.State == "stopping" && s.orphan.done != nil {
+				orphanDones = append(orphanDones, s.orphan.done)
+			}
+			for _, orphan := range s.orphanedServices {
+				if orphan != nil && orphan.state.State == "stopping" && orphan.done != nil {
+					orphanDones = append(orphanDones, orphan.done)
+				}
 			}
 			s.mu.Unlock()
-			if e != nil {
+			for _, e := range waitEntries {
 				<-e.done
 			}
-			if orphanDone != nil {
-				<-orphanDone
+			for _, done := range orphanDones {
+				<-done
 			}
 			s.cleanupUpdateStagingOnShutdown()
 			close(s.shutdownDone)

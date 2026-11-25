@@ -19,8 +19,15 @@ func (s *Service) StopOrphanEngine() (EngineState, *ApiError) {
 	}
 	e := s.orphan
 	if e == nil {
+		e = s.firstOrphanServiceLocked()
+	}
+	if e == nil {
 		return EngineState{State: "stopped"}, nil
 	}
+	return s.stopOrphanEntryLocked(e)
+}
+
+func (s *Service) stopOrphanEntryLocked(e *orphanEngine) (EngineState, *ApiError) {
 	if e.state.State == "stopping" {
 		return clone(e.state), nil
 	}
@@ -31,6 +38,7 @@ func (s *Service) StopOrphanEngine() (EngineState, *ApiError) {
 	if err != nil {
 		e.state.Error = orphanIdentityError()
 		s.Bus.Publish("engine.state", map[string]any{"engine": clone(e.state)})
+		s.publishServicesStateLocked()
 		return clone(e.state), e.state.Error
 	}
 	if !same {
@@ -42,6 +50,7 @@ func (s *Service) StopOrphanEngine() (EngineState, *ApiError) {
 	e.state.State, e.state.Error = "stopping", nil
 	e.done = make(chan struct{})
 	s.Bus.Publish("engine.state", map[string]any{"engine": clone(e.state)})
+	s.publishServicesStateLocked()
 	go s.stopOrphan(e)
 	return clone(e.state), nil
 }
@@ -97,6 +106,7 @@ func (s *Service) stopOrphan(e *orphanEngine) {
 	if failure != nil {
 		e.state.State, e.state.Error = "orphaned", failure
 		s.Bus.Publish("engine.state", map[string]any{"engine": clone(e.state)})
+		s.publishServicesStateLocked()
 	}
 }
 
@@ -144,6 +154,10 @@ func (s *Service) clearOrphanLocked(e *orphanEngine) *ApiError {
 	if s.orphan == e {
 		s.orphan = nil
 	}
-	s.Bus.Publish("engine.state", map[string]any{"engine": EngineState{State: "stopped"}})
+	if e.state.ServiceID != "" && s.orphanedServices[e.state.ServiceID] == e {
+		delete(s.orphanedServices, e.state.ServiceID)
+	}
+	s.Bus.Publish("engine.state", map[string]any{"engine": s.primaryManagedServiceLocked()})
+	s.publishServicesStateLocked()
 	return nil
 }
