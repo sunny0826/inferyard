@@ -163,6 +163,9 @@ func (s *Service) startFromStartupLocked(startup Startup, origin, ref string) (E
 	if s.deletingAssets > 0 {
 		return EngineState{}, workspaceBusyError()
 	}
+	if s.isEngineUpgradingLocked(startup.EngineName, startup.Path) {
+		return EngineState{}, engineUpdatingError()
+	}
 	if s.orphan != nil {
 		return clone(s.orphan.state), &ApiError{Code: "engine_orphaned", Message: l10n.TR("core.engine.err.handle_orphan_first")}
 	}

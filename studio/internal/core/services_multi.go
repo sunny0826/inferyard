@@ -338,6 +338,9 @@ func (s *Service) startManagedServiceLocked(startup Startup, slug, serviceID str
 	if s.deletingAssets > 0 {
 		return EngineState{}, workspaceBusyError()
 	}
+	if s.isEngineUpgradingLocked(startup.EngineName, startup.Path) {
+		return EngineState{}, engineUpdatingError()
+	}
 	if orphan, exists := s.orphanedServices[serviceID]; exists && orphan != nil {
 		return clone(orphan.state), &ApiError{Code: "engine_orphaned", Message: l10n.TR("core.engine.err.handle_orphan_first")}
 	}
