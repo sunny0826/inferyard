@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.0.15
+
+- feat(studio): replace benchmark ETA guesswork with backend elapsed time (#229)
+- fix(studio): move notification bell to top-right header and polish popover (#228)
+- feat(studio): trailing sidebar toggle and P4 evidence feedback, runtime memory, exclusivity checks, and engine updates (#227)
+- perf(cli): eliminate local-engine re-verification overhead on macOS (#226)
+- feat(studio): multi-service concurrency, port conflict checks, memory budget, and LAN access (P3) (#225)
+- feat(studio): standalone service presets, keep-alive adoption, exit notices, and usage examples (P2) (#224)
+- feat(studio): redesign sidebar, services home, library, and benchmarks list (P1) (#223)
+- feat(studio): add About tab in Settings with build metadata (#222)
+- feat: support standalone model serving from CLI and Studio Models page (#221)
+
 ## 0.0.14
 
 - chore(studio): remove unused isExtraModelRoot helper and TASKS.md (#219)
