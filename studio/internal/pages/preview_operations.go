@@ -19,6 +19,8 @@ func (p *previewSession) dispatch(intent previewIntent) {
 	switch op := intent.(type) {
 	case previewManagedEngine:
 		p.startService(false, op.candidate)
+	case previewStopEngineThen:
+		p.stopPreviewEngine(op.after)
 	case previewSpeedStart:
 		p.startSpeed(op)
 	case previewSpeedCancel:
@@ -126,19 +128,7 @@ func (p *previewSession) dispatchStep(op previewStep) {
 	case previewBind:
 		p.startService(true, s.candidate)
 	case previewStopEngine:
-		if s.running() != nil || (s.speed != nil && s.speed.current != nil && s.speed.current.active()) {
-			s.failure = core.Err("run_active")
-			return
-		}
-		if p.takeFailure() {
-			s.failure = core.Err("engine_stop_failed")
-			return
-		}
-		p.cancelEvents("service")
-		s.engineState.State = "stopping"
-		p.after("service", 400*time.Millisecond, func() {
-			s.engineState = core.EngineState{State: "stopped"}
-		})
+		p.stopPreviewEngine(nil)
 	case previewRefreshDevice:
 		fail := p.takeFailure()
 		s.device.Refreshing, s.device.LastError = true, nil
@@ -462,6 +452,39 @@ func (p *previewSession) activateScene() {
 	if s.updateState.State == core.UpdateDownloading {
 		p.tickUpdateDownload(false, 2, false)
 	}
+}
+
+func (p *previewSession) stopPreviewEngine(after func()) {
+	s := p.state
+	if s.running() != nil || (s.speed != nil && s.speed.current != nil && s.speed.current.active()) {
+		s.failure = core.Err("run_active")
+		return
+	}
+	if p.takeFailure() {
+		s.failure = core.Err("engine_stop_failed")
+		return
+	}
+	p.cancelEvents("service")
+	s.engineState.State = "stopping"
+	p.after("service", 400*time.Millisecond, func() {
+		if s.engineState.Origin == core.EngineOriginStandalone {
+			s.engineState = core.EngineState{
+				State:       "stopped",
+				Origin:      core.EngineOriginStandalone,
+				Model:       s.engineState.Model,
+				ModelKind:   s.engineState.ModelKind,
+				Family:      s.engineState.Family,
+				Adapter:     s.engineState.Adapter,
+				ContextSize: s.engineState.ContextSize,
+				Candidate:   s.engineState.Candidate,
+			}
+		} else {
+			s.engineState = core.EngineState{State: "stopped"}
+		}
+		if after != nil {
+			after()
+		}
+	})
 }
 
 var _ previewMode = (*previewSession)(nil)

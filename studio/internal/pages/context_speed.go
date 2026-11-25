@@ -170,7 +170,7 @@ func (s *viewState) speedStartBlockReason() string {
 		return l10n.TR("speed.block.no_engine")
 	case s.engineState.State == "orphaned":
 		return l10n.TR("speed.block.orphaned")
-	case engineLocked(s.engineState.State):
+	case engineLocked(s.engineState.State) && !s.standaloneRunningForBenchmarkConflict():
 		return l10n.TR("speed.block.engine_locked")
 	}
 	e := s.eligibility(s.engine)
