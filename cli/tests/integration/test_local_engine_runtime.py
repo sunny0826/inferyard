@@ -95,8 +95,8 @@ def test_formal_local_run_seals_and_renders_offline(local_run, tmp_path, capsys)
     root = Path(result.evidence_dir)
     data = read_trial(root)
     assert code == 0, result.limitations
-    # Discovery verifies twice; afterwards exactly once per request, never per boundary guard.
-    assert len(verified) == 2 + len(state.posts)
+    # Discovery verifies twice and the run end once; requests only re-check incarnations.
+    assert len(verified) == 3
     assert len(guarded) == 2
     assert data["summary"]["counts"]["completed"] == len(command.config.bundle.to_dict()["cases"])
     assert len(state.posts) == 2 + data["summary"]["counts"]["planned"]

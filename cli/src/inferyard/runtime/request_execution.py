@@ -64,7 +64,7 @@ class TrialRequests:
         elif phase not in ("probe", "warmup") or index is not None:
             raise EvidenceError("invalid_request_phase")
         if getattr(self.adapter, "local_profile", False):
-            # Service identity is verified by the local adapter's idle confirmation below.
+            # The local adapter re-checks the bound incarnations in its idle confirmation.
             self.guard(self.config, self.files, service=False)
         else:
             self.guard(self.config, self.files)

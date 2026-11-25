@@ -44,7 +44,7 @@ class LocalEngineAdapter(LabAdapter):
         self._service_binding = None
         self._config = None
         self.queue_ready = False
-        # Full binding verified since the last generation; reset by every request.
+        # Full binding verified for this service; requests only re-check incarnations.
         self._verified = False
 
     @staticmethod
@@ -81,11 +81,15 @@ class LocalEngineAdapter(LabAdapter):
                 raise PreflightError("local_engine_bound_service_changed")
 
     async def _confirm_bound(self, deadline):
-        """Fully verify once after each request; otherwise re-check only incarnations."""
+        """Fully verify once per run; per-request checks only prove the same incarnations."""
         if self._verified:
             self._same_incarnation()
         else:
             await self._bound(deadline)
+
+    async def verify_service(self, seconds):
+        """Full end-of-run verification: catches changes start ticks cannot (tree, mappings)."""
+        await self._bound(time.monotonic() + seconds)
 
     async def _endpoint(self, path, deadline, matrix):
         record = await self.inspect_endpoint(path, deadline=deadline)
@@ -207,7 +211,6 @@ class LocalEngineAdapter(LabAdapter):
         if not self.queue_ready or self.native_uncertain:
             raise PreflightError("local_engine_queue_admission_required")
         self.queue_ready = False
-        self._verified = False
         try:
             result = await super().generate(body, timeout, emit, before_send=before_send)
         except BaseException:

@@ -324,6 +324,9 @@ async def run_trial(
                     code, reason = 3, "diagnostic_run_not_formal"
         else:
             reason = "check_only_no_formal_cases"
+        if hasattr(adapter, "verify_service"):
+            # Requests only re-checked process incarnations; prove the full binding still holds.
+            await adapter.verify_service(config["execution"]["idle_wait_seconds"])
     except asyncio.CancelledError:
         code, reason = (
             (3, safety_reason)

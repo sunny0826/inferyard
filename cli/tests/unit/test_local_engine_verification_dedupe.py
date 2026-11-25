@@ -1,8 +1,11 @@
-"""Local engines verify the bound service once per request, never back to back."""
+"""Local engines fully verify the bound service once per run, not per request."""
 
 import asyncio
 from copy import deepcopy
 
+import pytest
+
+from inferyard.errors import PreflightError
 from tests.local_engine_transport.conftest import rig  # noqa: F401
 
 
@@ -17,7 +20,12 @@ def _counting(state):
     return calls
 
 
-def test_one_full_verification_per_request(rig):  # noqa: F811
+async def _request(adapter, state):
+    body = adapter.request_body(state.config, "hi")
+    assert (await adapter.generate(body, 5))["execution_state"] == "completed"
+
+
+def test_requests_reuse_the_discovery_verification(rig):  # noqa: F811
     state = rig("vllm")
     calls = _counting(state)
 
@@ -25,15 +33,14 @@ def test_one_full_verification_per_request(rig):  # noqa: F811
         adapter = state.adapter
         await adapter.discover(state.config)
         after_discovery = len(calls)
-        # Admission right after discovery reuses that verification.
         assert await adapter.wait_ready(5) is True
-        assert len(calls) == after_discovery
-        for request in range(1, 4):
-            body = adapter.request_body(state.config, "hi")
-            assert (await adapter.generate(body, 5))["execution_state"] == "completed"
+        for _ in range(3):
+            await _request(adapter, state)
             assert await adapter.wait_ready(5) is True  # residual after the request
             assert await adapter.wait_ready(5) is True  # admission of the next request
-            assert len(calls) == after_discovery + request
+        assert len(calls) == after_discovery
+        await adapter.verify_service(5)  # once, at the end of the run
+        assert len(calls) == after_discovery + 1
         await adapter.close()
 
     asyncio.run(run())
@@ -49,6 +56,8 @@ def test_replaced_worker_blocks_admission_without_full_reverification(rig):  # n
     async def run():
         adapter = state.adapter
         await adapter.discover(state.config)
+        assert await adapter.wait_ready(5) is True
+        await _request(adapter, state)
         verified = len(calls)
         ticks[900] = 2  # same PID, new process incarnation
         assert await adapter.wait_ready(5) is False
@@ -59,23 +68,18 @@ def test_replaced_worker_blocks_admission_without_full_reverification(rig):  # n
     asyncio.run(run())
 
 
-def test_busy_reads_do_not_verify_until_idle(rig):  # noqa: F811
+def test_end_of_run_verification_catches_binding_drift(rig):  # noqa: F811
     state = rig("vllm")
-    calls = _counting(state)
-    busy = "vllm:num_requests_running 1\nvllm:num_requests_waiting 0\n"
 
     async def run():
         adapter = state.adapter
         await adapter.discover(state.config)
-        body = adapter.request_body(state.config, "hi")
-        await adapter.wait_ready(5)
-        await adapter.generate(body, 5)
-        before = len(calls)
-        idle, state.metrics = state.metrics, busy
-        loop = asyncio.get_running_loop()
-        loop.call_later(0.1, lambda: setattr(state, "metrics", idle))
         assert await adapter.wait_ready(5) is True
-        assert len(calls) == before + 1
+        await _request(adapter, state)
+        assert await adapter.wait_ready(5) is True
+        state.binding["listener_identity"] = "another-listener"  # same incarnation, new binding
+        with pytest.raises(PreflightError, match="local_engine_bound_service_changed"):
+            await adapter.verify_service(5)
         await adapter.close()
 
     asyncio.run(run())
