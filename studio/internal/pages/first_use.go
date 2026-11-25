@@ -68,6 +68,10 @@ func (s *viewState) reconcileSelectedModel(prevModelPath string) bool {
 
 func (s *viewState) adoptOnlyModel() {
 	if s.model != "" {
+		s.skipAutoModelAdopt = false
+		return
+	}
+	if s.skipAutoModelAdopt {
 		return
 	}
 	name := ""

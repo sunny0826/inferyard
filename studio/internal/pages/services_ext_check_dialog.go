@@ -144,40 +144,50 @@ func (s *viewState) pendingExclusivityMatchesTarget() bool {
 }
 
 func (s *viewState) applyServiceBenchmarkTarget(modelName, engineName string) {
+	unmatchedModel := false
 	if modelName != "" {
+		resolvedModel := ""
 		if len(s.registry.Models) == 0 {
-			s.model = modelName
+			resolvedModel = modelName
 		} else if m, ok := s.findModelAsset(modelName); ok && m.Available {
-			s.model = m.Name
+			resolvedModel = m.Name
+		} else {
+			unmatchedModel = true
 		}
+		s.model = resolvedModel
 	}
 	if engineName != "" {
+		resolvedEngine := ""
 		if len(s.registry.Engines) == 0 {
-			s.engine = engineName
+			resolvedEngine = engineName
 		} else {
 			for _, eng := range s.registry.Engines {
 				if eng.Name == engineName {
-					s.engine = eng.Name
+					resolvedEngine = eng.Name
 					break
 				}
 			}
 		}
+		s.engine = resolvedEngine
+	} else if unmatchedModel {
+		s.engine = ""
 	}
 	if s.speed != nil {
 		s.speed.selected = false
 	}
 	if !s.roundWorkActive() && s.running() == nil {
+		s.clearBenchmark()
 		if s.speed != nil {
 			s.speed.current, s.speed.opened = nil, nil
 		}
 		s.task.stage = "prepare_candidate"
-		s.focusedRun = ""
 		s.resumeSource = nil
 		s.detailMu.Lock()
 		s.requestedDetail = ""
 		s.detailMu.Unlock()
 		s.failure = nil
 	}
+	s.skipAutoModelAdopt = unmatchedModel
 }
 
 func (s *viewState) handleExtConnProbeResult(serviceID, modelName, engineName, endpoint string, ctxSize int64, gpuLayers *int, probe core.ExternalConnProbe) {

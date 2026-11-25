@@ -20,13 +20,18 @@ func (s *viewState) standaloneDrawer(c *ui.Context) {
 		t := tokens(c)
 		ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
 			keyValueRow(c, tr(c, "models.serve.drawer.model"), modelLabel(model), false)
+			s.verifyTaskEngines()
 			engineOptions := s.standaloneEngineOptions(model)
 			if len(engineOptions) == 0 {
-				noticeBanner(c, noticeBannerOptions{
-					Kind:    stateWarning,
-					Size:    bannerCompact,
-					Message: tr(c, "models.serve.drawer.no_engine"),
-				})
+				if s.checks.Checking > 0 {
+					ui.Text(c, trf(c, "dashboard.candidate.verifying_engines", "count", s.checks.Checking)).TextColor(c.Theme().TextMuted)
+				} else if !s.engineVerifyPending {
+					noticeBanner(c, noticeBannerOptions{
+						Kind:    stateWarning,
+						Size:    bannerCompact,
+						Message: tr(c, "models.serve.drawer.no_engine"),
+					})
+				}
 			} else {
 				validSelected := false
 				for _, opt := range engineOptions {

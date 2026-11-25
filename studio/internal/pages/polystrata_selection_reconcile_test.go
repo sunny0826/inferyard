@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
@@ -272,33 +273,63 @@ func TestPolystrataBenchmarkVerifiesAndSelectsWithoutLibraryVisit(t *testing.T) 
 		t.Fatalf("expected step()=2 (configure) when local engine skips device_check, got %d", gotStep)
 	}
 
-	// Entering via openBenchmarksFlow (s.task.stage == "") must trigger VerifyEngines and adopt PolyStrata.
+	// Entering via openBenchmarksFlow (s.task.stage == "") even while refreshing=true must
+	// neither flash no_engines on frame 1 nor skip VerifyEngines.
+	uiCallbacks := make(chan func(), 32)
+	s.updateWindow = func(fn func()) { uiCallbacks <- fn }
+	wake, off, cursor := svc.Bus.Subscribe()
+	defer off()
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-wake:
+				events, _, next := svc.Bus.After(cursor)
+				cursor = next
+				for _, ev := range events {
+					if ev.Type == "engine.check" {
+						s.runOnUI(func() {
+							s.checks = svc.EngineChecks()
+							s.adoptDownloadedEngine()
+							s.adoptOnlyModel()
+						})
+					}
+				}
+			}
+		}
+	}()
+
+	s.refreshing = true
 	s.openBenchmarksFlow()
 	tt := ui.NewTester(s.benchmarksView, 960, 720)
 	tt.Frame()
 
-	waitUntil(t, func() bool {
-		checks := svc.EngineChecks()
-		for _, el := range checks.Engines {
-			if el.State == core.EngineCheckEligible {
-				return true
-			}
+	noEnginesCopy := l10n.T(l10n.LanguageZhHans, "dashboard.candidate.no_engines")
+	mismatchCopy := l10n.T(l10n.LanguageZhHans, "engine.local.error.format_mismatch")
+	firstFrameTexts := strings.Join(tt.Texts(), "\n")
+	if strings.Contains(firstFrameTexts, noEnginesCopy) || strings.Contains(firstFrameTexts, mismatchCopy) {
+		t.Fatalf("frame 1 must not flash %q or %q while verification starts, got:\n%s", noEnginesCopy, mismatchCopy, firstFrameTexts)
+	}
+
+	deadline := time.After(5 * time.Second)
+	for s.engine == "" {
+		select {
+		case fn := <-uiCallbacks:
+			fn()
+			tt.Frame()
+		case <-deadline:
+			t.Fatalf("timed out waiting for UI callback to adopt PolyStrata engine; checks=%+v", s.checks)
 		}
-		return false
-	})
-	s.checks = svc.EngineChecks()
-	s.adoptDownloadedEngine()
-	tt.Frame()
+	}
 
 	if checkCalls.Load() == 0 {
 		t.Fatal("expected VerifyEngines to invoke CLI engine check --installation")
 	}
-	if s.engine == "" || s.localEngine() == nil || s.localEngine().Family != "polystrata" {
+	if s.localEngine() == nil || s.localEngine().Family != "polystrata" {
 		t.Fatalf("expected PolyStrata engine adopted after verification, got engine=%q checks=%+v", s.engine, s.checks)
 	}
 	texts := strings.Join(tt.Texts(), "\n")
-	noEnginesCopy := l10n.T(l10n.LanguageZhHans, "dashboard.candidate.no_engines")
-	mismatchCopy := l10n.T(l10n.LanguageZhHans, "engine.local.error.format_mismatch")
 	if strings.Contains(texts, noEnginesCopy) || strings.Contains(texts, mismatchCopy) {
 		t.Fatalf("expected neither %q nor %q once PolyStrata verified, got:\n%s", noEnginesCopy, mismatchCopy, texts)
 	}
@@ -325,7 +356,8 @@ func TestManagedServiceBenchmarkHandoffAndIneligibleEngineSurfacing(t *testing.T
 	s.registry.Models = append(s.registry.Models, psMod)
 	s.checks.Engines[psEng.Name] = core.EngineEligibility{State: core.EngineCheckEligible, Family: "polystrata"}
 
-	// Adopted PolyStrata service with blank EngineName falls back to unambiguous Family match and sets prepare_candidate.
+	// Adopted PolyStrata service with blank EngineName falls back to unambiguous Family match,
+	// clears stale failed round A state, and sets prepare_candidate.
 	adoptedSvc := core.EngineState{
 		ServiceID: "svc-adopted-ps",
 		State:     "running",
@@ -335,9 +367,13 @@ func TestManagedServiceBenchmarkHandoffAndIneligibleEngineSurfacing(t *testing.T
 		Port:      18080,
 		Endpoint:  "http://127.0.0.1:18080",
 	}
-	s.engine = ""
-	s.model = ""
-	s.task.stage = ""
+	s.engine = "llama-cpp-default"
+	s.model = "Qwen3-8B-Q4.gguf"
+	s.task = benchmarkTask{
+		stage:   "bind",
+		failure: core.Err("cli_error"),
+		start:   startChainResult{localCandidates: []core.CandidateRun{{Bundle: "zh-core"}}},
+	}
 	s.probeServiceConnFunc = func(context.Context, string) core.ExternalConnProbe {
 		return core.ExternalConnProbe{Status: core.ExclusivityExclusive, Port: 18080}
 	}
@@ -347,6 +383,31 @@ func TestManagedServiceBenchmarkHandoffAndIneligibleEngineSurfacing(t *testing.T
 	}
 	if s.model != psMod.Name || s.engine != psEng.Name || s.task.stage != "prepare_candidate" {
 		t.Fatalf("expected service target (%q, %q, prepare_candidate), got (%q, %q, %q)", psMod.Name, psEng.Name, s.model, s.engine, s.task.stage)
+	}
+	if s.task.failure != nil || len(s.task.start.localCandidates) != 0 {
+		t.Fatalf("expected stale round A failure and candidates cleared, got task=%+v", s.task)
+	}
+
+	// Discovered service reporting unmatched /v1/models alias clears stale s.model so Model A cannot run by mistake.
+	s.selected = "services"
+	s.benchFlowOpen = false
+	s.model = "Qwen3-8B-Q4.gguf"
+	s.probeEndpointConnFunc = func(context.Context, string) core.ExternalConnProbe {
+		return core.ExternalConnProbe{Status: core.ExclusivityExternal, Port: 11434, Clients: []string{"Client (PID 7)"}}
+	}
+	s.startBenchmarkForDiscoveredService(
+		inferyard.DiscoveredService{PID: 42, ProcessName: "ollama"},
+		inferyard.DiscoveredEndpoint{URL: "http://127.0.0.1:11434", Models: []string{"served-alias-not-in-registry"}},
+	)
+	extTester := newServicesTester(s)
+	extTester.Frame()
+	click(t, extTester, l10n.T(l10n.LanguageZhHans, "services.ext_check.action.benchmark_anyway"))
+	extTester.Frame()
+	if s.model != "" {
+		t.Fatalf("expected unmatched discovered service model to clear stale selection, got %q", s.model)
+	}
+	if s.pendingExclusivityModel != "served-alias-not-in-registry" {
+		t.Fatalf("expected pendingExclusivityModel to record discovered service model id, got %q", s.pendingExclusivityModel)
 	}
 
 	// When s.engine is empty and all registered engines are ineligible, surface reason instead of generic no_engines.

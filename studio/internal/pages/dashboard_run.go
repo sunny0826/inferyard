@@ -498,11 +498,11 @@ func blockedPlan(b inferyard.BundleProgress) bool {
 }
 
 func (s *viewState) verifyTaskEngines() {
-	if s.service == nil || s.busy || s.refreshing || s.engineVerifyPending {
+	if s.service == nil || (s.win == nil && s.updateWindow == nil) || s.engineVerifyPending {
 		return
 	}
 	unchecked := s.hasUncheckedRegistryEngine()
-	if !unchecked && s.task.stage != "prepare_candidate" {
+	if !unchecked && (s.win == nil || s.task.stage != "prepare_candidate" || s.busy || s.refreshing) {
 		return
 	}
 	now := time.Now()
@@ -513,7 +513,7 @@ func (s *viewState) verifyTaskEngines() {
 	s.engineVerifyPending = true
 	go func() {
 		s.service.VerifyEngines()
-		s.runOnUI(func() {
+		apply := func() {
 			s.engineVerifyPending = false
 			if s.ctx != nil && s.ctx.Err() != nil {
 				return
@@ -521,6 +521,11 @@ func (s *viewState) verifyTaskEngines() {
 			s.checks = s.service.EngineChecks()
 			s.adoptDownloadedEngine()
 			s.adoptOnlyModel()
-		})
+		}
+		if s.updateWindow != nil {
+			s.updateWindow(apply)
+		} else if s.win != nil {
+			s.win.Update(apply)
+		}
 	}()
 }
