@@ -37,6 +37,14 @@ func (s *viewState) openReport(reference string) {
 	}
 	s.closeOpenedReport()
 	index, e := s.readReport(reference)
+	if s.preview == nil && s.service != nil && reference != "" {
+		if s.reportExclusivities == nil {
+			s.reportExclusivities = map[string]string{}
+		}
+		if _, exists := s.reportExclusivities[reference]; !exists {
+			s.reportExclusivities[reference] = s.service.ReportExclusivity(reference)
+		}
+	}
 	s.openedReport = &reportViewState{reference: reference, index: index, failure: e}
 	s.selected = "reports"
 }
@@ -75,9 +83,12 @@ func (s *viewState) reportView(c *ui.Context) {
 		report.runPicker(c)
 		run = report.index.Runs[report.run]
 	}
-	if run.Diagnostic {
-		statusBadge(c, tr(c, "reports.detail.diagnostic_badge"), stateColor(c, stateWarning))
-	}
+	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+		exclusivityBadge(c, s.reportExclusivity(report.reference))
+		if run.Diagnostic {
+			statusBadge(c, tr(c, "reports.detail.diagnostic_badge"), stateColor(c, stateWarning))
+		}
+	})
 	reportMetrics(c, run)
 	s.reportSVGSection(c, report, run)
 	reportSummaryGrid(c,

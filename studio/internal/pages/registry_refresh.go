@@ -20,7 +20,7 @@ func needsRefresh(events []core.Event, reset bool) bool {
 		return true
 	}
 	for _, event := range events {
-		if event.Type != "update.state" && event.Type != "cli.upgrade" {
+		if event.Type != "update.state" && event.Type != "cli.upgrade" && event.Type != "services.memory" {
 			return true
 		}
 	}

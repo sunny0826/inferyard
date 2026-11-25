@@ -9,9 +9,10 @@ import (
 )
 
 type CandidateRunsRequest struct {
-	Candidates        []CandidateRun
-	AllowSingleBundle bool
-	ExistingService   *EngineState
+	Candidates         []CandidateRun
+	AllowSingleBundle  bool
+	ExistingService    *EngineState
+	InitialExclusivity string `json:"initial_exclusivity,omitempty"`
 }
 
 type candidateRunState struct {
@@ -85,7 +86,7 @@ func (s *Service) StartCandidateRuns(req CandidateRunsRequest) ([]RunTask, *ApiE
 			local.initial = &copy
 		}
 		task := RunTask{TaskId: uuid(), Kind: "run", State: "starting", Queued: true, Bundle: &bundle, CreatedAt: now(), CandidatePath: &path, EngineFamily: description.Family}
-		entries = append(entries, &runEntry{Task: task, root: root, binary: *probe.Path, Resources: []ResourceSample{}, local: local})
+		entries = append(entries, &runEntry{Task: task, root: root, binary: *probe.Path, Resources: []ResourceSample{}, local: local, initialExclusivity: normalizeInitialExclusivity(req.InitialExclusivity)})
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

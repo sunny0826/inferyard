@@ -338,6 +338,19 @@ func (s *Service) checkServiceMemoryBudgetWithRegistry(model, engine string, con
 	}
 }
 
+// ServiceMemoryUsage returns the best available memory usage in GB for a service,
+// distinguishing live measured RSS (measured=true) from a static launch estimate (measured=false).
+// When neither is available, known is false and gb is 0.
+func ServiceMemoryUsage(state EngineState) (gb float64, measured bool, known bool) {
+	if state.RuntimeMemoryGB != nil && *state.RuntimeMemoryGB > 0 {
+		return roundMemoryGB(*state.RuntimeMemoryGB), true, true
+	}
+	if state.EstimatedMemoryGB > 0 {
+		return roundMemoryGB(state.EstimatedMemoryGB), false, true
+	}
+	return 0, false, false
+}
+
 // CurrentServiceMemorySummary returns the overall hardware memory ceiling and
 // current estimated usage across all active managed services.
 func (s *Service) CurrentServiceMemorySummary() ServiceMemoryBudget {

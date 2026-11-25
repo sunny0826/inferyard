@@ -56,6 +56,7 @@ type EngineState struct {
 	RequestedPort     int       `json:"requested_port,omitempty"`
 	LANAccess         bool      `json:"lan_access,omitempty"`
 	EstimatedMemoryGB float64   `json:"estimated_memory_gb,omitempty"`
+	RuntimeMemoryGB   *float64  `json:"runtime_memory_gb,omitempty"`
 	ContextSize       int64     `json:"context_size,omitempty"`
 	GPULayers     *int      `json:"gpu_layers,omitempty"`
 	Threads       *int      `json:"threads,omitempty"`
@@ -71,17 +72,18 @@ type EngineState struct {
 }
 
 type engineEntry struct {
-	ownerPath  string
-	owner      engineOwner
-	family     string
-	wasHealthy bool
-	adopted    bool
-	cmd        *exec.Cmd
-	logFile    *os.File
-	state      EngineState
-	stop       chan struct{}
-	detach     chan struct{}
-	done       chan struct{}
+	ownerPath   string
+	owner       engineOwner
+	pidSnapshot []int // protected by Service.mu; immutable slice replaced on tree refresh
+	family      string
+	wasHealthy  bool
+	adopted     bool
+	cmd         *exec.Cmd
+	logFile     *os.File
+	state       EngineState
+	stop        chan struct{}
+	detach      chan struct{}
+	done        chan struct{}
 }
 
 func (s *Service) Engine() EngineState {
@@ -315,6 +317,7 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 	defer ticker.Stop()
 	treeTicker := time.NewTicker(500 * time.Millisecond)
 	defer treeTicker.Stop()
+	var lastMemSample time.Time
 	finish := func(state string, err *ApiError, keepOwner bool) {
 		treeErr := s.finishEngineTree(e)
 		s.mu.Lock()
@@ -363,13 +366,14 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 			return
 		case <-treeTicker.C:
 			if e.state.Local {
-				_ = s.refreshEngineTree(&e.owner, e.ownerPath)
+				_ = s.refreshEntryTree(e)
 			}
 		case <-ticker.C:
 			s.mu.Lock()
 			starting := e.state.State == "starting"
 			s.mu.Unlock()
 			if !starting {
+				s.maybeSampleRuntimeMemory(e, &lastMemSample, false)
 				continue
 			}
 			healthy := checkEngineHealth(health, endpoint, e.state.Local, e.family)
@@ -383,6 +387,7 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 				e.state.State = "running"
 				s.publishEngineLocked(e)
 				s.mu.Unlock()
+				s.maybeSampleRuntimeMemory(e, &lastMemSample, true)
 				continue
 			}
 			timedOut := time.Now().After(deadline) && !s.closing

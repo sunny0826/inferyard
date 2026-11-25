@@ -16,6 +16,12 @@ type previewMode interface {
 	downloadLogTail(taskID string) string
 }
 
+type previewExclusivityMode interface {
+	probeServiceConnections(svc core.EngineState) core.ExternalConnProbe
+	probeEndpointConnections(endpoint string) core.ExternalConnProbe
+	reportExclusivity(ref string) string
+}
+
 func (s *viewState) simulate(intent previewIntent) bool {
 	if s.preview == nil {
 		return false

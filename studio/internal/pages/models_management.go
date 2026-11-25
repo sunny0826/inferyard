@@ -292,7 +292,8 @@ func (s *viewState) modelStorageAndRootsView(c *ui.Context) {
 
 func (s *viewState) modelRowTrailing(c *ui.Context, m core.ModelAsset, pending *pendingAssetDelete) {
 	t := tokens(c)
-	ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		s.renderModelEvidenceInline(c, m)
 		if !m.Available {
 			badge(c, tr(c, "models.badge.unavailable"), stateWarning, badgeOptions{Style: badgeDot, Size: sizeSM})
 		}
@@ -304,7 +305,8 @@ func (s *viewState) modelRowTrailing(c *ui.Context, m core.ModelAsset, pending *
 
 func (s *viewState) engineRowTrailing(c *ui.Context, eng core.EngineAsset, pending *pendingAssetDelete) {
 	t := tokens(c)
-	ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		s.renderEngineUpdateBadgeAndAction(c, eng)
 		label, kind := s.engineBadgeState(eng)
 		badge(c, label, kind, badgeOptions{Style: badgeDot, Size: sizeSM})
 		s.assetRowActions(c, "engine", eng.Name, eng.Path, "", eng.Family, nil, eng.Deletable, pending)

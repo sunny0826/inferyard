@@ -168,5 +168,18 @@
   "benchmarks.badge.report": "报告",
   "benchmarks.badge.active_flow": "准备中",
   "benchmarks.row.open_detail": "查看详情",
-  "benchmarks.row.open_report": "查看报告"
+  "benchmarks.row.open_report": "查看报告",
+  "services.card.metric.memory_measured": "{gb} GB · 实测",
+  "services.card.metric.memory_estimated": "{gb} GB · 预估",
+  "services.card.metric.speed_value": "{tps} tok/s",
+  "services.card.metric.view_report": "查看报告 ›",
+  "services.card.metric.view_report_label": "查看 {model} 的测评报告",
+  "services.ext_check.title": "检测到外部连接",
+  "services.ext_check.desc": "端口 {port} 上检测到外部连接。直接对该服务测评可能影响吞吐与延迟结果。",
+  "services.ext_check.clients_label": "检测到的外部客户端",
+  "services.ext_check.memory_enough": "当前剩余内存（{remaining} GB）足够另起一个测评专用实例（预计 {est} GB）。",
+  "services.ext_check.memory_insufficient": "当前剩余内存（{remaining} GB）不足以另起测评专用实例（预计 {est} GB）。你可以取消，或继续测评并在报告中标注存在外部连接。",
+  "services.ext_check.action.dedicated_instance": "另起测评专用实例",
+  "services.ext_check.action.benchmark_anyway": "仍然测评（报告标注）",
+  "services.ext_check.action.cancel": "取消"
 }

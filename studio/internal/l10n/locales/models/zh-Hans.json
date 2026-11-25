@@ -232,5 +232,12 @@
   "models.serve.toast.stopping": "正在停止模型服务…",
   "models.storage.missing": "缺测",
   "models.storage.summary": "总占用 {used} · 可用磁盘空间 {free}",
-  "models.wizard.card_title": "注册本地引擎"
+  "models.wizard.card_title": "注册本地引擎",
+  "models.evidence.best": "实测最佳：{engine} {tps} tok/s",
+  "models.evidence.best_compare": "实测最佳：{engine} {tps} tok/s · {otherEngine} {otherTps} tok/s",
+  "models.evidence.open_report_label": "打开 {model} 的测评报告",
+  "models.evidence.untested": "尚未测评",
+  "models.engine.update_available": "有新版 {version}",
+  "models.engine.action.update": "更新",
+  "models.engine.action.update_label": "更新 {name}"
 }

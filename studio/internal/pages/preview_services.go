@@ -77,6 +77,7 @@ func previewMultiServicesScene(s *viewState) {
 		RequestedPort:     8080,
 		LANAccess:         true,
 		EstimatedMemoryGB: 5.9,
+		RuntimeMemoryGB:   previewValue(6.1),
 		ContextSize:       32768,
 		StartedAt:         "2026-11-25T04:00:00Z",
 		Pid:               42001,
@@ -351,4 +352,79 @@ func (p *previewSession) stopAllPreviewServices(after func()) {
 			after()
 		}
 	})
+}
+
+var _ previewExclusivityMode = (*previewSession)(nil)
+
+func seedPreviewModelEvidence(model string) map[string]core.ModelEvidenceSummary {
+	best := core.EngineSpeedRecord{
+		Engine:          "llama.cpp",
+		TokensPerSecond: 68.4,
+		ReportRef:       "preview-report",
+		Exclusivity:     core.ExclusivityExclusive,
+		CreatedAt:       "2026-11-25T02:00:00Z",
+	}
+	second := core.EngineSpeedRecord{
+		Engine:          "mlx-lm",
+		TokensPerSecond: 54.2,
+		ReportRef:       "preview-report",
+		Exclusivity:     core.ExclusivityExclusive,
+		CreatedAt:       "2026-11-24T18:00:00Z",
+	}
+	return map[string]core.ModelEvidenceSummary{
+		core.NormalizeModelEvidenceKey(model): {
+			Model:    model,
+			Best:     &best,
+			ByEngine: []core.EngineSpeedRecord{best, second},
+		},
+	}
+}
+
+func seedPreviewEngineUpdates(engine string) map[string]core.EngineUpdateInfo {
+	return map[string]core.EngineUpdateInfo{
+		engine: {
+			Engine:           engine,
+			InstalledVersion: "b4800",
+			LatestVersion:    "b5400",
+			HasUpdate:        true,
+		},
+	}
+}
+
+func seedPreviewReportExclusivities() map[string]string {
+	return map[string]string{
+		"preview-report": core.ExclusivityExclusive,
+		"long-report":    core.ExclusivityExternal,
+		"pelican-report": core.ExclusivityUnknown,
+	}
+}
+
+func (p *previewSession) probeServiceConnections(svc core.EngineState) core.ExternalConnProbe {
+	if svc.LANAccess && svc.Port > 0 {
+		return core.ExternalConnProbe{
+			Status:  core.ExclusivityExternal,
+			Clients: []string{"Cherry Studio (PID 4182)"},
+			Count:   1,
+			Port:    svc.Port,
+		}
+	}
+	return core.ExternalConnProbe{
+		Status: core.ExclusivityExclusive,
+		Port:   svc.Port,
+	}
+}
+
+func (p *previewSession) probeEndpointConnections(endpoint string) core.ExternalConnProbe {
+	return core.ExternalConnProbe{
+		Status: core.ExclusivityUnknown,
+	}
+}
+
+func (p *previewSession) reportExclusivity(ref string) string {
+	if p.state != nil && p.state.reportExclusivities != nil {
+		if status, ok := p.state.reportExclusivities[ref]; ok && status != "" {
+			return status
+		}
+	}
+	return core.ExclusivityUnknown
 }

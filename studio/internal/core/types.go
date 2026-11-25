@@ -145,6 +145,7 @@ type RunTask struct {
 	PreparationStage string            `json:"preparation_stage,omitempty"`
 	AwaitingService  bool              `json:"awaiting_service,omitempty"`
 	ContextSpeed     *ContextSpeedTask `json:"context_speed,omitempty"`
+	Exclusivity      string            `json:"exclusivity,omitempty"`
 	TaskId           string            `json:"task_id"`
 	Kind             string            `json:"kind"`
 	State            string            `json:"state"`
@@ -204,8 +205,9 @@ type ResourceSample struct {
 }
 
 type StartRunsRequest struct {
-	ConfigPaths       []string `json:"config_paths"`
-	AllowSingleBundle *bool    `json:"allow_single_bundle"`
+	ConfigPaths        []string `json:"config_paths"`
+	AllowSingleBundle  *bool    `json:"allow_single_bundle"`
+	InitialExclusivity string   `json:"initial_exclusivity,omitempty"`
 }
 
 type ResumeRunRequest struct {

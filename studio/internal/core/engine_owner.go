@@ -116,6 +116,7 @@ func (s *Service) persistEngineOwnerAt(e *engineEntry, path string) *ApiError {
 	}
 	e.ownerPath = path
 	e.owner = owner
+	e.pidSnapshot = buildOwnerPIDSnapshot(e.state.Pid, owner)
 	return nil
 }
 

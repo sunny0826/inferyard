@@ -204,7 +204,12 @@ func (s *viewState) renderBenchmarkTaskRow(c *ui.Context, task core.RunTask) {
 			Title:    title,
 			Subtitle: sub,
 			Trailing: func() {
-				inlineBadge(c, taskLabelFor(contextLocale(c), task), kind, badgeOptions{Size: sizeSM})
+				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+					if task.Exclusivity != "" {
+						exclusivityBadge(c, task.Exclusivity)
+					}
+					inlineBadge(c, taskLabelFor(contextLocale(c), task), kind, badgeOptions{Size: sizeSM})
+				})
 			},
 			OnClick: func() { s.selectTask(task.TaskId) },
 		})
@@ -229,7 +234,12 @@ func (s *viewState) renderRecentReportRow(c *ui.Context, rep core.ReportSummary)
 			Title:    reportHeadingFor(c, repCopy),
 			Subtitle: reportSubheadingFor(c, repCopy),
 			Trailing: func() {
-				inlineBadge(c, tr(c, "benchmarks.badge.report"), stateSuccess, badgeOptions{Size: sizeSM})
+				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+					if !repCopy.Unreadable {
+						exclusivityBadge(c, s.reportExclusivity(repCopy.ReportId))
+					}
+					inlineBadge(c, tr(c, "benchmarks.badge.report"), stateSuccess, badgeOptions{Size: sizeSM})
+				})
 			},
 			OnClick: func() { s.openReport(repCopy.ReportId) },
 		})

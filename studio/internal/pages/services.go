@@ -178,10 +178,8 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 		if compactLayout(c) {
 			cols = 2
 		}
-		memVal := tr(c, "common.missing")
-		if state.EstimatedMemoryGB > 0 {
-			memVal = fmt.Sprintf("%.1f GB", state.EstimatedMemoryGB)
-		}
+		memVal := serviceMemoryDisplay(c, state)
+		bestSpeed, _ := s.bestSpeedForService(state)
 		execSub := displayName(state.Executable)
 		if execSub == engineTitle {
 			execSub = ""
@@ -203,7 +201,12 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 			sourceSub = tr(c, "services.card.source.adopted")
 		}
 		ui.Grid(c).Columns(cols).Gap(t.Density.Row).Children(func() {
-			serviceMetricTile(c, innerR, tr(c, "services.card.metric.model"), modelName, engineTitle, false)
+			var openBest func()
+			if bestSpeed != nil && bestSpeed.ReportRef != "" {
+				ref := bestSpeed.ReportRef
+				openBest = func() { s.openReport(ref) }
+			}
+			serviceModelSpeedTile(c, innerR, tr(c, "services.card.metric.model"), modelName, engineTitle, bestSpeed, openBest)
 			serviceMetricTile(c, innerR, tr(c, "services.card.metric.memory"), memVal, execSub, true)
 			serviceMetricTile(c, innerR, tr(c, "services.card.metric.port_context"), portCtxVal, pidSub, true)
 			serviceMetricTile(c, innerR, tr(c, "services.card.metric.status"), stateLabelFor(contextLocale(c), state.State), sourceSub, false)
@@ -215,7 +218,7 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			if inlineButton(c, components.ButtonPrimary, tr(c, "services.card.action.benchmark")).Clicked() {
-				s.openBenchmarksFlow()
+				s.startBenchmarkForManagedService(state)
 			}
 			if canOpen {
 				webBtn := inlineButton(c, components.ButtonOutline, "").Label(tr(c, "services.card.action.open_web"))
@@ -446,7 +449,7 @@ func (s *viewState) renderDiscoveredServiceCard(c *ui.Context, service inferyard
 					}
 				}
 				if inlineButton(c, components.ButtonSecondary, tr(c, "services.discovered.benchmark")).Clicked() {
-					s.openBenchmarksFlow()
+					s.startBenchmarkForDiscoveredService(service, endpoint)
 				}
 			})
 		})

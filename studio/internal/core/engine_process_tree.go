@@ -333,6 +333,44 @@ func (s *Service) terminateOwnedTree(owner *engineOwner, path string) *ApiError 
 	return &ApiError{Code: "engine_stop_failed", Message: l10n.TR("core.engine.err.tree_stop_failed")}
 }
 
+func buildOwnerPIDSnapshot(statePID int64, owner engineOwner) []int {
+	raw := make([]int, 0, 2+len(owner.Workers))
+	if statePID > 0 {
+		raw = append(raw, int(statePID))
+	}
+	if owner.PID > 0 {
+		raw = append(raw, int(owner.PID))
+	}
+	for _, w := range owner.Workers {
+		if w.PID > 0 {
+			raw = append(raw, int(w.PID))
+		}
+	}
+	return uniquePositivePIDs(raw)
+}
+
+func (s *Service) syncEntryPIDSnapshot(e *engineEntry) {
+	if e == nil {
+		return
+	}
+	snap := buildOwnerPIDSnapshot(e.owner.PID, e.owner)
+	s.mu.Lock()
+	if e.state.Pid > 0 {
+		snap = buildOwnerPIDSnapshot(e.state.Pid, e.owner)
+	}
+	e.pidSnapshot = snap
+	s.mu.Unlock()
+}
+
+func (s *Service) refreshEntryTree(e *engineEntry) error {
+	if e == nil {
+		return nil
+	}
+	err := s.refreshEngineTree(&e.owner, e.ownerPath)
+	s.syncEntryPIDSnapshot(e)
+	return err
+}
+
 func (s *Service) finishEngineTree(e *engineEntry) *ApiError {
 	if !e.state.Local {
 		return nil

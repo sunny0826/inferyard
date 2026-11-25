@@ -48,11 +48,13 @@ type Service struct {
 	settingsMu             sync.Mutex
 	reportMu               sync.Mutex
 	presetsMu              sync.Mutex
+	exclusivityMu          sync.Mutex
 	settings               UserSettings
 	keepServicesOnShutdown *bool
 	exitNotices            []ServiceExitNotice
 	exitNoticesLoaded      bool
 	adoptPollInterval      time.Duration
+	runtimeMemInterval     time.Duration
 	settingsPath      string
 	exec              Executor
 	execStream        func(context.Context, func(string), string, ...string) (inferyard.Execution, error)

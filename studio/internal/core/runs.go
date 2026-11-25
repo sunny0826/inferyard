@@ -2,96 +2,31 @@ package core
 
 import (
 	"context"
-	"encoding/json"
 	"inferyard/studio/internal/evidence"
 	"inferyard/studio/internal/inferyard"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 )
 
 type runEntry struct {
-	Task          RunTask
-	Progress      *RunProgress
-	Resources     []ResourceSample
-	root          string
-	args          []string
-	binary        string
-	cancel        context.CancelFunc
-	recordRoot    string
-	commandActive bool
-	local         *candidateRunState
+	Task               RunTask
+	Progress           *RunProgress
+	Resources          []ResourceSample
+	root               string
+	args               []string
+	binary             string
+	cancel             context.CancelFunc
+	recordRoot         string
+	commandActive      bool
+	local              *candidateRunState
+	initialExclusivity string
+	probeEndpoint      string
+	probePID           int
 }
 
-func readConfig(path string) (string, string, string, error) {
-	cfgPath, root, bundle, _, _, err := readConfigWithEndpoint(path)
-	return cfgPath, root, bundle, err
-}
-
-func readConfigWithEndpoint(path string) (string, string, string, int64, int64, error) {
-	if !filepath.IsAbs(path) {
-		return "", "", "", 0, 0, os.ErrInvalid
-	}
-	if st, e := os.Stat(path); e == nil && st.IsDir() {
-		path = filepath.Join(path, "config.toml")
-	}
-	path, e := filepath.EvalSymlinks(path)
-	if e != nil {
-		return "", "", "", 0, 0, e
-	}
-	raw, e := os.ReadFile(path)
-	if e != nil {
-		return "", "", "", 0, 0, e
-	}
-	fields := map[string]json.RawMessage{}
-	section := ""
-	for _, line := range strings.Split(string(raw), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		if strings.HasPrefix(line, "[") {
-			section = strings.Trim(line, "[]")
-			continue
-		}
-		k, v, ok := strings.Cut(line, "=")
-		if !ok {
-			continue
-		}
-		key := section + "." + strings.TrimSpace(k)
-		if key == "output.root" || key == "bundle.path" || key == "endpoint.server_pid" || key == "endpoint.process_start_ticks" {
-			if _, exists := fields[key]; exists {
-				return "", "", "", 0, 0, os.ErrInvalid
-			}
-			fields[key] = json.RawMessage(strings.TrimSpace(v))
-		}
-	}
-	var root, bundle string
-	var pid, ticks int64
-	if json.Unmarshal(fields["output.root"], &root) != nil || json.Unmarshal(fields["bundle.path"], &bundle) != nil || json.Unmarshal(fields["endpoint.server_pid"], &pid) != nil || json.Unmarshal(fields["endpoint.process_start_ticks"], &ticks) != nil || pid <= 0 || ticks <= 0 || root == "" || bundle == "" {
-		return "", "", "", 0, 0, os.ErrInvalid
-	}
-	if !filepath.IsAbs(root) {
-		root = filepath.Join(filepath.Dir(path), root)
-	}
-	if !filepath.IsAbs(bundle) {
-		bundle = filepath.Join(filepath.Dir(path), bundle)
-	}
-	bundleRaw, err := os.ReadFile(bundle)
-	if err != nil {
-		return "", "", "", 0, 0, err
-	}
-	var frozenBundle struct {
-		ID string `json:"bundle_id"`
-	}
-	if json.Unmarshal(bundleRaw, &frozenBundle) != nil || frozenBundle.ID == "" {
-		return "", "", "", 0, 0, os.ErrInvalid
-	}
-	return path, root, inferyard.CanonicalBundleName(frozenBundle.ID), pid, ticks, nil
-}
 func (s *Service) StartRuns(req StartRunsRequest) ([]RunTask, *ApiError) {
 	s.settingsMu.Lock()
 	defer s.settingsMu.Unlock()
@@ -123,7 +58,7 @@ func (s *Service) StartRuns(req StartRunsRequest) ([]RunTask, *ApiError) {
 		}
 		seen[config] = true
 		bundles[bundle] = true
-		entries = append(entries, &runEntry{Task: RunTask{TaskId: uuid(), Kind: "run", State: "starting", Queued: true, ConfigPath: &config, Bundle: &bundle, CreatedAt: now()}, root: root, binary: *p.Path, args: []string{"run", "--config", config}, Resources: []ResourceSample{}})
+		entries = append(entries, &runEntry{Task: RunTask{TaskId: uuid(), Kind: "run", State: "starting", Queued: true, ConfigPath: &config, Bundle: &bundle, CreatedAt: now()}, root: root, binary: *p.Path, args: []string{"run", "--config", config}, Resources: []ResourceSample{}, initialExclusivity: normalizeInitialExclusivity(req.InitialExclusivity)})
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -193,10 +128,14 @@ func (s *Service) Resume(req ResumeRunRequest) (RunTask, *ApiError) {
 		return RunTask{}, cliProbeError(p)
 	}
 	args := []string{"resume", "--from-run", path}
+	var probeEndpoint string
+	var probePID int
 	if req.EndpointUrl != nil {
 		args = append(args, "--endpoint-url", *req.EndpointUrl, "--server-pid", strconv.FormatInt(*req.ServerPid, 10))
+		probeEndpoint = *req.EndpointUrl
+		probePID = int(*req.ServerPid)
 	}
-	t := &runEntry{Task: RunTask{TaskId: uuid(), Kind: "resume", State: "starting", Queued: true, ResumeFrom: &path, Bundle: found.Bundle, CreatedAt: now()}, root: filepath.Dir(path), binary: *p.Path, args: args, Resources: []ResourceSample{}}
+	t := &runEntry{Task: RunTask{TaskId: uuid(), Kind: "resume", State: "starting", Queued: true, ResumeFrom: &path, Bundle: found.Bundle, CreatedAt: now()}, root: filepath.Dir(path), binary: *p.Path, args: args, Resources: []ResourceSample{}, probeEndpoint: probeEndpoint, probePID: probePID}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if e := s.admitRunLocked(); e != nil {
@@ -334,6 +273,7 @@ func (s *Service) executeRun(t *runEntry) {
 	}
 	done := make(chan result, 1)
 	execArgs := s.executionArgsWithRecovery(t)
+	exclusivity := s.startRunExclusivity(ctx, t)
 	s.mu.Lock()
 	t.commandActive = true
 	s.mu.Unlock()
@@ -413,6 +353,7 @@ loop:
 		select {
 		case <-ticker.C:
 			poll()
+			exclusivity.poll(ctx, t)
 		case resultValue = <-done:
 			poll()
 			break loop
@@ -430,6 +371,7 @@ loop:
 		}
 		poll()
 	}
+	exclusivity.finish(t)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if len(resourcePending) > 0 {

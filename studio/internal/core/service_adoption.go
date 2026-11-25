@@ -59,9 +59,10 @@ func (s *Service) adoptStandaloneServiceLocked(workspace, path string, owner eng
 		initialState = "running"
 	}
 	entry := &engineEntry{
-		ownerPath:  path,
-		owner:      owner,
-		family:     owner.Family,
+		ownerPath:   path,
+		owner:       owner,
+		pidSnapshot: buildOwnerPIDSnapshot(owner.PID, owner),
+		family:      owner.Family,
 		wasHealthy: healthy,
 		adopted:    true,
 		stop:       make(chan struct{}),
@@ -107,6 +108,7 @@ func (s *Service) monitorAdoptedEngine(e *engineEntry) {
 	health := &http.Client{Timeout: 2 * time.Second}
 	ticker := time.NewTicker(s.adoptPollPeriod())
 	defer ticker.Stop()
+	var lastMemSample time.Time
 	for {
 		select {
 		case <-e.detach:
@@ -131,6 +133,7 @@ func (s *Service) monitorAdoptedEngine(e *engineEntry) {
 			return
 		case <-ticker.C:
 			alive, err := s.ownedTreeAlive(&e.owner, e.ownerPath)
+			s.syncEntryPIDSnapshot(e)
 			if err != nil {
 				s.mu.Lock()
 				failure := orphanIdentityError()
@@ -179,7 +182,10 @@ func (s *Service) monitorAdoptedEngine(e *engineEntry) {
 					s.publishEngineLocked(e)
 				}
 				s.mu.Unlock()
+				s.maybeSampleRuntimeMemory(e, &lastMemSample, true)
+				continue
 			}
+			s.maybeSampleRuntimeMemory(e, &lastMemSample, false)
 		}
 	}
 }
