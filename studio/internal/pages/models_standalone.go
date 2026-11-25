@@ -201,7 +201,8 @@ func (s *viewState) standaloneRowState(m core.ModelAsset) (state string, endpoin
 		return "preparing", "", "", false
 	}
 	st := s.engineState
-	if st.Origin == core.EngineOriginStandalone && m.Path != "" && cleanMatchPath(st.Model) == cleanMatchPath(m.Path) {
+	matchedModel := st.Origin == core.EngineOriginStandalone && (m.Path != "" && cleanMatchPath(st.Model) == cleanMatchPath(m.Path) || m.Path == "" && st.Model == m.Name)
+	if matchedModel {
 		switch st.State {
 		case "starting", "running", "stopping":
 			_, ok, _ := engineWebUIInfo(st)

@@ -206,6 +206,7 @@ func previewPreparation(s *viewState) {
 	s.progress = nil
 	s.history, s.downloads, s.reports = core.RunHistoryResponse{}, nil, nil
 	s.ready.CLI.Status = "not_found"
+	s.serveSupported = false
 	s.ready.Workspace.Initialized, s.ready.Results.Exists, s.ready.Models.Exists = false, false, false
 }
 
@@ -220,7 +221,7 @@ func previewBase(ctx context.Context) *viewState {
 	reportsRoot := previewValue(filepath.Join(root, "reports"))
 	s := &viewState{
 		speed: &speedWorkspace{context: inferyard.ContextSpeed64K},
-		ctx:   ctx, selected: "dashboard", loaded: true, settingsLoaded: true,
+		ctx:   ctx, selected: "dashboard", loaded: true, settingsLoaded: true, serveSupported: true,
 		denied: map[string]bool{}, model: model, engine: engine, discoveryLoaded: true,
 		engineState: core.EngineState{State: "stopped"},
 		ready: core.Readiness{
