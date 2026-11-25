@@ -58,7 +58,7 @@ func (w *viewState) candidateFields(c *ui.Context) {
 	modelOptions := []components.NativeSelectOption[string]{{Value: "", Label: tr(c, "dashboard.candidate.select_model")}}
 	for _, m := range w.registry.Models {
 		if m.Available {
-			modelOptions = append(modelOptions, components.NativeSelectOption[string]{Value: m.Name, Label: modelLabel(m) + w.incompatibleModelSuffix(m), Disabled: !w.compatibleModel(m)})
+			modelOptions = append(modelOptions, components.NativeSelectOption[string]{Value: m.Name, Label: modelLabel(m) + w.incompatibleModelSuffix(m), Disabled: w.engine != "" && !w.compatibleModel(m)})
 		}
 	}
 
@@ -105,15 +105,26 @@ func (w *viewState) candidateFields(c *ui.Context) {
 		})
 		createDisabled = true
 	} else if !hasEligible {
-		if w.checks.Checking == 0 {
-			ui.Text(c, tr(c, "dashboard.candidate.no_engines"))
-			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-				button(c, tr(c, "onboarding.assets.go_downloads")).OnClick(func() {
+		if w.checks.Checking == 0 && !w.engineVerifyPending {
+			if badName, badEl, ok := w.firstIneligibleEngine(); ok {
+				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+					statusBadge(c, tr(c, "engine.badge.ineligible"), stateColor(c, stateWarning))
+					ui.Text(c, badName+" · "+human(badEl.Reason))
+				})
+				button(c, tr(c, "dashboard.candidate.view_engines")).AlignSelf(ui.Start).OnClick(func() {
 					w.libraryTab = 1
 					w.navigateTo("library", "")
 				})
-				button(c, tr(c, "dashboard.candidate.register_engine")).OnClick(func() { w.openGeneralSettings() })
-			})
+			} else {
+				ui.Text(c, tr(c, "dashboard.candidate.no_engines"))
+				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+					button(c, tr(c, "onboarding.assets.go_downloads")).OnClick(func() {
+						w.libraryTab = 1
+						w.navigateTo("library", "")
+					})
+					button(c, tr(c, "dashboard.candidate.register_engine")).OnClick(func() { w.openGeneralSettings() })
+				})
+			}
 		}
 		createDisabled = true
 	}
@@ -487,19 +498,29 @@ func blockedPlan(b inferyard.BundleProgress) bool {
 }
 
 func (s *viewState) verifyTaskEngines() {
-	if s.service == nil || s.task.stage != "prepare_candidate" || s.busy || s.refreshing {
+	if s.service == nil || s.busy || s.refreshing || s.engineVerifyPending {
+		return
+	}
+	unchecked := s.hasUncheckedRegistryEngine()
+	if !unchecked && s.task.stage != "prepare_candidate" {
 		return
 	}
 	now := time.Now()
-	if !s.task.lastVerify.IsZero() && now.Sub(s.task.lastVerify) < 5*time.Second {
+	if !unchecked && !s.task.lastVerify.IsZero() && now.Sub(s.task.lastVerify) < 5*time.Second {
 		return
 	}
 	s.task.lastVerify = now
+	s.engineVerifyPending = true
 	go func() {
 		s.service.VerifyEngines()
-		if s.ctx.Err() != nil {
-			return
-		}
-		s.win.Update(func() { s.checks = s.service.EngineChecks(); s.adoptDownloadedEngine() })
+		s.runOnUI(func() {
+			s.engineVerifyPending = false
+			if s.ctx != nil && s.ctx.Err() != nil {
+				return
+			}
+			s.checks = s.service.EngineChecks()
+			s.adoptDownloadedEngine()
+			s.adoptOnlyModel()
+		})
 	}()
 }

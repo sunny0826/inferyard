@@ -155,6 +155,7 @@ type viewState struct {
 	speed                                                                               *speedWorkspace
 	preview                                                                             previewMode
 	lastEngineVerification                                                              time.Time
+	engineVerifyPending                                                                 bool
 	discoveryCLI                                                                        string
 	binding                                                                             bool
 	bindingBundle                                                                       string

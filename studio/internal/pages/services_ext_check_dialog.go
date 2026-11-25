@@ -30,6 +30,19 @@ func (s *viewState) startBenchmarkForManagedService(svc core.EngineState) {
 		modelName = displayName(svc.Model)
 	}
 	engineName := strings.TrimSpace(svc.EngineName)
+	if engineName == "" && svc.Family != "" {
+		match := ""
+		count := 0
+		for _, eng := range s.registry.Engines {
+			if eng.Family == svc.Family {
+				match = eng.Name
+				count++
+			}
+		}
+		if count == 1 {
+			engineName = match
+		}
+	}
 	ctxSize := svc.ContextSize
 	gpuLayers := svc.GPULayers
 	serviceID := strings.TrimSpace(svc.ServiceID)
@@ -130,9 +143,47 @@ func (s *viewState) pendingExclusivityMatchesTarget() bool {
 	return true
 }
 
+func (s *viewState) applyServiceBenchmarkTarget(modelName, engineName string) {
+	if modelName != "" {
+		if len(s.registry.Models) == 0 {
+			s.model = modelName
+		} else if m, ok := s.findModelAsset(modelName); ok && m.Available {
+			s.model = m.Name
+		}
+	}
+	if engineName != "" {
+		if len(s.registry.Engines) == 0 {
+			s.engine = engineName
+		} else {
+			for _, eng := range s.registry.Engines {
+				if eng.Name == engineName {
+					s.engine = eng.Name
+					break
+				}
+			}
+		}
+	}
+	if s.speed != nil {
+		s.speed.selected = false
+	}
+	if !s.roundWorkActive() && s.running() == nil {
+		if s.speed != nil {
+			s.speed.current, s.speed.opened = nil, nil
+		}
+		s.task.stage = "prepare_candidate"
+		s.focusedRun = ""
+		s.resumeSource = nil
+		s.detailMu.Lock()
+		s.requestedDetail = ""
+		s.detailMu.Unlock()
+		s.failure = nil
+	}
+}
+
 func (s *viewState) handleExtConnProbeResult(serviceID, modelName, engineName, endpoint string, ctxSize int64, gpuLayers *int, probe core.ExternalConnProbe) {
 	if probe.Status != core.ExclusivityExternal {
 		s.clearPendingExclusivity()
+		s.applyServiceBenchmarkTarget(modelName, engineName)
 		s.openBenchmarksFlow()
 		return
 	}
@@ -197,19 +248,11 @@ func (s *viewState) extConnCheckDialog(c *ui.Context) {
 		}
 
 		applyBenchmarkTarget := func(mode, exclusivity string) {
-			if d.modelName != "" {
-				s.model = d.modelName
-			}
-			if d.engineName != "" {
-				s.engine = d.engineName
-			}
+			s.applyServiceBenchmarkTarget(d.modelName, d.engineName)
 			s.pendingExclusivityMode = mode
 			s.pendingExclusivity = exclusivity
 			s.pendingExclusivityModel = strings.TrimSpace(d.modelName)
 			s.pendingExclusivityEngine = strings.TrimSpace(d.engineName)
-			if s.speed != nil {
-				s.speed.selected = false
-			}
 			s.openBenchmarksFlow()
 		}
 

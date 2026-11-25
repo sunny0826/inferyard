@@ -123,7 +123,32 @@ func modelLabel(model core.ModelAsset) string {
 	return model.Name
 }
 
+func (s *viewState) hasUncheckedRegistryEngine() bool {
+	if !s.checks.Supported {
+		return false
+	}
+	for _, e := range s.registry.Engines {
+		if _, ok := s.checks.Engines[e.Name]; !ok {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *viewState) firstIneligibleEngine() (string, core.EngineEligibility, bool) {
+	for _, e := range s.registry.Engines {
+		el := s.eligibility(e.Name)
+		if el.State == core.EngineCheckIneligible {
+			return e.Name, el, true
+		}
+	}
+	return "", core.EngineEligibility{}, false
+}
+
 func (s *viewState) localSelectionError() string {
+	if s.engine == "" {
+		return ""
+	}
 	for _, model := range s.registry.Models {
 		if model.Name == s.model && !s.compatibleModel(model) {
 			return l10n.TR("engine.local.error.format_mismatch")
