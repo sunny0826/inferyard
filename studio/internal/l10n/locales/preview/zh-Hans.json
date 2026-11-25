@@ -20,7 +20,7 @@
   "preview.polystrata.blocker.xcode_clt": "需要安装 Xcode Command Line Tools 才能构建 PolyStrata。",
   "preview.polystrata.log.line1": "07:31:02 [1/4 preflight] Apple Silicon · Xcode CLT / CMake 3.31 就绪",
   "preview.polystrata.log.line2": "07:31:04 [1/4 preflight] 磁盘可用 218.4 GiB >= 需要 42.0 GiB",
-  "preview.polystrata.log.line3": "07:31:05 [2/4 runtime] 下载 PolyStrata v0.1.45-poly.10 运行时归档",
+  "preview.polystrata.log.line3": "07:31:05 [2/4 runtime] 下载 PolyStrata v0.2.20-poly.5 运行时归档",
   "preview.polystrata.log.line4": "07:31:18 [2/4 runtime] 解压并校验 SHA-256 完成",
   "preview.polystrata.log.line5": "07:31:19 [3/4 setup_engine] 构建 Metal 推理后端（ninja -j10）",
   "preview.polystrata.log.line6": "07:33:41 [3/4 setup_engine] polystrata-server 构建就绪",

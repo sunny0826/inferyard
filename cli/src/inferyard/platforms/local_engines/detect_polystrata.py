@@ -328,7 +328,7 @@ def is_polystrata_root(directory: Path) -> bool:
     )
 
 
-def _normalize_polystrata_root(directory: Path) -> Path:
+def normalize_polystrata_root(directory: Path) -> Path:
     """Collapse <repo>/terminal to <repo> when <repo> is a 0.2.16+ PolyStrata root."""
     if directory.name == "terminal" and is_polystrata_root(directory.parent):
         return directory.parent
@@ -339,7 +339,7 @@ def infer_polystrata_root(executable: Path) -> Path | None:
     """Infer PolyStrata working_directory from a .venv Python executable."""
     venv_dir = executable.parent.parent
     if executable.parent.name in ("bin", "Scripts") and (venv_dir / "pyvenv.cfg").is_file():
-        candidate = _normalize_polystrata_root(venv_dir.parent)
+        candidate = normalize_polystrata_root(venv_dir.parent)
         if is_polystrata_root(candidate):
             return _safe_resolve(candidate)
     return None
@@ -352,9 +352,9 @@ def probe_polystrata_root(
     *,
     preferred_python: Path | None = None,
 ) -> bool:
-    resolved = _safe_resolve(_normalize_polystrata_root(root_dir))
+    resolved = _safe_resolve(normalize_polystrata_root(root_dir))
     if resolved is not None:
-        resolved = _safe_resolve(_normalize_polystrata_root(resolved))
+        resolved = _safe_resolve(normalize_polystrata_root(resolved))
     if resolved is None or not is_polystrata_root(resolved):
         return False
     venv_dir = resolved / ".venv"
@@ -423,15 +423,15 @@ def collect_polystrata_targets(
         if path.is_file():
             name = path.name.lower()
             if name == "server.py" and path.parent.name == "serve":
-                targets.append((_normalize_polystrata_root(path.parent.parent), None))
+                targets.append((normalize_polystrata_root(path.parent.parent), None))
             elif name in ("setup.py", "polystrata.py", "build.json"):
-                targets.append((_normalize_polystrata_root(path.parent), None))
+                targets.append((normalize_polystrata_root(path.parent), None))
             elif name.startswith("python"):
                 inferred = infer_polystrata_root(path)
                 if inferred is not None:
                     targets.append((inferred, path))
         elif path.is_dir():
-            norm_dir = _normalize_polystrata_root(path)
+            norm_dir = normalize_polystrata_root(path)
             if is_polystrata_root(norm_dir):
                 targets.append((norm_dir, None))
             else:
@@ -439,7 +439,7 @@ def collect_polystrata_targets(
                     with os.scandir(path) as entries:
                         for entry in sorted(entries, key=lambda item: item.name):
                             if entry.is_dir():
-                                child = _normalize_polystrata_root(Path(entry.path))
+                                child = normalize_polystrata_root(Path(entry.path))
                                 if is_polystrata_root(child):
                                     targets.append((child, None))
                 except OSError:

@@ -15,6 +15,7 @@ from inferyard.errors import PreflightError
 from inferyard.platforms.local_engines.detect_polystrata import (
     collect_polystrata_targets,
     infer_polystrata_root,
+    normalize_polystrata_root,
     polystrata_runtime_roots,
     probe_polystrata_root,
 )
@@ -390,6 +391,8 @@ def build_installation(
         cwd_path = _require_existing_path(working_directory, "local_engine_locator_missing")
         if not cwd_path.is_dir():
             raise PreflightError("local_engine_cwd_invalid")
+        if family == "polystrata":
+            cwd_path = _safe_resolve(normalize_polystrata_root(cwd_path)) or cwd_path
         declared_cwd = os.path.normpath(str(cwd_path))
 
     if runtime_roots is None:

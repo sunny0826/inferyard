@@ -193,15 +193,11 @@ func inferPolystrataUpdateSpec(instDir, dataDir string) (family, model, ggufPath
 		path    string
 		modTime time.Time
 	}
-	var localDirs []string
-	if trimmed := strings.TrimSpace(instDir); trimmed != "" {
-		localDirs = uniqueCleanPaths([]string{trimmed, filepath.Join(trimmed, "terminal")})
-	}
+	localDirs := polystrataConfigSearchDirs(instDir, "")
 	var sharedDirs []string
-	if trimmed := strings.TrimSpace(dataDir); trimmed != "" {
-		cleanDD := filepath.Clean(trimmed)
-		if !slices.Contains(localDirs, cleanDD) {
-			sharedDirs = []string{cleanDD}
+	for _, dir := range polystrataConfigSearchDirs("", dataDir) {
+		if !slices.Contains(localDirs, dir) {
+			sharedDirs = append(sharedDirs, dir)
 		}
 	}
 	var fallbackGGUF string

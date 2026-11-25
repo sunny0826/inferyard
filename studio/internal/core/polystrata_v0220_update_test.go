@@ -68,15 +68,15 @@ func TestPolystrataV0220OneClickUpdateAndReceiptVersion(t *testing.T) {
 	shard1 := filepath.Join(dataDir, "models", "Q2_0", "Qwen3.8-00001-of-00002.gguf")
 	mustWriteFile(t, shard1, bytes.Repeat([]byte("q"), 4096), 0o600)
 
-	// Verify qwen36-UD-Q4_K_M inference directly as well.
+	// Verify qwen36-UD-Q4_K_M inference both from terminal/ and from shared dataDir/models/<tag>/.
 	q36Dir := filepath.Join(base, "q36-inst")
 	q36Shard := filepath.Join(dataDir, "models", "qwen36-UD-Q4_K_M", "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf")
 	mustWriteFile(t, q36Shard, []byte("gguf"), 0o600)
-	writeStrataConfigFixture(t, filepath.Join(q36Dir, "terminal", "strata-qwen36.json"), "qwen36-ud-q4-k-m", []string{
+	writeStrataConfigFixture(t, filepath.Join(filepath.Dir(q36Shard), "strata-qwen36.json"), "qwen36-ud-q4-k-m", []string{
 		"--model", q36Shard, "--max-context", "16384",
 	})
 	if fam, mod, _, ctxLen := inferPolystrataUpdateSpec(q36Dir, dataDir); fam != "qwen36" || mod != "UD-Q4_K_M" || ctxLen != 16384 {
-		t.Fatalf("inferPolystrataUpdateSpec(qwen36) = (%q, %q, %d), want (qwen36, UD-Q4_K_M, 16384)", fam, mod, ctxLen)
+		t.Fatalf("inferPolystrataUpdateSpec(shared models/<tag>) = (%q, %q, %d), want (qwen36, UD-Q4_K_M, 16384)", fam, mod, ctxLen)
 	}
 
 	// Stage outdated v0.1.45-poly.10 installation with strata-q2_0.json.

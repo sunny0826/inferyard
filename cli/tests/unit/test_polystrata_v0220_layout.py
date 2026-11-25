@@ -13,7 +13,7 @@ import pytest
 from inferyard.config.loader import load_config
 from inferyard.config.local_engines.candidate import create as create_candidate
 from inferyard.platforms.local_engines import installation
-from inferyard.platforms.local_engines.detect import detect_local_engines
+from inferyard.platforms.local_engines.detect import build_installation, detect_local_engines
 from inferyard.platforms.local_engines.detect_polystrata import (
     collect_polystrata_targets,
     infer_polystrata_root,
@@ -226,7 +226,8 @@ def test_preflight_shared_data_dir_deducts_existing_q2_0_shards_without_resume(
     shard_dir = shared_data / "models" / "Q2_0"
     shard_dir.mkdir(parents=True)
     shard_bytes = 8 * 1024 * 1024
-    shard = shard_dir / "Qwen3.8-Flash-Next-Q2_0-00001-of-00002.gguf"
+    # Filename intentionally omits 'q2_0' to ensure tag directory models/Q2_0 suffices.
+    shard = shard_dir / "Qwen-00001-of-00002.gguf"
     shard.write_bytes(b"x" * shard_bytes)
 
     # Unrelated Swift-Qwen3.8 Q2_0 shard in shared_data must NOT be deducted for qwen/Q2_0.
@@ -253,6 +254,32 @@ def test_preflight_shared_data_dir_deducts_existing_q2_0_shards_without_resume(
     )
     assert exact_fresh is True and exact_shared is True
     assert shared_req == fresh_req - shard_bytes
+
+    # Gemma 4 draft_bytes must also be deductible when both main + draft GGUF exist.
+    gemma_dir = shared_data / "models" / "gemma4-UD-Q3_K_M"
+    (gemma_dir / "MTP").mkdir(parents=True)
+    main_bytes, draft_bytes = 6 * 1024 * 1024, 2 * 1024 * 1024
+    (gemma_dir / "gemma-4-26B-A4B-it-UD-Q3_K_M.gguf").write_bytes(b"m" * main_bytes)
+    (gemma_dir / "MTP" / "mtp-gemma-4-26B-A4B-it-Q8_0.gguf").write_bytes(b"d" * draft_bytes)
+    gemma_fresh, _ = _estimate_model_disk_bytes(
+        system="Linux",
+        backend="cuda",
+        family="gemma4",
+        model="UD-Q3_K_M",
+        gguf_path=None,
+        resume=False,
+        data_dir=empty_data,
+    )
+    gemma_shared, _ = _estimate_model_disk_bytes(
+        system="Linux",
+        backend="cuda",
+        family="gemma4",
+        model="UD-Q3_K_M",
+        gguf_path=None,
+        resume=False,
+        data_dir=shared_data,
+    )
+    assert gemma_shared == gemma_fresh - (main_bytes + draft_bytes)
 
 
 def test_detect_and_target_discovery_for_v0220_layout(
@@ -316,3 +343,6 @@ def test_detect_and_target_discovery_for_v0220_layout(
     assert poly_hits[0]["working_directory"] == str(root.resolve())
     assert poly_hits[0]["version"] == "0.2.20"
     assert str((root / "terminal" / "strata-q2_0.json").resolve()) in poly_hits[0]["model_configs"]
+
+    built = build_installation("polystrata", term_venv_py, working_directory=root / "terminal")
+    assert built["working_directory"] == str(root.resolve())

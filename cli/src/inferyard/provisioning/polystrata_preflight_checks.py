@@ -151,10 +151,8 @@ def _existing_resume_model_bytes(
                         if expected_files:
                             matched = base_name in expected_files
                         else:
-                            matched = (
-                                top_dir == expected_tag
-                                and size_token in base_name
-                                and (fam_token != "qwen" or not base_name.startswith("swift-"))
+                            matched = top_dir == expected_tag and (
+                                fam_token != "qwen" or not base_name.startswith("swift-")
                             )
                         if matched:
                             try:
@@ -196,7 +194,10 @@ def _estimate_model_disk_bytes(
     base = _entry_disk_bytes(best_entry, system=system, gguf_path=gguf_path, avx512=avx512)
     exact = gguf_path is not None or bool(family and model)
     if gguf_path is None and (resume or (data_dir.is_dir() and not linked(data_dir))):
-        download_cap = int(best_entry.get("download_bytes") or 0)
+        gguf_sources = best_entry.get("gguf_sources") or {}
+        download_cap = int(best_entry.get("download_bytes") or 0) + int(
+            gguf_sources.get("draft_bytes") or 0
+        )
         already = min(
             download_cap, _existing_resume_model_bytes(data_dir, family, model, best_entry)
         )
