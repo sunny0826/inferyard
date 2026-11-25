@@ -12,6 +12,7 @@ EXPORTED_SCHEMAS = (
     "context_speed_result",
     "engine_check",
     "manifest",
+    "serve_plan",
     "studio_report",
 )
 
