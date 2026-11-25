@@ -66,20 +66,28 @@ func (s *viewState) detailView(c *ui.Context) {
 }
 
 func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
+	elapsed := ""
+	if !terminal(d.Task.State) && d.Task.State != "cancelling" && !d.Task.AwaitingService {
+		elapsed = s.formatTaskElapsed(c, emptyText(d.Task.StartedAt))
+	}
 	p := d.Progress
 	if p == nil {
-		ui.Text(c, tr(c, "detail.waiting_progress"))
+		waiting := tr(c, "detail.waiting_progress")
+		if elapsed != "" {
+			ui.Row(c.Key("detail-waiting-elapsed-" + d.Task.TaskId)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+				ui.Text(c, waiting)
+				ui.Text(c, "· "+elapsed).TextColor(c.Theme().TextMuted)
+			})
+		} else {
+			ui.Text(c, waiting)
+		}
 		return
 	}
 	headline := progressHeadline(p)
-	if !terminal(d.Task.State) && p.Total != nil && *p.Total > 0 {
-		host := ui.Row(c.Key("detail-eta-" + d.Task.TaskId)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row)
-		eta := formatETA(c, host, "detail-"+d.Task.TaskId, p.Done, *p.Total)
-		host.Children(func() {
+	if elapsed != "" {
+		ui.Row(c.Key("detail-elapsed-" + d.Task.TaskId)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 			ui.Text(c, headline)
-			if eta != "" {
-				ui.Text(c, "· "+eta).TextColor(c.Theme().TextMuted)
-			}
+			ui.Text(c, "· "+elapsed).TextColor(c.Theme().TextMuted)
 		})
 	} else {
 		ui.Text(c, headline)

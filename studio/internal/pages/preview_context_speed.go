@@ -23,6 +23,7 @@ func (p *previewSession) startSpeed(op previewSpeedStart) {
 	r := &speedTask{id: p.nextID("speed"), model: op.model, engine: op.engine, context: op.context,
 		stage: speedPreparing, selectionModel: op.model, selectionEngine: op.engine}
 	s.speed.current, s.speed.opened = r, nil
+	s.benchFlowOpen = true
 	s.busy = true
 	fail, missing := p.takeFailure(), p.speedMissingTiming
 	failureStage, failure := p.speedFailureStage, p.speedFailure
@@ -69,6 +70,7 @@ func (p *previewSession) startSpeed(op previewSpeedStart) {
 			r.stage = speedQueued
 			p.after("speed", 400*time.Millisecond, func() {
 				r.stage = speedMeasuring
+				r.startedAt = p.timestamp()
 				p.speedMissingTiming = false
 				p.tickSpeed(r, missing)
 			})

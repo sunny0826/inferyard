@@ -7,12 +7,14 @@ import (
 	"encoding/json"
 	"io/fs"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -246,5 +248,60 @@ func TestPreviewCreateReportCancelledPelicanDoesNotFabricateOKSVG(t *testing.T) 
 	}
 	if len(noDetailReport.Runs[0].SVGOutputs) != 0 {
 		t.Fatalf("run without svg request details must not fabricate SVG outputs, got %+v", noDetailReport.Runs[0].SVGOutputs)
+	}
+}
+
+func TestPreviewBenchmarkElapsedUsesVirtualClock(t *testing.T) {
+	p := newPreviewSession(context.Background())
+	p.loadScene(1)
+	// Advance to a running benchmark via preview clock:
+	// 400ms (prepare->bind) + 800ms (bind->running) = 1.2s start timestamp.
+	p.beginBenchmark(previewBenchmark{
+		model:   p.state.model,
+		engine:  p.state.engine,
+		bundles: []string{inferyard.DefaultBundlePelican},
+	})
+	// At 2.0s virtual clock, only 0.8s has elapsed since 1.2s start -> must stay "< 1s", not premature "1s".
+	p.advance(2000 * time.Millisecond)
+
+	tt := ui.NewTester(p.content, 1120, 800)
+	tt.Frame()
+
+	wantUnder1s := l10n.TRf("common.elapsed.running", "duration", formatElapsedDurationFor(l10n.LanguageZhHans, 800*time.Millisecond))
+	textsAt2s := strings.Join(tt.Texts(), "\n")
+	if !strings.Contains(textsAt2s, wantUnder1s) {
+		t.Fatalf("expected sub-second preview elapsed %q at 0.8s into run, got:\n%s", wantUnder1s, textsAt2s)
+	}
+
+	// Advancing another 300ms (total 1.1s into run) crosses 1 full second.
+	p.advance(300 * time.Millisecond)
+	tt.Frame()
+
+	want1s := l10n.TRf("common.elapsed.running", "duration", formatElapsedDurationFor(l10n.LanguageZhHans, 1100*time.Millisecond))
+	textsAt2300ms := strings.Join(tt.Texts(), "\n")
+	if !strings.Contains(textsAt2300ms, want1s) {
+		t.Fatalf("expected preview virtual clock elapsed %q at 1.1s into run, got:\n%s", want1s, textsAt2300ms)
+	}
+
+	// Verify preview context speed return-to-list -> completion -> open result from Recent row.
+	p.loadScene(1)
+	p.state.speed.selected = true
+	p.startSpeed(previewSpeedStart{
+		model:   p.state.model,
+		engine:  p.state.engine,
+		context: inferyard.ContextSpeed64K,
+	})
+	p.state.benchFlowOpen = false
+	// Advance past all 5 samples + reading stage so speed task finishes while user is on Benchmarks list.
+	p.advance(10 * time.Second)
+	tt.Frame()
+	afterSpeedDone := strings.Join(tt.Texts(), "\n")
+	if !strings.Contains(afterSpeedDone, l10n.TR("benchmarks.group.running_empty")) || strings.Contains(afterSpeedDone, l10n.TR("benchmarks.badge.active_flow")) {
+		t.Fatalf("expected preview Benchmarks list Running section empty after speed completion, got:\n%s", afterSpeedDone)
+	}
+	click(t, tt, l10n.TR("shell.header.context_speed"))
+	tt.Frame()
+	if p.state.selected != "reports" || p.state.speed.opened == nil {
+		t.Fatalf("expected clicking completed speed row in Recent to open speed result, got selected=%q opened=%v", p.state.selected, p.state.speed.opened)
 	}
 }

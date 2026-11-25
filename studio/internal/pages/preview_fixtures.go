@@ -190,7 +190,7 @@ func previewRunning(s *viewState) {
 		Endpoint:    "http://127.0.0.1:48857",
 		Candidate:   "/preview/candidate",
 	}
-	s.tasks = []core.RunTask{{TaskId: "preview-run", State: "running", Bundle: previewValue(inferyard.DefaultBundleCore), RunPath: previewValue("/preview/results/preview-run")}}
+	s.tasks = []core.RunTask{{TaskId: "preview-run", State: "running", Bundle: previewValue(inferyard.DefaultBundleCore), RunPath: previewValue("/preview/results/preview-run"), StartedAt: previewValue("2026-10-16T23:59:08Z")}}
 	s.runProgress = &core.RunProgress{Done: 42, Total: previewValue(int64(120)), CurrentCaseId: previewValue("preview-case-043")}
 }
 
@@ -262,7 +262,7 @@ func previewReportFixture(reference string) *core.ReportIndex {
 
 func previewDetailFixture(id string) *core.RunTaskDetail {
 	return &core.RunTaskDetail{
-		Task: core.RunTask{TaskId: id, Kind: "run", State: "running", Bundle: previewValue(inferyard.DefaultBundleCore), RunId: previewValue("preview-run"), RunPath: previewValue("/preview/results/preview-run")},
+		Task: core.RunTask{TaskId: id, Kind: "run", State: "running", Bundle: previewValue(inferyard.DefaultBundleCore), RunId: previewValue("preview-run"), RunPath: previewValue("/preview/results/preview-run"), StartedAt: previewValue("2026-10-16T23:59:08Z")},
 		Progress: &core.RunProgress{Done: 42, Total: previewValue(int64(120)), Phase: previewValue("formal"), CurrentCaseId: previewValue("preview-case-043"), Cases: []core.CaseProgress{
 			{CaseId: "preview-case-001", State: "completed", QualityState: previewValue("pass"), DurationMs: previewValue(1240.0)},
 			{CaseId: "preview-case-002", State: "failed", ErrorCategory: previewValue("preview_failure")},

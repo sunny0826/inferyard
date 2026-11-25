@@ -41,6 +41,7 @@ type speedTask struct {
 	completed                       int
 	budget                          float64
 	id, model, engine               string
+	startedAt                       string
 	context                         int
 	stage                           speedStage
 	samples                         []speedSample
@@ -64,6 +65,62 @@ var speedStageKeys = [...]string{
 	"speed.stage.failed",
 	"speed.stage.partial",
 	"speed.stage.queued",
+}
+
+var speedStageWireNames = [...]string{
+	"preparing",
+	"binding",
+	"planning",
+	"measuring",
+	"reading",
+	"done",
+	"cancelling",
+	"cancelled",
+	"failed",
+	"partial",
+	"queued",
+}
+
+func (r *speedTask) toRunTask() core.RunTask {
+	state := "running"
+	queued := false
+	switch r.stage {
+	case speedPreparing, speedBinding, speedPlanning:
+		state = "starting"
+	case speedQueued:
+		state, queued = "starting", true
+	case speedCancelling:
+		state = "cancelling"
+	case speedDone, speedPartial:
+		state = "done"
+	case speedCancelled:
+		state = "cancelled"
+	case speedFailed:
+		state = "failed"
+	}
+	var startedAt *string
+	if r.startedAt != "" {
+		s := r.startedAt
+		startedAt = &s
+	}
+	stageName := ""
+	if int(r.stage) >= 0 && int(r.stage) < len(speedStageWireNames) {
+		stageName = speedStageWireNames[r.stage]
+	}
+	return core.RunTask{
+		TaskId:    r.id,
+		Kind:      "context_speed",
+		State:     state,
+		Queued:    queued,
+		StartedAt: startedAt,
+		ContextSpeed: &core.ContextSpeedTask{
+			Model:     r.model,
+			Engine:    r.engine,
+			Context:   r.context,
+			Stage:     stageName,
+			Completed: r.completed,
+		},
+	}
 }
 
 func (r *speedTask) label() string {
@@ -230,15 +287,15 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 		step = "✓"
 	}
 	stepTrack(c, step, r.label(), func() {
-		row := ui.Row(c.Key("speed-eta-" + r.id)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row)
-		eta := ""
+		row := ui.Row(c.Key("speed-elapsed-" + r.id)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row)
+		elapsed := ""
 		if r.stage == speedMeasuring {
-			eta = formatETA(c, row, "speed-"+r.id, int64(r.completed), 5)
+			elapsed = s.formatTaskElapsed(c, r.startedAt)
 		}
 		row.Children(func() {
 			ui.Text(c, trf(c, "speed.task.completed_count", "completed", r.completed))
-			if eta != "" {
-				ui.Text(c, "· "+eta).TextColor(c.Theme().TextMuted)
+			if elapsed != "" {
+				ui.Text(c, "· "+elapsed).TextColor(c.Theme().TextMuted)
 			}
 		})
 		progressBar(c, float64(r.completed)/5, tr(c, "speed.task.progress_bar_label"))

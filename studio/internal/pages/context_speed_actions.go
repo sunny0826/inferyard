@@ -23,7 +23,7 @@ func (s *viewState) startSpeed() {
 	s.work(func() (string, *core.ApiError) {
 		task, e := startSpeedFlow(s.service, request)
 		if e == nil {
-			s.win.Update(func() { s.speed.current = task; s.speed.opened = nil })
+			s.win.Update(func() { s.speed.current = task; s.speed.opened = nil; s.benchFlowOpen = true })
 		}
 		return "", e
 	})
@@ -82,6 +82,7 @@ func speedFromTask(t core.RunTask) *speedTask {
 	if v.Batch != nil {
 		r.completed = v.Completed
 	}
+	r.startedAt = emptyText(t.StartedAt)
 	if t.Error != nil {
 		r.reason = t.Error.Message
 		if r.reason == "" {

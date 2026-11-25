@@ -16,10 +16,6 @@ func (s *viewState) openBenchmarksFlow() {
 }
 
 func (s *viewState) benchmarksView(c *ui.Context) {
-	if s.speed != nil && s.speed.current != nil {
-		s.speedTaskView(c)
-		return
-	}
 	if s.newTaskPending {
 		s.dashboardView(c)
 		return
@@ -66,6 +62,8 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 		}
 	})
 
+	extraSpeed, hasExtraSpeed := s.unlistedCurrentSpeedTask()
+
 	section(c, tr(c, "benchmarks.group.running"), func() {
 		found := false
 		for _, task := range s.tasks {
@@ -75,7 +73,11 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 			found = true
 			s.renderBenchmarkTaskRow(c, task)
 		}
-		if !found && s.hasActiveBenchmarkFlow() {
+		if hasExtraSpeed && !terminal(extraSpeed.State) && !extraSpeed.Queued {
+			found = true
+			s.renderBenchmarkTaskRow(c, extraSpeed)
+		}
+		if !found && s.shouldRenderActiveFlowRow() {
 			found = true
 			s.renderActiveFlowRow(c)
 		}
@@ -92,6 +94,10 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 			}
 			found = true
 			s.renderBenchmarkTaskRow(c, task)
+		}
+		if hasExtraSpeed && extraSpeed.Queued {
+			found = true
+			s.renderBenchmarkTaskRow(c, extraSpeed)
 		}
 		if !found {
 			ui.Text(c, tr(c, "benchmarks.group.queued_empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
@@ -114,6 +120,21 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 			}
 			s.renderBenchmarkTaskRow(c, task)
 		}
+		if s.speed != nil {
+			speedCount := 0
+			for _, r := range s.speed.history {
+				if speedCount >= 5 {
+					break
+				}
+				if r == nil || r.active() || seenRuns[r.id] {
+					continue
+				}
+				found = true
+				speedCount++
+				seenRuns[r.id] = true
+				s.renderBenchmarkTaskRow(c, r.toRunTask())
+			}
+		}
 		reportCount := 0
 		for _, rep := range s.reports {
 			if reportCount >= 5 {
@@ -132,7 +153,41 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 	})
 }
 
+func (s *viewState) unlistedCurrentSpeedTask() (core.RunTask, bool) {
+	if s.speed == nil || s.speed.current == nil || !s.speed.current.active() {
+		return core.RunTask{}, false
+	}
+	cur := s.speed.current
+	for _, task := range s.tasks {
+		if task.TaskId == cur.id {
+			return core.RunTask{}, false
+		}
+	}
+	return cur.toRunTask(), true
+}
+
+func (s *viewState) shouldRenderActiveFlowRow() bool {
+	if s.speed != nil && s.speed.current != nil {
+		return false
+	}
+	if s.binding {
+		return true
+	}
+	if s.task.stage != "" && s.task.stage != "done" {
+		for _, task := range s.tasks {
+			if !terminal(task.State) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 func (s *viewState) hasActiveBenchmarkFlow() bool {
+	if s.speed != nil && s.speed.current != nil {
+		return true
+	}
 	if s.binding || s.running() != nil {
 		return true
 	}
@@ -180,10 +235,7 @@ func (s *viewState) renderBenchmarkTaskRow(c *ui.Context, task core.RunTask) {
 			title = base + " · " + title
 		}
 	}
-	sub := taskLabelFor(contextLocale(c), task)
-	if task.StartedAt != nil && *task.StartedAt != "" {
-		sub += " · " + formatTimestamp(*task.StartedAt)
-	}
+	sub := s.benchmarkTaskSubtitle(c, task)
 	kind := stateNeutral
 	switch task.State {
 	case "running", "starting":
@@ -211,7 +263,20 @@ func (s *viewState) renderBenchmarkTaskRow(c *ui.Context, task core.RunTask) {
 					inlineBadge(c, taskLabelFor(contextLocale(c), task), kind, badgeOptions{Size: sizeSM})
 				})
 			},
-			OnClick: func() { s.selectTask(task.TaskId) },
+			OnClick: func() {
+				if task.Kind == "context_speed" {
+					if terminal(task.State) {
+						s.openSpeed(task.TaskId)
+					} else {
+						if s.speed != nil && (s.speed.current == nil || s.speed.current.id != task.TaskId) {
+							s.speed.current = speedFromTask(task)
+						}
+						s.benchFlowOpen = true
+					}
+					return
+				}
+				s.selectTask(task.TaskId)
+			},
 		})
 	})
 }
@@ -244,6 +309,30 @@ func (s *viewState) renderRecentReportRow(c *ui.Context, rep core.ReportSummary)
 			OnClick: func() { s.openReport(repCopy.ReportId) },
 		})
 	})
+}
+
+func (s *viewState) benchmarkTaskSubtitle(c *ui.Context, task core.RunTask) string {
+	sub := taskLabelFor(contextLocale(c), task)
+	if terminal(task.State) || task.Queued || task.State == "queued" {
+		if task.StartedAt != nil && *task.StartedAt != "" {
+			sub += " · " + formatTimestamp(*task.StartedAt)
+		}
+		return sub
+	}
+	if task.ContextSpeed != nil && task.ContextSpeed.Stage == "measuring" {
+		sub += " · " + trf(c, "speed.task.completed_count", "completed", task.ContextSpeed.Completed)
+	} else if active := s.running(); active != nil && active.TaskId == task.TaskId && s.runProgress != nil && s.runProgress.Total != nil && *s.runProgress.Total > 0 {
+		sub += " · " + trf(c, "dashboard.run.cases_progress", "done", s.runProgress.Done, "total", *s.runProgress.Total)
+	}
+	if task.State != "cancelling" && !task.AwaitingService {
+		if elapsed := s.formatTaskElapsed(c, emptyText(task.StartedAt)); elapsed != "" {
+			return sub + " · " + elapsed
+		}
+	}
+	if task.StartedAt != nil && *task.StartedAt != "" {
+		sub += " · " + formatTimestamp(*task.StartedAt)
+	}
+	return sub
 }
 
 func reportAlreadyListed(rep core.ReportSummary, seen map[string]bool) bool {

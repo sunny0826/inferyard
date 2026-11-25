@@ -330,13 +330,13 @@ func (w *viewState) runView(c *ui.Context) {
 		if task.PreparationStage != "" {
 			label = taskLabelFor(contextLocale(c), *task)
 		}
-		var done, total int64
+		var total int64
 		if p := w.runProgress; p != nil && p.Total != nil && *p.Total > 0 {
-			done, total = p.Done, *p.Total
+			total = *p.Total
 			if p.Done > 0 || p.CurrentCaseId != nil {
 				value = progressValue(p.Done, p.Total)
 			}
-			label = trf(c, "dashboard.run.cases_progress", "done", p.Done, "total", *p.Total)
+			label = trf(c, "dashboard.run.cases_progress", "done", p.Done, "total", total)
 			if phase := emptyText(p.Phase); phase != "" && p.Done == 0 && p.CurrentCaseId == nil {
 				label += " · " + stateLabelFor(contextLocale(c), phase)
 			}
@@ -345,15 +345,15 @@ func (w *viewState) runView(c *ui.Context) {
 		if task.State == "cancelling" {
 			ui.Text(c, tr(c, "dashboard.run.cancelling_notice"))
 		}
-		row := ui.Row(c.Key("run-eta-" + task.TaskId)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row)
-		eta := ""
-		if total > 0 && task.State != "cancelling" {
-			eta = formatETA(c, row, "run-"+task.TaskId, done, total)
+		row := ui.Row(c.Key("run-elapsed-" + task.TaskId)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row)
+		elapsed := ""
+		if task.State != "cancelling" && !task.AwaitingService {
+			elapsed = w.formatTaskElapsed(c, emptyText(task.StartedAt))
 		}
 		row.Children(func() {
 			ui.Text(c, label)
-			if eta != "" {
-				ui.Text(c, "· "+eta).TextColor(c.Theme().TextMuted)
+			if elapsed != "" {
+				ui.Text(c, "· "+elapsed).TextColor(c.Theme().TextMuted)
 			}
 		})
 		id := task.TaskId
