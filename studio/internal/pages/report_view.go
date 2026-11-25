@@ -75,9 +75,12 @@ func (s *viewState) reportView(c *ui.Context) {
 		report.runPicker(c)
 		run = report.index.Runs[report.run]
 	}
-	if run.Diagnostic {
-		statusBadge(c, tr(c, "reports.detail.diagnostic_badge"), stateColor(c, stateWarning))
-	}
+	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+		exclusivityBadge(c, s.reportExclusivity(report.reference))
+		if run.Diagnostic {
+			statusBadge(c, tr(c, "reports.detail.diagnostic_badge"), stateColor(c, stateWarning))
+		}
+	})
 	reportMetrics(c, run)
 	s.reportSVGSection(c, report, run)
 	reportSummaryGrid(c,

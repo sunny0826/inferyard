@@ -168,5 +168,18 @@
   "benchmarks.badge.report": "Report",
   "benchmarks.badge.active_flow": "In Setup",
   "benchmarks.row.open_detail": "Open Detail",
-  "benchmarks.row.open_report": "Open Report"
+  "benchmarks.row.open_report": "Open Report",
+  "services.card.metric.memory_measured": "{gb} GB · Measured",
+  "services.card.metric.memory_estimated": "{gb} GB · Est.",
+  "services.card.metric.speed_value": "{tps} tok/s",
+  "services.card.metric.view_report": "View report ›",
+  "services.card.metric.view_report_label": "View benchmark report for {model}",
+  "services.ext_check.title": "External Connections Detected",
+  "services.ext_check.desc": "External connections were detected on port {port}. Running a benchmark on this shared service may affect throughput and latency.",
+  "services.ext_check.clients_label": "Detected external clients",
+  "services.ext_check.memory_enough": "Remaining memory ({remaining} GB) is enough to launch a dedicated benchmark instance (est. {est} GB).",
+  "services.ext_check.memory_insufficient": "Remaining memory ({remaining} GB) is insufficient for a dedicated instance (est. {est} GB). You can cancel or continue benchmarking with an external-connection mark in the report.",
+  "services.ext_check.action.dedicated_instance": "Launch Dedicated Instance",
+  "services.ext_check.action.benchmark_anyway": "Benchmark Anyway (Mark Report)",
+  "services.ext_check.action.cancel": "Cancel"
 }

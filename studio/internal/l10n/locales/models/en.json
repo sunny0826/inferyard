@@ -232,5 +232,12 @@
   "models.serve.toast.stopping": "Stopping model service…",
   "models.storage.missing": "Missing",
   "models.storage.summary": "Total used {used} · Free disk {free}",
-  "models.wizard.card_title": "Register Local Engine"
+  "models.wizard.card_title": "Register Local Engine",
+  "models.evidence.best": "Best measured: {engine} {tps} tok/s",
+  "models.evidence.best_compare": "Best measured: {engine} {tps} tok/s · {otherEngine} {otherTps} tok/s",
+  "models.evidence.open_report_label": "Open benchmark report for {model}",
+  "models.evidence.untested": "Not benchmarked",
+  "models.engine.update_available": "Update {version}",
+  "models.engine.action.update": "Update",
+  "models.engine.action.update_label": "Update {name}"
 }

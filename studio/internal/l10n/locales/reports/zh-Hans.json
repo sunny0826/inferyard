@@ -261,5 +261,8 @@
   "reports.title": "报告",
   "reports.toast.created": "报告已生成",
   "reports.toast.creating": "正在生成报告…",
-  "reports.toast.view_report": "查看报告"
+  "reports.toast.view_report": "查看报告",
+  "reports.exclusivity.exclusive": "独占",
+  "reports.exclusivity.external": "有外部连接",
+  "reports.exclusivity.unknown": "未检测"
 }

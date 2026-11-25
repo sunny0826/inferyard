@@ -261,5 +261,8 @@
   "reports.title": "Reports",
   "reports.toast.created": "Report Ready",
   "reports.toast.creating": "Creating report…",
-  "reports.toast.view_report": "View Report"
+  "reports.toast.view_report": "View Report",
+  "reports.exclusivity.exclusive": "Exclusive",
+  "reports.exclusivity.external": "External connections",
+  "reports.exclusivity.unknown": "Not checked"
 }

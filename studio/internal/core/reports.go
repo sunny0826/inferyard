@@ -185,6 +185,7 @@ func (s *Service) CreateReport(req CreateReportRequest) (ReportSummary, *ApiErro
 	if err != nil {
 		return ReportSummary{}, Err("internal_error")
 	}
+	s.recordReportExclusivity(r.ReportId, r.RunIds)
 	s.Bus.Publish("report.created", map[string]any{"report": r})
 	return r, nil
 }

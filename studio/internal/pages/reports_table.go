@@ -30,14 +30,19 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 		return
 	}
 	for _, report := range s.reports {
-		reportCard(c, report, func() { s.openReport(report.ReportId) })
+		reportCard(c, report, s.reportExclusivity(report.ReportId), func() { s.openReport(report.ReportId) })
 	}
 }
 
-func reportCard(c *ui.Context, report core.ReportSummary, open func()) {
+func reportCard(c *ui.Context, report core.ReportSummary, exclusivity string, open func()) {
 	t := tokens(c)
 	applyMaterial(c, ui.Column(c.Key(report.ReportId)).MinWidth(0).Gap(t.Density.Row).Padding(t.Card.Padding), materialCard).Children(func() {
-		ui.Text(c, reportHeadingFor(c, report)).Bold()
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			ui.Text(c, reportHeadingFor(c, report)).Bold()
+			if !report.Unreadable {
+				exclusivityBadge(c, exclusivity)
+			}
+		})
 		ui.Text(c, reportSubheadingFor(c, report)).TextColor(c.Theme().TextMuted)
 		if report.Unreadable {
 			ui.Text(c, tr(c, "reports.list.unreadable_body")).TextColor(stateColor(c, stateDanger))

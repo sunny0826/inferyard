@@ -161,7 +161,10 @@ func previewBase(ctx context.Context) *viewState {
 				{Bundle: inferyard.DefaultBundleCore, Phase: "candidate_missing", NextAction: "prepare_candidate"},
 				{Bundle: inferyard.DefaultBundlePelican, Phase: "candidate_missing", NextAction: "prepare_candidate"},
 			}},
-		reports: []core.ReportSummary{previewReportSummary("preview-report")},
+		reports:             []core.ReportSummary{previewReportSummary("preview-report")},
+		modelEvidence:       seedPreviewModelEvidence(model),
+		engineUpdates:       seedPreviewEngineUpdates(engine),
+		reportExclusivities: seedPreviewReportExclusivities(),
 	}
 	s.loadSettings(s.settings)
 	seeded := core.RunSummary{RunId: "preview-run", Path: "/preview/results/preview-run", ModelName: previewValue(model), Bundle: previewValue(inferyard.DefaultBundleCore), Status: "complete", Sealed: true, Completeness: previewValue("complete")}

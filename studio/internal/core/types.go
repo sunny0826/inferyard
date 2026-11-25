@@ -145,6 +145,7 @@ type RunTask struct {
 	PreparationStage string            `json:"preparation_stage,omitempty"`
 	AwaitingService  bool              `json:"awaiting_service,omitempty"`
 	ContextSpeed     *ContextSpeedTask `json:"context_speed,omitempty"`
+	Exclusivity      string            `json:"exclusivity,omitempty"`
 	TaskId           string            `json:"task_id"`
 	Kind             string            `json:"kind"`
 	State            string            `json:"state"`

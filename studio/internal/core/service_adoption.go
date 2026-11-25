@@ -107,6 +107,7 @@ func (s *Service) monitorAdoptedEngine(e *engineEntry) {
 	health := &http.Client{Timeout: 2 * time.Second}
 	ticker := time.NewTicker(s.adoptPollPeriod())
 	defer ticker.Stop()
+	var lastMemSample time.Time
 	for {
 		select {
 		case <-e.detach:
@@ -179,7 +180,10 @@ func (s *Service) monitorAdoptedEngine(e *engineEntry) {
 					s.publishEngineLocked(e)
 				}
 				s.mu.Unlock()
+				s.maybeSampleRuntimeMemory(e, &lastMemSample, true)
+				continue
 			}
+			s.maybeSampleRuntimeMemory(e, &lastMemSample, false)
 		}
 	}
 }

@@ -92,4 +92,5 @@ func (s *viewState) serviceDrawersAndDialogs(c *ui.Context) {
 	s.serviceUsageDrawer(c)
 	s.serviceParamsDrawer(c)
 	s.quitServiceDialog(c)
+	s.extConnCheckDialog(c)
 }
