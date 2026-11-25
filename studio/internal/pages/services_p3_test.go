@@ -254,3 +254,47 @@ func TestServicesP3MultipleExitNoticesDismissIndividually(t *testing.T) {
 		t.Fatalf("expected only exit-b remaining after dismissing exit-a, got %+v", remaining)
 	}
 }
+
+func TestHardwareMemoryBudgetCacheParsesOncePerSnapshot(t *testing.T) {
+	s, _ := servicesP2State(t)
+	modelSize := int64(4 * (1 << 30))
+	s.registry.Models[0].SizeBytes = &modelSize
+	s.registry.Models[1].SizeBytes = &modelSize
+	// Discrete 16 GiB VRAM + 32 GiB host RAM.
+	s.device.Snapshot = json.RawMessage(`{"hardware":{"apple_silicon":false,"memory_total_bytes":34359738368,"gpu":{"devices":[{"memory_kind":"dedicated","memory_total_bytes":17179869184}]}}}`)
+
+	zero := 0
+	bDiscrete1 := s.checkMemoryBudget("Qwen3-8B-Q4.gguf", "llama-cpp-default", 8192, nil)
+	bHost1 := s.checkMemoryBudget("Qwen3-8B-Q4.gguf", "llama-cpp-default", 8192, &zero)
+	sum1 := s.currentMemorySummary()
+	bDiscrete2 := s.checkMemoryBudget("Llama-3-8B.gguf", "llama-cpp-default", 8192, nil)
+
+	if s.hwMemoryCache.parseCount != 1 {
+		t.Fatalf("parseCount=%d want 1 for unchanged snapshot", s.hwMemoryCache.parseCount)
+	}
+	if !bDiscrete1.Known || bDiscrete1.TotalGB != 16 || !bDiscrete2.Known || bDiscrete2.TotalGB != 16 {
+		t.Fatalf("expected 16 GB discrete budget, got %+v / %+v", bDiscrete1, bDiscrete2)
+	}
+	if !bHost1.Known || bHost1.TotalGB != 32 {
+		t.Fatalf("expected 32 GB host budget for cpu-only gpuLayers=0, got %+v", bHost1)
+	}
+	if !sum1.Known || sum1.TotalGB != 16 {
+		t.Fatalf("expected 16 GB summary, got %+v", sum1)
+	}
+
+	// Same byte length (11 digits -> 11 digits) change must still invalidate cache via SHA-256 fingerprint.
+	s.device.Snapshot = json.RawMessage(`{"hardware":{"apple_silicon":false,"memory_total_bytes":68719476736,"gpu":{"devices":[{"memory_kind":"dedicated","memory_total_bytes":17179869184}]}}}`)
+	bHost2 := s.checkMemoryBudget("Qwen3-8B-Q4.gguf", "llama-cpp-default", 8192, &zero)
+	if s.hwMemoryCache.parseCount != 2 {
+		t.Fatalf("parseCount=%d want 2 after snapshot update", s.hwMemoryCache.parseCount)
+	}
+	if !bHost2.Known || bHost2.TotalGB != 64 {
+		t.Fatalf("expected updated 64 GB host budget, got %+v", bHost2)
+	}
+
+	// Repeated call after update hits cache again.
+	_ = s.currentMemorySummary()
+	if s.hwMemoryCache.parseCount != 2 {
+		t.Fatalf("parseCount=%d want 2 on subsequent cache hit", s.hwMemoryCache.parseCount)
+	}
+}

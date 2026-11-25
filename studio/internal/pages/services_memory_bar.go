@@ -2,6 +2,7 @@ package pages
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -22,6 +23,15 @@ type uiHardwareMemoryInfo struct {
 	Unified         bool
 	UsingHostPool   bool
 	Known           bool
+}
+
+type uiHardwareMemoryCache struct {
+	valid      bool
+	hash       [32]byte
+	rawLen     int
+	host       uiHardwareMemoryInfo
+	discrete   uiHardwareMemoryInfo
+	parseCount int
 }
 
 func roundUIMemoryGB(v float64) float64 {
@@ -71,10 +81,10 @@ func uiServiceReflectedInSnapshot(startedAt string, capturedAt *string) bool {
 	return !startTime.After(capTime)
 }
 
-func (s *viewState) localHardwareMemoryBudget(forceHostMemory bool) uiHardwareMemoryInfo {
-	trimmed := bytes.TrimSpace(s.device.Snapshot)
+func parseUIHardwareMemory(raw []byte) (hostInfo, discreteInfo uiHardwareMemoryInfo) {
+	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 || trimmed[0] != '{' {
-		return uiHardwareMemoryInfo{}
+		return uiHardwareMemoryInfo{}, uiHardwareMemoryInfo{}
 	}
 	var doc struct {
 		Hardware struct {
@@ -91,7 +101,7 @@ func (s *viewState) localHardwareMemoryBudget(forceHostMemory bool) uiHardwareMe
 		} `json:"hardware"`
 	}
 	if json.Unmarshal(trimmed, &doc) != nil {
-		return uiHardwareMemoryInfo{}
+		return uiHardwareMemoryInfo{}, uiHardwareMemoryInfo{}
 	}
 	var discreteVRAM int64
 	var discreteFree int64
@@ -111,22 +121,6 @@ func (s *viewState) localHardwareMemoryBudget(forceHostMemory bool) uiHardwareMe
 		}
 	}
 	hasDiscreteGPU := !doc.Hardware.AppleSilicon && discreteVRAM > 0
-	if hasDiscreteGPU && !forceHostMemory {
-		total := float64(discreteVRAM) / uiBytesPerGiB
-		var snapFree float64
-		if hasDiscreteFree {
-			snapFree = float64(discreteFree) / uiBytesPerGiB
-		}
-		return uiHardwareMemoryInfo{
-			TotalGB:         roundUIMemoryGB(total),
-			CapGB:           roundUIMemoryGB(total * 0.90),
-			SnapshotFreeGB:  roundUIMemoryGB(snapFree),
-			HasSnapshotFree: hasDiscreteFree,
-			Unified:         false,
-			UsingHostPool:   false,
-			Known:           true,
-		}
-	}
 	if doc.Hardware.MemoryTotalBytes != nil && *doc.Hardware.MemoryTotalBytes > 0 {
 		total := float64(*doc.Hardware.MemoryTotalBytes) / uiBytesPerGiB
 		var snapFree float64
@@ -134,7 +128,7 @@ func (s *viewState) localHardwareMemoryBudget(forceHostMemory bool) uiHardwareMe
 		if hasHostFree {
 			snapFree = float64(*doc.Hardware.MemoryAvailableBytes) / uiBytesPerGiB
 		}
-		return uiHardwareMemoryInfo{
+		hostInfo = uiHardwareMemoryInfo{
 			TotalGB:         roundUIMemoryGB(total),
 			CapGB:           roundUIMemoryGB(total * 0.75),
 			SnapshotFreeGB:  roundUIMemoryGB(snapFree),
@@ -143,10 +137,9 @@ func (s *viewState) localHardwareMemoryBudget(forceHostMemory bool) uiHardwareMe
 			UsingHostPool:   true,
 			Known:           true,
 		}
-	}
-	if doc.Hardware.MemoryAvailableBytes != nil && *doc.Hardware.MemoryAvailableBytes > 0 {
+	} else if doc.Hardware.MemoryAvailableBytes != nil && *doc.Hardware.MemoryAvailableBytes > 0 {
 		avail := float64(*doc.Hardware.MemoryAvailableBytes) / uiBytesPerGiB
-		return uiHardwareMemoryInfo{
+		hostInfo = uiHardwareMemoryInfo{
 			TotalGB:         roundUIMemoryGB(avail),
 			CapGB:           roundUIMemoryGB(avail),
 			SnapshotFreeGB:  roundUIMemoryGB(avail),
@@ -156,7 +149,45 @@ func (s *viewState) localHardwareMemoryBudget(forceHostMemory bool) uiHardwareMe
 			Known:           true,
 		}
 	}
-	return uiHardwareMemoryInfo{}
+	if hasDiscreteGPU {
+		total := float64(discreteVRAM) / uiBytesPerGiB
+		var snapFree float64
+		if hasDiscreteFree {
+			snapFree = float64(discreteFree) / uiBytesPerGiB
+		}
+		discreteInfo = uiHardwareMemoryInfo{
+			TotalGB:         roundUIMemoryGB(total),
+			CapGB:           roundUIMemoryGB(total * 0.90),
+			SnapshotFreeGB:  roundUIMemoryGB(snapFree),
+			HasSnapshotFree: hasDiscreteFree,
+			Unified:         false,
+			UsingHostPool:   false,
+			Known:           true,
+		}
+	} else {
+		discreteInfo = hostInfo
+	}
+	return hostInfo, discreteInfo
+}
+
+func (s *viewState) localHardwareMemoryBudget(forceHostMemory bool) uiHardwareMemoryInfo {
+	rawLen := len(s.device.Snapshot)
+	hash := sha256.Sum256(s.device.Snapshot)
+	if !s.hwMemoryCache.valid || s.hwMemoryCache.rawLen != rawLen || s.hwMemoryCache.hash != hash {
+		hostInfo, discreteInfo := parseUIHardwareMemory(s.device.Snapshot)
+		s.hwMemoryCache = uiHardwareMemoryCache{
+			valid:      true,
+			hash:       hash,
+			rawLen:     rawLen,
+			host:       hostInfo,
+			discrete:   discreteInfo,
+			parseCount: s.hwMemoryCache.parseCount + 1,
+		}
+	}
+	if forceHostMemory {
+		return s.hwMemoryCache.host
+	}
+	return s.hwMemoryCache.discrete
 }
 
 func uiEffectiveAvailableMemoryGB(hw uiHardwareMemoryInfo, reflectedUsedGB, excludedReflectedGB float64) float64 {

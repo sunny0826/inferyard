@@ -170,6 +170,7 @@ type viewState struct {
 	managedServices                                                                     []core.EngineState
 	exitedNotices                                                                       []core.ServiceExitNotice
 	memorySummary                                                                       core.ServiceMemoryBudget
+	hwMemoryCache                                                                       uiHardwareMemoryCache
 	expandedServices                                                                    map[string]bool
 	serviceLogTargetID                                                                  string
 	serviceUsage                                                                        serviceUsageDrawerState
