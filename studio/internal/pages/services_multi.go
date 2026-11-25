@@ -1,16 +1,57 @@
 package pages
 
 import (
+	"context"
 	"net"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
 )
+
+type serviceStateSnapshot struct {
+	seq     uint64
+	presets []core.ServicePreset
+	notices []core.ServiceExitNotice
+	managed []core.EngineState
+	summary core.ServiceMemoryBudget
+	engine  core.EngineState
+}
+
+func (s *viewState) captureServiceStateSnapshot() serviceStateSnapshot {
+	s.snapshotMu.Lock()
+	defer s.snapshotMu.Unlock()
+	seq := atomic.AddUint64(&s.snapshotSeq, 1)
+	return serviceStateSnapshot{
+		seq:     seq,
+		presets: s.service.RecentServices(),
+		notices: s.service.ExitedServiceNotices(),
+		managed: s.service.ManagedServices(),
+		summary: s.service.CurrentServiceMemorySummary(),
+		engine:  s.service.Engine(),
+	}
+}
+
+func (s *viewState) applyServiceStateSnapshot(snap serviceStateSnapshot) {
+	if snap.seq <= s.appliedSnapshotSeq {
+		return
+	}
+	s.appliedSnapshotSeq = snap.seq
+	s.recentServices = snap.presets
+	s.syncExitedNotices(snap.notices)
+	s.managedServices = snap.managed
+	s.memorySummary = snap.summary
+	s.engineState = snap.engine
+}
+
+func (s *viewState) bumpServiceSnapshotSeq() {
+	s.appliedSnapshotSeq = atomic.AddUint64(&s.snapshotSeq, 1)
+}
 
 func (s *viewState) effectiveManagedServices() []core.EngineState {
 	if len(s.managedServices) > 0 {
@@ -71,9 +112,10 @@ func (s *viewState) effectiveExitedNotices() []core.ServiceExitNotice {
 func (s *viewState) syncExitedNotices(notices []core.ServiceExitNotice) {
 	cleaned := make([]core.ServiceExitNotice, 0, len(notices))
 	for _, n := range notices {
-		if !n.Dismissed {
-			cleaned = append(cleaned, n)
+		if n.Dismissed || s.dismissingAllNotices || (n.ID != "" && s.dismissingNoticeIDs[n.ID]) {
+			continue
 		}
+		cleaned = append(cleaned, n)
 	}
 	s.exitedNotices = cleaned
 	if len(cleaned) > 0 {
@@ -348,11 +390,20 @@ func (s *viewState) stopManagedServiceThen(serviceID string, after func()) {
 		return
 	}
 	go func() {
+		parentCtx := s.ctx
+		if parentCtx == nil {
+			parentCtx = context.Background()
+		}
+		stopCtx, cancel := context.WithTimeout(parentCtx, 15*time.Second)
+		defer cancel()
 		var apiErr *core.ApiError
 		if strings.TrimSpace(serviceID) != "" {
-			_, apiErr = s.service.StopManagedService(serviceID)
+			apiErr = s.service.StopManagedServiceAndWait(stopCtx, serviceID)
 		} else {
-			_, apiErr = s.service.StopEngine()
+			apiErr = s.service.StopPrimaryEngineAndWait(stopCtx)
+		}
+		if parentCtx.Err() != nil {
+			return
 		}
 		if apiErr != nil {
 			s.runOnUI(func() {
@@ -361,38 +412,12 @@ func (s *viewState) stopManagedServiceThen(serviceID string, after func()) {
 			})
 			return
 		}
-		deadline := time.Now().Add(15 * time.Second)
-		for time.Now().Before(deadline) {
-			if s.ctx != nil && s.ctx.Err() != nil {
-				return
-			}
-			stopped := false
-			if strings.TrimSpace(serviceID) != "" {
-				st, ok := s.service.ManagedService(serviceID)
-				stopped = !ok || st.State == "" || st.State == "stopped" || st.State == "failed"
-			} else {
-				st := s.service.Engine()
-				stopped = st.State == "" || st.State == "stopped" || st.State == "failed"
-			}
-			if stopped {
-				managed := s.service.ManagedServices()
-				summary := s.service.CurrentServiceMemorySummary()
-				eng := s.service.Engine()
-				s.runOnUI(func() {
-					s.managedServices = managed
-					s.memorySummary = summary
-					s.engineState = eng
-					if after != nil {
-						after()
-					}
-				})
-				return
-			}
-			time.Sleep(100 * time.Millisecond)
-		}
 		s.runOnUI(func() {
-			s.failure = core.Err("engine_stop_failed")
-			s.failurePage = s.selected
+			s.managedServices = s.service.ManagedServices()
+			s.engineState = s.service.Engine()
+			if after != nil {
+				after()
+			}
 		})
 	}()
 }

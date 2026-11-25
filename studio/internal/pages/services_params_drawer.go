@@ -336,6 +336,7 @@ func (s *viewState) saveServicePresetFromRequest(req core.StandaloneStartRequest
 	}
 	s.serviceParams.saveError = ""
 	s.recentServices = s.service.RecentServices()
+	s.bumpServiceSnapshotSeq()
 	s.enqueueStatusToast(l10n.TR("services.params.toast.saved"))
 	return true
 }

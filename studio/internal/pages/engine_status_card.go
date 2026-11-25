@@ -219,7 +219,11 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 			if isRetry {
 				actionLabel = tr(c, "models.serve.action.retry")
 			}
-			disabled := s.standaloneStartBlockReason() != "" || s.busy || s.standalone.preparing
+			headerPreparing := false
+			if target, ok := s.headerStandaloneModel(); ok {
+				headerPreparing = s.standalone.isPreparing(target.Name)
+			}
+			disabled := s.standaloneStartBlockReason() != "" || s.busy || headerPreparing
 			tip := s.standaloneStartBlockReason()
 			if tip == "" {
 				tip = tr(c, "engine.tooltip.click_start")
@@ -229,7 +233,7 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 				actionLabel: actionLabel,
 				kind:        kind,
 				action:      "start",
-				busy:        s.standalone.preparing,
+				busy:        headerPreparing,
 				disabled:    disabled,
 				tooltip:     tip,
 			}

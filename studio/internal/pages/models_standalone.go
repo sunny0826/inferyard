@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -28,17 +29,48 @@ type standaloneServeState struct {
 	engineName       string
 	contextPreset    string
 	customContext    string
-	preparing        bool
-	preparingModel   string
+	preparing        map[string]bool
 	lastModel        string
 	lastParams       map[string]standaloneAttempt
-	lastError        *core.ApiError
+	lastErrors       map[string]*core.ApiError
 	switchConfirm    bool
 	switchModel      string
 	switchPrefill    bool
 	switchAction     func()
 	benchmarkConfirm bool
 	benchmarkAction  func()
+}
+
+func (st *standaloneServeState) isPreparing(model string) bool {
+	return model != "" && st.preparing[model]
+}
+
+func (st *standaloneServeState) setPreparing(model string, active bool) {
+	if model == "" {
+		return
+	}
+	if active {
+		if st.preparing == nil {
+			st.preparing = map[string]bool{}
+		}
+		st.preparing[model] = true
+		return
+	}
+	delete(st.preparing, model)
+}
+
+func (st *standaloneServeState) setLastError(model string, err *core.ApiError) {
+	if model == "" {
+		return
+	}
+	if err == nil {
+		delete(st.lastErrors, model)
+		return
+	}
+	if st.lastErrors == nil {
+		st.lastErrors = map[string]*core.ApiError{}
+	}
+	st.lastErrors[model] = err
 }
 
 func engineOriginLabel(origin string) string {
@@ -213,7 +245,7 @@ func standaloneServiceMatchesModel(st core.EngineState, m core.ModelAsset) bool 
 }
 
 func (s *viewState) standaloneRowState(m core.ModelAsset) (state string, svc core.EngineState, endpoint string, logPath string, canWebUI bool) {
-	if s.standalone.preparing && s.standalone.preparingModel == m.Name {
+	if s.standalone.isPreparing(m.Name) {
 		return "preparing", core.EngineState{}, "", "", false
 	}
 	for _, st := range s.effectiveManagedServices() {
@@ -230,7 +262,7 @@ func (s *viewState) standaloneRowState(m core.ModelAsset) (state string, svc cor
 	if standaloneServiceMatchesModel(s.engineState, m) && s.engineState.State == "failed" {
 		return "failed", s.engineState, "", s.engineState.LogPath, false
 	}
-	if s.standalone.lastError != nil && s.standalone.lastModel == m.Name {
+	if s.standalone.lastErrors[m.Name] != nil {
 		return "failed", core.EngineState{}, "", "", false
 	}
 	return "", core.EngineState{}, "", "", false
@@ -318,7 +350,7 @@ func (s *viewState) openStandaloneFromHeader(prefillLast bool) {
 }
 
 func (s *viewState) requestStandaloneStart(model core.ModelAsset, prefillLast bool) {
-	if reason := s.standaloneStartBlockReason(); reason != "" || s.busy || s.standalone.preparing {
+	if reason := s.standaloneStartBlockReason(); reason != "" || s.busy || s.standalone.isPreparing(model.Name) {
 		return
 	}
 	// If the same model is already active, do not reopen drawer or stop it.
@@ -368,15 +400,6 @@ func (s *viewState) stopStandaloneService() {
 	})
 }
 
-func hasActiveServiceInList(list []core.EngineState) bool {
-	for _, st := range list {
-		if st.State == "starting" || st.State == "running" || st.State == "stopping" {
-			return true
-		}
-	}
-	return false
-}
-
 func (s *viewState) stopActiveServiceThen(after func()) {
 	if s.preview != nil {
 		s.simulate(previewStopEngineThen{after: after})
@@ -386,58 +409,29 @@ func (s *viewState) stopActiveServiceThen(after func()) {
 		return
 	}
 	go func() {
-		stopDone := make(chan struct{})
-		go func() {
-			s.service.StopAllManagedServices()
-			close(stopDone)
-		}()
-		deadline := time.NewTimer(15 * time.Second)
-		defer deadline.Stop()
-		select {
-		case <-stopDone:
-		case <-s.ctx.Done():
+		parentCtx := s.ctx
+		if parentCtx == nil {
+			parentCtx = context.Background()
+		}
+		stopCtx, cancel := context.WithTimeout(parentCtx, 15*time.Second)
+		defer cancel()
+		apiErr := s.service.StopActiveServicesAndWait(stopCtx)
+		if parentCtx.Err() != nil {
 			return
-		case <-deadline.C:
+		}
+		if apiErr != nil {
 			s.runOnUI(func() {
-				s.failure = core.Err("engine_stop_failed")
+				s.failure = apiErr
 				s.failurePage = s.selected
 			})
 			return
 		}
-		if st := s.service.Engine(); st.State == "starting" || st.State == "running" {
-			if _, apiErr := s.service.StopEngine(); apiErr != nil {
-				s.runOnUI(func() {
-					s.failure = apiErr
-					s.failurePage = s.selected
-				})
-				return
-			}
-		}
-		waitDeadline := time.Now().Add(15 * time.Second)
-		for time.Now().Before(waitDeadline) {
-			if s.ctx != nil && s.ctx.Err() != nil {
-				return
-			}
-			managed := s.service.ManagedServices()
-			eng := s.service.Engine()
-			engIdle := eng.State == "" || eng.State == "stopped" || eng.State == "failed"
-			if !hasActiveServiceInList(managed) && engIdle {
-				summary := s.service.CurrentServiceMemorySummary()
-				s.runOnUI(func() {
-					s.managedServices = managed
-					s.memorySummary = summary
-					s.engineState = eng
-					if after != nil {
-						after()
-					}
-				})
-				return
-			}
-			time.Sleep(100 * time.Millisecond)
-		}
 		s.runOnUI(func() {
-			s.failure = core.Err("engine_stop_failed")
-			s.failurePage = s.selected
+			s.managedServices = s.service.ManagedServices()
+			s.engineState = s.service.Engine()
+			if after != nil {
+				after()
+			}
 		})
 	}()
 }

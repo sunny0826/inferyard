@@ -298,3 +298,46 @@ func TestHardwareMemoryBudgetCacheParsesOncePerSnapshot(t *testing.T) {
 		t.Fatalf("parseCount=%d want 2 on subsequent cache hit", s.hwMemoryCache.parseCount)
 	}
 }
+
+func TestStandaloneParallelPreparingAndToastOnSuccessOnly(t *testing.T) {
+	restore := l10n.SetTestLocale(l10n.LanguageZhHans)
+	defer restore()
+
+	s, _ := servicesP2State(t)
+	uiCallbacks := make(chan func(), 4)
+	s.updateWindow = func(fn func()) { uiCallbacks <- fn }
+	s.standalone.setPreparing("Qwen3-8B-Q4.gguf", true)
+
+	// Model A preparing must not block opening the start drawer for Model B.
+	s.requestStandaloneStart(s.registry.Models[1], false)
+	if !s.standalone.drawerOpen || s.standalone.modelName != "Llama-3-8B.gguf" {
+		t.Fatalf("expected drawer open for Llama-3-8B.gguf while Qwen3-8B-Q4.gguf is preparing, got open=%v model=%q", s.standalone.drawerOpen, s.standalone.modelName)
+	}
+
+	// Launching Model B enters preparing without premature "started" toast.
+	s.pendingToasts = nil
+	s.launchStandaloneRequest(core.StandaloneStartRequest{
+		Model: "Llama-3-8B.gguf", Engine: "llama-cpp-default", ContextSize: 8192,
+	})
+	if len(s.pendingToasts) != 0 {
+		t.Fatalf("expected no premature started toast before StartStandalone succeeds, got %+v", s.pendingToasts)
+	}
+	if !s.standalone.isPreparing("Qwen3-8B-Q4.gguf") || !s.standalone.isPreparing("Llama-3-8B.gguf") {
+		t.Fatalf("expected both models preparing concurrently, got %+v", s.standalone.preparing)
+	}
+
+	// Drain UI callback from background StartStandalone (which fails on unseeded model) on test goroutine.
+	fn := <-uiCallbacks
+	fn()
+	if len(s.pendingToasts) != 0 {
+		t.Fatalf("expected no started toast on failed StartStandalone, got %+v", s.pendingToasts)
+	}
+	if !s.standalone.isPreparing("Qwen3-8B-Q4.gguf") || s.standalone.isPreparing("Llama-3-8B.gguf") {
+		t.Fatalf("expected Qwen3-8B-Q4.gguf still preparing and Llama-3-8B.gguf cleared, got %+v", s.standalone.preparing)
+	}
+	// Model B keeps its per-model failed row state even if lastModel points elsewhere.
+	s.standalone.lastModel = "Qwen3-8B-Q4.gguf"
+	if rowState, _, _, _, _ := s.standaloneRowState(s.registry.Models[1]); rowState != "failed" {
+		t.Fatalf("expected Llama-3-8B.gguf row state failed via per-model lastErrors, got %q", rowState)
+	}
+}

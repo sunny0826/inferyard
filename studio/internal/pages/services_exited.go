@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -95,7 +96,7 @@ func (s *viewState) renderSingleExitedNoticeCard(c *ui.Context, notice core.Serv
 			})
 		}
 
-		canLaunch := !s.busy && !s.standalone.preparing && (s.serveSupported || s.preview != nil)
+		canLaunch := !s.busy && !s.standalone.isPreparing(notice.Model) && (s.serveSupported || s.preview != nil)
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			restartLabel := tr(c, "services.exited.action.restart_same")
 			restartBtn := inlineButton(c, components.ButtonPrimary, restartLabel).
@@ -166,19 +167,59 @@ func (s *viewState) restartFromExitNotice(notice core.ServiceExitNotice) {
 }
 
 func (s *viewState) dismissExitedServiceNoticeByID(id string) {
+	if id != "" {
+		if s.dismissingNoticeIDs == nil {
+			s.dismissingNoticeIDs = map[string]bool{}
+		}
+		s.dismissingNoticeIDs[id] = true
+	} else {
+		s.dismissingAllNotices = true
+	}
 	s.removeExitedNotice(id)
+	s.bumpServiceSnapshotSeq()
 	if s.simulate(previewDismissExitNotice{id: id}) {
+		delete(s.dismissingNoticeIDs, id)
+		if id == "" {
+			s.dismissingAllNotices = false
+		}
 		return
 	}
 	if s.service == nil {
+		delete(s.dismissingNoticeIDs, id)
+		if id == "" {
+			s.dismissingAllNotices = false
+		}
 		return
 	}
 	go func() {
+		var dismissErr error
 		if id != "" {
-			_ = s.service.DismissExitedServiceNoticeByID(id)
+			dismissErr = s.service.DismissExitedServiceNoticeByID(id)
 		} else {
-			_ = s.service.DismissExitedServiceNotice()
+			dismissErr = s.service.DismissExitedServiceNotice()
 		}
+		var restored []core.ServiceExitNotice
+		if dismissErr != nil {
+			restored = s.service.ExitedServiceNotices()
+		}
+		s.runOnUI(func() {
+			if id != "" {
+				delete(s.dismissingNoticeIDs, id)
+			} else {
+				s.dismissingAllNotices = false
+			}
+			if dismissErr != nil {
+				s.syncExitedNotices(restored)
+				var apiErr *core.ApiError
+				if !errors.As(dismissErr, &apiErr) || apiErr == nil {
+					apiErr = core.Err("internal_error")
+				}
+				s.failure = apiErr
+				s.failurePage = s.selected
+				return
+			}
+			s.bumpServiceSnapshotSeq()
+		})
 	}()
 }
 
@@ -203,14 +244,13 @@ func (s *viewState) launchOrRestartService(req core.StandaloneStartRequest, rest
 func (s *viewState) launchStandaloneRequest(req core.StandaloneStartRequest) {
 	s.standalone.drawerOpen = false
 	s.serviceParams.open = false
-	s.standalone.preparing = true
-	s.standalone.preparingModel = req.Model
+	s.standalone.setPreparing(req.Model, true)
 	s.standalone.lastModel = req.Model
 	if s.standalone.lastParams == nil {
 		s.standalone.lastParams = map[string]standaloneAttempt{}
 	}
 	s.standalone.lastParams[req.Model] = standaloneAttempt{engine: req.Engine, context: req.ContextSize}
-	s.standalone.lastError = nil
+	s.standalone.setLastError(req.Model, nil)
 	if s.simulate(previewStandaloneStart{
 		model:       req.Model,
 		engine:      req.Engine,
@@ -224,34 +264,27 @@ func (s *viewState) launchStandaloneRequest(req core.StandaloneStartRequest) {
 		return
 	}
 	if s.service == nil {
-		s.standalone.preparing = false
+		s.standalone.setPreparing(req.Model, false)
 		return
 	}
-	s.enqueueStatusToast(l10n.TR("models.serve.toast.started"))
 	go func() {
 		state, apiErr := s.service.StartStandalone(s.ctx, req)
 		if s.ctx != nil && s.ctx.Err() != nil {
 			return
 		}
-		presets := s.service.RecentServices()
-		notices := s.service.ExitedServiceNotices()
-		managed := s.service.ManagedServices()
-		summary := s.service.CurrentServiceMemorySummary()
+		snap := s.captureServiceStateSnapshot()
 		s.runOnUI(func() {
-			s.standalone.preparing = false
-			s.standalone.preparingModel = ""
-			s.recentServices = presets
-			s.syncExitedNotices(notices)
-			s.managedServices = managed
-			s.memorySummary = summary
+			s.standalone.setPreparing(req.Model, false)
+			s.applyServiceStateSnapshot(snap)
 			if apiErr != nil {
-				s.standalone.lastError = apiErr
+				s.standalone.setLastError(req.Model, apiErr)
 				s.failure = apiErr
 				s.failurePage = s.selected
 				return
 			}
-			s.engineState = state
+			s.standalone.setLastError(req.Model, nil)
 			s.markServiceExpanded(serviceKey(state))
+			s.enqueueStatusToast(l10n.TR("models.serve.toast.started"))
 		})
 	}()
 }
@@ -283,11 +316,12 @@ func (s *viewState) hasVisibleRecentServices() bool {
 
 func (s *viewState) recentServicesSection(c *ui.Context) {
 	t := tokens(c)
-	canLaunch := !s.busy && !s.standalone.preparing && (s.serveSupported || s.preview != nil)
+	canLaunchBase := !s.busy && (s.serveSupported || s.preview != nil)
 	for _, preset := range s.recentServices {
 		if s.isPresetRunning(preset) {
 			continue
 		}
+		canLaunch := canLaunchBase && !s.standalone.isPreparing(preset.Model)
 		modelAsset, foundModel := s.findModelAsset(preset.Model)
 		modelAvailable := foundModel && modelAsset.Available
 		ctxSize := preset.ContextSize
