@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"inferyard/studio/internal/inferyard"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -74,10 +75,22 @@ func TestUpdateEngineVenvInUseGuardAndExecution(t *testing.T) {
 	}
 	engName := reg.Engines[0].Name
 
-	// 1) Guard: block in-place venv upgrade while a standalone service uses this engine.
+	// 1a) Guard: block in-place venv upgrade when legacy StartEngine runs with basename-only Executable & cmd.Path.
 	svc.mu.Lock()
+	svc.engine = &engineEntry{
+		cmd:   &exec.Cmd{Path: pyPath},
+		state: EngineState{State: "running", Executable: filepath.Base(pyPath)},
+	}
+	svc.mu.Unlock()
+	if _, apiErr := svc.UpdateEngine(engName); apiErr == nil || apiErr.Code != "engine_in_use" {
+		t.Fatalf("expected engine_in_use error when legacy candidate engine active via cmd.Path, got %+v", apiErr)
+	}
+	svc.mu.Lock()
+	svc.engine = nil
+	// 1b) Guard: block in-place venv upgrade while a standalone service uses this engine.
 	svc.services["svc-mlx"] = &engineEntry{
-		state: EngineState{State: "running", EngineName: engName, Executable: pyPath},
+		cmd:   &exec.Cmd{Path: pyPath},
+		state: EngineState{State: "running", EngineName: engName, Executable: filepath.Base(pyPath)},
 	}
 	svc.mu.Unlock()
 	if _, apiErr := svc.UpdateEngine(engName); apiErr == nil || apiErr.Code != "engine_in_use" {
@@ -144,6 +157,31 @@ func TestCountUpdatableEngineTargetsSideBySideDedupe(t *testing.T) {
 	markSideBySideLatestInstalled(updates)
 	if !updates["llama-old"].LatestInstalled || updates["llama-old"].CanOneClickUpdate() {
 		t.Fatalf("expected older side-by-side entry to mark LatestInstalled and disable one-click update, got %+v", updates["llama-old"])
+	}
+
+	// Independent Python venvs must NOT lose their in-place update action when another venv is already up to date.
+	venvUpdates := map[string]EngineUpdateInfo{
+		"mlx-a": {
+			Engine:           "mlx-a",
+			Family:           "mlx-lm",
+			Distribution:     "PyPI",
+			InstalledVersion: "0.31.0",
+			LatestVersion:    "0.32.2",
+			Action:           EngineUpdateActionVenv,
+			HasUpdate:        true,
+		},
+		"mlx-b": {
+			Engine:           "mlx-b",
+			Family:           "mlx-lm",
+			Distribution:     "PyPI",
+			InstalledVersion: "0.32.2",
+			LatestVersion:    "0.32.2",
+			HasUpdate:        false,
+		},
+	}
+	markSideBySideLatestInstalled(venvUpdates)
+	if venvUpdates["mlx-a"].LatestInstalled || !venvUpdates["mlx-a"].CanOneClickUpdate() {
+		t.Fatalf("expected independent outdated venv mlx-a to keep in-place update action, got %+v", venvUpdates["mlx-a"])
 	}
 }
 

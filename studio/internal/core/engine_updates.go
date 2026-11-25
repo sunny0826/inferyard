@@ -421,7 +421,9 @@ func markSideBySideLatestInstalled(updates map[string]EngineUpdateInfo) {
 		}
 	}
 	for name, info := range updates {
-		if info.HasUpdate && covered[groupKey(info)] {
+		// Only suppress side-by-side install actions when a newer copy already exists;
+		// independent Python venvs upgrade in-place and must keep their own update action.
+		if info.HasUpdate && info.Action != EngineUpdateActionVenv && covered[groupKey(info)] {
 			info.LatestInstalled = true
 			info.Action = EngineUpdateActionNone
 			updates[name] = info

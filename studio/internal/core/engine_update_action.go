@@ -81,27 +81,42 @@ func (s *Service) isEngineActiveLocked(engineName string, entry registryEntry) b
 	entryExe := filepath.Clean(strings.TrimSpace(resolveEngineExecutablePath(entry)))
 	entryPath := filepath.Clean(strings.TrimSpace(entry.path))
 	entryInst := filepath.Clean(strings.TrimSpace(entry.installation))
-	matchesState := func(st EngineState) bool {
-		if !isActiveServiceState(st.State) {
+	entryVenv := filepath.Clean(strings.TrimSpace(venvRootFromEntry(entry)))
+	matchesPath := func(raw string) bool {
+		cand := filepath.Clean(strings.TrimSpace(raw))
+		if cand == "" || cand == "." {
 			return false
 		}
-		if strings.TrimSpace(st.EngineName) == engineName {
+		if (entryExe != "" && cand == entryExe) || (entryPath != "" && cand == entryPath) || (entryInst != "" && cand == entryInst) {
 			return true
 		}
-		stExe := filepath.Clean(strings.TrimSpace(st.Executable))
-		if entryExe != "" && stExe == entryExe {
+		if entryVenv != "" && entryVenv != "." && filepath.IsAbs(cand) {
+			if rel, err := filepath.Rel(entryVenv, cand); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				return true
+			}
+		}
+		return false
+	}
+	matchesEntry := func(e *engineEntry) bool {
+		if e == nil || !isActiveServiceState(e.state.State) {
+			return false
+		}
+		if strings.TrimSpace(e.state.EngineName) == engineName {
 			return true
 		}
-		if entryPath != "" && stExe == entryPath {
+		if matchesPath(e.state.Executable) {
+			return true
+		}
+		if e.cmd != nil && matchesPath(e.cmd.Path) {
 			return true
 		}
 		return false
 	}
-	if s.engine != nil && matchesState(s.engine.state) {
+	if matchesEntry(s.engine) {
 		return true
 	}
 	for _, svc := range s.services {
-		if svc != nil && matchesState(svc.state) {
+		if matchesEntry(svc) {
 			return true
 		}
 	}
