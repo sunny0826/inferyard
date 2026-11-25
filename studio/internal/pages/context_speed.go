@@ -67,6 +67,62 @@ var speedStageKeys = [...]string{
 	"speed.stage.queued",
 }
 
+var speedStageWireNames = [...]string{
+	"preparing",
+	"binding",
+	"planning",
+	"measuring",
+	"reading",
+	"done",
+	"cancelling",
+	"cancelled",
+	"failed",
+	"partial",
+	"queued",
+}
+
+func (r *speedTask) toRunTask() core.RunTask {
+	state := "running"
+	queued := false
+	switch r.stage {
+	case speedPreparing, speedBinding, speedPlanning:
+		state = "starting"
+	case speedQueued:
+		state, queued = "starting", true
+	case speedCancelling:
+		state = "cancelling"
+	case speedDone, speedPartial:
+		state = "done"
+	case speedCancelled:
+		state = "cancelled"
+	case speedFailed:
+		state = "failed"
+	}
+	var startedAt *string
+	if r.startedAt != "" {
+		s := r.startedAt
+		startedAt = &s
+	}
+	stageName := ""
+	if int(r.stage) >= 0 && int(r.stage) < len(speedStageWireNames) {
+		stageName = speedStageWireNames[r.stage]
+	}
+	return core.RunTask{
+		TaskId:    r.id,
+		Kind:      "context_speed",
+		State:     state,
+		Queued:    queued,
+		StartedAt: startedAt,
+		ContextSpeed: &core.ContextSpeedTask{
+			Model:     r.model,
+			Engine:    r.engine,
+			Context:   r.context,
+			Stage:     stageName,
+			Completed: r.completed,
+		},
+	}
+}
+
 func (r *speedTask) label() string {
 	return l10n.TR(speedStageKeys[r.stage])
 }

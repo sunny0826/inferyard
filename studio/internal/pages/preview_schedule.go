@@ -83,7 +83,7 @@ func (p *previewSession) now() time.Time {
 }
 
 func (p *previewSession) timestamp() string {
-	return p.now().Format(time.RFC3339)
+	return p.now().Format(time.RFC3339Nano)
 }
 
 func (p *previewSession) takeFailure() bool {

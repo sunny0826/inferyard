@@ -187,11 +187,7 @@ func (s *viewState) formatTaskElapsed(c *ui.Context, startedAt string) string {
 		return ""
 	}
 	elapsed := max(time.Duration(0), s.currentClock(c).Sub(started))
-	nextTick := time.Second - (elapsed % time.Second)
-	if nextTick <= 0 {
-		nextTick = time.Second
-	}
-	c.After(nextTick)
+	c.After(time.Second - (elapsed % time.Second))
 	return trf(c, "common.elapsed.running", "duration", formatElapsedDurationFor(contextLocale(c), elapsed))
 }
 

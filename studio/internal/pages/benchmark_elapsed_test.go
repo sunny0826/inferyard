@@ -68,9 +68,10 @@ func TestBenchmarkElapsedUsesBackendStartedAtAcrossNavigation(t *testing.T) {
 		Total:         ptr(int64(1)),
 		CurrentCaseId: ptr("svg-pelican-01"),
 	}
+	// Before the first progress payload arrives in detail view (Progress == nil), detail view must still show elapsed time.
 	s.detail = &core.RunTaskDetail{
 		Task:     runTask,
-		Progress: s.runProgress,
+		Progress: nil,
 	}
 
 	tt := ui.NewTester(s.view, 1120, 800)
@@ -89,8 +90,17 @@ func TestBenchmarkElapsedUsesBackendStartedAtAcrossNavigation(t *testing.T) {
 		t.Fatalf("expected terminal task row to preserve formatted start timestamp, got:\n%s", joined)
 	}
 
-	// 2. Navigate away to Services, advance 6 seconds, then open Benchmark flow view and Detail view:
+	// 2. Open detail view while Progress == nil: both waiting notice and elapsed time must appear together.
+	s.detailID = runTask.TaskId
+	tt.Frame()
+	waitingTexts := strings.Join(tt.Texts(), "\n")
+	if !strings.Contains(waitingTexts, l10n.TR("detail.waiting_progress")) || !strings.Contains(waitingTexts, wantInitialElapsed) {
+		t.Fatalf("expected detail view before first progress to show waiting text and %q, got:\n%s", wantInitialElapsed, waitingTexts)
+	}
+
+	// 3. Navigate away to Services, advance 6 seconds, then open Benchmark flow view and Detail view (with Progress):
 	// elapsed time must advance to 2m 11s (131s) rather than resetting to 0 on remount.
+	s.detailID = ""
 	s.navigateTo("services", "")
 	tt.Advance(6 * time.Second)
 
@@ -102,6 +112,7 @@ func TestBenchmarkElapsedUsesBackendStartedAtAcrossNavigation(t *testing.T) {
 		t.Fatalf("expected benchmark flow card to preserve backend elapsed %q after page switch, got:\n%s", wantAfterNav, flowTexts)
 	}
 
+	s.detail.Progress = s.runProgress
 	s.detailID = runTask.TaskId
 	tt.Advance(2 * time.Second)
 	wantInDetail := l10n.TRf("common.elapsed.running", "duration", formatElapsedDurationFor(l10n.LanguageZhHans, 133*time.Second))
@@ -111,8 +122,9 @@ func TestBenchmarkElapsedUsesBackendStartedAtAcrossNavigation(t *testing.T) {
 	}
 }
 
-func TestContextSpeedMeasuringShowsBackendElapsedTime(t *testing.T) {
+func TestContextSpeedMeasuringShowsElapsedAndReturnsToList(t *testing.T) {
 	s := readyState("benchmarks")
+	s.benchFlowOpen = true
 	var baseNow time.Time
 	probe := ui.NewTester(func(c *ui.Context) { baseNow = c.Now() }, 400, 300)
 	probe.Frame()
@@ -128,24 +140,42 @@ func TestContextSpeedMeasuringShowsBackendElapsedTime(t *testing.T) {
 			Engine:    "llama-server",
 			Context:   inferyard.ContextSpeed128K,
 			Stage:     "measuring",
-			Completed: 0,
+			Completed: 1,
 			Plan:      &core.SpeedPlanRef{MaxWallSeconds: 600},
 			Batch:     &core.SpeedBatchRef{Path: "/w/results/speed-1"},
 		},
 	}
+	s.tasks = []core.RunTask{speedRun}
 	s.speed = &speedWorkspace{current: speedFromTask(speedRun)}
 
 	tt := ui.NewTester(s.view, 1120, 800)
 	tt.Frame()
 
 	want48s := l10n.TRf("common.elapsed.running", "duration", formatElapsedDurationFor(l10n.LanguageZhHans, 48*time.Second))
+	wantCount := l10n.TRf("speed.task.completed_count", "completed", 1)
 	if !strings.Contains(strings.Join(tt.Texts(), "\n"), want48s) {
-		t.Fatalf("expected context speed measuring stage at 0/5 to show %q, got:\n%s", want48s, strings.Join(tt.Texts(), "\n"))
+		t.Fatalf("expected context speed measuring stage to show %q, got:\n%s", want48s, strings.Join(tt.Texts(), "\n"))
 	}
 
+	// Clicking "Back to List" while context speed is measuring must show the Benchmarks list with live count + elapsed time.
+	click(t, tt, l10n.TR("benchmarks.action.back_list"))
 	tt.Advance(3 * time.Second)
+
 	want51s := l10n.TRf("common.elapsed.running", "duration", formatElapsedDurationFor(l10n.LanguageZhHans, 51*time.Second))
-	if !strings.Contains(strings.Join(tt.Texts(), "\n"), want51s) {
-		t.Fatalf("expected context speed elapsed time to advance to %q, got:\n%s", want51s, strings.Join(tt.Texts(), "\n"))
+	listTexts := strings.Join(tt.Texts(), "\n")
+	if s.benchFlowOpen {
+		t.Fatalf("expected benchFlowOpen=false after clicking back to list")
+	}
+	if !strings.Contains(listTexts, l10n.TR("benchmarks.group.running")) || !strings.Contains(listTexts, wantCount) || !strings.Contains(listTexts, want51s) {
+		t.Fatalf("expected benchmarks list running section to show %q and %q, got:\n%s", wantCount, want51s, listTexts)
+	}
+
+	// Clicking the running context speed row reopens the active speed task view without resetting elapsed time.
+	click(t, tt, l10n.TR("shell.header.context_speed"))
+	tt.Advance(2 * time.Second)
+	want53s := l10n.TRf("common.elapsed.running", "duration", formatElapsedDurationFor(l10n.LanguageZhHans, 53*time.Second))
+	reopenedTexts := strings.Join(tt.Texts(), "\n")
+	if !s.benchFlowOpen || !strings.Contains(reopenedTexts, want53s) {
+		t.Fatalf("expected reopening context speed flow to show %q, got benchFlowOpen=%v:\n%s", want53s, s.benchFlowOpen, reopenedTexts)
 	}
 }

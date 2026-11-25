@@ -244,21 +244,32 @@ func TestPreviewCreateReportCancelledPelicanDoesNotFabricateOKSVG(t *testing.T) 
 func TestPreviewBenchmarkElapsedUsesVirtualClock(t *testing.T) {
 	p := newPreviewSession(context.Background())
 	p.loadScene(1)
-	// Advance to a running benchmark via preview clock.
+	// Advance to a running benchmark via preview clock:
+	// 400ms (prepare->bind) + 800ms (bind->running) = 1.2s start timestamp.
 	p.beginBenchmark(previewBenchmark{
 		model:   p.state.model,
 		engine:  p.state.engine,
 		bundles: []string{inferyard.DefaultBundlePelican},
 	})
-	// 400ms (prepare->bind) + 800ms (bind->running) = 1.2s, then +1.1s into the 1.5s pelican run = 2.3s total.
-	p.advance(2300 * time.Millisecond)
+	// At 2.0s virtual clock, only 0.8s has elapsed since 1.2s start -> must stay "< 1s", not premature "1s".
+	p.advance(2000 * time.Millisecond)
 
 	tt := ui.NewTester(p.content, 1120, 800)
 	tt.Frame()
 
-	want1s := l10n.TRf("common.elapsed.running", "duration", formatElapsedDurationFor(l10n.LanguageZhHans, time.Second))
-	texts := strings.Join(tt.Texts(), "\n")
-	if !strings.Contains(texts, want1s) {
-		t.Fatalf("expected preview virtual clock elapsed %q, got:\n%s", want1s, texts)
+	wantUnder1s := l10n.TRf("common.elapsed.running", "duration", formatElapsedDurationFor(l10n.LanguageZhHans, 800*time.Millisecond))
+	textsAt2s := strings.Join(tt.Texts(), "\n")
+	if !strings.Contains(textsAt2s, wantUnder1s) {
+		t.Fatalf("expected sub-second preview elapsed %q at 0.8s into run, got:\n%s", wantUnder1s, textsAt2s)
+	}
+
+	// Advancing another 300ms (total 1.1s into run) crosses 1 full second.
+	p.advance(300 * time.Millisecond)
+	tt.Frame()
+
+	want1s := l10n.TRf("common.elapsed.running", "duration", formatElapsedDurationFor(l10n.LanguageZhHans, 1100*time.Millisecond))
+	textsAt2300ms := strings.Join(tt.Texts(), "\n")
+	if !strings.Contains(textsAt2300ms, want1s) {
+		t.Fatalf("expected preview virtual clock elapsed %q at 1.1s into run, got:\n%s", want1s, textsAt2300ms)
 	}
 }

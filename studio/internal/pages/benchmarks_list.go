@@ -16,10 +16,6 @@ func (s *viewState) openBenchmarksFlow() {
 }
 
 func (s *viewState) benchmarksView(c *ui.Context) {
-	if s.speed != nil && s.speed.current != nil {
-		s.speedTaskView(c)
-		return
-	}
 	if s.newTaskPending {
 		s.dashboardView(c)
 		return
@@ -66,6 +62,8 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 		}
 	})
 
+	extraSpeed, hasExtraSpeed := s.unlistedCurrentSpeedTask()
+
 	section(c, tr(c, "benchmarks.group.running"), func() {
 		found := false
 		for _, task := range s.tasks {
@@ -74,6 +72,10 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 			}
 			found = true
 			s.renderBenchmarkTaskRow(c, task)
+		}
+		if hasExtraSpeed && !terminal(extraSpeed.State) && !extraSpeed.Queued {
+			found = true
+			s.renderBenchmarkTaskRow(c, extraSpeed)
 		}
 		if !found && s.hasActiveBenchmarkFlow() {
 			found = true
@@ -92,6 +94,10 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 			}
 			found = true
 			s.renderBenchmarkTaskRow(c, task)
+		}
+		if hasExtraSpeed && extraSpeed.Queued {
+			found = true
+			s.renderBenchmarkTaskRow(c, extraSpeed)
 		}
 		if !found {
 			ui.Text(c, tr(c, "benchmarks.group.queued_empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
@@ -132,7 +138,23 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 	})
 }
 
+func (s *viewState) unlistedCurrentSpeedTask() (core.RunTask, bool) {
+	if s.speed == nil || s.speed.current == nil || !s.speed.current.active() {
+		return core.RunTask{}, false
+	}
+	cur := s.speed.current
+	for _, task := range s.tasks {
+		if task.TaskId == cur.id {
+			return core.RunTask{}, false
+		}
+	}
+	return cur.toRunTask(), true
+}
+
 func (s *viewState) hasActiveBenchmarkFlow() bool {
+	if s.speed != nil && s.speed.current != nil {
+		return true
+	}
 	if s.binding || s.running() != nil {
 		return true
 	}
@@ -208,7 +230,20 @@ func (s *viewState) renderBenchmarkTaskRow(c *ui.Context, task core.RunTask) {
 					inlineBadge(c, taskLabelFor(contextLocale(c), task), kind, badgeOptions{Size: sizeSM})
 				})
 			},
-			OnClick: func() { s.selectTask(task.TaskId) },
+			OnClick: func() {
+				if task.Kind == "context_speed" {
+					if terminal(task.State) {
+						s.openSpeed(task.TaskId)
+					} else {
+						if s.speed != nil && (s.speed.current == nil || s.speed.current.id != task.TaskId) {
+							s.speed.current = speedFromTask(task)
+						}
+						s.benchFlowOpen = true
+					}
+					return
+				}
+				s.selectTask(task.TaskId)
+			},
 		})
 	})
 }
