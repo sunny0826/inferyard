@@ -1,8 +1,11 @@
 package core
 
 import (
+	"context"
 	"os"
+	"path/filepath"
 	"runtime"
+	"sync"
 	"testing"
 )
 
@@ -58,5 +61,91 @@ func TestServiceMemoryUsageHelper(t *testing.T) {
 	gb, isMeasured, known = ServiceMemoryUsage(EngineState{})
 	if known || isMeasured || gb != 0 {
 		t.Fatalf("expected unknown memory when both absent, got gb=%v measured=%v known=%v", gb, isMeasured, known)
+	}
+}
+
+func TestEntryPIDSnapshotConcurrentRaceSafetyAndLightweightEvent(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	svc, err := New(ctx, Options{SettingsPath: filepath.Join(t.TempDir(), "settings.json")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Shutdown(context.Background())
+
+	entry := &engineEntry{
+		owner: engineOwner{
+			PID:     1001,
+			Workers: []engineProcessIdentity{{PID: 1002, StartTicks: 10}},
+		},
+		pidSnapshot: []int{1001, 1002},
+		stop:        make(chan struct{}),
+		detach:      make(chan struct{}),
+		done:        make(chan struct{}),
+		state: EngineState{
+			ServiceID: "svc-race",
+			State:     "running",
+			Pid:       1001,
+			Port:      8080,
+		},
+	}
+	close(entry.done)
+	svc.mu.Lock()
+	svc.services["svc-race"] = entry
+	svc.mu.Unlock()
+	defer func() {
+		svc.mu.Lock()
+		delete(svc.services, "svc-race")
+		svc.mu.Unlock()
+	}()
+
+	origSample := sampleProcessTreeRSSFunc
+	sampleProcessTreeRSSFunc = func(pids []int) *float64 {
+		v := 14.5
+		return &v
+	}
+	defer func() { sampleProcessTreeRSSFunc = origSample }()
+
+	_, off, cursor := svc.Bus.Subscribe()
+	defer off()
+
+	var wg sync.WaitGroup
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 100; i++ {
+			entry.owner.Workers = []engineProcessIdentity{{PID: int64(2000 + i), StartTicks: 10}}
+			svc.syncEntryPIDSnapshot(entry)
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 100; i++ {
+			svc.mu.Lock()
+			pids := entryProcessPIDsLocked(entry)
+			svc.mu.Unlock()
+			_ = len(pids)
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 50; i++ {
+			svc.maybeSampleRuntimeMemory(entry, nil, true)
+		}
+	}()
+	wg.Wait()
+
+	events, _, _ := svc.Bus.After(cursor)
+	sawMemory := false
+	for _, ev := range events {
+		if ev.Type == "services.memory" {
+			sawMemory = true
+		}
+		if ev.Type == "engine.state" || ev.Type == "services.state" {
+			t.Fatalf("RSS update must not emit heavy %q event", ev.Type)
+		}
+	}
+	if !sawMemory {
+		t.Fatalf("expected lightweight services.memory event after RSS change, got %+v", events)
 	}
 }

@@ -37,6 +37,14 @@ func (s *viewState) openReport(reference string) {
 	}
 	s.closeOpenedReport()
 	index, e := s.readReport(reference)
+	if s.preview == nil && s.service != nil && reference != "" {
+		if s.reportExclusivities == nil {
+			s.reportExclusivities = map[string]string{}
+		}
+		if _, exists := s.reportExclusivities[reference]; !exists {
+			s.reportExclusivities[reference] = s.service.ReportExclusivity(reference)
+		}
+	}
 	s.openedReport = &reportViewState{reference: reference, index: index, failure: e}
 	s.selected = "reports"
 }

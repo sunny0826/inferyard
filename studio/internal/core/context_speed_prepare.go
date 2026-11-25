@@ -226,6 +226,10 @@ func (s *Service) prepareContextSpeed(ctx context.Context, t *runEntry, req Star
 		return Conflict("output_exists")
 	}
 	s.mu.Lock()
+	t.probeEndpoint = engine.Endpoint
+	if engine.Pid > 0 {
+		t.probePID = int(engine.Pid)
+	}
 	t.Task.ContextSpeed.Plan = &plan
 	t.Task.ContextSpeed.Batch = &SpeedBatchRef{Path: t.root, Runs: []inferyard.SpeedRunRef{}}
 	t.args = []string{"run", "--plan", plan.Path, "--output-root", t.root}

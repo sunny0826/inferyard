@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"encoding/json"
-	"inferyard/studio/internal/inferyard"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -23,6 +22,14 @@ type exclusivityStore struct {
 
 func validExclusivityStatus(status string) bool {
 	return status == ExclusivityExclusive || status == ExclusivityExternal || status == ExclusivityUnknown
+}
+
+func normalizeInitialExclusivity(raw string) string {
+	s := strings.TrimSpace(raw)
+	if s == ExclusivityExternal {
+		return ExclusivityExternal
+	}
+	return ""
 }
 
 func mergeExclusivityStatus(current, next string) string {
@@ -188,6 +195,40 @@ func (s *Service) ReportExclusivity(reportRef string) string {
 	return ExclusivityUnknown
 }
 
+// ReportExclusivities builds a batch map of reportID -> exclusivity status using a single
+// sidecar read and ReportSummary.RunIds (no per-report studio.json reads).
+func (s *Service) ReportExclusivities(reports []ReportSummary) map[string]string {
+	out := make(map[string]string, len(reports))
+	if len(reports) == 0 {
+		return out
+	}
+	path := s.exclusivityFilePath()
+	s.exclusivityMu.Lock()
+	store := readExclusivityStore(path)
+	s.exclusivityMu.Unlock()
+	for _, rep := range reports {
+		id := strings.TrimSpace(rep.ReportId)
+		if id == "" {
+			continue
+		}
+		if st, ok := store.Reports[id]; ok && validExclusivityStatus(st) {
+			out[id] = st
+			continue
+		}
+		runIDs := rep.RunIds
+		if len(runIDs) == 0 && len(rep.RunSummaries) > 0 {
+			runIDs = make([]string, 0, len(rep.RunSummaries))
+			for _, rs := range rep.RunSummaries {
+				if rs.RunID != "" {
+					runIDs = append(runIDs, rs.RunID)
+				}
+			}
+		}
+		out[id] = aggregateRunExclusivity(store.Runs, runIDs)
+	}
+	return out
+}
+
 func (s *Service) runExclusivityFromStore(runID, reportRef string) string {
 	path := s.exclusivityFilePath()
 	s.exclusivityMu.Lock()
@@ -215,6 +256,13 @@ type runExclusivityTracker struct {
 }
 
 func (s *Service) startRunExclusivity(ctx context.Context, t *runEntry) *runExclusivityTracker {
+	if t != nil && t.initialExclusivity == ExclusivityExternal {
+		tr := &runExclusivityTracker{service: s, status: ExclusivityExternal}
+		s.mu.Lock()
+		t.Task.Exclusivity = ExclusivityExternal
+		s.mu.Unlock()
+		return tr
+	}
 	port, excludePIDs := s.resolveRunProbeTarget(t)
 	tr := &runExclusivityTracker{
 		service:     s,
@@ -243,9 +291,7 @@ func (tr *runExclusivityTracker) poll(ctx context.Context, t *runEntry) {
 }
 
 func (tr *runExclusivityTracker) probeNow(ctx context.Context, t *runEntry) {
-	exclude := append([]int(nil), tr.excludePIDs...)
-	exclude = append(exclude, descendantPIDsOf(os.Getpid())...)
-	res := ProbePortExternalConnections(ctx, tr.port, exclude)
+	res := ProbePortExternalConnections(ctx, tr.port, tr.excludePIDs)
 	tr.lastProbe = time.Now()
 	if tr.status == "" {
 		tr.status = res.Status
@@ -270,16 +316,33 @@ func (tr *runExclusivityTracker) finish(t *runEntry) {
 	tr.service.mu.Lock()
 	t.Task.Exclusivity = status
 	runID := str(t.Task.RunId)
+	var batchRunIDs []string
+	if t.Task.ContextSpeed != nil && t.Task.ContextSpeed.Batch != nil {
+		for _, r := range t.Task.ContextSpeed.Batch.Runs {
+			if r.RunID != "" {
+				batchRunIDs = append(batchRunIDs, r.RunID)
+			}
+		}
+	}
 	tr.service.mu.Unlock()
 	if runID != "" {
 		tr.service.recordRunExclusivity(runID, status)
+	}
+	for _, id := range batchRunIDs {
+		tr.service.recordRunExclusivity(id, status)
 	}
 }
 
 func (s *Service) resolveRunProbeTarget(t *runEntry) (int, []int) {
 	var port int
 	var pids []int
-	if t.local != nil && t.local.bound != nil {
+	if t.probeEndpoint != "" {
+		port = portFromEndpoint(t.probeEndpoint)
+	}
+	if t.probePID > 0 {
+		pids = append(pids, t.probePID)
+	}
+	if port <= 0 && t.local != nil && t.local.bound != nil {
 		port = portFromEndpoint(t.local.bound.Endpoint)
 		if t.local.bound.Pid > 0 {
 			pids = append(pids, int(t.local.bound.Pid))
@@ -292,6 +355,24 @@ func (s *Service) resolveRunProbeTarget(t *runEntry) (int, []int) {
 		}
 		if cfgPID > 0 {
 			pids = append(pids, cfgPID)
+		}
+	}
+	if port <= 0 && t.Task.ResumeFrom != nil && *t.Task.ResumeFrom != "" {
+		cfgPort, cfgPID := readConfigEndpointTarget(filepath.Join(*t.Task.ResumeFrom, "config.toml"))
+		if cfgPort > 0 {
+			port = cfgPort
+		}
+		if cfgPID > 0 {
+			pids = append(pids, cfgPID)
+		}
+	}
+	if port <= 0 && t.Task.ContextSpeed != nil {
+		eng := s.Engine()
+		if p := portFromEndpoint(eng.Endpoint); p > 0 {
+			port = p
+		}
+		if eng.Pid > 0 {
+			pids = append(pids, int(eng.Pid))
 		}
 	}
 	if port > 0 {
@@ -338,73 +419,6 @@ func readConfigEndpointTarget(configPath string) (int, int) {
 		}
 	}
 	return portFromEndpoint(endpointURL), serverPID
-}
-
-func readConfig(path string) (string, string, string, error) {
-	cfgPath, root, bundle, _, _, err := readConfigWithEndpoint(path)
-	return cfgPath, root, bundle, err
-}
-
-func readConfigWithEndpoint(path string) (string, string, string, int64, int64, error) {
-	if !filepath.IsAbs(path) {
-		return "", "", "", 0, 0, os.ErrInvalid
-	}
-	if st, e := os.Stat(path); e == nil && st.IsDir() {
-		path = filepath.Join(path, "config.toml")
-	}
-	path, e := filepath.EvalSymlinks(path)
-	if e != nil {
-		return "", "", "", 0, 0, e
-	}
-	raw, e := os.ReadFile(path)
-	if e != nil {
-		return "", "", "", 0, 0, e
-	}
-	fields := map[string]json.RawMessage{}
-	section := ""
-	for _, line := range strings.Split(string(raw), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		if strings.HasPrefix(line, "[") {
-			section = strings.Trim(line, "[]")
-			continue
-		}
-		k, v, ok := strings.Cut(line, "=")
-		if !ok {
-			continue
-		}
-		key := section + "." + strings.TrimSpace(k)
-		if key == "output.root" || key == "bundle.path" || key == "endpoint.server_pid" || key == "endpoint.process_start_ticks" {
-			if _, exists := fields[key]; exists {
-				return "", "", "", 0, 0, os.ErrInvalid
-			}
-			fields[key] = json.RawMessage(strings.TrimSpace(v))
-		}
-	}
-	var root, bundle string
-	var pid, ticks int64
-	if json.Unmarshal(fields["output.root"], &root) != nil || json.Unmarshal(fields["bundle.path"], &bundle) != nil || json.Unmarshal(fields["endpoint.server_pid"], &pid) != nil || json.Unmarshal(fields["endpoint.process_start_ticks"], &ticks) != nil || pid <= 0 || ticks <= 0 || root == "" || bundle == "" {
-		return "", "", "", 0, 0, os.ErrInvalid
-	}
-	if !filepath.IsAbs(root) {
-		root = filepath.Join(filepath.Dir(path), root)
-	}
-	if !filepath.IsAbs(bundle) {
-		bundle = filepath.Join(filepath.Dir(path), bundle)
-	}
-	bundleRaw, err := os.ReadFile(bundle)
-	if err != nil {
-		return "", "", "", 0, 0, err
-	}
-	var frozenBundle struct {
-		ID string `json:"bundle_id"`
-	}
-	if json.Unmarshal(bundleRaw, &frozenBundle) != nil || frozenBundle.ID == "" {
-		return "", "", "", 0, 0, os.ErrInvalid
-	}
-	return path, root, inferyard.CanonicalBundleName(frozenBundle.ID), pid, ticks, nil
 }
 
 func descendantPIDsOf(rootPID int) []int {

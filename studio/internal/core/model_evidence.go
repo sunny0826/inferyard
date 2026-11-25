@@ -1,7 +1,9 @@
 package core
 
 import (
+	"encoding/json"
 	"math"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -37,26 +39,32 @@ func NormalizeModelEvidenceKey(model string) string {
 	return strings.TrimSpace(lower)
 }
 
+// NormalizeEvidenceEngineKey normalizes an engine/family/adapter identifier into a canonical key.
+func NormalizeEvidenceEngineKey(raw string) string {
+	key, _ := normalizeEvidenceEngine(raw)
+	return key
+}
+
 func normalizeEvidenceEngine(raw string) (key, display string) {
 	s := strings.TrimSpace(raw)
 	if s == "" {
 		return "", ""
 	}
 	lower := strings.ToLower(s)
-	switch lower {
-	case "llama-cpp", "llama.cpp", "llama_cpp", "llama-server", "prism_llama_server_v1", "llama_cpp_b11146_v1":
-		return "llama.cpp", "llama.cpp"
-	case "polystrata":
+	switch {
+	case lower == "polystrata" || strings.Contains(lower, "polystrata"):
 		return "polystrata", "PolyStrata"
-	case "mlx-lm", "mlx_lm", "mlx":
+	case lower == "llama-cpp" || lower == "llama.cpp" || lower == "llama_cpp" || strings.Contains(lower, "llama-server") || strings.Contains(lower, "llama"):
+		return "llama.cpp", "llama.cpp"
+	case lower == "mlx-lm" || lower == "mlx_lm" || lower == "mlx" || strings.Contains(lower, "mlx"):
 		return "mlx-lm", "mlx-lm"
-	case "vllm":
+	case lower == "vllm" || strings.Contains(lower, "vllm"):
 		return "vllm", "vLLM"
-	case "sglang":
+	case lower == "sglang" || strings.Contains(lower, "sglang"):
 		return "sglang", "SGLang"
-	case "lmstudio", "lm studio", "lm-studio":
+	case lower == "lmstudio" || lower == "lm studio" || lower == "lm-studio" || strings.Contains(lower, "lmstudio") || strings.Contains(lower, "lm-studio") || strings.Contains(lower, "lm studio"):
 		return "lmstudio", "LM Studio"
-	case "ollama":
+	case lower == "ollama" || strings.Contains(lower, "ollama"):
 		return "ollama", "Ollama"
 	default:
 		return lower, s
@@ -87,13 +95,21 @@ func engineFromReportProfile(eng ReportEngine) (key, display string) {
 }
 
 // ModelBenchmarkEvidence aggregates valid throughput measurements across all readable
-// Studio reports, grouped by normalized model name and engine.
+// Studio reports, grouped by normalized model keys (report model name, filename, and
+// registry aliases) and engine.
 func (s *Service) ModelBenchmarkEvidence() map[string]ModelEvidenceSummary {
 	_, summaries, apiErr := s.Reports()
 	out := map[string]ModelEvidenceSummary{}
 	if apiErr != nil || len(summaries) == 0 {
 		return out
 	}
+
+	runAliases := s.buildRunModelKeyAliases()
+	regAliases := buildRegistryModelKeyAliases(s.registry())
+	exclPath := s.exclusivityFilePath()
+	s.exclusivityMu.Lock()
+	exclStore := readExclusivityStore(exclPath)
+	s.exclusivityMu.Unlock()
 
 	type modelBucket struct {
 		displayName string
@@ -119,8 +135,8 @@ func (s *Service) ModelBenchmarkEvidence() map[string]ModelEvidenceSummary {
 				continue
 			}
 			modelDisplay := strings.TrimSpace(run.Model)
-			modelKey := NormalizeModelEvidenceKey(modelDisplay)
-			if modelKey == "" {
+			modelKeys := collectRunModelKeys(run, summary.Path, runAliases, regAliases)
+			if len(modelKeys) == 0 {
 				continue
 			}
 			engineKey, engineDisplay := engineFromReportProfile(run.Profile.Engine)
@@ -128,32 +144,32 @@ func (s *Service) ModelBenchmarkEvidence() map[string]ModelEvidenceSummary {
 				continue
 			}
 
-			bucket, ok := buckets[modelKey]
-			if !ok {
-				bucket = &modelBucket{
-					displayName: modelDisplay,
-					byEngine:    map[string]EngineSpeedRecord{},
-				}
-				buckets[modelKey] = bucket
-			}
-
 			rec := EngineSpeedRecord{
 				Engine:          engineDisplay,
 				TokensPerSecond: tps,
 				TTFTMs:          nil,
 				ReportRef:       summary.ReportId,
-				Exclusivity:     s.runExclusivityFromStore(run.Source.RunID, summary.ReportId),
+				Exclusivity:     exclusivityFromStore(exclStore, run.Source.RunID, summary.ReportId),
 				CreatedAt:       createdAt,
 			}
 
-			existing, exists := bucket.byEngine[engineKey]
-			if !exists {
-				bucket.byEngine[engineKey] = rec
-				continue
-			}
-			// Reports are sorted newest-first; only replace if newer or same timestamp with higher throughput.
-			if rec.CreatedAt > existing.CreatedAt || (rec.CreatedAt == existing.CreatedAt && rec.TokensPerSecond > existing.TokensPerSecond) {
-				bucket.byEngine[engineKey] = rec
+			for _, modelKey := range modelKeys {
+				bucket, ok := buckets[modelKey]
+				if !ok {
+					bucket = &modelBucket{
+						displayName: modelDisplay,
+						byEngine:    map[string]EngineSpeedRecord{},
+					}
+					buckets[modelKey] = bucket
+				}
+				existing, exists := bucket.byEngine[engineKey]
+				if !exists {
+					bucket.byEngine[engineKey] = rec
+					continue
+				}
+				if rec.TokensPerSecond > existing.TokensPerSecond || (rec.TokensPerSecond == existing.TokensPerSecond && rec.CreatedAt > existing.CreatedAt) {
+					bucket.byEngine[engineKey] = rec
+				}
 			}
 		}
 	}
@@ -180,6 +196,137 @@ func (s *Service) ModelBenchmarkEvidence() map[string]ModelEvidenceSummary {
 		}
 	}
 	return out
+}
+
+func exclusivityFromStore(store exclusivityStore, runID, reportRef string) string {
+	if runID != "" {
+		if st, ok := store.Runs[runID]; ok && validExclusivityStatus(st) {
+			return st
+		}
+	}
+	if reportRef != "" {
+		if st, ok := store.Reports[reportRef]; ok && validExclusivityStatus(st) {
+			return st
+		}
+	}
+	return ExclusivityUnknown
+}
+
+func (s *Service) buildRunModelKeyAliases() map[string][]string {
+	aliases := map[string][]string{}
+	history, apiErr := s.History()
+	if apiErr != nil {
+		return aliases
+	}
+	addRun := func(r RunSummary) {
+		if r.RunId == "" {
+			return
+		}
+		var keys []string
+		for _, raw := range []string{str(r.ModelName), str(r.ModelPath)} {
+			if k := NormalizeModelEvidenceKey(raw); k != "" {
+				keys = append(keys, k)
+			}
+		}
+		if len(keys) > 0 {
+			aliases[r.RunId] = keys
+		}
+	}
+	for _, b := range history.Batches {
+		for _, r := range b.Runs {
+			addRun(r)
+		}
+	}
+	for _, r := range history.StandaloneRuns {
+		addRun(r)
+	}
+	return aliases
+}
+
+func buildRegistryModelKeyAliases(reg registryData) map[string][]string {
+	aliases := map[string][]string{}
+	for _, entry := range reg.models {
+		rawNames := []string{entry.model.Name, entry.displayName}
+		if entry.path != "" {
+			rawNames = append(rawNames, filepath.Base(entry.path))
+		}
+		if entry.rawPath != "" {
+			rawNames = append(rawNames, filepath.Base(entry.rawPath))
+		}
+		seen := map[string]bool{}
+		var group []string
+		for _, raw := range rawNames {
+			if k := NormalizeModelEvidenceKey(raw); k != "" && !seen[k] {
+				seen[k] = true
+				group = append(group, k)
+			}
+		}
+		if len(group) < 2 {
+			continue
+		}
+		for _, k := range group {
+			aliases[k] = append(aliases[k], group...)
+		}
+	}
+	return aliases
+}
+
+func collectRunModelKeys(run ReportRun, reportDir string, runAliases, regAliases map[string][]string) []string {
+	seen := map[string]bool{}
+	var out []string
+	add := func(k string) {
+		if k == "" || seen[k] {
+			return
+		}
+		seen[k] = true
+		out = append(out, k)
+	}
+	add(NormalizeModelEvidenceKey(run.Model))
+	if run.Source.RunID != "" {
+		for _, k := range runAliases[run.Source.RunID] {
+			add(k)
+		}
+	}
+	if modelPath := readRunInputsModelPath(run.Source.Path, reportDir); modelPath != "" {
+		add(NormalizeModelEvidenceKey(modelPath))
+	}
+	for i := 0; i < len(out); i++ {
+		for _, alias := range regAliases[out[i]] {
+			add(alias)
+		}
+	}
+	return out
+}
+
+func readRunInputsModelPath(sourcePath, reportDir string) string {
+	p := strings.TrimSpace(sourcePath)
+	if p == "" {
+		return ""
+	}
+	if !filepath.IsAbs(p) && reportDir != "" {
+		p = filepath.Join(reportDir, p)
+	}
+	raw, err := os.ReadFile(filepath.Join(p, "inputs.json"))
+	if err != nil {
+		return ""
+	}
+	var doc struct {
+		ModelPath string `json:"model_path"`
+		Model     struct {
+			Path string `json:"path"`
+			Name string `json:"name"`
+		} `json:"model"`
+	}
+	if json.Unmarshal(raw, &doc) != nil {
+		return ""
+	}
+	if strings.TrimSpace(doc.ModelPath) != "" {
+		return doc.ModelPath
+	}
+	if strings.TrimSpace(doc.Model.Path) != "" {
+		return doc.Model.Path
+	}
+	return doc.Model.Name
 }
 
 // BestSpeedFor returns the best recorded throughput for model (optionally filtered to a

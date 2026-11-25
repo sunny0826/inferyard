@@ -93,18 +93,26 @@ func (s *viewState) startBenchmarkForDiscoveredService(service inferyard.Discove
 		finish(core.ExternalConnProbe{Status: core.ExclusivityUnknown})
 		return
 	}
+	serverPID := int(service.PID)
+	probeEndpoint := func() core.ExternalConnProbe {
+		if serverPID > 0 {
+			return s.service.ProbeEndpointConnections(s.ctx, epURL, serverPID)
+		}
+		return s.service.ProbeEndpointConnections(s.ctx, epURL)
+	}
 	if s.win == nil {
-		finish(s.service.ProbeEndpointConnections(s.ctx, epURL))
+		finish(probeEndpoint())
 		return
 	}
 	go func() {
-		probe := s.service.ProbeEndpointConnections(s.ctx, epURL)
+		probe := probeEndpoint()
 		s.runOnUI(func() { finish(probe) })
 	}()
 }
 
 func (s *viewState) handleExtConnProbeResult(serviceID, modelName, engineName, endpoint string, ctxSize int64, gpuLayers *int, probe core.ExternalConnProbe) {
 	if probe.Status != core.ExclusivityExternal {
+		s.pendingExclusivity = ""
 		s.openBenchmarksFlow()
 		return
 	}
@@ -168,6 +176,20 @@ func (s *viewState) extConnCheckDialog(c *ui.Context) {
 			}
 		}
 
+		applyBenchmarkTarget := func(exclusivity string) {
+			if d.modelName != "" {
+				s.model = d.modelName
+			}
+			if d.engineName != "" {
+				s.engine = d.engineName
+			}
+			s.pendingExclusivity = exclusivity
+			if s.speed != nil {
+				s.speed.selected = false
+			}
+			s.openBenchmarksFlow()
+		}
+
 		ui.Row(c).FillWidth().Wrap().Justify(ui.End).Gap(t.Density.Row).Children(func() {
 			if canDedicated {
 				if button(c, tr(c, "services.ext_check.action.cancel")).Clicked() {
@@ -175,22 +197,16 @@ func (s *viewState) extConnCheckDialog(c *ui.Context) {
 				}
 				if outlineButton(c, tr(c, "services.ext_check.action.benchmark_anyway")).Clicked() {
 					s.extCheckDialog.open = false
-					s.openBenchmarksFlow()
+					applyBenchmarkTarget(core.ExclusivityExternal)
 				}
 				if primaryButton(c, tr(c, "services.ext_check.action.dedicated_instance")).Clicked() {
 					s.extCheckDialog.open = false
-					if d.modelName != "" {
-						s.model = d.modelName
-					}
-					if d.engineName != "" {
-						s.engine = d.engineName
-					}
-					s.newBenchmark()
+					applyBenchmarkTarget("")
 				}
 			} else {
 				if outlineButton(c, tr(c, "services.ext_check.action.benchmark_anyway")).Clicked() {
 					s.extCheckDialog.open = false
-					s.openBenchmarksFlow()
+					applyBenchmarkTarget(core.ExclusivityExternal)
 				}
 				if primaryButton(c, tr(c, "services.ext_check.action.cancel")).Clicked() {
 					s.extCheckDialog.open = false

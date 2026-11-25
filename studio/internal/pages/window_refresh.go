@@ -48,10 +48,12 @@ func (s *viewState) refresh(full bool) {
 	updateState := s.service.UpdateStatus()
 	cliUpgrade := s.service.CLIUpgradeStatus()
 	var modelEvidence map[string]core.ModelEvidenceSummary
+	var reportExclusivities map[string]string
 	if full {
 		history, he = s.service.History()
 		_, reports, re = s.service.Reports()
 		modelEvidence = s.service.ModelBenchmarkEvidence()
+		reportExclusivities = s.service.ReportExclusivities(reports)
 	}
 	engineUpdates := s.service.EngineUpdates()
 	ready = s.service.Readiness()
@@ -86,7 +88,7 @@ func (s *viewState) refresh(full bool) {
 			updateState: updateState, cliUpgrade: cliUpgrade, serveSupported: serveSupported,
 			recentServices: recentServices, exitedNotices: exitedNotices,
 			managedServices: managedServices, memorySummary: memorySummary,
-			modelEvidence: modelEvidence, engineUpdates: engineUpdates,
+			modelEvidence: modelEvidence, reportExclusivities: reportExclusivities, engineUpdates: engineUpdates,
 		}
 		if !s.applyRefreshBatch(batch) {
 			return
@@ -129,6 +131,7 @@ type refreshBatch struct {
 	managedServices            []core.EngineState
 	memorySummary              core.ServiceMemoryBudget
 	modelEvidence              map[string]core.ModelEvidenceSummary
+	reportExclusivities        map[string]string
 	engineUpdates              map[string]core.EngineUpdateInfo
 }
 
@@ -161,6 +164,9 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 		s.historyError, s.reportsError = b.historyError, b.reportsError
 		if b.modelEvidence != nil {
 			s.modelEvidence = b.modelEvidence
+		}
+		if b.reportExclusivities != nil {
+			s.reportExclusivities = b.reportExclusivities
 		}
 		prevEngineName, prevModelName := s.engine, s.model
 		prevEnginePath := s.selectedEnginePath()

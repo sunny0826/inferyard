@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"runtime"
@@ -32,8 +33,9 @@ type ExternalConnProbe struct {
 type lsofExecFunc func(ctx context.Context, port int) (stdout, stderr []byte, exitCode int, err error)
 
 var (
-	lsofRunner    lsofExecFunc = runLsofEstablished
-	probePortFunc              = probePortWithLsof
+	lsofRunner         lsofExecFunc = runLsofEstablished
+	probePortFunc                   = probePortWithLsof
+	descendantPIDsFunc              = descendantPIDsOf
 )
 
 // ProbePortExternalConnections inspects ESTABLISHED TCP connections on port and reports
@@ -78,8 +80,16 @@ func probePortUsingRunner(ctx context.Context, port int, excludePIDs []int, runn
 		return ExternalConnProbe{Status: ExclusivityUnknown, Port: port}
 	}
 
-	exclude := make(map[int]bool, len(excludePIDs)+1)
-	exclude[os.Getpid()] = true
+	exclude := make(map[int]bool, len(excludePIDs)+4)
+	selfPID := os.Getpid()
+	exclude[selfPID] = true
+	if descendantPIDsFunc != nil {
+		for _, pid := range descendantPIDsFunc(selfPID) {
+			if pid > 0 {
+				exclude[pid] = true
+			}
+		}
+	}
 	for _, pid := range excludePIDs {
 		if pid > 0 {
 			exclude[pid] = true
@@ -127,6 +137,7 @@ func runLsofEstablished(ctx context.Context, port int) ([]byte, []byte, int, err
 
 func parseLsofEstablished(output []byte, exclude map[int]bool) []string {
 	byPID := map[int]string{}
+	remoteHosts := map[string]bool{}
 	currentPID := 0
 	currentCmd := ""
 	flush := func() {
@@ -156,10 +167,16 @@ func parseLsofEstablished(output []byte, exclude map[int]bool) []string {
 			if currentPID > 0 {
 				currentCmd = unescapeLsofField(strings.TrimSpace(line[1:]))
 			}
+		case 'n':
+			if currentPID > 0 && exclude[currentPID] {
+				if host, nonLoopback := nonLoopbackRemoteHost(strings.TrimSpace(line[1:])); nonLoopback {
+					remoteHosts[host] = true
+				}
+			}
 		}
 	}
 	flush()
-	if len(byPID) == 0 {
+	if len(byPID) == 0 && len(remoteHosts) == 0 {
 		return nil
 	}
 	pids := make([]int, 0, len(byPID))
@@ -167,7 +184,7 @@ func parseLsofEstablished(output []byte, exclude map[int]bool) []string {
 		pids = append(pids, pid)
 	}
 	sort.Ints(pids)
-	clients := make([]string, 0, len(pids))
+	clients := make([]string, 0, len(pids)+len(remoteHosts))
 	for _, pid := range pids {
 		name := strings.TrimSpace(byPID[pid])
 		if name == "" {
@@ -176,7 +193,49 @@ func parseLsofEstablished(output []byte, exclude map[int]bool) []string {
 			clients = append(clients, fmt.Sprintf("%s (PID %d)", name, pid))
 		}
 	}
+	if len(remoteHosts) > 0 {
+		hosts := make([]string, 0, len(remoteHosts))
+		for host := range remoteHosts {
+			hosts = append(hosts, host)
+		}
+		sort.Strings(hosts)
+		for _, host := range hosts {
+			clients = append(clients, fmt.Sprintf("LAN (%s)", host))
+		}
+	}
 	return clients
+}
+
+func nonLoopbackRemoteHost(networkName string) (string, bool) {
+	_, remote, ok := strings.Cut(strings.TrimSpace(networkName), "->")
+	if !ok {
+		return "", false
+	}
+	remote = strings.TrimSpace(remote)
+	if remote == "" {
+		return "", false
+	}
+	host := remote
+	if h, _, err := net.SplitHostPort(remote); err == nil {
+		host = h
+	}
+	host = strings.Trim(strings.TrimSpace(host), "[]")
+	if zoneIdx := strings.IndexByte(host, '%'); zoneIdx > 0 {
+		host = host[:zoneIdx]
+	}
+	if host == "" {
+		return "", false
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		if ip.IsLoopback() {
+			return "", false
+		}
+		return ip.String(), true
+	}
+	if strings.EqualFold(host, "localhost") {
+		return "", false
+	}
+	return host, true
 }
 
 func unescapeLsofField(s string) string {
@@ -219,7 +278,7 @@ func (s *Service) ProbeServiceConnections(ctx context.Context, serviceID string)
 	if port <= 0 {
 		port = portFromEndpoint(entry.state.Endpoint)
 	}
-	exclude := entryProcessPIDs(entry)
+	exclude := entryProcessPIDsLocked(entry)
 	s.mu.Unlock()
 	if port <= 0 {
 		return ExternalConnProbe{Status: ExclusivityUnknown}
@@ -228,12 +287,18 @@ func (s *Service) ProbeServiceConnections(ctx context.Context, serviceID string)
 }
 
 // ProbeEndpointConnections probes external TCP connections on an endpoint URL's port.
-func (s *Service) ProbeEndpointConnections(ctx context.Context, endpoint string) ExternalConnProbe {
+// Optional extraExcludePIDs can supply the known PID(s) of a discovered external server.
+func (s *Service) ProbeEndpointConnections(ctx context.Context, endpoint string, extraExcludePIDs ...int) ExternalConnProbe {
 	port := portFromEndpoint(endpoint)
 	if port <= 0 {
 		return ExternalConnProbe{Status: ExclusivityUnknown}
 	}
 	exclude := s.managedPIDsOnPort(port)
+	for _, pid := range extraExcludePIDs {
+		if pid > 0 {
+			exclude = append(exclude, pid)
+		}
+	}
 	return ProbePortExternalConnections(ctx, port, exclude)
 }
 
@@ -253,7 +318,7 @@ func (s *Service) managedPIDsOnPort(port int) []int {
 			p = portFromEndpoint(e.state.Endpoint)
 		}
 		if p == port {
-			pids = append(pids, entryProcessPIDs(e)...)
+			pids = append(pids, entryProcessPIDsLocked(e)...)
 		}
 	}
 	collect(s.engine)

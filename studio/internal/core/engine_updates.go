@@ -1,6 +1,9 @@
 package core
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -10,6 +13,8 @@ type EngineUpdateInfo struct {
 	Engine           string `json:"engine"`
 	InstalledVersion string `json:"installed_version"`
 	LatestVersion    string `json:"latest_version"`
+	ReleaseID        string `json:"release_id,omitempty"`
+	ReleaseVersion   string `json:"release_version,omitempty"`
 	HasUpdate        bool   `json:"has_update"`
 }
 
@@ -179,8 +184,8 @@ func normalizeCatalogFamilyID(candidates ...string) string {
 	return ""
 }
 
-func latestComparableCatalogVersion(family EngineFamilyCatalog, installed string) (latest string, hasUpdate bool) {
-	var bestComparable string
+func latestComparableCatalogVersion(family EngineFamilyCatalog, installed string) (latest, releaseID string, hasUpdate bool) {
+	var bestComparable, bestReleaseID string
 	for _, rel := range family.Releases {
 		ver := strings.TrimSpace(rel.Version)
 		if ver == "" {
@@ -190,24 +195,92 @@ func latestComparableCatalogVersion(family EngineFamilyCatalog, installed string
 			if _, ok := compareEngineVersions(installed, ver); ok {
 				if bestComparable == "" {
 					bestComparable = ver
+					bestReleaseID = rel.ID
 				} else if cmp, ok2 := compareEngineVersions(bestComparable, ver); ok2 && cmp < 0 {
 					bestComparable = ver
+					bestReleaseID = rel.ID
 				}
 			}
 		}
 	}
 	if bestComparable != "" {
 		cmp, ok := compareEngineVersions(installed, bestComparable)
-		return bestComparable, ok && cmp < 0
+		return bestComparable, bestReleaseID, ok && cmp < 0
 	}
 	// No comparable version in catalog: surface primary release version without false-positive update.
 	for _, rel := range family.Releases {
 		ver := strings.TrimSpace(rel.Version)
 		if ver != "" {
-			return ver, false
+			return ver, rel.ID, false
 		}
 	}
-	return "", false
+	return "", "", false
+}
+
+func installedVersionFromRegistryEntry(entry registryEntry) string {
+	if entry.installation != "" {
+		if ver := readInstallationVersion(entry.installation); ver != "" {
+			return ver
+		}
+	}
+	if entry.receipt != "" {
+		if raw, err := os.ReadFile(entry.receipt); err == nil {
+			var doc struct {
+				EngineRelease string `json:"engine_release"`
+			}
+			if json.Unmarshal(raw, &doc) == nil && strings.TrimSpace(doc.EngineRelease) != "" {
+				return strings.TrimSpace(doc.EngineRelease)
+			}
+		}
+	}
+	for _, candidate := range []string{entry.displayName, entry.engine.Name} {
+		for _, part := range strings.Split(candidate, "·") {
+			seg := strings.TrimSpace(part)
+			if seg == "" {
+				continue
+			}
+			if _, ok := parseSemverVersion(seg); ok {
+				return seg
+			}
+			if _, ok := parseBuildVersion(seg); ok {
+				return seg
+			}
+		}
+	}
+	return ""
+}
+
+func readInstallationVersion(instPath string) string {
+	raw, err := installationBytes(instPath)
+	if err != nil {
+		return ""
+	}
+	var decl struct {
+		Family           string `json:"family"`
+		Version          string `json:"version"`
+		WorkingDirectory string `json:"working_directory"`
+	}
+	if json.Unmarshal(raw, &decl) != nil {
+		return ""
+	}
+	if v := strings.TrimSpace(decl.Version); v != "" {
+		return v
+	}
+	roots := uniqueCleanPaths([]string{strings.TrimSpace(decl.WorkingDirectory), filepath.Dir(instPath)})
+	subpaths := []string{
+		filepath.Join("engine-poly", "BUILD.json"),
+		filepath.Join("engine", "BUILD.json"),
+		filepath.Join("build-metal", "BUILD.json"),
+		"BUILD.json",
+	}
+	for _, root := range roots {
+		for _, sub := range subpaths {
+			if ver := readBuildJSONVersion(filepath.Join(root, sub)); ver != "" {
+				return ver
+			}
+		}
+	}
+	return ""
 }
 
 // EngineUpdates compares locally checked/registered engine versions against the built-in
@@ -218,31 +291,54 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 	reg := s.registry()
 
 	familyByName := make(map[string]string, len(reg.engines))
+	versionByName := make(map[string]string, len(reg.engines))
 	for _, entry := range reg.engines {
 		fam := normalizeCatalogFamilyID(entry.engine.Family, entry.family, entry.engine.Name, entry.path)
 		if fam != "" {
 			familyByName[entry.engine.Name] = fam
 		}
+		if ver := installedVersionFromRegistryEntry(entry); ver != "" {
+			versionByName[entry.engine.Name] = ver
+		}
 	}
 
 	catalog := DefaultEngineCatalog()
-	for name, elig := range checks.Engines {
-		familyID := normalizeCatalogFamilyID(elig.Family, familyByName[name], name)
+	evaluate := func(name, eligFamily, eligVersion string) {
+		familyID := normalizeCatalogFamilyID(eligFamily, familyByName[name], name)
 		if familyID == "" {
-			continue
+			return
 		}
 		family, ok := catalog.FamilyByID(familyID)
 		if !ok {
-			continue
+			return
 		}
-		installed := strings.TrimSpace(elig.Version)
-		latest, hasUpdate := latestComparableCatalogVersion(family, installed)
+		installed := strings.TrimSpace(eligVersion)
+		if installed == "" {
+			installed = versionByName[name]
+		}
+		latest, releaseID, hasUpdate := latestComparableCatalogVersion(family, installed)
 		out[name] = EngineUpdateInfo{
 			Engine:           name,
 			InstalledVersion: installed,
 			LatestVersion:    latest,
+			ReleaseID:        releaseID,
+			ReleaseVersion:   latest,
 			HasUpdate:        hasUpdate,
 		}
+	}
+
+	for name, elig := range checks.Engines {
+		evaluate(name, elig.Family, elig.Version)
+	}
+	for _, entry := range reg.engines {
+		name := entry.engine.Name
+		if name == "" {
+			continue
+		}
+		if _, exists := out[name]; exists {
+			continue
+		}
+		evaluate(name, entry.engine.Family, "")
 	}
 	return out
 }

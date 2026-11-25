@@ -178,6 +178,7 @@ type viewState struct {
 	serviceParams                                                                       serviceParamsDrawerState
 	quitDialog                                                                          quitServiceDialogState
 	extCheckDialog                                                                      extConnCheckDialogState
+	pendingExclusivity                                                                  string
 	modelEvidence                                                                       map[string]core.ModelEvidenceSummary
 	engineUpdates                                                                       map[string]core.EngineUpdateInfo
 	reportExclusivities                                                                 map[string]string

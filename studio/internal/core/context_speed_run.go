@@ -24,6 +24,7 @@ func (s *Service) executeContextSpeed(t *runEntry) {
 	t.commandActive = true
 	s.state(t)
 	s.mu.Unlock()
+	exclusivity := s.startRunExclusivity(ctx, t)
 	type response struct {
 		out inferyard.Execution
 		err error
@@ -49,6 +50,7 @@ waitLoop:
 		case completed = <-done:
 			break waitLoop
 		case <-ticker.C:
+			exclusivity.poll(ctx, t)
 			runs, e := evidence.ContextSpeedRuns(t.root, t.Task.ContextSpeed.Plan.SHA256, t.Task.ContextSpeed.Plan.TrialIDs)
 			if e != nil {
 				ownershipError = true
@@ -132,6 +134,7 @@ waitLoop:
 		}
 		s.mu.Unlock()
 	}
+	exclusivity.finish(t)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	t.Task.State = state

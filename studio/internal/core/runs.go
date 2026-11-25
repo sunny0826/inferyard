@@ -12,16 +12,19 @@ import (
 )
 
 type runEntry struct {
-	Task          RunTask
-	Progress      *RunProgress
-	Resources     []ResourceSample
-	root          string
-	args          []string
-	binary        string
-	cancel        context.CancelFunc
-	recordRoot    string
-	commandActive bool
-	local         *candidateRunState
+	Task               RunTask
+	Progress           *RunProgress
+	Resources          []ResourceSample
+	root               string
+	args               []string
+	binary             string
+	cancel             context.CancelFunc
+	recordRoot         string
+	commandActive      bool
+	local              *candidateRunState
+	initialExclusivity string
+	probeEndpoint      string
+	probePID           int
 }
 
 func (s *Service) StartRuns(req StartRunsRequest) ([]RunTask, *ApiError) {
@@ -55,7 +58,7 @@ func (s *Service) StartRuns(req StartRunsRequest) ([]RunTask, *ApiError) {
 		}
 		seen[config] = true
 		bundles[bundle] = true
-		entries = append(entries, &runEntry{Task: RunTask{TaskId: uuid(), Kind: "run", State: "starting", Queued: true, ConfigPath: &config, Bundle: &bundle, CreatedAt: now()}, root: root, binary: *p.Path, args: []string{"run", "--config", config}, Resources: []ResourceSample{}})
+		entries = append(entries, &runEntry{Task: RunTask{TaskId: uuid(), Kind: "run", State: "starting", Queued: true, ConfigPath: &config, Bundle: &bundle, CreatedAt: now()}, root: root, binary: *p.Path, args: []string{"run", "--config", config}, Resources: []ResourceSample{}, initialExclusivity: normalizeInitialExclusivity(req.InitialExclusivity)})
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -125,10 +128,14 @@ func (s *Service) Resume(req ResumeRunRequest) (RunTask, *ApiError) {
 		return RunTask{}, cliProbeError(p)
 	}
 	args := []string{"resume", "--from-run", path}
+	var probeEndpoint string
+	var probePID int
 	if req.EndpointUrl != nil {
 		args = append(args, "--endpoint-url", *req.EndpointUrl, "--server-pid", strconv.FormatInt(*req.ServerPid, 10))
+		probeEndpoint = *req.EndpointUrl
+		probePID = int(*req.ServerPid)
 	}
-	t := &runEntry{Task: RunTask{TaskId: uuid(), Kind: "resume", State: "starting", Queued: true, ResumeFrom: &path, Bundle: found.Bundle, CreatedAt: now()}, root: filepath.Dir(path), binary: *p.Path, args: args, Resources: []ResourceSample{}}
+	t := &runEntry{Task: RunTask{TaskId: uuid(), Kind: "resume", State: "starting", Queued: true, ResumeFrom: &path, Bundle: found.Bundle, CreatedAt: now()}, root: filepath.Dir(path), binary: *p.Path, args: args, Resources: []ResourceSample{}, probeEndpoint: probeEndpoint, probePID: probePID}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if e := s.admitRunLocked(); e != nil {

@@ -93,4 +93,54 @@ func TestServiceEngineUpdates(t *testing.T) {
 	if info := updates["sglang-git"]; info.HasUpdate {
 		t.Fatalf("expected sglang-git no false-positive update, got %+v", info)
 	}
+	if info := updates["llama-cpp-old"]; info.ReleaseID == "" || info.ReleaseVersion != "b11146" {
+		t.Fatalf("expected llama-cpp-old ReleaseID and ReleaseVersion populated, got %+v", info)
+	}
+}
+
+func TestServiceEngineUpdatesPolystrataBuildJSONFallback(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	dir := t.TempDir()
+	workDir := filepath.Join(dir, "polystrata-work")
+	instPath := setupPolystrataInstallFixture(t, workDir, filepath.Join(dir, "data"), "v0.1.40-poly.1", false)
+
+	svc, err := New(ctx, Options{SettingsPath: filepath.Join(t.TempDir(), "settings.json")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Shutdown(context.Background())
+	svc.mu.Lock()
+	svc.settings.EngineInstallations = []string{instPath}
+	svc.mu.Unlock()
+
+	// Simulate EngineChecks returning empty Version for PolyStrata installation.
+	reg := svc.Registry()
+	if len(reg.Engines) == 0 {
+		t.Fatalf("expected registered polystrata engine in registry")
+	}
+	engName := reg.Engines[0].Name
+	svc.checkMu.Lock()
+	svc.checkSupported = true
+	svc.checkNames = []engineCheckTarget{{name: engName, path: instPath, key: "p1"}}
+	svc.checks = map[string]engineCheckEntry{
+		instPath: {
+			key:      "p1",
+			verified: true,
+			result:   EngineEligibility{State: EngineCheckEligible, Family: "polystrata", Version: ""},
+		},
+	}
+	svc.checkMu.Unlock()
+
+	updates := svc.EngineUpdates()
+	info, ok := updates[engName]
+	if !ok {
+		t.Fatalf("expected update info for %q, got %+v", engName, updates)
+	}
+	if info.InstalledVersion != "v0.1.40-poly.1" {
+		t.Fatalf("expected InstalledVersion from BUILD.json, got %+v", info)
+	}
+	if !info.HasUpdate || info.ReleaseID == "" || info.ReleaseVersion == "" {
+		t.Fatalf("expected PolyStrata update detected with ReleaseID/ReleaseVersion, got %+v", info)
+	}
 }

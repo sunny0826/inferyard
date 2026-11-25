@@ -229,6 +229,68 @@ func TestP4PreBenchmarkExternalConnDialogBranches(t *testing.T) {
 		t.Fatalf("expected 'benchmark anyway' to close dialog and open benchmarks flow, got open=%v selected=%q flow=%v",
 			s.extCheckDialog.open, s.selected, s.benchFlowOpen)
 	}
+	if s.pendingExclusivity != core.ExclusivityExternal {
+		t.Fatalf("expected 'benchmark anyway' to set pendingExclusivity=external, got %q", s.pendingExclusivity)
+	}
+
+	// 4) external + sufficient memory -> clicking 另起测评专用实例 does NOT cancel active tasks.
+	s.device.Snapshot = json.RawMessage(`{"hardware":{"apple_silicon":true,"memory_total_bytes":51539607552}}`)
+	smallSize := int64(2 * (1 << 30))
+	s.registry.Models[0].SizeBytes = &smallSize
+	svc.EstimatedMemoryGB = 2.5
+	s.managedServices = []core.EngineState{svc}
+	cancelCalled := false
+	s.cancelRound = func(string) (core.RunTask, *core.ApiError) {
+		cancelCalled = true
+		return core.RunTask{}, nil
+	}
+	s.tasks = []core.RunTask{{TaskId: "active-1", State: "running"}}
+	s.selected = "services"
+	s.benchFlowOpen = false
+	s.startBenchmarkForManagedService(svc)
+	tt.Frame()
+	click(t, tt, "另起测评专用实例")
+	tt.Frame()
+	if cancelCalled {
+		t.Fatal("expected dedicated-instance action not to cancel active benchmark tasks")
+	}
+	if s.pendingExclusivity != "" || s.selected != "benchmarks" || !s.benchFlowOpen {
+		t.Fatalf("expected dedicated-instance to open benchmarks flow without external lock, got excl=%q selected=%q flow=%v",
+			s.pendingExclusivity, s.selected, s.benchFlowOpen)
+	}
+}
+
+func TestP4ServiceCardDoesNotFallbackAcrossEngines(t *testing.T) {
+	s, _ := servicesP2State(t)
+	best := core.EngineSpeedRecord{
+		Engine:          "llama.cpp",
+		TokensPerSecond: 68.4,
+		ReportRef:       "rep-llama",
+	}
+	s.modelEvidence = map[string]core.ModelEvidenceSummary{
+		core.NormalizeModelEvidenceKey("Qwen3-8B-Q4.gguf"): {
+			Model:    "Qwen3-8B-Q4.gguf",
+			Best:     &best,
+			ByEngine: []core.EngineSpeedRecord{best},
+		},
+	}
+
+	mlxSvc := core.EngineState{
+		Family:     "mlx-lm",
+		EngineName: "mlx-lm",
+		ModelName:  "Qwen3-8B-Q4.gguf",
+	}
+	if rec, ok := s.bestSpeedForService(mlxSvc); ok || rec != nil {
+		t.Fatalf("expected mlx-lm service not to fall back to llama.cpp speed, got ok=%v rec=%+v", ok, rec)
+	}
+	llamaSvc := core.EngineState{
+		Family:     "llama-cpp",
+		EngineName: "llama-cpp-default",
+		ModelName:  "Qwen3-8B-Q4.gguf",
+	}
+	if rec, ok := s.bestSpeedForService(llamaSvc); !ok || rec == nil || rec.TokensPerSecond != 68.4 {
+		t.Fatalf("expected llama-cpp service to match llama.cpp speed, got ok=%v rec=%+v", ok, rec)
+	}
 }
 
 func TestP4ReportsAndBenchmarksExclusivityBadges(t *testing.T) {
@@ -257,7 +319,7 @@ func TestP4ReportsAndBenchmarksExclusivityBadges(t *testing.T) {
 		}
 	}
 
-	// Benchmarks list task row exclusivity badge.
+	// Benchmarks list task row + recent report row exclusivity badges.
 	s.selected = "benchmarks"
 	s.benchFlowOpen = false
 	bundle := "zh-core"
@@ -266,8 +328,10 @@ func TestP4ReportsAndBenchmarksExclusivityBadges(t *testing.T) {
 	}
 	tt.Frame()
 	benchTexts := strings.Join(tt.Texts(), "\n")
-	if !strings.Contains(benchTexts, "有外部连接") {
-		t.Fatalf("expected benchmarks list to show task exclusivity badge, got:\n%s", benchTexts)
+	for _, want := range []string{"有外部连接", "独占"} {
+		if !strings.Contains(benchTexts, want) {
+			t.Fatalf("expected benchmarks list (tasks + recent reports) to show exclusivity badge %q, got:\n%s", want, benchTexts)
+		}
 	}
 }
 
@@ -278,11 +342,18 @@ func TestP4EngineUpdateBadgeAndAction(t *testing.T) {
 	s, _ := servicesP2State(t)
 	s.selected = "library"
 	s.libraryTab = 1
+	fam, ok := s.engineCatalogRegistry().FamilyByID("llama-cpp")
+	if !ok || len(fam.Releases) == 0 {
+		t.Fatal("expected llama-cpp family in catalog")
+	}
+	targetRel := fam.Releases[len(fam.Releases)-1]
 	s.engineUpdates = map[string]core.EngineUpdateInfo{
 		"llama-cpp-default": {
 			Engine:           "llama-cpp-default",
 			InstalledVersion: "b4800",
-			LatestVersion:    "b5400",
+			LatestVersion:    targetRel.Version,
+			ReleaseID:        targetRel.ID,
+			ReleaseVersion:   targetRel.Version,
 			HasUpdate:        true,
 		},
 	}
@@ -290,7 +361,7 @@ func TestP4EngineUpdateBadgeAndAction(t *testing.T) {
 	tt := newServicesTester(s)
 	tt.Frame()
 	texts := strings.Join(tt.Texts(), "\n")
-	for _, want := range []string{"有新版 b5400", "更新"} {
+	for _, want := range []string{"有新版 " + targetRel.Version, "更新"} {
 		if !strings.Contains(texts, want) {
 			t.Fatalf("expected library engines tab to contain %q, got:\n%s", want, texts)
 		}
@@ -300,5 +371,8 @@ func TestP4EngineUpdateBadgeAndAction(t *testing.T) {
 	tt.Frame()
 	if s.downloadsUI == nil || !s.downloadsUI.engineDrawerOpen {
 		t.Fatalf("expected clicking engine Update button to open engine download drawer, got %+v", s.downloadsUI)
+	}
+	if s.downloadsUI.selectedRelease["llama-cpp"] != targetRel.ID {
+		t.Fatalf("expected update action to preselect release %q, got %q", targetRel.ID, s.downloadsUI.selectedRelease["llama-cpp"])
 	}
 }

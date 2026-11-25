@@ -180,3 +180,51 @@ func TestModelBenchmarkEvidenceAggregation(t *testing.T) {
 		t.Fatalf("expected missing throughput model to return ok=false")
 	}
 }
+
+func TestModelBenchmarkEvidencePicksMaxThroughputAndMultiKeyAliases(t *testing.T) {
+	ws := t.TempDir()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	svc, err := New(ctx, Options{SettingsPath: filepath.Join(t.TempDir(), "settings.json")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Shutdown(context.Background())
+	wsRaw, _ := json.Marshal(ws)
+	if _, apiErr := svc.UpdateSettings(map[string]json.RawMessage{"workspace_root": wsRaw}); apiErr != nil {
+		t.Fatal(apiErr)
+	}
+	reportsRoot := filepath.Join(ws, "reports")
+
+	// Create a run directory with inputs.json linking GGUF general.name to filename.
+	runDir := filepath.Join(ws, "results", "run-fast")
+	if err := os.MkdirAll(runDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(runDir, "inputs.json"), []byte(`{"model_path":"/models/qwen2.5-7b-instruct-q4_k_m.gguf"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	tOlder := time.Date(2026, 11, 18, 10, 0, 0, 0, time.UTC)
+	tNewer := time.Date(2026, 11, 22, 10, 0, 0, 0, time.UTC)
+	tpsFast := 64.8
+	tpsSlower := 48.2
+
+	fastRun := makeReportRunFixture("run-fast", "Qwen2.5-7B-Instruct", "/opt/llama-server", "llama_cpp", &tpsFast)
+	fastRun["source"] = map[string]any{"run_id": "run-fast", "path": runDir}
+	slowRun := makeReportRunFixture("run-slow", "Qwen2.5-7B-Instruct", "/opt/llama-server", "llama.cpp", &tpsSlower)
+
+	writeStudioReportFixture(t, reportsRoot, "rep-fast-old", tOlder, []map[string]any{fastRun})
+	writeStudioReportFixture(t, reportsRoot, "rep-slow-new", tNewer, []map[string]any{slowRun})
+
+	// Must pick highest throughput (64.8 from older report) rather than newer slower run (48.2).
+	byGeneralName, ok := svc.BestSpeedFor("Qwen2.5-7B-Instruct", "llama.cpp")
+	if !ok || byGeneralName == nil || byGeneralName.TokensPerSecond != 64.8 || byGeneralName.ReportRef != "rep-fast-old" {
+		t.Fatalf("expected max throughput 64.8 from rep-fast-old, got ok=%v rec=%+v", ok, byGeneralName)
+	}
+	// Multi-key alias: querying by GGUF filename must also hit the report.
+	byFilename, ok := svc.BestSpeedFor("qwen2.5-7b-instruct-q4_k_m.gguf", "llama-cpp")
+	if !ok || byFilename == nil || byFilename.TokensPerSecond != 64.8 {
+		t.Fatalf("expected filename lookup to hit multi-key evidence, got ok=%v rec=%+v", ok, byFilename)
+	}
+}

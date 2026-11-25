@@ -69,7 +69,9 @@ func (s *viewState) startBenchmark() {
 	}
 	ctx, cancel := context.WithCancel(s.ctx)
 	s.taskCancel = cancel
-	s.task = benchmarkTask{stage: "prepare_candidate", bundles: names, bindings: &benchmarkBindings{}}
+	initialExclusivity := s.pendingExclusivity
+	s.pendingExclusivity = ""
+	s.task = benchmarkTask{stage: "prepare_candidate", bundles: names, bindings: &benchmarkBindings{initialExclusivity: initialExclusivity}}
 	model, engine := s.model, s.engine
 	localRequest := s.localCandidateRequest(names)
 	s.guideWork(func() (string, *core.ApiError) {
@@ -101,13 +103,14 @@ func (s *viewState) startBenchmark() {
 }
 
 type benchmarkBindings struct {
-	pid          int64
-	startTicks   int64
-	configs      map[string]string
-	candidates   map[string]string
-	localTasks   map[string]string
-	completed    map[string]string
-	failedBundle string
+	pid                int64
+	startTicks         int64
+	configs            map[string]string
+	candidates         map[string]string
+	localTasks         map[string]string
+	completed          map[string]string
+	failedBundle       string
+	initialExclusivity string
 }
 
 type benchmarkBackend interface {
@@ -208,7 +211,11 @@ func runBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result star
 		return core.Err("cancelled")
 	}
 	announce("run")
-	tasks, e := backend.StartRuns(core.StartRunsRequest{ConfigPaths: configs, AllowSingleBundle: boolPointer(len(configs) == 1)})
+	tasks, e := backend.StartRuns(core.StartRunsRequest{
+		ConfigPaths:        configs,
+		AllowSingleBundle:  boolPointer(len(configs) == 1),
+		InitialExclusivity: bindings.initialExclusivity,
+	})
 	if e != nil {
 		return e
 	}

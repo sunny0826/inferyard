@@ -67,7 +67,12 @@ func runLocalBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result
 	}
 	if len(candidates) > 0 {
 		announce("run")
-		tasks, failure := local.StartCandidateRuns(core.CandidateRunsRequest{Candidates: candidates, AllowSingleBundle: len(candidates) == 1, ExistingService: initial})
+		tasks, failure := local.StartCandidateRuns(core.CandidateRunsRequest{
+			Candidates:         candidates,
+			AllowSingleBundle:  len(candidates) == 1,
+			ExistingService:    initial,
+			InitialExclusivity: bindings.initialExclusivity,
+		})
 		if failure != nil {
 			return failure
 		}

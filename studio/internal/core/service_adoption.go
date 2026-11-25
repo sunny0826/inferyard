@@ -59,9 +59,10 @@ func (s *Service) adoptStandaloneServiceLocked(workspace, path string, owner eng
 		initialState = "running"
 	}
 	entry := &engineEntry{
-		ownerPath:  path,
-		owner:      owner,
-		family:     owner.Family,
+		ownerPath:   path,
+		owner:       owner,
+		pidSnapshot: buildOwnerPIDSnapshot(owner.PID, owner),
+		family:      owner.Family,
 		wasHealthy: healthy,
 		adopted:    true,
 		stop:       make(chan struct{}),
@@ -132,6 +133,7 @@ func (s *Service) monitorAdoptedEngine(e *engineEntry) {
 			return
 		case <-ticker.C:
 			alive, err := s.ownedTreeAlive(&e.owner, e.ownerPath)
+			s.syncEntryPIDSnapshot(e)
 			if err != nil {
 				s.mu.Lock()
 				failure := orphanIdentityError()

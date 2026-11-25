@@ -99,23 +99,18 @@ func uniquePositivePIDs(pids []int) []int {
 	return out
 }
 
-func entryProcessPIDs(e *engineEntry) []int {
+// entryProcessPIDsLocked returns the immutable PID snapshot for e. Caller must hold s.mu.
+func entryProcessPIDsLocked(e *engineEntry) []int {
 	if e == nil {
 		return nil
 	}
-	raw := make([]int, 0, 2+len(e.owner.Workers))
+	if len(e.pidSnapshot) > 0 {
+		return e.pidSnapshot
+	}
 	if e.state.Pid > 0 {
-		raw = append(raw, int(e.state.Pid))
+		return []int{int(e.state.Pid)}
 	}
-	if e.owner.PID > 0 {
-		raw = append(raw, int(e.owner.PID))
-	}
-	for _, w := range e.owner.Workers {
-		if w.PID > 0 {
-			raw = append(raw, int(w.PID))
-		}
-	}
-	return uniquePositivePIDs(raw)
+	return nil
 }
 
 func (s *Service) runtimeMemPeriod() time.Duration {
@@ -134,7 +129,7 @@ func (s *Service) maybeSampleRuntimeMemory(e *engineEntry, lastSample *time.Time
 	}
 	s.mu.Lock()
 	running := e.state.State == "running"
-	pids := entryProcessPIDs(e)
+	pids := entryProcessPIDsLocked(e)
 	s.mu.Unlock()
 	if !running || len(pids) == 0 {
 		return
@@ -152,7 +147,10 @@ func (s *Service) maybeSampleRuntimeMemory(e *engineEntry, lastSample *time.Time
 		return
 	}
 	e.state.RuntimeMemoryGB = sampled
-	s.publishEngineLocked(e)
+	s.Bus.Publish("services.memory", map[string]any{
+		"services": s.managedServicesLocked(),
+		"engine":   clone(e.state),
+	})
 }
 
 func equalFloatPtr(a, b *float64) bool {

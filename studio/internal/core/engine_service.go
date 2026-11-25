@@ -72,17 +72,18 @@ type EngineState struct {
 }
 
 type engineEntry struct {
-	ownerPath  string
-	owner      engineOwner
-	family     string
-	wasHealthy bool
-	adopted    bool
-	cmd        *exec.Cmd
-	logFile    *os.File
-	state      EngineState
-	stop       chan struct{}
-	detach     chan struct{}
-	done       chan struct{}
+	ownerPath   string
+	owner       engineOwner
+	pidSnapshot []int // protected by Service.mu; immutable slice replaced on tree refresh
+	family      string
+	wasHealthy  bool
+	adopted     bool
+	cmd         *exec.Cmd
+	logFile     *os.File
+	state       EngineState
+	stop        chan struct{}
+	detach      chan struct{}
+	done        chan struct{}
 }
 
 func (s *Service) Engine() EngineState {
@@ -365,7 +366,7 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 			return
 		case <-treeTicker.C:
 			if e.state.Local {
-				_ = s.refreshEngineTree(&e.owner, e.ownerPath)
+				_ = s.refreshEntryTree(e)
 			}
 		case <-ticker.C:
 			s.mu.Lock()

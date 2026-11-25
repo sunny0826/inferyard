@@ -205,8 +205,9 @@ type ResourceSample struct {
 }
 
 type StartRunsRequest struct {
-	ConfigPaths       []string `json:"config_paths"`
-	AllowSingleBundle *bool    `json:"allow_single_bundle"`
+	ConfigPaths        []string `json:"config_paths"`
+	AllowSingleBundle  *bool    `json:"allow_single_bundle"`
+	InitialExclusivity string   `json:"initial_exclusivity,omitempty"`
 }
 
 type ResumeRunRequest struct {

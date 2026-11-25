@@ -25,11 +25,14 @@ func (s *viewState) modelEvidenceFor(modelName string) (core.ModelEvidenceSummar
 }
 
 func (s *viewState) bestSpeedForService(svc core.EngineState) (*core.EngineSpeedRecord, bool) {
-	model := strings.TrimSpace(svc.ModelName)
-	if model == "" {
-		model = strings.TrimSpace(svc.Model)
+	candidates := make([]string, 0, 2)
+	if m := strings.TrimSpace(svc.ModelName); m != "" {
+		candidates = append(candidates, m)
 	}
-	if model == "" {
+	if m := strings.TrimSpace(svc.Model); m != "" {
+		candidates = append(candidates, m)
+	}
+	if len(candidates) == 0 {
 		return nil, false
 	}
 	engine := strings.TrimSpace(svc.Family)
@@ -39,47 +42,32 @@ func (s *viewState) bestSpeedForService(svc core.EngineState) (*core.EngineSpeed
 	if engine == "" {
 		engine = strings.TrimSpace(svc.Adapter)
 	}
-	if summary, ok := s.modelEvidenceFor(model); ok {
-		if engine != "" {
-			want := normalizeEvidenceEngineKey(engine)
-			for _, rec := range summary.ByEngine {
-				if normalizeEvidenceEngineKey(rec.Engine) == want {
-					cp := rec
-					return &cp, true
+	wantEngine := core.NormalizeEvidenceEngineKey(engine)
+	for _, model := range candidates {
+		if summary, ok := s.modelEvidenceFor(model); ok {
+			if wantEngine != "" {
+				for _, rec := range summary.ByEngine {
+					if core.NormalizeEvidenceEngineKey(rec.Engine) == wantEngine {
+						cp := rec
+						return &cp, true
+					}
 				}
+				return nil, false
 			}
-		}
-		if summary.Best != nil {
-			cp := *summary.Best
-			return &cp, true
+			if summary.Best != nil {
+				cp := *summary.Best
+				return &cp, true
+			}
 		}
 	}
 	if s.service != nil && s.preview == nil && s.modelEvidence == nil {
-		return s.service.BestSpeedFor(model, engine)
+		for _, model := range candidates {
+			if rec, ok := s.service.BestSpeedFor(model, engine); ok {
+				return rec, true
+			}
+		}
 	}
 	return nil, false
-}
-
-func normalizeEvidenceEngineKey(raw string) string {
-	lower := strings.ToLower(strings.TrimSpace(raw))
-	switch {
-	case lower == "llama-cpp" || lower == "llama.cpp" || lower == "llama_cpp" || strings.Contains(lower, "llama-server") || strings.Contains(lower, "llama"):
-		return "llama.cpp"
-	case strings.Contains(lower, "polystrata"):
-		return "polystrata"
-	case strings.Contains(lower, "mlx"):
-		return "mlx-lm"
-	case strings.Contains(lower, "vllm"):
-		return "vllm"
-	case strings.Contains(lower, "sglang"):
-		return "sglang"
-	case strings.Contains(lower, "lmstudio") || strings.Contains(lower, "lm-studio") || strings.Contains(lower, "lm studio"):
-		return "lmstudio"
-	case strings.Contains(lower, "ollama"):
-		return "ollama"
-	default:
-		return lower
-	}
 }
 
 func (s *viewState) renderModelEvidenceInline(c *ui.Context, m core.ModelAsset) {
@@ -173,10 +161,6 @@ func (s *viewState) reportExclusivity(ref string) string {
 				return status
 			}
 		}
-		return core.ExclusivityUnknown
-	}
-	if s.service != nil {
-		return s.service.ReportExclusivity(ref)
 	}
 	return core.ExclusivityUnknown
 }
@@ -191,11 +175,36 @@ func (s *viewState) renderEngineUpdateBadgeAndAction(c *ui.Context, eng core.Eng
 		Label(trf(c, "models.engine.action.update_label", "name", eng.Name)).
 		Disabled(s.busy)
 	if btn.Clicked() {
-		s.triggerEngineUpdate(eng)
+		s.triggerEngineUpdate(eng, upd)
 	}
 }
 
-func (s *viewState) triggerEngineUpdate(eng core.EngineAsset) {
+func pickUpdateCatalogRelease(upd core.EngineUpdateInfo, preferred, all []core.EngineRelease) (core.EngineRelease, bool) {
+	wantID := strings.TrimSpace(upd.ReleaseID)
+	wantVer := strings.TrimSpace(upd.ReleaseVersion)
+	if wantVer == "" {
+		wantVer = strings.TrimSpace(upd.LatestVersion)
+	}
+	for _, list := range [][]core.EngineRelease{preferred, all} {
+		if wantID != "" {
+			for _, rel := range list {
+				if rel.ID == wantID {
+					return rel, true
+				}
+			}
+		}
+		if wantVer != "" {
+			for _, rel := range list {
+				if strings.EqualFold(strings.TrimSpace(rel.Version), wantVer) {
+					return rel, true
+				}
+			}
+		}
+	}
+	return core.EngineRelease{}, false
+}
+
+func (s *viewState) triggerEngineUpdate(eng core.EngineAsset, upd core.EngineUpdateInfo) {
 	familyID := strings.TrimSpace(eng.Family)
 	if familyID == "" {
 		lower := strings.ToLower(eng.Name)
@@ -229,7 +238,15 @@ func (s *viewState) triggerEngineUpdate(eng core.EngineAsset) {
 		s.openLocalEngineWizard(familyID)
 		return
 	}
-	rel := resolveEngineRelease(st.selectedRelease[fam.ID], hostReleases)
+	rel, matched := pickUpdateCatalogRelease(upd, hostReleases, fam.Releases)
+	if !matched {
+		rel = resolveEngineRelease(st.selectedRelease[fam.ID], hostReleases)
+	}
+	if rel.Channel != core.ReleaseStable && rel.Channel != core.ReleaseLatest {
+		st.drawerStableOnly = false
+	}
+	st.selectedRelease[fam.ID] = rel.ID
+	st.selectedBuild[fam.ID] = ""
 	build := pickEngineBuildForPlatform(st, fam.ID, rel, hostPlatform)
 	if fam.ID == "polystrata" {
 		s.openPolystrataConfigDrawer(fam.ID, rel.ID, build.Platform, build.ID)

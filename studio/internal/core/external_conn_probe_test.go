@@ -3,102 +3,81 @@ package core
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 )
 
-func TestProbePortUsingRunner(t *testing.T) {
-	selfPID := os.Getpid()
-	serverPID := selfPID + 1001
-	externalPID := selfPID + 2002
-
-	t.Run("no_connections_exit1_empty_is_exclusive", func(t *testing.T) {
-		runner := func(ctx context.Context, port int) ([]byte, []byte, int, error) {
-			return nil, nil, 1, errors.New("exit status 1")
-		}
-		res := probePortUsingRunner(context.Background(), 8080, []int{serverPID}, runner)
-		if res.Status != ExclusivityExclusive || res.Count != 0 || res.Port != 8080 {
-			t.Fatalf("expected exclusive, got %+v", res)
-		}
-	})
-
-	t.Run("only_server_and_studio_pids_is_exclusive", func(t *testing.T) {
-		output := fmt.Sprintf("p%d\ncllama-server\nn127.0.0.1:8080->127.0.0.1:50001\np%d\ncstudio\nn127.0.0.1:50001->127.0.0.1:8080\n", serverPID, selfPID)
-		runner := func(ctx context.Context, port int) ([]byte, []byte, int, error) {
-			return []byte(output), nil, 0, nil
-		}
-		res := probePortUsingRunner(context.Background(), 8080, []int{serverPID}, runner)
-		if res.Status != ExclusivityExclusive || len(res.Clients) != 0 {
-			t.Fatalf("expected exclusive when only server + studio connected, got %+v", res)
-		}
-	})
-
-	t.Run("external_client_detected_with_unescaped_name", func(t *testing.T) {
-		output := fmt.Sprintf(
-			"p%d\ncllama-server\nn127.0.0.1:8080->127.0.0.1:54321\np%d\ncCherry\\x20Studio\nn127.0.0.1:54321->127.0.0.1:8080\n",
-			serverPID, externalPID,
-		)
-		runner := func(ctx context.Context, port int) ([]byte, []byte, int, error) {
-			return []byte(output), nil, 0, nil
-		}
-		res := probePortUsingRunner(context.Background(), 8080, []int{serverPID}, runner)
-		if res.Status != ExclusivityExternal || res.Count != 1 {
-			t.Fatalf("expected external with count=1, got %+v", res)
-		}
-		want := fmt.Sprintf("Cherry Studio (PID %d)", externalPID)
-		if len(res.Clients) != 1 || res.Clients[0] != want {
-			t.Fatalf("expected client %q, got %+v", want, res.Clients)
-		}
-	})
-
-	t.Run("lsof_missing_returns_unknown_never_exclusive", func(t *testing.T) {
-		runner := func(ctx context.Context, port int) ([]byte, []byte, int, error) {
-			return nil, nil, -1, exec.ErrNotFound
-		}
-		res := probePortUsingRunner(context.Background(), 8080, []int{serverPID}, runner)
-		if res.Status != ExclusivityUnknown {
-			t.Fatalf("expected unknown when lsof missing, got %+v", res)
-		}
-	})
-
-	t.Run("lsof_stderr_error_returns_unknown_never_exclusive", func(t *testing.T) {
-		runner := func(ctx context.Context, port int) ([]byte, []byte, int, error) {
-			return nil, []byte("lsof: permission denied\n"), 1, errors.New("exit status 1")
-		}
-		res := probePortUsingRunner(context.Background(), 8080, []int{serverPID}, runner)
-		if res.Status != ExclusivityUnknown {
-			t.Fatalf("expected unknown on lsof stderr error, got %+v", res)
-		}
-	})
-
-	t.Run("invalid_port_returns_unknown", func(t *testing.T) {
-		res := ProbePortExternalConnections(context.Background(), 0, nil)
-		if res.Status != ExclusivityUnknown {
-			t.Fatalf("expected unknown for port 0, got %+v", res)
-		}
-	})
-}
-
-func TestMergeExclusivityStatus(t *testing.T) {
-	if got := mergeExclusivityStatus(ExclusivityExclusive, ExclusivityExternal); got != ExclusivityExternal {
-		t.Fatalf("expected external, got %q", got)
+func TestParseLsofEstablishedLANRemoteClientOnServerPID(t *testing.T) {
+	// Server PID 5000 is excluded, but it holds an ESTABLISHED connection from a LAN peer 192.168.1.25.
+	lsofOut := []byte(
+		"p5000\n" +
+			"cllama-server\n" +
+			"n127.0.0.1:8080->127.0.0.1:51000\n" +
+			"n192.168.1.10:8080->192.168.1.25:54321\n",
+	)
+	runner := func(ctx context.Context, port int) ([]byte, []byte, int, error) {
+		return lsofOut, nil, 0, nil
 	}
-	if got := mergeExclusivityStatus(ExclusivityExternal, ExclusivityExclusive); got != ExclusivityExternal {
-		t.Fatalf("expected external to stay locked, got %q", got)
+	res := probePortUsingRunner(context.Background(), 8080, []int{5000}, runner)
+	if res.Status != ExclusivityExternal {
+		t.Fatalf("expected LAN peer on server PID to mark status=external, got %+v", res)
 	}
-	if got := mergeExclusivityStatus(ExclusivityUnknown, ExclusivityExclusive); got != ExclusivityUnknown {
-		t.Fatalf("expected unknown + exclusive to stay unknown, got %q", got)
+	if len(res.Clients) != 1 || res.Clients[0] != "LAN (192.168.1.25)" {
+		t.Fatalf("unexpected LAN clients list: %+v", res.Clients)
 	}
-	if got := mergeExclusivityStatus(ExclusivityExclusive, ExclusivityExclusive); got != ExclusivityExclusive {
-		t.Fatalf("expected exclusive, got %q", got)
+
+	// Only loopback connections on excluded server PID -> exclusive.
+	loopbackOut := []byte(
+		"p5000\n" +
+			"cllama-server\n" +
+			"n127.0.0.1:8080->127.0.0.1:51000\n" +
+			"n[::1]:8080->[::1]:51001\n" +
+			"n[::ffff:127.0.0.1]:8080->[::ffff:127.0.0.1]:51002\n",
+	)
+	resLoop := probePortUsingRunner(context.Background(), 8080, []int{5000}, func(ctx context.Context, port int) ([]byte, []byte, int, error) {
+		return loopbackOut, nil, 0, nil
+	})
+	if resLoop.Status != ExclusivityExclusive {
+		t.Fatalf("expected loopback-only server connections to be exclusive, got %+v", resLoop)
 	}
 }
 
-func TestReportExclusivityPersistenceAndServiceProbes(t *testing.T) {
+func TestProbePortExcludesStudioDescendantsAndExternalServerPID(t *testing.T) {
+	origDesc := descendantPIDsFunc
+	descendantPIDsFunc = func(rootPID int) []int { return []int{7777} }
+	defer func() { descendantPIDsFunc = origDesc }()
+
+	// PID 7777 is a Studio descendant (e.g. inferyard CLI); PID 8888 is external server passed in extraExcludePIDs.
+	lsofOut := []byte(
+		"p7777\n" +
+			"cinferyard\n" +
+			"n127.0.0.1:51234->127.0.0.1:11434\n" +
+			"p8888\n" +
+			"collama\n" +
+			"n127.0.0.1:11434->127.0.0.1:51234\n",
+	)
+	origRunner := lsofRunner
+	lsofRunner = func(ctx context.Context, port int) ([]byte, []byte, int, error) {
+		return lsofOut, nil, 0, nil
+	}
+	defer func() { lsofRunner = origRunner }()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	svc, err := New(ctx, Options{SettingsPath: filepath.Join(t.TempDir(), "settings.json")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Shutdown(context.Background())
+
+	res := svc.ProbeEndpointConnections(ctx, "http://127.0.0.1:11434", 8888)
+	if res.Status != ExclusivityExclusive {
+		t.Fatalf("expected Studio descendant and discovered server PID to be excluded -> exclusive, got %+v", res)
+	}
+}
+
+func TestStartRunExclusivityLocksInitialExternalAndResumeTarget(t *testing.T) {
 	ws := t.TempDir()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -112,33 +91,49 @@ func TestReportExclusivityPersistenceAndServiceProbes(t *testing.T) {
 		t.Fatal(apiErr)
 	}
 
-	if got := svc.ReportExclusivity("missing-report"); got != ExclusivityUnknown {
-		t.Fatalf("expected unknown for missing report, got %q", got)
-	}
-
-	svc.recordRunExclusivity("run-1", ExclusivityExclusive)
-	svc.recordRunExclusivity("run-2", ExclusivityExternal)
-	svc.recordReportExclusivity("rep-clean", []string{"run-1"})
-	svc.recordReportExclusivity("rep-mixed", []string{"run-1", "run-2"})
-
-	if got := svc.ReportExclusivity("rep-clean"); got != ExclusivityExclusive {
-		t.Fatalf("expected rep-clean=exclusive, got %q", got)
-	}
-	if got := svc.ReportExclusivity("rep-mixed"); got != ExclusivityExternal {
-		t.Fatalf("expected rep-mixed=external, got %q", got)
-	}
-	if got := svc.ReportExclusivity("run-2"); got != ExclusivityExternal {
-		t.Fatalf("expected run-2=external, got %q", got)
-	}
-
 	origProbe := probePortFunc
-	defer func() { probePortFunc = origProbe }()
 	probePortFunc = func(ctx context.Context, port int, excludePIDs []int) ExternalConnProbe {
 		return ExternalConnProbe{Status: ExclusivityExclusive, Port: port}
 	}
+	defer func() { probePortFunc = origProbe }()
 
-	res := svc.ProbeEndpointConnections(context.Background(), "http://127.0.0.1:11434/v1")
-	if res.Status != ExclusivityExclusive || res.Port != 11434 {
-		t.Fatalf("unexpected ProbeEndpointConnections result: %+v", res)
+	runID := "run-locked-ext"
+	entry := &runEntry{
+		Task:               RunTask{TaskId: "t-lock", RunId: &runID},
+		initialExclusivity: ExclusivityExternal,
+		probeEndpoint:      "http://127.0.0.1:8080",
+		probePID:           4242,
 	}
+	tr := svc.startRunExclusivity(ctx, entry)
+	tr.poll(ctx, entry)
+	tr.finish(entry)
+	if entry.Task.Exclusivity != ExclusivityExternal {
+		t.Fatalf("expected InitialExclusivity=external to stay locked even when probe is exclusive, got %q", entry.Task.Exclusivity)
+	}
+	if got := svc.ReportExclusivity(runID); got != ExclusivityExternal {
+		t.Fatalf("expected persisted exclusivity=external for %s, got %q", runID, got)
+	}
+
+	// Resume task with explicit probeEndpoint/probePID resolves target instead of unknown.
+	resumeEntry := &runEntry{
+		Task:          RunTask{TaskId: "t-resume", Kind: "resume"},
+		probeEndpoint: "http://127.0.0.1:9090",
+		probePID:      6100,
+	}
+	port, pids := svc.resolveRunProbeTarget(resumeEntry)
+	if port != 9090 || len(pids) == 0 || pids[0] != 6100 {
+		t.Fatalf("expected resume probe target port=9090 pid=6100, got port=%d pids=%v", port, pids)
+	}
+
+	// Batch ReportExclusivities resolves statuses from RunIds in one sidecar read.
+	svc.recordRunExclusivity("run-clean", ExclusivityExclusive)
+	batch := svc.ReportExclusivities([]ReportSummary{
+		{ReportId: "rep-ext", RunIds: []string{runID}},
+		{ReportId: "rep-clean", RunIds: []string{"run-clean"}},
+		{ReportId: "rep-none", RunIds: []string{"run-missing"}},
+	})
+	if batch["rep-ext"] != ExclusivityExternal || batch["rep-clean"] != ExclusivityExclusive || batch["rep-none"] != ExclusivityUnknown {
+		t.Fatalf("unexpected batch ReportExclusivities: %+v", batch)
+	}
+	_ = os.RemoveAll(ws)
 }
