@@ -117,8 +117,10 @@ func (s *viewState) serviceParamsDrawer(c *ui.Context) {
 
 				componentFoldKeyed(c, "service-params-advanced", tr(c, "services.params.advanced_fold"), func() {
 					ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
-						field(c, tr(c, "services.params.gpu_layers_label"), &st.gpuLayersText).Description(tr(c, "services.params.gpu_layers_desc"))
-						field(c, tr(c, "services.params.threads_label"), &st.threadsText).Description(tr(c, "services.params.threads_desc"))
+						if s.engineSupportsLlamaFlags(st.engine) {
+							field(c, tr(c, "services.params.gpu_layers_label"), &st.gpuLayersText).Description(tr(c, "services.params.gpu_layers_desc"))
+							field(c, tr(c, "services.params.threads_label"), &st.threadsText).Description(tr(c, "services.params.threads_desc"))
+						}
 						field(c, tr(c, "services.params.extra_args_label"), &st.extraArgsText).Description(tr(c, "services.params.extra_args_desc"))
 					})
 				})

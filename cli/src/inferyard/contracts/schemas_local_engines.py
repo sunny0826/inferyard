@@ -109,7 +109,7 @@ conditions["properties"]["cache_policy"] = enum("unknown")
 LOCAL_CONFIG_SCHEMA["properties"]["safety"] = obj(
     {
         "interval_seconds": {"type": "number", "minimum": 0.1, "maximum": 5},
-        "max_temperature_celsius": {"type": "number", "minimum": 1, "maximum": 100},
+        "max_temperature_celsius": {"type": "number", "minimum": 1, "maximum": 115},
         "require_temperature": BOOL,
         "check_environment": {"type": "boolean", "const": True},
         "temperature_stop_override_reason": {"type": "string", "minLength": 1, "maxLength": 1024},

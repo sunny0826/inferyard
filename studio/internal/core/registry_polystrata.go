@@ -2,13 +2,10 @@ package core
 
 import (
 	"encoding/json"
-	"fmt"
 	"inferyard/studio/internal/l10n"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -42,10 +39,20 @@ func (s polystrataDedupeScope) covers(canonPath string) bool {
 	if canonPath == "" || len(s.dataDirs) == 0 {
 		return false
 	}
+	if strings.EqualFold(filepath.Base(filepath.Dir(canonPath)), "mtp") &&
+		strings.HasPrefix(strings.ToLower(filepath.Base(canonPath)), "mtp-") {
+		return true
+	}
 	inDataDir := false
 	for _, dir := range s.dataDirs {
 		if pathStrictlyInsideDirSameFS(canonPath, dir) {
 			inDataDir = true
+			if rel, err := filepath.Rel(dir, canonPath); err == nil {
+				firstSeg := strings.SplitN(filepath.ToSlash(rel), "/", 2)[0]
+				if strings.EqualFold(firstSeg, "mtp") || strings.EqualFold(firstSeg, "packs") {
+					return true
+				}
+			}
 			break
 		}
 	}
@@ -242,7 +249,7 @@ func scanPolystrataModelConfigs(installPaths, extraDataDirs []string) ([]registr
 
 			available := false
 			reason := "polystrata_config_model_missing"
-			var sizeBytes *int64
+			var sizeBytes, residentBytes *int64
 			var coveredPaths []string
 			if assetOK {
 				available = true
@@ -258,6 +265,9 @@ func scanPolystrataModelConfigs(installPaths, extraDataDirs []string) ([]registr
 				}
 				if totalSize > 0 {
 					sizeBytes = ptr(totalSize)
+					if res := estimatePolystrataResidentBytes(cfg.Args, bases, assetFiles, totalSize); res > 0 && res < totalSize {
+						residentBytes = ptr(res)
+					}
 				}
 			} else {
 				assetFiles = nil
@@ -275,6 +285,7 @@ func scanPolystrataModelConfigs(installPaths, extraDataDirs []string) ([]registr
 					Name:          displayName,
 					Format:        "strata_pack",
 					SizeBytes:     sizeBytes,
+					ResidentBytes: residentBytes,
 					ContextLength: ctxLen,
 					Available:     available,
 					Reason:        reason,
@@ -331,257 +342,6 @@ func polystrataConfigSearchDirs(workingDir, dataDir string) []string {
 		}
 	}
 	return dirs
-}
-
-func validatePolystrataAssets(refs []string, cfgDir string, bases []string) ([]assetFileSize, []string, bool) {
-	fileSizes := map[string]int64{}
-	dirSeen := map[string]bool{}
-	resolvedDirs := []string{}
-	if len(refs) == 0 {
-		if !hasPackFallbackMarker(cfgDir) {
-			return nil, nil, false
-		}
-		canonDir, err := canonical(cfgDir)
-		if err != nil {
-			return nil, nil, false
-		}
-		resolvedDirs = append(resolvedDirs, canonDir)
-		for _, f := range collectNonSymlinkDirFiles(canonDir, 6) {
-			fileSizes[f.path] = f.size
-		}
-	} else {
-		for _, ref := range refs {
-			canonPath, isDir, ok := resolvePolystrataAssetRef(ref, bases)
-			if !ok {
-				return nil, nil, false
-			}
-			if isDir {
-				if !dirSeen[canonPath] {
-					dirSeen[canonPath] = true
-					resolvedDirs = append(resolvedDirs, canonPath)
-					for _, f := range collectNonSymlinkDirFiles(canonPath, 6) {
-						fileSizes[f.path] = f.size
-					}
-				}
-				continue
-			}
-			shards, ok := expandSplitGGUFShards(canonPath)
-			if !ok {
-				return nil, nil, false
-			}
-			for _, sh := range shards {
-				fileSizes[sh.path] = sh.size
-			}
-		}
-	}
-	if len(fileSizes) == 0 && len(resolvedDirs) == 0 {
-		return nil, nil, false
-	}
-	paths := make([]string, 0, len(fileSizes))
-	for p := range fileSizes {
-		paths = append(paths, p)
-	}
-	sort.Strings(paths)
-	assetFiles := make([]assetFileSize, 0, len(paths))
-	for _, p := range paths {
-		assetFiles = append(assetFiles, assetFileSize{path: p, size: fileSizes[p]})
-	}
-	return assetFiles, resolvedDirs, true
-}
-
-func polystrataConfigBases(cwd, workDir, cfgDir, dataDir string) []string {
-	candidates := []string{}
-	if trimmedCwd := strings.TrimSpace(cwd); trimmedCwd != "" {
-		cwdCandidate := trimmedCwd
-		if !filepath.IsAbs(cwdCandidate) {
-			base := strings.TrimSpace(workDir)
-			if base == "" {
-				base = cfgDir
-			}
-			cwdCandidate = filepath.Join(base, cwdCandidate)
-		}
-		if info, err := os.Stat(cwdCandidate); err == nil && info.IsDir() {
-			candidates = append(candidates, cwdCandidate)
-		}
-	}
-	for _, dir := range []string{workDir, cfgDir, dataDir} {
-		trimmed := strings.TrimSpace(dir)
-		if trimmed == "" {
-			continue
-		}
-		if info, err := os.Stat(trimmed); err == nil && info.IsDir() {
-			candidates = append(candidates, trimmed)
-		}
-	}
-	return uniqueCleanPaths(candidates)
-}
-
-func extractPolystrataAssetRefs(args []string, rawMap map[string]any) []string {
-	refs := []string{}
-	for _, flag := range []string{"--model", "--native", "--pack", "--ple-gguf", "--embd-gguf", "--draft-model", "--mmproj"} {
-		refs = append(refs, extractAllStrataArgValues(args, flag)...)
-	}
-	for _, mtpVal := range extractAllStrataArgValues(args, "--mtp") {
-		if _, err := strconv.Atoi(mtpVal); err != nil {
-			refs = append(refs, mtpVal)
-		}
-	}
-	for _, key := range append(append([]string(nil), polystrataLegacyModelKeys...), "tokenizer", "tokenizer_path", "tokenizer_dir") {
-		if val, ok := rawMap[key].(string); ok && strings.TrimSpace(val) != "" {
-			refs = append(refs, strings.TrimSpace(val))
-		}
-	}
-	if vision, ok := rawMap["vision"].(map[string]any); ok {
-		if mmproj, ok := vision["mmproj"].(string); ok && strings.TrimSpace(mmproj) != "" {
-			refs = append(refs, strings.TrimSpace(mmproj))
-		}
-	}
-	return refs
-}
-
-func extractAllStrataArgValues(args []string, flag string) []string {
-	prefix := flag + "="
-	var out []string
-	for i, item := range args {
-		if item == flag && i+1 < len(args) {
-			if val := strings.TrimSpace(args[i+1]); val != "" {
-				out = append(out, val)
-			}
-		}
-		if strings.HasPrefix(item, prefix) {
-			if val := strings.TrimSpace(strings.TrimPrefix(item, prefix)); val != "" {
-				out = append(out, val)
-			}
-		}
-	}
-	return out
-}
-
-func extractStrataArgValue(args []string, flag string) (string, bool) {
-	vals := extractAllStrataArgValues(args, flag)
-	if len(vals) == 0 {
-		return "", false
-	}
-	return vals[0], true
-}
-
-func hasPackFallbackMarker(dir string) bool {
-	for _, name := range []string{"tokenizer_config.json", "chat_template.jinja"} {
-		p := filepath.Join(dir, name)
-		if info, err := os.Lstat(p); err == nil && info.Mode()&os.ModeSymlink == 0 && info.Mode().IsRegular() {
-			return true
-		}
-	}
-	return false
-}
-
-func resolvePolystrataAssetRef(raw string, bases []string) (string, bool, bool) {
-	ref := strings.TrimSpace(raw)
-	if ref == "" || strings.ContainsRune(ref, 0) {
-		return "", false, false
-	}
-	check := func(candidate string) (string, bool, bool) {
-		info, err := os.Lstat(candidate)
-		if err != nil || info.Mode()&os.ModeSymlink != 0 {
-			return "", false, false
-		}
-		if !info.IsDir() && !info.Mode().IsRegular() {
-			return "", false, false
-		}
-		canon, err := canonical(candidate)
-		if err != nil {
-			return "", false, false
-		}
-		return canon, info.IsDir(), true
-	}
-	if filepath.IsAbs(ref) {
-		return check(ref)
-	}
-	for _, base := range bases {
-		if canon, isDir, ok := check(filepath.Join(base, ref)); ok {
-			return canon, isDir, true
-		}
-	}
-	return "", false, false
-}
-
-func expandSplitGGUFShards(canonPath string) ([]assetFileSize, bool) {
-	m := splitGGUFPattern.FindStringSubmatch(filepath.Base(canonPath))
-	if m == nil {
-		fi, err := os.Stat(canonPath)
-		if err != nil {
-			return nil, false
-		}
-		return []assetFileSize{{path: canonPath, size: fi.Size()}}, true
-	}
-	stem, idxStr, totalStr, ext := m[1], m[2], m[3], m[4]
-	index, err1 := strconv.Atoi(idxStr)
-	total, err2 := strconv.Atoi(totalStr)
-	if err1 != nil || err2 != nil || total < 2 || index < 1 || index > total {
-		fi, err := os.Stat(canonPath)
-		if err != nil {
-			return nil, false
-		}
-		return []assetFileSize{{path: canonPath, size: fi.Size()}}, true
-	}
-	if total > 256 {
-		return nil, false
-	}
-	dir := filepath.Dir(canonPath)
-	shards := make([]assetFileSize, 0, total)
-	for i := 1; i <= total; i++ {
-		shardPath := filepath.Join(dir, fmt.Sprintf("%s-%05d-of-%05d%s", stem, i, total, ext))
-		info, err := os.Lstat(shardPath)
-		if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
-			return nil, false
-		}
-		canonShard, err := canonical(shardPath)
-		if err != nil {
-			canonShard = shardPath
-		}
-		shards = append(shards, assetFileSize{path: canonShard, size: info.Size()})
-	}
-	return shards, true
-}
-
-func collectNonSymlinkDirFiles(root string, maxDepth int) []assetFileSize {
-	files := []assetFileSize{}
-	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
-		if d.Type()&os.ModeSymlink != 0 {
-			if d.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		rel, err := filepath.Rel(root, path)
-		if err != nil {
-			return nil
-		}
-		depth := 0
-		if rel != "." {
-			depth = strings.Count(rel, string(filepath.Separator)) + 1
-		}
-		if d.IsDir() {
-			if depth > maxDepth {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if d.Type().IsRegular() {
-			if info, err := d.Info(); err == nil {
-				canonFile, cerr := canonical(path)
-				if cerr != nil {
-					canonFile = filepath.Clean(path)
-				}
-				files = append(files, assetFileSize{path: canonFile, size: info.Size()})
-			}
-		}
-		return nil
-	})
-	return files
 }
 
 func parsePolystrataContextLength(args []string, cfgContext *int64) *int64 {

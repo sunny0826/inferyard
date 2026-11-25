@@ -20,3 +20,13 @@ mise exec -- python -m unittest discover -s tests/ui -p 'test_*.py'
 ## Production package smoke
 
 [release.yml](../../../.github/workflows/release.yml) mounts the packaged macOS DMG and verifies `InferYard Studio.app` (`--help` exits 0 and `--debug-ui` exits 2). For local native release-app UI checks, run `tests/ui/run_release.py` (`ReleaseUITests`) against a mounted `InferYard Studio.app` without `--debug-ui`, reading a `studio.json` produced by `TestChainBindRunReport` in an isolated `HOME`.
+
+## Local real-machine PolyStrata UI E2E (not in CI)
+
+To drive a real production `InferYard Studio.app` window (without `--debug-ui`) end-to-end against an existing local PolyStrata runtime and smallest installed model without downloading weights or mutating `~/.inferyard`, run from the repository root on an unlocked macOS desktop:
+
+```sh
+mise run test:studio-ui:polystrata
+```
+
+`tests/ui/run_polystrata.py` (`PolystrataRealUITests`) clones local PolyStrata assets via APFS copy-on-write into an isolated temporary workspace and `HOME`, verifies **Library**, **Services** (standalone launch, live `/v1/chat/completions` probe, clean stop), and **Benchmarks** (`zh-svg-pelican` through `studio.json` **View Report**), and asserts that the host `~/.inferyard` directory remains untouched. This task is intentionally excluded from CI workflows; `PolystrataRealUITests` skips automatically during `test:studio-ui` and `test:studio-ui:full`.

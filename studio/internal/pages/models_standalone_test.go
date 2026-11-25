@@ -110,6 +110,43 @@ func TestStandaloneContextOptionsValidationAndMemoryShortfall(t *testing.T) {
 	if got := s.recommendedStandaloneContext(modelB); got != 8192 {
 		t.Fatalf("modelB recommended context=%d want 8192 fallback", got)
 	}
+
+	// PolyStrata strata_pack with 64 GiB on-disk SizeBytes but 10 GiB ResidentBytes fits on 32 GiB available memory.
+	snap32G, _ := json.Marshal(map[string]any{
+		"hardware": map[string]any{
+			"apple_silicon":          true,
+			"memory_total_bytes":     float64(64 * (1 << 30)),
+			"memory_available_bytes": float64(32 * (1 << 30)),
+		},
+	})
+	s.device.Snapshot = snap32G
+	s.hwMemoryCache = uiHardwareMemoryCache{}
+	strataModel := core.ModelAsset{
+		Name:          "qwen3.8-flash-next-q2_0",
+		Format:        "strata_pack",
+		SizeBytes:     int64Ptr(64 * (1 << 30)),
+		ResidentBytes: int64Ptr(10 * (1 << 30)),
+		ContextLength: int64Ptr(32768),
+		Available:     true,
+	}
+	s.registry.Models = []core.ModelAsset{strataModel}
+	s.registry.Engines = []core.EngineAsset{
+		{Name: "PolyStrata · 0.1.45-metal", Family: "polystrata"},
+		{Name: "llama-b8000", Family: "llama-cpp"},
+	}
+	if shortfall := s.standaloneMemoryShortfall(strataModel); shortfall != "" {
+		t.Fatalf("unexpected shortfall for mmap strata_pack: %q", shortfall)
+	}
+	budget := s.checkMemoryBudget(strataModel.Name, "PolyStrata · 0.1.45-metal", 32768, nil)
+	if !budget.Known || !budget.Enough || budget.EstimatedGB > 16 {
+		t.Fatalf("expected strata_pack ResidentBytes budget to fit comfortably, got %+v", budget)
+	}
+	if s.engineSupportsLlamaFlags("PolyStrata · 0.1.45-metal") {
+		t.Fatalf("expected polystrata engine to hide llama-specific flags")
+	}
+	if !s.engineSupportsLlamaFlags("llama-b8000") {
+		t.Fatalf("expected llama-cpp engine to support llama-specific flags")
+	}
 }
 
 func TestStandaloneSwitchAndBenchmarkConflictGuards(t *testing.T) {

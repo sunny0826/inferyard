@@ -236,9 +236,11 @@ func (s *viewState) activeLocalServicesMemoryForPool(hw uiHardwareMemoryInfo, ex
 			if modelKey == "" {
 				modelKey = displayName(st.Model)
 			}
-			if m, ok := s.findModelAsset(modelKey); ok && m.SizeBytes != nil && *m.SizeBytes > 0 {
-				if est, ok := estimateLocalModelMemoryGB(*m.SizeBytes, st.ContextSize); ok {
-					usage = est
+			if m, ok := s.findModelAsset(modelKey); ok {
+				if memBytes := m.EffectiveMemoryBytes(); memBytes != nil && *memBytes > 0 {
+					if est, ok := estimateLocalModelMemoryGB(*memBytes, st.ContextSize); ok {
+						usage = est
+					}
 				}
 			}
 		}
@@ -279,8 +281,10 @@ func (s *viewState) estimateLocalMemoryBudget(model, engine string, contextSize 
 	}
 	var est float64
 	var estKnown bool
-	if m, ok := s.findModelAsset(model); ok && m.SizeBytes != nil && *m.SizeBytes > 0 {
-		est, estKnown = estimateLocalModelMemoryGB(*m.SizeBytes, contextSize)
+	if m, ok := s.findModelAsset(model); ok {
+		if memBytes := m.EffectiveMemoryBytes(); memBytes != nil && *memBytes > 0 {
+			est, estKnown = estimateLocalModelMemoryGB(*memBytes, contextSize)
+		}
 	}
 	remaining := roundUIMemoryGB(math.Max(0, availGB-used))
 	if !hwKnown || !estKnown {

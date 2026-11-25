@@ -178,3 +178,29 @@ def test_polystrata_status_fallback_sanitizes_tail_and_rejects_missing_queued(
             await adapter.close()
 
     asyncio.run(run_missing_queued())
+
+
+def test_asset_scan_and_device_discovery_skip_polystrata_mtp_auxiliary_ggufs(tmp_path) -> None:
+    from inferyard.platforms.asset_scan import is_polystrata_auxiliary_gguf, scan_assets
+    from inferyard.platforms.device_preflight import discover_models
+
+    models_root = tmp_path / "models"
+    mtp_mac = models_root / "polystrata-data" / "mtp" / "mtp-q2_0.gguf"
+    mtp_linux = models_root / "polystrata-data" / "models" / "gemma-4" / "MTP" / "mtp-gemma.gguf"
+    pack_gguf = models_root / "polystrata-data" / "packs" / "q2_0" / "aux.gguf"
+    real_gguf = models_root / "qwen-instruct.gguf"
+    for target in (mtp_mac, mtp_linux, pack_gguf, real_gguf):
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"not-a-valid-gguf")
+
+    assert is_polystrata_auxiliary_gguf(mtp_mac) is True
+    assert is_polystrata_auxiliary_gguf(mtp_linux) is True
+    assert is_polystrata_auxiliary_gguf(pack_gguf) is True
+    assert is_polystrata_auxiliary_gguf(real_gguf) is False
+
+    scanned = scan_assets([models_root])
+    assert [m["path"] for m in scanned["models"]] == [str(real_gguf.resolve())]
+
+    discovered = discover_models([models_root])
+    assert [m["path"] for m in discovered] == [str(real_gguf.resolve())]
+

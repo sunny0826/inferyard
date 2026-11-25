@@ -49,6 +49,13 @@ dir = "studio"
 env = { GOTOOLCHAIN = "go1.27.3", GOPROXY = "https://goproxy.cn,direct", CGO_ENABLED = "0" }
 run = "go test ./tests/e2e/ -count=1"
 
+[tasks."test:studio:e2e:polystrata"]
+description = "Run real-machine Studio PolyStrata e2e lifecycle using existing local assets"
+depends = ["cli:sync"]
+dir = "studio"
+env = { GOTOOLCHAIN = "go1.27.3", GOPROXY = "https://goproxy.cn,direct", CGO_ENABLED = "0", INFERYARD_POLYSTRATA_E2E = "1" }
+run = "go test -v -timeout 45m ./tests/e2e/ -run TestPolystrataRealLifecycle -count=1"
+
 [tasks.lint]
 dir = "cli"
 run = "uv run --frozen ruff check src tests scripts"
@@ -66,6 +73,12 @@ run = "python tests/ui/run.py"
 description = "Run all 7 macOS native UI workflows with the simulated Studio backend"
 dir = "studio"
 run = "python tests/ui/run.py --suite full"
+
+[tasks."test:studio-ui:polystrata"]
+description = "Run local-only real macOS window UI e2e with local PolyStrata assets (not run in CI)"
+depends = ["cli:sync"]
+dir = "studio"
+run = "python tests/ui/run_polystrata.py"
 
 [tasks.release]
 description = "Fast release: bump version, open/merge release PR, push tag, and watch release CI"

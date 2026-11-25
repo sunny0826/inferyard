@@ -60,7 +60,7 @@ def validate_config(config):
         "config.safety.require_temperature",
         "macOS Metal profiles require temperature telemetry",
     )
-    max_temp_limit = 100 if engine["backend"] == "metal" else 85
+    max_temp_limit = 115 if engine["backend"] == "metal" else 85
     require(
         config["safety"]["max_temperature_celsius"] <= max_temp_limit,
         "config.safety.max_temperature_celsius",

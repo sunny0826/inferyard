@@ -33,6 +33,19 @@ func TestServiceEndpointProbeSuccessAndErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("reasoning_only_200", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"","reasoning_content":"Thinking: user asked for OK."}}]}`))
+		}))
+		defer srv.Close()
+
+		res := TestServiceEndpoint(context.Background(), srv.URL+"/v1", "qwen3.8-flash-next-q2_0")
+		if !res.OK || res.StatusCode != 200 || res.Reply != "Thinking: user asked for OK." {
+			t.Fatalf("expected reasoning_content fallback reply, got %+v", res)
+		}
+	})
+
 	t.Run("server_500", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)

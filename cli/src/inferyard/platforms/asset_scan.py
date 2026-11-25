@@ -152,6 +152,18 @@ def _skip_dir(name: str) -> bool:
     return name.startswith(".") or name in SKIP_DIRECTORIES
 
 
+def is_polystrata_auxiliary_gguf(path: Path) -> bool:
+    """Return True for PolyStrata MTP draft or pack GGUFs that are not standalone models."""
+    if path.parent.name.lower() == "mtp" and path.name.lower().startswith("mtp-"):
+        return True
+    parts_lower = tuple(part.lower() for part in path.parts)
+    for idx, part in enumerate(parts_lower[:-1]):
+        if part == "polystrata-data" and idx + 1 < len(parts_lower) - 1:
+            if parts_lower[idx + 1] in ("mtp", "packs"):
+                return True
+    return False
+
+
 def _walk_bounded(root: Path, max_depth: int) -> Iterator[tuple[Path, Path, list[os.DirEntry]]]:
     try:
         root.lstat()
@@ -355,6 +367,15 @@ def _scan_models_root(
                 continue
             lower = entry.name.lower()
             if lower.endswith(".gguf"):
+                if is_polystrata_auxiliary_gguf(resolved):
+                    resolved_key = _safe_resolve_text(resolved)
+                    if resolved_key not in counted:
+                        try:
+                            usage += int(resolved.stat().st_size)
+                            counted.add(resolved_key)
+                        except OSError:
+                            pass
+                    continue
                 gguf_files.append(resolved)
                 continue
             if entry.name.startswith("."):

@@ -418,7 +418,7 @@ def test_legacy_top_level_pack_key_with_args_lib_dirs_backend_conflict_and_temp_
     assert loaded_cfg["engine"]["backend"] == "hip"
     assert loaded_cfg["safety"]["max_temperature_celsius"] == 85
 
-    # Non-Metal candidate must reject max_temperature_celsius > 85; Metal accepts 100 and rejects 101.
+    # Non-Metal candidate must reject max_temperature_celsius > 85; Metal accepts 115 and rejects 116.
     bad_non_metal = json.loads(json.dumps(loaded_cfg))
     bad_non_metal["safety"]["max_temperature_celsius"] = 86
     with pytest.raises(ContractError):
@@ -427,11 +427,11 @@ def test_legacy_top_level_pack_key_with_args_lib_dirs_backend_conflict_and_temp_
     metal_ok = json.loads(json.dumps(loaded_cfg))
     metal_ok["engine"]["backend"] = "metal"
     metal_ok["safety"]["require_temperature"] = True
-    metal_ok["safety"]["max_temperature_celsius"] = 100
+    metal_ok["safety"]["max_temperature_celsius"] = 115
     validate_document("config", metal_ok)
 
     metal_bad = json.loads(json.dumps(metal_ok))
-    metal_bad["safety"]["max_temperature_celsius"] = 101
+    metal_bad["safety"]["max_temperature_celsius"] = 116
     with pytest.raises(ContractError):
         validate_document("config", metal_bad)
 
