@@ -2,11 +2,9 @@ package core
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"inferyard/studio/internal/l10n"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -303,104 +301,6 @@ func (s *Service) publishEngineLocked(e *engineEntry) {
 	s.Bus.Publish("engine.state", map[string]any{"engine": clone(e.state)})
 	if e.state.ServiceID != "" || normalizeEngineOrigin(e.state.Origin) == EngineOriginStandalone {
 		s.publishServicesStateLocked()
-	}
-}
-
-func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
-	defer close(e.done)
-	defer e.logFile.Close()
-	waitCh := make(chan error, 1)
-	go func() { waitCh <- e.cmd.Wait() }()
-	health := &http.Client{Timeout: 2 * time.Second}
-	deadline := time.Now().Add(s.engineStartTimeout())
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-	treeTicker := time.NewTicker(500 * time.Millisecond)
-	defer treeTicker.Stop()
-	var lastMemSample time.Time
-	finish := func(state string, err *ApiError, keepOwner bool) {
-		treeErr := s.finishEngineTree(e)
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		if treeErr != nil {
-			state, err = "failed", treeErr
-			s.recordOrphanFromEntryLocked(e, err)
-		} else if !keepOwner {
-			if removeErr := removeEngineOwner(e.ownerPath, e.owner); removeErr != nil {
-				state, err = "failed", &ApiError{Code: "engine_owner_remove_failed", Message: l10n.TR("core.engine.err.exited_owner_remove_failed")}
-				s.recordOrphanFromEntryLocked(e, err)
-			}
-		}
-		e.state.State, e.state.Error = state, err
-		s.publishEngineLocked(e)
-	}
-	for {
-		select {
-		case <-e.detach:
-			return
-		case <-e.stop:
-			s.terminateEngine(e, waitCh)
-			finish("stopped", nil, false)
-			return
-		case waitErr := <-waitCh:
-			s.mu.Lock()
-			stopping := e.state.State == "stopping"
-			s.mu.Unlock()
-			if stopping {
-				finish("stopped", nil, false)
-			} else {
-				var exitCode *int
-				if e.cmd != nil && e.cmd.ProcessState != nil {
-					code := e.cmd.ProcessState.ExitCode()
-					exitCode = &code
-				} else {
-					var ee *exec.ExitError
-					if errors.As(waitErr, &ee) {
-						code := ee.ExitCode()
-						exitCode = &code
-					}
-				}
-				persistErr := s.recordUnexpectedStandaloneExit(e, exitCode)
-				finish("failed", &ApiError{Code: "engine_exited", Message: l10n.TR("core.engine.err.exited")}, persistErr != nil)
-			}
-			return
-		case <-treeTicker.C:
-			if e.state.Local {
-				_ = s.refreshEntryTree(e)
-			}
-		case <-ticker.C:
-			s.mu.Lock()
-			starting := e.state.State == "starting"
-			s.mu.Unlock()
-			if !starting {
-				s.maybeSampleRuntimeMemory(e, &lastMemSample, false)
-				continue
-			}
-			healthy := checkEngineHealth(health, endpoint, e.state.Local, e.family)
-			s.mu.Lock()
-			if e.state.State != "starting" {
-				s.mu.Unlock()
-				continue
-			}
-			if healthy {
-				e.wasHealthy = true
-				e.state.State = "running"
-				s.publishEngineLocked(e)
-				s.mu.Unlock()
-				s.maybeSampleRuntimeMemory(e, &lastMemSample, true)
-				continue
-			}
-			timedOut := time.Now().After(deadline) && !s.closing
-			if timedOut {
-				s.stopEngineLocked(e)
-			}
-			s.mu.Unlock()
-			if timedOut {
-				s.terminateEngine(e, waitCh)
-				finish("failed", &ApiError{Code: "engine_start_timeout", Message: l10n.TR("core.engine.err.start_timeout")}, false)
-				return
-			}
-		}
 	}
 }
 
