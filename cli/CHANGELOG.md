@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.0.16
+
+- fix(studio): support real PolyStrata lifecycle and add opt-in local E2E suites (#236)
+- fix(studio): restore sidebar/library accessibility roles and sync native preview UI tests (#235)
+- fix(studio): verify local engines on benchmark and service entry and sync service handoff (#234)
+- perf(studio): optimize local model startup latency, concurrency, and error diagnostics (#233)
+- feat(studio): automatic engine version checks and one-click updates (#232)
+- feat(studio): serve update manifest via Cloudflare R2 (#231)
+
 ## 0.0.15
 
 - feat(studio): replace benchmark ETA guesswork with backend elapsed time (#229)
