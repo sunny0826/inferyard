@@ -108,21 +108,32 @@ func modelTaskAction(c *ui.Context, s *viewState, model core.ModelAsset) {
 		return
 	}
 	label := tr(c, "models.action.benchmark_with_model")
-	hint := tr(c, "models.action.benchmark_blocked_hint")
-	blocked := s.busy || s.roundWorkActive()
-	if blocked {
-		wrap := ui.Box(c)
-		wrap.Children(func() {
-			outlineButton(c, label).Label(label + " · " + model.Name).Disabled(true).Description(hint)
-		})
-		components.Tooltip(c, wrap, hint)
-		return
+	var reason string
+	switch {
+	case s.environmentMissing():
+		reason = tr(c, "shell.nav.new_task_hint.env_missing")
+	case s.busy:
+		reason = tr(c, "models.action.blocked.busy")
+	case s.roundWorkActive():
+		reason = tr(c, "models.action.benchmark_blocked_hint")
 	}
-	b := outlineButton(c, label).Label(label + " · " + model.Name)
-	if b.Clicked() {
+	if modelRowButtonClicked(c, outlineButton, label, model.Name, reason) {
 		s.model = model.Name
 		s.newBenchmark()
 	}
+}
+
+func modelRowButtonClicked(c *ui.Context, render func(*ui.Context, string) ui.Element, label, modelName, reason string) bool {
+	name := label + " · " + modelName
+	if reason == "" {
+		return render(c, label).Label(name).Clicked()
+	}
+	wrap := ui.Box(c)
+	wrap.Children(func() {
+		render(c, label).Label(name).Disabled(true).Description(reason)
+	})
+	components.Tooltip(c, wrap, reason)
+	return false
 }
 
 func modelDetails(model core.ModelAsset) string {

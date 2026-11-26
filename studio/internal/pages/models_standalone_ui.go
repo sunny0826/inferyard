@@ -233,29 +233,28 @@ func (s *viewState) renderModelStandalonePrimaryAction(c *ui.Context, m core.Mod
 		return
 	case "starting", "running", "stopping":
 		stopLabel := tr(c, "models.serve.action.stop")
-		if dangerButton(c, stopLabel).Label(stopLabel + " · " + m.Name).Disabled(rowState == "stopping" || s.busy).Clicked() {
+		var reason string
+		if rowState == "stopping" {
+			reason = tr(c, "models.serve.badge.stopping")
+		} else if s.busy {
+			reason = tr(c, "models.action.blocked.busy")
+		}
+		if modelRowButtonClicked(c, dangerButton, stopLabel, m.Name, reason) {
 			s.pendingDestructive = destructiveRequest{kind: string(destructiveStopStandalone), id: m.Name}
 		}
-	case "failed":
-		retryDisabled := s.standaloneStartBlockReason() != "" || s.serveProbing || s.busy || s.standalone.isPreparing(m.Name)
-		button(c, tr(c, "models.serve.action.retry")).Disabled(retryDisabled).OnClick(func() {
-			s.requestStandaloneStart(m, true)
-		})
-	default:
-		label := tr(c, "models.serve.action.start")
-		reason := s.standaloneStartBlockReason()
-		disabled := reason != "" || s.serveProbing || s.busy || s.standalone.isPreparing(m.Name)
-		if disabled && reason != "" {
-			wrap := ui.Box(c)
-			wrap.Children(func() {
-				primaryButton(c, label).Label(label + " · " + m.Name).Disabled(true).Description(reason)
-			})
-			components.Tooltip(c, wrap, reason)
-			return
-		}
-		if primaryButton(c, label).Label(label + " · " + m.Name).Disabled(disabled).Clicked() {
-			s.requestStandaloneStart(m, false)
-		}
+		return
+	}
+	label, render := tr(c, "models.serve.action.start"), primaryButton
+	retry := rowState == "failed"
+	if retry {
+		label, render = tr(c, "models.serve.action.retry"), button
+	}
+	reason := s.standaloneStartBlockReason()
+	if reason == "" && s.serveProbing {
+		reason = tr(c, "models.serve.blocked.probing")
+	}
+	if modelRowButtonClicked(c, render, label, m.Name, reason) {
+		s.requestStandaloneStart(m, retry)
 	}
 }
 

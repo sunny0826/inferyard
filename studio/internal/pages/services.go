@@ -13,11 +13,15 @@ import (
 
 func (s *viewState) servicesView(c *ui.Context) {
 	t := tokens(c)
+	needsSetup := s.environmentMissing()
 	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
 			s.header(c, tr(c, "services.page.title"))
 			ui.Text(c, s.servicesSummaryLine(c)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		})
+		if needsSetup {
+			return
+		}
 		canOpenLauncher := s.serveSupported || s.preview != nil
 		startModelBtn := primaryActionButton(c, tr(c, "services.page.action.start_model"), false).
 			Disabled(!canOpenLauncher || s.serveProbing || s.busy)
@@ -29,7 +33,7 @@ func (s *viewState) servicesView(c *ui.Context) {
 		}
 	})
 
-	if s.environmentMissing() {
+	if needsSetup {
 		s.setupGuide(c)
 		return
 	}

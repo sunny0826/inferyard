@@ -30,7 +30,7 @@ func TestServiceMemoryBudgetAllowsWithinLimitAndBlocksOverflow(t *testing.T) {
 		t.Fatalf("unexpected small budget: %+v", budgetSmall)
 	}
 
-	// Start small-4g (~4.92 GB estimated).
+	// Start small-4g (~4.92 GiB estimated).
 	stSmall, apiErr := s.StartStandaloneEngine(StandaloneStartRequest{
 		Model: "small-4g.gguf", Engine: engine, ContextSize: 8192,
 	})
@@ -47,7 +47,7 @@ func TestServiceMemoryBudgetAllowsWithinLimitAndBlocksOverflow(t *testing.T) {
 		t.Fatalf("unexpected memory summary with small-4g running: %+v", summary)
 	}
 
-	// Attempting to start large-8g (~9.84 GB estimated) with only ~7.08 GB remaining must fail with insufficient_memory.
+	// Attempting to start large-8g (~9.84 GiB estimated) with only ~7.08 GiB remaining must fail with insufficient_memory.
 	budgetLarge := s.CheckServiceMemoryBudget("large-8g.gguf", engine, 8192)
 	if !budgetLarge.Known || budgetLarge.Enough {
 		t.Fatalf("expected large-8g budget to be insufficient, got %+v", budgetLarge)

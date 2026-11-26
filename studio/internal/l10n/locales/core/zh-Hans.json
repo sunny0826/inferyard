@@ -19,7 +19,7 @@
   "core.engine.err.exited": "引擎进程已退出，请检查日志后手动重启并重新绑定。",
   "core.engine.err.exited_owner_remove_failed": "引擎已退出，但遗留服务记录未能清除；可仅删除记录（不终止进程）。",
   "core.engine.err.handle_orphan_first": "请先处理遗留服务或无效记录，再启动引擎。",
-  "core.engine.err.insufficient_memory": "可用内存余量不足，无法启动该服务（预计需要 {required} GB，当前剩余 {remaining} GB）。",
+  "core.engine.err.insufficient_memory": "可用内存余量不足，无法启动该服务（预计需要 {required} GiB，当前剩余 {remaining} GiB）。",
   "core.engine.err.orphan_identity_unreadable": "无法确认遗留引擎的启动标识；可仅删除记录（不终止进程）。",
   "core.engine.err.orphan_still_matches": "遗留服务的进程身份仍匹配，请使用「停止遗留服务」。",
   "core.engine.err.orphan_still_running": "遗留引擎仍未退出，所有权记录已保留。",
