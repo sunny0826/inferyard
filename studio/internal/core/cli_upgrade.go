@@ -3,7 +3,14 @@ package core
 import (
 	"context"
 	"strings"
+	"time"
 )
+
+var autoCLIUpgradeRetryDelays = []time.Duration{
+	3 * time.Second,
+	6 * time.Second,
+	12 * time.Second,
+}
 
 const (
 	CLIUpgradeIdle      = "idle"
@@ -133,12 +140,28 @@ func (s *Service) StartAutoCLIUpgrade() {
 				s.clearCLIUpgradeState()
 				return
 			}
-			_, _ = s.UpgradeCLI(s.ctx, nil)
+			_, _ = s.upgradeCLI(s.ctx, nil, autoCLIUpgradeRetryDelays)
 		}()
 	})
 }
 
+func isRetryableCLIUpgradeError(e *ApiError) bool {
+	if e == nil {
+		return false
+	}
+	switch e.Code {
+	case "cli_upgrade_failed", "install_failed", "download_failed":
+		return true
+	default:
+		return false
+	}
+}
+
 func (s *Service) UpgradeCLI(ctx context.Context, onStatus func(string)) (string, *ApiError) {
+	return s.upgradeCLI(ctx, onStatus, nil)
+}
+
+func (s *Service) upgradeCLI(ctx context.Context, onStatus func(string), retryDelays []time.Duration) (string, *ApiError) {
 	if ctx == nil {
 		if s.ctx != nil {
 			ctx = s.ctx
@@ -175,7 +198,7 @@ func (s *Service) UpgradeCLI(ctx context.Context, onStatus func(string)) (string
 		cancel()
 	}()
 
-	path, apiErr := s.installCLILocked(upgradeCtx, func(message string) {
+	reportStatus := func(message string) {
 		s.cliUpgradeMu.Lock()
 		if s.cliUpgrade.State == CLIUpgradeUpgrading {
 			s.cliUpgrade.Message = message
@@ -185,24 +208,48 @@ func (s *Service) UpgradeCLI(ctx context.Context, onStatus func(string)) (string
 		if onStatus != nil {
 			onStatus(message)
 		}
-	})
-	if apiErr != nil {
+	}
+
+	var path string
+	var apiErr *ApiError
+	for attempt := 0; ; attempt++ {
+		path, apiErr = s.installCLILocked(upgradeCtx, reportStatus)
+		if apiErr == nil {
+			break
+		}
 		if upgradeCtx.Err() != nil {
 			s.clearCLIUpgradeState()
 			return "", apiErr
 		}
 		if cur := s.userSettings(); s.probe(cur).Status == "ok" {
-			s.clearCLIUpgradeState()
+			s.recoverAfterCLICompatible(cur)
 			return "", nil
 		}
-		s.cliUpgradeMu.Lock()
-		s.cliUpgrade.State = CLIUpgradeFailed
-		s.cliUpgrade.TargetVersion = targetVersion
-		s.cliUpgrade.Message = ""
-		s.cliUpgrade.Error = cloneApiError(apiErr)
-		s.publishCLIUpgradeLocked()
-		s.cliUpgradeMu.Unlock()
-		return "", apiErr
+		if attempt >= len(retryDelays) || !isRetryableCLIUpgradeError(apiErr) {
+			s.cliUpgradeMu.Lock()
+			s.cliUpgrade.State = CLIUpgradeFailed
+			s.cliUpgrade.TargetVersion = targetVersion
+			s.cliUpgrade.Message = ""
+			s.cliUpgrade.Error = cloneApiError(apiErr)
+			s.publishCLIUpgradeLocked()
+			s.cliUpgradeMu.Unlock()
+			return "", apiErr
+		}
+		delay := retryDelays[attempt]
+		if delay > 0 {
+			timer := time.NewTimer(delay)
+			select {
+			case <-upgradeCtx.Done():
+				timer.Stop()
+				s.clearCLIUpgradeState()
+				return "", apiErr
+			case <-timer.C:
+			}
+		}
+		if cur := s.userSettings(); s.probe(cur).Status == "ok" {
+			s.recoverAfterCLICompatible(cur)
+			return "", nil
+		}
 	}
 
 	s.clearProbeCache()

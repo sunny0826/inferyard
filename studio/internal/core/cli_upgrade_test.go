@@ -394,3 +394,227 @@ func TestUpgradeCLIFastReturnRefreshesStaleOutdatedDeviceError(t *testing.T) {
 	}
 	t.Fatalf("expected fast-return retry to refresh device snapshot and clear cli_outdated, got %+v", s.Device())
 }
+
+func TestStartAutoCLIUpgradeRetriesTransientPyPIFailure(t *testing.T) {
+	stubInstall(t)
+	autoCLIUpgradeRetryDelays = []time.Duration{5 * time.Millisecond, 5 * time.Millisecond, 5 * time.Millisecond}
+	oldCLI := fakeCLIFile(t)
+	binDir := t.TempDir()
+	installed := filepath.Join(binDir, cliBinaryName())
+
+	installLookPath = func(name string) (string, error) {
+		if name == uvBinaryName() {
+			return "/opt/uv/uv", nil
+		}
+		return "", errors.New("not found")
+	}
+	installStat = func(p string) (os.FileInfo, error) {
+		if p == "/opt/uv/uv" {
+			return fakeInfo{}, nil
+		}
+		return os.Stat(p)
+	}
+	attempts := 0
+	installCommandOutput = func(_ context.Context, _ string, args ...string) ([]byte, error) {
+		if len(args) == 1 && args[0] == "--version" {
+			return []byte("uv " + uvRelease + "\n"), nil
+		}
+		if len(args) >= 2 && args[0] == "tool" && args[1] == "install" {
+			attempts++
+			if attempts < 3 {
+				return []byte("error: No solution found: inferyard==0.0.18 not yet available on PyPI"), errors.New("exit status 1")
+			}
+			if err := os.WriteFile(installed, []byte("new-bin"), 0755); err != nil {
+				t.Fatal(err)
+			}
+			return []byte("Upgraded"), nil
+		}
+		if len(args) >= 2 && args[0] == "tool" && args[1] == "dir" {
+			return []byte(binDir + "\n"), nil
+		}
+		return nil, errors.New("unexpected command")
+	}
+
+	Version = "0.0.18"
+	t.Cleanup(func() { Version = "dev" })
+
+	s := installService(t, func(_ context.Context, p string, args ...string) (inferyard.Execution, error) {
+		if len(args) > 0 && args[0] == "--version" {
+			if p == oldCLI {
+				return inferyard.Execution{ExitCode: 0, Stdout: []byte("inferyard 0.0.17 source=release\n")}, nil
+			}
+			if p == installed {
+				return inferyard.Execution{ExitCode: 0, Stdout: []byte("inferyard 0.0.18 source=release\n")}, nil
+			}
+		}
+		return inferyard.Execution{}, errors.New("unexpected")
+	})
+	s.settings.InferyardPath = ptr(oldCLI)
+
+	_, _, cursor := s.Bus.Subscribe()
+	s.StartAutoCLIUpgrade()
+
+	st := waitForCLIUpgrade(t, s, func(st CLIUpgradeState) bool {
+		return st.State == CLIUpgradeIdle && s.Readiness().CLI.Status == "ok"
+	})
+	if st.Error != nil {
+		t.Fatalf("expected nil error after transient retry success, got %+v", st.Error)
+	}
+	if attempts != 3 {
+		t.Fatalf("expected 3 uv install attempts, got %d", attempts)
+	}
+	events, _, _ := s.Bus.After(cursor)
+	for _, ev := range events {
+		if ev.Type != "cli.upgrade" {
+			continue
+		}
+		var payload struct {
+			CLIUpgrade CLIUpgradeState `json:"cli_upgrade"`
+		}
+		if json.Unmarshal(ev.Data, &payload) == nil && payload.CLIUpgrade.State == CLIUpgradeFailed {
+			t.Fatalf("transient retry should not publish CLIUpgradeFailed before exhausting retries: %+v", payload.CLIUpgrade)
+		}
+	}
+}
+
+func TestStartAutoCLIUpgradeCancelsDuringRetryBackoffWhenUserFixesCLI(t *testing.T) {
+	stubInstall(t)
+	autoCLIUpgradeRetryDelays = []time.Duration{10 * time.Second}
+	oldCLI := fakeCLIFile(t)
+	manualCLI := fakeCLIFile(t)
+
+	installLookPath = func(name string) (string, error) {
+		if name == uvBinaryName() {
+			return "/opt/uv/uv", nil
+		}
+		return "", errors.New("not found")
+	}
+	installStat = func(p string) (os.FileInfo, error) {
+		if p == "/opt/uv/uv" {
+			return fakeInfo{}, nil
+		}
+		return os.Stat(p)
+	}
+	firstAttemptFailed := make(chan struct{})
+	installCommandOutput = func(_ context.Context, _ string, args ...string) ([]byte, error) {
+		if len(args) == 1 && args[0] == "--version" {
+			return []byte("uv " + uvRelease + "\n"), nil
+		}
+		if len(args) >= 2 && args[0] == "tool" && args[1] == "install" {
+			select {
+			case <-firstAttemptFailed:
+			default:
+				close(firstAttemptFailed)
+			}
+			return []byte("error: Failed to fetch from PyPI"), errors.New("exit status 1")
+		}
+		return nil, errors.New("unexpected command")
+	}
+
+	Version = "0.0.18"
+	t.Cleanup(func() { Version = "dev" })
+
+	s := installService(t, func(_ context.Context, p string, args ...string) (inferyard.Execution, error) {
+		if len(args) > 0 && args[0] == "--version" {
+			switch p {
+			case oldCLI:
+				return inferyard.Execution{ExitCode: 0, Stdout: []byte("inferyard 0.0.17 source=release\n")}, nil
+			case manualCLI:
+				return inferyard.Execution{ExitCode: 0, Stdout: []byte("inferyard 0.0.18 source=release\n")}, nil
+			}
+		}
+		return inferyard.Execution{}, errors.New("unexpected")
+	})
+	s.settings.InferyardPath = ptr(oldCLI)
+
+	s.StartAutoCLIUpgrade()
+	select {
+	case <-firstAttemptFailed:
+	case <-time.After(3 * time.Second):
+		t.Fatal("timed out waiting for first auto-upgrade attempt")
+	}
+	// Give the goroutine a moment to enter the 10s backoff sleep, then save manualCLI.
+	time.Sleep(30 * time.Millisecond)
+	start := time.Now()
+	manualPatch, _ := json.Marshal(manualCLI)
+	if _, e := s.UpdateSettings(map[string]json.RawMessage{"inferyard_path": manualPatch}); e != nil {
+		t.Fatal(e)
+	}
+	s.cliInstallMu.Lock()
+	s.cliInstallMu.Unlock()
+	if elapsed := time.Since(start); elapsed > 2*time.Second {
+		t.Fatalf("expected backoff to cancel immediately on manual fix, took %v", elapsed)
+	}
+	if st := s.CLIUpgradeStatus(); st.State != CLIUpgradeIdle || st.Error != nil {
+		t.Fatalf("expected idle state after manual fix during backoff, got %+v", st)
+	}
+	if got := textOf(s.Settings().Settings.InferyardPath); got != manualCLI {
+		t.Fatalf("inferyard_path = %q, want %q", got, manualCLI)
+	}
+}
+
+func TestInstallCLIPropagatesDownloadProxy(t *testing.T) {
+	stubInstall(t)
+	oldCLI := fakeCLIFile(t)
+	binDir := t.TempDir()
+	installed := filepath.Join(binDir, cliBinaryName())
+
+	installLookPath = func(name string) (string, error) {
+		if name == uvBinaryName() {
+			return "/opt/uv/uv", nil
+		}
+		return "", errors.New("not found")
+	}
+	installStat = func(p string) (os.FileInfo, error) {
+		if p == "/opt/uv/uv" {
+			return fakeInfo{}, nil
+		}
+		return os.Stat(p)
+	}
+	var gotProxy string
+	installCommandOutput = func(ctx context.Context, _ string, args ...string) ([]byte, error) {
+		if len(args) == 1 && args[0] == "--version" {
+			return []byte("uv " + uvRelease + "\n"), nil
+		}
+		if len(args) >= 2 && args[0] == "tool" && args[1] == "install" {
+			gotProxy = installProxyFromContext(ctx)
+			if err := os.WriteFile(installed, []byte("new-bin"), 0755); err != nil {
+				t.Fatal(err)
+			}
+			return []byte("Upgraded"), nil
+		}
+		if len(args) >= 2 && args[0] == "tool" && args[1] == "dir" {
+			return []byte(binDir + "\n"), nil
+		}
+		return nil, errors.New("unexpected command")
+	}
+
+	Version = "0.0.18"
+	t.Cleanup(func() { Version = "dev" })
+
+	s := installService(t, func(_ context.Context, p string, args ...string) (inferyard.Execution, error) {
+		if len(args) > 0 && args[0] == "--version" {
+			if p == oldCLI {
+				return inferyard.Execution{ExitCode: 0, Stdout: []byte("inferyard 0.0.17 source=release\n")}, nil
+			}
+			if p == installed {
+				return inferyard.Execution{ExitCode: 0, Stdout: []byte("inferyard 0.0.18 source=release\n")}, nil
+			}
+		}
+		return inferyard.Execution{}, errors.New("unexpected")
+	})
+	s.settings.InferyardPath = ptr(oldCLI)
+	s.settings.DownloadProxy = ptr("http://127.0.0.1:7897")
+
+	if _, apiErr := s.UpgradeCLI(context.Background(), nil); apiErr != nil {
+		t.Fatalf("UpgradeCLI: %+v", apiErr)
+	}
+	if gotProxy != "http://127.0.0.1:7897" {
+		t.Fatalf("install proxy = %q, want http://127.0.0.1:7897", gotProxy)
+	}
+	env := applyInstallProxyEnv([]string{"PATH=/usr/bin", "HTTP_PROXY=http://old:1"}, "http://127.0.0.1:7897")
+	joined := strings.Join(env, "\n")
+	if strings.Contains(joined, "http://old:1") || !strings.Contains(joined, "HTTPS_PROXY=http://127.0.0.1:7897") {
+		t.Fatalf("unexpected proxy env: %v", env)
+	}
+}

@@ -311,9 +311,39 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
-  github-release:
+  pypi:
     needs: [metadata, cli, studio]
-    if: needs.metadata.outputs.allow_release == 'true'
+    if: >-
+      needs.metadata.outputs.allow_release == 'true' &&
+      (needs.metadata.outputs.is_tag_push == 'true' ||
+        (github.event_name == 'workflow_dispatch' && inputs.publish_pypi == true && inputs.draft != true))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/p/inferyard
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: cli-dist
+          path: pypi-packages
+      - name: Publish CLI wheel and sdist using Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: pypi-packages/
+          attestations: true
+
+  github-release:
+    needs: [metadata, cli, studio, pypi]
+    if: >-
+      always() &&
+      needs.metadata.result == 'success' &&
+      needs.cli.result == 'success' &&
+      needs.studio.result == 'success' &&
+      needs.metadata.outputs.allow_release == 'true' &&
+      (needs.pypi.result == 'success' || needs.pypi.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: github-release
@@ -447,27 +477,3 @@ jobs:
             --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" \
             --content-type "application/json; charset=utf-8" \
             --cache-control "public, max-age=300"
-
-  pypi:
-    needs: [metadata, cli, github-release]
-    if: >-
-      needs.metadata.outputs.allow_release == 'true' &&
-      (needs.metadata.outputs.is_tag_push == 'true' ||
-        (github.event_name == 'workflow_dispatch' && inputs.publish_pypi == true && inputs.draft != true))
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    environment:
-      name: pypi
-      url: https://pypi.org/p/inferyard
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          name: cli-dist
-          path: pypi-packages
-      - name: Publish CLI wheel and sdist using Trusted Publishing
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: pypi-packages/
-          attestations: true
