@@ -6,46 +6,19 @@ import (
 )
 
 func studioDialog(c *ui.Context, open *bool, options components.DialogOptions, build func(panel ui.Element)) ui.Element {
-	var panel ui.Element
-	if !*open {
-		ui.Overlay(c, func() {})
-		return panel
-	}
 	t := tokens(c)
-	w, h := c.Size()
-	inset := options.Inset
-	if inset <= 0 {
-		inset = 20
-	}
-	ui.Overlay(c, func() {
-		ui.Box(c).Absolute().Left(0).Top(0).Right(0).Bottom(0).
-			Background(ui.RGBA(0, 0, 0, .28))
-		back := ui.Column(c).Absolute().Left(0).Top(0).Right(0).Bottom(0).
-			AlignItems(ui.Center).Padding(inset).Modal()
-		clicked := back.Clicked()
-		escape := back.OverlayShortcut(0, ui.KeyEscape)
-		if clicked && !options.DisableBackdropClose || escape && !options.DisableEscapeClose {
-			*open = false
+	return components.Dialog(c, open, options, func(panel ui.Element) {
+		// Clear onevra's glass fillMaterial before setting the solid elevated surface:
+		// MyGo's Background() only resets fillGradient/fillConic/fillRadial.
+		panel.Padding(t.Density.Section).Gap(t.Density.Stack).Radius(t.Radius.Modal).
+			Gradient(t.Color.Elevated, t.Color.Elevated, 0).
+			Background(t.Color.Elevated).Border(1, t.Color.BorderDefault).
+			TextColor(t.Color.FgPrimary)
+		panel = applyShadow(panel, t.Elevation.LG)
+		if build != nil {
+			build(panel)
 		}
-		back.Children(func() {
-			ui.Box(c).Grow(1).MinHeight(0)
-			panel = ui.Column(c).Role(ui.RoleDialog).Label(options.Label).
-				Width(c.Theme().Space(110)).
-				MaxWidth(max(0, w-2*inset)).MaxHeight(max(0, h-2*inset)).Shrink(0).
-				Padding(t.Density.Section).Gap(t.Density.Stack).Radius(t.Radius.Modal).
-				Background(t.Color.Elevated).Border(1, t.Color.BorderDefault).
-				TextColor(t.Color.FgPrimary)
-			panel = applyShadow(panel, t.Elevation.LG)
-			panel.Clicked()
-			panel.Children(func() {
-				if build != nil {
-					build(panel)
-				}
-			})
-			ui.Box(c).Grow(2).MinHeight(0)
-		})
 	})
-	return panel
 }
 
 func studioAlertDialog(c *ui.Context, open *bool, options components.AlertDialogOptions) components.DialogResult {

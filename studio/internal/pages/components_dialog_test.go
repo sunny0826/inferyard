@@ -97,6 +97,29 @@ func TestStudioDialogPanelIsOpaque(t *testing.T) {
 	}
 }
 
+func TestStudioDialogPreservesHostTitlebarDragStrip(t *testing.T) {
+	open := true
+	tt := ui.NewTester(func(c *ui.Context) {
+		components.WithDialogWindowDrag(c, 48, func() {
+			studioDialog(c, &open, components.DialogOptions{Label: "标题栏拖动区弹窗"}, func(panel ui.Element) {
+				ui.Text(c, "弹窗正文")
+			})
+		})
+	}, 640, 480)
+	// Clicking inside the 48 DIP host titlebar drag strip must keep the dialog open.
+	tt.ClickAt(20, 20)
+	tt.Frame()
+	if !open {
+		t.Fatal("clicking inside host titlebar drag strip dismissed the dialog")
+	}
+	// Clicking the backdrop below the titlebar must still dismiss the dialog.
+	tt.ClickAt(20, 64)
+	tt.Frame()
+	if open {
+		t.Fatal("clicking backdrop below the titlebar did not dismiss the dialog")
+	}
+}
+
 func TestStudioDialogDestructiveConfirmAndCancel(t *testing.T) {
 	tests := []struct {
 		name  string
