@@ -26,10 +26,10 @@ func TestCompletionKeepsUnscorableCasesInDenominator(t *testing.T) {
 			t.Fatalf("scoring failure produced %q", label)
 		}
 	}
-	s.selected = "reports"
+	s.selected = "benchmarks"
 	history := ui.NewTester(s.view, 1120, 1600)
 	click(t, history, "运行历史")
-	if !history.HasText("3/4 · 含 1 题不可评分") {
+	if !history.HasText("3/4 · 1 题不可评分") {
 		t.Fatalf("history score hid the unscorable case: %v", history.Texts())
 	}
 }

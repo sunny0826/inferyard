@@ -56,7 +56,7 @@ func TestButtonVariantsHaveUniformHeight(t *testing.T) {
 		}
 	}
 
-	// Verify Services onboarding setup card buttons match "+ 启动模型" height (Screenshot 1 regression).
+	// Verify Services setup buttons share one height and launching stays hidden until setup completes.
 	s := testState()
 	s.selected = "services"
 	s.loaded = true
@@ -67,14 +67,27 @@ func TestButtonVariantsHaveUniformHeight(t *testing.T) {
 
 	prepBtn, okPrep := svcTT.AccessByRole(ui.RoleButton, "准备环境")
 	settingsBtn, okSet := svcTT.AccessByRole(ui.RoleButton, "前往设置")
-	startModelBtn, okStart := svcTT.AccessByRole(ui.RoleButton, "+ 启动模型")
-	if !okPrep || !okSet || !okStart {
-		t.Fatalf("expected setup/header buttons visible, got prep=%v settings=%v start=%v", okPrep, okSet, okStart)
+	_, okStart := svcTT.AccessByRole(ui.RoleButton, "+ 启动模型")
+	if !okPrep || !okSet {
+		t.Fatalf("expected setup buttons visible, got prep=%v settings=%v", okPrep, okSet)
 	}
-	if math.Abs(float64(prepBtn.Bounds.H-settingsBtn.Bounds.H)) > 0.01 ||
-		math.Abs(float64(prepBtn.Bounds.H-startModelBtn.Bounds.H)) > 0.01 {
-		t.Fatalf("services buttons height mismatch: 准备环境=%.2f 前往设置=%.2f +启动模型=%.2f",
-			prepBtn.Bounds.H, settingsBtn.Bounds.H, startModelBtn.Bounds.H)
+	if okStart {
+		t.Fatal("+ 启动模型 must stay hidden while environment setup is incomplete")
+	}
+	if math.Abs(float64(prepBtn.Bounds.H-settingsBtn.Bounds.H)) > 0.01 {
+		t.Fatalf("services setup buttons height mismatch: 准备环境=%.2f 前往设置=%.2f",
+			prepBtn.Bounds.H, settingsBtn.Bounds.H)
+	}
+
+	readySvc := readyState("services")
+	readyTT := ui.NewTester(readySvc.servicesView, 1120, 800)
+	readyTT.Frame()
+	startModelBtn, okStart := readyTT.AccessByRole(ui.RoleButton, "+ 启动模型")
+	if !okStart {
+		t.Fatal("expected + 启动模型 visible after environment setup completes")
+	}
+	if math.Abs(float64(startModelBtn.Bounds.H-prepBtn.Bounds.H)) > 0.01 {
+		t.Fatalf("services launch button height = %.2f, want %.2f", startModelBtn.Bounds.H, prepBtn.Bounds.H)
 	}
 
 	// Verify inlineButton, inlineDangerButton, sizedButton(sizeSM), and status pill buttons share Control.SM (28px).

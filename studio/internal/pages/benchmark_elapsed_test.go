@@ -171,7 +171,7 @@ func TestContextSpeedMeasuringShowsElapsedAndReturnsToList(t *testing.T) {
 	}
 
 	// Clicking the running context speed row reopens the active speed task view without resetting elapsed time.
-	click(t, tt, l10n.TR("shell.header.context_speed"))
+	click(t, tt, speedRun.ContextSpeed.Model+" · 128k · "+l10n.TR("shell.header.context_speed"))
 	tt.Advance(2 * time.Second)
 	want53s := l10n.TRf("common.elapsed.running", "duration", formatElapsedDurationFor(l10n.LanguageZhHans, 53*time.Second))
 	reopenedTexts := strings.Join(tt.Texts(), "\n")

@@ -53,7 +53,7 @@
   "err.models_timeout": "Model list request timed out.",
   "err.models_unreachable": "Model list connection, transport, or HTTP protocol failed.",
   "err.network_timeout": "Network request or read timed out. Check your connection and retry.",
-  "err.no_local_model": "No local models available yet. Download a model on the Downloads page or add an existing models directory on the Models page.",
+  "err.no_local_model": "No local models available yet. Go to Library to get a model, or add an existing models directory in Library.",
   "err.not_found": "Required file, record, or remote resource was not found. Check paths, workspace status, or download URL and retry.",
   "err.not_resumable": "This run cannot be resumed. Start a new benchmark using New Task.",
   "err.old_service_still_alive": "The previous model service process is still running. Stop it before starting a new run.",

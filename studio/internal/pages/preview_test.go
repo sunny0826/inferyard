@@ -300,7 +300,7 @@ func TestPreviewBenchmarkElapsedUsesVirtualClock(t *testing.T) {
 	if !strings.Contains(afterSpeedDone, l10n.TR("benchmarks.group.running_empty")) || strings.Contains(afterSpeedDone, l10n.TR("benchmarks.badge.active_flow")) {
 		t.Fatalf("expected preview Benchmarks list Running section empty after speed completion, got:\n%s", afterSpeedDone)
 	}
-	click(t, tt, l10n.TR("shell.header.context_speed"))
+	click(t, tt, p.state.model+" · 64k · "+l10n.TR("shell.header.context_speed"))
 	tt.Frame()
 	if p.state.selected != "reports" || p.state.speed.opened == nil {
 		t.Fatalf("expected clicking completed speed row in Recent to open speed result, got selected=%q opened=%v", p.state.selected, p.state.speed.opened)

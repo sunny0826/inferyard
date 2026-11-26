@@ -81,11 +81,11 @@ final class PreviewUITests: XCTestCase {
         XCTAssertFalse(app.buttons["确认开始新任务"].exists, "Task nav must not ask to confirm")
         click("开始测评")
         let liveDetailBtn = app.buttons["查看实时详情"].firstMatch
-        let cancelRunBtn = app.buttons["取消运行"].firstMatch
+        let cancelTaskBtn = app.buttons["取消任务"].firstMatch
         expectExists(liveDetailBtn, timeout: 10)
-        expectExists(cancelRunBtn, timeout: 5)
-        XCTAssertEqual(liveDetailBtn.frame.minY, cancelRunBtn.frame.minY, accuracy: 1.5, "查看实时详情 and 取消运行 must align on one row")
-        XCTAssertEqual(liveDetailBtn.frame.height, cancelRunBtn.frame.height, accuracy: 1.0, "查看实时详情 and 取消运行 must match in height")
+        expectExists(cancelTaskBtn, timeout: 5)
+        XCTAssertEqual(liveDetailBtn.frame.minY, cancelTaskBtn.frame.minY, accuracy: 1.5, "查看实时详情 and 取消任务 must align on one row")
+        XCTAssertEqual(liveDetailBtn.frame.height, cancelTaskBtn.frame.height, accuracy: 1.0, "查看实时详情 and 取消任务 must match in height")
         keepScreenshot("Task running without obsolete title")
         click("查看实时详情", timeout: 10)
         expectText("实时进度")
@@ -103,11 +103,12 @@ final class PreviewUITests: XCTestCase {
         revealInContent(text("输出内容块到达间隔"))
         keepScreenshot("Report throughput and output-interval cards")
         click("新任务")
-        click("报告")
-        expectTab("测评报告")
+        click("测评")
+        expectTab("当前任务")
         selectTab("运行历史")
         expectText("运行历史表")
-        selectTab("测评报告")
+        click("报告")
+        expectTab("测评报告")
         // MyGo exports a button's name as its accessibility title, never its label.
         let report = app.buttons.matching(NSPredicate(format: "title BEGINSWITH %@", "打开报告 · preview-report-")).firstMatch
         wait("New task must preserve the generated report", timeout: 5) { report.exists }
@@ -174,13 +175,19 @@ final class PreviewUITests: XCTestCase {
         click("查看结果", timeout: 15)
         expectText("有效 4/5 · 未形成完整汇总")
         expectText("未形成完整汇总，原因见下方诊断详情。")
-        XCTAssertFalse(text("第 5 次：final_timing_missing、metric_missing").exists)
+        XCTAssertFalse(text("第 5 次：缺少最终计时记录、部分速度指标缺测").exists)
         keepScreenshot("Context speed missing timing")
         let diagnostics = app.disclosureTriangles["查看诊断详情"]
         revealInContent(diagnostics)
         diagnostics.click()
-        expectText("第 5 次：final_timing_missing、metric_missing")
-        expectText("第 5 次缺测：输入处理: final_timing_missing；Prefill: final_timing_missing；Decode: final_timing_missing")
+        expectText("第 5 次：缺少最终计时记录、部分速度指标缺测")
+        expectText("第 5 次缺测：输入处理：缺少最终计时记录；Prefill：缺少最终计时记录；Decode：缺少最终计时记录")
+        for code in ["final_timing_missing", "five_valid_samples_required"] {
+            let rawCode = app.descendants(matching: .any).matching(
+                NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", code, code)
+            ).firstMatch
+            XCTAssertFalse(rawCode.exists, "Reason code \(code) must not leak into localized diagnostics")
+        }
         keepScreenshot("Context speed missing timing diagnostics")
         click("返回历史任务")
         let row = app.tables["专项历史表"].tableRows.element(boundBy: 2)
@@ -201,7 +208,7 @@ final class PreviewUITests: XCTestCase {
         XCTAssertFalse(text("工作区进度").exists)
         XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "操作失败（")).firstMatch.exists)
         keepScreenshot("First use with no local assets")
-        click("到下载页")
+        click("前往模型库")
         expectText("推荐组合")
         selectTab("引擎")
         expectText("PolyStrata")
@@ -286,6 +293,7 @@ final class PreviewUITests: XCTestCase {
         click("连接并继续此测评题集")
         expectText("zh-svg-pelican · 运行中")
         XCTAssertFalse(text("zh-core · 运行中").exists, "A completed scope must not run again")
+        XCTAssertFalse(text("inferyard 拒绝执行").exists, "The previous failure card must not remain after a successful retry")
         keepScreenshot("LM Studio retries only the unfinished scope")
         click("查看报告", timeout: 20)
         expectText("local.gguf")
@@ -299,9 +307,8 @@ final class PreviewUITests: XCTestCase {
         let startModelBtn = app.buttons["+ 启动模型"].firstMatch
         expectExists(prepBtn, timeout: 5)
         expectExists(settingsBtn, timeout: 5)
-        expectExists(startModelBtn, timeout: 5)
+        XCTAssertFalse(startModelBtn.exists, "+ 启动模型 must stay hidden until environment setup completes")
         XCTAssertEqual(prepBtn.frame.height, settingsBtn.frame.height, accuracy: 1.0, "准备环境 and 前往设置 must match in height")
-        XCTAssertEqual(prepBtn.frame.height, startModelBtn.frame.height, accuracy: 1.0, "准备环境 and + 启动模型 must match in height")
         keepScreenshot("Services setup uniform buttons")
 
         click("模型库")
@@ -333,16 +340,10 @@ final class PreviewUITests: XCTestCase {
         selectScene("测评 · 已完成")
         click("报告")
         expectTab("测评报告")
+        XCTAssertFalse(app.tabs["运行历史"].exists, "Run history must live on the Benchmarks page")
+        expectExists(app.buttons["从历史运行生成报告"].firstMatch, timeout: 5)
         selectTab("长上下文专项")
         expectText("preview-speed-64k")
-        selectTab("运行历史")
-        expectText("运行历史表")
-        expectText("Preview-Small.gguf")
-        expectText("Preview-Model-Q4.gguf")
-        XCTAssertFalse(text("结果目录：未配置").exists)
-        XCTAssertFalse(text("扫描时间：未配置").exists)
-        XCTAssertFalse(text("独立运行不支持续测。").exists)
-        keepScreenshot("Reports run history redesigned")
 
         click("测评")
         expectTab("当前任务")
@@ -353,6 +354,11 @@ final class PreviewUITests: XCTestCase {
         selectTab("运行历史")
         let historyTable = app.tables["运行历史表"]
         expectExists(historyTable, timeout: 5)
+        expectText("Preview-Small.gguf")
+        expectText("Preview-Model-Q4.gguf")
+        XCTAssertFalse(text("结果目录：未配置").exists)
+        XCTAssertFalse(text("扫描时间：未配置").exists)
+        XCTAssertFalse(text("独立运行不支持续测。").exists)
         let searchBox = app.textFields["搜索模型、题集或运行 ID…"].firstMatch
         let filterGroup = app.radioGroups["筛选运行状态"].firstMatch
         let refreshBtn = app.buttons["刷新"].firstMatch

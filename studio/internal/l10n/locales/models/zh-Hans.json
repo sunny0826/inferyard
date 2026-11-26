@@ -150,7 +150,7 @@
   "models.action.delete": "删除",
   "models.action.delete_label": "删除 · {name}",
   "models.action.download_more": "下载更多",
-  "models.action.go_downloads": "到下载页",
+  "models.action.go_downloads": "前往模型库",
   "models.action.goto_downloads": "前往模型库",
   "models.action.open_dir": "打开目录",
   "models.action.open_dir_label": "打开目录 · {name}",

@@ -150,7 +150,7 @@
   "models.action.delete": "Delete",
   "models.action.delete_label": "Delete · {name}",
   "models.action.download_more": "Download More",
-  "models.action.go_downloads": "Go to Downloads",
+  "models.action.go_downloads": "Go to Library",
   "models.action.goto_downloads": "Open Library",
   "models.action.open_dir": "Open Folder",
   "models.action.open_dir_label": "Open Folder · {name}",

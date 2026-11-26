@@ -53,7 +53,7 @@ Results stay on your machine. Frozen rules score the quality tasks.
   xattr -dr com.apple.quarantine /Applications/InferYard\ Studio.app
   ```
 
-  Open **Tasks**, choose **Prepare Environment**, then select a model, engine, and task sets. See the [first-launch guide](studio/README.md#pages-and-first-launch).
+  Open **Services**, choose **Prepare Environment**, then select a model, engine, and task sets. See the [first-launch guide](studio/README.md#pages-and-first-launch).
 - **Terminal** — Follow the [installation and candidate preparation guide](cli/docs/installation.md) (Chinese) or the [CLI guide](cli/README.md). Start the service with the candidate's arguments, bind its PID and endpoint, run each bundle, and generate a combined report.
 
 ## Available task sets

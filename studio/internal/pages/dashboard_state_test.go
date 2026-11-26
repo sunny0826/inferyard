@@ -101,7 +101,7 @@ func TestBenchmarkWorkflowRunDetailAndSpeedLayoutPolish(t *testing.T) {
 		t.Fatalf("expected live run percentage and current case chip, got %v", tt.Texts())
 	}
 	detailBtn, ok1 := tt.AccessByRole(ui.RoleButton, "查看实时详情")
-	cancelBtn, ok2 := tt.AccessByRole(ui.RoleButton, "取消运行")
+	cancelBtn, ok2 := tt.AccessByRole(ui.RoleButton, "取消任务")
 	if !ok1 || !ok2 {
 		t.Fatalf("missing run action buttons: detail=%v cancel=%v", ok1, ok2)
 	}
