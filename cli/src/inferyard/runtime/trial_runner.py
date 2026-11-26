@@ -222,8 +222,9 @@ async def run_trial(
             )
         identity["files"] = [asdict(f) for f in files]
         if not is_local(config):
-            identity["runtime_library_hashes"] = read_json(
-                Path(config["engine"]["runtime_library_manifest"])
+            manifest_rel = config["engine"].get("runtime_library_manifest")
+            identity["runtime_library_hashes"] = (
+                read_json(Path(manifest_rel)) if manifest_rel else {}
             )
         store.observe("environment", identity["environment"], stage="start")
         if is_local(config):

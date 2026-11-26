@@ -57,7 +57,7 @@ func validateEngineArgsCredentials(args []string) *ApiError {
 		case "--api-key", "--api-key-file", "--password", "--token", "-hft", "--hf-token":
 			return Err("engine_credentials_forbidden")
 		}
-		if strings.HasPrefix(option, "sk-") || strings.HasPrefix(value, "sk-") {
+		if strings.HasPrefix(option, "sk-") || strings.HasPrefix(value, "sk-") || hasEmbeddedURLCredentials(arg) {
 			return Err("engine_credentials_forbidden")
 		}
 	}

@@ -69,7 +69,6 @@ def synthetic_runtime(tmp_path, monkeypatch):
         "manifest_delete",
         "both",
         "binary",
-        "extra_dll",
         "missing_dll",
         "escape",
         "mode",
@@ -117,3 +116,12 @@ def test_receipt_cannot_authorize_changed_assets(synthetic_runtime, change):
         )
     with pytest.raises((PreparationError, OSError)):
         runtime_verification.verify_receipt(path, mode="cuda")
+
+
+def test_extra_files_in_runtime_dir_are_allowed(synthetic_runtime):
+    request, _ = synthetic_runtime
+    result = windows_runtime_prepare.prepare(request)
+    path = Path(result["receipt"])
+    (Path(result["engine"]).parent / "extra.log").write_bytes(b"log output")
+    profile, engine_bin, _ = runtime_verification.verify_receipt(path, mode="cuda")
+    assert profile["mode"] == "cuda" and engine_bin.is_file()

@@ -231,7 +231,6 @@
             "release",
             "binary_path",
             "binary_sha256",
-            "runtime_library_manifest",
             "startup_args",
             "backend"
           ],

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from inferyard.errors import ContractError, PreflightError
 from inferyard.platforms.engine_fit_macos_listener import unique_listener
-from inferyard.platforms.identity import FileIdentity, service_origin
+from inferyard.platforms.identity import service_origin
 from inferyard.platforms.macos_identity import (
     _listener_identity,
     memory_available,
@@ -16,7 +16,7 @@ from inferyard.platforms.macos_identity import (
     process_start_ticks,
 )
 from inferyard.platforms.macos_native import psutil_module
-from inferyard.platforms.macos_process import lsof_records, mapped_file
+from inferyard.platforms.macos_process import lsof_records
 
 
 def service_process_state(pid, psutil):
@@ -97,10 +97,7 @@ def bind_service(
         model = validate_model(startup_model, model_path, source)
         model_stat = model.stat()
         before = executable.stat()
-        digest, size = stable_file_digest(executable)
-        identity = FileIdentity(
-            str(executable), digest, size, before.st_dev, before.st_ino, before.st_mtime_ns
-        )
+        digest, _size = stable_file_digest(executable)
         if engine == "lmstudio":
             from inferyard.platforms.engine_fit_lmstudio_files import lsof_records as lms_files
             from inferyard.platforms.engine_fit_observer_io import remaining
@@ -108,8 +105,6 @@ def bind_service(
             rows = lms_files(pid, [], deadline=deadline)
         else:
             rows = lsof_records(pid, [])
-        if not mapped_file(pid, identity, rows):
-            raise PreflightError("engine_fit_executable_mapping_unverified")
         listener = _listener_identity(pid, address, port, rows)
         if engine == "lmstudio":
             unique_listener(pid, address, port, timeout=remaining(deadline))

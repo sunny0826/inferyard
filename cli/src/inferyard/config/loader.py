@@ -27,7 +27,9 @@ def path_fields(config):
     from inferyard.contracts.engine_profiles import is_local
 
     if not is_local(config):
-        return PATH_FIELDS
+        return tuple(
+            (section, key) for section, key in PATH_FIELDS if key in config.get(section, {})
+        )
     return tuple(
         (section, key)
         for section, key in (

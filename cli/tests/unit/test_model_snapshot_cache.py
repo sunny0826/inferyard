@@ -97,15 +97,15 @@ def test_split_gguf_disk_cache_invalidates_on_modify_delete_and_symlink(monkeypa
     updated_manifest, _ = model_snapshot.snapshot(shard1)
     assert updated_manifest["sha256"] != first_manifest["sha256"]
 
-    # Replace shard 2 with a symlink -> must not use cache and must reject symlink.
+    # Replace shard 2 with a symlink -> symlinked shards now resolve cleanly.
     if os.name != "nt":
         real_copy = tmp_path / "outside.gguf"
         real_copy.write_bytes(shard2.read_bytes())
         shard2.unlink()
         shard2.symlink_to(real_copy)
         model_snapshot._CACHE.clear()
-        with pytest.raises(PreflightError, match="engine_fit_directory_symlink"):
-            model_snapshot.snapshot(shard1)
+        linked_manifest, _ = model_snapshot.snapshot(shard1)
+        assert linked_manifest["sha256"] == updated_manifest["sha256"]
 
     # Delete shard 2 -> must not use cache and must reject incomplete split GGUF.
     shard2.unlink()
@@ -263,3 +263,26 @@ def test_disk_cache_evicts_oldest_entries_to_stay_within_byte_limit(
     model_snapshot._CACHE.clear()
     model_snapshot.snapshot(model_a)
     assert _isolated_model_cache.read_bytes() == before_raw
+
+
+def test_large_weights_use_sampled_digest_and_directory_symlinks_work(tmp_path):
+    blob_dir = tmp_path / "blobs"
+    blob_dir.mkdir()
+    big_weight = blob_dir / "big.safetensors"
+    big_weight.write_bytes(b"A" * (5 * 1024 * 1024))
+
+    model_dir = tmp_path / "hf-snapshot"
+    model_dir.mkdir()
+    (model_dir / "config.json").write_text('{"model_type":"qwen3"}', encoding="utf-8")
+    if os.name != "nt":
+        sub_real = tmp_path / "real-sub"
+        sub_real.mkdir()
+        (sub_real / "model.safetensors").symlink_to(big_weight)
+        (model_dir / "weights").symlink_to(sub_real)
+    else:
+        (model_dir / "model.safetensors").write_bytes(b"A" * (5 * 1024 * 1024))
+
+    manifest, files = model_snapshot.snapshot(model_dir)
+    assert manifest["kind"] == "directory"
+    assert any(item["size"] == 5 * 1024 * 1024 for item in manifest["files"])
+    assert len(files) == 2

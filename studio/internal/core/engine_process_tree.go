@@ -39,6 +39,15 @@ var (
 	urlAuthorityPattern    = regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://([^\s/?#"]+)`)
 )
 
+func hasEmbeddedURLCredentials(value string) bool {
+	for _, match := range urlAuthorityPattern.FindAllStringSubmatch(value, -1) {
+		if len(match) > 1 && strings.Contains(match[1], "@") {
+			return true
+		}
+	}
+	return false
+}
+
 func isBlockedEngineEnv(key, value string) bool {
 	upper := strings.ToUpper(key)
 	if blockedEngineLoaderEnv[upper] {
@@ -47,12 +56,7 @@ func isBlockedEngineEnv(key, value string) bool {
 	if secretEngineEnvPattern.MatchString(upper) && strings.TrimSpace(value) != "" {
 		return true
 	}
-	for _, match := range urlAuthorityPattern.FindAllStringSubmatch(value, -1) {
-		if len(match) > 1 && strings.Contains(match[1], "@") {
-			return true
-		}
-	}
-	return false
+	return hasEmbeddedURLCredentials(value)
 }
 
 func configureEngineProcess(cmd *exec.Cmd, startup Startup) error {

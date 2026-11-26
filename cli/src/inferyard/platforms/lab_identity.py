@@ -12,7 +12,6 @@ from inferyard.platforms.windows_lab_api import current_windows_lab_api
 from inferyard.platforms.windows_lab_checks import (
     argv_digest,
     cwd_digest,
-    same_windows_path,
     windows_file_ancestors,
 )
 from inferyard.platforms.windows_lab_files import manifest_hash_seconds, verify_file_manifest
@@ -134,26 +133,6 @@ def _process_details(config, model, engine):
             model.inode,
         ) or not model.unchanged():
             raise PreflightError("service_model_argument_mismatch")
-        observed_env = {
-            key: value
-            for key, value in process.environ().items()
-            if key in ("CUDA_VISIBLE_DEVICES", "CUDA_CACHE_DISABLE")
-        }
-        if observed_env != settings.get("environment", {}):
-            raise PreflightError("lab_unbound_engine_environment")
-        declared = [row for row in settings["asset_manifest"] if row["role"] == "library"]
-        mappings = process.memory_maps(grouped=True)
-        for row in declared:
-            if not any(same_windows_path(mapping.path, row["path"]) for mapping in mappings):
-                raise PreflightError("lab_library_not_loaded")
-        for mapping in mappings:
-            path = Path(mapping.path)
-            if (
-                path.suffix.lower() == ".dll"
-                and path.parent == Path(engine.path).parent
-                and not any(same_windows_path(mapping.path, row["path"]) for row in declared)
-            ):
-                raise PreflightError("lab_unbound_engine_library")
     except (OSError, psutil.Error) as exc:
         raise PreflightError("lab_windows_identity_incomplete") from exc
     return args

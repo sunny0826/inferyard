@@ -37,7 +37,11 @@ def validate_binding(value, plan, engine, *, macos, windows=False):
         }
         | ({"listener_identity", "listener_source", "cwd_sha256"} if macos or windows else set())
         | ({"process_start_source"} if windows else set())
-        | ({"entrypoint_sha256"} if engine == "mlx-lm" else set())
+        | (
+            {"entrypoint_sha256"}
+            if engine == "mlx-lm" and "entrypoint_sha256" in value
+            else set()
+        )
         | ({"observer"} if engine == "lmstudio" else set()),
         "binding",
     )
@@ -93,7 +97,7 @@ def validate_binding(value, plan, engine, *, macos, windows=False):
         "lmstudio": "lms_loaded_instance_path",
     }.get(engine, "verified_startup_directory_identity")
     require(model["source"] == expected_source, "model_binding_source")
-    if engine == "mlx-lm":
+    if engine == "mlx-lm" and "entrypoint_sha256" in value:
         require(_digest(value["entrypoint_sha256"]), "entrypoint_hash")
     if engine == "lmstudio":
         observer = value["observer"]

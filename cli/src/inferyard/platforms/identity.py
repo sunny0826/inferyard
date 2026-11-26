@@ -434,23 +434,25 @@ def static_preflight(
             hash_file(Path(config["engine"]["binary_path"]), config["engine"]["binary_sha256"]),
             hash_file(Path(config["model"]["template_path"]), config["model"]["template_sha256"]),
         ]
-        manifest_path = Path(config["engine"]["runtime_library_manifest"])
-        try:
-            manifest = strict_json_loads(manifest_path.read_text())
-            if not isinstance(manifest, dict) or not manifest:
-                raise PreflightError("invalid_library_manifest")
-            for filename, digest in manifest.items():
-                if (
-                    Path(filename).name != filename
-                    or not isinstance(digest, str)
-                    or len(digest) != 64
-                ):
+        manifest_raw = config["engine"].get("runtime_library_manifest")
+        if manifest_raw:
+            manifest_path = Path(manifest_raw)
+            try:
+                manifest = strict_json_loads(manifest_path.read_text())
+                if not isinstance(manifest, dict) or not manifest:
                     raise PreflightError("invalid_library_manifest")
-                identities.append(
-                    hash_file(Path(config["engine"]["binary_path"]).parent / filename, digest)
-                )
-        except (OSError, ContractError) as exc:
-            raise PreflightError("library_manifest_unreadable") from exc
+                for filename, digest in manifest.items():
+                    if (
+                        Path(filename).name != filename
+                        or not isinstance(digest, str)
+                        or len(digest) != 64
+                    ):
+                        raise PreflightError("invalid_library_manifest")
+                    identities.append(
+                        hash_file(Path(config["engine"]["binary_path"]).parent / filename, digest)
+                    )
+            except (OSError, ContractError) as exc:
+                raise PreflightError("library_manifest_unreadable") from exc
     if not is_local(config):
         process = verify_process(
             config, identities[0], identities[1], address, port, bound_files=identities

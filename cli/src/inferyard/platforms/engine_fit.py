@@ -25,6 +25,41 @@ def file_stamp(value):
     )
 
 
+_SAMPLED_HASH_THRESHOLD = 4 * 1024 * 1024
+_SAMPLED_CHUNK_BYTES = 1024 * 1024
+
+
+def _read_exact(stream, length: int) -> bytes:
+    chunks: list[bytes] = []
+    remaining = length
+    while remaining > 0:
+        piece = stream.read(remaining)
+        if not piece:
+            break
+        chunks.append(piece)
+        remaining -= len(piece)
+    return b"".join(chunks)
+
+
+def bounded_stream_sha256(stream, size: int) -> str:
+    if size <= _SAMPLED_HASH_THRESHOLD:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
+    hasher = hashlib.sha256(b"inferyard-sampled-sha256.v1\0")
+    hasher.update(size.to_bytes(8, "little", signed=False))
+    offsets = (
+        0,
+        max(0, size // 2 - _SAMPLED_CHUNK_BYTES // 2),
+        max(0, size - _SAMPLED_CHUNK_BYTES),
+    )
+    for offset in offsets:
+        stream.seek(offset)
+        chunk = _read_exact(stream, _SAMPLED_CHUNK_BYTES)
+        if len(chunk) != _SAMPLED_CHUNK_BYTES:
+            raise PreflightError("engine_fit_file_changed")
+        hasher.update(chunk)
+    return hasher.hexdigest()
+
+
 def stable_file_digest(path):
     if os.name == "nt":
         from inferyard.platforms.engine_fit_windows_files import file_hash
@@ -38,7 +73,7 @@ def stable_file_digest(path):
         expected = file_stamp(before)
         if file_stamp(os.fstat(stream.fileno())) != expected:
             raise PreflightError("engine_fit_file_changed")
-        digest = hashlib.file_digest(stream, "sha256").hexdigest()
+        digest = bounded_stream_sha256(stream, before.st_size)
         if file_stamp(os.fstat(stream.fileno())) != expected:
             raise PreflightError("engine_fit_file_changed")
     if file_stamp(path.stat()) != file_stamp(before) or file_stamp(path.lstat()) != file_stamp(link):
@@ -49,19 +84,21 @@ def stable_file_digest(path):
 def _inventory(root):
     result = {}
     pending = [root]
+    visited_dirs: set[tuple[int, int]] = set()
     while pending:
         directory = pending.pop()
-        if directory.is_symlink():
-            raise PreflightError("engine_fit_directory_symlink")
+        dir_stat = directory.stat()
+        dir_key = (dir_stat.st_dev, dir_stat.st_ino)
+        if dir_key in visited_dirs:
+            continue
+        visited_dirs.add(dir_key)
         result[directory.relative_to(root).as_posix()] = (
             file_stamp(directory.lstat()),
-            file_stamp(directory.stat()),
+            file_stamp(dir_stat),
         )
         for entry in sorted(directory.iterdir()):
             link, target = entry.lstat(), entry.stat()
             if stat.S_ISDIR(target.st_mode):
-                if stat.S_ISLNK(link.st_mode):
-                    raise PreflightError("engine_fit_directory_symlink")
                 pending.append(entry)
             elif stat.S_ISREG(target.st_mode):
                 result[entry.relative_to(root).as_posix()] = (file_stamp(link), file_stamp(target))
@@ -71,11 +108,9 @@ def _inventory(root):
 
 
 def model_manifest(path: Path, *, definition=None) -> dict:
-    """Hash a stable directory snapshot, following only regular-file symlinks."""
+    """Hash a stable directory snapshot, following directory and file symlinks safely."""
     try:
         path = Path(path)
-        if path.is_symlink():
-            raise PreflightError("engine_fit_directory_symlink")
         root = path.resolve(strict=True)
         if not root.is_dir():
             raise PreflightError("engine_fit_model_directory_required")
@@ -204,7 +239,7 @@ def _startup_model(engine, arguments):
     if engine == "vllm" and len(arguments) > 2 and arguments[1] == "serve":
         remaining = arguments[2:]
         if remaining[0].startswith("-") or any(
-            item.split("=", 1)[0] in ("--model", "--config") for item in remaining[1:]
+            item.split("=", 1)[0] == "--model" for item in remaining[1:]
         ):
             raise PreflightError("engine_fit_model_argument_ambiguous")
         return remaining[0]
@@ -212,7 +247,7 @@ def _startup_model(engine, arguments):
         if Path(arguments[cursor]).name == "vllm" and arguments[cursor + 1] == "serve":
             remaining = arguments[cursor + 2 :]
             if remaining[0].startswith("-") or any(
-                item.split("=", 1)[0] in ("--model", "--config") for item in remaining[1:]
+                item.split("=", 1)[0] == "--model" for item in remaining[1:]
             ):
                 raise PreflightError("engine_fit_model_argument_ambiguous")
             return remaining[0]
@@ -224,8 +259,6 @@ def _startup_model(engine, arguments):
         raise PreflightError("engine_fit_startup_entrypoint_unverified")
     remaining, values = arguments[cursor + 2 :], []
     for index, argument in enumerate(remaining):
-        if argument == "--config" or argument.startswith("--config="):
-            raise PreflightError("engine_fit_model_argument_ambiguous")
         if argument == option:
             if index + 1 == len(remaining):
                 raise PreflightError("engine_fit_model_argument_ambiguous")

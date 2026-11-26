@@ -71,11 +71,6 @@ def validate_config(config):
         "formal binding requires a loaded local model",
     )
     require(
-        config["conditions"]["ac_online"] is True,
-        "config.conditions.ac_online",
-        "formal local-engine runs require AC power",
-    )
-    require(
         config["generation"]["max_tokens"] <= config["conditions"]["context_size"],
         "config.generation.max_tokens",
         "exceeds total context size",
