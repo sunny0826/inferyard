@@ -39,6 +39,7 @@ __all__ = [
     "launcher_lock",
     "main",
     "process_identity",
+    "resolve_assets_dir",
     "resolve_profile",
     "stop_recorded",
     "workspace_ready",
@@ -254,6 +255,86 @@ def _safe_subdir(root: Path, *parts: str) -> Path:
     return resolved
 
 
+def _prepare_assets_root(assets: Path) -> Path:
+    """Create an assets root with real models/engines dirs, refusing any symlink."""
+    assets = assets.expanduser()
+    if is_link(assets):
+        raise DevError(f"Refusing to use link as development assets directory: {assets}")
+    pending: list[Path] = []
+    cursor = assets
+    while not cursor.exists():
+        pending.append(cursor)
+        if cursor.parent == cursor:
+            break
+        cursor = cursor.parent
+    if is_link(cursor) or not cursor.is_dir():
+        raise DevError(f"Development assets path is not a real directory: {cursor}")
+    for candidate in reversed(pending):
+        if is_link(candidate):
+            raise DevError(f"Refusing to create development assets through link: {candidate}")
+        try:
+            candidate.mkdir()
+        except FileExistsError as exc:
+            if is_link(candidate) or not candidate.is_dir():
+                raise DevError(f"Unsafe development assets directory: {candidate}") from exc
+    resolved = assets.resolve()
+    for name in ("models", "engines"):
+        child = resolved / name
+        if is_link(child):
+            raise DevError(f"Refusing to use link as development assets directory: {child}")
+        child.mkdir(parents=True, exist_ok=True)
+    return resolved
+
+
+def _git_common_dir(root: Path) -> Path | None:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return None
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    return Path(result.stdout.strip())
+
+
+def _main_worktree_assets(root: Path) -> Path | None:
+    """Reuse the main worktree's assets when running from a linked worktree."""
+    common_git = _git_common_dir(root)
+    if common_git is None:
+        return None
+    main_root = common_git.parent
+    try:
+        if not main_root.is_dir() or main_root.resolve() == root.resolve():
+            return None
+    except OSError:
+        return None
+    main_state = main_root / STATE_DIR_NAME
+    main_assets = main_state / "assets"
+    for candidate in (main_state, main_assets):
+        if is_link(candidate) or not candidate.is_dir():
+            return None
+    return _prepare_assets_root(main_assets)
+
+
+def resolve_assets_dir(root: Path, state_dir: Path, explicit: str | None = None) -> Path:
+    """Resolve the models/engines directory shared across branches and worktrees."""
+    requested = explicit.strip() if explicit else ""
+    requested = requested or os.environ.get("INFERYARD_DEV_ASSETS", "").strip()
+    if requested:
+        return _prepare_assets_root(Path(requested))
+    shared = _main_worktree_assets(root.resolve())
+    if shared is not None:
+        return shared
+    assets = _safe_subdir(state_dir, "assets")
+    _safe_subdir(state_dir, "assets", "models")
+    _safe_subdir(state_dir, "assets", "engines")
+    return assets
+
+
 def resolve_profile(state_dir: Path, branch: str, *, rebuild: bool) -> tuple[Path, Path]:
     profiles_root = _safe_subdir(state_dir, "profiles", branch_key(branch))
     pointer = profiles_root / "current.json"
@@ -297,7 +378,13 @@ def ensure_workspace(cli: Path, profile: Path) -> Path:
     return workspace
 
 
-def develop(root: Path, action: str, *, prepare_only: bool = False) -> None:
+def develop(
+    root: Path,
+    action: str,
+    *,
+    prepare_only: bool = False,
+    assets_dir: str | None = None,
+) -> None:
     root = root.resolve()
     state_dir = _safe_subdir(root, STATE_DIR_NAME)
     with launcher_lock(state_dir):
@@ -309,9 +396,7 @@ def develop(root: Path, action: str, *, prepare_only: bool = False) -> None:
         branch = current_branch(root)
         cli = sync_cli(root)
         staged_binary, final_binary = build_studio_staged(root, state_dir)
-        assets = _safe_subdir(state_dir, "assets")
-        _safe_subdir(state_dir, "assets", "models")
-        _safe_subdir(state_dir, "assets", "engines")
+        assets = resolve_assets_dir(root, state_dir, assets_dir)
         profile, pointer = resolve_profile(state_dir, branch, rebuild=(action == "rebuild"))
         workspace = ensure_workspace(cli, profile)
         if prepare_only:
@@ -339,11 +424,18 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Sync CLI, build Studio, and initialize workspace without opening a window",
     )
+    parser.add_argument(
+        "--assets",
+        metavar="DIR",
+        help="Directory for downloaded models and engines instead of the default shared location",
+    )
     args = parser.parse_args(argv)
     if args.prepare_only and args.action == "stop":
         parser.error("--prepare-only cannot be combined with stop")
+    if args.assets and args.action == "stop":
+        parser.error("--assets cannot be combined with stop")
     try:
-        develop(ROOT, args.action, prepare_only=args.prepare_only)
+        develop(ROOT, args.action, prepare_only=args.prepare_only, assets_dir=args.assets)
     except (DevError, OSError) as exc:
         print(f"Development launcher: {exc}", file=sys.stderr)
         return 1
