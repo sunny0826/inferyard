@@ -115,7 +115,9 @@ func studioTextBox(c *ui.Context, value *string, opts ...components.TextBoxOptio
 	}
 	el := components.TextBox(c, value, o).Radius(t.Radius.Control)
 	if !o.Multiline && o.LeadingIcon == nil && o.LeadingText == "" {
-		el.Padding(c.Theme().Space(2.25), t.Density.Stack).MinHeight(t.Control.MD)
+		el.Padding(c.Theme().Space(1.75), t.Density.Stack).MinHeight(t.Control.MD)
+	} else if !o.Multiline {
+		el.MinHeight(t.Control.MD)
 	}
 	return el
 }

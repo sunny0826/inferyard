@@ -330,7 +330,7 @@ func searchableSelectField(c *ui.Context, name, description, placeholder, emptyF
 			}
 			applyMaterial(c, cb.Input.FillWidth().Label(name).Placeholder(placeholder).
 				MinHeight(t.Control.MD).
-				Padding(c.Theme().Space(2.25), t.Density.Stack), materialControl).Border(1, border)
+				Padding(c.Theme().Space(1.75), t.Density.Stack), materialControl).Border(1, border)
 
 			visible := options
 			if cb.Filtering() {
