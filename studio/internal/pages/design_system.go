@@ -32,26 +32,18 @@ func configuredValue(value string) string {
 }
 
 func button(c *ui.Context, label string) ui.Element {
-	t := tokens(c)
-	return components.Button(c, label, components.ButtonSecondary).
-		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.Control).
-		MaxWidthPercent(100).AlignSelf(ui.Start)
+	return styleButtonSize(c, components.Button(c, label, components.ButtonSecondary), sizeMD)
 }
 
 func primaryButton(c *ui.Context, label string) ui.Element {
-	t := tokens(c)
-	return components.Button(c, label, components.ButtonPrimary).
-		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.Control).
-		MaxWidthPercent(100).AlignSelf(ui.Start)
+	return styleButtonSize(c, components.Button(c, label, components.ButtonPrimary), sizeMD)
 }
 
 func dangerButton(c *ui.Context, label string) ui.Element {
 	theme := c.Theme()
 	t := tokens(c)
 	danger := t.State.Danger
-	b := components.Button(c, label, components.ButtonOutline).
-		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.Control).
-		MaxWidthPercent(100).AlignSelf(ui.Start)
+	b := styleButtonSize(c, components.Button(c, label, components.ButtonOutline), sizeMD)
 	background := theme.Surface.Mix(danger, .10)
 	if !b.IsDisabled() {
 		switch {

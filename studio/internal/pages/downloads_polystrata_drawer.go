@@ -288,7 +288,7 @@ func (s *viewState) polystrataDrawerSetupSection(c *ui.Context, st *downloadsUIS
 
 	chosenID := selected.ModelID
 	ui.Box(c.Key("polystrata-drawer-model-select")).Children(func() {
-		sel := components.Select(c, &chosenID)
+		sel := studioSelect(c, &chosenID)
 		sel.Trigger.Label(tr(c, "downloads.polystrata.drawer.select_model")).Value(polystrataDrawerOptionSummary(selected)).Children(func() {
 			ui.Text(c, polystrataDrawerOptionSummary(selected)).SingleLine()
 		})

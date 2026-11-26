@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 )
@@ -238,7 +237,7 @@ func stopReasonLabelFor(c *ui.Context, raw string) string {
 func (r *reportViewState) runPicker(c *ui.Context) {
 	pickerLabel := tr(c, "reports.detail.select_run")
 	ui.Field(c, pickerLabel, func() {
-		selectRun := components.Select(c, &r.run)
+		selectRun := studioSelect(c, &r.run)
 		selectRun.Trigger.Label(pickerLabel).Value(reportRunLabel(r.index.Runs[r.run])).Children(func() {
 			ui.Text(c, reportRunLabel(r.index.Runs[r.run])).SingleLine()
 		})

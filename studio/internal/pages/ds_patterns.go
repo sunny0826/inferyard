@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 )
@@ -166,7 +165,7 @@ func filterableTable(c *ui.Context, opts filterableTableOptions) {
 		if opts.Query != nil || opts.Filters != nil || opts.Actions != nil {
 			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				if opts.Query != nil {
-					box := components.TextBox(c, opts.Query, components.TextBoxOptions{}).Width(240).MaxWidthPercent(100)
+					box := studioTextBox(c, opts.Query).Width(240).MaxWidthPercent(100)
 					if opts.SearchPlaceholder != "" {
 						box.Placeholder(opts.SearchPlaceholder).Label(opts.SearchPlaceholder)
 					}

@@ -320,6 +320,17 @@ final class PreviewUITests: XCTestCase {
         selectTab("运行历史")
         let historyTable = app.tables["运行历史表"]
         expectExists(historyTable, timeout: 5)
+        let searchBox = app.textFields["搜索模型、题集或运行 ID…"].firstMatch
+        let filterGroup = app.radioGroups["筛选运行状态"].firstMatch
+        let refreshBtn = app.buttons["刷新"].firstMatch
+        let createFromHistoryBtn = app.buttons["从历史运行生成报告"].firstMatch
+        expectExists(searchBox, timeout: 5)
+        expectExists(filterGroup, timeout: 5)
+        expectExists(refreshBtn, timeout: 5)
+        expectExists(createFromHistoryBtn, timeout: 5)
+        XCTAssertEqual(searchBox.frame.height, refreshBtn.frame.height, accuracy: 1.0, "Search box and Refresh button must share MD control height")
+        XCTAssertEqual(filterGroup.frame.height, refreshBtn.frame.height, accuracy: 1.0, "Segmented filter and Refresh button must share MD control height")
+        XCTAssertEqual(refreshBtn.frame.height, createFromHistoryBtn.frame.height, accuracy: 1.0, "Toolbar buttons must share MD control height")
         keepScreenshot("Benchmarks run history tab")
 
         selectTab("完整")

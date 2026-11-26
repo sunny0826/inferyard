@@ -146,15 +146,11 @@ func inlineBadge(c *ui.Context, label string, kind stateKind, opts badgeOptions)
 }
 
 func inlineButton(c *ui.Context, variant components.ButtonVariant, label string) ui.Element {
-	return sizedButton(c, variant, sizeSM, label).AlignSelf(ui.Center).MinHeight(28)
+	return sizedButton(c, variant, sizeSM, label).AlignSelf(ui.Center)
 }
 
 func inlineDangerButton(c *ui.Context, label string) ui.Element {
-	t := tokens(c)
-	return dangerButton(c, label).
-		Padding(t.Density.Tight, t.Density.Row).
-		FontSize(t.Type.Caption).
-		AlignSelf(ui.Center).MinHeight(28)
+	return styleButtonSize(c, dangerButton(c, label), sizeSM).AlignSelf(ui.Center)
 }
 
 func chevronBox(c *ui.Context, expanded bool) {

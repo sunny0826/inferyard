@@ -77,18 +77,25 @@ type listRowOptions struct {
 	OnClick  func()
 }
 
-func outlineButton(c *ui.Context, label string) ui.Element {
+func styleButtonSize(c *ui.Context, b ui.Element, size controlSize) ui.Element {
 	t := tokens(c)
-	return components.Button(c, label, components.ButtonOutline).
-		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.Control).
-		MaxWidthPercent(100).AlignSelf(ui.Start)
+	b.Radius(t.Radius.Control).MaxWidthPercent(100).AlignSelf(ui.Start)
+	switch size {
+	case sizeSM:
+		return b.MinHeight(t.Control.SM).Padding(t.Density.Hairline, t.Density.Row).FontSize(t.Type.Caption)
+	case sizeLG:
+		return b.MinHeight(t.Control.LG).Padding(t.Density.Row, t.Density.Section).FontSize(t.Type.Body)
+	default:
+		return b.MinHeight(t.Control.MD).Padding(t.Density.Tight, t.Density.Stack)
+	}
+}
+
+func outlineButton(c *ui.Context, label string) ui.Element {
+	return styleButtonSize(c, components.Button(c, label, components.ButtonOutline), sizeMD)
 }
 
 func ghostButton(c *ui.Context, label string) ui.Element {
-	t := tokens(c)
-	return components.Button(c, label, components.ButtonGhost).
-		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.Control).
-		MaxWidthPercent(100).AlignSelf(ui.Start)
+	return styleButtonSize(c, components.Button(c, label, components.ButtonGhost), sizeMD)
 }
 
 func iconButton(c *ui.Context, icon func() *ui.SVG, label string, style components.IconButtonStyle) ui.Element {
@@ -96,16 +103,29 @@ func iconButton(c *ui.Context, icon func() *ui.SVG, label string, style componen
 }
 
 func sizedButton(c *ui.Context, variant components.ButtonVariant, size controlSize, label string) ui.Element {
+	return styleButtonSize(c, components.Button(c, label, variant), size)
+}
+
+func studioTextBox(c *ui.Context, value *string, opts ...components.TextBoxOptions) ui.Element {
 	t := tokens(c)
-	b := components.Button(c, label, variant).Radius(t.Radius.Control).MaxWidthPercent(100).AlignSelf(ui.Start)
-	switch size {
-	case sizeSM:
-		return b.Padding(t.Density.Tight, t.Density.Row).FontSize(t.Type.Caption)
-	case sizeLG:
-		return b.Padding(t.Density.Stack, t.Density.Section).FontSize(t.Type.Body)
-	default:
-		return b.Padding(t.Density.Row, t.Density.Stack)
+	var o components.TextBoxOptions
+	if len(opts) > 0 {
+		o = opts[0]
 	}
+	el := components.TextBox(c, value, o).Radius(t.Radius.Control)
+	if !o.Multiline && o.LeadingIcon == nil && o.LeadingText == "" {
+		el.Padding(c.Theme().Space(2.25), t.Density.Stack).MinHeight(t.Control.MD)
+	}
+	return el
+}
+
+func studioSelect[T comparable](c *ui.Context, selected *T) *components.SelectParts[T] {
+	t := tokens(c)
+	sel := components.Select(c, selected)
+	sel.Trigger.MinHeight(t.Control.MD).
+		Padding(t.Density.Tight, c.Theme().Space(6), t.Density.Tight, t.Density.Stack).
+		Radius(t.Radius.Control)
+	return sel
 }
 
 func badge(c *ui.Context, label string, kind stateKind, opts badgeOptions) ui.Element {
@@ -263,7 +283,7 @@ func monoField(c *ui.Context, label, description, placeholder, errMsg string, va
 		Description: description,
 		Error:       errMsg,
 		Input: func() {
-			el := components.TextBox(c, value, components.TextBoxOptions{}).FillWidth()
+			el := studioTextBox(c, value).FillWidth()
 			if placeholder != "" {
 				el.Placeholder(placeholder)
 			}

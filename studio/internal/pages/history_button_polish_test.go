@@ -77,22 +77,68 @@ func TestButtonVariantsHaveUniformHeight(t *testing.T) {
 			prepBtn.Bounds.H, settingsBtn.Bounds.H, startModelBtn.Bounds.H)
 	}
 
-	// Verify inlineButton and inlineDangerButton share identical height.
+	// Verify inlineButton, inlineDangerButton, sizedButton(sizeSM), and status pill buttons share Control.SM (28px).
 	inlineTT := ui.NewTester(func(c *ui.Context) {
 		ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
 			inlineButton(c, components.ButtonPrimary, "行内主按钮")
-			inlineButton(c, components.ButtonOutline, "行内描边")
+			inlineButton(c, components.ButtonOutline, "Retry")
 			inlineDangerButton(c, "行内危险")
+			sizedButton(c, components.ButtonGhost, sizeSM, "紧凑幽灵")
+			engineHeaderActionButton(c, engineHeaderActionOptions{statusText: "运行中", actionLabel: "停止引擎", kind: stateSuccess, action: "stop"})
+			polystrataInstallStatusButton(c, false, false)
 		})
-	}, 600, 200)
+	}, 900, 200)
 	inlineTT.Frame()
-	inPrimary, _ := inlineTT.AccessByRole(ui.RoleButton, "行内主按钮")
-	inOutline, _ := inlineTT.AccessByRole(ui.RoleButton, "行内描边")
-	inDanger, _ := inlineTT.AccessByRole(ui.RoleButton, "行内危险")
-	if math.Abs(float64(inPrimary.Bounds.H-inOutline.Bounds.H)) > 0.01 ||
-		math.Abs(float64(inPrimary.Bounds.H-inDanger.Bounds.H)) > 0.01 {
-		t.Fatalf("inline button height mismatch: primary=%.2f outline=%.2f danger=%.2f",
-			inPrimary.Bounds.H, inOutline.Bounds.H, inDanger.Bounds.H)
+	for _, smLabel := range []string{"行内主按钮", "Retry", "行内危险", "紧凑幽灵", "停止引擎", "取消安装"} {
+		got, ok := inlineTT.AccessByRole(ui.RoleButton, smLabel)
+		if !ok {
+			t.Fatalf("missing SM control %q", smLabel)
+		}
+		if math.Abs(float64(got.Bounds.H-28)) > 0.01 {
+			t.Fatalf("SM control %q height = %.2f, want 28.00", smLabel, got.Bounds.H)
+		}
+	}
+
+	// Verify cross-family MD controls (Button CJK/ASCII, TextBox, SegmentedControl, Select, NativeSelect) all lock to Control.MD (36px).
+	query := ""
+	segVal := "all"
+	selVal := "opt1"
+	var boxRect, segRect, selRect, nativeSelRect, asciiBtnRect, cjkBtnRect ui.Rect
+	mdTT := ui.NewTester(func(c *ui.Context) {
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(8).Children(func() {
+			b1 := primaryButton(c, "Retry")
+			b2 := button(c, "前往设置")
+			tb := studioTextBox(c, &query).Width(180).Placeholder("搜索…").Label("搜索框")
+			seg := segmentedControl(c, "状态筛选", &segVal, []components.NativeSelectOption[string]{
+				{Value: "all", Label: "全部"},
+				{Value: "done", Label: "English"},
+			})
+			sel := studioSelect(c, &selVal)
+			sel.Trigger.Label("版本选择").Children(func() { ui.Text(c, "v1.0").SingleLine() })
+			ns := components.NativeSelect(c, &selVal, []components.NativeSelectOption[string]{{Value: "opt1", Label: "默认项"}})
+			ns.Trigger.MinHeight(tokens(c).Control.MD).Padding(tokens(c).Density.Tight, c.Theme().Space(6), tokens(c).Density.Tight, tokens(c).Density.Stack)
+
+			asciiBtnRect = b1.LayoutBounds()
+			cjkBtnRect = b2.LayoutBounds()
+			boxRect = tb.LayoutBounds()
+			segRect = seg.LayoutBounds()
+			selRect = sel.Trigger.LayoutBounds()
+			nativeSelRect = ns.Trigger.LayoutBounds()
+		})
+	}, 1200, 300)
+	mdTT.Frame()
+	mdTT.Frame()
+	for name, r := range map[string]ui.Rect{
+		"primaryButton(ASCII)": asciiBtnRect,
+		"button(CJK)":          cjkBtnRect,
+		"studioTextBox":        boxRect,
+		"segmentedControl":     segRect,
+		"studioSelect":         selRect,
+		"NativeSelect":         nativeSelRect,
+	} {
+		if math.Abs(float64(r.H-36)) > 0.01 {
+			t.Fatalf("%s height = %.2f, want Control.MD (36.00)", name, r.H)
+		}
 	}
 }
 

@@ -20,9 +20,13 @@ func assertOn4pxGrid(t *testing.T, name string, value float32) {
 func TestDesignTokensConcentricRadiiAnd4pxGrid(t *testing.T) {
 	theme := &ui.Theme{Radius: 8, Spacing: 4}
 	spacing := spacingTokensFor(theme)
+	control := controlTokensFor(theme)
 	radius, card, metric := surfaceTokensFor(theme)
 
 	for name, v := range map[string]float32{
+		"Control.SM":        control.SM,
+		"Control.MD":        control.MD,
+		"Control.LG":        control.LG,
 		"Density.Page":      spacing.Page,
 		"Density.Section":   spacing.Section,
 		"Density.CardGap":   spacing.CardGap,

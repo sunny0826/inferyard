@@ -163,6 +163,7 @@ func stepTrack(c *ui.Context, number, title string, fn func()) {
 
 func selectField[T comparable](c *ui.Context, name, description string, selected *T, options []components.NativeSelectOption[T]) {
 	f := ui.Field(c, name, func() {
+		t := tokens(c)
 		current := ""
 		for _, option := range options {
 			if option.Value == *selected {
@@ -170,7 +171,11 @@ func selectField[T comparable](c *ui.Context, name, description string, selected
 				break
 			}
 		}
-		components.NativeSelect(c, selected, options).Trigger.Label(name).Value(current)
+		components.NativeSelect(c, selected, options).Trigger.
+			MinHeight(t.Control.MD).
+			Padding(t.Density.Tight, c.Theme().Space(6), t.Density.Tight, t.Density.Stack).
+			Radius(t.Radius.Control).
+			Label(name).Value(current)
 	})
 	if description != "" {
 		f.Description(description)
@@ -193,7 +198,9 @@ func segmentedControl[T comparable](c *ui.Context, name string, selected *T, opt
 	trackRadius := t.Radius.Floating
 	trackPad := t.Density.Tight
 	itemRadius := concentricRadius(trackRadius, trackPad)
+	segHeight := max(float32(20), t.Control.MD-trackPad*2-2)
 	track := seg.Track.AlignItems(ui.Center).Gap(t.Density.Tight).
+		MinHeight(t.Control.MD).
 		Padding(trackPad).Radius(trackRadius).
 		Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).Label(name).
 		Children(func() {
@@ -201,7 +208,8 @@ func segmentedControl[T comparable](c *ui.Context, name string, selected *T, opt
 				active := i == idx
 				item := seg.Segment(i).
 					AlignItems(ui.Center).Justify(ui.Center).
-					Padding(t.Density.Tight, t.Density.Stack).
+					MinHeight(segHeight).
+					Padding(0, t.Density.Stack).
 					Radius(itemRadius).
 					Label(option.Label).
 					Disabled(option.Disabled)
@@ -284,7 +292,8 @@ func searchableSelectField(c *ui.Context, name, description, placeholder, emptyF
 				border = t.Color.BorderFocus
 			}
 			applyMaterial(c, cb.Input.FillWidth().Label(name).Placeholder(placeholder).
-				Padding(t.Density.Inset, t.Density.Stack), materialControl).Border(1, border)
+				MinHeight(t.Control.MD).
+				Padding(c.Theme().Space(2.25), t.Density.Stack), materialControl).Border(1, border)
 
 			visible := options
 			if cb.Filtering() {

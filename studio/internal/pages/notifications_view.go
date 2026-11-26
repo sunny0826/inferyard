@@ -353,8 +353,7 @@ func (s *viewState) notificationInboxPanel(c *ui.Context) {
 			ui.Text(c, tr(c, "notif.title")).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).
 				Role(ui.RoleHeading).Level(3).Grow(1).SingleLine()
 			if len(inbox) > 0 {
-				if ghostButton(c, tr(c, "notif.mark_all_read")).FontSize(t.Type.Caption).
-					Padding(t.Density.Tight, t.Density.Row).Clicked() {
+				if inlineButton(c, components.ButtonGhost, tr(c, "notif.mark_all_read")).Clicked() {
 					s.markAllNotificationsRead()
 				}
 			}

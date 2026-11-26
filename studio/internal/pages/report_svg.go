@@ -341,7 +341,7 @@ func (s *viewState) reportSVGSection(c *ui.Context, report *reportViewState, run
 		if len(outputs) > 1 {
 			pickerLabel := tr(c, "reports.svg.select_case")
 			ui.Field(c, pickerLabel, func() {
-				picker := components.Select(c, &report.svgIndex)
+				picker := studioSelect(c, &report.svgIndex)
 				current := outputs[report.svgIndex].CaseID
 				picker.Trigger.Label(pickerLabel).Value(current).Children(func() {
 					ui.Text(c, current).SingleLine()

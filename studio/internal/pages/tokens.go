@@ -6,11 +6,18 @@ type designTokens struct {
 	Color     colorTokens
 	Density   spacingTokens
 	Type      typeTokens
+	Control   controlTokens
 	Radius    radiusTokens
 	Elevation elevationTokens
 	Card      cardTokens
 	Metric    metricTokens
 	State     stateColors
+}
+
+type controlTokens struct {
+	SM float32
+	MD float32
+	LG float32
 }
 
 type spacingTokens struct {
@@ -135,11 +142,20 @@ func tokens(c *ui.Context) designTokens {
 		Color:     colors,
 		Density:   spacingTokensFor(t),
 		Type:      typeTokensFor(t),
+		Control:   controlTokensFor(t),
 		Radius:    radius,
 		Elevation: elevationTokensFor(t.Dark),
 		Card:      card,
 		Metric:    metric,
 		State:     stateColorsFor(colors),
+	}
+}
+
+func controlTokensFor(t *ui.Theme) controlTokens {
+	return controlTokens{
+		SM: t.Space(7),
+		MD: t.Space(9),
+		LG: t.Space(10),
 	}
 }
 

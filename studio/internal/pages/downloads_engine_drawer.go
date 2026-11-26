@@ -82,7 +82,7 @@ func (s *viewState) engineDrawerConfigSection(
 		if len(releases) > 1 {
 			ui.Box(c.Key("downloads-drawer-ver-" + family.ID)).Children(func() {
 				chosenID := rel.ID
-				sel := components.Select(c, &chosenID)
+				sel := studioSelect(c, &chosenID)
 				sel.Trigger.Label(tr(c, "downloads.engine_drawer.select_version")).Value(rel.Version + " · " + rel.Distribution).Children(func() {
 					ui.Text(c, rel.Version+" · "+rel.Distribution).SingleLine()
 				})
@@ -105,7 +105,7 @@ func (s *viewState) engineDrawerConfigSection(
 		if len(platforms) > 1 {
 			ui.Box(c.Key("downloads-drawer-plat-" + family.ID)).Children(func() {
 				chosenPlat := activePlatform
-				sel := components.Select(c, &chosenPlat)
+				sel := studioSelect(c, &chosenPlat)
 				sel.Trigger.Label(tr(c, "downloads.engine_drawer.select_platform")).Value(core.PlatformLabel(activePlatform)).Children(func() {
 					ui.Text(c, core.PlatformLabel(activePlatform)).SingleLine()
 				})

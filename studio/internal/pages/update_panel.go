@@ -101,9 +101,7 @@ func (s *viewState) updateSettingsView(c *ui.Context) {
 
 func updateExternalButton(c *ui.Context, label string) ui.Element {
 	t := tokens(c)
-	b := components.Button(c, "", components.ButtonOutline).
-		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.Control).
-		MaxWidthPercent(100).AlignSelf(ui.Start).Label(label)
+	b := styleButtonSize(c, components.Button(c, "", components.ButtonOutline), sizeMD).Label(label)
 	b.Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 			ui.Text(c, label).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
@@ -327,16 +325,14 @@ func (s *viewState) updateReadyPrompt(c *ui.Context) {
 				}
 				ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Gap(t.Density.Stack).Padding(t.Density.Row, 0, 0, 0).Children(func() {
 					laterLabel := tr(c, "update.action.later")
-					laterBtn := components.Button(c, "", components.ButtonGhost).
-						Padding(t.Density.Row, t.Density.Stack).Radius(promptBtnRadius).Label(laterLabel)
+					laterBtn := styleButtonSize(c, components.Button(c, "", components.ButtonGhost), sizeMD).Radius(promptBtnRadius).Label(laterLabel)
 					laterBtn.Children(func() {
 						ui.Text(c, laterLabel).SingleLine().TextColor(t.Color.FgSecondary)
 					})
 					if laterBtn.Clicked() {
 						s.dismissUpdateReadyPrompt(st)
 					}
-					restartBtn := components.Button(c, tr(c, "update.action.update_and_restart"), components.ButtonPrimary).
-						Padding(t.Density.Row, t.Density.Stack).Radius(promptBtnRadius)
+					restartBtn := styleButtonSize(c, components.Button(c, tr(c, "update.action.update_and_restart"), components.ButtonPrimary), sizeMD).Radius(promptBtnRadius)
 					if restartBtn.Clicked() {
 						if s.effectiveUpdateWorkloads().Any() {
 							s.updateDialogOpen = true

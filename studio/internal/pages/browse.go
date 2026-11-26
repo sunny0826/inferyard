@@ -5,7 +5,6 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -34,7 +33,7 @@ var (
 func (s *viewState) pathField(c *ui.Context, label string, value *string, spec browseSpec) ui.Element {
 	return ui.Field(c, label, func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-			components.TextBox(c, value, components.TextBoxOptions{}).Grow(1)
+			studioTextBox(c, value).Grow(1)
 			button(c, tr(c, "browse.button")).Label(trf(c, "browse.button_label", "label", label)).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
 				s.browsePath(value, spec)
 			})

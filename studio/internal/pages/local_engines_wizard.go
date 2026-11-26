@@ -114,10 +114,7 @@ func (s *viewState) localEngineWizardView(c *ui.Context) {
 
 func wizardActionButton(c *ui.Context, visibleLabel, accessibleLabel string, active bool) ui.Element {
 	theme := c.Theme()
-	t := tokens(c)
-	b := components.Button(c, "", components.ButtonPrimary).
-		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.Control).
-		MaxWidthPercent(100).AlignSelf(ui.Start).Label(accessibleLabel)
+	b := styleButtonSize(c, components.Button(c, "", components.ButtonPrimary), sizeMD).Label(accessibleLabel)
 	showSpinner := delayedVisible(c, b, "btn-spinner", active)
 	b.Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(theme.Space(1.5)).Children(func() {
