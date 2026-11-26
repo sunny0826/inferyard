@@ -34,7 +34,7 @@ func (s *viewState) loadingView(c *ui.Context) {
 		return
 	}
 	host := ui.Column(c.Key("page-loading")).FillWidth().Gap(tokens(c).Density.Section)
-	show := delayedVisible(c, host, "page-load", !s.loaded)
+	show := delayedVisible(c, host, "page-load", !s.loaded || s.hydrating)
 	host.Children(func() {
 		if show {
 			pageLoadingSkeleton(c)

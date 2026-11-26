@@ -184,7 +184,7 @@ func (s *Service) registry() registryData {
 		rootsFor = s.registryRoots
 	}
 	roots := rootsFor(str(u.WorkspaceRoot))
-	data.engines = s.scanEngineBinariesCached(roots...)
+	data.engines = scanEngineBinaries(roots...)
 	engines := map[string]int{}
 	for i, e := range data.engines {
 		identity := e.path

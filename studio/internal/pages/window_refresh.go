@@ -7,6 +7,14 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
+type bgRefreshCache struct {
+	epoch    uint64
+	hasEpoch bool
+	history  core.RunHistoryResponse
+	reports  []core.ReportSummary
+	progress *inferyard.WorkspaceProgress
+}
+
 func (s *viewState) runRefreshUI(fn func()) {
 	if s.win != nil {
 		s.win.Update(fn)
@@ -20,9 +28,9 @@ func (s *viewState) runRefreshUI(fn func()) {
 }
 
 // bootstrap hydrates fast local state (Readiness, Settings, service snapshot,
-// in-memory tasks/downloads/device, and cached local Registry) so primary views
-// like Services, Library, and Settings paint immediately without waiting on
-// History/Reports disk scans or extra Python CLI subprocesses.
+// in-memory tasks/downloads/device, and local Registry) so primary views like
+// Services, Library, and Settings paint immediately without waiting on
+// History/Reports disk scans or progress subprocesses.
 func (s *viewState) bootstrap() {
 	if s.preview != nil || s.service == nil {
 		return
@@ -45,6 +53,8 @@ func (s *viewState) bootstrap() {
 	if s.ctx.Err() != nil {
 		return
 	}
+	probingServe := ready.CLI.Status == "ok"
+	svc, ctx := s.service, s.ctx
 	s.runRefreshUI(func() {
 		if s.ctx != nil && s.ctx.Err() != nil {
 			return
@@ -72,10 +82,29 @@ func (s *viewState) bootstrap() {
 		if s.initDir == "" {
 			s.initDir = emptyText(ready.Workspace.Path)
 		}
+		s.serveProbing = probingServe
 		s.hydrating = true
 		s.refreshing = true
 		s.loaded = true
 	})
+	if probingServe && s.win != nil {
+		go func() {
+			if ctx.Err() != nil {
+				return
+			}
+			supported := svc.ServeSupported(ctx)
+			if ctx.Err() != nil {
+				return
+			}
+			s.runRefreshUI(func() {
+				if !s.refreshBatchCurrent(settingsEpoch) {
+					return
+				}
+				s.serveSupported = supported
+				s.serveProbing = false
+			})
+		}()
+	}
 }
 
 func (s *viewState) refresh(full bool) {
@@ -96,15 +125,10 @@ func (s *viewState) refreshMask(mask refreshMask) {
 		return
 	}
 	settingsEpoch := s.settingsSequence()
-	var curHistory core.RunHistoryResponse
-	var curReports []core.ReportSummary
-	var curProgress *inferyard.WorkspaceProgress
-	s.runRefreshUI(func() {
-		s.refreshing = true
-		curHistory = s.history
-		curReports = s.reports
-		curProgress = s.progress
-	})
+	if !s.bgRefresh.hasEpoch || s.bgRefresh.epoch != settingsEpoch {
+		s.bgRefresh = bgRefreshCache{epoch: settingsEpoch, hasEpoch: true}
+	}
+	s.runRefreshUI(func() { s.refreshing = true })
 
 	device, tasks, downloads := s.service.Device(), s.service.RunTasks(), s.service.Downloads()
 	s.detailMu.Lock()
@@ -140,6 +164,9 @@ func (s *viewState) refreshMask(mask refreshMask) {
 	if mask&refreshHistory != 0 {
 		speedTasks, speedHistoryError = s.service.ContextSpeedHistory()
 		history, he = s.service.History()
+		if he == nil {
+			s.bgRefresh.history = history
+		}
 	}
 
 	var reports []core.ReportSummary
@@ -148,18 +175,13 @@ func (s *viewState) refreshMask(mask refreshMask) {
 	if mask&refreshReports != 0 {
 		_, reports, re = s.service.Reports()
 		if re == nil {
+			s.bgRefresh.reports = reports
 			reportExclusivities = s.service.ReportExclusivities(reports)
 		}
 	}
 
-	effHistory := curHistory
-	if mask&refreshHistory != 0 && he == nil {
-		effHistory = history
-	}
-	effReports := curReports
-	if mask&refreshReports != 0 && re == nil {
-		effReports = reports
-	}
+	effHistory := s.bgRefresh.history
+	effReports := s.bgRefresh.reports
 
 	var registry core.Registry
 	var modelEvidence map[string]core.ModelEvidenceSummary
@@ -179,9 +201,14 @@ func (s *viewState) refreshMask(mask refreshMask) {
 		if ready.CLI.Status == "ok" && ready.Workspace.Initialized {
 			progress, pe = s.service.ProgressCached(s.ctx)
 		}
+		if pe == nil {
+			s.bgRefresh.progress = progress.Progress
+		} else {
+			s.bgRefresh.progress = nil
+		}
 		dashboard = s.readDashboard(progress.Progress)
 	} else {
-		dashboard = s.readDashboard(curProgress)
+		dashboard = s.readDashboard(s.bgRefresh.progress)
 	}
 
 	serveSupported := s.service.ServeSupported(s.ctx)
@@ -189,7 +216,7 @@ func (s *viewState) refreshMask(mask refreshMask) {
 	if s.ctx.Err() != nil {
 		return
 	}
-	verifyVisible := false
+	svc := s.service
 	s.runRefreshUI(func() {
 		if s.ctx != nil && s.ctx.Err() != nil {
 			return
@@ -209,14 +236,17 @@ func (s *viewState) refreshMask(mask refreshMask) {
 		if !s.applyRefreshBatch(batch) {
 			return
 		}
+		if mask&refreshEngineVfy == 0 || svc == nil {
+			return
+		}
 		curPage := canonicalPageID(s.selected)
-		verifyVisible = curPage == "library" ||
+		verifyVisible := curPage == "library" ||
 			(curPage == "services" && (s.serviceParams.open || s.standalone.drawerOpen)) ||
 			(curPage == "benchmarks" && s.benchmarkNeedsEngineVerify())
+		if s.shouldVerifyEngines(mask == refreshAll, verifyVisible, time.Now()) {
+			go svc.VerifyEngines()
+		}
 	})
-	if mask&refreshEngineVfy != 0 && s.shouldVerifyEngines(mask == refreshAll, verifyVisible, time.Now()) {
-		s.service.VerifyEngines()
-	}
 }
 
 func (s *viewState) benchmarkNeedsEngineVerify() bool {
@@ -333,11 +363,12 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	if mask&refreshProgress != 0 {
 		s.progress = b.progress.Progress
 		s.applyDashboard(b.dashboard, b.progressError)
-	} else {
-		s.applyDashboard(b.dashboard, nil)
+	} else if s.progress != nil && b.dashboard.failure == nil {
+		s.startup, s.bindingStale = b.dashboard.startup, b.dashboard.stale
 	}
 	s.checks = s.service.EngineChecks()
 	s.serveSupported = b.serveSupported
+	s.serveProbing = false
 	s.applyServiceStateSnapshot(b.serviceSnap)
 	s.applyUpdateState(b.updateState)
 	s.applyCLIUpgradeState(b.cliUpgrade)

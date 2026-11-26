@@ -165,7 +165,7 @@ type viewState struct {
 	discovering, discoveryLoaded                                                        bool
 	registry                                                                            core.Registry
 	checks                                                                              core.EngineCheckOverview
-	serveSupported                                                                      bool
+	serveSupported, serveProbing                                                        bool
 	standalone                                                                          standaloneServeState
 	recentServices                                                                      []core.ServicePreset
 	exitedNotice                                                                        *core.ServiceExitNotice
@@ -224,6 +224,7 @@ type viewState struct {
 	settingsTab                                                                         int
 	buildInfo                                                                           func() core.BuildInfo
 	refreshMu                                                                           sync.Mutex
+	bgRefresh                                                                           bgRefreshCache
 	detailMu                                                                            sync.Mutex
 	snapshotMu                                                                          sync.Mutex
 	snapshotSeq                                                                         uint64

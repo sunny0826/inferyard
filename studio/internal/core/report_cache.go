@@ -16,8 +16,6 @@ type serviceCaches struct {
 	candidates   map[string]cachedCandidateDesc
 	runs         map[string]cachedRunScan
 	progress     *cachedProgressEntry
-	engineScan   *cachedEngineScan
-	speedHistory *cachedSpeedHistory
 }
 
 func (c *serviceCaches) clearAll() {
@@ -29,8 +27,6 @@ func (c *serviceCaches) clearAll() {
 	c.candidates = nil
 	c.runs = nil
 	c.progress = nil
-	c.engineScan = nil
-	c.speedHistory = nil
 }
 
 func (s *Service) evictProgressCache() {

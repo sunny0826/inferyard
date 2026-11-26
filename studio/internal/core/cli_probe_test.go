@@ -207,20 +207,80 @@ func TestProgressCachedInvalidatesOnWorkspaceArtifactChanges(t *testing.T) {
 		t.Fatalf("expected cached ProgressCached to execute CLI once, got %d", got)
 	}
 
-	// Creating a new report directory invalidates workspace signature and refreshes progress.
-	repDir := filepath.Join(workspace, "reports", "summary-1")
-	if err := os.MkdirAll(repDir, 0o700); err != nil {
+	// Creating a nested preflight file invalidates workspace signature and refreshes progress.
+	nestedPre := filepath.Join(workspace, "preflight", "lab", "day1", "check2")
+	if err := os.MkdirAll(nestedPre, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(repDir, "studio.json"), []byte(`{}`), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(nestedPre, "device-preflight.json"), []byte(`{}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	r3, apiErr := s.ProgressCached(context.Background())
 	if apiErr != nil || r3.Progress == nil || r3.Progress.NextAction != "prepare_candidate" {
-		t.Fatalf("ProgressCached after report change failed: resp=%+v err=%+v", r3, apiErr)
+		t.Fatalf("ProgressCached after nested preflight change failed: resp=%+v err=%+v", r3, apiErr)
 	}
 	if got := progressCalls.Load(); got != 2 {
-		t.Fatalf("expected artifact change to trigger 2nd progress call, got %d", got)
+		t.Fatalf("expected nested preflight change to trigger 2nd progress call, got %d", got)
+	}
+}
+
+func TestProgressCachedSkipsStoringWhenWorkspaceMutatesInFlight(t *testing.T) {
+	workspace := t.TempDir()
+	for _, sub := range []string{"bundles", "preflight", "candidates", "bound", "results", "reports"} {
+		if err := os.MkdirAll(filepath.Join(workspace, sub), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(workspace, "preparation.json"), []byte(`{"kind":"community_init.v1"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cliPath := fakeCLIFile(t)
+	settingsPath := filepath.Join(t.TempDir(), "settings.json")
+	raw, _ := json.Marshal(UserSettings{WorkspaceRoot: &workspace, InferyardPath: &cliPath})
+	if err := os.WriteFile(settingsPath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var progressCalls atomic.Int32
+	s, err := New(context.Background(), Options{
+		SettingsPath: settingsPath,
+		Execute: func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
+			if v, ok := version(args); ok {
+				return v, nil
+			}
+			if len(args) > 0 && args[0] == "progress" {
+				n := progressCalls.Add(1)
+				action := "device_check"
+				if n == 1 {
+					// Simulate a concurrent preflight landing mid-flight after CLI started.
+					preDir := filepath.Join(workspace, "preflight", "concurrent-1")
+					_ = os.MkdirAll(preDir, 0o700)
+					_ = os.WriteFile(filepath.Join(preDir, "device-preflight.json"), []byte(`{}`), 0o600)
+				} else {
+					action = "prepare_candidate"
+				}
+				body := `{"kind":"progress","progress_version":2,"workspace":` + mustJSONString(t, workspace) + `,"device_preflight":{"status":"ok","path":null},"bundles":[],"report":{"status":"missing","path":null,"runs":[]},"next_action":"` + action + `","next_command":null,"default_scope_complete":false}`
+				return inferyard.Execution{ExitCode: 0, Stdout: []byte(body)}, nil
+			}
+			return inferyard.Execution{ExitCode: 0}, nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { s.Shutdown(context.Background()) })
+
+	r1, err1 := s.ProgressCached(context.Background())
+	if err1 != nil || r1.Progress == nil || r1.Progress.NextAction != "device_check" {
+		t.Fatalf("1st ProgressCached failed: %+v err=%+v", r1, err1)
+	}
+	// Must NOT have stored stale "device_check" under the post-mutation signature.
+	r2, err2 := s.ProgressCached(context.Background())
+	if err2 != nil || r2.Progress == nil || r2.Progress.NextAction != "prepare_candidate" {
+		t.Fatalf("expected 2nd ProgressCached to recompute after mid-flight mutation, got %+v err=%+v", r2, err2)
+	}
+	if got := progressCalls.Load(); got != 2 {
+		t.Fatalf("expected 2 CLI calls across mid-flight mutation, got %d", got)
 	}
 }
 

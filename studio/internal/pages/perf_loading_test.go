@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -88,6 +89,10 @@ func TestBootstrapPaintsServicesWithoutWaitingOnProgressOrHistory(t *testing.T) 
 		t.Fatal(err)
 	}
 
+	serveSchema, err := os.ReadFile(filepath.Join("..", "..", "..", "cli", "schemas", "serve_plan.schema.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	var progressCalls, schemaCalls atomic.Int32
 	svc, err := core.New(context.Background(), core.Options{
 		SettingsPath: settingsPath,
@@ -102,7 +107,7 @@ func TestBootstrapPaintsServicesWithoutWaitingOnProgressOrHistory(t *testing.T) 
 			}
 			if len(args) == 2 && args[0] == "--schema" && args[1] == "serve_plan" {
 				schemaCalls.Add(1)
-				return inferyard.Execution{ExitCode: 0, Stdout: []byte(`{"properties":{"schema_version":{"const":3},"kind":{"const":"serve_plan"}}}`)}, nil
+				return inferyard.Execution{ExitCode: 0, Stdout: serveSchema}, nil
 			}
 			if len(args) >= 2 && args[0] == "service" && args[1] == "discover" {
 				return inferyard.Execution{ExitCode: 0, Stdout: []byte(`{"command":"service discover","status":"inspected","details":{"services":[]}}`)}, nil
@@ -125,10 +130,33 @@ func TestBootstrapPaintsServicesWithoutWaitingOnProgressOrHistory(t *testing.T) 
 	s.progress = nil
 	s.reports = nil
 
-	// Phase 1: bootstrap marks Services loaded immediately with 0 progress/--schema CLI spawns.
+	// Phase 1: bootstrap marks Services loaded immediately with 0 progress/--schema CLI spawns,
+	// and suppresses false "CLI outdated" block reasons while serveProbing is pending.
+	var queueMu sync.Mutex
+	var queued []func()
+	s.updateWindow = func(fn func()) {
+		queueMu.Lock()
+		queued = append(queued, fn)
+		queueMu.Unlock()
+	}
+	flushQueued := func() {
+		for {
+			queueMu.Lock()
+			if len(queued) == 0 {
+				queueMu.Unlock()
+				return
+			}
+			next := queued[0]
+			queued = queued[1:]
+			queueMu.Unlock()
+			next()
+		}
+	}
+
 	s.bootstrap()
-	if !s.loaded || !s.hydrating {
-		t.Fatalf("expected bootstrap to set loaded=true hydrating=true, got loaded=%v hydrating=%v", s.loaded, s.hydrating)
+	flushQueued()
+	if !s.loaded || !s.hydrating || !s.serveProbing {
+		t.Fatalf("expected bootstrap to set loaded=true hydrating=true serveProbing=true, got loaded=%v hydrating=%v serveProbing=%v", s.loaded, s.hydrating, s.serveProbing)
 	}
 	if progressCalls.Load() != 0 || schemaCalls.Load() != 0 {
 		t.Fatalf("bootstrap must not spawn progress or --schema CLI calls, got progress=%d schema=%d", progressCalls.Load(), schemaCalls.Load())
@@ -136,29 +164,84 @@ func TestBootstrapPaintsServicesWithoutWaitingOnProgressOrHistory(t *testing.T) 
 	if s.environmentMissing() {
 		t.Fatalf("expected initialized workspace and valid CLI not to report environmentMissing after bootstrap")
 	}
-
-	// While hydrating, Reports shows loading state instead of false empty guide.
-	s.selected = "reports"
-	rt := ui.NewTester(func(c *ui.Context) { s.reportsTableView(c) }, 960, 600)
-	rt.Frame()
-	if rt.HasText("新建测评") {
-		t.Fatalf("expected hydrating Reports view not to flash empty-state CTA before refreshAll completes, texts=%v", rt.Texts())
+	if reason := s.standaloneStartBlockReason(); reason != "" {
+		t.Fatalf("expected empty standaloneStartBlockReason while serveProbing, got %q", reason)
 	}
 
-	// Phase 2: refreshAll completes hydration and populates cached progress/serve support.
+	// While hydrating, contentView on Reports enters loadingView instead of flashing empty guide.
+	s.selected = "reports"
+	rt := ui.NewTester(func(c *ui.Context) { s.contentView(c) }, 960, 600)
+	rt.Frame()
+	if rt.HasText("新建测评") {
+		t.Fatalf("expected hydrating Reports contentView not to flash empty-state CTA before refreshAll completes, texts=%v", rt.Texts())
+	}
+
+	// Phase 2: refreshAll with asynchronous UI queue completes hydration and populates cached progress/serve support.
 	s.refreshMask(refreshAll)
-	if s.hydrating {
-		t.Fatal("expected refreshAll to clear hydrating")
+	flushQueued()
+	if s.hydrating || s.serveProbing || !s.serveSupported {
+		t.Fatalf("expected refreshAll to clear hydrating/serveProbing and set serveSupported=true, got hydrating=%v serveProbing=%v serveSupported=%v", s.hydrating, s.serveProbing, s.serveSupported)
 	}
 	if progressCalls.Load() != 1 || schemaCalls.Load() != 1 {
 		t.Fatalf("expected 1 progress and 1 --schema call on initial refreshAll, got progress=%d schema=%d", progressCalls.Load(), schemaCalls.Load())
 	}
 
-	// Subsequent service-state or progress refresh runs with 0 CLI subprocess spawns when workspace is unchanged.
+	// Seed a report summary & progress error, then verify async partial refreshes (assets.updated & services.state)
+	// neither drop report evidence via async UI races nor clear unresolved progress errors.
+	s.refreshFailure = "workspace_artifact_unreadable"
+	s.refreshFailureCode = "workspace_artifact_unreadable"
 	s.refreshMask(refreshCore)
+	flushQueued()
+	if s.refreshFailureCode != "workspace_artifact_unreadable" {
+		t.Fatalf("refreshCore must preserve unresolved progress failure code, got %q", s.refreshFailureCode)
+	}
 	s.refreshMask(refreshCore | refreshProgress)
+	flushQueued()
 	if progressCalls.Load() != 1 || schemaCalls.Load() != 1 {
 		t.Fatalf("expected 0 extra CLI spawns on cached refresh, got progress=%d schema=%d", progressCalls.Load(), schemaCalls.Load())
+	}
+}
+
+func TestAsyncWindowUpdatePartialRegistryRefreshPreservesReportEvidence(t *testing.T) {
+	svc, _ := reportFixtureService(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s := testState()
+	s.ctx = ctx
+	s.service = svc
+
+	var queueMu sync.Mutex
+	var queued []func()
+	s.updateWindow = func(fn func()) {
+		queueMu.Lock()
+		queued = append(queued, fn)
+		queueMu.Unlock()
+	}
+	flushQueued := func() {
+		for {
+			queueMu.Lock()
+			if len(queued) == 0 {
+				queueMu.Unlock()
+				return
+			}
+			next := queued[0]
+			queued = queued[1:]
+			queueMu.Unlock()
+			next()
+		}
+	}
+
+	s.refreshMask(refreshAll)
+	flushQueued()
+	if len(s.modelEvidence) == 0 {
+		t.Fatalf("expected initial refreshAll to populate modelEvidence from fixture report")
+	}
+
+	// Simulate assets.updated while updateWindow is queued asynchronously (not run inline inside refreshMask).
+	s.refreshMask(refreshCore | refreshRegistry)
+	flushQueued()
+	if len(s.modelEvidence) == 0 {
+		t.Fatalf("expected async partial registry refresh to preserve modelEvidence, got empty map")
 	}
 }
 

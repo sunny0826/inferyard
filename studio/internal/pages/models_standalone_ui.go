@@ -207,14 +207,14 @@ func (s *viewState) modelStandaloneActions(c *ui.Context, m core.ModelAsset) {
 				s.openEngineCardLog(logPath)
 			})
 		}
-		retryDisabled := s.standaloneStartBlockReason() != "" || s.busy || s.standalone.isPreparing(m.Name)
+		retryDisabled := s.standaloneStartBlockReason() != "" || s.serveProbing || s.busy || s.standalone.isPreparing(m.Name)
 		button(c, tr(c, "models.serve.action.retry")).Disabled(retryDisabled).OnClick(func() {
 			s.requestStandaloneStart(m, true)
 		})
 	default:
 		label := tr(c, "models.serve.action.start")
 		reason := s.standaloneStartBlockReason()
-		disabled := reason != "" || s.busy || s.standalone.isPreparing(m.Name)
+		disabled := reason != "" || s.serveProbing || s.busy || s.standalone.isPreparing(m.Name)
 		if disabled && reason != "" {
 			wrap := ui.Box(c)
 			wrap.Children(func() {

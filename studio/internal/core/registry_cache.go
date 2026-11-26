@@ -2,7 +2,6 @@ package core
 
 import (
 	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -12,93 +11,6 @@ import (
 	"sort"
 	"strings"
 )
-
-type cachedEngineScan struct {
-	signature string
-	entries   []registryEntry
-}
-
-func cloneRegistryEntries(in []registryEntry) []registryEntry {
-	if len(in) == 0 {
-		return []registryEntry{}
-	}
-	out := make([]registryEntry, len(in))
-	copy(out, in)
-	return out
-}
-
-func engineScanSignature(roots ...string) (string, bool) {
-	h := sha256.New()
-	walkOK := true
-	for _, root := range roots {
-		if root == "" {
-			continue
-		}
-		appendFileSig(h, "root:"+root, root)
-		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				if os.IsNotExist(err) {
-					return nil
-				}
-				walkOK = false
-				return nil
-			}
-			rel, relErr := filepath.Rel(root, path)
-			if relErr != nil {
-				return nil
-			}
-			if strings.Count(rel, string(filepath.Separator)) > 4 {
-				if d.IsDir() {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-			if d.IsDir() {
-				if info, infoErr := d.Info(); infoErr == nil {
-					_, _ = fmt.Fprintf(h, "d|%s|%d\n", path, info.ModTime().UnixNano())
-				}
-				return nil
-			}
-			lower := strings.ToLower(d.Name())
-			if lower == "llama-server" || lower == "llama-server.exe" || lower == "runtime-receipt.json" || lower == "engine-prepare.json" {
-				if info, infoErr := d.Info(); infoErr == nil {
-					_, _ = fmt.Fprintf(h, "f|%s|%d|%d|%d\n", path, info.Mode(), info.Size(), info.ModTime().UnixNano())
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			walkOK = false
-		}
-	}
-	if !walkOK {
-		return "", false
-	}
-	return hex.EncodeToString(h.Sum(nil)), true
-}
-
-func (s *Service) scanEngineBinariesCached(roots ...string) []registryEntry {
-	sig, ok := engineScanSignature(roots...)
-	if ok {
-		s.caches.mu.Lock()
-		if s.caches.engineScan != nil && s.caches.engineScan.signature == sig {
-			copied := cloneRegistryEntries(s.caches.engineScan.entries)
-			s.caches.mu.Unlock()
-			return copied
-		}
-		s.caches.mu.Unlock()
-	}
-	entries := scanEngineBinaries(roots...)
-	if ok {
-		s.caches.mu.Lock()
-		s.caches.engineScan = &cachedEngineScan{
-			signature: sig,
-			entries:   cloneRegistryEntries(entries),
-		}
-		s.caches.mu.Unlock()
-	}
-	return entries
-}
 
 func scanEngineBinaries(roots ...string) []registryEntry {
 	entries := []registryEntry{}
