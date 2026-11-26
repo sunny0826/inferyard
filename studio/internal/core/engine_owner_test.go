@@ -132,6 +132,7 @@ func TestOrphanExplicitStopAndRecheck(t *testing.T) {
 func TestConfigureEngineProcessInheritsHostEnvAndStripsLoaderInjection(t *testing.T) {
 	t.Setenv("HF_ENDPOINT", "https://hf-mirror.com")
 	t.Setenv("TOKENIZERS_PARALLELISM", "false")
+	t.Setenv("MODEL_METADATA", `{"homepage":"https://models.example","contact":"ops@example.org"}`)
 	t.Setenv("OPENAI_API_KEY", "sk-host-secret")
 	t.Setenv("PGPASSWORD", "pg-secret")
 	t.Setenv("HF_TOKEN", "hf_host_secret")
@@ -156,6 +157,9 @@ func TestConfigureEngineProcessInheritsHostEnvAndStripsLoaderInjection(t *testin
 	}
 	if !slices.Contains(cmd.Env, "TOKENIZERS_PARALLELISM=false") {
 		t.Fatalf("expected TOKENIZERS_PARALLELISM in cmd.Env, got %v", cmd.Env)
+	}
+	if !slices.Contains(cmd.Env, `MODEL_METADATA={"homepage":"https://models.example","contact":"ops@example.org"}`) {
+		t.Fatalf("expected MODEL_METADATA in cmd.Env, got %v", cmd.Env)
 	}
 	if !slices.Contains(cmd.Env, "CUDA_VISIBLE_DEVICES=0") {
 		t.Fatalf("expected CUDA_VISIBLE_DEVICES in cmd.Env, got %v", cmd.Env)

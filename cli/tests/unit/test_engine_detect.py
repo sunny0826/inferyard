@@ -83,6 +83,7 @@ def test_custom_env_vars_allowed_while_plaintext_credentials_blocked(tmp_path: P
         "CUDA_VISIBLE_DEVICES": "0,1",
         "TOKENIZERS_PARALLELISM": "false",
         "MAX_TOKENS": "4096",
+        "MODEL_METADATA": '{"homepage":"https://models.example","contact":"ops@example.org"}',
     }
     validated = installation.description(decl)
     assert validated["environment"]["TOKENIZERS_PARALLELISM"] == "false"
