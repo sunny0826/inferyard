@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -13,7 +14,10 @@ type reportViewState struct {
 	reference            string
 	index                *core.ReportIndex
 	failure              *core.ApiError
+	loading              bool
+	loadSeq              uint64
 	run                  int
+	requestsPage         int
 	svgIndex             int
 	svgStage             svgStageView
 	svgLoadedKey         string
@@ -31,22 +35,88 @@ func (s *viewState) readReport(reference string) (*core.ReportIndex, *core.ApiEr
 	return s.service.ReportIndex(reference)
 }
 
+func (s *viewState) hasCachedReportExclusivity(reference string) bool {
+	if s.reportExclusivities == nil || reference == "" {
+		return false
+	}
+	if _, ok := s.reportExclusivities[reference]; ok {
+		return true
+	}
+	base := filepath.Base(reference)
+	if base != "" && base != "." && base != "/" {
+		if _, ok := s.reportExclusivities[base]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *viewState) storeReportExclusivity(reference, status string) {
+	if reference == "" || status == "" {
+		return
+	}
+	if s.reportExclusivities == nil {
+		s.reportExclusivities = map[string]string{}
+	}
+	s.reportExclusivities[reference] = status
+	if base := filepath.Base(reference); base != "" && base != "." && base != "/" {
+		s.reportExclusivities[base] = status
+	}
+}
+
 func (s *viewState) openReport(reference string) {
 	if s.speed != nil {
 		s.speed.opened = nil
 	}
 	s.closeOpenedReport()
-	index, e := s.readReport(reference)
-	if s.preview == nil && s.service != nil && reference != "" {
-		if s.reportExclusivities == nil {
-			s.reportExclusivities = map[string]string{}
+	s.selected = "reports"
+
+	if s.preview != nil || (s.win == nil && s.updateWindow == nil) {
+		index, e := s.readReport(reference)
+		if s.preview == nil && s.service != nil && reference != "" && !s.hasCachedReportExclusivity(reference) {
+			s.storeReportExclusivity(reference, s.service.ReportExclusivity(reference))
 		}
-		if _, exists := s.reportExclusivities[reference]; !exists {
-			s.reportExclusivities[reference] = s.service.ReportExclusivity(reference)
+		s.openedReport = &reportViewState{reference: reference, index: index, failure: e}
+		return
+	}
+
+	if s.service != nil {
+		if cached, ok := s.service.CachedReportIndex(reference); ok {
+			s.openedReport = &reportViewState{reference: reference, index: cached}
+			if reference != "" && !s.hasCachedReportExclusivity(reference) {
+				svc := s.service
+				go func() {
+					excl := svc.ReportExclusivity(reference)
+					s.updateView(func() { s.storeReportExclusivity(reference, excl) })
+				}()
+			}
+			return
 		}
 	}
-	s.openedReport = &reportViewState{reference: reference, index: index, failure: e}
-	s.selected = "reports"
+
+	s.reportLoadSeq++
+	seq := s.reportLoadSeq
+	s.openedReport = &reportViewState{reference: reference, loading: true, loadSeq: seq}
+	needExcl := s.service != nil && reference != "" && !s.hasCachedReportExclusivity(reference)
+	svc := s.service
+	go func() {
+		index, e := s.readReport(reference)
+		var excl string
+		if needExcl && svc != nil {
+			excl = svc.ReportExclusivity(reference)
+		}
+		s.updateView(func() {
+			if excl != "" {
+				s.storeReportExclusivity(reference, excl)
+			}
+			if s.openedReport == nil || s.openedReport.loadSeq != seq {
+				return
+			}
+			s.openedReport.loading = false
+			s.openedReport.index = index
+			s.openedReport.failure = e
+		})
+	}()
 }
 
 func (s *viewState) reportBackLink(c *ui.Context) {
@@ -60,6 +130,17 @@ func (s *viewState) reportView(c *ui.Context) {
 	report := s.openedReport
 	id := displayName(report.reference)
 	s.reportBackLink(c)
+	if report.loading {
+		s.header(c, trf(c, "reports.detail.title_with_id", "id", id))
+		host := ui.Column(c.Key("report-loading-" + report.reference)).FillWidth().Gap(tokens(c).Density.Section)
+		show := delayedVisible(c, host, "report-load", true)
+		host.Children(func() {
+			if show {
+				pageLoadingSkeleton(c)
+			}
+		})
+		return
+	}
 	if report.failure != nil {
 		s.header(c, trf(c, "reports.detail.title_with_id", "id", id))
 		errorRecoveryBanner(c, report.failure, func() {
@@ -169,6 +250,7 @@ func (r *reportViewState) runPicker(c *ui.Context) {
 		})
 		if selectRun.Trigger.Changed() {
 			r.categories, r.requests = pageTableState{}, pageTableState{}
+			r.requestsPage = 0
 			r.svgIndex = 0
 			r.releaseSVGStage()
 		}

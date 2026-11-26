@@ -318,7 +318,11 @@ type viewState struct {
 	reportChoices                                                                       ui.Selection[any]
 	scrolls                                                                             map[string]*ui.ScrollState
 	casesTable, samplesTable                                                            pageTableState
-	resourceTablePage                                                                   int
+	casesTablePage, resourceTablePage                                                   int
+	resourceCache                                                                       resourceViewCache
+	reportLoadSeq                                                                       uint64
+	processesLoading                                                                    bool
+	processesLoadedAt                                                                   time.Time
 	settingsEpochMu                                                                     sync.Mutex
 	settingsEpoch                                                                       uint64
 	updateState                                                                         core.UpdateState
@@ -390,17 +394,28 @@ func (s *viewState) finishWork(message string, e *core.ApiError) {
 	}
 }
 func (s *viewState) selectTask(id string) {
+	if s.detailID != id {
+		s.casesTablePage = 0
+		s.resourceTablePage = 0
+	}
 	if s.preview != nil {
 		s.detailID, s.detail, s.detailError = id, s.preview.detail(id), nil
 		return
 	}
 	s.detailID = id
-	s.detail = nil
-	s.detailError = nil
 	s.detailMu.Lock()
 	s.requestedDetail = id
 	s.detailMu.Unlock()
-	go s.refresh(false)
+	if s.service != nil {
+		d, e := s.service.RunDetail(id)
+		if e == nil {
+			s.detail, s.detailError = &d, nil
+		} else {
+			s.detail, s.detailError = nil, e
+		}
+		return
+	}
+	s.detail, s.detailError = nil, nil
 }
 
 func (s *viewState) shellOptions(title string) sidebar.ShellOptions {

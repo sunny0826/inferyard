@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"testing"
@@ -122,9 +123,12 @@ func TestLocalQueueReusesExistingManagedServiceAcrossBundles(t *testing.T) {
 
 func TestDescribeCandidateCachesUnchangedCandidateFile(t *testing.T) {
 	f := newLocalQueueFixture(t, "polystrata")
+	if err := os.WriteFile(filepath.Join(f.workspace, "model"), []byte("gguf"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	path := f.candidates[0].CandidatePath
 	for range 3 {
-		if _, failure := f.s.DescribeCandidate(context.Background(), path); failure != nil {
+		if _, failure := f.s.describeCandidateCached(context.Background(), path); failure != nil {
 			t.Fatal(failure)
 		}
 	}
@@ -141,7 +145,7 @@ func TestDescribeCandidateCachesUnchangedCandidateFile(t *testing.T) {
 	if err := os.WriteFile(path, append(raw, '\n'), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, failure := f.s.DescribeCandidate(context.Background(), path); failure != nil {
+	if _, failure := f.s.describeCandidateCached(context.Background(), path); failure != nil {
 		t.Fatal(failure)
 	}
 	f.mu.Lock()

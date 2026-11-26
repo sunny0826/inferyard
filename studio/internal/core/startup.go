@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"inferyard/studio/internal/inferyard"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,6 +47,21 @@ func (s *Service) Startup(candidate string) (Startup, *ApiError) {
 	if failure != nil {
 		return Startup{}, failure
 	}
+	return startupFromDescription(description), nil
+}
+
+// StartupCached resolves candidate startup metadata using the fingerprinted display
+// cache. Use this only for read-only UI refresh; execution and admission paths must
+// call Startup or DescribeCandidate directly so CLI asset manifest checks run.
+func (s *Service) StartupCached(candidate string) (Startup, *ApiError) {
+	description, failure := s.describeCandidateCached(s.ctx, candidate)
+	if failure != nil {
+		return Startup{}, failure
+	}
+	return startupFromDescription(description), nil
+}
+
+func startupFromDescription(description inferyard.CandidateDescription) Startup {
 	launch := description.Launch
 	modelPath := description.Assets.Model.Path
 	if modelPath == "" {
@@ -77,7 +93,7 @@ func (s *Service) Startup(candidate string) (Startup, *ApiError) {
 			break
 		}
 	}
-	return result, nil
+	return result
 }
 
 func extractServedModelFromArgs(args []string) string {

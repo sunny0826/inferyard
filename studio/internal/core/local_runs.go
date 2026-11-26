@@ -55,7 +55,7 @@ func (s *Service) StartCandidateRuns(req CandidateRunsRequest) ([]RunTask, *ApiE
 		if st, err := os.Stat(path); err == nil {
 			size, modTime, fingerprinted = st.Size(), st.ModTime().UnixNano(), true
 		}
-		description, failure := s.DescribeCandidate(s.ctx, path)
+		description, failure := s.describeCandidateCached(s.ctx, path)
 		if failure != nil {
 			return nil, failure
 		}

@@ -231,7 +231,7 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 	}
 	if args[0] == "report" {
 		path := value(flags, "--out")
-		report, err := reportSummary(path)
+		report, err := s.reportSummary(path)
 		if err != nil {
 			return result, Err("internal_error")
 		}
