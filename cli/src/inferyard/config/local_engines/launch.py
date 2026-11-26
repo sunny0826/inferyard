@@ -4,6 +4,7 @@ from importlib.resources import files
 from pathlib import Path
 
 from inferyard.platforms.local_engines.detect_polystrata import resolve_polystrata_server_script
+from inferyard.platforms.local_engines.startup import normalize_legacy_startup_args
 from inferyard.provisioning.preparation_io import PreparationError
 
 
@@ -128,8 +129,11 @@ def description(config, installation):
             "served_model": engine["served_model"],
             "requires_loaded_instance": True,
         }
+    normalized_args = normalize_legacy_startup_args(
+        engine["family"], list(engine["startup_args"])
+    )
     return {
         "kind": "direct_process",
         **common,
-        "argv": [installation["executable"], *engine["startup_args"]],
+        "argv": [installation["executable"], *normalized_args],
     }

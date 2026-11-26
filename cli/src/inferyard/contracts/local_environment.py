@@ -6,7 +6,14 @@ from pathlib import PurePosixPath, PureWindowsPath
 from inferyard.errors import ContractError
 
 _ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\Z")
-_SECRET_ENV_SUBSTRINGS = ("API_KEY", "TOKEN", "PASSWORD", "SECRET")
+_SECRET_KEY_PATTERN = re.compile(
+    r"(?:^|_)(?:API_KEY|ACCESS_KEY|SECRET_KEY|PRIVATE_KEY|AUTH_KEY|BEARER|PASSWORD|PASSWD|SECRET|TOKEN)(?:$|_)"
+)
+_URL_AUTHORITY_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://([^\s/,;]+)")
+
+
+def _has_embedded_url_credentials(value: str) -> bool:
+    return any("@" in match.group(1) for match in _URL_AUTHORITY_PATTERN.finditer(value))
 
 
 def _require(condition, message="invalid declared process environment"):
@@ -42,7 +49,9 @@ def _validate_env_map(environment):
             and "\x00" not in value
         )
         upper = key.upper()
-        if any(part in upper for part in _SECRET_ENV_SUBSTRINGS) and value.strip():
+        if (
+            _SECRET_KEY_PATTERN.search(upper) is not None and value.strip()
+        ) or _has_embedded_url_credentials(value):
             raise ContractError(
                 "installation.environment",
                 "plaintext credentials are not allowed in declared process environment",

@@ -66,19 +66,19 @@ def _read_pyvenv_cfg(cfg_path: Path) -> dict[str, str] | None:
                 norm_key = key.strip().lower()
                 if norm_key in values:
                     return None
-                values[norm_key] = value.strip().lower()
+                values[norm_key] = value.strip()
         return values
     except (OSError, UnicodeError):
         return None
 
 
-def _site_packages_dirs(venv_dir: Path) -> list[Path]:
+def _env_site_dirs(env_dir: Path) -> list[Path]:
     found: list[Path] = []
-    win_site = venv_dir / "Lib" / "site-packages"
+    win_site = env_dir / "Lib" / "site-packages"
     if win_site.is_dir():
         found.append(win_site)
     for lib_name in ("lib", "lib64"):
-        lib_dir = venv_dir / lib_name
+        lib_dir = env_dir / lib_name
         if not lib_dir.is_dir():
             continue
         try:
@@ -92,6 +92,24 @@ def _site_packages_dirs(venv_dir: Path) -> list[Path]:
         except OSError:
             continue
     return sorted(found)
+
+
+def _site_packages_dirs(venv_dir: Path) -> list[Path]:
+    found = _env_site_dirs(venv_dir)
+    cfg = _read_pyvenv_cfg(venv_dir / "pyvenv.cfg")
+    if cfg and cfg.get("include-system-site-packages", "").lower() == "true":
+        home_raw = cfg.get("home", "")
+        if home_raw:
+            home_path = Path(home_raw)
+            if home_path.is_absolute():
+                roots = [home_path]
+                if home_path.name.lower() in ("bin", "scripts"):
+                    roots.insert(0, home_path.parent)
+                for base_root in roots:
+                    for extra in _env_site_dirs(base_root):
+                        if extra not in found:
+                            found.append(extra)
+    return found
 
 
 def _has_package_in_site(site: Path, family: str) -> bool:
@@ -112,10 +130,19 @@ def _has_package_in_site(site: Path, family: str) -> bool:
     return False
 
 
+def _is_python_binary_name(name: str) -> bool:
+    low = name.lower()
+    return low.startswith("python") and "config" not in low
+
+
 def _pick_venv_python(venv_dir: Path, preferred: Path | None = None) -> Path | None:
     candidates: list[Path] = []
     allowed_dirs = {venv_dir / "bin", venv_dir / "Scripts", venv_dir}
-    if preferred is not None and preferred.parent in allowed_dirs:
+    if (
+        preferred is not None
+        and preferred.parent in allowed_dirs
+        and _is_python_binary_name(preferred.name)
+    ):
         candidates.append(preferred)
     for candidate in (
         venv_dir / "bin" / "python",
@@ -251,13 +278,17 @@ def _collect_extra_targets(
                 llama_paths.append(path)
             elif name == "lms":
                 lms_paths.append(path)
-            elif name.startswith("python") or _is_python_env_dir(path.parent.parent):
+            elif _is_python_binary_name(name):
                 env_root = (
                     path.parent.parent
                     if path.parent.name in ("bin", "Scripts")
                     else path.parent
                 )
                 venv_targets.append((env_root, path))
+            elif _is_python_env_dir(path.parent.parent):
+                venv_targets.append((path.parent.parent, None))
+            elif _is_python_env_dir(path.parent):
+                venv_targets.append((path.parent, None))
         elif path.is_dir():
             inspect_dir(path, recurse_children=True)
     return llama_paths, lms_paths, venv_targets

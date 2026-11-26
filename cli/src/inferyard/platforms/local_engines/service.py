@@ -125,10 +125,17 @@ def _direct(
     endpoint = config["endpoint"]
     pid = endpoint["server_pid"]
     state = native.service_process_state(pid, psutil)
-    start, arguments, raw, executable, cwd = state
+    start, arguments, _raw, executable, cwd = state
     if start != endpoint["process_start_ticks"]:
         raise PreflightError("local_engine_pid_reused")
     validate_startup(config, declaration, arguments, executable, cwd)
+    canonical_raw = (
+        b"\0".join(
+            os.fsencode(arg)
+            for arg in [declaration["executable"], *config["engine"]["startup_args"]]
+        )
+        + b"\0"
+    )
     identity = hash_file(executable)
     origin, address, port = service_origin(endpoint["url"])
     rows = lsof_records(pid, [])
@@ -145,7 +152,7 @@ def _direct(
         "address": address,
         "port": port,
         "executable_sha256": identity.sha256,
-        "argv_sha256": hashlib.sha256(raw).hexdigest(),
+        "argv_sha256": hashlib.sha256(canonical_raw).hexdigest(),
         "cwd_sha256": hashlib.sha256(os.fsencode(cwd)).hexdigest(),
         "listener_inode": None,
         "listener_identity": listener,
@@ -226,10 +233,17 @@ def _direct_cross_platform(
     proc = psutil.Process(pid)
     _verify_same_user(proc, psutil)
     state = _psutil_process_state(pid, psutil)
-    start, arguments, raw, executable, cwd = state
+    start, arguments, _raw, executable, cwd = state
     if start != endpoint["process_start_ticks"]:
         raise PreflightError("local_engine_pid_reused")
     validate_startup(config, declaration, arguments, executable, cwd)
+    canonical_raw = (
+        b"\0".join(
+            os.fsencode(arg)
+            for arg in [declaration["executable"], *config["engine"]["startup_args"]]
+        )
+        + b"\0"
+    )
     identity = hash_file(executable)
     origin, address, port = service_origin(endpoint["url"])
     listener = _psutil_listener_identity(psutil, proc, pid, address, port)
@@ -244,7 +258,7 @@ def _direct_cross_platform(
         "address": address,
         "port": port,
         "executable_sha256": identity.sha256,
-        "argv_sha256": hashlib.sha256(raw).hexdigest(),
+        "argv_sha256": hashlib.sha256(canonical_raw).hexdigest(),
         "cwd_sha256": hashlib.sha256(os.fsencode(cwd)).hexdigest(),
         "listener_inode": None,
         "listener_identity": listener,

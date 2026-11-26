@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -33,6 +34,27 @@ var blockedEngineLoaderEnv = map[string]bool{
 	"PYTHONSTARTUP":         true,
 }
 
+var (
+	secretEngineEnvPattern = regexp.MustCompile(`(?:^|_)(?:API_KEY|ACCESS_KEY|SECRET_KEY|PRIVATE_KEY|AUTH_KEY|BEARER|PASSWORD|PASSWD|SECRET|TOKEN)(?:$|_)`)
+	urlAuthorityPattern    = regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://([^\s/,;]+)`)
+)
+
+func isBlockedEngineEnv(key, value string) bool {
+	upper := strings.ToUpper(key)
+	if blockedEngineLoaderEnv[upper] {
+		return true
+	}
+	if secretEngineEnvPattern.MatchString(upper) && strings.TrimSpace(value) != "" {
+		return true
+	}
+	for _, match := range urlAuthorityPattern.FindAllStringSubmatch(value, -1) {
+		if len(match) > 1 && strings.Contains(match[1], "@") {
+			return true
+		}
+	}
+	return false
+}
+
 func configureEngineProcess(cmd *exec.Cmd, startup Startup) error {
 	if !startup.Local {
 		if startup.WorkingDirectory != "" {
@@ -44,13 +66,13 @@ func configureEngineProcess(cmd *exec.Cmd, startup Startup) error {
 	environment := map[string]string{}
 	for _, pair := range os.Environ() {
 		key, value, ok := strings.Cut(pair, "=")
-		if !ok || key == "" || blockedEngineLoaderEnv[strings.ToUpper(key)] {
+		if !ok || key == "" || isBlockedEngineEnv(key, value) {
 			continue
 		}
 		environment[key] = value
 	}
 	for key, value := range startup.Environment {
-		if blockedEngineLoaderEnv[strings.ToUpper(key)] {
+		if isBlockedEngineEnv(key, value) {
 			continue
 		}
 		environment[key] = value

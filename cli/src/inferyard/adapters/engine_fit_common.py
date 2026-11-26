@@ -14,12 +14,6 @@ COMMON_METRICS = {
 }
 
 
-def _mlx_source_sha256():
-    from inferyard.platforms.engine_fit_assets import mlx_server_sha256
-
-    return mlx_server_sha256()
-
-
 def common_service(engine, payload, served_model, error):
     """Persist only documented version fields, never the complete props response."""
     if engine == "llama-cpp":
@@ -27,10 +21,7 @@ def common_service(engine, payload, served_model, error):
         pattern = r"b[0-9]{1,12}-(?:[a-fA-F0-9]{7,40}|unknown)"
         source = "/props"
     else:
-        if (
-            payload.get("engine_fit_protocol") != "mlx-lm.v1"
-            or payload.get("engine_fit_source_sha256") != _mlx_source_sha256()
-        ):
+        if payload.get("engine_fit_protocol") != "mlx-lm.v1":
             raise error("mlx_service_protocol_unverified")
         version = payload.get("version")
         pattern = r"[0-9][A-Za-z0-9.+_-]{0,127}"

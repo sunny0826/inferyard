@@ -1,11 +1,41 @@
 """Permissive startup validation preserving model/port binding and credential hygiene."""
 
+from importlib.resources import files
 from pathlib import Path
 
 from inferyard.contracts.engine_profiles import DIRECTORY_FAMILIES
 from inferyard.contracts.local_environment import parse_absolute_path
 from inferyard.errors import PreflightError
-from inferyard.platforms.engine_fit_entrypoints import _options
+from inferyard.platforms.engine_fit_entrypoints import _options, reject_credential_arguments
+
+_PYTHON_INTERPRETER_FLAGS = ("-u", "-B", "-E", "-I", "-s", "-S", "-P", "-O", "-OO")
+
+
+def _is_legacy_bootstrap_path(raw: str, *, bootstrap_path: str | None = None) -> bool:
+    return (
+        (bootstrap_path is not None and raw == bootstrap_path)
+        or raw.endswith("/data/local_engine/bootstrap.py")
+        or raw.endswith("\\data\\local_engine\\bootstrap.py")
+    )
+
+
+def normalize_legacy_startup_args(family: str, args: list[str]) -> list[str]:
+    if family not in DIRECTORY_FAMILIES:
+        return list(args)
+    cursor = 0
+    while cursor < len(args) and args[cursor] in _PYTHON_INTERPRETER_FLAGS:
+        cursor += 1
+    rest = args[cursor:]
+    if len(rest) < 2 or not _is_legacy_bootstrap_path(rest[0]) or rest[1] != family:
+        return list(args)
+    tail = rest[2:]
+    if family == "mlx-lm":
+        entry = str(files("inferyard").joinpath("data/local_engine/mlx_server.py"))
+        return [entry, *tail]
+    module = (
+        "vllm.entrypoints.openai.api_server" if family == "vllm" else "sglang.launch_server"
+    )
+    return ["-m", module, *tail]
 
 
 def check_environment(actual, expected, *, allowed_extras=None):
@@ -76,33 +106,21 @@ def validate_startup(config, declaration, arguments, executable, cwd):
         raise PreflightError("local_engine_startup_mismatch")
     if not _executable_matches(engine["family"], executable, Path(declaration["executable"])):
         raise PreflightError("local_engine_executable_mismatch")
-    if not arguments or arguments[1:] != engine["startup_args"]:
+    if not arguments or normalize_legacy_startup_args(
+        engine["family"], list(arguments[1:])
+    ) != normalize_legacy_startup_args(engine["family"], list(engine["startup_args"])):
         raise PreflightError("local_engine_startup_mismatch")
     validate_arguments(config)
 
 
 def _strip_python_entrypoint(family: str, args: list[str], *, bootstrap_path=None) -> list[str]:
     cursor = 0
-    while cursor < len(args) and args[cursor] in (
-        "-u",
-        "-B",
-        "-E",
-        "-I",
-        "-s",
-        "-S",
-        "-P",
-        "-O",
-        "-OO",
-    ):
+    while cursor < len(args) and args[cursor] in _PYTHON_INTERPRETER_FLAGS:
         cursor += 1
     rest = args[cursor:]
     if not rest:
         raise PreflightError("local_engine_entrypoint_mismatch")
-    if len(rest) >= 2 and (
-        (bootstrap_path is not None and rest[0] == bootstrap_path)
-        or rest[0].endswith("/data/local_engine/bootstrap.py")
-        or rest[0].endswith("\\data\\local_engine\\bootstrap.py")
-    ):
+    if len(rest) >= 2 and _is_legacy_bootstrap_path(rest[0], bootstrap_path=bootstrap_path):
         if rest[1] != family:
             raise PreflightError("local_engine_entrypoint_mismatch")
         return rest[2:]
@@ -156,13 +174,7 @@ def validate_arguments(config, *, bootstrap_path=None):
     if family in DIRECTORY_FAMILIES:
         tail = _strip_python_entrypoint(family, args, bootstrap_path=bootstrap_path)
         if family == "vllm" and tail and not tail[0].startswith("-"):
-            _options(tail[1:], model_options={"--dummy"}, reject_credentials=True) if False else None
-            # Check credentials across remaining args and take positional model
-            for raw_arg in tail[1:]:
-                opt, _, val = raw_arg.partition("=")
-                low = opt.strip().lower()
-                if low in {"--api-key", "--api-key-file", "--password", "--token", "-hft", "--hf-token"} or low.startswith("sk-") or val.strip().lower().startswith("sk-"):
-                    raise PreflightError("engine_credentials_forbidden")
+            reject_credential_arguments(tail[1:])
             model = tail[0]
         else:
             option = "--model-path" if family == "sglang" else "--model"

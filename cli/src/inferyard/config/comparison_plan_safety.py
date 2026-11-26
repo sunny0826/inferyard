@@ -49,7 +49,7 @@ def comparison_safety(configs: list[JSONRecord]) -> JSONRecord | None:
         "interval_seconds": min(policy["interval_seconds"] for policy in policies),
         "max_temperature_celsius": _max_temperature(policies, overrides),
         "require_temperature": all(policy["require_temperature"] for policy in policies),
-        "check_environment": all(policy["check_environment"] for policy in policies),
+        "check_environment": any(policy["check_environment"] for policy in policies),
         "max_external_cpu_percent": None,
     }
 

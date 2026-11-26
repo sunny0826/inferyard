@@ -10,19 +10,26 @@ _CREDENTIAL_FLAGS = frozenset(
 )
 
 
-def _options(arguments, _valued=None, _flags=None, model_options=(), *, reject_credentials=False):
-    models = []
-    cursor = 0
-    while cursor < len(arguments):
-        raw_arg = arguments[cursor]
-        option, equal, value = raw_arg.partition("=")
+def reject_credential_arguments(arguments) -> None:
+    for raw_arg in arguments:
+        option, _, value = raw_arg.partition("=")
         lowered = option.strip().lower()
-        if reject_credentials and (
+        if (
             lowered in _CREDENTIAL_FLAGS
             or lowered.startswith("sk-")
             or value.strip().lower().startswith("sk-")
         ):
             raise PreflightError("engine_credentials_forbidden")
+
+
+def _options(arguments, _valued=None, _flags=None, model_options=(), *, reject_credentials=False):
+    if reject_credentials:
+        reject_credential_arguments(arguments)
+    models = []
+    cursor = 0
+    while cursor < len(arguments):
+        raw_arg = arguments[cursor]
+        option, equal, value = raw_arg.partition("=")
         if option in model_options:
             if not equal:
                 cursor += 1
@@ -85,6 +92,7 @@ def startup_binding(engine, arguments, executable, cwd):
     _ = executable
     if not arguments:
         raise PreflightError("engine_fit_arguments_unavailable")
+    reject_credential_arguments(arguments[1:])
     extras = {}
     if engine == "llama-cpp":
         model = _options(arguments[1:], model_options={"-m", "--model"})

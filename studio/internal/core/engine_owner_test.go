@@ -131,6 +131,10 @@ func TestOrphanExplicitStopAndRecheck(t *testing.T) {
 
 func TestConfigureEngineProcessInheritsHostEnvAndStripsLoaderInjection(t *testing.T) {
 	t.Setenv("HF_ENDPOINT", "https://hf-mirror.com")
+	t.Setenv("TOKENIZERS_PARALLELISM", "false")
+	t.Setenv("OPENAI_API_KEY", "sk-host-secret")
+	t.Setenv("HF_TOKEN", "hf_host_secret")
+	t.Setenv("HTTPS_PROXY", "http://user:pass@proxy.example.com:8080")
 	t.Setenv("DYLD_INSERT_LIBRARIES", "/tmp/evil.dylib")
 	t.Setenv("LD_PRELOAD", "/tmp/evil.so")
 
@@ -149,14 +153,20 @@ func TestConfigureEngineProcessInheritsHostEnvAndStripsLoaderInjection(t *testin
 	if !slices.Contains(cmd.Env, "HF_ENDPOINT=https://hf-mirror.com") {
 		t.Fatalf("expected HF_ENDPOINT in cmd.Env, got %v", cmd.Env)
 	}
+	if !slices.Contains(cmd.Env, "TOKENIZERS_PARALLELISM=false") {
+		t.Fatalf("expected TOKENIZERS_PARALLELISM in cmd.Env, got %v", cmd.Env)
+	}
 	if !slices.Contains(cmd.Env, "CUDA_VISIBLE_DEVICES=0") {
 		t.Fatalf("expected CUDA_VISIBLE_DEVICES in cmd.Env, got %v", cmd.Env)
 	}
 	for _, entry := range cmd.Env {
 		if entry == "DYLD_INSERT_LIBRARIES=/tmp/evil.dylib" ||
 			entry == "DYLD_INSERT_LIBRARIES=/tmp/override.dylib" ||
-			entry == "LD_PRELOAD=/tmp/evil.so" {
-			t.Fatalf("unexpected loader injection variable in cmd.Env: %s", entry)
+			entry == "LD_PRELOAD=/tmp/evil.so" ||
+			entry == "OPENAI_API_KEY=sk-host-secret" ||
+			entry == "HF_TOKEN=hf_host_secret" ||
+			entry == "HTTPS_PROXY=http://user:pass@proxy.example.com:8080" {
+			t.Fatalf("unexpected blocked/secret variable in cmd.Env: %s", entry)
 		}
 	}
 }
