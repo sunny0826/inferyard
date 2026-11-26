@@ -131,7 +131,10 @@ class HostLock:
 
     def clean(self):
         if self.state:
-            self.write({**self.state, "dirty": False})
+            updated = {**self.state, "dirty": False}
+            if self.local_service is not None:
+                updated["local_service"] = self.local_service
+            self.write(updated)
 
     def verify_manual_recovery(self, token, note, new_endpoint):
         old = self.state

@@ -295,6 +295,54 @@ def test_local_host_admit_reuses_clean_service_and_require_gone_guards_dirty(
                 lambda pid: 654321,
             )
 
+    # Dirty lock recovery: admit(B) must not overwrite A's persisted local_service before verify_manual_recovery.
+    svc_a = {"pid": 901, "start_ticks": 111, "workers": [{"pid": 902, "start_ticks": 222}]}
+    svc_b = {"pid": 903, "start_ticks": 333, "workers": []}
+    id_a = {"local_engine": {"binding": {"service": svc_a}}}
+    id_b = {"local_engine": {"binding": {"service": svc_b}}}
+    ep_a = {"url": "http://127.0.0.1:49100", "server_pid": 901, "process_start_ticks": 111}
+    ep_b = {"url": "http://127.0.0.1:49101", "server_pid": 903, "process_start_ticks": 333}
+
+    with lock_mod.HostLock() as dirty_setup:
+        admit(dirty_setup, config, {"bundle_id": "zh-core"}, id_a, lambda pid: 111)
+        dirty_setup.dirty("run-a", ep_a, "req-1")
+        token = dirty_setup.state["dirty_token"]
+
+    # Case 1: A's main PID exited, but A's worker (902) is still alive -> recovery rejected & A preserved on disk.
+    def _worker_still_alive(pid: int) -> int:
+        if pid == 902:
+            return 222
+        if pid == 903:
+            return 333
+        raise PreflightError("service_process_unavailable")
+
+    monkeypatch.setattr(lock_mod, "process_start_ticks", _worker_still_alive)
+    with lock_mod.HostLock() as failed_rec:
+        admit(failed_rec, config, {"bundle_id": "zh-core"}, id_b, _worker_still_alive)
+        with pytest.raises(PreflightError, match="previous_local_process_still_alive"):
+            failed_rec.verify_manual_recovery(token, "stopped A", ep_b)
+
+    with lock_mod.HostLock() as inspect_after_fail:
+        assert inspect_after_fail.state["dirty"] is True
+        assert inspect_after_fail.state["local_service"]["service"] == svc_a
+
+    # Case 2: Both A and A's worker exited, B is alive -> recovery succeeds and clean() persists B.
+    def _only_b_alive(pid: int) -> int:
+        if pid == 903:
+            return 333
+        raise PreflightError("service_process_unavailable")
+
+    monkeypatch.setattr(lock_mod, "process_start_ticks", _only_b_alive)
+    with lock_mod.HostLock() as ok_rec:
+        admit(ok_rec, config, {"bundle_id": "zh-core"}, id_b, _only_b_alive)
+        rec = ok_rec.verify_manual_recovery(token, "stopped A and worker", ep_b)
+        assert rec["old_process_gone"] is True
+        ok_rec.clean()
+
+    with lock_mod.HostLock() as inspect_after_ok:
+        assert inspect_after_ok.state["dirty"] is False
+        assert inspect_after_ok.state["local_service"]["service"] == svc_b
+
 
 def test_legacy_probe_token_budgets_remain_readable() -> None:
     from inferyard.evidence.token_budgets import DEFINITION, validate_inventory
