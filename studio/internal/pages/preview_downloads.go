@@ -125,12 +125,13 @@ func (p *previewSession) tickPolystrataSetup(id string, fail bool, tick int) {
 				apiErr := core.Err("polystrata_preflight_blocked")
 				apiErr.Details = map[string]any{
 					"blockers": []map[string]any{{
-						"code":        "xcode_clt_missing",
+						"code":        "polystrata_xcode_clt_missing",
 						"message":     l10n.TR("preview.polystrata.blocker.xcode_clt"),
 						"fix_command": "xcode-select --install",
 					}},
 				}
 				task.State, task.Error, task.FinishedAt = "failed", apiErr, previewValue(p.timestamp())
+				p.recordPreviewEvent("download.state", map[string]any{"task": *task})
 				return
 			}
 			switch tick {
@@ -151,6 +152,7 @@ func (p *previewSession) tickPolystrataSetup(id string, fail bool, tick int) {
 				task.InstallationPath = previewValue(instPath)
 				task.ModelConfigPath = previewValue(cfgPath)
 				p.installDownloadedAsset(task)
+				p.recordPreviewEvent("download.state", map[string]any{"task": *task})
 				return
 			}
 			p.tickPolystrataSetup(id, fail, tick+1)
@@ -169,6 +171,7 @@ func (p *previewSession) tickDownload(id string, fail bool, tick int) {
 			}
 			if fail && tick == 1 {
 				task.State, task.Error, task.FinishedAt = "failed", core.Err("download_failed"), previewValue(p.timestamp())
+				p.recordPreviewEvent("download.state", map[string]any{"task": *task})
 				return
 			}
 			if task.Kind == "model" {
@@ -181,6 +184,7 @@ func (p *previewSession) tickDownload(id string, fail bool, tick int) {
 			}
 			task.State, task.FinishedAt = "done", previewValue(p.timestamp())
 			p.installDownloadedAsset(task)
+			p.recordPreviewEvent("download.state", map[string]any{"task": *task})
 			return
 		}
 	})
@@ -294,7 +298,7 @@ func (p *previewSession) tickPolystrataModelPreview(id string) {
 			delta := int64(22502441)
 			if task.TotalBytes != nil && *task.TotalBytes > 0 {
 				if task.DownloadedBytes+delta >= *task.TotalBytes {
-					task.DownloadedBytes = 4456028569
+					task.DownloadedBytes = 7856028569
 				} else {
 					task.DownloadedBytes += delta
 				}
@@ -315,7 +319,7 @@ func (p *previewSession) downloadLogTail(taskID string) string {
 			l10n.TR("preview.polystrata.log.line5"),
 			l10n.TR("preview.polystrata.log.line6"),
 			l10n.TR("preview.polystrata.log.line7"),
-			"07:36:35 [download] Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf 4.15 / 35.04 GiB (21.46 MiB/s)",
+			"07:36:35 [download] Qwen3.8-Flash-Next-Q2_0-00001-of-00002.strata 7.32 / 61.84 GiB (21.46 MiB/s)",
 		}, "\n")
 	}
 	return "[preview] setup_engine: building strata runtime\n[preview] downloading_model: waiting for weights"

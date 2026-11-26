@@ -156,6 +156,8 @@
   "library.section.catalog_models": "可下载模型",
   "library.section.catalog_engines": "可下载引擎",
   "benchmarks.page.title": "测评",
+  "benchmarks.tab.tasks": "当前任务",
+  "benchmarks.recent.view_all_history": "查看全部运行历史 ›",
   "benchmarks.action.new": "新建测评",
   "benchmarks.action.back_list": "返回测评列表",
   "benchmarks.action.open_flow": "查看当前流程",

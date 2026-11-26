@@ -75,3 +75,77 @@ func TestActiveRunTaskPrefersDequeuedTaskAndRunCardShowsBaselineThenCases(t *tes
 		t.Fatalf("expected formal case progress %q without pre-formal phase suffix, got %v", casesLabel, tt.Texts())
 	}
 }
+
+func TestBenchmarkWorkflowRunDetailAndSpeedLayoutPolish(t *testing.T) {
+	s := readyState("benchmarks")
+	s.benchFlowOpen = true
+	s.task.stage = "run"
+	s.tasks = []core.RunTask{{
+		TaskId: "task-1",
+		Kind:   "run",
+		State:  "running",
+		Bundle: ptr("zh-core"),
+	}}
+	s.runProgress = &core.RunProgress{
+		Phase:         ptr("formal"),
+		Done:          30,
+		Total:         ptr(int64(120)),
+		CurrentCaseId: ptr("case-031"),
+	}
+
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).FillWidth().Children(func() { s.benchmarksView(c) }) }, 1120, 1000)
+	tt.Frame()
+
+	if !tt.HasText("25%") || !tt.HasText("当前题：case-031") {
+		t.Fatalf("expected live run percentage and current case chip, got %v", tt.Texts())
+	}
+	detailBtn, ok1 := tt.AccessByRole(ui.RoleButton, "查看实时详情")
+	cancelBtn, ok2 := tt.AccessByRole(ui.RoleButton, "取消运行")
+	if !ok1 || !ok2 {
+		t.Fatalf("missing run action buttons: detail=%v cancel=%v", ok1, ok2)
+	}
+	if d := detailBtn.Bounds.Y - cancelBtn.Bounds.Y; d < -1 || d > 1 {
+		t.Fatalf("run action buttons stacked vertically instead of sharing one row: detailY=%.1f cancelY=%.1f", detailBtn.Bounds.Y, cancelBtn.Bounds.Y)
+	}
+	if d := detailBtn.Bounds.H - cancelBtn.Bounds.H; d < -1 || d > 1 {
+		t.Fatalf("run action button heights differ: detailH=%.1f cancelH=%.1f", detailBtn.Bounds.H, cancelBtn.Bounds.H)
+	}
+
+	s.detailID = "task-1"
+	s.detail = &core.RunTaskDetail{
+		Task: s.tasks[0],
+		Progress: &core.RunProgress{
+			Phase:         ptr("formal"),
+			Done:          30,
+			Total:         ptr(int64(120)),
+			CurrentCaseId: ptr("case-031"),
+			Cases: []core.CaseProgress{
+				{CaseId: "case-001", State: "done", QualityState: ptr("pass")},
+			},
+		},
+	}
+	ttDetail := ui.NewTester(func(c *ui.Context) { ui.Column(c).FillWidth().Children(func() { s.detailView(c) }) }, 1120, 1000)
+	ttDetail.Frame()
+	if !ttDetail.HasText("25.0%") {
+		t.Fatalf("expected detail view percentage 25.0%%, got %v", ttDetail.Texts())
+	}
+
+	s.detailID = ""
+	s.speed = &speedWorkspace{
+		current: &speedTask{
+			id:        "speed-1",
+			model:     "Preview-Model-Q4.gguf",
+			engine:    "llama-server",
+			context:   65536,
+			stage:     speedMeasuring,
+			completed: 2,
+		},
+	}
+	ttSpeed := ui.NewTester(func(c *ui.Context) { ui.Column(c).FillWidth().Children(func() { s.benchmarksView(c) }) }, 1120, 1000)
+	ttSpeed.Frame()
+	for _, want := range []string{"40%", "#1", "#2", "#5"} {
+		if !ttSpeed.HasText(want) {
+			t.Fatalf("expected speed task view to show %q, got %v", want, ttSpeed.Texts())
+		}
+	}
+}

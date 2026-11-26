@@ -220,6 +220,7 @@ type viewState struct {
 	win                                                                                 *mygo.Window
 	openedReport                                                                        *reportViewState
 	newSVGStage                                                                         func() (svgStageView, error)
+	benchmarksTab                                                                       int
 	reportsTab                                                                          int
 	refreshMu                                                                           sync.Mutex
 	bgRefresh                                                                           bgRefreshCache
@@ -279,6 +280,7 @@ type viewState struct {
 	localPendingPIDs                                                                    map[string]int64
 	keepServicesOnQuit                                                                  bool
 	historyTable                                                                        pageTableState
+	historyQuery, historyStatusFilter, historyDetailPath                                string
 	downloadsUI                                                                         *downloadsUIState
 	engineCatalog                                                                       *core.EngineCatalogRegistry
 	pendingPolystrataSelection                                                          *polystrataSelectionTarget

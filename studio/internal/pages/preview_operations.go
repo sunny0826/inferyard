@@ -166,9 +166,9 @@ func (p *previewSession) dispatchStep(op previewStep) {
 		})
 	case previewReload:
 		fail := p.takeFailure()
-		s.loaded, s.refreshing = true, true
+		s.loaded, s.refreshing, s.registry.Refreshing = true, true, true
 		p.after("reload", 400*time.Millisecond, func() {
-			s.refreshing, s.refreshFailure = false, ""
+			s.refreshing, s.registry.Refreshing, s.refreshFailure = false, false, ""
 			if fail {
 				s.refreshFailure = l10n.TR("preview.error.refresh_failed")
 				return

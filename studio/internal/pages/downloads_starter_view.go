@@ -12,6 +12,10 @@ import (
 )
 
 func (s *viewState) downloadsStarterCard(c *ui.Context) {
+	s.downloadsStarterCardInContext(c, "downloads")
+}
+
+func (s *viewState) downloadsStarterCardInContext(c *ui.Context, contextMode string) {
 	rec := s.starterRecommendation()
 	if !s.hasStarterContent(rec) {
 		return
@@ -20,7 +24,7 @@ func (s *viewState) downloadsStarterCard(c *ui.Context) {
 		s.downloadsCompactStarterBar(c, rec)
 		return
 	}
-	s.renderStarterRecommendationPanel(c, "downloads")
+	s.renderStarterRecommendationPanel(c, contextMode)
 }
 
 func (s *viewState) downloadsCompactStarterBar(c *ui.Context, rec core.StarterRecommendation) {
@@ -84,7 +88,7 @@ func (s *viewState) renderStarterRecommendationPanel(c *ui.Context, contextMode 
 	}
 
 	hwSummary := s.starterHardwareSummary(rec)
-	showCollapse := contextMode == "downloads" && s.starterDefaultCollapsed()
+	showCollapse := (contextMode == "downloads" || contextMode == "library") && s.starterDefaultCollapsed()
 
 	applyMaterial(c, ui.Column(c.Key("downloads-starter-card")).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
 		if rec.Status == "blocked" && len(opts) == 0 {
@@ -134,8 +138,8 @@ func (s *viewState) renderStarterRecommendationPanel(c *ui.Context, contextMode 
 			})
 		})
 
-		// Hardware summary strip
-		if hwSummary != "" {
+		// Hardware summary strip (omitted inside libraryView where libraryHardwareCard already sits directly above)
+		if hwSummary != "" && contextMode != "library" {
 			applyMaterial(c, ui.Row(c.Key("starter-hardware-strip")).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Inset, t.Density.Stack), materialSunken).Children(func() {
 				ui.Row(c).Grow(1).MinWidth(0).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 					components.Icon(c, lucide.Cpu).Size(14, 14).TextColor(t.Color.FgSecondary)
@@ -157,8 +161,18 @@ func (s *viewState) renderStarterRecommendationPanel(c *ui.Context, contextMode 
 			})
 		}
 
-		// Flat option cards row (2~4 cards side-by-side, wrapping cleanly on narrow widths)
-		ui.Row(c.Key("starter-options-grid")).FillWidth().Wrap().AlignItems(ui.Stretch).Gap(t.Density.Row).Children(func() {
+		// Balanced responsive grid (2x2 for 4 plans instead of 3 + 1 full-width)
+		cols := min(3, max(1, len(opts)))
+		if len(opts) == 4 {
+			cols = 2
+		}
+		if compactLayout(c) {
+			cols = min(2, cols)
+		}
+		if w, _ := c.Size(); w > 0 && w < 680 {
+			cols = 1
+		}
+		ui.Grid(c.Key("starter-options-grid")).FillWidth().Columns(cols).Gap(t.Density.Row).Children(func() {
 			for i, opt := range opts {
 				idx, option := i, opt
 				s.starterOptionTile(c, st, idx, option, idx == st.starterChoice)

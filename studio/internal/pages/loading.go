@@ -71,7 +71,7 @@ type spinIconState struct {
 
 func refreshButton(c *ui.Context, label string, active bool) ui.Element {
 	theme := c.Theme()
-	b := components.Button(c, "", components.ButtonSecondary).MaxWidthPercent(100).AlignSelf(ui.Start).Label(label)
+	b := styleButtonSize(c, components.Button(c, "", components.ButtonSecondary), sizeMD).Label(label)
 	state := ui.Local(b, "refresh-spin", func() spinIconState { return spinIconState{} })
 	now := c.Now()
 	if active {
@@ -125,7 +125,7 @@ func refreshButton(c *ui.Context, label string, active bool) ui.Element {
 
 func actionButton(c *ui.Context, variant components.ButtonVariant, label string, active bool) ui.Element {
 	theme := c.Theme()
-	b := components.Button(c, "", variant).MaxWidthPercent(100).AlignSelf(ui.Start).Label(label)
+	b := styleButtonSize(c, components.Button(c, "", variant), sizeMD).Label(label)
 	showSpinner := delayedVisible(c, b, "btn-spinner", active)
 	b.Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(theme.Space(1.5)).Children(func() {

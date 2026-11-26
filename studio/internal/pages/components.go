@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 )
 
 func card(c *ui.Context, title string, fn func()) {
@@ -41,15 +42,48 @@ type phaseProgressOptions struct {
 
 func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 	t := tokens(c)
-	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Label(o.RowLabel).Children(func() {
+	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Label(o.RowLabel).Children(func() {
 		for i, label := range o.Labels {
+			if i > 0 {
+				lineColor := t.Color.BorderDefault
+				if i <= o.Current {
+					lineColor = t.Color.Success.Solid.Alpha(.55)
+				}
+				ui.Box(c).Height(2).MinWidth(10).MaxWidth(28).Grow(1).Radius(t.Radius.Full).Background(lineColor)
+			}
+			stepNum := fmt.Sprintf("%d", i+1)
 			switch {
 			case i < o.Current:
-				ui.Text(c, "✓  "+label).TextColor(stateColor(c, stateSuccess))
+				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+					ui.Box(c).Size(20, 20).Radius(t.Radius.Full).Shrink(0).
+						Background(t.Color.Success.SubtleBg).Border(1, t.Color.Success.Border).
+						AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+						components.Icon(c, lucide.Check).Size(12, 12).TextColor(t.Color.Success.Fg)
+					})
+					ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).SingleLine()
+				})
 			case i == o.Current:
-				statusBadge(c, label, stateColor(c, stateActive)).Description(trf(c, "common.phase.current", "label", label))
+				pill := ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).
+					Padding(3, t.Density.Row, 3, 4).Radius(t.Radius.Full).
+					Background(t.Color.Active.SubtleBg).Border(1, t.Color.Active.Border).
+					Description(trf(c, "common.phase.current", "label", label))
+				pill.Children(func() {
+					ui.Box(c).Size(18, 18).Radius(t.Radius.Full).Shrink(0).
+						Background(t.Color.Active.Solid).
+						AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+						ui.Text(c, stepNum).Bold().FontSize(11).FontFeatures("tnum").TextColor(c.Theme().Surface).SingleLine()
+					})
+					ui.Text(c, label).Bold().FontSize(t.Type.Caption).TextColor(t.Color.Active.Fg).SingleLine()
+				})
 			default:
-				ui.Text(c, label).TextColor(stateColor(c, stateNeutral))
+				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+					ui.Box(c).Size(20, 20).Radius(t.Radius.Full).Shrink(0).
+						Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).
+						AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+						ui.Text(c, stepNum).FontSize(11).FontFeatures("tnum").TextColor(t.Color.FgTertiary).SingleLine()
+					})
+					ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary).SingleLine()
+				})
 			}
 		}
 	})
@@ -58,9 +92,9 @@ func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 	}
 	value := float64(0)
 	if len(o.Labels) > 0 {
-		value = float64(o.Current) / float64(len(o.Labels))
+		value = min(1, float64(o.Current)/float64(len(o.Labels)))
 	}
-	progressBar(c, value, o.BarLabel)
+	progressBar(c, value, o.BarLabel).Height(6)
 }
 
 func metricCard(c *ui.Context, label, value, detail, note string) {
@@ -69,7 +103,9 @@ func metricCard(c *ui.Context, label, value, detail, note string) {
 		Children(func() {
 			ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			ui.Text(c, value).Bold().FontSize(t.Type.MetricLarge).FontFeatures("tnum").Selectable()
-			ui.Text(c, detail).TextColor(t.Color.FgSecondary)
+			if detail != "" {
+				ui.Text(c, detail).TextColor(t.Color.FgSecondary)
+			}
 			if note != "" {
 				ui.Text(c, note).TextColor(t.Color.FgSecondary)
 			}
@@ -86,9 +122,9 @@ type taskCardOptions struct {
 	active            bool
 	metrics           []taskMetric
 	status            string
-	headerRight func()
-	notice      func()
-	actions     func()
+	headerRight       func()
+	notice            func()
+	actions           func()
 }
 
 func taskCard(c *ui.Context, options taskCardOptions) {
@@ -119,7 +155,7 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 				for _, metric := range options.metrics {
 					ui.Column(c).Gap(t.Density.Tight).Children(func() {
 						ui.Text(c, metric.label).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
-						ui.Text(c, metric.value).Bold().FontSize(t.Type.Metric)
+						ui.Text(c, metric.value).Bold().FontSize(t.Type.Metric).FontFeatures("tnum")
 						if metric.reason != "" {
 							ui.Text(c, metric.reason).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
 						}
@@ -142,25 +178,29 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 func stepTrack(c *ui.Context, number, title string, fn func()) {
 	t := tokens(c)
 	theme := c.Theme()
-	size := max(theme.Space(7), theme.Rem(1.6))
-	ui.Row(c).AlignItems(ui.Stretch).Gap(t.Density.Section).Label(trf(c, "common.step.label", "number", number)).Children(func() {
-		ui.Column(c).MinWidth(size).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-			ui.Box(c).Label(trf(c, "common.step.number_label", "number", number)).Size(size, size).Radius(t.Radius.Full).Background(stateColor(c, stateActive)).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-				ui.Text(c, number).Bold().FontFeatures("tnum").TextColor(theme.Surface)
+	size := float32(26)
+	badgeBg := stateColor(c, stateActive)
+	if number == "✓" {
+		badgeBg = stateColor(c, stateSuccess)
+	}
+	applyMaterial(c, ui.Column(c).FillWidth().MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding).
+		Label(trf(c, "common.step.label", "number", number)), materialCard).Children(func() {
+		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			ui.Box(c).Label(trf(c, "common.step.number_label", "number", number)).
+				Size(size, size).Shrink(0).Radius(t.Radius.Full).Background(badgeBg).
+				AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+				ui.Text(c, number).Bold().FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(theme.Surface).SingleLine()
 			})
-			ui.Box(c).Width(theme.Space(.5)).Grow(1).Background(theme.Border)
+			heading(c, title, 2)
 		})
-		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.CardGap).Children(func() {
-			ui.Row(c).MinHeight(size).AlignItems(ui.Center).Children(func() {
-				heading(c, title, 2)
-			})
-			fn()
-		})
+		ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+		ui.Column(c).FillWidth().MinWidth(0).Gap(t.Density.CardGap).Children(fn)
 	})
 }
 
 func selectField[T comparable](c *ui.Context, name, description string, selected *T, options []components.NativeSelectOption[T]) {
 	f := ui.Field(c, name, func() {
+		t := tokens(c)
 		current := ""
 		for _, option := range options {
 			if option.Value == *selected {
@@ -168,7 +208,11 @@ func selectField[T comparable](c *ui.Context, name, description string, selected
 				break
 			}
 		}
-		components.NativeSelect(c, selected, options).Trigger.Label(name).Value(current)
+		components.NativeSelect(c, selected, options).Trigger.
+			MinHeight(t.Control.MD).
+			Padding(t.Density.Tight, c.Theme().Space(6), t.Density.Tight, t.Density.Stack).
+			Radius(t.Radius.Control).
+			Label(name).Value(current)
 	})
 	if description != "" {
 		f.Description(description)
@@ -191,7 +235,9 @@ func segmentedControl[T comparable](c *ui.Context, name string, selected *T, opt
 	trackRadius := t.Radius.Floating
 	trackPad := t.Density.Tight
 	itemRadius := concentricRadius(trackRadius, trackPad)
+	segHeight := max(float32(20), t.Control.MD-trackPad*2-2)
 	track := seg.Track.AlignItems(ui.Center).Gap(t.Density.Tight).
+		MinHeight(t.Control.MD).
 		Padding(trackPad).Radius(trackRadius).
 		Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).Label(name).
 		Children(func() {
@@ -199,7 +245,8 @@ func segmentedControl[T comparable](c *ui.Context, name string, selected *T, opt
 				active := i == idx
 				item := seg.Segment(i).
 					AlignItems(ui.Center).Justify(ui.Center).
-					Padding(t.Density.Tight, t.Density.Stack).
+					MinHeight(segHeight).
+					Padding(0, t.Density.Stack).
 					Radius(itemRadius).
 					Label(option.Label).
 					Disabled(option.Disabled)
@@ -282,7 +329,8 @@ func searchableSelectField(c *ui.Context, name, description, placeholder, emptyF
 				border = t.Color.BorderFocus
 			}
 			applyMaterial(c, cb.Input.FillWidth().Label(name).Placeholder(placeholder).
-				Padding(t.Density.Inset, t.Density.Stack), materialControl).Border(1, border)
+				MinHeight(t.Control.MD).
+				Padding(c.Theme().Space(1.75), t.Density.Stack), materialControl).Border(1, border)
 
 			visible := options
 			if cb.Filtering() {
@@ -356,10 +404,20 @@ func studioDialog(c *ui.Context, open *bool, options components.DialogOptions, b
 }
 
 func studioAlertDialog(c *ui.Context, open *bool, options components.AlertDialogOptions) components.DialogResult {
+	return studioAlertDialogStyled(c, open, options, false)
+}
+
+func studioDestructiveAlertDialog(c *ui.Context, open *bool, options components.AlertDialogOptions) components.DialogResult {
+	return studioAlertDialogStyled(c, open, options, true)
+}
+
+func studioAlertDialogStyled(c *ui.Context, open *bool, options components.AlertDialogOptions, destructive bool) components.DialogResult {
 	result := components.DialogNone
 	wasOpen := *open
 	opts := options.DialogOptions
-	opts.Label = options.Title
+	if opts.Label == "" {
+		opts.Label = options.Title
+	}
 	t := tokens(c)
 	studioDialog(c, open, opts, func(panel ui.Element) {
 		panel.Role(ui.RoleAlertDialog)
@@ -374,7 +432,11 @@ func studioAlertDialog(c *ui.Context, open *bool, options components.AlertDialog
 				result = components.DialogCancelled
 				*open = false
 			}
-			if primaryButton(c, options.ConfirmLabel).Clicked() {
+			confirmBtn := primaryButton
+			if destructive {
+				confirmBtn = dangerButton
+			}
+			if confirmBtn(c, options.ConfirmLabel).Clicked() {
 				result = components.DialogConfirmed
 				*open = false
 			}

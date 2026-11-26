@@ -4,8 +4,6 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
-	"inferyard/studio/internal/core"
-	"inferyard/studio/internal/l10n"
 )
 
 const (
@@ -48,7 +46,7 @@ func (s *viewState) reportsView(c *ui.Context) {
 			s.reportsTableView(c)
 		}
 	})
-	s.reportSourcesDialog(c)
+	s.historyOverlays(c)
 }
 
 func (s *viewState) speedReportsTabView(c *ui.Context) {
@@ -108,7 +106,7 @@ func (s *viewState) reportSourcesDialog(c *ui.Context) {
 			if len(runs) > 0 {
 				applyMaterial(c, ui.Scroll(c.Key("report-sources")).FillWidth().Grow(1).MinHeight(220), materialInset).
 					Label(tr(c, "reports.dialog.sources_list_aria")).Children(func() {
-					ui.Column(c).FillWidth().Gap(tokens(c).Density.Tight).Padding(tokens(c).Density.Inset).Children(func() {
+					ui.Column(c).FillWidth().Gap(tokens(c).Density.Row).Padding(tokens(c).Density.Inset).Children(func() {
 						for _, r := range runs {
 							checked := s.reportChoices.Has(r.Path)
 							ui.Column(c.Key(r.Path)).FillWidth().Gap(tokens(c).Density.Hairline).Children(func() {
@@ -119,14 +117,15 @@ func (s *viewState) reportSourcesDialog(c *ui.Context) {
 										s.reportChoices.Remove(r.Path)
 									}
 								}
-								ui.Text(c, displayName(r.Path)).FontSize(tokens(c).Type.Caption).TextColor(c.Theme().TextMuted)
+								meta := historyModel(r) + " · " + historyBundleDisplay(r) + " · " + runScore(r)
+								ui.Text(c, meta).FontSize(tokens(c).Type.Caption).FontFeatures("tnum").TextColor(c.Theme().TextMuted)
 							})
 						}
 					})
 				})
 			}
 			count := s.reportChoices.Len()
-			ui.Text(c, trf(c, "reports.dialog.selected_count", "count", count))
+			ui.Text(c, trf(c, "reports.dialog.selected_count", "count", count)).FontFeatures("tnum")
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 				if primaryActionButton(c, tr(c, "reports.dialog.create"), s.actionBusy("create-report")).AlignSelf(ui.Start).Disabled(s.busy || count < 1 || count > 100).Clicked() {
 					paths := []string{}
@@ -136,26 +135,7 @@ func (s *viewState) reportSourcesDialog(c *ui.Context) {
 						}
 					}
 					s.reportDialogOpen = false
-					if s.simulate(previewCreateReport{paths: paths}) {
-						return
-					}
-					const toastID = "create-report-toast"
-					s.enqueueProgressToast(toastID, tr(c, "reports.toast.creating"))
-					s.workAs("create-report", func() (string, *core.ApiError) {
-						report, e := s.service.CreateReport(core.CreateReportRequest{RunPaths: paths})
-						if e != nil {
-							s.win.Update(func() { s.dismissToast(toastID) })
-							return "", e
-						}
-						reportID := report.ReportId
-						s.win.Update(func() {
-							s.lastManualReportID = reportID
-							s.resolveProgressToast(toastID, l10n.TR("reports.toast.created"), l10n.TR("reports.toast.view_report"), func() {
-								s.openReport(reportID)
-							})
-						})
-						return "", nil
-					})
+					s.createReportFromPaths(c, paths)
 				}
 				if button(c, tr(c, "reports.dialog.close")).AlignSelf(ui.Start).Clicked() {
 					if s.reportChoices.Len() > 0 {
@@ -167,7 +147,7 @@ func (s *viewState) reportSourcesDialog(c *ui.Context) {
 			})
 		})
 	})
-	if components.AlertDialog(c, &s.reportDiscardConfirm, components.AlertDialogOptions{
+	if studioAlertDialog(c, &s.reportDiscardConfirm, components.AlertDialogOptions{
 		DialogOptions: components.DialogOptions{Label: tr(c, "reports.dialog.discard_aria")},
 		Title:         tr(c, "reports.dialog.discard_title"),
 		Message:       tr(c, "reports.dialog.discard_message"),

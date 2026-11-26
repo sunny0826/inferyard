@@ -69,9 +69,12 @@ func (r *reportViewState) requestView(c *ui.Context, run core.ReportRun) {
 		}
 		pageTable(c.Key("report-requests"), &r.requests, tr(c, "reports.tables.requests.aria_label"), columns, len(visible), func(row, col int) {
 			request := visible[row]
-			ui.Text(c, []string{reportText(request.CaseID), reportText(request.CategoryLabel), reportText(stateLabel(request.State)), reportQualityFor(c, request.Quality), reportScaled(request.LatencyMS, 1000, "s")}[col]).SingleLine()
+			cell := ui.Text(c, []string{reportText(request.CaseID), reportText(request.CategoryLabel), reportText(stateLabel(request.State)), reportQualityFor(c, request.Quality), reportScaled(request.LatencyMS, 1000, "s")}[col]).SingleLine()
+			if col == 4 {
+				cell.FontFeatures("tnum")
+			}
 		}).Height(c.Theme().Space(8)*float32(min(len(visible), 8)+1) + 2)
-		ui.Text(c, trf(c, "reports.tables.requests.total", "count", totalCount)).TextColor(c.Theme().TextMuted)
+		ui.Text(c, trf(c, "reports.tables.requests.total", "count", totalCount)).FontFeatures("tnum").TextColor(c.Theme().TextMuted)
 	})
 }
 

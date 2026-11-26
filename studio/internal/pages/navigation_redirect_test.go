@@ -5,6 +5,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func TestLegacyPageIDRedirects(t *testing.T) {
@@ -137,5 +138,91 @@ func TestSidebarAndLibraryAccessibilityRoles(t *testing.T) {
 	enginesTab, ok = libTT.AccessByRole(ui.RoleTab, "引擎")
 	if !ok || !enginesTab.Selected {
 		t.Fatalf("expected RoleTab 引擎 selected after click, got ok=%v info=%+v", ok, enginesTab)
+	}
+}
+
+func TestInterfaceDetailsPolishInteractionsAndPlurals(t *testing.T) {
+	// 1. Sidebar "+" button meets 24x24px desktop target minimum.
+	s := readyState("services")
+	tt := sidebarHeaderState(s)
+	tt.Frame()
+	plusInfo, ok := tt.AccessByRole(ui.RoleButton, "新任务")
+	if !ok || plusInfo.Bounds.W < 24 || plusInfo.Bounds.H < 24 {
+		t.Fatalf("expected 新任务 button >= 24x24, got ok=%v bounds=%+v", ok, plusInfo.Bounds)
+	}
+
+	// 2. Re-selecting active Reports or Benchmarks resets sub-views.
+	s.selected = "reports"
+	s.openedReport = &reportViewState{reference: "rep-1"}
+	s.reportsTab = reportsTabHistory
+	s.selectPage("reports")
+	if s.openedReport != nil || s.reportsTab != reportsTabList {
+		t.Fatalf("expected re-selecting reports to close opened report and return to list tab, got opened=%v tab=%d", s.openedReport, s.reportsTab)
+	}
+
+	s.selected = "benchmarks"
+	s.detailID = "task-1"
+	s.benchFlowOpen = true
+	s.selectPage("benchmarks")
+	if s.detailID != "" || s.benchFlowOpen {
+		t.Fatalf("expected re-selecting benchmarks to reset detailID and benchFlowOpen, got detail=%q flow=%v", s.detailID, s.benchFlowOpen)
+	}
+
+	// 3. Clickable listRow and running service controls expose RoleButton for keyboard access.
+	bName := "zh-core"
+	s.tasks = []core.RunTask{{TaskId: "t-kbd", State: "running", Bundle: &bName}}
+	benchTT := ui.NewTester(s.benchmarksView, 1120, 800)
+	benchTT.Frame()
+	if _, ok := benchTT.AccessByRole(ui.RoleButton, "zh-core"); !ok {
+		t.Fatalf("expected benchmark listRow to expose RoleButton for keyboard reachability")
+	}
+
+	// 4. Library standalone Stop button opens confirmation instead of immediate stop.
+	m := core.ModelAsset{Name: "qwen.gguf", Path: "/models/qwen.gguf", Format: "gguf", Available: true}
+	lib := readyState("library")
+	lib.serveSupported = true
+	lib.registry.Models = []core.ModelAsset{m}
+	svcID := core.ServiceIDFor("qwen.gguf", "llama-cpp")
+	lib.managedServices = []core.EngineState{{
+		ServiceID: svcID,
+		State:     "running",
+		Origin:    core.EngineOriginStandalone,
+		ModelName: "qwen.gguf",
+		Model:     "/models/qwen.gguf",
+		Endpoint:  "http://127.0.0.1:8080",
+	}}
+	lib.engineState = lib.managedServices[0]
+	libTT := ui.NewTester(lib.libraryView, 1120, 1400)
+	libTT.Frame()
+	click(t, libTT, "停止 · qwen.gguf")
+	libTT.Frame()
+	if destructiveKind(lib.pendingDestructive.kind) != destructiveStopStandalone || lib.pendingDestructive.id != "qwen.gguf" {
+		t.Fatalf("expected Library Stop to arm confirmation dialog, got %+v", lib.pendingDestructive)
+	}
+	if !libTT.HasText("确认停止") {
+		t.Fatalf("expected confirmation dialog visible in Library view, texts=%v", libTT.Texts())
+	}
+
+	// 5. Clicking labeledSwitchRow text column toggles the bound boolean.
+	on := false
+	swTT := ui.NewTester(func(c *ui.Context) {
+		labeledSwitchRow(c, "局域网访问", "默认仅本机监听", "切换局域网访问", &on)
+	}, 600, 200)
+	swTT.Frame()
+	click(t, swTT, "局域网访问")
+	swTT.Frame()
+	if !on {
+		t.Fatal("expected clicking switch label text to toggle switch on")
+	}
+
+	// 6. English ICU plural rules format singular vs plural cleanly.
+	if got := l10n.Tf(l10n.LanguageEn, "services.discovered.models_count", "count", 1); got != "1 model" {
+		t.Fatalf("got %q, want %q", got, "1 model")
+	}
+	if got := l10n.Tf(l10n.LanguageEn, "services.discovered.models_count", "count", 3); got != "3 models" {
+		t.Fatalf("got %q, want %q", got, "3 models")
+	}
+	if got := l10n.Tf(l10n.LanguageEn, "reports.tables.requests.total", "count", 1); got != "1 case total" {
+		t.Fatalf("got %q, want %q", got, "1 case total")
 	}
 }

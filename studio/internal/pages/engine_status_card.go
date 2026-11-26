@@ -174,7 +174,6 @@ func (s *viewState) engineCardSummary() []engineInfoRow {
 
 func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func()) {
 	t := tokens(c)
-	theme := c.Theme()
 	state := s.engineState
 	label := state.State
 	if label == "" {
@@ -278,7 +277,7 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 		switch state.State {
 		case "starting", "running", "stopping":
 			if state.Origin == core.EngineOriginStandalone && state.LogPath != "" {
-				outlineButton(c, tr(c, "engine.action.open_log")).FillWidth().Padding(theme.Space(1.75), theme.Space(3.5)).Radius(theme.Space(2.5)).OnClick(func() {
+				outlineButton(c, tr(c, "engine.action.open_log")).FillWidth().OnClick(func() {
 					s.openEngineCardLog(state.LogPath)
 				})
 			}
@@ -291,20 +290,20 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 				Size:    bannerCompact,
 				Message: tr(c, "engine.notice.orphan_unconfirmed"),
 			})
-			button(c, tr(c, "engine.action.go_dashboard")).FillWidth().Padding(theme.Space(1.75), theme.Space(3.5)).Radius(theme.Space(2.5)).OnClick(func() {
+			button(c, tr(c, "notif.action.resolve")).FillWidth().OnClick(func() {
 				s.navigateTo("services", "")
 				close()
 			})
 		default:
 			errorView(c, state.Error)
 			if state.State == "failed" && state.LogPath != "" {
-				outlineButton(c, tr(c, "engine.action.open_log")).FillWidth().Padding(theme.Space(1.75), theme.Space(3.5)).Radius(theme.Space(2.5)).OnClick(func() {
+				outlineButton(c, tr(c, "engine.action.open_log")).FillWidth().OnClick(func() {
 					s.openEngineCardLog(state.LogPath)
 				})
 			}
 			if s.managedEngineCandidate() == "" && state.Origin != core.EngineOriginStandalone {
 				ui.Text(c, tr(c, "engine.notice.need_candidate")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-				button(c, tr(c, "engine.action.go_dashboard")).FillWidth().Padding(theme.Space(1.75), theme.Space(3.5)).Radius(theme.Space(2.5)).OnClick(func() {
+				button(c, tr(c, "services.empty.go_benchmarks")).FillWidth().OnClick(func() {
 					s.openBenchmarksFlow()
 					close()
 				})

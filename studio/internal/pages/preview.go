@@ -23,6 +23,7 @@ type previewSession struct {
 	appliedThemeMode    int
 	languageMode        int
 	appliedLanguageMode int
+	lastLocale          string
 	generation          int
 	noticeKey           string
 	failNext            bool
@@ -56,9 +57,15 @@ func NewPreview(ctx context.Context) {
 			p.win.Invalidate()
 		}
 	})
+	offClose := p.win.OnClose(func(e *mygo.CloseEvent) {
+		if p.state != nil {
+			p.state.handleWindowClose(e)
+		}
+	})
 	p.win.OnClosed(func() {
 		offHide()
 		offShow()
+		offClose()
 		if p.state != nil {
 			p.state.closeOpenedReport()
 		}
@@ -160,6 +167,10 @@ func (p *previewSession) themeFor(c *ui.Context) *ui.Theme {
 	p.syncNativeTheme()
 	p.syncStateLanguage()
 	p.syncNativeLanguage()
+	if loc := contextLocale(c); loc != "" && loc != p.lastLocale {
+		p.lastLocale = loc
+		p.reapplyPreviewLocale(loc)
+	}
 	return resolveStudioTheme(c, previewThemeModeString(p.themeMode))
 }
 
@@ -178,7 +189,7 @@ func (p *previewSession) loadScene(index int) {
 	if p.state != nil {
 		p.state.closeOpenedReport()
 	}
-	p.scene, p.noticeKey = index, ""
+	p.scene, p.noticeKey, p.lastLocale = index, "", ""
 	p.generation++
 	p.jobs, p.clock, p.lastTick = nil, 0, time.Now()
 	p.failNext, p.reportReadFailed, p.serial = false, false, 0
@@ -203,11 +214,11 @@ func (p *previewSession) left(c *ui.Context) {
 				heading(c, tr(c, "preview.sidebar.heading"), 2)
 				sceneFieldLabel := tr(c, "preview.scene.label")
 				ui.Field(c, sceneFieldLabel, func() {
-					choice := components.Select(c, &p.scene)
+					choice := studioSelect(c, &p.scene)
 					currentSceneLabel := tr(c, previewScenes[p.scene].labelKey)
 					choice.Trigger.Label(sceneFieldLabel).Value(currentSceneLabel).Children(func() { ui.Text(c, currentSceneLabel).SingleLine() })
 					choice.Popup(func(ui.Element) {
-						components.ScrollView(c, components.ScrollViewOptions{}).Label(tr(c, "preview.scene.list_aria")).MaxHeight(240).Children(func() {
+						components.ScrollView(c, components.ScrollViewOptions{}).Label(tr(c, "preview.scene.list_aria")).MaxHeight(280).Children(func() {
 							for i, scene := range previewScenes {
 								label := tr(c, scene.labelKey)
 								choice.Item(i).Label(label).Children(func() { ui.Text(c, label).SingleLine() })
@@ -238,6 +249,7 @@ func (p *previewSession) left(c *ui.Context) {
 				if p.languageMode != prevLang {
 					p.syncStateLanguage()
 					p.syncNativeLanguage()
+					p.reapplyPreviewLocale(l10n.LocaleForSetting(previewLanguageModeString(p.languageMode)))
 				}
 				components.Checkbox(c, &p.failNext, tr(c, "preview.toggle.fail_next"))
 				if p.state.speed != nil && (p.state.speed.selected || p.state.speed.current != nil) {

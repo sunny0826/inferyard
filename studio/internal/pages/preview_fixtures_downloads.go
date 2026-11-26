@@ -17,10 +17,16 @@ func previewDownloadsPolystrata(s *viewState) {
 	blockerErr := core.Err("polystrata_preflight_blocked")
 	blockerErr.Details = map[string]any{
 		"blockers": []map[string]any{{
-			"code":        "cmake_missing",
-			"message":     l10n.TR("preview.polystrata.blocker.cmake"),
-			"fix_command": "brew install cmake",
+			"code":        "polystrata_build_tools_missing",
+			"message":     l10n.TR("preview.polystrata.blocker.build_tools"),
+			"fix_command": "brew install cmake ninja",
 		}},
+	}
+	netErr := core.Err("polystrata_setup_failed")
+	netErr.Limitations = []string{"engine_acquire_incomplete"}
+	netErr.Details = map[string]any{
+		"failure_stage": "downloading_runtime",
+		"failure_cause": "network_timeout",
 	}
 	s.downloads = []core.DownloadTask{
 		{
@@ -42,7 +48,7 @@ func previewDownloadsPolystrata(s *viewState) {
 		{
 			TaskId:      "preview-polystrata-blocked",
 			Kind:        "polystrata",
-			DisplayName: "PolyStrata · qwen · Q2_0",
+			DisplayName: "PolyStrata · coder · IQ1_M",
 			State:       "failed",
 			Stage:       "preflight",
 			SourceUrl:   "https://github.com/simplexai-labs/PolyStrata/archive/d62dfacbe185dfbb447e79c5fb1091ae189afc64.tar.gz",
@@ -50,6 +56,18 @@ func previewDownloadsPolystrata(s *viewState) {
 			OutDir:      "/preview/engines/polystrata-blocked",
 			Error:       blockerErr,
 			StartedAt:   "2026-10-16T23:55:00Z",
+		},
+		{
+			TaskId:      "preview-polystrata-net-timeout",
+			Kind:        "polystrata",
+			DisplayName: "PolyStrata · qwen · Q2_0",
+			State:       "failed",
+			Stage:       "downloading_runtime",
+			SourceUrl:   "https://github.com/simplexai-labs/PolyStrata/archive/d62dfacbe185dfbb447e79c5fb1091ae189afc64.tar.gz",
+			OutName:     "polystrata-net-timeout",
+			OutDir:      "/preview/engines/polystrata-net-timeout",
+			Error:       netErr,
+			StartedAt:   "2026-10-16T23:52:00Z",
 		},
 	}
 }
@@ -59,7 +77,7 @@ func previewDownloadsPolystrataModel(s *viewState) {
 	s.libraryTab = 1
 	s.registry.Engines = nil
 	s.registry.Models = nil
-	totalBytes := int64(37623912858) // 35.04 GiB
+	totalBytes := int64(66400000000) // 61.84 GiB strata_pack
 	s.downloads = []core.DownloadTask{
 		{
 			TaskId:          "preview-polystrata-model-live",
@@ -69,10 +87,10 @@ func previewDownloadsPolystrataModel(s *viewState) {
 			Stage:           "downloading_model",
 			Step:            previewValue(4),
 			StepTotal:       previewValue(4),
-			DownloadedBytes: 4456028569, // 4.15 GiB
+			DownloadedBytes: 7856028569, // 7.32 GiB
 			TotalBytes:      previewValue(totalBytes),
 			BytesPerSecond:  previewValue(22502441.0), // 21.46 MiB/s
-			Detail:          previewValue("Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf"),
+			Detail:          previewValue("Qwen3.8-Flash-Next-Q2_0-00001-of-00002.strata"),
 			SourceUrl:       "https://github.com/simplexai-labs/PolyStrata/archive/d62dfacbe185dfbb447e79c5fb1091ae189afc64.tar.gz",
 			OutName:         "polystrata-qwen-q2",
 			OutDir:          "/preview/engines/polystrata-qwen-q2",

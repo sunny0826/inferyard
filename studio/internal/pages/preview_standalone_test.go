@@ -23,7 +23,7 @@ func TestPreviewStandaloneStartStopAndHandoff(t *testing.T) {
 	}
 
 	// Switch to task_ready scene where models and engines are available.
-	p.loadScene(1)
+	p.loadScene(previewSceneIndex(t, "测评 · 待运行"))
 	s := p.state
 	if !s.serveSupported {
 		t.Fatalf("expected task_ready scene serveSupported=true")
@@ -67,7 +67,7 @@ func TestPreviewStandaloneStartStopAndHandoff(t *testing.T) {
 	}
 
 	// Local engines scene: vLLM uses local_openai_v1 + python, and model row matches running state.
-	p.loadScene(6)
+	p.loadScene(previewSceneIndex(t, "模型库 · 本地安装与目录模型"))
 	s = p.state
 	var dirModel core.ModelAsset
 	var vllmEngine core.EngineAsset

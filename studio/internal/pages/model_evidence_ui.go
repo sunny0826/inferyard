@@ -72,9 +72,10 @@ func (s *viewState) bestSpeedForService(svc core.EngineState) (*core.EngineSpeed
 }
 
 func (s *viewState) renderModelEvidenceInline(c *ui.Context, m core.ModelAsset) {
+	t := tokens(c)
 	summary, ok := s.modelEvidenceFor(m.Name)
 	if !ok || summary.Best == nil {
-		inlineBadge(c, tr(c, "models.evidence.untested"), stateNeutral, badgeOptions{Size: sizeSM, Style: badgeOutline})
+		inlineBadge(c, tr(c, "models.evidence.untested"), stateNeutral, badgeOptions{Size: sizeSM, Style: badgeSoft})
 		return
 	}
 	best := summary.Best
@@ -91,8 +92,28 @@ func (s *viewState) renderModelEvidenceInline(c *ui.Context, m core.ModelAsset) 
 			"otherTps", fmt.Sprintf("%.1f", second.TokensPerSecond),
 		)
 	}
-	btn := inlineButton(c, components.ButtonGhost, label).
+	scale := stateScale(c, stateSuccess)
+	btn := components.Button(c, label, components.ButtonGhost).
+		MinHeight(22).
+		Padding(2, t.Density.Row).
+		Radius(t.Radius.Full).
+		FontSize(max(11, t.Type.ShellLabel)).
+		FontFeatures("tnum").
+		AlignSelf(ui.Center).
 		Label(trf(c, "models.evidence.open_report_label", "model", modelLabel(m)))
+	bg := scale.SubtleBg
+	if best.ReportRef != "" && !btn.IsDisabled() {
+		switch {
+		case btn.Pressed():
+			bg = scale.SubtleBg.Mix(scale.Solid, .22)
+		case btn.Hovered():
+			bg = scale.SubtleBg.Mix(scale.Solid, .12)
+		}
+	}
+	btn.Background(bg).TextColor(scale.Fg)
+	if c.Preferences().HighContrast {
+		btn.Border(1, scale.Border)
+	}
 	if best.ReportRef != "" {
 		if btn.Clicked() {
 			s.openReport(best.ReportRef)
@@ -177,20 +198,27 @@ func (s *viewState) reportExclusivity(ref string) string {
 	return core.ExclusivityUnknown
 }
 
-func (s *viewState) renderEngineUpdateBadgeAndAction(c *ui.Context, eng core.EngineAsset) {
+func (s *viewState) renderEngineUpdateBadge(c *ui.Context, eng core.EngineAsset) {
 	upd, ok := s.engineUpdates[eng.Name]
 	if !ok || !upd.HasUpdate || upd.LatestInstalled || strings.TrimSpace(upd.LatestVersion) == "" {
 		return
 	}
 	inlineBadge(c, trf(c, "models.engine.update_available", "version", upd.LatestVersion), stateInfo, badgeOptions{Size: sizeSM})
+}
+
+func (s *viewState) renderEngineUpdateAction(c *ui.Context, eng core.EngineAsset) {
+	upd, ok := s.engineUpdates[eng.Name]
+	if !ok || !upd.HasUpdate || upd.LatestInstalled || strings.TrimSpace(upd.LatestVersion) == "" {
+		return
+	}
 	if s.engineUpdateTaskActive(eng, upd) {
-		inlineButton(c, components.ButtonOutline, tr(c, "models.engine.action.updating")).
+		outlineButton(c, tr(c, "models.engine.action.updating")).
 			Label(trf(c, "models.engine.action.update_label", "name", eng.Name)).
 			Disabled(true)
 		return
 	}
 	if upd.CanOneClickUpdate() {
-		btn := inlineButton(c, components.ButtonPrimary, tr(c, "models.engine.action.one_click_update")).
+		btn := primaryButton(c, tr(c, "models.engine.action.one_click_update")).
 			Label(trf(c, "models.engine.action.update_label", "name", eng.Name)).
 			Disabled(s.busy)
 		if btn.Clicked() {
@@ -198,7 +226,7 @@ func (s *viewState) renderEngineUpdateBadgeAndAction(c *ui.Context, eng core.Eng
 		}
 		return
 	}
-	btn := inlineButton(c, components.ButtonOutline, tr(c, "models.engine.action.update")).
+	btn := outlineButton(c, tr(c, "models.engine.action.update")).
 		Label(trf(c, "models.engine.action.update_label", "name", eng.Name)).
 		Disabled(s.busy)
 	if btn.Clicked() {

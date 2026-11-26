@@ -9,6 +9,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
 )
@@ -252,30 +253,40 @@ func (s *viewState) modelsPageActions(c *ui.Context, wizardOpen *bool) {
 
 func (s *viewState) modelStorageAndRootsView(c *ui.Context) {
 	t := tokens(c)
-	ui.Column(c).FillWidth().Gap(t.Density.Tight).Children(func() {
-		ui.Text(c, modelsStorageSummaryText(s.registry)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+	ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+			components.Icon(c, lucide.HardDrive).Size(14, 14).TextColor(t.Color.FgSecondary)
+			ui.Text(c, modelsStorageSummaryText(s.registry)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
+		})
 		primaryRoot := emptyText(s.settings.Effective.ModelsRoot)
 		if len(s.registry.ModelRoots) > 0 {
-			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Hairline).Padding(t.Density.Tight), materialSunken).Children(func() {
-				for _, rawDir := range s.registry.ModelRoots {
+			applyMaterial(c, ui.Column(c).FillWidth().Padding(t.Density.Tight, t.Density.Stack), materialSunken).
+				Border(1, t.Color.BorderSubtle).Children(func() {
+				for i, rawDir := range s.registry.ModelRoots {
+					if i > 0 {
+						ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+					}
 					dir := rawDir
 					c.Key("model-root-" + dir)
-					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-						ui.Text(c, dir).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine()
+					ui.Row(c).FillWidth().MinHeight(t.Control.SM).AlignItems(ui.Center).Gap(t.Density.Row).
+						Padding(t.Density.Hairline, 0).Children(func() {
+						components.Icon(c, lucide.Folder).Size(14, 14).TextColor(t.Color.FgSecondary)
+						dirText := ui.Text(c, dir).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine().TruncateMiddle()
+						components.Tooltip(c, dirText, dir)
 						if s.isExtraModelRootDir(dir, primaryRoot) {
 							sizedButton(c, components.ButtonGhost, sizeSM, tr(c, "models.roots.remove")).
 								Label(trf(c, "models.roots.remove_label", "dir", dir)).
 								Disabled(s.busy).
 								OnClick(func() { s.removeExtraModelsRoot(dir) })
 						} else {
-							ui.Text(c, tr(c, "models.roots.primary")).FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary).SingleLine()
+							inlineBadge(c, tr(c, "models.roots.primary"), stateNeutral, badgeOptions{Size: sizeSM, Style: badgeSoft})
 						}
 					})
 				}
 			})
 		}
 		if suggestions := s.suggestedModelDirs(); len(suggestions) > 0 {
-			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, tr(c, "models.roots.suggested")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 				for _, item := range suggestions {
 					dir := item
@@ -290,37 +301,64 @@ func (s *viewState) modelStorageAndRootsView(c *ui.Context) {
 	})
 }
 
-func (s *viewState) modelRowTrailing(c *ui.Context, m core.ModelAsset, pending *pendingAssetDelete) {
+func (s *viewState) installedModelRow(c *ui.Context, m core.ModelAsset, pending *pendingAssetDelete) {
 	t := tokens(c)
-	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		s.renderModelEvidenceInline(c, m)
-		if !m.Available {
-			badge(c, tr(c, "models.badge.unavailable"), stateWarning, badgeOptions{Style: badgeDot, Size: sizeSM})
-		}
-		s.modelStandaloneActions(c, m)
-		modelTaskAction(c, s, m)
-		s.assetRowActions(c, "model", m.Name, m.Path, m.Format, "", m.SizeBytes, m.Deletable, pending)
+	titleText := modelLabel(m)
+	detailsText := modelDetails(m)
+	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).
+		Padding(t.Density.Stack, t.Density.Tight).Children(func() {
+		modelIconBox(c, titleText+" "+m.Architecture, 36, t.Radius.Control)
+		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
+			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				titleEl := ui.Text(c, titleText).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine().TruncateMiddle()
+				components.Tooltip(c, titleEl, titleText)
+				s.renderModelStandaloneBadge(c, m)
+			})
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				if detailsText != "" {
+					ui.Text(c, detailsText).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
+				}
+				s.renderModelEvidenceInline(c, m)
+			})
+			s.renderModelStandaloneSubrow(c, m)
+		})
+		ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			s.renderModelStandalonePrimaryAction(c, m)
+			modelTaskAction(c, s, m)
+			s.assetRowActions(c, "model", m.Name, m.Path, m.Format, "", m.SizeBytes, m.Deletable, pending)
+		})
 	})
 }
 
-func (s *viewState) engineRowTrailing(c *ui.Context, eng core.EngineAsset, pending *pendingAssetDelete) {
+func (s *viewState) installedEngineRow(c *ui.Context, eng core.EngineAsset, pending *pendingAssetDelete) {
 	t := tokens(c)
-	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		s.renderEngineUpdateBadgeAndAction(c, eng)
-		label, kind := s.engineBadgeState(eng)
-		badge(c, label, kind, badgeOptions{Style: badgeDot, Size: sizeSM})
-		s.assetRowActions(c, "engine", eng.Name, eng.Path, "", eng.Family, nil, eng.Deletable, pending)
+	badgeLabel, badgeKind := s.engineBadgeState(eng)
+	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).
+		Padding(t.Density.Stack, t.Density.Tight).Children(func() {
+		engineIconBox(c, engineFamilyTitle(eng.Family, eng.Name), 36, t.Radius.Control)
+		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				ui.Text(c, eng.Name).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
+				inlineBadge(c, badgeLabel, badgeKind, badgeOptions{Style: badgeDot, Size: sizeSM})
+				s.renderEngineUpdateBadge(c, eng)
+			})
+			ui.Text(c, s.engineStateLine(eng)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		})
+		ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			s.renderEngineUpdateAction(c, eng)
+			s.assetRowActions(c, "engine", eng.Name, eng.Path, "", eng.Family, nil, eng.Deletable, pending)
+		})
 	})
 }
 
 func (s *viewState) assetRowActions(c *ui.Context, kind, name, path, format, family string, sizeBytes *int64, deletable bool, pending *pendingAssetDelete) {
 	if path != "" || s.preview != nil {
-		button(c, tr(c, "models.action.open_dir")).Label(trf(c, "models.action.open_dir_label", "name", name)).Disabled(s.busy).OnClick(func() {
+		outlineButton(c, tr(c, "models.action.open_dir")).Label(trf(c, "models.action.open_dir_label", "name", name)).Disabled(s.busy).OnClick(func() {
 			s.revealAsset(kind, name)
 		})
 	}
 	if deletable {
-		if dangerButton(c, tr(c, "models.action.delete")).Label(trf(c, "models.action.delete_label", "name", name)).Disabled(s.busy || pending.inspecting).Clicked() {
+		if quietDangerButton(c, tr(c, "models.action.delete")).Label(trf(c, "models.action.delete_label", "name", name)).Disabled(s.busy || pending.inspecting).Clicked() {
 			s.openDeleteConfirm(pending, kind, name, path, format, family, sizeBytes)
 		}
 	}

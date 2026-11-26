@@ -68,27 +68,35 @@ type emptyStateOptions struct {
 }
 
 type listRowOptions struct {
-	Leading  func()
-	Title    string
-	Subtitle string
-	Trailing func()
-	Radius   float32
-	Selected bool
-	OnClick  func()
+	Leading   func()
+	Title     string
+	Subtitle  string
+	Trailing  func()
+	Radius    float32
+	Selected  bool
+	BoldTitle bool
+	OnClick   func()
+}
+
+func styleButtonSize(c *ui.Context, b ui.Element, size controlSize) ui.Element {
+	t := tokens(c)
+	b.Radius(t.Radius.Control).MaxWidthPercent(100).AlignSelf(ui.Start)
+	switch size {
+	case sizeSM:
+		return b.MinHeight(t.Control.SM).Padding(t.Density.Hairline, t.Density.Row).FontSize(t.Type.Caption)
+	case sizeLG:
+		return b.MinHeight(t.Control.LG).Padding(t.Density.Row, t.Density.Section).FontSize(t.Type.Body)
+	default:
+		return b.MinHeight(t.Control.MD).Padding(t.Density.Tight, t.Density.Stack)
+	}
 }
 
 func outlineButton(c *ui.Context, label string) ui.Element {
-	t := tokens(c)
-	return components.Button(c, label, components.ButtonOutline).
-		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.Control).
-		MaxWidthPercent(100).AlignSelf(ui.Start)
+	return styleButtonSize(c, components.Button(c, label, components.ButtonOutline), sizeMD)
 }
 
 func ghostButton(c *ui.Context, label string) ui.Element {
-	t := tokens(c)
-	return components.Button(c, label, components.ButtonGhost).
-		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.Control).
-		MaxWidthPercent(100).AlignSelf(ui.Start)
+	return styleButtonSize(c, components.Button(c, label, components.ButtonGhost), sizeMD)
 }
 
 func iconButton(c *ui.Context, icon func() *ui.SVG, label string, style components.IconButtonStyle) ui.Element {
@@ -96,16 +104,31 @@ func iconButton(c *ui.Context, icon func() *ui.SVG, label string, style componen
 }
 
 func sizedButton(c *ui.Context, variant components.ButtonVariant, size controlSize, label string) ui.Element {
+	return styleButtonSize(c, components.Button(c, label, variant), size)
+}
+
+func studioTextBox(c *ui.Context, value *string, opts ...components.TextBoxOptions) ui.Element {
 	t := tokens(c)
-	b := components.Button(c, label, variant).Radius(t.Radius.Control).MaxWidthPercent(100).AlignSelf(ui.Start)
-	switch size {
-	case sizeSM:
-		return b.Padding(t.Density.Tight, t.Density.Row).FontSize(t.Type.Caption)
-	case sizeLG:
-		return b.Padding(t.Density.Stack, t.Density.Section).FontSize(t.Type.Body)
-	default:
-		return b.Padding(t.Density.Row, t.Density.Stack)
+	var o components.TextBoxOptions
+	if len(opts) > 0 {
+		o = opts[0]
 	}
+	el := components.TextBox(c, value, o).Radius(t.Radius.Control)
+	if !o.Multiline && o.LeadingIcon == nil && o.LeadingText == "" {
+		el.Padding(c.Theme().Space(1.75), t.Density.Stack).MinHeight(t.Control.MD)
+	} else if !o.Multiline {
+		el.MinHeight(t.Control.MD)
+	}
+	return el
+}
+
+func studioSelect[T comparable](c *ui.Context, selected *T) *components.SelectParts[T] {
+	t := tokens(c)
+	sel := components.Select(c, selected)
+	sel.Trigger.MinHeight(t.Control.MD).
+		Padding(t.Density.Tight, c.Theme().Space(6), t.Density.Tight, t.Density.Stack).
+		Radius(t.Radius.Control)
+	return sel
 }
 
 func badge(c *ui.Context, label string, kind stateKind, opts badgeOptions) ui.Element {
@@ -237,15 +260,23 @@ func validatedField(c *ui.Context, opts validatedFieldOptions) ui.Element {
 }
 
 func switchField(c *ui.Context, label, description string, on *bool) ui.Element {
+	return labeledSwitchRow(c, label, description, label, on)
+}
+
+func labeledSwitchRow(c *ui.Context, label, description, switchLabel string, on *bool) ui.Element {
 	t := tokens(c)
 	return ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Section).Children(func() {
-		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
+		labelCol := ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline)
+		if on != nil && labelCol.Clicked() {
+			*on = !*on
+		}
+		labelCol.Children(func() {
 			ui.Text(c, label).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary)
 			if description != "" {
 				ui.Text(c, description).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			}
 		})
-		components.Switch(c, on, label, components.SwitchOptions{HideLabel: true})
+		components.Switch(c, on, switchLabel, components.SwitchOptions{HideLabel: true})
 	})
 }
 
@@ -255,7 +286,7 @@ func monoField(c *ui.Context, label, description, placeholder, errMsg string, va
 		Description: description,
 		Error:       errMsg,
 		Input: func() {
-			el := components.TextBox(c, value, components.TextBoxOptions{}).FillWidth()
+			el := studioTextBox(c, value).FillWidth()
 			if placeholder != "" {
 				el.Placeholder(placeholder)
 			}
@@ -304,7 +335,7 @@ func listRow(c *ui.Context, opts listRowOptions) ui.Element {
 		row.Background(t.Color.SurfaceHover)
 	}
 	if opts.OnClick != nil {
-		row.OnClick(opts.OnClick)
+		row.Role(ui.RoleButton).Focusable().OnClick(opts.OnClick)
 	}
 	row.Children(func() {
 		if opts.Leading != nil {
@@ -312,7 +343,7 @@ func listRow(c *ui.Context, opts listRowOptions) ui.Element {
 		}
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
 			title := ui.Text(c, opts.Title).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
-			if opts.Selected {
+			if opts.Selected || opts.BoldTitle {
 				title.Bold()
 			}
 			if opts.Subtitle != "" {
@@ -320,7 +351,7 @@ func listRow(c *ui.Context, opts listRowOptions) ui.Element {
 			}
 		})
 		if opts.Trailing != nil {
-			opts.Trailing()
+			ui.Row(c).Shrink(0).AlignItems(ui.Center).Children(opts.Trailing)
 		}
 	})
 	return row
@@ -342,6 +373,26 @@ func keyValueRow(c *ui.Context, key, value string, tabular bool) {
 		val := ui.Text(c, display).FontSize(t.Type.Body).TextColor(valColor).Selectable()
 		if tabular {
 			val.FontFeatures("tnum")
+		}
+	})
+}
+
+func pathKeyValueRow(c *ui.Context, key, value string) {
+	t := tokens(c)
+	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Section).
+		Padding(t.Density.Tight, 0).Children(func() {
+		ui.Box(c).Width(140).Shrink(0).Children(func() {
+			ui.Text(c, key).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		})
+		display := value
+		valColor := t.Color.FgPrimary
+		if display == "" {
+			display = tr(c, "common.missing")
+			valColor = t.Color.FgTertiary
+		}
+		val := ui.Text(c, display).FontSize(t.Type.Body).TextColor(valColor).Grow(1).MinWidth(0).SingleLine().TruncateMiddle().Selectable()
+		if value != "" {
+			components.Tooltip(c, val, value)
 		}
 	})
 }

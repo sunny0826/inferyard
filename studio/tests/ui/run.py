@@ -51,7 +51,7 @@ def main() -> int:
         "--suite",
         choices=("daily", "full"),
         default="daily",
-        help="daily: 3 key workflows (default); full: all 7 workflows",
+        help="daily: 4 key workflows (default); full: all 8 workflows",
     )
     args = parser.parse_args()
     if sys.platform != "darwin":

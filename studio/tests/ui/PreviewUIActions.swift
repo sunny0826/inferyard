@@ -11,7 +11,7 @@ extension PreviewUITests {
         let list = app.scrollViews["模拟场景列表"]
         expectExists(list, timeout: 5)
         let option = list.staticTexts[label].firstMatch
-        for _ in 0..<8 {
+        for _ in 0..<16 {
             let viewport = list.frame
             let frame = option.frame
             if !frame.isEmpty && viewport.contains(frame) {

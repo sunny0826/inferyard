@@ -56,7 +56,7 @@ func engineHeaderActionButton(c *ui.Context, opts engineHeaderActionOptions) ui.
 	t := tokens(c)
 	theme := c.Theme()
 	scale := stateScale(c, opts.kind)
-	b := ui.ButtonBase(c).MinWidth(86).Padding(theme.Space(1.5), theme.Space(3)).Radius(t.Radius.Full).Label(opts.actionLabel)
+	b := ui.ButtonBase(c).MinWidth(86).MinHeight(t.Control.SM).Padding(0, theme.Space(3)).Radius(t.Radius.Full).Label(opts.actionLabel)
 	b.Disabled(opts.disabled)
 
 	showSpinner := opts.busy

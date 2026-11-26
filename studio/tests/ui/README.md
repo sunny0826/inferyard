@@ -5,8 +5,8 @@ Builds Studio with `ui_debug` and drives one native macOS `--debug-ui` window vi
 From the repository root (requires an unlocked, logged-in macOS desktop session with full Xcode):
 
 ```sh
-mise run test:studio-ui       # Daily: 3 core workflows
-mise run test:studio-ui:full  # Full: all 7 workflows (3 daily + 4 full-only; also run by CI)
+mise run test:studio-ui       # Daily: 4 core workflows
+mise run test:studio-ui:full  # Full: all 8 workflows (4 daily + 4 full-only; also run by CI)
 ```
 
 Watch for the macOS automation authorization prompt on first launch and keep the desktop unlocked throughout the run. Artifacts (`run.json`, `xcodebuild.log`, `Results.xcresult`) are written to a new `studio/build/ui-e2e/run-*` directory.

@@ -235,7 +235,7 @@ func assetDeleteConfirmMessage(p pendingAssetDelete) string {
 func (s *viewState) assetDeleteDialog(c *ui.Context, pending *pendingAssetDelete) {
 	c.Key("asset-delete-dialog")
 	title := tr(c, "models.delete.dialog_title")
-	result := components.AlertDialog(c, &pending.open, components.AlertDialogOptions{
+	result := studioDestructiveAlertDialog(c, &pending.open, components.AlertDialogOptions{
 		DialogOptions: components.DialogOptions{Label: title},
 		Title:         title,
 		Message:       assetDeleteConfirmMessage(*pending),

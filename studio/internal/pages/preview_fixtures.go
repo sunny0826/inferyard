@@ -6,7 +6,6 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -24,6 +23,7 @@ var previewScenes = []struct {
 	apply    func(*viewState)
 }{
 	{"preview.scene.task_preparation", previewPreparation},
+	{"preview.scene.cli_outdated", previewCLIOutdatedScene},
 	{"preview.scene.task_ready", func(s *viewState) {
 		s.history, s.downloads, s.reports = core.RunHistoryResponse{}, nil, nil
 	}},
@@ -51,6 +51,7 @@ var previewScenes = []struct {
 	{"preview.scene.engines_local_and_dir", previewLocalEngines},
 	{"preview.scene.engines_lmstudio_bind", func(s *viewState) {
 		previewLocalEngines(s)
+		s.selected = "benchmarks"
 		s.engine, s.model = l10n.TRf("preview.engine.local_name", "family", "lmstudio"), "local.gguf"
 		s.localPID, s.localEndpoint = "4001", "http://127.0.0.1:48857"
 		s.discoveryLoaded = true
@@ -58,11 +59,14 @@ var previewScenes = []struct {
 			{PID: 4001, ProcessName: "LM Studio", Endpoints: []inferyard.DiscoveredEndpoint{{URL: "http://127.0.0.1:48857", Models: []string{"local.gguf", "local-weights"}}}},
 		}}
 	}},
+	{"preview.scene.library_edge_states", previewLibraryEdgeStatesScene},
 	{"preview.scene.resources_dense_missing", previewDenseResources},
 	{"preview.scene.resources_cpu_sensors", previewMultiSensorResources},
+	{"preview.scene.report_compare_multi", func(s *viewState) { s.openReport("compare-report") }},
 	{"preview.scene.report_long_missing", func(s *viewState) { s.openReport("long-report") }},
 	{"preview.scene.report_svg_pelican", func(s *viewState) { s.openReport("pelican-report") }},
 	{"preview.scene.report_read_failed", func(s *viewState) { s.openReport("broken-report") }},
+	{"preview.scene.speed_history_results", previewSpeedHistoryScene},
 	{"preview.scene.downloads_active_failed", previewDownloadsActiveAndFailed},
 	{"preview.scene.downloads_polystrata_setup", previewDownloadsPolystrata},
 	{"preview.scene.downloads_polystrata_model", previewDownloadsPolystrataModel},
@@ -72,12 +76,14 @@ var previewScenes = []struct {
 	{"preview.scene.rec_existing_collapsed", previewRecExistingAssetsCollapsed},
 	{"preview.scene.rec_cpu_fallback", previewRecCPUFallback},
 	{"preview.scene.rec_blocked_disk", previewRecBlockedDisk},
+	{"preview.scene.service_exited", previewServiceExitedScene},
+	{"preview.scene.services_multi", previewMultiServicesScene},
+	{"preview.scene.service_orphaned", previewOrphanedServiceScene},
+	{"preview.scene.notifications_center", previewNotificationsScene},
 	{"preview.scene.update_available", previewUpdateAvailable},
 	{"preview.scene.update_downloading", previewUpdateDownloading},
 	{"preview.scene.update_ready", previewUpdateReadyToApply},
 	{"preview.scene.update_error", previewUpdateError},
-	{"preview.scene.service_exited", previewServiceExitedScene},
-	{"preview.scene.services_multi", previewMultiServicesScene},
 }
 
 func previewDenseResources(s *viewState) {
@@ -111,12 +117,13 @@ func previewBase(ctx context.Context) *viewState {
 	modelsRoot := previewValue(filepath.Join(root, "models"))
 	reportsRoot := previewValue(filepath.Join(root, "reports"))
 	s := &viewState{
-		speed: &speedWorkspace{context: inferyard.ContextSpeed64K},
+		windowTitle: l10n.TR("app.title.preview"),
+		speed:       &speedWorkspace{context: inferyard.ContextSpeed64K},
 		settingsViewState: settingsViewState{
 			buildInfo: func() core.BuildInfo {
 				return core.BuildInfo{
-					Version:   "0.0.14",
-					BuildTime: "2026-11-25T03:30:00Z",
+					Version:   previewAppVersion,
+					BuildTime: "2026-11-26T08:00:00Z",
 					GitCommit: "0123456789abcdef0123456789abcdef01234567",
 				}
 			},
@@ -125,7 +132,7 @@ func previewBase(ctx context.Context) *viewState {
 		denied: map[string]bool{}, model: model, engine: engine, discoveryLoaded: true,
 		engineState: core.EngineState{State: "stopped"},
 		ready: core.Readiness{
-			CLI:       core.InferyardProbe{Status: "ok", Version: previewValue("preview")},
+			CLI:       core.InferyardProbe{Status: "ok", Version: previewValue(previewAppVersion)},
 			Workspace: core.DirectoryReadiness{Path: settings.WorkspaceRoot, Exists: true, Initialized: true},
 			Results:   core.DirectoryReadiness{Path: resultsRoot, Exists: true},
 			Models:    core.DirectoryReadiness{Path: modelsRoot, Exists: true},
@@ -143,7 +150,7 @@ func previewBase(ctx context.Context) *viewState {
 					SizeBytes: previewValue(int64(4 << 30)), Path: filepath.Join(root, "models", model), Deletable: true,
 				},
 				{
-					Name: "Preview-Small.gguf", Format: "gguf", Available: true,
+					Name: "Preview-Small.gguf", Format: "gguf", Available: true, Architecture: "qwen3",
 					SizeBytes: previewValue(int64(2 << 30)), Path: filepath.Join(root, "models", "Preview-Small.gguf"), Deletable: true,
 				},
 			},
@@ -152,11 +159,13 @@ func previewBase(ctx context.Context) *viewState {
 				Path: filepath.Join(root, "engines", "llama-server"), Deletable: true,
 			}},
 			DefaultEngine:   engine,
-			TotalModelBytes: 4 << 30,
-			DiskFreeBytes:   previewValue(int64(100 << 30)),
+			TotalModelBytes: 6 << 30,
+			DiskFreeBytes:   previewValue(int64(160 << 30)),
 			ModelRoots:      []string{filepath.Join(root, "models")},
 		},
-		checks: core.EngineCheckOverview{Supported: true, Engines: map[string]core.EngineEligibility{engine: {State: core.EngineCheckEligible, Version: "preview"}}},
+		checks: core.EngineCheckOverview{Supported: true, Engines: map[string]core.EngineEligibility{
+			engine: {State: core.EngineCheckEligible, Family: "llama-cpp", Version: "prism-b10743-adfffbe"},
+		}},
 		progress: &inferyard.WorkspaceProgress{Workspace: root, NextAction: "prepare_candidate",
 			DevicePreflight: inferyard.ProgressPreflight{Status: "ok", Path: previewValue(filepath.Join(root, "preflight"))},
 			Bundles: []inferyard.BundleProgress{
@@ -169,10 +178,20 @@ func previewBase(ctx context.Context) *viewState {
 		reportExclusivities: seedPreviewReportExclusivities(),
 	}
 	s.loadSettings(s.settings)
-	seeded := core.RunSummary{RunId: "preview-run", Path: "/preview/results/preview-run", ModelName: previewValue(model), Bundle: previewValue(inferyard.DefaultBundleCore), Status: "complete", Sealed: true, Completeness: previewValue("complete")}
+	seeded := core.RunSummary{
+		RunId: "preview-run", Path: "/preview/results/preview-run",
+		ModelName: previewValue(model), Engine: previewValue(engine),
+		Bundle: previewValue(inferyard.DefaultBundleCore), Status: "complete",
+		Sealed: true, Completeness: previewValue("complete"),
+		StartedAt: previewValue("2026-10-16T23:55:00Z"), FinishedAt: previewValue("2026-10-16T23:58:12Z"),
+	}
 	seeded.Score = &core.RunScore{Passed: 7, Valid: 13, Rate: previewValue(7.0 / 13)}
-	s.history.StandaloneRuns = []core.RunSummary{seeded}
-	s.device.Snapshot = json.RawMessage(`{"hardware":{"cpu_model":"Preview CPU","logical_cpus":14,"architecture":"arm64","apple_silicon":true,"cpu_features":{"avx2":false,"avx512f":false},"memory_total_bytes":51539607552,"memory_available_bytes":32212254720,"disk_free_bytes":161061273600,"ac_online":true,"gpu":{"devices":[{"name":"Preview GPU","vendor":"apple","arch_family":"Apple Silicon","cores":20,"metal_supported":true,"missing":{"memory_total_bytes":"shared_host_memory","memory_free_bytes":"not_measured"}}]},"missing":{"temperature":"unsupported"}},"starter_recommendation":{"definition":"starter-recommendation.v1","status":"recommended","engine":"polystrata","backend":"metal","model_id":"polystrata-qwen36-ud-q4-k-m","model_title":"Qwen3.6 35B-A3B (UD-Q4_K_M)","family":"qwen36","size":"UD-Q4_K_M","engine_core":"llama","model_format":"gguf","fit_level":"fits","recommended_context":32768,"estimated_download_bytes":23085449216,"estimated_ram_bytes":25769803776,"gpu":{"name":"Preview GPU","vendor":"apple","arch_family":"Apple Silicon","unified_memory_bytes":51539607552},"alternatives":[{"engine":"llama-cpp","backend":"metal","model_id":"model-qwen3-0.6b-q8","model_title":"Qwen3-0.6B-Q8_0 (GGUF)","model_format":"gguf","fit_level":"fits","recommended_context":8192,"estimated_download_bytes":639446688,"estimated_ram_bytes":2147483648}]}}`)
+	s.history = core.RunHistoryResponse{
+		ResultsRoot:    resultsRoot,
+		ScannedAt:      "2026-10-16T23:59:00Z",
+		StandaloneRuns: []core.RunSummary{seeded},
+	}
+	s.device.Snapshot = json.RawMessage(previewSnapshotMac48)
 	return s
 }
 
@@ -197,77 +216,106 @@ func previewRunning(s *viewState) {
 }
 
 func previewCompleted(s *viewState) {
+	s.benchFlowOpen = false
 	s.task.stage, s.task.report = "done", "preview-report"
 	s.progress.NextAction, s.progress.DefaultScopeComplete = "done", true
 	s.progress.Report = inferyard.ProgressReport{Status: "present", Path: previewValue("preview-report"), Runs: []string{"preview-run"}}
 	for i := range s.progress.Bundles {
 		s.progress.Bundles[i].Phase, s.progress.Bundles[i].NextAction = "run_complete", "none"
 	}
-}
+	batchID := "preview-batch-01"
+	partialRun := core.RunSummary{
+		RunId:        "preview-batch-run",
+		Path:         "/preview/results/preview-batch-run",
+		BatchId:      previewValue(batchID),
+		ModelName:    previewValue("Preview-Small.gguf"),
+		Engine:       previewValue(s.engine),
+		Bundle:       previewValue(inferyard.DefaultBundlePelican),
+		Status:       "partial",
+		Sealed:       false,
+		Completeness: previewValue("partial"),
+		StopReason:   previewValue("interrupted_checkpoint"),
+		Resumable:    true,
+		StartedAt:    previewValue("2026-10-17T00:12:00Z"),
+		Score:        &core.RunScore{Passed: 2, Valid: 5, Rate: previewValue(0.4)},
+	}
+	batchFailedRun := core.RunSummary{
+		RunId:        "preview-batch-failed",
+		Path:         "/preview/results/preview-batch-failed",
+		BatchId:      previewValue(batchID),
+		ModelName:    previewValue("Preview-Small.gguf"),
+		Engine:       previewValue(s.engine),
+		Bundle:       previewValue(inferyard.DefaultBundleCore),
+		Status:       "failed",
+		Sealed:       false,
+		Completeness: previewValue("incomplete"),
+		StopReason:   previewValue("engine_connection_lost"),
+		Resumable:    true,
+		StartedAt:    previewValue("2026-10-17T00:08:00Z"),
+		FinishedAt:   previewValue("2026-10-17T00:09:45Z"),
+		Score:        &core.RunScore{Passed: 4, Valid: 6, Failed: 2},
+	}
+	s.history.Batches = []core.BatchSummary{{
+		BatchId: batchID,
+		Path:    "/preview/results/" + batchID,
+		Runs:    []core.RunSummary{partialRun, batchFailedRun},
+	}}
 
-func previewReportSummary(id string) core.ReportSummary {
-	index := previewReportFixture("")
-	summary := core.ReportSummary{
-		ReportId: id, Path: "/preview/reports/" + id,
-		ModifiedAt: previewValue("2026-01-01T00:00:00Z"),
-		RunIds:     []string{"preview-run"}, RunPaths: []*string{previewValue("/preview/results/preview-run")},
+	smallComplete := core.RunSummary{
+		RunId:        "preview-run-small",
+		Path:         "/preview/results/preview-run-small",
+		ModelName:    previewValue("Preview-Small.gguf"),
+		Engine:       previewValue("mlx-lm · 0.32.2"),
+		Bundle:       previewValue(inferyard.DefaultBundleCore),
+		Status:       "complete",
+		Sealed:       true,
+		Completeness: previewValue("complete"),
+		StartedAt:    previewValue("2026-10-16T23:30:00Z"),
+		FinishedAt:   previewValue("2026-10-16T23:32:18Z"),
+		Score:        &core.RunScore{Passed: 10, Valid: 13, Rate: previewValue(10.0 / 13)},
 	}
-	for _, run := range index.Runs {
-		summary.RunSummaries = append(summary.RunSummaries, core.ReportListRun{
-			RunID: run.Source.RunID, Model: run.Model, BundleLabel: run.Facets.BundleLabel,
-			Title: run.Profile.Title, Quality: run.Dashboard.Quality,
-		})
+	failedStandalone := core.RunSummary{
+		RunId:        "preview-failed-run",
+		Path:         "/preview/results/preview-failed-run",
+		ModelName:    previewValue(s.model),
+		Engine:       previewValue(s.engine),
+		Bundle:       previewValue(inferyard.DefaultBundleCore),
+		Status:       "failed",
+		Sealed:       false,
+		Completeness: previewValue("incomplete"),
+		StopReason:   previewValue("engine_connection_lost"),
+		Resumable:    false,
+		StartedAt:    previewValue("2026-10-16T22:15:00Z"),
+		FinishedAt:   previewValue("2026-10-16T22:16:04Z"),
 	}
-	return summary
-}
-
-func previewReportFixture(reference string) *core.ReportIndex {
-	index, err := inferyard.ParseStudioReport(previewReportJSON)
-	if err != nil {
-		panic("invalid bundled UI preview report: " + err.Error())
+	cancelledStandalone := core.RunSummary{
+		RunId:        "preview-cancelled-run",
+		Path:         "/preview/results/preview-cancelled-run",
+		ModelName:    previewValue("Preview-Small.gguf"),
+		Engine:       previewValue(s.engine),
+		Bundle:       previewValue(inferyard.DefaultBundlePelican),
+		Status:       "cancelled",
+		Sealed:       false,
+		Completeness: previewValue("incomplete"),
+		StopReason:   previewValue("user_cancelled"),
+		Resumable:    false,
+		StartedAt:    previewValue("2026-10-16T21:40:00Z"),
+		FinishedAt:   previewValue("2026-10-16T21:40:28Z"),
 	}
-	if reference == "pelican-report" {
-		run := &index.Runs[0]
-		run.Source.RunID = "pelican-preview-run"
-		run.Facets.BundleLabel = inferyard.DefaultBundlePelican + " · 1.0.0"
-		zero := core.ReportCounts{Numerator: previewValue(int64(0)), Denominator: previewValue(int64(0)), Excluded: previewValue(int64(0))}
-		run.Dashboard.Quality = core.ReportQuality{StudioCounts: zero, Complete: false, Reason: previewValue("quality_incomplete_or_not_applicable")}
-		run.Dashboard.Categories = []core.ReportCategory{}
-		latency := 2480.0
-		run.Requests = []core.ReportRequest{{
-			CaseID:        "svg-pelican-01",
-			CategoryLabel: "svg",
-			State:         "completed",
-			Quality:       previewValue("not_applicable"),
-			LatencyMS:     &latency,
-		}}
-		run.Summary.CompletionRate = core.ReportCounts{Numerator: previewValue(int64(1)), Denominator: previewValue(int64(1)), Excluded: previewValue(int64(0))}
-		run.Dashboard.Latency = core.ReportLatency{
-			SampleCount: previewValue(int64(1)),
-			Excluded:    previewValue(int64(0)),
-			Min:         &latency,
-			P50:         &latency,
-			Max:         &latency,
-		}
-		run.SVGOutputs = previewPelicanOutputs()
-		return &index
+	s.history.StandaloneRuns = append(s.history.StandaloneRuns[:1], smallComplete, failedStandalone, cancelledStandalone)
+	s.reports = []core.ReportSummary{
+		previewReportSummary("preview-report"),
+		previewReportSummary("compare-report"),
 	}
-	if reference == "long-report" {
-		run := &index.Runs[0]
-		for i := range 40 {
-			run.Requests = append(run.Requests, core.ReportRequest{CaseID: fmt.Sprintf("preview-case-%03d", i), CategoryLabel: l10n.TR("preview.fixture.category"), State: "completed"})
-		}
-		run.Dashboard.Latency.Excluded = previewValue(int64(len(run.Requests)) - *run.Dashboard.Latency.SampleCount)
-	}
-	return &index
+	seedPreviewSpeedHistory(s)
 }
 
 func previewDetailFixture(id string) *core.RunTaskDetail {
 	return &core.RunTaskDetail{
 		Task: core.RunTask{TaskId: id, Kind: "run", State: "running", Bundle: previewValue(inferyard.DefaultBundleCore), RunId: previewValue("preview-run"), RunPath: previewValue("/preview/results/preview-run"), StartedAt: previewValue("2026-10-16T23:59:08Z")},
 		Progress: &core.RunProgress{Done: 42, Total: previewValue(int64(120)), Phase: previewValue("formal"), CurrentCaseId: previewValue("preview-case-043"), Cases: []core.CaseProgress{
-			{CaseId: "preview-case-001", State: "completed", QualityState: previewValue("pass"), DurationMs: previewValue(1240.0)},
-			{CaseId: "preview-case-002", State: "failed", ErrorCategory: previewValue("preview_failure")},
+			{CaseId: "preview-case-001", State: "completed", Category: previewValue(l10n.TR("preview.fixture.category")), QualityState: previewValue("pass"), DurationMs: previewValue(1240.0)},
+			{CaseId: "preview-case-002", State: "failed", Category: previewValue(l10n.TR("preview.fixture.category")), ErrorCategory: previewValue("preview_failure")},
 		}},
 		Resources: append(append(
 			previewResourceSamples(1, "2026-10-17T00:00:00Z", 10<<30, 2<<30, 120),

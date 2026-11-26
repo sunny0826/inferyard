@@ -247,20 +247,35 @@ func (s *viewState) sidebarQueueRow(c *ui.Context) {
 		},
 		open: &s.sidebarQueueOpen,
 		pop: func(close func()) {
-			heading(c, tr(c, "shell.header.task_queue"), 3)
-			ui.Text(c, label)
-			for _, task := range s.tasks {
-				if !terminal(task.State) {
-					name := tr(c, "shell.header.context_speed")
-					if task.Bundle != nil {
-						name = *task.Bundle
+			t := tokens(c)
+			ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
+				ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+					heading(c, tr(c, "shell.header.task_queue"), 3).Grow(1)
+					inlineBadge(c, label, stateActive, badgeOptions{Size: sizeSM})
+				})
+				ui.Column(c).FillWidth().Gap(t.Density.Tight).Children(func() {
+					for _, task := range s.tasks {
+						if !terminal(task.State) {
+							name := tr(c, "shell.header.context_speed")
+							if task.Bundle != nil {
+								name = *task.Bundle
+							}
+							dotKind := stateActive
+							if task.Queued || task.State == "queued" {
+								dotKind = stateNeutral
+							}
+							applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
+								Padding(t.Density.Inset, t.Density.Row), materialSunken).Children(func() {
+								ui.Box(c).Size(6, 6).Radius(t.Radius.Full).Shrink(0).Background(stateColor(c, dotKind))
+								ui.Text(c, name+" · "+taskLabelFor(contextLocale(c), task)).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).SingleLine()
+							})
+						}
 					}
-					ui.Text(c, name+" · "+taskLabelFor(contextLocale(c), task))
-				}
-			}
-			button(c, tr(c, "sidebar.status.open_benchmarks")).AlignSelf(ui.Start).OnClick(func() {
-				s.navigateTo("benchmarks", "")
-				close()
+				})
+				outlineButton(c, tr(c, "sidebar.status.open_benchmarks")).AlignSelf(ui.Start).OnClick(func() {
+					s.navigateTo("benchmarks", "")
+					close()
+				})
 			})
 		},
 	})

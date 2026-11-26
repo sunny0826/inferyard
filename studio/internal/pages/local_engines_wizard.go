@@ -29,12 +29,12 @@ type localEngineWizardState struct {
 }
 
 var localEngineFamilyOptions = []components.NativeSelectOption[string]{
-	{Value: "polystrata", Label: "polystrata"},
-	{Value: "llama-cpp", Label: "llama-cpp"},
+	{Value: "polystrata", Label: "PolyStrata"},
+	{Value: "llama-cpp", Label: "llama.cpp"},
 	{Value: "mlx-lm", Label: "mlx-lm"},
-	{Value: "vllm", Label: "vllm"},
-	{Value: "sglang", Label: "sglang"},
-	{Value: "lmstudio", Label: "lmstudio"},
+	{Value: "vllm", Label: "vLLM"},
+	{Value: "sglang", Label: "SGLang"},
+	{Value: "lmstudio", Label: "LM Studio"},
 }
 
 func (s *viewState) localEngineWizardView(c *ui.Context) {
@@ -114,7 +114,7 @@ func (s *viewState) localEngineWizardView(c *ui.Context) {
 
 func wizardActionButton(c *ui.Context, visibleLabel, accessibleLabel string, active bool) ui.Element {
 	theme := c.Theme()
-	b := components.Button(c, "", components.ButtonPrimary).MaxWidthPercent(100).AlignSelf(ui.Start).Label(accessibleLabel)
+	b := styleButtonSize(c, components.Button(c, "", components.ButtonPrimary), sizeMD).Label(accessibleLabel)
 	showSpinner := delayedVisible(c, b, "btn-spinner", active)
 	b.Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(theme.Space(1.5)).Children(func() {

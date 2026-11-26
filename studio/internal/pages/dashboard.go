@@ -1,6 +1,8 @@
 package pages
 
 import (
+	"fmt"
+
 	"github.com/egoist/mygo/ui"
 )
 
@@ -59,7 +61,7 @@ func (s *viewState) dashboardView(c *ui.Context) {
 		return
 	}
 	if s.newTaskPending {
-		s.header(c, tr(c, "dashboard.title"))
+		s.flowHeader(c, tr(c, "dashboard.title"))
 		host := ui.Column(c.Key("new-task-pending")).FillWidth()
 		show := delayedVisible(c, host, "new-task-pending", true)
 		host.Children(func() {
@@ -72,7 +74,7 @@ func (s *viewState) dashboardView(c *ui.Context) {
 		})
 		return
 	}
-	s.header(c, tr(c, "dashboard.title"))
+	s.flowHeader(c, tr(c, "dashboard.title"))
 	if s.environmentMissing() {
 		s.setupGuide(c)
 		return
@@ -118,8 +120,19 @@ func (s *viewState) conclusionView(c *ui.Context) {
 	if s.progress == nil {
 		return
 	}
-	card(c, tr(c, "dashboard.progress.title"), func() {
-		step := s.step()
+	t := tokens(c)
+	step := s.step()
+	stepText := fmt.Sprintf("%d / 6", min(6, max(1, step+1)))
+	stepKind := stateActive
+	if step >= 6 {
+		stepText = "6 / 6"
+		stepKind = stateSuccess
+	}
+	applyMaterial(c, ui.Column(c.Key("workspace-progress-card")).FillWidth().MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
+		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			heading(c, tr(c, "dashboard.progress.title"), 2).Grow(1)
+			inlineBadge(c, stepText, stepKind, badgeOptions{Size: sizeSM})
+		})
 		phaseProgress(c, phaseProgressOptions{
 			Labels: []string{
 				tr(c, "dashboard.stage.prepare"),
@@ -133,28 +146,39 @@ func (s *viewState) conclusionView(c *ui.Context) {
 			RowLabel: tr(c, "dashboard.progress.row_label"),
 			BarLabel: tr(c, "dashboard.progress.bar_label"),
 		})
+		bundles := s.taskBundles()
 		failed := s.failedBundles()
-		for _, b := range s.taskBundles() {
-			if task := s.liveBundleTask(b.Bundle); task != nil {
-				kind := stateActive
-				if task.Queued && task.State == "starting" {
-					kind = stateNeutral
+		if len(bundles) > 0 {
+			applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Section).
+				Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
+				for _, b := range bundles {
+					if task := s.liveBundleTask(b.Bundle); task != nil {
+						kind := stateActive
+						if task.Queued && task.State == "starting" {
+							kind = stateNeutral
+						}
+						badge(c, b.Bundle+" · "+taskLabel(*task), kind, badgeOptions{Style: badgeDot})
+						continue
+					}
+					if failed[b.Bundle] {
+						badge(c, trf(c, "dashboard.bundle.failed_badge", "bundle", b.Bundle), stateDanger, badgeOptions{Style: badgeDot})
+						continue
+					}
+					kind := stateNeutral
+					switch b.Phase {
+					case "run_complete":
+						kind = stateSuccess
+					case "run_incomplete":
+						kind = stateWarning
+					}
+					badge(c, b.Bundle+" · "+stateLabel(b.Phase), kind, badgeOptions{Style: badgeDot})
 				}
-				badge(c, b.Bundle+" · "+taskLabel(*task), kind, badgeOptions{Style: badgeDot})
+			})
+		}
+		for _, b := range bundles {
+			if s.liveBundleTask(b.Bundle) != nil || failed[b.Bundle] {
 				continue
 			}
-			if failed[b.Bundle] {
-				badge(c, trf(c, "dashboard.bundle.failed_badge", "bundle", b.Bundle), stateDanger, badgeOptions{Style: badgeDot})
-				continue
-			}
-			kind := stateNeutral
-			switch b.Phase {
-			case "run_complete":
-				kind = stateSuccess
-			case "run_incomplete":
-				kind = stateWarning
-			}
-			badge(c, b.Bundle+" · "+stateLabel(b.Phase), kind, badgeOptions{Style: badgeDot})
 			if b.BlockedReason != nil {
 				if *b.BlockedReason == "no_local_model" && s.availableTaskAssets().model && s.preparingTask() {
 					continue

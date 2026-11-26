@@ -3,7 +3,7 @@ import XCTest
 @MainActor
 final class PreviewUITests: XCTestCase {
     var app: XCUIApplication!
-    var currentScene = "任务 · 准备"
+    var currentScene = "测评 · 环境未就绪"
     private var suite = "full"
 
     override func setUpWithError() throws {
@@ -40,12 +40,13 @@ final class PreviewUITests: XCTestCase {
     func testPreviewWorkflowsInOneWindow() {
         let workflows: [(name: String, scene: String?, daily: Bool, run: () -> Void)] = [
             ("BenchmarkFromPreparationToReport", nil, false, benchmarkFromPreparationToReport),
-            ("CancellationAllowsAnotherTask", "任务 · 待运行", false, cancellationAllowsAnotherTask),
-            ("ContextSpeedResultAndHistory", "任务 · 待运行", true, contextSpeedResultAndHistory),
-            ("ContextSpeedFailureMissingAndReadRetry", "任务 · 待运行", false, contextSpeedFailureMissingAndReadRetry),
+            ("CancellationAllowsAnotherTask", "测评 · 待运行", false, cancellationAllowsAnotherTask),
+            ("ContextSpeedResultAndHistory", "测评 · 待运行", true, contextSpeedResultAndHistory),
+            ("ContextSpeedFailureMissingAndReadRetry", "测评 · 待运行", false, contextSpeedFailureMissingAndReadRetry),
             ("FirstUseWithoutLocalAssets", "首次使用 · 无资源", true, firstUseWithoutLocalAssets),
             ("ResourceChartsAndSourceSelection", "资源 · 密集采样与缺测", true, resourceChartsAndSourceSelection),
-            ("LMStudioBindingFailureKeepsCompletedScope", "引擎 · LM Studio 手动绑定", false, lmStudioBindingFailureKeepsCompletedScope),
+            ("ButtonSizingAndRunHistoryDrawer", "测评 · 环境未就绪", true, buttonSizingAndRunHistoryDrawer),
+            ("LMStudioBindingFailureKeepsCompletedScope", "测评 · LM Studio 手动绑定", false, lmStudioBindingFailureKeepsCompletedScope),
         ]
         let selected = workflows.filter { suite == "full" || $0.daily }
         let coverage = XCTAttachment(string: "Suite: \(suite)\n" + selected.map(\.name).joined(separator: "\n"))
@@ -79,7 +80,12 @@ final class PreviewUITests: XCTestCase {
         chooseModel(downloadedModelLabel)
         XCTAssertFalse(app.buttons["确认开始新任务"].exists, "Task nav must not ask to confirm")
         click("开始测评")
-        expectExists(app.buttons["查看实时详情"], timeout: 10)
+        let liveDetailBtn = app.buttons["查看实时详情"].firstMatch
+        let cancelRunBtn = app.buttons["取消运行"].firstMatch
+        expectExists(liveDetailBtn, timeout: 10)
+        expectExists(cancelRunBtn, timeout: 5)
+        XCTAssertEqual(liveDetailBtn.frame.minY, cancelRunBtn.frame.minY, accuracy: 1.5, "查看实时详情 and 取消运行 must align on one row")
+        XCTAssertEqual(liveDetailBtn.frame.height, cancelRunBtn.frame.height, accuracy: 1.0, "查看实时详情 and 取消运行 must match in height")
         keepScreenshot("Task running without obsolete title")
         click("查看实时详情", timeout: 10)
         expectText("实时进度")
@@ -283,6 +289,94 @@ final class PreviewUITests: XCTestCase {
         keepScreenshot("LM Studio retries only the unfinished scope")
         click("查看报告", timeout: 20)
         expectText("local.gguf")
+        expectText("各类任务表现")
+    }
+
+    private func buttonSizingAndRunHistoryDrawer() {
+        click("服务")
+        let prepBtn = app.buttons["准备环境"].firstMatch
+        let settingsBtn = app.buttons["前往设置"].firstMatch
+        let startModelBtn = app.buttons["+ 启动模型"].firstMatch
+        expectExists(prepBtn, timeout: 5)
+        expectExists(settingsBtn, timeout: 5)
+        expectExists(startModelBtn, timeout: 5)
+        XCTAssertEqual(prepBtn.frame.height, settingsBtn.frame.height, accuracy: 1.0, "准备环境 and 前往设置 must match in height")
+        XCTAssertEqual(prepBtn.frame.height, startModelBtn.frame.height, accuracy: 1.0, "准备环境 and + 启动模型 must match in height")
+        keepScreenshot("Services setup uniform buttons")
+
+        click("模型库")
+        let rescanBtn = app.buttons["重新扫描"].firstMatch
+        let addDirBtn = app.buttons["添加模型目录"].firstMatch
+        expectExists(rescanBtn, timeout: 5)
+        expectExists(addDirBtn, timeout: 5)
+        XCTAssertEqual(rescanBtn.frame.height, addDirBtn.frame.height, accuracy: 1.0, "重新扫描 and 添加模型目录 must match in height")
+        for modelName in ["Preview-Model-Q4.gguf", "Preview-Small.gguf"] {
+            let startBtn = app.buttons["启动 · \(modelName)"].firstMatch
+            let delBtn = app.buttons["删除 · \(modelName)"].firstMatch
+            expectExists(startBtn, timeout: 5)
+            expectExists(delBtn, timeout: 5)
+            XCTAssertEqual(startBtn.frame.minY, delBtn.frame.minY, accuracy: 1.5, "\(modelName) action buttons must stay on one row")
+            XCTAssertEqual(startBtn.frame.height, delBtn.frame.height, accuracy: 1.0, "\(modelName) action buttons must match in height")
+        }
+        XCTAssertFalse(text("gguf · 约 2.0 GiB").exists)
+        keepScreenshot("Library models tab polished")
+
+        selectTab("引擎")
+        let registerEngineBtn = app.buttons["注册本地引擎"].firstMatch
+        let checkUpdatesBtn = app.buttons["检查引擎更新"].firstMatch
+        expectExists(registerEngineBtn, timeout: 5)
+        expectExists(checkUpdatesBtn, timeout: 5)
+        XCTAssertEqual(registerEngineBtn.frame.minY, checkUpdatesBtn.frame.minY, accuracy: 1.5, "Engine header actions must align")
+        XCTAssertEqual(registerEngineBtn.frame.height, checkUpdatesBtn.frame.height, accuracy: 1.0, "Engine header actions must match in height")
+        keepScreenshot("Library engines tab polished")
+
+        selectScene("测评 · 已完成")
+        click("报告")
+        expectTab("测评报告")
+        selectTab("长上下文专项")
+        expectText("preview-speed-64k")
+        selectTab("运行历史")
+        expectText("运行历史表")
+        expectText("Preview-Small.gguf")
+        expectText("Preview-Model-Q4.gguf")
+        XCTAssertFalse(text("结果目录：未配置").exists)
+        XCTAssertFalse(text("扫描时间：未配置").exists)
+        XCTAssertFalse(text("独立运行不支持续测。").exists)
+        keepScreenshot("Reports run history redesigned")
+
+        click("测评")
+        expectTab("当前任务")
+        expectTab("运行历史")
+        expectExists(app.buttons["Preview-Small.gguf · zh-svg-pelican"].firstMatch, timeout: 5)
+        keepScreenshot("Benchmarks active and recent tab")
+
+        selectTab("运行历史")
+        let historyTable = app.tables["运行历史表"]
+        expectExists(historyTable, timeout: 5)
+        let searchBox = app.textFields["搜索模型、题集或运行 ID…"].firstMatch
+        let filterGroup = app.radioGroups["筛选运行状态"].firstMatch
+        let refreshBtn = app.buttons["刷新"].firstMatch
+        let createFromHistoryBtn = app.buttons["从历史运行生成报告"].firstMatch
+        expectExists(searchBox, timeout: 5)
+        expectExists(filterGroup, timeout: 5)
+        expectExists(refreshBtn, timeout: 5)
+        expectExists(createFromHistoryBtn, timeout: 5)
+        XCTAssertEqual(searchBox.frame.height, refreshBtn.frame.height, accuracy: 1.0, "Search box and Refresh button must share MD control height")
+        XCTAssertEqual(filterGroup.frame.height, refreshBtn.frame.height, accuracy: 1.0, "Segmented filter and Refresh button must share MD control height")
+        XCTAssertEqual(refreshBtn.frame.height, createFromHistoryBtn.frame.height, accuracy: 1.0, "Toolbar buttons must share MD control height")
+        keepScreenshot("Benchmarks run history tab")
+
+        selectTab("完整")
+        let completedRow = historyTable.tableRows.element(boundBy: 1)
+        expectExists(completedRow, timeout: 5)
+        completedRow.click()
+        expectText("运行详情")
+        expectText("独立运行")
+        XCTAssertFalse(text("独立运行不支持续测。").exists)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.22))
+        keepScreenshot("Run history detail drawer")
+
+        click("查看报告")
         expectText("各类任务表现")
     }
 

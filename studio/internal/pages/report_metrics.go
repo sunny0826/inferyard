@@ -83,7 +83,12 @@ func reportMetrics(c *ui.Context, run core.ReportRun) {
 		{
 			tr(c, "reports.metrics.median_latency"),
 			reportScaled(d.Latency.P50, 1000, "s"),
-			trf(c, "reports.metrics.valid_samples", "count", reportNumber(d.Latency.SampleCount)),
+			func() string {
+				if d.Latency.SampleCount != nil {
+					return trf(c, "reports.metrics.valid_samples", "count", *d.Latency.SampleCount)
+				}
+				return trf(c, "reports.metrics.valid_samples", "count", reportNumber(d.Latency.SampleCount))
+			}(),
 			reportExcludedNoteFor(c, d.Latency.Excluded),
 		},
 		{

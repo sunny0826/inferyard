@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 	"inferyard/studio/internal/l10n"
 )
@@ -56,7 +55,7 @@ func (s *viewState) header(c *ui.Context, title string) {
 }
 
 func field(c *ui.Context, label string, value *string) ui.Element {
-	return ui.Field(c, label, func() { components.TextBox(c, value, components.TextBoxOptions{}) })
+	return ui.Field(c, label, func() { studioTextBox(c, value) })
 }
 
 func text(p *string) string {

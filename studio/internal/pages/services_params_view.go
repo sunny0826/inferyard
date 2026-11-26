@@ -4,7 +4,6 @@ import (
 	"strconv"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 )
 
 func (s *viewState) serviceParamsDrawer(c *ui.Context) {
@@ -79,13 +78,7 @@ func (s *viewState) serviceParamsDrawer(c *ui.Context) {
 				field(c, tr(c, "services.params.port_label"), &st.portText).Description(tr(c, "services.params.port_desc"))
 
 				ui.Column(c).FillWidth().Gap(t.Density.Tight).Children(func() {
-					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-						ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-							ui.Text(c, tr(c, "services.params.lan_label")).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary)
-							ui.Text(c, tr(c, "services.params.lan_desc")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-						})
-						components.Switch(c, &st.lanAccess, tr(c, "services.params.lan_switch_label"), components.SwitchOptions{HideLabel: true})
-					})
+					labeledSwitchRow(c, tr(c, "services.params.lan_label"), tr(c, "services.params.lan_desc"), tr(c, "services.params.lan_switch_label"), &st.lanAccess)
 					if st.lanAccess {
 						noticeBanner(c, noticeBannerOptions{
 							Kind:    stateWarning,

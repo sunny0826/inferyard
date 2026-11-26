@@ -46,6 +46,7 @@ func (s *viewState) libraryView(c *ui.Context) {
 	})
 
 	s.standaloneDrawer(c)
+	s.standaloneStopDialog(c)
 	s.assetDeleteDialog(c, pending)
 	s.downloadsEngineDrawer(c)
 	s.downloadsModelDrawer(c)
@@ -87,7 +88,7 @@ func (s *viewState) libraryHardwareCard(c *ui.Context) {
 	})
 
 	if missingAssets || s.starterCardVisible() {
-		s.downloadsStarterCard(c)
+		s.downloadsStarterCardInContext(c, "library")
 	}
 }
 
@@ -206,7 +207,14 @@ func (s *viewState) libraryTabBar(c *ui.Context) {
 
 func (s *viewState) libraryModelsTab(c *ui.Context, pending *pendingAssetDelete) {
 	t := tokens(c)
-	card(c, tr(c, "models.section.installed_models"), func() {
+	applyMaterial(c, ui.Column(c.Key("library-installed-models")).MinWidth(0).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			heading(c, tr(c, "models.section.installed_models"), 2)
+			ui.Box(c).Grow(1)
+			outlineButton(c, tr(c, "models.action.add_model_dir")).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
+				s.pickExtraModelsRoot(emptyText(s.settings.Effective.ModelsRoot))
+			})
+		})
 		modelErr := s.registry.ModelError
 		if s.suppressOutdatedCLIError(modelErr) {
 			modelErr = nil
@@ -221,43 +229,45 @@ func (s *viewState) libraryModelsTab(c *ui.Context, pending *pendingAssetDelete)
 			})
 			return
 		}
-		applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Tight), materialInset).Children(func() {
-			for _, model := range s.registry.Models {
+		ui.Column(c).FillWidth().Children(func() {
+			ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+			for i, model := range s.registry.Models {
+				if i > 0 {
+					ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+				}
 				m := model
 				c.Key(m.Name)
-				listRow(c, listRowOptions{
-					Leading:  func() { modelIconBox(c, modelLabel(m), 28, t.Radius.SM) },
-					Title:    modelLabel(m),
-					Subtitle: modelDetails(m),
-					Trailing: func() { s.modelRowTrailing(c, m, pending) },
-				})
+				s.installedModelRow(c, m, pending)
 			}
 		})
 	})
 
-	section(c, tr(c, "library.section.catalog_models"), func() {
-		s.downloadsModelsTab(c)
-	})
+	s.downloadsModelsTab(c)
 }
 
 func (s *viewState) libraryEnginesTab(c *ui.Context, pending *pendingAssetDelete, wizardOpen *bool) {
 	t := tokens(c)
-	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		btnLabel := tr(c, "models.action.register_local_engine")
-		if *wizardOpen {
-			btnLabel = tr(c, "models.action.collapse_local_engine")
-		}
-		button(c, btnLabel).OnClick(func() { *wizardOpen = !*wizardOpen })
-		s.renderEngineUpdateCheckButton(c)
-	})
-	if *wizardOpen {
-		card(c, tr(c, "models.wizard.card_title"), func() {
-			s.localEngineWizardView(c)
-			button(c, tr(c, "models.action.collapse")).OnClick(func() { *wizardOpen = false })
+	applyMaterial(c, ui.Column(c.Key("library-installed-engines")).MinWidth(0).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			heading(c, tr(c, "models.section.installed_engines"), 2)
+			if len(s.registry.Engines) > 0 {
+				ui.Text(c, s.engineFit()).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
+			}
+			ui.Box(c).Grow(1)
+			btnLabel := tr(c, "models.action.register_local_engine")
+			if *wizardOpen {
+				btnLabel = tr(c, "models.action.collapse_local_engine")
+			}
+			outlineButton(c, btnLabel).OnClick(func() { *wizardOpen = !*wizardOpen })
+			s.renderEngineUpdateCheckButton(c)
 		})
-	}
-
-	card(c, tr(c, "models.section.installed_engines"), func() {
+		if *wizardOpen {
+			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialInset).Children(func() {
+				heading(c, tr(c, "models.wizard.card_title"), 3)
+				s.localEngineWizardView(c)
+				outlineButton(c, tr(c, "models.action.collapse")).OnClick(func() { *wizardOpen = false })
+			})
+		}
 		if len(s.registry.Engines) == 0 {
 			emptyGuideCard(c, emptyGuideOptions{
 				Icon:    lucide.Cpu,
@@ -269,22 +279,18 @@ func (s *viewState) libraryEnginesTab(c *ui.Context, pending *pendingAssetDelete
 			})
 			return
 		}
-		ui.Text(c, s.engineFit()).TextColor(t.Color.FgSecondary)
-		applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Tight), materialInset).Children(func() {
-			for _, engine := range s.registry.Engines {
+		ui.Column(c).FillWidth().Children(func() {
+			ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+			for i, engine := range s.registry.Engines {
+				if i > 0 {
+					ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+				}
 				eng := engine
 				c.Key(eng.Name)
-				listRow(c, listRowOptions{
-					Leading:  func() { engineIconBox(c, engineFamilyTitle(eng.Family, eng.Name), 28, t.Radius.SM) },
-					Title:    eng.Name,
-					Subtitle: s.engineStateLine(eng),
-					Trailing: func() { s.engineRowTrailing(c, eng, pending) },
-				})
+				s.installedEngineRow(c, eng, pending)
 			}
 		})
 	})
 
-	section(c, tr(c, "library.section.catalog_engines"), func() {
-		s.downloadsEnginesTab(c)
-	})
+	s.downloadsEnginesTab(c)
 }

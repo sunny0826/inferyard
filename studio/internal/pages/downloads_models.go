@@ -32,7 +32,7 @@ func (s *viewState) downloadsModelsTab(c *ui.Context) {
 	ui.Column(c.Key("downloads-models-tab")).FillWidth().Gap(t.Density.Section).Children(func() {
 		applyMaterial(c, ui.Column(c).MinWidth(0).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
 			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				ui.Row(c).Grow(1).MinWidth(0).Children(func() { heading(c, tr(c, "downloads.kind.model"), 2) })
+				ui.Row(c).Grow(1).MinWidth(0).Children(func() { heading(c, tr(c, "library.section.catalog_models"), 2) })
 				prev := st.modelSource
 				segmentedControl(c, tr(c, "downloads.models.source_label"), &st.modelSource, []components.NativeSelectOption[string]{
 					{Value: "huggingface", Label: "HuggingFace"},
@@ -44,23 +44,29 @@ func (s *viewState) downloadsModelsTab(c *ui.Context) {
 			})
 			if len(supported) == 0 {
 				ui.Text(c, tr(c, "downloads.models.none_preset")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				return
 			}
-			for i, entry := range supported {
-				if i > 0 {
-					ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+			ui.Column(c).FillWidth().Children(func() {
+				ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+				for i, entry := range supported {
+					if i > 0 {
+						ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+					}
+					s.modelCatalogRow(c, st, entry)
 				}
-				s.modelCatalogRow(c, st, entry)
-			}
+			})
 		})
 
 		if len(otherPlatform) > 0 {
 			componentFoldKeyed(c, "downloads-other-platform-models", trf(c, "downloads.models.other_platform_fold", "count", strconv.Itoa(len(otherPlatform))), func() {
-				for i, entry := range otherPlatform {
-					if i > 0 {
-						ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+				ui.Column(c).FillWidth().Children(func() {
+					for i, entry := range otherPlatform {
+						if i > 0 {
+							ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+						}
+						s.otherPlatformModelRow(c, st, entry)
 					}
-					s.otherPlatformModelRow(c, st, entry)
-				}
+				})
 			})
 		}
 
@@ -77,22 +83,25 @@ func (s *viewState) modelCatalogRow(c *ui.Context, st *downloadsUIState, entry c
 	if entry.Bytes > 0 {
 		sizeText = catalogHumanSize(entry.Bytes)
 	}
+	title := modelCatalogTitle(entry)
 
-	ui.Row(c.Key("downloads-model-" + entry.ID)).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
-			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-				ui.Text(c, modelCatalogTitle(entry)).Bold()
-				badge(c, core.ModelFormatLabel(modelCatalogFormat(entry)), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
+	ui.Row(c.Key("downloads-model-" + entry.ID)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).
+		Padding(t.Density.Stack, t.Density.Tight).Children(func() {
+		modelIconBox(c, title, 36, t.Radius.Control)
+		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				ui.Text(c, title).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
+				inlineBadge(c, core.ModelFormatLabel(modelCatalogFormat(entry)), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
 				if downloaded {
-					badge(c, tr(c, "downloads.metric.downloaded"), stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
+					inlineBadge(c, tr(c, "downloads.metric.downloaded"), stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
 				} else if downloading {
-					badge(c, tr(c, "downloads.stage.downloading"), stateActive, badgeOptions{Style: badgeSoft, Size: sizeSM})
+					inlineBadge(c, tr(c, "downloads.stage.downloading"), stateActive, badgeOptions{Style: badgeSoft, Size: sizeSM})
 				}
 			})
 			meta := joinParts([]string{modelCatalogEngineLabel(entry), sizeText, activeSourceLabel})
-			ui.Text(c, meta).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			ui.Text(c, meta).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 		})
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+		ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			outlineButton(c, tr(c, "downloads.models.details_urls")).Label(trf(c, "downloads.models.details_label", "id", entry.ID)).OnClick(func() {
 				st.openModelDrawer(entry.ID)
 			})
@@ -109,16 +118,21 @@ func (s *viewState) modelCatalogRow(c *ui.Context, st *downloadsUIState, entry c
 
 func (s *viewState) otherPlatformModelRow(c *ui.Context, st *downloadsUIState, entry core.CatalogEntry) {
 	t := tokens(c)
-	ui.Row(c.Key("downloads-other-model-" + entry.ID)).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
-			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-				ui.Text(c, modelCatalogTitle(entry)).Bold()
-				badge(c, core.ModelFormatLabel(modelCatalogFormat(entry)), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
+	title := modelCatalogTitle(entry)
+	ui.Row(c.Key("downloads-other-model-" + entry.ID)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).
+		Padding(t.Density.Stack, t.Density.Tight).Children(func() {
+		modelIconBox(c, title, 36, t.Radius.Control)
+		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				ui.Text(c, title).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
+				inlineBadge(c, core.ModelFormatLabel(modelCatalogFormat(entry)), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
 			})
 			ui.Text(c, trf(c, "downloads.platform.supported_line", "platforms", core.PlatformLabel(entry.Platform))).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		})
-		outlineButton(c, tr(c, "downloads.models.details_urls")).Label(trf(c, "downloads.models.details_label", "id", entry.ID)).OnClick(func() {
-			st.openModelDrawer(entry.ID)
+		ui.Row(c).Shrink(0).AlignItems(ui.Center).Children(func() {
+			outlineButton(c, tr(c, "downloads.models.details_urls")).Label(trf(c, "downloads.models.details_label", "id", entry.ID)).OnClick(func() {
+				st.openModelDrawer(entry.ID)
+			})
 		})
 	})
 }

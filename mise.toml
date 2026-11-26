@@ -65,12 +65,12 @@ dir = "cli"
 run = "uv run --frozen python scripts/export_schemas.py --check"
 
 [tasks."test:studio-ui"]
-description = "Run the daily macOS native UI checks (3 key workflows)"
+description = "Run the daily macOS native UI checks (4 key workflows)"
 dir = "studio"
 run = "python tests/ui/run.py"
 
 [tasks."test:studio-ui:full"]
-description = "Run all 7 macOS native UI workflows with the simulated Studio backend"
+description = "Run all 8 macOS native UI workflows with the simulated Studio backend"
 dir = "studio"
 run = "python tests/ui/run.py --suite full"
 

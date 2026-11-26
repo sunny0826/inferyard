@@ -34,7 +34,7 @@ func (s *viewState) cleanWorkspaceArtifactsButton(c *ui.Context) {
 
 func (s *viewState) cleanWorkspaceArtifactsDialog(c *ui.Context) {
 	c.Key("clean-workspace-artifacts-dialog")
-	result := studioAlertDialog(c, &s.cleanArtifactsConfirm, components.AlertDialogOptions{
+	result := studioDestructiveAlertDialog(c, &s.cleanArtifactsConfirm, components.AlertDialogOptions{
 		DialogOptions: components.DialogOptions{Label: tr(c, "settings.workspace.cleanup.title")},
 		Title:         tr(c, "settings.workspace.cleanup.title"),
 		Message:       tr(c, "settings.workspace.cleanup.message"),

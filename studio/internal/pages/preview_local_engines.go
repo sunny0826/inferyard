@@ -25,20 +25,41 @@ type previewLocalTask struct {
 	fail     bool
 }
 
-func previewLocalEngines(s *viewState) {
-	s.selected, s.benchFlowOpen, s.task.stage = "benchmarks", true, "prepare_candidate"
-	s.registry.Models = []core.ModelAsset{
-		{Name: "local.gguf", Path: "/preview/models/local.gguf", Format: "gguf", Available: true},
-		{Name: "strata-qwen36-ud-q4-k-m.json", Path: "/preview/models/strata-qwen36-ud-q4-k-m.json", Format: "strata_pack", Available: true},
-		{Name: "local-weights", Path: "/preview/models/local-weights", Format: "directory", Available: true},
+func previewLocalEngineVersion(family string) string {
+	switch family {
+	case "polystrata":
+		return "v0.2.20-poly.5"
+	case "llama-cpp":
+		return "prism-b10743-adfffbe"
+	case "mlx-lm":
+		return "0.32.2"
+	case "vllm":
+		return "v0.31.0"
+	case "sglang":
+		return "e262b44"
+	case "lmstudio":
+		return "0.3.14"
+	default:
+		return "preview"
 	}
+}
+
+func previewLocalEngines(s *viewState) {
+	s.selected, s.benchFlowOpen, s.task.stage = "library", true, "prepare_candidate"
+	s.libraryTab = 1
+	s.registry.Models = []core.ModelAsset{
+		{Name: "local.gguf", Path: "/preview/models/local.gguf", Format: "gguf", SizeBytes: previewValue(int64(4 << 30)), Available: true},
+		{Name: "strata-qwen38-coder-iq1-m.json", Path: "/preview/models/strata-qwen38-coder-iq1-m.json", Format: "strata_pack", SizeBytes: previewValue(int64(58400000000)), Available: true},
+		{Name: "local-weights", Path: "/preview/models/local-weights", Format: "directory", SizeBytes: previewValue(int64(3 << 30)), Available: true},
+	}
+	s.registry.TotalModelBytes = int64(7<<30) + 58400000000
 	s.registry.Engines = nil
 	s.settings.Settings.EngineInstallations = nil
 	s.checks = core.EngineCheckOverview{Supported: true, Engines: map[string]core.EngineEligibility{}}
 	for _, family := range []string{"polystrata", "llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio"} {
 		name := l10n.TRf("preview.engine.local_name", "family", family)
 		s.registry.Engines = append(s.registry.Engines, core.EngineAsset{Name: name, Family: family, Kind: "local_installation", Source: l10n.TR("preview.source.local_manifest")})
-		s.checks.Engines[name] = core.EngineEligibility{State: core.EngineCheckEligible, Family: family, VerificationScope: "installation", Version: "preview"}
+		s.checks.Engines[name] = core.EngineEligibility{State: core.EngineCheckEligible, Family: family, VerificationScope: "installation", Version: previewLocalEngineVersion(family)}
 		s.settings.Settings.EngineInstallations = append(s.settings.Settings.EngineInstallations, "/preview/"+family+".json")
 	}
 	s.model, s.engine = "local-weights", l10n.TRf("preview.engine.local_name", "family", "mlx-lm")
@@ -293,7 +314,7 @@ func (p *previewSession) retryLocalBenchmark() {
 func (p *previewSession) detectedEngines() []inferyard.DetectedEngine {
 	lmsModels := "/Users/demo/.lmstudio/models"
 	psDataDir := "/Users/demo/PolyStrata-data"
-	psVersion := "v0.1.45-poly.10"
+	psVersion := "v0.2.20-poly.5"
 	return []inferyard.DetectedEngine{
 		{
 			Family:           "polystrata",
@@ -302,7 +323,7 @@ func (p *previewSession) detectedEngines() []inferyard.DetectedEngine {
 			RuntimeRoots:     []string{"/Users/demo/PolyStrata/.venv", "/Users/demo/PolyStrata/serve"},
 			DataDir:          &psDataDir,
 			Version:          &psVersion,
-			Label:            "polystrata · v0.1.45-poly.10 (/Users/demo/PolyStrata)",
+			Label:            "polystrata · v0.2.20-poly.5 (/Users/demo/PolyStrata)",
 		},
 		{
 			Family:           "llama-cpp",
