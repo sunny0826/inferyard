@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.17
+
+- perf: eliminate model hashing, pre-run probes/waits, and cold service restarts (#244)
+- perf(studio): speed up task detail and report loading (#243)
+- refactor: remove remaining anti-tamper locks across power, model hashing, community, and lab paths (#242)
+- refactor: remove anti-tamper runtime allowlists while preserving safety floors (#241)
+- refactor: remove temperature stop thresholds and retain telemetry recording (#240)
+- fix(studio): remove source dropdown from resource temperature chart (#239)
+- fix: support PolyStrata v0.2.20-poly.5 layout and one-click updates (#238)
+
 ## 0.0.16
 
 - fix(studio): support real PolyStrata lifecycle and add opt-in local E2E suites (#236)
