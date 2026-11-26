@@ -27,15 +27,16 @@ func previewRecEmptyHost(s *viewState, page, hostPlatform string, snapshot strin
 }
 
 func previewRecMac48FirstUse(s *viewState) {
-	previewRecEmptyHost(s, "dashboard", "darwin/arm64", previewSnapshotMac48)
+	previewRecEmptyHost(s, "benchmarks", "darwin/arm64", previewSnapshotMac48)
 }
 
 func previewRecRTX5090FirstUse(s *viewState) {
-	previewRecEmptyHost(s, "dashboard", "windows/amd64", previewSnapshotRTX5090)
+	previewRecEmptyHost(s, "benchmarks", "windows/amd64", previewSnapshotRTX5090)
 }
 
 func previewRecRTX4070Tight(s *viewState) {
-	previewRecEmptyHost(s, "downloads", "windows/amd64", previewSnapshotRTX4070)
+	s.libraryTab = 0
+	previewRecEmptyHost(s, "library", "windows/amd64", previewSnapshotRTX4070)
 }
 
 func previewRecExistingAssetsCollapsed(s *viewState) {
@@ -50,11 +51,12 @@ func previewRecExistingAssetsCollapsed(s *viewState) {
 }
 
 func previewRecCPUFallback(s *viewState) {
-	previewRecEmptyHost(s, "dashboard", "windows/amd64", previewSnapshotCPU16)
+	previewRecEmptyHost(s, "benchmarks", "windows/amd64", previewSnapshotCPU16)
 }
 
 func previewRecBlockedDisk(s *viewState) {
-	previewRecEmptyHost(s, "downloads", "darwin/arm64", previewSnapshotBlockedDisk)
+	s.libraryTab = 0
+	previewRecEmptyHost(s, "library", "darwin/arm64", previewSnapshotBlockedDisk)
 }
 
 const previewSnapshotMac48 = `{

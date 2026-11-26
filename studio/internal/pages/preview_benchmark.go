@@ -162,6 +162,7 @@ func (p *previewSession) terminalRun(id, state string) {
 			detail.Task = *task
 		}
 		p.finishHistoryRun(id, state, task.FinishedAt)
+		p.recordPreviewEvent("run.state", map[string]any{"task": *task})
 	}
 }
 
@@ -282,6 +283,9 @@ func (p *previewSession) finishBenchmark() {
 		s.progress.Report.Path = previewValue(s.task.report)
 		s.progress.Report.Status = "present"
 		s.progress.Report.Runs = append([]string{}, s.task.runs...)
+		p.recordPreviewEvent("report.created", map[string]any{
+			"report": map[string]string{"report_id": s.task.report},
+		})
 	})
 }
 

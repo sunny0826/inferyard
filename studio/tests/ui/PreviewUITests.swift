@@ -3,7 +3,7 @@ import XCTest
 @MainActor
 final class PreviewUITests: XCTestCase {
     var app: XCUIApplication!
-    var currentScene = "任务 · 准备"
+    var currentScene = "测评 · 环境未就绪"
     private var suite = "full"
 
     override func setUpWithError() throws {
@@ -40,13 +40,13 @@ final class PreviewUITests: XCTestCase {
     func testPreviewWorkflowsInOneWindow() {
         let workflows: [(name: String, scene: String?, daily: Bool, run: () -> Void)] = [
             ("BenchmarkFromPreparationToReport", nil, false, benchmarkFromPreparationToReport),
-            ("CancellationAllowsAnotherTask", "任务 · 待运行", false, cancellationAllowsAnotherTask),
-            ("ContextSpeedResultAndHistory", "任务 · 待运行", true, contextSpeedResultAndHistory),
-            ("ContextSpeedFailureMissingAndReadRetry", "任务 · 待运行", false, contextSpeedFailureMissingAndReadRetry),
+            ("CancellationAllowsAnotherTask", "测评 · 待运行", false, cancellationAllowsAnotherTask),
+            ("ContextSpeedResultAndHistory", "测评 · 待运行", true, contextSpeedResultAndHistory),
+            ("ContextSpeedFailureMissingAndReadRetry", "测评 · 待运行", false, contextSpeedFailureMissingAndReadRetry),
             ("FirstUseWithoutLocalAssets", "首次使用 · 无资源", true, firstUseWithoutLocalAssets),
             ("ResourceChartsAndSourceSelection", "资源 · 密集采样与缺测", true, resourceChartsAndSourceSelection),
-            ("ButtonSizingAndRunHistoryDrawer", "任务 · 准备", true, buttonSizingAndRunHistoryDrawer),
-            ("LMStudioBindingFailureKeepsCompletedScope", "引擎 · LM Studio 手动绑定", false, lmStudioBindingFailureKeepsCompletedScope),
+            ("ButtonSizingAndRunHistoryDrawer", "测评 · 环境未就绪", true, buttonSizingAndRunHistoryDrawer),
+            ("LMStudioBindingFailureKeepsCompletedScope", "测评 · LM Studio 手动绑定", false, lmStudioBindingFailureKeepsCompletedScope),
         ]
         let selected = workflows.filter { suite == "full" || $0.daily }
         let coverage = XCTAttachment(string: "Suite: \(suite)\n" + selected.map(\.name).joined(separator: "\n"))
@@ -299,9 +299,11 @@ final class PreviewUITests: XCTestCase {
         XCTAssertEqual(prepBtn.frame.height, startModelBtn.frame.height, accuracy: 1.0, "准备环境 and + 启动模型 must match in height")
         keepScreenshot("Services setup uniform buttons")
 
-        selectScene("任务 · 已完成")
+        selectScene("测评 · 已完成")
         click("报告")
         expectTab("测评报告")
+        selectTab("长上下文专项")
+        expectText("preview-speed-64k")
         selectTab("运行历史")
         expectText("运行历史表")
         expectText("Preview-Small.gguf")

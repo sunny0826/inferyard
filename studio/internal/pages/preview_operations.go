@@ -169,9 +169,9 @@ func (p *previewSession) dispatchStep(op previewStep) {
 		})
 	case previewReload:
 		fail := p.takeFailure()
-		s.loaded, s.refreshing = true, true
+		s.loaded, s.refreshing, s.registry.Refreshing = true, true, true
 		p.after("reload", 400*time.Millisecond, func() {
-			s.refreshing, s.refreshFailure = false, ""
+			s.refreshing, s.registry.Refreshing, s.refreshFailure = false, false, ""
 			if fail {
 				s.refreshFailure = l10n.TR("preview.error.refresh_failed")
 				return
@@ -190,14 +190,29 @@ func (p *previewSession) prepareEnvironment() {
 		return
 	}
 	fail := p.takeFailure()
+	wasOutdated := s.ready.CLI.Status == "outdated"
 	s.busy, s.cliInstallStatus = true, l10n.TR("preview.status.preparing_env")
+	if wasOutdated {
+		s.busyAction = "upgrade-cli"
+	} else {
+		s.busyAction = "prepare-env"
+	}
 	p.after("environment", 600*time.Millisecond, func() {
-		s.busy, s.cliInstallStatus = false, ""
+		s.busy, s.busyAction, s.cliInstallStatus = false, "", ""
 		if fail {
 			s.failure = core.Err("install_failed")
+			if wasOutdated {
+				s.cliUpgrade = core.CLIUpgradeState{
+					Seq:           s.cliUpgrade.Seq + 1,
+					State:         core.CLIUpgradeFailed,
+					TargetVersion: previewAppVersion,
+					Error:         s.failure,
+				}
+			}
 			return
 		}
 		s.ready.CLI.Status = "ok"
+		s.ready.CLI.Version = previewValue(previewAppVersion)
 		s.serveSupported = true
 		s.cliUpgrade = core.CLIUpgradeState{State: core.CLIUpgradeIdle}
 		s.ready.Workspace.Exists, s.ready.Workspace.Initialized = true, true
@@ -322,6 +337,7 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		s.languageMode = value.Language
 		s.appliedLanguageMode = value.Language
 		p.syncNativeLanguage()
+		p.reapplyPreviewLocale(l10n.LocaleForSetting(value.Language))
 	}
 	if _, hasTray := patch["minimize_to_tray"]; hasTray {
 		s.minimizeToTray = value.MinimizeToTray

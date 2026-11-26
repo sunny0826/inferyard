@@ -291,8 +291,10 @@ func (s *viewState) baseWindowTitle() string {
 func (s *viewState) syncWindowTitle() {
 	nc := s.notifications()
 	title := s.baseWindowTitle()
-	if n := nc.unreadCount(); n > 0 {
-		title = fmt.Sprintf("(%d) %s", n, title)
+	if s.preview == nil {
+		if n := nc.unreadCount(); n > 0 {
+			title = fmt.Sprintf("(%d) %s", n, title)
+		}
 	}
 	if title == nc.lastWindowTitle {
 		return

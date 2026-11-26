@@ -3,6 +3,7 @@
 package pages
 
 import (
+	"fmt"
 	"path/filepath"
 	"slices"
 
@@ -30,6 +31,134 @@ const previewPelicanSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 
 	`<circle cx="208" cy="51" r="2" fill="#0f172a"/>` +
 	`<path d="M214 52 L252 57 Q234 72 213 61 Z" fill="#f59e0b" stroke="#b45309" stroke-width="2"/>` +
 	`</g></svg>`
+
+func localizePreviewReportRun(run *core.ReportRun, locale string) {
+	catMath := l10n.T(locale, "preview.fixture.cat_math")
+	catQA := l10n.T(locale, "preview.fixture.cat_qa")
+	catSim := l10n.T(locale, "preview.fixture.category")
+	zhMath := l10n.T(l10n.LanguageZhHans, "preview.fixture.cat_math")
+	enMath := l10n.T(l10n.LanguageEn, "preview.fixture.cat_math")
+	zhQA := l10n.T(l10n.LanguageZhHans, "preview.fixture.cat_qa")
+	enQA := l10n.T(l10n.LanguageEn, "preview.fixture.cat_qa")
+	zhSim := l10n.T(l10n.LanguageZhHans, "preview.fixture.category")
+	enSim := l10n.T(l10n.LanguageEn, "preview.fixture.category")
+	for i := range run.Dashboard.Categories {
+		switch run.Dashboard.Categories[i].ID {
+		case "math":
+			if run.Dashboard.Categories[i].Label == zhMath || run.Dashboard.Categories[i].Label == enMath {
+				run.Dashboard.Categories[i].Label = catMath
+			} else {
+				run.Dashboard.Categories[i].Label = catSim
+			}
+		case "qa":
+			run.Dashboard.Categories[i].Label = catQA
+		}
+	}
+	for i := range run.Requests {
+		switch run.Requests[i].CategoryLabel {
+		case zhMath, enMath:
+			run.Requests[i].CategoryLabel = catMath
+		case zhQA, enQA:
+			run.Requests[i].CategoryLabel = catQA
+		case zhSim, enSim:
+			run.Requests[i].CategoryLabel = catSim
+		}
+	}
+}
+
+func previewReportSummary(id string) core.ReportSummary {
+	index := previewReportFixture(id)
+	modified := "2026-10-16T23:59:30Z"
+	if id == "compare-report" {
+		modified = "2026-10-17T00:05:00Z"
+	}
+	summary := core.ReportSummary{
+		ReportId:   id,
+		Path:       "/preview/reports/" + id,
+		ModifiedAt: previewValue(modified),
+	}
+	for _, run := range index.Runs {
+		summary.RunIds = append(summary.RunIds, run.Source.RunID)
+		if run.Source.Path != "" {
+			p := run.Source.Path
+			summary.RunPaths = append(summary.RunPaths, &p)
+		}
+		summary.RunSummaries = append(summary.RunSummaries, core.ReportListRun{
+			RunID: run.Source.RunID, Model: run.Model, BundleLabel: run.Facets.BundleLabel,
+			Title: run.Profile.Title, Quality: run.Dashboard.Quality,
+		})
+	}
+	return summary
+}
+
+func previewReportFixture(reference string) *core.ReportIndex {
+	index, err := inferyard.ParseStudioReport(previewReportJSON)
+	if err != nil {
+		panic("invalid bundled UI preview report: " + err.Error())
+	}
+	baseRun := &index.Runs[0]
+	baseRun.Source.RunID = "preview-run"
+	baseRun.Source.Path = "/preview/results/preview-run"
+	baseRun.Model = "Preview-Model-Q4.gguf"
+	baseRun.Profile.Title = previewValue("Preview-Model-Q4.gguf")
+	baseRun.Profile.Machine.CPU = previewValue("Apple M4 Pro")
+	localizePreviewReportRun(baseRun, l10n.CurrentLocale())
+
+	switch reference {
+	case "pelican-report":
+		baseRun.Source.RunID = "pelican-preview-run"
+		baseRun.Source.Path = "/preview/results/pelican-preview-run"
+		baseRun.Facets.BundleLabel = inferyard.DefaultBundlePelican + " · 1.0.0"
+		zero := core.ReportCounts{Numerator: previewValue(int64(0)), Denominator: previewValue(int64(0)), Excluded: previewValue(int64(0))}
+		baseRun.Dashboard.Quality = core.ReportQuality{StudioCounts: zero, Complete: false, Reason: previewValue("quality_incomplete_or_not_applicable")}
+		baseRun.Dashboard.Categories = []core.ReportCategory{}
+		latency := 2480.0
+		baseRun.Requests = []core.ReportRequest{{
+			CaseID:        "svg-pelican-01",
+			CategoryLabel: "svg",
+			State:         "completed",
+			Quality:       previewValue("not_applicable"),
+			LatencyMS:     &latency,
+		}}
+		baseRun.Summary.CompletionRate = core.ReportCounts{Numerator: previewValue(int64(1)), Denominator: previewValue(int64(1)), Excluded: previewValue(int64(0))}
+		baseRun.Dashboard.Latency = core.ReportLatency{
+			SampleCount: previewValue(int64(1)),
+			Excluded:    previewValue(int64(0)),
+			Min:         &latency,
+			P50:         &latency,
+			Max:         &latency,
+		}
+		baseRun.SVGOutputs = previewPelicanOutputs()
+	case "long-report":
+		for i := range 40 {
+			baseRun.Requests = append(baseRun.Requests, core.ReportRequest{
+				CaseID:        fmt.Sprintf("preview-case-%03d", i),
+				CategoryLabel: l10n.TR("preview.fixture.category"),
+				State:         "completed",
+			})
+		}
+		baseRun.Dashboard.Latency.Excluded = previewValue(int64(len(baseRun.Requests)) - *baseRun.Dashboard.Latency.SampleCount)
+	case "compare-report":
+		secondIdx, _ := inferyard.ParseStudioReport(previewReportJSON)
+		second := secondIdx.Runs[0]
+		second.Source.RunID = "preview-run-small"
+		second.Source.Path = "/preview/results/preview-run-small"
+		second.Model = "Preview-Small.gguf"
+		second.Profile.Title = previewValue("Preview-Small.gguf")
+		second.Profile.Engine.BinaryPath = previewValue("/preview/engines/mlx-lm")
+		second.Profile.Engine.Adapter = "local_openai_v1"
+		second.Profile.Machine.CPU = previewValue("Apple M4 Pro")
+		second.Dashboard.Quality = core.ReportQuality{
+			StudioCounts: core.ReportCounts{Numerator: previewValue(int64(10)), Denominator: previewValue(int64(13)), Excluded: previewValue(int64(0))},
+			Complete:     true,
+		}
+		second.Dashboard.Throughput.OutputTokensPerSecond = previewValue(54.2)
+		second.Dashboard.Latency.P50 = previewValue(615.0)
+		localizePreviewReportRun(&second, l10n.CurrentLocale())
+		index.Runs = append(index.Runs, second)
+	}
+	return &index
+}
 
 func previewPelicanOutputs() []core.ReportSVGOutput {
 	svg := previewPelicanSVG
@@ -79,19 +208,23 @@ func (p *previewSession) report(reference string) (*core.ReportIndex, *core.ApiE
 		p.reportReadFailed = true
 		return nil, &core.ApiError{Code: "report_unreadable", Message: l10n.TR("preview.report.read_failed")}
 	}
-	if reference != "preview-report" && reference != "long-report" && reference != "pelican-report" && reference != "broken-report" {
+	switch reference {
+	case "preview-report", "compare-report", "long-report", "pelican-report", "broken-report":
+		return previewReportFixture(reference), nil
+	default:
 		return nil, core.Err("not_found")
 	}
-	return previewReportFixture(reference), nil
 }
 
 func (p *previewSession) detail(id string) *core.RunTaskDetail {
 	if detail := p.details[id]; detail != nil {
 		return detail
 	}
-	if id == "preview-run" {
+	if id == "preview-run" || id == "preview-run-small" {
 		detail := previewDetailFixture(id)
 		detail.Task.State = "done"
+		detail.Task.RunId = previewValue(id)
+		detail.Task.RunPath = previewValue("/preview/results/" + id)
 		p.details[id] = detail
 		return detail
 	}
@@ -114,7 +247,8 @@ func (p *previewSession) createReport(paths []string) string {
 		run := previewReportFixture("").Runs[0]
 		run.Model, run.Profile.Title = emptyText(history.ModelName), history.ModelName
 		run.Profile.Engine.BinaryPath = history.Engine
-		run.Source.RunID, run.Facets.BundleLabel = history.RunId, emptyText(history.Bundle)
+		run.Source.RunID, run.Source.Path = history.RunId, history.Path
+		run.Facets.BundleLabel = emptyText(history.Bundle)
 		run.Diagnostic = true
 		if !history.Sealed {
 			run.Summary.StopReason = emptyText(history.StopReason)

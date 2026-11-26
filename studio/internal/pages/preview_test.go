@@ -54,7 +54,7 @@ func previewSceneIndex(t *testing.T, label string) int {
 
 func TestPreviewOutOfBandActionsStayInMemory(t *testing.T) {
 	p := newPreviewSession(context.Background())
-	p.loadScene(previewSceneIndex(t, "任务 · 待运行"))
+	p.loadScene(previewSceneIndex(t, "测评 · 待运行"))
 	s := p.state
 	s.work(func() (string, *core.ApiError) { t.Fatal("preview executed closure"); return "", nil })
 	s.startEngine()
@@ -77,8 +77,8 @@ func TestPreviewOutOfBandActionsStayInMemory(t *testing.T) {
 }
 
 func TestPreviewScenesAllLoadAndSaveSettingsPreservesProxy(t *testing.T) {
-	if len(previewScenes) == 0 || previewSceneZhLabel(previewScenes[0].labelKey) != "任务 · 准备" {
-		t.Fatalf("previewScenes[0] must be 任务 · 准备, got %+v", previewScenes)
+	if len(previewScenes) == 0 || previewSceneZhLabel(previewScenes[0].labelKey) != "测评 · 环境未就绪" {
+		t.Fatalf("previewScenes[0] must be 测评 · 环境未就绪, got %+v", previewScenes)
 	}
 
 	p := newPreviewSession(context.Background())
@@ -86,7 +86,7 @@ func TestPreviewScenesAllLoadAndSaveSettingsPreservesProxy(t *testing.T) {
 	for i, scene := range previewScenes {
 		p.loadScene(i)
 		label := previewSceneZhLabel(scene.labelKey)
-		if label != "下载 · 进行中与失败" && label != "下载 · PolyStrata 引导安装" && label != "下载 · PolyStrata 模型下载" && len(p.state.downloads) != 0 {
+		if label != "模型库 · 下载进行中与失败" && label != "模型库 · PolyStrata 引导安装与网络提示" && label != "模型库 · PolyStrata 模型包下载" && len(p.state.downloads) != 0 {
 			t.Fatalf("scene %q unexpectedly seeded %d downloads", label, len(p.state.downloads))
 		}
 		p.themeMode = 1
@@ -177,7 +177,7 @@ func TestPreviewThemeSwitcherSyncsWithSidebarAndStaysInMemory(t *testing.T) {
 	}
 
 	// Scene switch preserves active preview theme.
-	p.loadScene(1)
+	p.loadScene(previewSceneIndex(t, "测评 · 待运行"))
 	if p.state.themeMode != core.ThemeLight || p.state.settings.Effective.Theme != core.ThemeLight {
 		t.Fatalf("scene reload lost active preview theme: state=%q eff=%q",
 			p.state.themeMode, p.state.settings.Effective.Theme)
@@ -253,7 +253,8 @@ func TestPreviewCreateReportCancelledPelicanDoesNotFabricateOKSVG(t *testing.T) 
 
 func TestPreviewBenchmarkElapsedUsesVirtualClock(t *testing.T) {
 	p := newPreviewSession(context.Background())
-	p.loadScene(1)
+	readyIdx := previewSceneIndex(t, "测评 · 待运行")
+	p.loadScene(readyIdx)
 	// Advance to a running benchmark via preview clock:
 	// 400ms (prepare->bind) + 800ms (bind->running) = 1.2s start timestamp.
 	p.beginBenchmark(previewBenchmark{
@@ -284,7 +285,7 @@ func TestPreviewBenchmarkElapsedUsesVirtualClock(t *testing.T) {
 	}
 
 	// Verify preview context speed return-to-list -> completion -> open result from Recent row.
-	p.loadScene(1)
+	p.loadScene(readyIdx)
 	p.state.speed.selected = true
 	p.startSpeed(previewSpeedStart{
 		model:   p.state.model,

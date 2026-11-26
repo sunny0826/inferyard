@@ -22,8 +22,8 @@ func TestPreviewSettingsAboutTabStaysInMemory(t *testing.T) {
 	click(t, tt, "关于")
 	for _, want := range []string{
 		"关于 InferYard Studio",
-		"v0.0.14",
-		"2026-11-25 03:30:00 UTC",
+		"v0.0.17",
+		"2026-11-26 08:00:00 UTC",
 		"0123456789abcdef0123456789abcdef01234567",
 	} {
 		if !tt.HasText(want) {

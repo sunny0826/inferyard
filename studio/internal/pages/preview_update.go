@@ -9,7 +9,10 @@ import (
 	"inferyard/studio/internal/l10n"
 )
 
-const previewUpdateVersion = "0.10.0"
+const (
+	previewAppVersion    = "0.0.17"
+	previewUpdateVersion = "0.10.0"
+)
 
 func previewUpdateRelease() core.UpdateRelease {
 	return core.UpdateRelease{
@@ -31,7 +34,7 @@ func previewUpdateAvailable(s *viewState) {
 	s.updateDialogOpen = true
 	s.updateState = core.UpdateState{
 		State:          core.UpdateAvailable,
-		CurrentVersion: "0.0.8",
+		CurrentVersion: previewAppVersion,
 		Release:        &rel,
 		TotalBytes:     previewValue(rel.AssetSize),
 		CanSelfUpdate:  true,
@@ -43,7 +46,7 @@ func previewUpdateDownloading(s *viewState) {
 	s.updateDialogOpen = true
 	s.updateState = core.UpdateState{
 		State:           core.UpdateDownloading,
-		CurrentVersion:  "0.0.8",
+		CurrentVersion:  previewAppVersion,
 		Release:         &rel,
 		DownloadedBytes: 6 << 20,
 		TotalBytes:      previewValue(rel.AssetSize),
@@ -57,7 +60,7 @@ func previewUpdateError(s *viewState) {
 	s.updateDialogOpen = true
 	s.updateState = core.UpdateState{
 		State:          core.UpdateError,
-		CurrentVersion: "0.0.8",
+		CurrentVersion: previewAppVersion,
 		Release:        &rel,
 		ErrorCode:      "update_path_unwritable",
 		ErrorMessage:   l10n.TR("preview.update.error.app_dir_unwritable"),
@@ -72,7 +75,7 @@ func previewUpdateReadyToApply(s *viewState) {
 	s.updateReadyPromptDismissedVersion = ""
 	s.updateState = core.UpdateState{
 		State:           core.UpdateReadyToApply,
-		CurrentVersion:  "0.0.8",
+		CurrentVersion:  previewAppVersion,
 		Release:         &rel,
 		DownloadedBytes: rel.AssetSize,
 		TotalBytes:      previewValue(rel.AssetSize),

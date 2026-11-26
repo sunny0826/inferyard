@@ -327,6 +327,12 @@ func (s *viewState) localInstallationsView(c *ui.Context) {
 
 func (s *viewState) removeInstallationWithUndo(path string) {
 	if s.simulate(previewInstallation{action: "remove", path: path}) {
+		if s.failure == nil {
+			removedPath := path
+			s.enqueueActionToast("undo-remove-installation", l10n.TR("engine.local.toast.removed"), l10n.TR("engine.local.toast.undo"), l10n.TR("engine.local.toast.restored"), 6*time.Second, func() {
+				s.changeInstallation("register", removedPath)
+			})
+		}
 		return
 	}
 	if s.service == nil {

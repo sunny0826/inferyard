@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -106,6 +107,20 @@ func previewMultiServicesScene(s *viewState) {
 	s.managedServices = []core.EngineState{svc1, svc2}
 	s.engineState = svc1
 	s.memorySummary = s.currentMemorySummary()
+	s.discoveryLoaded = true
+	s.discovery = inferyard.ServiceDiscovery{
+		Status: "complete",
+		Services: []inferyard.DiscoveredService{
+			{
+				PID:         51802,
+				ProcessName: "ollama",
+				Endpoints: []inferyard.DiscoveredEndpoint{{
+					URL:    "http://127.0.0.1:11434",
+					Models: []string{"qwen3:8b-q4_K_M", "nomic-embed-text"},
+				}},
+			},
+		},
+	}
 }
 
 func (p *previewSession) savePreviewServicePreset(preset core.ServicePreset) {
@@ -385,9 +400,9 @@ func seedPreviewEngineUpdates(engine string) map[string]core.EngineUpdateInfo {
 		engine: {
 			Engine:           engine,
 			Family:           "llama-cpp",
-			InstalledVersion: "b4800",
-			LatestVersion:    "b5400",
-			DownloadURL:      "https://example.invalid/llama-b5400-bin-macos-arm64.tar.gz",
+			InstalledVersion: "prism-b10743-adfffbe",
+			LatestVersion:    "b11146",
+			DownloadURL:      "https://example.invalid/llama-b11146-bin-macos-arm64.tar.gz",
 			Source:           "remote",
 			Action:           core.EngineUpdateActionDownload,
 			HasUpdate:        true,
@@ -433,11 +448,13 @@ func (p *previewSession) startEngineUpdate(eng core.EngineAsset, upd core.Engine
 		p.state.engineUpdates[eng.Name] = cur
 	}
 	p.state.enqueueStatusToast(l10n.TRf("models.engine.toast.update_started_preview", "name", eng.Name))
+	p.recordPreviewEvent("download.state", map[string]any{"task": task})
 }
 
 func seedPreviewReportExclusivities() map[string]string {
 	return map[string]string{
 		"preview-report": core.ExclusivityExclusive,
+		"compare-report": core.ExclusivityExclusive,
 		"long-report":    core.ExclusivityExternal,
 		"pelican-report": core.ExclusivityUnknown,
 	}
