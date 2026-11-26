@@ -168,12 +168,43 @@ func TestStartBenchmarkReusesRunningLocalStandaloneWithoutStopDialog(t *testing.
 			},
 			existingService: &reused,
 		},
-		bindings: &benchmarkBindings{},
+		bindings: &benchmarkBindings{reuseMode: true},
 	}
 	s.retryBenchmark()
 	<-done
 	if s.task.start.existingService != nil || s.task.start.localRequest.ServicePID != 0 || s.task.start.localRequest.Endpoint != "" {
 		t.Fatalf("expected retryBenchmark after service exit to clear stale PID, got existing=%+v req=%+v",
+			s.task.start.existingService, s.task.start.localRequest)
+	}
+
+	// If the user explicitly chose isolated dedicated instance while a shared standalone service is running,
+	// retryBenchmark must keep ServicePID=0 and skip stop confirmation instead of switching onto the shared service.
+	s.managedServices = []core.EngineState{svc}
+	s.engineState = svc
+	s.task = benchmarkTask{
+		stage:   "run",
+		bundles: []string{"zh-core", "zh-svg-pelican"},
+		failure: core.Err("run_incomplete"),
+		start: startChainResult{
+			localRequest: &core.LocalCandidateRequest{
+				ModelName:  s.model,
+				EngineName: s.engine,
+				Bundles:    []string{"zh-core", "zh-svg-pelican"},
+			},
+			localCandidates: []core.CandidateRun{
+				{Bundle: "zh-core", Family: "polystrata", CandidatePath: "/tmp/c1.toml"},
+				{Bundle: "zh-svg-pelican", Family: "polystrata", CandidatePath: "/tmp/c2.toml"},
+			},
+		},
+		bindings: &benchmarkBindings{isolated: true},
+	}
+	s.retryBenchmark()
+	<-done
+	if s.standalone.benchmarkConfirm {
+		t.Fatal("expected isolated retryBenchmark to skip standalone stop confirmation")
+	}
+	if s.task.start.existingService != nil || s.task.start.localRequest.ServicePID != 0 || s.task.start.localRequest.Endpoint != "" {
+		t.Fatalf("expected isolated retryBenchmark not to bind shared service PID, got existing=%+v req=%+v",
 			s.task.start.existingService, s.task.start.localRequest)
 	}
 }

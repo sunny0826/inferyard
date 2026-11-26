@@ -32,7 +32,8 @@ def admit(lock, config, bundle, identity, process_start):
         "scope_sha256": sha256(json_bytes(scope)).hexdigest(),
         "service": service,
     }
-    previous = lock.local_service
+    state = getattr(lock, "state", None)
+    previous = lock.local_service or (state.get("local_service") if state else None)
     if (
         previous is not None
         and config["engine"].get("family") == "lmstudio"
@@ -42,3 +43,5 @@ def admit(lock, config, bundle, identity, process_start):
     ):
         raise PreflightError("local_scope_requires_new_service_process")
     lock.local_service = current
+    if state is not None and hasattr(lock, "write"):
+        lock.write({**state, "local_service": current})

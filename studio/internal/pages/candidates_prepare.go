@@ -160,7 +160,15 @@ func (s *viewState) startBenchmark() {
 	}
 	ctx, cancel := context.WithCancel(s.ctx)
 	s.taskCancel = cancel
-	s.task = benchmarkTask{stage: "prepare_candidate", bundles: names, bindings: &benchmarkBindings{initialExclusivity: initialExclusivity}}
+	s.task = benchmarkTask{
+		stage:   "prepare_candidate",
+		bundles: names,
+		bindings: &benchmarkBindings{
+			initialExclusivity: initialExclusivity,
+			isolated:           skipStandaloneGuard && reusedService == nil,
+			reuseMode:          reusedService != nil,
+		},
+	}
 	model, engine := s.model, s.engine
 	localRequest := s.localCandidateRequest(names, reusedService)
 	s.guideWorkAs("prepare-benchmark", func() (string, *core.ApiError) {
@@ -203,6 +211,8 @@ type benchmarkBindings struct {
 	completed          map[string]string
 	failedBundle       string
 	initialExclusivity string
+	isolated           bool
+	reuseMode          bool
 }
 
 type benchmarkBackend interface {
@@ -444,20 +454,22 @@ func (s *viewState) retryBenchmark() {
 	if s.busy || (s.task.stage != "bind" && len(s.task.start.localCandidates) == 0) || s.task.failure == nil {
 		return
 	}
-	reusingRunning := false
-	if e := s.localEngine(); e != nil && e.Family != "lmstudio" && s.task.start.localRequest != nil {
-		if svc, ok := s.reusableStandaloneService(s.model, s.engine); ok {
-			reusingRunning = true
-			s.task.start.localRequest.ServicePID = svc.Pid
-			s.task.start.localRequest.Endpoint = svc.Endpoint
-			s.task.start.existingService = &core.EngineState{State: "running", Pid: svc.Pid, Endpoint: svc.Endpoint}
-		} else {
-			s.task.start.localRequest.ServicePID = 0
-			s.task.start.localRequest.Endpoint = ""
-			s.task.start.existingService = nil
+	skipGuard := s.task.bindings != nil && s.task.bindings.isolated
+	if !skipGuard && s.task.bindings != nil && s.task.bindings.reuseMode {
+		if e := s.localEngine(); e != nil && e.Family != "lmstudio" && s.task.start.localRequest != nil {
+			if svc, ok := s.reusableStandaloneService(s.model, s.engine); ok {
+				skipGuard = true
+				s.task.start.localRequest.ServicePID = svc.Pid
+				s.task.start.localRequest.Endpoint = svc.Endpoint
+				s.task.start.existingService = &core.EngineState{State: "running", Pid: svc.Pid, Endpoint: svc.Endpoint}
+			} else {
+				s.task.start.localRequest.ServicePID = 0
+				s.task.start.localRequest.Endpoint = ""
+				s.task.start.existingService = nil
+			}
 		}
 	}
-	if !reusingRunning && !s.guardStandaloneForBenchmark(func() { s.retryBenchmark() }) {
+	if !skipGuard && !s.guardStandaloneForBenchmark(func() { s.retryBenchmark() }) {
 		return
 	}
 	if s.simulate(previewRetryBenchmark) {

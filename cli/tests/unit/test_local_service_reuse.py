@@ -247,8 +247,16 @@ def test_llama_cpp_candidate_adopts_running_managed_service(
     assert loaded["engine"]["startup_args"] == live_argv[1:]
 
 
-def test_local_host_admit_reuses_clean_service_and_require_gone_guards_dirty() -> None:
-    lock = SimpleNamespace(local_service=None)
+def test_local_host_admit_reuses_clean_service_and_require_gone_guards_dirty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from inferyard.runtime import lock as lock_mod
+
+    lock_dir = tmp_path / "host-lock"
+    lock_dir.mkdir(mode=0o700)
+    monkeypatch.setattr(lock_mod, "LOCK_PATH", lock_dir / "inferyard-host.lock")
+    monkeypatch.setattr(lock_mod, "STATE_PATH", lock_dir / "inferyard-host.state.json")
+
     config = {
         "model": {"local_path": "/models/m.gguf"},
         "engine": {"family": "polystrata"},
@@ -258,26 +266,34 @@ def test_local_host_admit_reuses_clean_service_and_require_gone_guards_dirty() -
     service = {"pid": 777, "start_ticks": 123456, "workers": []}
     identity = {"local_engine": {"binding": {"service": service}}}
 
-    admit(lock, config, {"bundle_id": "zh-core"}, identity, lambda pid: 123456)
-    first_scope = lock.local_service["scope_sha256"]
-    admit(lock, config, {"bundle_id": "zh-svg-pelican"}, identity, lambda pid: 123456)
-    assert lock.local_service["scope_sha256"] != first_scope
-    assert lock.local_service["service"] == service
+    with lock_mod.HostLock() as first_lock:
+        admit(first_lock, config, {"bundle_id": "zh-core"}, identity, lambda pid: 123456)
+        first_scope = first_lock.local_service["scope_sha256"]
+    with lock_mod.HostLock() as second_lock:
+        assert second_lock.local_service is None
+        admit(second_lock, config, {"bundle_id": "zh-svg-pelican"}, identity, lambda pid: 123456)
+        assert second_lock.local_service["scope_sha256"] != first_scope
+        assert second_lock.local_service["service"] == service
 
     with pytest.raises(PreflightError, match="previous_local_process_still_alive"):
         require_gone(service, lambda pid: 123456)
 
     lmstudio_cfg = {**config, "engine": {"family": "lmstudio"}}
-    lmstudio_lock = SimpleNamespace(local_service=None)
-    admit(lmstudio_lock, lmstudio_cfg, {"bundle_id": "zh-core"}, identity, lambda pid: 123456)
-    with pytest.raises(PreflightError, match="local_scope_requires_new_service_process"):
-        admit(
-            lmstudio_lock,
-            lmstudio_cfg,
-            {"bundle_id": "zh-svg-pelican"},
-            identity,
-            lambda pid: 123456,
-        )
+    lms_identity = {
+        "local_engine": {"binding": {"service": {"pid": 888, "start_ticks": 654321, "workers": []}}}
+    }
+    with lock_mod.HostLock() as lms_lock_1:
+        admit(lms_lock_1, lmstudio_cfg, {"bundle_id": "zh-core"}, lms_identity, lambda pid: 654321)
+    with lock_mod.HostLock() as lms_lock_2:
+        assert lms_lock_2.local_service is None
+        with pytest.raises(PreflightError, match="local_scope_requires_new_service_process"):
+            admit(
+                lms_lock_2,
+                lmstudio_cfg,
+                {"bundle_id": "zh-svg-pelican"},
+                lms_identity,
+                lambda pid: 654321,
+            )
 
 
 def test_legacy_probe_token_budgets_remain_readable() -> None:
