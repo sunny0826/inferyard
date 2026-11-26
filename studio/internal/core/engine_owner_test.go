@@ -133,6 +133,7 @@ func TestConfigureEngineProcessInheritsHostEnvAndStripsLoaderInjection(t *testin
 	t.Setenv("HF_ENDPOINT", "https://hf-mirror.com")
 	t.Setenv("TOKENIZERS_PARALLELISM", "false")
 	t.Setenv("OPENAI_API_KEY", "sk-host-secret")
+	t.Setenv("PGPASSWORD", "pg-secret")
 	t.Setenv("HF_TOKEN", "hf_host_secret")
 	t.Setenv("HTTPS_PROXY", "http://user:pass@proxy.example.com:8080")
 	t.Setenv("DYLD_INSERT_LIBRARIES", "/tmp/evil.dylib")
@@ -164,6 +165,7 @@ func TestConfigureEngineProcessInheritsHostEnvAndStripsLoaderInjection(t *testin
 			entry == "DYLD_INSERT_LIBRARIES=/tmp/override.dylib" ||
 			entry == "LD_PRELOAD=/tmp/evil.so" ||
 			entry == "OPENAI_API_KEY=sk-host-secret" ||
+			entry == "PGPASSWORD=pg-secret" ||
 			entry == "HF_TOKEN=hf_host_secret" ||
 			entry == "HTTPS_PROXY=http://user:pass@proxy.example.com:8080" {
 			t.Fatalf("unexpected blocked/secret variable in cmd.Env: %s", entry)

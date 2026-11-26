@@ -35,7 +35,7 @@ var blockedEngineLoaderEnv = map[string]bool{
 }
 
 var (
-	secretEngineEnvPattern = regexp.MustCompile(`(?:^|_)(?:API_KEY|ACCESS_KEY|SECRET_KEY|PRIVATE_KEY|AUTH_KEY|BEARER|PASSWORD|PASSWD|SECRET|TOKEN)(?:$|_)`)
+	secretEngineEnvPattern = regexp.MustCompile(`(?:PASSWORD|PASSWD|SECRET|API_?KEY|ACCESS_KEY|PRIVATE_KEY|AUTH_KEY|BEARER|MYSQL_PWD)|(?:^|_)TOKEN(?:$|_)`)
 	urlAuthorityPattern    = regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://([^\s/,;]+)`)
 )
 

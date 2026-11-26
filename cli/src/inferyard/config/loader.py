@@ -93,9 +93,17 @@ def validate_runtime_config(config: dict) -> None:
     require_input(config, "config")
     validate_document("config", config)
     validate_endpoint(config["endpoint"]["url"])
+    from inferyard.contracts.local_environment import has_embedded_url_credentials
+
     for index, argument in enumerate(config["engine"]["startup_args"]):
-        option = argument.split("=", 1)[0].lower()
-        if option in ("--api-key", "--api-key-file", "--password", "--token", "-hft", "--hf-token"):
+        option, _, value = argument.partition("=")
+        lowered = option.strip().lower()
+        if (
+            lowered in ("--api-key", "--api-key-file", "--password", "--token", "-hft", "--hf-token")
+            or lowered.startswith("sk-")
+            or value.strip().lower().startswith("sk-")
+            or has_embedded_url_credentials(argument)
+        ):
             raise ContractError(
                 f"config.engine.startup_args[{index}]",
                 "credential arguments are not allowed; use a reference",

@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 
+from inferyard.contracts.local_environment import has_embedded_url_credentials
 from inferyard.errors import PreflightError
 
 _CREDENTIAL_FLAGS = frozenset(
@@ -18,6 +19,7 @@ def reject_credential_arguments(arguments) -> None:
             lowered in _CREDENTIAL_FLAGS
             or lowered.startswith("sk-")
             or value.strip().lower().startswith("sk-")
+            or has_embedded_url_credentials(raw_arg)
         ):
             raise PreflightError("engine_credentials_forbidden")
 

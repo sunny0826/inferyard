@@ -72,7 +72,29 @@ def _read_pyvenv_cfg(cfg_path: Path) -> dict[str, str] | None:
         return None
 
 
-def _env_site_dirs(env_dir: Path) -> list[Path]:
+def _venv_python_dir_name(venv_dir: Path, cfg: dict[str, str] | None) -> str | None:
+    if cfg:
+        for key in ("version", "version_info"):
+            raw_ver = cfg.get(key, "").strip()
+            parts = raw_ver.split(".")
+            if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
+                return f"python{parts[0]}.{parts[1]}"
+    names: set[str] = set()
+    for lib_name in ("lib", "lib64"):
+        lib_dir = venv_dir / lib_name
+        if not lib_dir.is_dir():
+            continue
+        try:
+            with os.scandir(lib_dir) as entries:
+                for entry in entries:
+                    if entry.name.startswith("python") and entry.is_dir():
+                        names.add(entry.name)
+        except OSError:
+            continue
+    return next(iter(names)) if len(names) == 1 else None
+
+
+def _env_site_dirs(env_dir: Path, *, python_dir_name: str | None = None) -> list[Path]:
     found: list[Path] = []
     win_site = env_dir / "Lib" / "site-packages"
     if win_site.is_dir():
@@ -85,6 +107,8 @@ def _env_site_dirs(env_dir: Path) -> list[Path]:
             with os.scandir(lib_dir) as entries:
                 for entry in entries:
                     if not entry.name.startswith("python") or not entry.is_dir():
+                        continue
+                    if python_dir_name is not None and entry.name != python_dir_name:
                         continue
                     site = Path(entry.path) / "site-packages"
                     if site.is_dir():
@@ -102,11 +126,12 @@ def _site_packages_dirs(venv_dir: Path) -> list[Path]:
         if home_raw:
             home_path = Path(home_raw)
             if home_path.is_absolute():
+                py_dir_name = _venv_python_dir_name(venv_dir, cfg)
                 roots = [home_path]
                 if home_path.name.lower() in ("bin", "scripts"):
                     roots.insert(0, home_path.parent)
                 for base_root in roots:
-                    for extra in _env_site_dirs(base_root):
+                    for extra in _env_site_dirs(base_root, python_dir_name=py_dir_name):
                         if extra not in found:
                             found.append(extra)
     return found

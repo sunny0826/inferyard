@@ -8,6 +8,7 @@ import pytest
 
 from inferyard.adapters.engine_fit_common import common_service
 from inferyard.config.comparison_plan_safety import comparison_safety
+from inferyard.config.loader import load_config
 from inferyard.config.local_engines.launch import description as launch_description
 from inferyard.errors import ContractError, PreflightError
 from inferyard.platforms.engine_fit_entrypoints import startup_binding
@@ -42,11 +43,15 @@ def test_detect_conda_and_system_site_packages_venvs(
     base_mlx = base_py_root / "lib" / "python3.12" / "site-packages" / "mlx_lm"
     base_mlx.mkdir(parents=True)
     (base_mlx / "__init__.py").write_text("", encoding="utf-8")
+    other_minor_sglang = base_py_root / "lib" / "python3.11" / "site-packages" / "sglang"
+    other_minor_sglang.mkdir(parents=True)
+    (other_minor_sglang / "__init__.py").write_text("", encoding="utf-8")
 
     shared_venv = tmp_path / "system-site-mlx"
     shared_venv.mkdir()
     (shared_venv / "pyvenv.cfg").write_text(
-        f"home = {base_py_bin}\ninclude-system-site-packages = true\n", encoding="utf-8"
+        f"home = {base_py_bin}\ninclude-system-site-packages = true\nversion = 3.12.7\n",
+        encoding="utf-8",
     )
     venv_py = shared_venv / "bin" / "python3"
     venv_py.parent.mkdir(parents=True)
@@ -61,6 +66,7 @@ def test_detect_conda_and_system_site_packages_venvs(
     }
     assert by_family[("vllm", conda_env.resolve())] == conda_py.resolve()
     assert by_family[("mlx-lm", shared_venv.resolve())] == venv_py.resolve()
+    assert ("sglang", shared_venv.resolve()) not in by_family
 
     built = build_installation("vllm", conda_py)
     assert "HF_HUB_OFFLINE" not in built["environment"]
@@ -83,6 +89,7 @@ def test_custom_env_vars_allowed_while_plaintext_credentials_blocked(tmp_path: P
 
     for bad_env in (
         {"OPENAI_API_KEY": "sk-live-secret"},
+        {"PGPASSWORD": "db-password-123"},
         {"HF_TOKEN": "hf_secret_token"},
         {"HTTPS_PROXY": "http://user:pass@proxy.example.com:8080"},
         {"HF_ENDPOINT": "https://token@hf-mirror.com"},
@@ -190,13 +197,26 @@ def test_legacy_bootstrap_upgrade_and_mixed_policy_regressions(tmp_path: Path) -
 
     gguf = tmp_path / "m.gguf"
     gguf.write_bytes(b"GGUF")
-    with pytest.raises(PreflightError, match="engine_credentials_forbidden"):
-        startup_binding(
-            "llama-cpp",
-            ["llama-server", "-m", str(gguf), "--api-key", "secret123"],
-            Path("/usr/bin/llama-server"),
-            tmp_path,
-        )
+    for bad_argv in (
+        ["llama-server", "-m", str(gguf), "--api-key", "secret123"],
+        ["llama-server", "-m", str(gguf), "--otlp=https://user:pass@telemetry.example.com"],
+        ["llama-server", "-m", str(gguf), "https://token@telemetry.example.com"],
+    ):
+        with pytest.raises(PreflightError, match="engine_credentials_forbidden"):
+            startup_binding("llama-cpp", bad_argv, Path("/usr/bin/llama-server"), tmp_path)
+
+    cred_toml = tmp_path / "cred-url.toml"
+    cred_toml.write_text(
+        (Path(__file__).parents[1] / "fixtures/config/valid.toml")
+        .read_text(encoding="utf-8")
+        .replace(
+            "startup_args = []",
+            'startup_args = ["--telemetry-url=https://user:pass@telemetry.example.com"]',
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ContractError, match="credential arguments"):
+        load_config(cred_toml)
 
     mlx_meta = common_service(
         "mlx-lm",
