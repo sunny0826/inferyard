@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 func loadCachedStandalonePlan(planPath string, modelPath string, eng registryEntry, contextSize int64) (Startup, string, int, bool) {
@@ -44,6 +45,11 @@ func loadCachedStandalonePlan(planPath string, modelPath string, eng registryEnt
 	}
 	if info, err := os.Stat(plan.Argv[0]); err != nil || info.IsDir() {
 		return Startup{}, "", 0, false
+	}
+	for _, arg := range plan.Argv[1:] {
+		if strings.HasSuffix(strings.ReplaceAll(arg, "\\", "/"), "/data/local_engine/bootstrap.py") {
+			return Startup{}, "", 0, false
+		}
 	}
 	if plan.Family == "polystrata" {
 		cfgPath, _, _ := findConfigArg(plan.Argv[1:])

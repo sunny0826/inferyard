@@ -5,6 +5,7 @@ from __future__ import annotations
 import errno
 import json
 import os
+import platform
 import shutil
 import tempfile
 from pathlib import Path
@@ -26,11 +27,6 @@ _STANDARD_LLAMA_PATHS = (
     Path("/opt/homebrew/bin/llama-server"),
     Path("/usr/local/bin/llama-server"),
 )
-_PYTHON_ENVIRONMENTS = {
-    "PYTHONDONTWRITEBYTECODE": "1",
-    "HF_HUB_OFFLINE": "1",
-    "TRANSFORMERS_OFFLINE": "1",
-}
 _PYTHON_PACKAGE_FAMILIES = ("mlx-lm", "vllm", "sglang")
 
 
@@ -70,28 +66,75 @@ def _read_pyvenv_cfg(cfg_path: Path) -> dict[str, str] | None:
                 norm_key = key.strip().lower()
                 if norm_key in values:
                     return None
-                values[norm_key] = value.strip().lower()
+                values[norm_key] = value.strip()
         return values
     except (OSError, UnicodeError):
         return None
 
 
-def _site_packages_dirs(venv_dir: Path) -> list[Path]:
-    lib_dir = venv_dir / "lib"
-    if not lib_dir.is_dir() or lib_dir.is_symlink():
-        return []
+def _venv_python_dir_name(venv_dir: Path, cfg: dict[str, str] | None) -> str | None:
+    if cfg:
+        for key in ("version", "version_info"):
+            raw_ver = cfg.get(key, "").strip()
+            parts = raw_ver.split(".")
+            if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
+                return f"python{parts[0]}.{parts[1]}"
+    names: set[str] = set()
+    for lib_name in ("lib", "lib64"):
+        lib_dir = venv_dir / lib_name
+        if not lib_dir.is_dir():
+            continue
+        try:
+            with os.scandir(lib_dir) as entries:
+                for entry in entries:
+                    if entry.name.startswith("python") and entry.is_dir():
+                        names.add(entry.name)
+        except OSError:
+            continue
+    return next(iter(names)) if len(names) == 1 else None
+
+
+def _env_site_dirs(env_dir: Path, *, python_dir_name: str | None = None) -> list[Path]:
     found: list[Path] = []
-    try:
-        with os.scandir(lib_dir) as entries:
-            for entry in entries:
-                if not entry.name.startswith("python") or not entry.is_dir(follow_symlinks=False):
-                    continue
-                site = Path(entry.path) / "site-packages"
-                if site.is_dir() and not site.is_symlink():
-                    found.append(site)
-    except OSError:
-        return []
+    win_site = env_dir / "Lib" / "site-packages"
+    if win_site.is_dir():
+        found.append(win_site)
+    for lib_name in ("lib", "lib64"):
+        lib_dir = env_dir / lib_name
+        if not lib_dir.is_dir():
+            continue
+        try:
+            with os.scandir(lib_dir) as entries:
+                for entry in entries:
+                    if not entry.name.startswith("python") or not entry.is_dir():
+                        continue
+                    if python_dir_name is not None and entry.name != python_dir_name:
+                        continue
+                    site = Path(entry.path) / "site-packages"
+                    if site.is_dir():
+                        found.append(site)
+        except OSError:
+            continue
     return sorted(found)
+
+
+def _site_packages_dirs(venv_dir: Path) -> list[Path]:
+    found = _env_site_dirs(venv_dir)
+    cfg = _read_pyvenv_cfg(venv_dir / "pyvenv.cfg")
+    if cfg and cfg.get("include-system-site-packages", "").lower() == "true":
+        home_raw = cfg.get("home", "")
+        if home_raw:
+            home_path = Path(home_raw)
+            if home_path.is_absolute():
+                py_dir_name = _venv_python_dir_name(venv_dir, cfg)
+                roots = [home_path]
+                if home_path.name.lower() in ("bin", "scripts"):
+                    roots.insert(0, home_path.parent)
+                for base_root in roots:
+                    for extra in _env_site_dirs(base_root, python_dir_name=py_dir_name):
+                        if extra not in found:
+                            found.append(extra)
+    return found
 
 
 def _has_package_in_site(site: Path, family: str) -> bool:
@@ -112,13 +155,27 @@ def _has_package_in_site(site: Path, family: str) -> bool:
     return False
 
 
+def _is_python_binary_name(name: str) -> bool:
+    low = name.lower()
+    return low.startswith("python") and "config" not in low
+
+
 def _pick_venv_python(venv_dir: Path, preferred: Path | None = None) -> Path | None:
     candidates: list[Path] = []
-    if preferred is not None and preferred.parent == venv_dir / "bin":
+    allowed_dirs = {venv_dir / "bin", venv_dir / "Scripts", venv_dir}
+    if (
+        preferred is not None
+        and preferred.parent in allowed_dirs
+        and _is_python_binary_name(preferred.name)
+    ):
         candidates.append(preferred)
-    bin_dir = venv_dir / "bin"
-    for name in ("python", "python3"):
-        candidate = bin_dir / name
+    for candidate in (
+        venv_dir / "bin" / "python",
+        venv_dir / "bin" / "python3",
+        venv_dir / "Scripts" / "python.exe",
+        venv_dir / "Scripts" / "python",
+        venv_dir / "python.exe",
+    ):
         if candidate not in candidates:
             candidates.append(candidate)
     existing = [p for p in candidates if p.is_file()]
@@ -130,6 +187,15 @@ def _pick_venv_python(venv_dir: Path, preferred: Path | None = None) -> Path | N
     return existing[0]
 
 
+def _is_python_env_dir(directory: Path) -> bool:
+    return (
+        (directory / "pyvenv.cfg").is_file()
+        or (directory / "conda-meta").is_dir()
+        or ((directory / "bin" / "python").is_file() and bool(_site_packages_dirs(directory)))
+        or ((directory / "Scripts" / "python.exe").is_file() and bool(_site_packages_dirs(directory)))
+    )
+
+
 def _probe_python_venv(
     venv_dir: Path,
     seen: set[tuple[str, str]],
@@ -139,9 +205,6 @@ def _probe_python_venv(
 ) -> None:
     resolved_venv = _safe_resolve(venv_dir)
     if resolved_venv is None or not resolved_venv.is_dir():
-        return
-    cfg = _read_pyvenv_cfg(resolved_venv / "pyvenv.cfg")
-    if cfg is None or cfg.get("include-system-site-packages") != "false":
         return
     python_exec = _pick_venv_python(resolved_venv, preferred=preferred_python)
     if python_exec is None:
@@ -178,8 +241,11 @@ def _shebang_venv(script_path: Path) -> Path | None:
             return None
         interp = first_line[2:].decode("utf-8", errors="ignore").strip().split()[0]
         interp_path = Path(interp)
-        if interp_path.is_absolute() and (interp_path.parent.parent / "pyvenv.cfg").is_file():
-            return interp_path.parent.parent
+        if interp_path.is_absolute():
+            if _is_python_env_dir(interp_path.parent.parent):
+                return interp_path.parent.parent
+            if _is_python_env_dir(interp_path.parent):
+                return interp_path.parent
     except (OSError, IndexError):
         return None
     return None
@@ -193,7 +259,7 @@ def _collect_extra_targets(
     venv_targets: list[tuple[Path, Path | None]] = []
 
     def inspect_dir(directory: Path, recurse_children: bool) -> None:
-        if (directory / "pyvenv.cfg").is_file():
+        if _is_python_env_dir(directory):
             venv_targets.append((directory, None))
             return
         for bin_candidate in (directory / "llama-server", directory / "bin" / "llama-server"):
@@ -202,16 +268,27 @@ def _collect_extra_targets(
         for lms_candidate in (directory / "lms", directory / "bin" / "lms"):
             if lms_candidate.is_file():
                 lms_paths.append(lms_candidate)
-        for py_candidate in (directory / "python", directory / "bin" / "python"):
-            if py_candidate.is_file() and (py_candidate.parent.parent / "pyvenv.cfg").is_file():
-                venv_targets.append((py_candidate.parent.parent, py_candidate))
+        for py_candidate in (
+            directory / "python",
+            directory / "bin" / "python",
+            directory / "Scripts" / "python.exe",
+            directory / "python.exe",
+        ):
+            if py_candidate.is_file():
+                env_root = (
+                    py_candidate.parent.parent
+                    if py_candidate.parent.name in ("bin", "Scripts")
+                    else py_candidate.parent
+                )
+                if _is_python_env_dir(env_root):
+                    venv_targets.append((env_root, py_candidate))
         if recurse_children:
             try:
                 with os.scandir(directory) as entries:
                     for entry in sorted(entries, key=lambda item: item.name):
                         if entry.is_dir():
                             child = Path(entry.path)
-                            if (child / "pyvenv.cfg").is_file():
+                            if _is_python_env_dir(child):
                                 venv_targets.append((child, None))
             except OSError:
                 pass
@@ -226,8 +303,17 @@ def _collect_extra_targets(
                 llama_paths.append(path)
             elif name == "lms":
                 lms_paths.append(path)
-            elif name.startswith("python") or (path.parent.parent / "pyvenv.cfg").is_file():
-                venv_targets.append((path.parent.parent, path))
+            elif _is_python_binary_name(name):
+                env_root = (
+                    path.parent.parent
+                    if path.parent.name in ("bin", "Scripts")
+                    else path.parent
+                )
+                venv_targets.append((env_root, path))
+            elif _is_python_env_dir(path.parent.parent):
+                venv_targets.append((path.parent.parent, None))
+            elif _is_python_env_dir(path.parent):
+                venv_targets.append((path.parent, None))
         elif path.is_dir():
             inspect_dir(path, recurse_children=True)
     return llama_paths, lms_paths, venv_targets
@@ -422,8 +508,8 @@ def build_installation(
     if data_dir is not None and family != "polystrata":
         raise PreflightError("local_engine_data_dir_polystrata_only")
 
-    if family in DIRECTORY_FAMILIES:
-        environment = dict(_PYTHON_ENVIRONMENTS)
+    if family == "sglang" and platform.system() == "Darwin":
+        environment = {"SGLANG_USE_MLX": "1"}
     elif family == "polystrata":
         environment = {"PYTHONDONTWRITEBYTECODE": "1"}
     else:

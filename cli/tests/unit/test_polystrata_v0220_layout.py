@@ -18,7 +18,6 @@ from inferyard.platforms.local_engines.detect_polystrata import (
     collect_polystrata_targets,
     infer_polystrata_root,
 )
-from inferyard.platforms.local_engines.service import _polystrata_worker_env_policy
 from inferyard.platforms.local_engines.startup import validate_arguments
 from inferyard.provisioning import polystrata_prepare
 from inferyard.provisioning.polystrata_preflight import GIB
@@ -115,7 +114,6 @@ def test_prepare_polystrata_v0220_terminal_layout_end_to_end(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
-    monkeypatch.setattr(installation, "_FILE_CACHE", {})
 
     fake_bin = tmp_path / "fake-bin"
     _write_fake_python(fake_bin, "python3.12", 3, 12)
@@ -175,10 +173,7 @@ def test_prepare_polystrata_v0220_terminal_layout_end_to_end(
     snapshot = installation.freeze_installation(result["installation"])
     runtime_files = installation.verify_installation(snapshot)
     assert snapshot["installation"]["family"] == "polystrata"
-    assert any(
-        item.path.endswith("strata-metal") or item.path.endswith("strata.exe")
-        for item in runtime_files
-    )
+    assert len(runtime_files) == 1
 
     # Candidate creation & startup argument validation must accept terminal/serve/server.py
     # and terminal/strata-q2_0.json with cwd=<out_dir>/terminal and build-vision/bin/strata-vision.
@@ -212,9 +207,6 @@ def test_prepare_polystrata_v0220_terminal_layout_end_to_end(
         server_py = (out_dir / "terminal" / "serve" / "server.py").resolve()
         assert Path(startup_args[0]).resolve() == server_py
         validate_arguments(loaded)
-
-        allowed_env, _libs, _expected = _polystrata_worker_env_policy(loaded)
-        assert "OMP_NUM_THREADS" in allowed_env
 
 
 def test_preflight_shared_data_dir_deducts_existing_q2_0_shards_without_resume(

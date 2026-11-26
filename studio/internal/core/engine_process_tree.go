@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,6 +25,36 @@ type engineProcessIdentity struct {
 
 type engineProcessRow struct{ pid, parent, group int64 }
 
+var blockedEngineLoaderEnv = map[string]bool{
+	"DYLD_INSERT_LIBRARIES": true,
+	"DYLD_LIBRARY_PATH":     true,
+	"DYLD_FRAMEWORK_PATH":   true,
+	"LD_PRELOAD":            true,
+	"PYTHONINSPECT":         true,
+	"PYTHONSTARTUP":         true,
+}
+
+var (
+	secretEngineEnvPattern = regexp.MustCompile(`(?:PASSWORD|PASSWD|SECRET|API_?KEY|ACCESS_KEY|PRIVATE_KEY|AUTH_KEY|BEARER|MYSQL_PWD)|(?:^|_)TOKEN(?:$|_)`)
+	urlAuthorityPattern    = regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://([^\s/?#"]+)`)
+)
+
+func isBlockedEngineEnv(key, value string) bool {
+	upper := strings.ToUpper(key)
+	if blockedEngineLoaderEnv[upper] {
+		return true
+	}
+	if secretEngineEnvPattern.MatchString(upper) && strings.TrimSpace(value) != "" {
+		return true
+	}
+	for _, match := range urlAuthorityPattern.FindAllStringSubmatch(value, -1) {
+		if len(match) > 1 && strings.Contains(match[1], "@") {
+			return true
+		}
+	}
+	return false
+}
+
 func configureEngineProcess(cmd *exec.Cmd, startup Startup) error {
 	if !startup.Local {
 		if startup.WorkingDirectory != "" {
@@ -33,12 +64,17 @@ func configureEngineProcess(cmd *exec.Cmd, startup Startup) error {
 	}
 	cmd.Dir = startup.WorkingDirectory
 	environment := map[string]string{}
-	for _, key := range []string{"HOME", "PATH", "TMPDIR", "LANG", "LC_ALL", "USER", "LOGNAME"} {
-		if value, ok := os.LookupEnv(key); ok {
-			environment[key] = value
+	for _, pair := range os.Environ() {
+		key, value, ok := strings.Cut(pair, "=")
+		if !ok || key == "" || isBlockedEngineEnv(key, value) {
+			continue
 		}
+		environment[key] = value
 	}
 	for key, value := range startup.Environment {
+		if isBlockedEngineEnv(key, value) {
+			continue
+		}
 		environment[key] = value
 	}
 	keys := make([]string, 0, len(environment))

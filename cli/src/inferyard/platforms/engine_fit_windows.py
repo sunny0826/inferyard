@@ -78,15 +78,6 @@ def _state(pid, deadline):
     return start, arguments, raw, executable, cwd, owner
 
 
-def _environment(pid):
-    from inferyard.platforms.engine_fit_entrypoints import reject_llama_environment
-
-    environment = psutil.Process(pid).environ()
-    reject_llama_environment(environment)
-    if any(key.upper().startswith("LLAMA_ARG_") for key in environment):
-        raise PreflightError("engine_fit_llama_environment_requires_explicit_args")
-
-
 def bind_service(
     engine, model_path, pid, url, *, lms_path=None, models_root=None, served_model=None
 ):
@@ -102,13 +93,11 @@ def bind_service(
         origin, address, port = service_origin(url)
         state = _state(pid, deadline)
         start, arguments, raw, executable, cwd, _owner = state
-        _environment(pid)
         startup, source, extras = startup_binding(engine, arguments, executable, cwd)
         model = validate_model(startup, model_path, source)
         model_stat, executable_stat = model.stat(), executable.stat()
         digest, _size = stable_file_digest(executable)
         listener = _listener(pid, address, port)
-        _environment(pid)
         if (
             _state(pid, deadline) != state
             or file_stamp(executable.stat()) != file_stamp(executable_stat)

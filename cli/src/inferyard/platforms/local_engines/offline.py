@@ -44,31 +44,8 @@ def validate_frozen_identity(config, local_identity, *, files):
     _require(declaration["environment"] == engine["environment"])
     if engine["family"] != "lmstudio":
         _require(declaration["working_directory"] == engine["working_directory"])
-        bootstrap_path = None
-        if engine["family"] in DIRECTORY_FAMILIES:
-            arguments = engine["startup_args"]
-            _require(len(arguments) > 4)
-            bootstrap_path = arguments[3]
-            path = PurePosixPath(bootstrap_path)
-            _require(
-                path.is_absolute()
-                and str(path) == bootstrap_path
-                and path.parts[-3:] == ("data", "local_engine", "bootstrap.py")
-                and ".." not in path.parts
-            )
-            matches = []
-            for root in runtime["roots"]:
-                root_path = PurePosixPath(root["path"])
-                for row in root["entries"]:
-                    if (
-                        root_path / row["path"] == path
-                        or root_path == path
-                        and row["path"] == path.name
-                    ):
-                        matches.append(row)
-            _require(len(matches) == 1)
         try:
-            validate_arguments(config, bootstrap_path=bootstrap_path)
+            validate_arguments(config)
         except PreflightError as exc:
             raise ContractError("identity.local_engine", "invalid frozen startup") from exc
     arguments = engine["startup_args"]
@@ -80,7 +57,6 @@ def validate_frozen_identity(config, local_identity, *, files):
         service["cwd_sha256"]
         == hashlib.sha256(os.fsencode(engine["working_directory"])).hexdigest()
     )
-    runtime_digests = set()
     root_names = set()
     for root in runtime["roots"]:
         _require(is_absolute_path(root["path"]) and root["path"] not in root_names)
@@ -92,9 +68,6 @@ def validate_frozen_identity(config, local_identity, *, files):
                 not PurePosixPath(row["path"]).is_absolute()
                 and all(part not in ("", ".", "..") for part in row["path"].split("/"))
             )
-            runtime_digests.add(row["sha256"])
-    _require(service["executable_sha256"] in runtime_digests)
-    _require(all(row["executable_sha256"] in runtime_digests for row in service["workers"]))
     properties = {"kind": LABEL, "path": LABEL, "sha256": HASH, "files": array(_ENTRY, 1)}
     if model["kind"] == "directory":
         properties["definition"] = {"type": "string", "const": "model-assets.v2"}

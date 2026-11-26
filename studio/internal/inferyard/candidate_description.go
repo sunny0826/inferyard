@@ -339,20 +339,7 @@ func validCandidateParameters(fields map[string]json.RawMessage, local bool, fam
 
 func validCandidateEnvironment(environment map[string]string) bool {
 	for key, value := range environment {
-		switch key {
-		case "SGLANG_USE_MLX", "PYTHONDONTWRITEBYTECODE", "HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE":
-			if value != "1" {
-				return false
-			}
-		case "SGLANG_RUN_ID":
-			if !candidateRunID.MatchString(value) {
-				return false
-			}
-		case "PROMETHEUS_MULTIPROC_DIR":
-			if !candidatePath(value) {
-				return false
-			}
-		default:
+		if !candidateVariable.MatchString(key) || strings.ContainsRune(value, 0) {
 			return false
 		}
 	}
@@ -372,7 +359,7 @@ func validCandidateSafety(raw []byte) bool {
 		Environment *bool    `json:"check_environment"`
 	}
 	if json.Unmarshal(raw, &value) != nil || value.Interval == nil || *value.Interval < 0.1 || *value.Interval > 5 ||
-		value.Environment == nil || !*value.Environment {
+		value.Environment == nil {
 		return false
 	}
 	return true

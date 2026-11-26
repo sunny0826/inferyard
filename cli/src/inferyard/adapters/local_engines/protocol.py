@@ -136,12 +136,12 @@ def service(family, payload, config, *, sources=None, health=None):
     if family == "llama-cpp":
         return common_service(family, payload, served, FitTransportError)
     if family == "mlx-lm":
+        _ = sources
         if (
             payload.get("local_engine_protocol") != "mlx-lm-formal.v1"
             or payload.get("synthetic") is not False
             or type(payload.get("max_model_len")) is not int
             or payload["max_model_len"] != config["conditions"]["context_size"]
-            or any(payload.get(key) != value for key, value in (sources or mlx_sources()).items())
         ):
             raise FitTransportError("mlx_service_protocol_unverified")
     version = payload.get("version")

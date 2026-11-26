@@ -55,6 +55,6 @@ RUNTIME = obj(
                 }
             )
         ),
-        "roots": array(obj({"path": LABEL, "entries": array(ENTRY)}), 1),
+        "roots": array(obj({"path": LABEL, "entries": array(ENTRY)})),
     }
 )

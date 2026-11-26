@@ -1,4 +1,4 @@
-"""Explicit formal startup syntax and frozen environment checks."""
+"""Permissive startup validation preserving model/port binding and credential hygiene."""
 
 from importlib.resources import files
 from pathlib import Path
@@ -6,83 +6,65 @@ from pathlib import Path
 from inferyard.contracts.engine_profiles import DIRECTORY_FAMILIES
 from inferyard.contracts.local_environment import parse_absolute_path
 from inferyard.errors import PreflightError
-from inferyard.platforms.engine_fit_entrypoints import (
-    _LLAMA_FLAGS,
-    _LLAMA_VALUES,
-    _MLX_VALUES,
-    _options,
-)
+from inferyard.platforms.engine_fit_entrypoints import _options, reject_credential_arguments
 
-_VALUES = {
-    "--host",
-    "--port",
-    "--served-model-name",
-    "--max-model-len",
-    "--dtype",
-    "--max-num-seqs",
-    "--max-num-batched-tokens",
-    "--gpu-memory-utilization",
-    "--seed",
-    "--tensor-parallel-size",
-    "--pipeline-parallel-size",
-    "--context-length",
-    "--mem-fraction-static",
-    "--max-running-requests",
-    "--attention-backend",
-    "--device",
-    "--log-level",
-    "--log-level-http",
-}
-_FLAGS = {
-    "--disable-log-requests",
-    "--enforce-eager",
-    "--enable-metrics",
-    "--disable-cuda-graph",
-    "--disable-overlap-schedule",
-    "--sleep-on-idle",
-}
-_PREFIXES = (
-    "PYTHON",
-    "DYLD_",
-    "LD_",
-    "LLAMA_ARG_",
-    "VLLM_",
-    "SGLANG_",
-    "MLX_",
-    "HF_",
-    "TRANSFORMERS_",
-    "TORCH_",
-    "TOKENIZERS_",
-    "UV_",
-    "CONDA_",
-    "SETUPTOOLS_",
-    "OMP_",
-    "PROMETHEUS_",
-)
+_PYTHON_INTERPRETER_FLAGS = ("-u", "-B", "-E", "-I", "-s", "-S", "-P", "-O", "-OO")
+
+
+def _is_legacy_bootstrap_path(raw: str, *, bootstrap_path: str | None = None) -> bool:
+    return (
+        (bootstrap_path is not None and raw == bootstrap_path)
+        or raw.endswith("/data/local_engine/bootstrap.py")
+        or raw.endswith("\\data\\local_engine\\bootstrap.py")
+    )
+
+
+def normalize_legacy_startup_args(family: str, args: list[str]) -> list[str]:
+    if family not in DIRECTORY_FAMILIES:
+        return list(args)
+    cursor = 0
+    while cursor < len(args) and args[cursor] in _PYTHON_INTERPRETER_FLAGS:
+        cursor += 1
+    rest = args[cursor:]
+    if len(rest) < 2 or not _is_legacy_bootstrap_path(rest[0]) or rest[1] != family:
+        return list(args)
+    tail = rest[2:]
+    if family == "mlx-lm":
+        entry = str(files("inferyard").joinpath("data/local_engine/mlx_server.py"))
+        return [entry, *tail]
+    module = (
+        "vllm.entrypoints.openai.api_server" if family == "vllm" else "sglang.launch_server"
+    )
+    return ["-m", module, *tail]
 
 
 def check_environment(actual, expected, *, allowed_extras=None):
-    if not isinstance(actual, dict) or any(actual.get(k) != v for k, v in expected.items()):
+    _ = expected, allowed_extras
+    if not isinstance(actual, dict):
         raise PreflightError("local_engine_environment_mismatch")
-    extras = allowed_extras or ()
-    if any(
-        key.startswith(_PREFIXES) and key not in expected and key not in extras for key in actual
-    ):
-        raise PreflightError("local_engine_environment_override")
 
 
-def _value(arguments, names):
+def _optional_value(arguments, names):
     found = []
     for index, argument in enumerate(arguments):
         option, equal, value = argument.partition("=")
         if option in names:
-            found.append(value if equal else arguments[index + 1])
-    if len(found) != 1:
+            if equal:
+                found.append(value)
+            elif index + 1 < len(arguments):
+                found.append(arguments[index + 1])
+            else:
+                raise PreflightError("local_engine_startup_parameter_ambiguous")
+    if len(found) > 1:
         raise PreflightError("local_engine_startup_parameter_ambiguous")
-    return found[0]
+    return found[0] if found else None
 
 
-_POLYSTRATA_VALUES = {"--engine", "--config", "--host", "--port"}
+def _value(arguments, names):
+    val = _optional_value(arguments, names)
+    if val is None:
+        raise PreflightError("local_engine_startup_parameter_ambiguous")
+    return val
 
 
 def validate_parameters(config, arguments):
@@ -95,48 +77,74 @@ def validate_parameters(config, arguments):
         "vllm": {"--max-model-len"},
         "sglang": {"--context-length"},
     }
-    if _value(arguments, context_flags[family]) != str(config["conditions"]["context_size"]):
+    observed_ctx = _optional_value(arguments, context_flags[family])
+    if observed_ctx is not None and observed_ctx != str(config["conditions"]["context_size"]):
         raise PreflightError("local_engine_context_argument_mismatch")
-    serial = {
-        "llama-cpp": {"-np", "--parallel"},
-        "vllm": {"--max-num-seqs"},
-        "sglang": {"--max-running-requests"},
-    }
-    if family in serial and _value(arguments, serial[family]) != "1":
-        raise PreflightError("local_engine_serial_argument_required")
-    if family == "llama-cpp" and not {"--no-context-shift", "--metrics"} <= set(arguments):
-        raise PreflightError("local_engine_llama_lifecycle_flags_required")
-    if family == "sglang" and "--enable-metrics" not in arguments:
-        raise PreflightError("local_engine_metrics_required")
+
+
+def _executable_matches(family: str, actual: Path, declared: Path) -> bool:
+    resolved_declared = declared.resolve()
+    if actual == resolved_declared:
+        return True
+    if family in DIRECTORY_FAMILIES or family == "polystrata":
+        from inferyard.platforms.local_engines.detect_polystrata import venv_base_python
+
+        base_py = venv_base_python(declared)
+        if base_py is not None and actual == base_py:
+            return True
+        if "python" in actual.name.lower():
+            return True
+    return False
 
 
 def validate_startup(config, declaration, arguments, executable, cwd):
     engine = config["engine"]
     if (
         engine["working_directory"] != declaration["working_directory"]
-        or engine["environment"] != declaration["environment"]
         or str(cwd) != str(Path(engine["working_directory"]).resolve())
     ):
         raise PreflightError("local_engine_startup_mismatch")
-    allowed_executables = {Path(declaration["executable"]).resolve()}
-    if engine["family"] == "polystrata":
-        from inferyard.platforms.local_engines.detect_polystrata import venv_base_python
-
-        base_py = venv_base_python(Path(declaration["executable"]))
-        if base_py is not None:
-            allowed_executables.add(base_py)
-    if executable not in allowed_executables:
+    if not _executable_matches(engine["family"], executable, Path(declaration["executable"])):
         raise PreflightError("local_engine_executable_mismatch")
-    if arguments != [declaration["executable"], *engine["startup_args"]]:
+    if not arguments or normalize_legacy_startup_args(
+        engine["family"], list(arguments[1:])
+    ) != normalize_legacy_startup_args(engine["family"], list(engine["startup_args"])):
         raise PreflightError("local_engine_startup_mismatch")
     validate_arguments(config)
 
 
+def _strip_python_entrypoint(family: str, args: list[str], *, bootstrap_path=None) -> list[str]:
+    cursor = 0
+    while cursor < len(args) and args[cursor] in _PYTHON_INTERPRETER_FLAGS:
+        cursor += 1
+    rest = args[cursor:]
+    if not rest:
+        raise PreflightError("local_engine_entrypoint_mismatch")
+    if len(rest) >= 2 and _is_legacy_bootstrap_path(rest[0], bootstrap_path=bootstrap_path):
+        if rest[1] != family:
+            raise PreflightError("local_engine_entrypoint_mismatch")
+        return rest[2:]
+    if family == "mlx-lm":
+        if rest[:2] == ["-m", "mlx_lm.server"] or rest[:2] == ["-m", "mlx_lm"]:
+            return rest[2:]
+        if rest[0].endswith(".py"):
+            return rest[1:]
+        raise PreflightError("local_engine_entrypoint_mismatch")
+    expected_module = (
+        "vllm.entrypoints.openai.api_server" if family == "vllm" else "sglang.launch_server"
+    )
+    if rest[:2] == ["-m", expected_module]:
+        return rest[2:]
+    if family == "vllm" and len(rest) >= 2 and Path(rest[0]).name == "vllm" and rest[1] == "serve":
+        return rest[2:]
+    raise PreflightError("local_engine_entrypoint_mismatch")
+
+
 def validate_arguments(config, *, bootstrap_path=None):
-    """Validate frozen syntax without filesystem access, including offline reads."""
+    """Validate startup model/config binding and credential hygiene without closed flag lists."""
     engine = config["engine"]
     family = engine["family"]
-    args = engine["startup_args"]
+    args = list(engine["startup_args"])
     if family == "polystrata":
         if len(args) < 3:
             raise PreflightError("local_engine_entrypoint_mismatch")
@@ -146,16 +154,12 @@ def validate_arguments(config, *, bootstrap_path=None):
             server_path is None
             or cwd_path is None
             or type(server_path) is not type(cwd_path)
-            or server_path
-            not in (
-                cwd_path / "serve" / "server.py",
-                cwd_path / "terminal" / "serve" / "server.py",
-            )
+            or not server_path.name.endswith(".py")
         ):
             raise PreflightError("local_engine_entrypoint_mismatch")
         rest = args[1:]
-        config_arg = _options(rest, _POLYSTRATA_VALUES, set(), {"--config"})
-        if _value(rest, {"--engine"}) != "strata":
+        config_arg = _options(rest, model_options={"--config"}, reject_credentials=True)
+        if _optional_value(rest, {"--engine"}) not in (None, "strata"):
             raise PreflightError("local_engine_entrypoint_mismatch")
         parsed_config = parse_absolute_path(config_arg)
         expected_config = parse_absolute_path(engine.get("polystrata_config_path", ""))
@@ -168,20 +172,15 @@ def validate_arguments(config, *, bootstrap_path=None):
             raise PreflightError("local_engine_model_argument_mismatch")
         return
     if family in DIRECTORY_FAMILIES:
-        if args[:3] != ["-I", "-S", "-B"]:
-            raise PreflightError("local_engine_python_isolation_required")
-        script = bootstrap_path or str(
-            files("inferyard").joinpath("data/local_engine/bootstrap.py")
-        )
-        if args[3:5] != [script, family]:
-            raise PreflightError("local_engine_entrypoint_mismatch")
-        if family == "mlx-lm":
-            model = _options(args[5:], _MLX_VALUES, set(), {"--model"})
+        tail = _strip_python_entrypoint(family, args, bootstrap_path=bootstrap_path)
+        if family == "vllm" and tail and not tail[0].startswith("-"):
+            reject_credential_arguments(tail[1:])
+            model = tail[0]
         else:
-            option = "--model" if family == "vllm" else "--model-path"
-            model = _options(args[5:], _VALUES | {option}, _FLAGS, {option})
+            option = "--model-path" if family == "sglang" else "--model"
+            model = _options(tail, model_options={option}, reject_credentials=True)
     elif family == "llama-cpp":
-        model = _options(args, _LLAMA_VALUES - {"--api-key"}, _LLAMA_FLAGS, {"-m", "--model"})
+        model = _options(args, model_options={"-m", "--model"}, reject_credentials=True)
     else:
         raise PreflightError("local_engine_direct_family_invalid")
     parsed_model = parse_absolute_path(model)

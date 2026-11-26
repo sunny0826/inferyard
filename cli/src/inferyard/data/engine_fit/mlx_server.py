@@ -87,8 +87,7 @@ class MLXBackend:
         if root.is_symlink() or not root.is_dir():
             raise ValueError("local_model_directory_required")
         root = root.resolve(strict=True)
-        os.environ["HF_HUB_OFFLINE"] = "1"
-        os.environ["TRANSFORMERS_OFFLINE"] = "1"
+        offline = os.environ.get("HF_HUB_OFFLINE", "").strip().lower() in ("1", "true", "yes")
         import mlx.core as mx
         from mlx_lm import load, stream_generate
         from mlx_lm.sample_utils import make_sampler
@@ -96,10 +95,11 @@ class MLXBackend:
         self.mx, self.generate = mx, stream_generate
         self.version = version("mlx-lm")
         self.stream = mx.new_thread_local_stream(mx.gpu)
+        tok_cfg = {"trust_remote_code": False, **({"local_files_only": True} if offline else {})}
         with mx.stream(self.stream):
             self.model, self.tokenizer = load(
                 str(root),
-                tokenizer_config={"trust_remote_code": False, "local_files_only": True},
+                tokenizer_config=tok_cfg,
                 trust_remote_code=False,
                 lazy=False,
             )

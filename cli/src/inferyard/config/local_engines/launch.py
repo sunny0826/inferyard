@@ -4,6 +4,7 @@ from importlib.resources import files
 from pathlib import Path
 
 from inferyard.platforms.local_engines.detect_polystrata import resolve_polystrata_server_script
+from inferyard.platforms.local_engines.startup import normalize_legacy_startup_args
 from inferyard.provisioning.preparation_io import PreparationError
 
 
@@ -75,13 +76,14 @@ def startup(
             served_model,
             *network,
         ], cwd
-    entry = str(files("inferyard").joinpath("data/local_engine/bootstrap.py"))
-    prefix = ["-I", "-S", "-B", entry, family]
     if family == "mlx-lm":
         if standalone:
             raise PreparationError("serve_family_unsupported")
+        entry = str(files("inferyard").joinpath("data/local_engine/mlx_server.py"))
+        prefix = [entry]
         args = ["--model", str(model), "--max-model-len", str(context)]
     elif family == "vllm":
+        prefix = ["-m", "vllm.entrypoints.openai.api_server"]
         args = [
             "--model",
             str(model),
@@ -92,6 +94,7 @@ def startup(
             "0.20",
         ]
     elif family == "sglang":
+        prefix = ["-m", "sglang.launch_server"]
         args = [
             "--model-path",
             str(model),
@@ -126,8 +129,11 @@ def description(config, installation):
             "served_model": engine["served_model"],
             "requires_loaded_instance": True,
         }
+    normalized_args = normalize_legacy_startup_args(
+        engine["family"], list(engine["startup_args"])
+    )
     return {
         "kind": "direct_process",
         **common,
-        "argv": [installation["executable"], *engine["startup_args"]],
+        "argv": [installation["executable"], *normalized_args],
     }

@@ -30,7 +30,7 @@ def comparison_safety(configs: list[JSONRecord]) -> JSONRecord | None:
     policies = [config["safety"] for config in configs]
     return {
         "interval_seconds": min(policy["interval_seconds"] for policy in policies),
-        "check_environment": all(policy["check_environment"] for policy in policies),
+        "check_environment": any(policy["check_environment"] for policy in policies),
         "max_external_cpu_percent": None,
     }
 

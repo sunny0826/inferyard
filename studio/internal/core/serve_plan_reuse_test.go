@@ -15,7 +15,7 @@ import (
 
 func TestStartStandaloneCacheHitSkipsCLIProbeAndRewritesExplicitPort(t *testing.T) {
 	var prepareCalls, totalCalls atomic.Int32
-	s, _, model, engine := setupStandaloneTestService(t, true, &prepareCalls, &totalCalls)
+	s, workspace, model, engine := setupStandaloneTestService(t, true, &prepareCalls, &totalCalls)
 
 	st1, apiErr := s.StartStandalone(context.Background(), StandaloneStartRequest{
 		Model: model, Engine: engine, ContextSize: 8192,
@@ -70,6 +70,47 @@ func TestStartStandaloneCacheHitSkipsCLIProbeAndRewritesExplicitPort(t *testing.
 	}
 	if st3.Port != newPort || st3.Endpoint != "http://127.0.0.1:"+strconv.Itoa(newPort) {
 		t.Fatalf("expected port=%d endpoint=http://127.0.0.1:%d, got port=%d endpoint=%q", newPort, newPort, st3.Port, st3.Endpoint)
+	}
+
+	if _, err := s.StopEngine(); err != nil {
+		t.Fatalf("StopEngine failed: %+v", err)
+	}
+	waitEngineState(t, s, "stopped")
+
+	// Pre-upgrade cached serve-plan.json referencing removed bootstrap.py must miss cache and regenerate via serve prepare.
+	serveDir, dirErr := safeServeDir(workspace, st1.Candidate)
+	if dirErr != nil {
+		t.Fatalf("safeServeDir failed: %+v", dirErr)
+	}
+	cachedPlanPath := filepath.Join(serveDir, "serve-plan.json")
+	rawCached, err := os.ReadFile(cachedPlanPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var legacyPlan inferyard.ServePlan
+	if err := json.Unmarshal(rawCached, &legacyPlan); err != nil {
+		t.Fatal(err)
+	}
+	legacyPlan.Argv = []string{
+		legacyPlan.Argv[0],
+		"-I", "-S", "-B",
+		"/old/site-packages/inferyard/data/local_engine/bootstrap.py",
+		"vllm",
+		"--host", "127.0.0.1", "--port", strconv.Itoa(st1.Port),
+	}
+	rewrittenLegacy, _ := json.Marshal(legacyPlan)
+	if err := os.WriteFile(cachedPlanPath, rewrittenLegacy, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	beforeLegacyUpgrade := prepareCalls.Load()
+	if _, apiErr := s.StartStandalone(context.Background(), StandaloneStartRequest{
+		Model: model, Engine: engine, ContextSize: 8192,
+	}); apiErr != nil {
+		t.Fatalf("StartStandalone after legacy bootstrap.py plan injection failed: %+v", apiErr)
+	}
+	waitEngineState(t, s, "running")
+	if prepareCalls.Load() != beforeLegacyUpgrade+1 {
+		t.Fatalf("expected legacy bootstrap.py cached plan to trigger serve prepare, got prepare=%d want %d", prepareCalls.Load(), beforeLegacyUpgrade+1)
 	}
 }
 

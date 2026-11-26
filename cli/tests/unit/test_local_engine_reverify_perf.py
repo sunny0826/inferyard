@@ -1,4 +1,4 @@
-"""Regression tests for local-engine re-verification caching and safety invariants."""
+"""Regression tests for local-engine re-verification caching and lightweight runtime freeze."""
 
 from __future__ import annotations
 
@@ -8,182 +8,40 @@ from pathlib import Path
 import pytest
 
 from inferyard.contracts.validation import json_bytes
-from inferyard.errors import PreflightError
 from inferyard.platforms.identity import FileIdentity, hash_file
-from inferyard.platforms.local_engines import mapping_permissions, service, workers
+from inferyard.platforms.local_engines import installation, service
 
 
-def test_permission_denied_non_exec_mapping_caches_per_process_incarnation(
+def test_freeze_installation_hashes_only_executable_not_venv_files(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    exe = tmp_path / "strata"
-    exe.write_bytes(b"\xcf\xfa\xed\xfe\x0c\x00\x00\x01")
-    runtime_file = hash_file(exe)
+    monkeypatch.setattr(installation, "darwin", lambda: None)
+    venv_dir = tmp_path / "conda-env"
+    (venv_dir / "conda-meta").mkdir(parents=True)
+    bin_dir = venv_dir / "bin"
+    bin_dir.mkdir()
+    exe = bin_dir / "python"
+    exe.write_bytes(b"#!/bin/sh\nexit 0\n")
+    exe.chmod(0o755)
+    site_dir = venv_dir / "lib" / "python3.12" / "site-packages" / "vllm"
+    site_dir.mkdir(parents=True)
+    for idx in range(50):
+        (site_dir / f"mod_{idx}.py").write_text(f"X = {idx}\n", encoding="utf-8")
 
-    unreadable_path = "/private/var/db/analyticsd/events.allowlist"
-    user_unreadable_path = "/private/tmp/restricted-user-file.dat"
-    unlinked_path = "/private/tmp/unlinked-cache.dat"
-    unreadable_stamp = (16777230, 2071706)
-    user_unreadable_stamp = (16777230, 8888888)
-    unlinked_stamp = (16777230, 9999999)
-
-    monkeypatch.setattr(mapping_permissions, "_NON_EXEC_CACHE", {})
-    monkeypatch.setattr(workers, "verify_libraries", lambda *_a, **_kw: [])
-
-    current_ticks = 50001
-    monkeypatch.setattr(mapping_permissions, "process_start_ticks", lambda _pid: current_ticks)
-
-    real_open = mapping_permissions.os.open
-
-    def fake_open(path, flags, *args, **kwargs):
-        p = str(path)
-        if p in (unreadable_path, user_unreadable_path):
-            raise PermissionError(13, "Permission denied", p)
-        if p == unlinked_path:
-            raise FileNotFoundError(2, "No such file", p)
-        return real_open(path, flags, *args, **kwargs)
-
-    monkeypatch.setattr(mapping_permissions.os, "open", fake_open)
-    monkeypatch.setattr(workers, "mapped_native_image", lambda _p, _s: None)
-
-    observe_calls = 0
-    vmmap_mode = "r--/r--"
-
-    def fake_observe(pid: int) -> str:
-        nonlocal observe_calls
-        observe_calls += 1
-        return (
-            f"mapped file  100000000-100004000 [ 16K  16K   0K   0K] "
-            f"{vmmap_mode} SM=COW  {unreadable_path}\n"
-            f"mapped file  100004000-100008000 [ 16K  16K   0K   0K] "
-            f"{vmmap_mode} SM=COW  {user_unreadable_path}\n"
-            f"mapped file  100008000-10000c000 [ 16K  16K   0K   0K] "
-            f"{vmmap_mode} SM=COW  {unlinked_path}\n"
-        )
-
-    monkeypatch.setattr(mapping_permissions, "observe", fake_observe)
-
-    unreadable_rows = [
-        {
-            "p": 777,
-            "f": "txt",
-            "t": "REG",
-            "D": f"{unreadable_stamp[0]:x}",
-            "i": str(unreadable_stamp[1]),
-            "n": unreadable_path,
-        }
-    ]
-
-    workers.mapped_closure(unreadable_rows, [runtime_file], exe, pid=777)
-    assert observe_calls == 1
-
-    # Repeated checks on the same (pid, start_ticks, stamp, path) skip vmmap.
-    workers.mapped_closure(unreadable_rows, [runtime_file], exe, pid=777)
-    workers.mapped_closure(unreadable_rows, [runtime_file], exe, pid=777)
-    assert observe_calls == 1
-
-    # New process incarnation reusing PID invalidates cache and re-runs vmmap.
-    current_ticks = 50002
-    workers.mapped_closure(unreadable_rows, [runtime_file], exe, pid=777)
-    assert observe_calls == 2
-
-    # Non-system PermissionError paths outside /private/var/db are never cached.
-    user_unreadable_rows = [
-        {
-            "p": 777,
-            "f": "txt",
-            "t": "REG",
-            "D": f"{user_unreadable_stamp[0]:x}",
-            "i": str(user_unreadable_stamp[1]),
-            "n": user_unreadable_path,
-        }
-    ]
-    workers.mapped_closure(user_unreadable_rows, [runtime_file], exe, pid=777)
-    workers.mapped_closure(user_unreadable_rows, [runtime_file], exe, pid=777)
-    assert observe_calls == 4
-
-    # Unlinked (FileNotFoundError) user paths outside /private/var/db are never cached.
-    unlinked_rows = [
-        {
-            "p": 777,
-            "f": "txt",
-            "t": "REG",
-            "D": f"{unlinked_stamp[0]:x}",
-            "i": str(unlinked_stamp[1]),
-            "n": unlinked_path,
-        }
-    ]
-    workers.mapped_closure(unlinked_rows, [runtime_file], exe, pid=777)
-    workers.mapped_closure(unlinked_rows, [runtime_file], exe, pid=777)
-    assert observe_calls == 6
-
-    # Executable mappings on uncached paths are rejected even within the same start_ticks.
-    vmmap_mode = "r-x/r-x"
-    with pytest.raises(PreflightError, match="local_engine_mapping_unverified"):
-        workers.mapped_closure(user_unreadable_rows, [runtime_file], exe, pid=777)
-    current_ticks = 50003
-    with pytest.raises(PreflightError, match="local_engine_mapping_unverified"):
-        workers.mapped_closure(unreadable_rows, [runtime_file], exe, pid=777)
-    assert mapping_permissions.cached_non_executable(777, unreadable_stamp, unreadable_path) is False
-
-
-def test_unlinked_os_data_mapping_caches_per_process_incarnation(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """macOS maps an unlinked logd plist cache into every process; reuse its vmmap verdict."""
-    exe = tmp_path / "strata"
-    exe.write_bytes(b"\xcf\xfa\xed\xfe\x0c\x00\x00\x01")
-    runtime_file = hash_file(exe)
-    unlinked_os_path = "/private/var/db/diagnostics/logd/.plist-cache.Vkl7CVtt"
-    stamp = (16777230, 7777777)
-
-    monkeypatch.setattr(mapping_permissions, "_NON_EXEC_CACHE", {})
-    monkeypatch.setattr(workers, "verify_libraries", lambda *_a, **_kw: [])
-    monkeypatch.setattr(workers, "mapped_native_image", lambda _p, _s: None)
-    current_ticks = 60001
-    monkeypatch.setattr(mapping_permissions, "process_start_ticks", lambda _pid: current_ticks)
-    real_open = mapping_permissions.os.open
-
-    def fake_open(path, flags, *args, **kwargs):
-        if str(path) == unlinked_os_path:
-            raise FileNotFoundError(2, "No such file", str(path))
-        return real_open(path, flags, *args, **kwargs)
-
-    monkeypatch.setattr(mapping_permissions.os, "open", fake_open)
-    observe_calls = 0
-    vmmap_mode = "r--/r--"
-
-    def fake_observe(pid: int) -> str:
-        nonlocal observe_calls
-        observe_calls += 1
-        return (
-            f"mapped file  100000000-100004000 [ 16K  16K   0K   0K] "
-            f"{vmmap_mode} SM=COW  {unlinked_os_path}\n"
-        )
-
-    monkeypatch.setattr(mapping_permissions, "observe", fake_observe)
-    rows = [
-        {
-            "p": 888,
-            "f": "txt",
-            "t": "REG",
-            "D": f"{stamp[0]:x}",
-            "i": str(stamp[1]),
-            "n": unlinked_os_path,
-        }
-    ]
-
-    for _ in range(5):
-        workers.mapped_closure(rows, [runtime_file], exe, pid=888)
-    assert observe_calls == 1
-
-    # A new incarnation re-observes, and an executable mapping is still rejected.
-    current_ticks = 60002
-    vmmap_mode = "r-x/r-x"
-    with pytest.raises(PreflightError, match="local_engine_mapping_unverified"):
-        workers.mapped_closure(rows, [runtime_file], exe, pid=888)
-    assert observe_calls == 2
-    assert mapping_permissions.cached_non_executable(888, stamp, unlinked_os_path) is False
+    decl = {
+        "schema_version": 3,
+        "definition": "local-engine-installation.v1",
+        "family": "vllm",
+        "executable": str(exe),
+        "working_directory": str(venv_dir),
+        "runtime_roots": [str(venv_dir)],
+        "environment": {"HF_ENDPOINT": "https://hf-mirror.com"},
+    }
+    snap = installation.freeze_installation(decl)
+    assert snap["python"] is None
+    assert len(snap["roots"]) == 1
+    assert len(snap["roots"][0]["entries"]) == 1
+    assert snap["roots"][0]["entries"][0]["path"] == "python"
 
 
 def test_verify_bound_service_reuses_asset_cache_when_bound_files_omitted(

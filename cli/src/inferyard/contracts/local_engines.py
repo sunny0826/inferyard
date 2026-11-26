@@ -66,24 +66,6 @@ def validate_config(config):
     environment = engine["environment"]
     validate_root_environment(family, environment, engine["working_directory"])
     require(
-        environment.get("SGLANG_USE_MLX") == ("1" if family == "sglang" else None),
-        "config.engine.environment",
-        "SGLang MLX selection must be explicit and engine-specific",
-    )
-    if family in DIRECTORY_FAMILIES:
-        require(
-            all(
-                environment.get(key) == "1"
-                for key in (
-                    "PYTHONDONTWRITEBYTECODE",
-                    "HF_HUB_OFFLINE",
-                    "TRANSFORMERS_OFFLINE",
-                )
-            ),
-            "config.engine.environment",
-            "Python profiles require frozen bytecode and offline loading",
-        )
-    require(
         config["conditions"]["model_loaded"] is True,
         "config.conditions.model_loaded",
         "formal binding requires a loaded local model",

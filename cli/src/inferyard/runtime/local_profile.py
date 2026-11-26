@@ -8,7 +8,7 @@ def safety_policy(plan, config):
     if (
         policy is None
         or policy["interval_seconds"] > required["interval_seconds"]
-        or policy["check_environment"] is not True
+        or (required["check_environment"] and policy["check_environment"] is not True)
     ):
         raise PreflightError("local_engine_safety_policy_required")
     for workload in plan["experiment"]["workloads"]:

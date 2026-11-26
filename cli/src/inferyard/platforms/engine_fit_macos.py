@@ -57,7 +57,6 @@ def bind_service(
     from inferyard.platforms.engine_fit import file_stamp, stable_file_digest
     from inferyard.platforms.engine_fit_entrypoints import (
         lmstudio_executable,
-        macos_llama_environment,
         startup_binding,
         validate_model,
     )
@@ -76,8 +75,6 @@ def bind_service(
         origin, address, port = service_origin(url)
         state = service_process_state(pid, psutil)
         start, arguments, raw, executable, cwd = state
-        if engine == "llama-cpp":
-            macos_llama_environment(pid, psutil)
         if engine == "lmstudio":
             from inferyard.platforms.engine_fit_lmstudio import bind_observer
 
@@ -118,8 +115,6 @@ def bind_service(
             unique_listener(pid, address, port, timeout=remaining(deadline))
         else:
             unique_listener(pid, address, port)
-        if engine == "llama-cpp":
-            macos_llama_environment(pid, psutil)
         if engine == "lmstudio":
             from inferyard.platforms.engine_fit_lmstudio_files import verify_model_file
 

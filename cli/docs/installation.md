@@ -96,7 +96,7 @@ inferyard engine init-installation \
   --out bench-ops/engines/mlx-lm/installation.json
 ```
 
-生成的 `installation.json` 示例：
+生成的 `installation.json` 示例（支持标准 `venv`、`uv`、`conda` 环境及自定义非敏感环境变量，如 `HF_ENDPOINT`、`CUDA_VISIBLE_DEVICES`）：
 
 ```json
 {
@@ -106,11 +106,7 @@ inferyard engine init-installation \
   "executable": "/abs/path/to/venv/bin/python3",
   "working_directory": "/abs/path/to/workdir",
   "runtime_roots": ["/abs/path/to/venv"],
-  "environment": {
-    "PYTHONDONTWRITEBYTECODE": "1",
-    "HF_HUB_OFFLINE": "1",
-    "TRANSFORMERS_OFFLINE": "1"
-  }
+  "environment": {}
 }
 ```
 
