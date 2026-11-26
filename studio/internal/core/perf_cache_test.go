@@ -110,7 +110,7 @@ func TestHistoryScanCacheTracksDirtyAndEventUpdates(t *testing.T) {
 	}
 }
 
-func TestDescribeCandidateCachesUntilFileOrAssetChanges(t *testing.T) {
+func TestStartupCachedScopesCacheWhileAdmissionRevalidates(t *testing.T) {
 	ws, err := canonical(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -171,24 +171,113 @@ func TestDescribeCandidateCachesUntilFileOrAssetChanges(t *testing.T) {
 	}
 	defer svc.Shutdown(context.Background())
 
-	if _, apiErr := svc.DescribeCandidate(context.Background(), candFile); apiErr != nil {
-		t.Fatalf("first DescribeCandidate failed: %+v", apiErr)
+	if _, apiErr := svc.StartupCached(candFile); apiErr != nil {
+		t.Fatalf("first StartupCached failed: %+v", apiErr)
 	}
-	if _, apiErr := svc.DescribeCandidate(context.Background(), candFile); apiErr != nil {
-		t.Fatalf("second DescribeCandidate failed: %+v", apiErr)
+	if _, apiErr := svc.StartupCached(candFile); apiErr != nil {
+		t.Fatalf("second StartupCached failed: %+v", apiErr)
 	}
 	if describeCalls != 1 {
-		t.Fatalf("expected cached DescribeCandidate to invoke CLI once, got %d", describeCalls)
+		t.Fatalf("expected StartupCached to invoke CLI once, got %d", describeCalls)
 	}
 
-	// Modifying referenced model file invalidates candidate description cache.
+	// Startup and DescribeCandidate (used by StartEngine and run admission) must always
+	// invoke CLI directly so directory-model asset manifest checks are never bypassed.
+	if _, apiErr := svc.Startup(candFile); apiErr != nil {
+		t.Fatalf("Startup failed: %+v", apiErr)
+	}
+	if describeCalls != 2 {
+		t.Fatalf("expected uncached Startup to revalidate via CLI, got %d calls", describeCalls)
+	}
+
+	// Modifying referenced model file invalidates StartupCached display cache.
 	if err := os.WriteFile(modelFile, []byte("gguf-v2-larger"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, apiErr := svc.DescribeCandidate(context.Background(), candFile); apiErr != nil {
-		t.Fatalf("third DescribeCandidate failed: %+v", apiErr)
+	if _, apiErr := svc.StartupCached(candFile); apiErr != nil {
+		t.Fatalf("StartupCached after model change failed: %+v", apiErr)
 	}
-	if describeCalls != 2 {
-		t.Fatalf("expected model asset change to invalidate DescribeCandidate cache, got %d calls", describeCalls)
+	if describeCalls != 3 {
+		t.Fatalf("expected model asset change to invalidate StartupCached, got %d calls", describeCalls)
+	}
+}
+
+func TestReadContextSpeedSkipsCachingPartialAndCachesComplete(t *testing.T) {
+	ws, err := canonical(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	batchDir := filepath.Join(ws, "results", "speed-batch-1")
+	if err := os.MkdirAll(batchDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(batchDir, "batch.json"), []byte(`{"schema_version":3}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	rawContract, err := os.ReadFile("../inferyard/testdata/context_speed_contract.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cases []struct {
+		Name     string         `json:"name"`
+		ExitCode int            `json:"exit_code"`
+		Response map[string]any `json:"response"`
+	}
+	if err := json.Unmarshal(rawContract, &cases); err != nil {
+		t.Fatal(err)
+	}
+	fixture := func(name string) (int, []byte) {
+		for _, c := range cases {
+			if c.Name == name {
+				c.Response["evidence_dir"] = batchDir
+				raw, _ := json.Marshal(c.Response)
+				return c.ExitCode, raw
+			}
+		}
+		t.Fatalf("contract fixture %q not found", name)
+		return 0, nil
+	}
+
+	mode := "zero_runs"
+	readCalls := 0
+	execFn := func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
+		if len(args) >= 1 && args[0] == "speed-results" {
+			readCalls++
+			code, raw := fixture(mode)
+			return inferyard.Execution{ExitCode: code, Stdout: raw}, nil
+		}
+		return inferyard.Execution{ExitCode: 2}, nil
+	}
+
+	svc := testService(t, execFn)
+	svc.settings.WorkspaceRoot = &ws
+	task := &ContextSpeedTask{Batch: &SpeedBatchRef{Path: batchDir}}
+
+	partial, apiErr := svc.readContextSpeed(context.Background(), "/bin/inferyard", task)
+	if apiErr != nil || partial.Execution.Counts.Completed != 0 {
+		t.Fatalf("expected readable partial speed result (0 completed), err=%v counts=%+v", apiErr, partial.Execution.Counts)
+	}
+	if readCalls != 1 {
+		t.Fatalf("expected 1 speed-results call, got %d", readCalls)
+	}
+
+	// External CLI finishes all 5 trials without modifying batch.json size/mtime.
+	mode = "five_complete"
+	complete, apiErr := svc.readContextSpeed(context.Background(), "/bin/inferyard", task)
+	if apiErr != nil || complete.Execution.Counts.Completed != 5 || complete.Summary == nil {
+		t.Fatalf("partial speed result masked completed batch: err=%v counts=%+v summary=%+v", apiErr, complete.Execution.Counts, complete.Summary)
+	}
+	if readCalls != 2 {
+		t.Fatalf("expected second read after partial to invoke CLI (2 calls), got %d", readCalls)
+	}
+
+	// Subsequent reads of a finished/complete batch hit in-memory cache without spawning CLI.
+	again, apiErr := svc.readContextSpeed(context.Background(), "/bin/inferyard", task)
+	if apiErr != nil || again.Execution.Counts.Completed != 5 {
+		t.Fatalf("cached complete speed read failed: err=%v counts=%+v", apiErr, again.Execution.Counts)
+	}
+	if readCalls != 2 {
+		t.Fatalf("expected complete batch to hit cache without extra CLI call, got %d calls", readCalls)
 	}
 }

@@ -236,6 +236,8 @@ func (s *Service) readContextSpeed(ctx context.Context, binary string, task *Con
 			return fail("run_identity_mismatch")
 		}
 	}
-	s.cachedSpeedResultPut(path, binary, planSHA, r)
+	if out.ExitCode == 0 && envelope.Status == "finished" && envelope.Completeness == "complete" {
+		s.cachedSpeedResultPut(path, binary, planSHA, r)
+	}
 	return r, nil
 }

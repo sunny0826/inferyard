@@ -32,7 +32,7 @@ func (s *viewState) readDashboard(p *inferyard.WorkspaceProgress) dashboardSnaps
 		if result.candidate == "" {
 			break
 		}
-		result.startup, result.failure = s.service.Startup(result.candidate)
+		result.startup, result.failure = s.service.StartupCached(result.candidate)
 		if b.BoundPath != nil && result.failure == nil {
 			alive, e := s.service.BindingAlive(*b.BoundPath)
 			result.stale, result.unknown, result.failure = !alive && e == nil, e != nil, e

@@ -148,7 +148,6 @@ type speedWorkspace struct {
 	readSeq                      uint64
 	current, opened              *speedTask
 	history                      []*speedTask
-	cached                       map[string]*speedTask
 	readError                    string
 	table, samples, historyTable pageTableState
 }
@@ -342,25 +341,10 @@ func (s *viewState) newSpeedTask(r *speedTask) {
 }
 
 func (s *viewState) openSpeed(id string) {
-	s.loadSpeedResult(id, false)
-}
-
-func (s *viewState) reloadSpeed(id string) {
-	s.loadSpeedResult(id, true)
-}
-
-func (s *viewState) loadSpeedResult(id string, force bool) {
 	s.closeOpenedReport()
 	s.selected = "reports"
 	if s.simulate(previewSpeedRead{id: id}) {
 		return
-	}
-	if !force && s.speed.cached != nil {
-		if cached, ok := s.speed.cached[id]; ok && cached != nil {
-			cp := *cached
-			s.speed.opened, s.speed.readError, s.speed.reading = &cp, "", false
-			return
-		}
 	}
 	var selected *speedTask
 	for _, r := range s.speed.history {
@@ -390,11 +374,6 @@ func (s *viewState) loadSpeedResult(id string, force bool) {
 			return
 		}
 		s.speed.opened = result
-		if s.speed.cached == nil {
-			s.speed.cached = map[string]*speedTask{}
-		}
-		cp := *result
-		s.speed.cached[id] = &cp
 	}
 	if s.win == nil && s.updateWindow == nil {
 		s.speed.opened, s.speed.readError, s.speed.reading = selected, "", false

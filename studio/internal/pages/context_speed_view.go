@@ -39,7 +39,7 @@ func (s *viewState) speedResultView(c *ui.Context) {
 			Kind:    stateDanger,
 			Message: w.readError,
 			Actions: func() {
-				primaryButton(c, tr(c, "speed.action.retry_read")).OnClick(func() { s.reloadSpeed(r.id) })
+				primaryButton(c, tr(c, "speed.action.retry_read")).OnClick(func() { s.openSpeed(r.id) })
 			},
 		})
 		return

@@ -290,11 +290,7 @@ func (s *Service) loadStudioReport(studioJSONPath string) (inferyard.StudioRepor
 		s.caches.reports = map[string]cachedStudioReport{}
 	}
 	if len(s.caches.reports) >= 512 {
-		for k := range s.caches.reports {
-			if _, statErr := os.Stat(k); statErr != nil {
-				delete(s.caches.reports, k)
-			}
-		}
+		clear(s.caches.reports)
 	}
 	s.caches.reports[cleanPath] = cachedStudioReport{
 		size:    size,
@@ -397,6 +393,9 @@ func (s *Service) cachedSpeedResultPut(batchPath, cliPath, planSHA string, resul
 	defer s.caches.mu.Unlock()
 	if s.caches.speedResults == nil {
 		s.caches.speedResults = map[string]cachedSpeedResult{}
+	}
+	if len(s.caches.speedResults) >= 256 {
+		clear(s.caches.speedResults)
 	}
 	s.caches.speedResults[batchPath] = cachedSpeedResult{
 		size:    st.Size(),

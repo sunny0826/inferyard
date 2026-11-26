@@ -59,7 +59,7 @@ func statPair(path string) (size, modTime int64, ok bool) {
 	return st.Size(), st.ModTime().UnixNano(), true
 }
 
-func (s *Service) DescribeCandidate(ctx context.Context, candidate string) (inferyard.CandidateDescription, *ApiError) {
+func (s *Service) describeCandidateCached(ctx context.Context, candidate string) (inferyard.CandidateDescription, *ApiError) {
 	var result inferyard.CandidateDescription
 	path, failure := s.candidateFile(candidate)
 	if failure != nil {
@@ -70,10 +70,9 @@ func (s *Service) DescribeCandidate(ctx context.Context, candidate string) (infe
 	if probe.Status != "ok" {
 		return result, cliProbeError(probe)
 	}
-	st, statErr := os.Stat(path)
-	cliKey := *probe.Path + "|" + str(probe.Version)
-	instKey := installationsFingerprint(u.EngineInstallations)
-	if statErr == nil {
+	if st, err := os.Stat(path); err == nil {
+		cliKey := *probe.Path + "|" + str(probe.Version)
+		instKey := installationsFingerprint(u.EngineInstallations)
 		s.caches.mu.Lock()
 		entry, ok := s.caches.candidates[path]
 		s.caches.mu.Unlock()
@@ -85,6 +84,25 @@ func (s *Service) DescribeCandidate(ctx context.Context, candidate string) (infe
 			}
 		}
 	}
+	return s.DescribeCandidate(ctx, candidate)
+}
+
+func (s *Service) DescribeCandidate(ctx context.Context, candidate string) (inferyard.CandidateDescription, *ApiError) {
+	var result inferyard.CandidateDescription
+	path, failure := s.candidateFile(candidate)
+	if failure != nil {
+		return result, failure
+	}
+	u := s.userSettings()
+	probe := s.probe(u)
+	if probe.Status != "ok" {
+		return result, cliProbeError(probe)
+	}
+	evict := func() {
+		s.caches.mu.Lock()
+		delete(s.caches.candidates, path)
+		s.caches.mu.Unlock()
+	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 	out, err := s.exec(ctx, *probe.Path, "config", "describe", "--candidate", path)
@@ -92,13 +110,17 @@ func (s *Service) DescribeCandidate(ctx context.Context, candidate string) (infe
 		return result, Err("cancelled")
 	}
 	if failure := exitError(out, err); failure != nil {
+		evict()
 		return result, failure
 	}
 	result, err = inferyard.ParseCandidateDescription(out.Stdout, out.ExitCode)
 	if err != nil {
+		evict()
 		return result, Err("candidate_description_invalid")
 	}
-	if statErr == nil {
+	if st, statErr := os.Stat(path); statErr == nil {
+		cliKey := *probe.Path + "|" + str(probe.Version)
+		instKey := installationsFingerprint(u.EngineInstallations)
 		engPath := ""
 		if result.Assets.Engine != nil {
 			engPath = result.Assets.Engine.Path
@@ -110,6 +132,9 @@ func (s *Service) DescribeCandidate(ctx context.Context, candidate string) (infe
 			s.caches.mu.Lock()
 			if s.caches.candidates == nil {
 				s.caches.candidates = map[string]cachedCandidateDesc{}
+			}
+			if len(s.caches.candidates) >= 256 {
+				clear(s.caches.candidates)
 			}
 			s.caches.candidates[path] = cachedCandidateDesc{
 				size:        st.Size(),

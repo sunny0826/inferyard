@@ -324,11 +324,7 @@ func (s *Service) storeCachedRunScan(dir string, entry cachedRunScan) {
 		s.caches.runs = map[string]cachedRunScan{}
 	}
 	if len(s.caches.runs) >= 2048 {
-		for k := range s.caches.runs {
-			if _, err := os.Lstat(k); err != nil {
-				delete(s.caches.runs, k)
-			}
-		}
+		clear(s.caches.runs)
 	}
 	copied := entry
 	copied.baseSummary = cloneRunSummary(entry.baseSummary)
