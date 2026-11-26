@@ -3,6 +3,7 @@ package pages
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
@@ -63,15 +64,17 @@ func reportExcludedNoteFor(c *ui.Context, v *int64) string {
 
 func reportMetrics(c *ui.Context, run core.ReportRun) {
 	d := run.Dashboard
+	qualityValue, qualityDetail := reportPassRate(c, d.Quality)
 	qualityNote := ""
 	if !d.Quality.Complete {
 		qualityNote = tr(c, "reports.metrics.partial_scoring")
 	}
+	available := reportScaled(d.SampledMinimumAvailableBytes, 1<<30, "GiB")
 	metrics := []struct{ label, value, detail, note string }{
 		{
 			tr(c, "reports.metrics.answer_pass"),
-			reportPassRate(d.Quality),
-			tr(c, "reports.metrics.answer_pass_detail"),
+			qualityValue,
+			qualityDetail,
 			qualityNote,
 		},
 		{
@@ -94,13 +97,15 @@ func reportMetrics(c *ui.Context, run core.ReportRun) {
 		{
 			tr(c, "reports.metrics.peak_rss"),
 			reportScaled(d.SampledPeakRSSBytes, 1<<30, "GiB"),
-			trf(c, "reports.metrics.min_system_available_detail", "value", reportScaled(d.SampledMinimumAvailableBytes, 1<<30, "GiB")),
+			trf(c, "reports.metrics.min_system_available_detail", "value", strings.ReplaceAll(available, " ", "\u00a0")),
 			reportMemoryReasonFor(c, d.SampledPeakRSSReason),
 		},
 	}
 	columns := 4
 	if compactLayout(c) {
 		columns = 1
+	} else if width, _ := c.Size(); width < 1200 {
+		columns = 2
 	}
 	ui.Grid(c).Columns(columns).Gap(tokens(c).Density.Stack).Children(func() {
 		for _, metric := range metrics {
@@ -113,12 +118,13 @@ func reportMetrics(c *ui.Context, run core.ReportRun) {
 	reportFactSummary(c, run)
 }
 
-func reportPassRate(quality core.ReportQuality) string {
-	rate := reportRate(quality.StudioCounts)
+func reportPassRate(c *ui.Context, quality core.ReportQuality) (value, detail string) {
+	counts := reportRate(quality.StudioCounts)
+	detail = tr(c, "reports.metrics.answer_pass_detail")
 	if !quality.Complete || quality.Numerator == nil || quality.Denominator == nil || *quality.Denominator <= 0 {
-		return rate
+		return counts, detail
 	}
-	return fmt.Sprintf("%s · %.1f%%", rate, float64(*quality.Numerator)*100/float64(*quality.Denominator))
+	return fmt.Sprintf("%.1f%%", float64(*quality.Numerator)*100/float64(*quality.Denominator)), counts + " · " + detail
 }
 
 func reportFactSummary(c *ui.Context, run core.ReportRun) {

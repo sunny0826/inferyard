@@ -80,7 +80,7 @@ func TestReportViewReadsStudioJSONOnly(t *testing.T) {
 		t.Fatal(e)
 	}
 	click(t, tt, "重新读取报告")
-	if !tt.HasText("7 / 13") {
+	if _, ok := tt.Find("53.8%"); !ok || !tt.HasText("7 / 13 · 通过 / 评分题") || !tt.HasText("9.40\u00a0GiB") {
 		t.Fatal(tt.Texts())
 	}
 	for _, name := range []string{"report.html", "index.json"} {
@@ -91,5 +91,34 @@ func TestReportViewReadsStudioJSONOnly(t *testing.T) {
 	}
 	if _, e := service.ReportIndex("../outside"); e == nil {
 		t.Fatal("accepted traversal")
+	}
+}
+
+func TestReportHeaderBackReturnsToList(t *testing.T) {
+	for _, tc := range []struct {
+		name, title string
+		report      reportViewState
+	}{
+		{"loading", "报告 sample", reportViewState{loading: true}},
+		{"failure", "报告 sample", reportViewState{failure: core.Err("not_found")}},
+		{"empty", "报告 sample", reportViewState{index: &core.ReportIndex{}}},
+		{"ready", "Model", reportViewState{index: &core.ReportIndex{Runs: []core.ReportRun{{Model: "Model"}}}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := testState()
+			tc.report.reference = "sample"
+			s.openedReport, s.reportsTab = &tc.report, reportsTabSpeed
+			tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).FillWidth().Children(func() { s.reportsView(c) }) }, 1120, 1200)
+			title, hasTitle := tt.AccessByRole(ui.RoleHeading, tc.title)
+			backLabel := tr(nil, "reports.detail.back")
+			back, hasBack := tt.AccessByRole(ui.RoleButton, backLabel)
+			if !hasTitle || !hasBack || back.Bounds.X < title.Bounds.X+title.Bounds.W || back.Bounds.Y >= title.Bounds.Y+title.Bounds.H || title.Bounds.Y >= back.Bounds.Y+back.Bounds.H {
+				t.Fatalf("unexpected header placement: title=%+v back=%+v", title.Bounds, back.Bounds)
+			}
+			click(t, tt, backLabel)
+			if s.openedReport != nil || s.reportsTab != reportsTabList {
+				t.Fatal("back did not close the report and restore the list")
+			}
+		})
 	}
 }

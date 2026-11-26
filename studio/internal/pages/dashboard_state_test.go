@@ -2,6 +2,7 @@ package pages
 
 import (
 	"context"
+	"image/color"
 	"slices"
 	"strings"
 	"testing"
@@ -100,7 +101,7 @@ func TestBenchmarkWorkflowRunDetailAndSpeedLayoutPolish(t *testing.T) {
 		t.Fatalf("expected live run percentage and current case chip, got %v", tt.Texts())
 	}
 	detailBtn, ok1 := tt.AccessByRole(ui.RoleButton, "查看实时详情")
-	cancelBtn, ok2 := tt.AccessByRole(ui.RoleButton, "取消运行")
+	cancelBtn, ok2 := tt.AccessByRole(ui.RoleButton, "取消任务")
 	if !ok1 || !ok2 {
 		t.Fatalf("missing run action buttons: detail=%v cancel=%v", ok1, ok2)
 	}
@@ -146,6 +147,68 @@ func TestBenchmarkWorkflowRunDetailAndSpeedLayoutPolish(t *testing.T) {
 	for _, want := range []string{"40%", "#1", "#2", "#5"} {
 		if !ttSpeed.HasText(want) {
 			t.Fatalf("expected speed task view to show %q, got %v", want, ttSpeed.Texts())
+		}
+	}
+}
+
+func TestHandoffConnectExplainsDisabledState(t *testing.T) {
+	s := readyState("benchmarks")
+	s.tasks = []core.RunTask{{TaskId: "next", State: "starting", AwaitingService: true}}
+	s.localBindingTask = "next"
+	s.startup.Endpoint = "http://127.0.0.1:1234"
+	s.localUsedPIDs = map[int64]bool{41: true}
+	pidHint := l10n.TR("dashboard.handoff.select_pid")
+	endpointHint := l10n.TRf("dashboard.handoff.match_endpoint", "endpoint", s.startup.Endpoint)
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.awaitingLocalServiceView(c) }) }, 960, 900)
+	for _, tc := range []struct{ pid, endpoint, reason string }{
+		{"", s.startup.Endpoint, pidHint},
+		{"abc", s.startup.Endpoint, pidHint},
+		{"9999999999999999999999", s.startup.Endpoint, pidHint},
+		{"42", "http://127.0.0.1:8080", endpointHint},
+		{"41", s.startup.Endpoint, human("local_engine_service_reused")},
+		{"42", s.startup.Endpoint, ""},
+	} {
+		s.localPID, s.localEndpoint = tc.pid, tc.endpoint
+		tt.Frame()
+		info, ok := tt.AccessByRole(ui.RoleButton, l10n.TR("engine.local.handoff.connect_continue"))
+		if !ok || info.Disabled != (tc.reason != "") || info.Description != tc.reason {
+			t.Fatalf("PID %q endpoint %q: %+v, want reason %q", tc.pid, tc.endpoint, info, tc.reason)
+		}
+		if tc.reason != "" && !tt.HasText(tc.reason) {
+			t.Fatalf("missing visible reason %q: %v", tc.reason, tt.Texts())
+		}
+	}
+}
+
+func TestRunDetailButtonGivesPrimaryActionToHandoff(t *testing.T) {
+	s := readyState("benchmarks")
+	s.tasks = []core.RunTask{{TaskId: "run", State: "starting"}}
+	detail := l10n.TR("dashboard.run.view_live_detail")
+	tt := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).Children(func() {
+			s.runView(c)
+			primaryButton(c, "primary")
+			outlineButton(c, "outline")
+		})
+	}, 960, 600)
+	for _, tc := range []struct {
+		waiting bool
+		style   string
+	}{{false, "primary"}, {true, "outline"}} {
+		s.tasks[0].AwaitingService = tc.waiting
+		tt.Frame()
+		img := tt.Image()
+		fill := func(label string) color.Color {
+			t.Helper()
+			button, ok := tt.AccessByRole(ui.RoleButton, label)
+			if !ok {
+				t.Fatalf("missing button %q", label)
+			}
+			r := button.Bounds
+			return img.At(int(r.X+r.W/2), int(r.Y+4))
+		}
+		if fill("primary") == fill("outline") || fill(detail) != fill(tc.style) {
+			t.Fatalf("waiting=%t: expected %s live-detail button", tc.waiting, tc.style)
 		}
 	}
 }

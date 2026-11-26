@@ -124,10 +124,11 @@ func applySpeedResult(task *speedTask, result inferyard.ContextSpeedResult) {
 	if task.stage != speedCancelled && result.Execution.Counts.NotExecuted+result.Execution.Counts.Cancelled+result.Execution.Counts.Invalid > 0 {
 		task.stage = speedPartial
 	}
-	task.reason = strings.Join(result.Measurement.Reasons, l10n.TR("speed.list_sep"))
+	loc := l10n.CurrentLocale()
+	task.reason = speedReasonsLabel(loc, result.Measurement.Reasons)
 	for _, sample := range result.Samples {
 		c := sample.Columns
-		projected := speedSample{seconds: c.Time.Value, prefill: c.Prefill.Value, decode: c.Decode.Value, reason: strings.Join(sample.Measurement.Reasons, l10n.TR("speed.list_sep"))}
+		projected := speedSample{seconds: c.Time.Value, prefill: c.Prefill.Value, decode: c.Decode.Value, reason: speedReasonsLabel(loc, sample.Measurement.Reasons)}
 		if c.Context.Value != nil {
 			n := int(*c.Context.Value)
 			projected.context = &n
@@ -136,7 +137,7 @@ func applySpeedResult(task *speedTask, result inferyard.ContextSpeedResult) {
 			n := int(*c.PromptLength.Value)
 			projected.prompt = &n
 		}
-		projected.missing = speedMissingLabels(c)
+		projected.missing = speedMissingLabels(loc, c)
 		task.samples = append(task.samples, projected)
 	}
 	if result.Summary != nil {
@@ -154,20 +155,38 @@ func applySpeedResult(task *speedTask, result inferyard.ContextSpeedResult) {
 	}
 }
 
-func speedMissingLabels(c inferyard.SpeedColumns) string {
-	labels := []string{
-		l10n.TR("speed.metric.context"),
-		l10n.TR("speed.metric.prompt_length"),
-		l10n.TR("speed.metric.input_time"),
-		"Prefill",
-		"Decode",
+func humanSpeedReason(loc, code string) string {
+	key := "speed.reason." + code
+	if text := l10n.T(loc, key); text != key {
+		return text
 	}
-	reasons := []*string{c.Context.MissingReason, c.PromptLength.MissingReason, c.Time.MissingReason, c.Prefill.MissingReason, c.Decode.MissingReason}
+	return code
+}
+
+func speedReasonsLabel(loc string, codes []string) string {
+	var reasons []string
+	for _, code := range codes {
+		reasons = append(reasons, humanSpeedReason(loc, code))
+	}
+	return strings.Join(reasons, l10n.T(loc, "speed.list_sep"))
+}
+
+func speedMissingLabels(loc string, c inferyard.SpeedColumns) string {
 	var missing []string
-	for i, reason := range reasons {
-		if reason != nil {
-			missing = append(missing, labels[i]+": "+*reason)
+	for _, item := range []struct {
+		metric string
+		reason *string
+	}{
+		{"speed.metric.context", c.Context.MissingReason},
+		{"speed.metric.prompt_length", c.PromptLength.MissingReason},
+		{"speed.metric.input_time", c.Time.MissingReason},
+		{"speed.metric.prefill", c.Prefill.MissingReason},
+		{"speed.metric.decode", c.Decode.MissingReason},
+	} {
+		if item.reason != nil {
+			missing = append(missing, l10n.Tf(loc, "speed.result.missing_item",
+				"metric", l10n.T(loc, item.metric), "reason", humanSpeedReason(loc, *item.reason)))
 		}
 	}
-	return strings.Join(missing, l10n.TR("speed.missing_sep"))
+	return strings.Join(missing, l10n.T(loc, "speed.missing_sep"))
 }

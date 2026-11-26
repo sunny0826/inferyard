@@ -12,13 +12,7 @@ import (
 
 func (s *viewState) detailView(c *ui.Context) {
 	tok := tokens(c)
-	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(tok.Density.Row).Children(func() {
-		s.header(c, tr(c, "detail.title"))
-		ui.Box(c).Grow(1)
-		if outlineButton(c, tr(c, "detail.back_dashboard")).Clicked() {
-			s.detailID = ""
-		}
-	})
+	s.subpageHeader(c, tr(c, "detail.title"), tr(c, "detail.back_dashboard"), func() { s.detailID = "" })
 	errorView(c, s.detailError)
 	if s.detailError != nil {
 		button(c, tr(c, "detail.retry_load")).OnClick(func() { s.selectTask(s.detailID) })
@@ -203,7 +197,21 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 		if col == 4 {
 			cell.FontFeatures("tnum")
 		}
-	}).Height(300).Label(tableLabel)
+	}).Height(detailCasesTableHeight(c.Theme(), len(visibleCases))).Label(tableLabel)
+}
+
+// detailCasesTableMaxHeight caps the live-progress case table so long runs
+// scroll inside the card instead of pushing the resource charts off screen.
+const detailCasesTableMaxHeight float32 = 300
+
+// detailCasesTableHeight sizes the live-progress case table to its rows: the
+// header plus one row per case, keeping a single row when no case has arrived
+// yet, and never growing past detailCasesTableMaxHeight. Row and header
+// heights follow components.Table and components.TableRow.
+func detailCasesTableHeight(theme *ui.Theme, rows int) float32 {
+	rowHeight := theme.Space(8)
+	headerHeight := theme.Space(8) + 1
+	return min(headerHeight+rowHeight*float32(max(1, rows)), detailCasesTableMaxHeight)
 }
 
 func progressHeadline(p *core.RunProgress) string {

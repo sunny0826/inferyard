@@ -259,14 +259,18 @@ func (s *viewState) roundTaskIds() map[string]string {
 	return s.task.bindings.localTasks
 }
 
-func (s *viewState) localSelectionInvalid(pid int64, err error) bool {
-	if err != nil || pid <= 0 || s.localEndpoint == "" || urlError(s.localEndpoint) != "" {
-		return true
+func (s *viewState) handoffDisabledReason(c *ui.Context, pid int64, reused bool) string {
+	switch {
+	case pid <= 0:
+		return tr(c, "dashboard.handoff.select_pid")
+	case reused:
+		return human("local_engine_service_reused")
+	case s.localExpectedEndpoint() != "" && s.localEndpoint != s.localExpectedEndpoint():
+		return trf(c, "dashboard.handoff.match_endpoint", "endpoint", s.localExpectedEndpoint())
+	case s.localEndpoint == "" || urlError(s.localEndpoint) != "":
+		return tr(c, "common.validation.http_url")
 	}
-	if expected := s.localExpectedEndpoint(); expected != "" && s.localEndpoint != expected {
-		return true
-	}
-	return s.localPIDUsed(pid)
+	return ""
 }
 
 func (s *viewState) localServicePicker(c *ui.Context, pidLabel, endpointLabel string) {
@@ -402,12 +406,25 @@ func (s *viewState) awaitingLocalServiceView(c *ui.Context) {
 			}
 			s.localServicePicker(c, tr(c, "engine.local.handoff.new_pid"), tr(c, "engine.local.handoff.endpoint"))
 			pid, err := strconv.ParseInt(s.localPID, 10, 64)
-			if err == nil && pid > 0 && s.localPIDUsed(pid) {
-				noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: human("local_engine_service_reused")})
+			if err != nil {
+				pid = 0
 			}
-			primaryButton(c, tr(c, "engine.local.handoff.connect_continue")).Disabled(s.localSelectionInvalid(pid, err)).OnClick(func() {
-				s.connectHandoffService(task.TaskId, pid)
+			reused := pid > 0 && s.localPIDUsed(pid)
+			reason := s.handoffDisabledReason(c, pid, reused)
+			if reused {
+				noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: reason})
+			} else if reason != "" {
+				ui.Text(c, reason).FontSize(tokens(c).Type.Caption).TextColor(tokens(c).Color.FgSecondary)
+			}
+			wrap := ui.Box(c).AlignSelf(ui.Start)
+			wrap.Children(func() {
+				primaryButton(c, tr(c, "engine.local.handoff.connect_continue")).Disabled(reason != "").Description(reason).OnClick(func() {
+					s.connectHandoffService(task.TaskId, pid)
+				})
 			})
+			if reason != "" {
+				components.Tooltip(c, wrap, reason)
+			}
 		})
 		ui.Text(c, trf(c, "engine.local.handoff.waiting", "taskId", task.TaskId)).TextColor(c.Theme().TextMuted)
 	}

@@ -53,7 +53,7 @@
   "err.models_timeout": "模型列表请求超时。",
   "err.models_unreachable": "模型列表连接、传输或 HTTP 协议失败。",
   "err.network_timeout": "网络请求或读取超时，请检查网络连接后重试。",
-  "err.no_local_model": "还没有可用的本地模型，请到下载页获取模型，或在模型页添加已有模型目录。",
+  "err.no_local_model": "还没有可用的本地模型，请前往模型库获取模型，或在模型库添加已有模型目录。",
   "err.not_found": "所需文件、记录或远端资源不存在，请检查路径、工作区状态或下载地址后重试。",
   "err.not_resumable": "当前运行不可续测；请用「新任务」重新测评。",
   "err.old_service_still_alive": "上一轮的模型服务进程仍在运行，请先停止该进程再开始新测评。",

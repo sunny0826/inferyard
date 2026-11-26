@@ -10,20 +10,18 @@ import (
 
 func (s *viewState) speedResultView(c *ui.Context) {
 	w, r := s.speed, s.speed.opened
-	s.header(c, tr(c, "speed.result.title"))
+	s.subpageHeader(c, tr(c, "speed.result.title"), tr(c, "speed.action.back_history"), func() {
+		w.opened, w.readError, w.reading = nil, "", false
+		s.reportsTab = reportsTabSpeed
+	}, func() {
+		outlineButton(c, tr(c, "speed.action.new_with_combo")).Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
+	})
 	ui.Text(c, r.model+" · "+r.engine+" · "+inferyard.ContextSpeedBundleID)
 	if s.preview != nil {
-		ui.Text(c, trf(c, "speed.result.meta_preview", "id", r.id, "status", r.label())).TextColor(stateColor(c, stateWarning))
+		ui.Text(c, trf(c, "speed.result.meta_preview", "id", r.id, "status", tr(c, speedStageKeys[r.stage]))).TextColor(stateColor(c, stateWarning))
 	} else {
-		ui.Text(c, r.id+" · "+r.label()).TextColor(stateColor(c, stateWarning))
+		ui.Text(c, r.id+" · "+tr(c, speedStageKeys[r.stage])).TextColor(stateColor(c, stateWarning))
 	}
-	ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
-		button(c, tr(c, "speed.action.back_history")).OnClick(func() {
-			w.opened, w.readError, w.reading = nil, "", false
-			s.reportsTab = reportsTabSpeed
-		})
-		button(c, tr(c, "speed.action.new_with_combo")).Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
-	})
 	if w.reading {
 		host := ui.Column(c.Key("speed-result-loading-" + r.id)).FillWidth()
 		show := delayedVisible(c, host, "speed-read", true)
@@ -71,7 +69,7 @@ func (s *viewState) speedResultView(c *ui.Context) {
 		} else {
 			ui.Text(c, trf(c, "speed.result.valid_partial", "valid", r.validCount()))
 			if len(r.samples) > 0 {
-				speedTable(c.Key("speed-partial"), &w.table, tr(c, "speed.table.partial_label"), r, r.samples)
+				speedTable(c.Key("speed-partial"), &w.table, tr(c, "speed.table.partial_label"), nil, r.samples)
 			}
 		}
 	})
@@ -80,11 +78,21 @@ func (s *viewState) speedResultView(c *ui.Context) {
 
 func speedResultFolds(c *ui.Context, w *speedWorkspace, r *speedTask) {
 	if r.summary == nil || r.reason != "" {
-		componentFold(c.Key(r.id), tr(c, "speed.result.diagnostics_fold"), func() {
-			if r.reason != "" {
-				ui.Text(c, r.reason).TextColor(stateColor(c, stateWarning))
+		componentFoldKeyed(c.Key(r.id), "diagnostics", tr(c, "speed.result.diagnostics_fold"), func() {
+			loc := contextLocale(c)
+			reason := r.reason
+			if r.result != nil {
+				reason = speedReasonsLabel(loc, r.result.Measurement.Reasons)
+			}
+			if reason != "" {
+				ui.Text(c, reason).TextColor(stateColor(c, stateWarning))
 			}
 			for i, sample := range r.samples {
+				if r.result != nil {
+					raw := r.result.Samples[i]
+					sample.reason = speedReasonsLabel(loc, raw.Measurement.Reasons)
+					sample.missing = speedMissingLabels(loc, raw.Columns)
+				}
 				if sample.missing != "" {
 					ui.Text(c, trf(c, "speed.result.sample_missing", "index", i+1, "detail", sample.missing)).TextColor(stateColor(c, stateWarning))
 				}
@@ -96,14 +104,18 @@ func speedResultFolds(c *ui.Context, w *speedWorkspace, r *speedTask) {
 	}
 	if r.summary != nil {
 		componentFold(c, tr(c, "speed.result.samples_fold"), func() {
-			speedTable(c.Key("speed-samples"), &w.samples, tr(c, "speed.table.samples_label"), r, r.samples)
+			speedTable(c.Key("speed-samples"), &w.samples, tr(c, "speed.table.samples_label"), nil, r.samples)
 		})
 	}
 }
 
-func speedTable(c *ui.Context, state *pageTableState, label string, task *speedTask, rows []speedSample) {
+func speedTable(c *ui.Context, state *pageTableState, label string, summaryTask *speedTask, rows []speedSample) {
+	first := ui.TableColumn{Title: tr(c, "speed.col.sample"), Width: c.Theme().Rem(6)}
+	if summaryTask != nil {
+		first = ui.TableColumn{Title: tr(c, "speed.col.model_engine"), MinWidth: c.Theme().Rem(14)}
+	}
 	columns := []ui.TableColumn{
-		{Title: tr(c, "speed.col.model_engine"), MinWidth: c.Theme().Rem(14)},
+		first,
 		{Title: tr(c, "speed.col.context_tokens"), MinWidth: c.Theme().Rem(9)},
 		{Title: tr(c, "speed.col.prompt_tokens"), MinWidth: c.Theme().Rem(11)},
 		{Title: tr(c, "speed.col.input_time"), MinWidth: c.Theme().Rem(9)},
@@ -119,7 +131,11 @@ func speedTable(c *ui.Context, state *pageTableState, label string, task *speedT
 			prompt = fmt.Sprint(*v.prompt)
 		}
 		if col == 0 {
-			speedIdentity(c, task)
+			if summaryTask != nil {
+				speedIdentity(c, summaryTask)
+			} else {
+				ui.Text(c, fmt.Sprintf("#%d", row+1)).FontFeatures("tnum").SingleLine()
+			}
 			return
 		}
 		context := "—"
@@ -127,7 +143,7 @@ func speedTable(c *ui.Context, state *pageTableState, label string, task *speedT
 			context = speedContext(*v.context)
 		}
 		ui.Text(c, []string{"", context, prompt, speedNumber(v.seconds), speedNumber(v.prefill), speedNumber(v.decode)}[col]).SingleLine()
-	}).Height(c.Theme().Rem(4)*float32(len(rows)+1) + 2)
+	}).Shrink(0)
 }
 
 func speedContext(tokens int) string {

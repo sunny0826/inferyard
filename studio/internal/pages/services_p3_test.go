@@ -58,7 +58,7 @@ func TestServicesP3MultiServiceRenderAndIndependentStop(t *testing.T) {
 	tt := newServicesTester(s)
 	tt.Frame()
 	texts := strings.Join(tt.Texts(), "\n")
-	for _, want := range []string{"2 个托管服务运行中", "已占内存 11.6 GB", "Qwen3-8B-Q4.gguf", "Llama-3-8B.gguf", "已接管", "局域网开放", "6.2 GB"} {
+	for _, want := range []string{"2 个托管服务运行中", "已占内存 11.6 GiB", "Qwen3-8B-Q4.gguf", "Llama-3-8B.gguf", "已接管", "局域网开放", "6.2 GiB"} {
 		if !strings.Contains(texts, want) {
 			t.Fatalf("expected multi-service view to contain %q, got:\n%s", want, texts)
 		}
@@ -88,13 +88,13 @@ func TestServicesP3MemoryBudgetDisablesRecentAndDrawerStart(t *testing.T) {
 	defer restore()
 
 	s, _ := servicesP2State(t)
-	// 16 GiB unified memory -> 12.0 GB available ceiling.
+	// 16 GiB unified memory -> 12.0 GiB available ceiling.
 	s.device.Snapshot = json.RawMessage(`{"hardware":{"apple_silicon":true,"memory_total_bytes":17179869184}}`)
-	bigSize := int64(8 * (1 << 30)) // ~9.5+ GB estimated
+	bigSize := int64(8 * (1 << 30)) // ~9.5+ GiB estimated
 	s.registry.Models[0].SizeBytes = &bigSize
 	s.registry.Models[1].SizeBytes = &bigSize
 
-	// First service uses 9.5 GB -> only 2.5 GB remaining.
+	// First service uses 9.5 GiB -> only 2.5 GiB remaining.
 	s.managedServices = []core.EngineState{
 		{
 			ServiceID:         core.ServiceIDFor("Qwen3-8B-Q4.gguf", "llama-cpp-default"),
@@ -273,13 +273,13 @@ func TestHardwareMemoryBudgetCacheParsesOncePerSnapshot(t *testing.T) {
 		t.Fatalf("parseCount=%d want 1 for unchanged snapshot", s.hwMemoryCache.parseCount)
 	}
 	if !bDiscrete1.Known || bDiscrete1.TotalGB != 16 || !bDiscrete2.Known || bDiscrete2.TotalGB != 16 {
-		t.Fatalf("expected 16 GB discrete budget, got %+v / %+v", bDiscrete1, bDiscrete2)
+		t.Fatalf("expected 16 GiB discrete budget, got %+v / %+v", bDiscrete1, bDiscrete2)
 	}
 	if !bHost1.Known || bHost1.TotalGB != 32 {
-		t.Fatalf("expected 32 GB host budget for cpu-only gpuLayers=0, got %+v", bHost1)
+		t.Fatalf("expected 32 GiB host budget for cpu-only gpuLayers=0, got %+v", bHost1)
 	}
 	if !sum1.Known || sum1.TotalGB != 16 {
-		t.Fatalf("expected 16 GB summary, got %+v", sum1)
+		t.Fatalf("expected 16 GiB summary, got %+v", sum1)
 	}
 
 	// Same byte length (11 digits -> 11 digits) change must still invalidate cache via SHA-256 fingerprint.
@@ -289,7 +289,7 @@ func TestHardwareMemoryBudgetCacheParsesOncePerSnapshot(t *testing.T) {
 		t.Fatalf("parseCount=%d want 2 after snapshot update", s.hwMemoryCache.parseCount)
 	}
 	if !bHost2.Known || bHost2.TotalGB != 64 {
-		t.Fatalf("expected updated 64 GB host budget, got %+v", bHost2)
+		t.Fatalf("expected updated 64 GiB host budget, got %+v", bHost2)
 	}
 
 	// Repeated call after update hits cache again.

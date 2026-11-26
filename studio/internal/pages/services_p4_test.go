@@ -126,13 +126,13 @@ func TestP4ServiceCardMeasuredVsEstimatedMemoryAndSpeed(t *testing.T) {
 	tt := newServicesTester(s)
 	tt.Frame()
 	texts := strings.Join(tt.Texts(), "\n")
-	for _, want := range []string{"18.2 GB · 实测", "6.2 GB · 预估", "68.4 tok/s", "查看报告 ›"} {
+	for _, want := range []string{"18.2 GiB · 实测", "6.2 GiB · 预估", "68.4 tok/s", "查看报告 ›"} {
 		if !strings.Contains(texts, want) {
 			t.Fatalf("expected service card to contain %q, got:\n%s", want, texts)
 		}
 	}
-	if strings.Contains(texts, "0.0 GB") {
-		t.Fatalf("must not fabricate 0.0 GB for missing memory, got:\n%s", texts)
+	if strings.Contains(texts, "0.0 GiB") {
+		t.Fatalf("must not fabricate 0.0 GiB for missing memory, got:\n%s", texts)
 	}
 
 	click(t, tt, "查看 Qwen3-8B-Q4.gguf 的测评报告")
@@ -147,7 +147,7 @@ func TestP4PreBenchmarkExternalConnDialogBranches(t *testing.T) {
 	defer restore()
 
 	s, _ := servicesP2State(t)
-	// 48 GiB unified memory -> 36 GB budget; model ~4.8 GB -> enough for dedicated instance.
+	// 48 GiB unified memory -> 36 GiB budget; model ~4.8 GiB -> enough for dedicated instance.
 	s.device.Snapshot = json.RawMessage(`{"hardware":{"apple_silicon":true,"memory_total_bytes":51539607552}}`)
 	svc := core.EngineState{
 		ServiceID:         core.ServiceIDFor("Qwen3-8B-Q4.gguf", "llama-cpp-default"),
@@ -206,7 +206,7 @@ func TestP4PreBenchmarkExternalConnDialogBranches(t *testing.T) {
 
 	// 3) external + insufficient memory -> no 另起测评专用实例, only 取消 + 仍然测评（报告标注）.
 	s.extCheckDialog = extConnCheckDialogState{}
-	// 16 GiB unified memory -> 12 GB budget; service uses 9.5 GB, model needs ~9.5 GB -> insufficient.
+	// 16 GiB unified memory -> 12 GiB budget; service uses 9.5 GiB, model needs ~9.5 GiB -> insufficient.
 	s.device.Snapshot = json.RawMessage(`{"hardware":{"apple_silicon":true,"memory_total_bytes":17179869184}}`)
 	bigSize := int64(8 * (1 << 30))
 	s.registry.Models[0].SizeBytes = &bigSize

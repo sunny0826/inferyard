@@ -4,10 +4,55 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func int64Ptr(v int64) *int64 { return &v }
+
+func TestModelRowActionReadiness(t *testing.T) {
+	s := readyState("library")
+	model := core.ModelAsset{Name: "m1.gguf", Available: true}
+	tt := ui.NewTester(func(c *ui.Context) {
+		s.renderModelStandalonePrimaryAction(c, model)
+		modelTaskAction(c, s, model)
+	}, 1024, 600)
+	check := func(action, reason string) {
+		t.Helper()
+		tt.Frame()
+		name := l10n.TR(action) + " · " + model.Name
+		b, ok := tt.AccessByRole(ui.RoleButton, name)
+		var want string
+		if reason != "" {
+			want = l10n.TR(reason)
+		}
+		if !ok || b.Disabled != (reason != "") || b.Description != want {
+			t.Fatalf("%s: found=%v disabled=%v description=%q, want %q", name, ok, b.Disabled, b.Description, want)
+		}
+	}
+	const start, bench = "models.serve.action.start", "models.action.benchmark_with_model"
+	s.ready.CLI.Status = "not_found"
+	check(start, "models.serve.blocked.env_missing")
+	check(bench, "shell.nav.new_task_hint.env_missing")
+	s.ready.CLI.Status = "outdated"
+	check(start, "models.serve.blocked.cli_outdated")
+	s.ready.Workspace.Initialized = false
+	check(start, "models.serve.blocked.env_missing")
+	s.ready.CLI.Status = "ok"
+	check(bench, "shell.nav.new_task_hint.env_missing")
+	s.ready.Workspace.Initialized = true
+	check(start, "models.serve.blocked.cli_outdated")
+	s.serveProbing = true
+	check(start, "models.serve.blocked.probing")
+	check(bench, "")
+	s.serveSupported, s.serveProbing, s.busy = true, false, true
+	check(start, "models.action.blocked.busy")
+	check(bench, "models.action.blocked.busy")
+	s.busy = false
+	check(start, "")
+	check(bench, "")
+}
 
 func TestStandaloneEngineFilteringAndDefaults(t *testing.T) {
 	s := &viewState{
@@ -153,6 +198,7 @@ func TestStandaloneSwitchAndBenchmarkConflictGuards(t *testing.T) {
 	m1 := core.ModelAsset{Name: "m1.gguf", Path: "/models/m1.gguf", Format: "gguf", Available: true}
 	m2 := core.ModelAsset{Name: "m2.gguf", Path: "/models/m2.gguf", Format: "gguf", Available: true}
 	s := &viewState{
+		ready:          testState().ready,
 		serveSupported: true,
 		registry:       core.Registry{Models: []core.ModelAsset{m1, m2}},
 		engineState: core.EngineState{

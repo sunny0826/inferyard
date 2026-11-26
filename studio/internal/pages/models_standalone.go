@@ -270,16 +270,20 @@ func (s *viewState) standaloneRowState(m core.ModelAsset) (state string, svc cor
 }
 
 func (s *viewState) standaloneStartBlockReason() string {
+	if s.environmentMissing() {
+		if s.ready.CLI.Status == "outdated" && s.ready.Workspace.Initialized && s.ready.Results.Exists && s.ready.Models.Exists {
+			return l10n.TR("models.serve.blocked.cli_outdated")
+		}
+		return l10n.TR("models.serve.blocked.env_missing")
+	}
+	if s.busy {
+		return l10n.TR("models.action.blocked.busy")
+	}
 	if s.roundWorkActive() {
 		return l10n.TR("models.serve.blocked.run_active")
 	}
-	if s.engineState.State == "orphaned" {
+	if s.engineState.State == "orphaned" || s.hasOrphanService("") {
 		return l10n.TR("models.serve.blocked.orphaned")
-	}
-	for _, st := range s.effectiveManagedServices() {
-		if st.State == "orphaned" {
-			return l10n.TR("models.serve.blocked.orphaned")
-		}
 	}
 	if !s.serveSupported && !s.serveProbing {
 		return l10n.TR("models.serve.blocked.cli_outdated")
@@ -352,7 +356,7 @@ func (s *viewState) openStandaloneFromHeader(prefillLast bool) {
 }
 
 func (s *viewState) requestStandaloneStart(model core.ModelAsset, prefillLast bool) {
-	if reason := s.standaloneStartBlockReason(); reason != "" || s.serveProbing || s.busy || s.standalone.isPreparing(model.Name) {
+	if reason := s.standaloneStartBlockReason(); reason != "" || s.serveProbing || s.standalone.isPreparing(model.Name) {
 		return
 	}
 	// If the same model is already active, do not reopen drawer or stop it.
@@ -493,5 +497,3 @@ func (s *viewState) guardStandaloneForBenchmark(action func()) bool {
 	s.standalone.benchmarkAction = action
 	return false
 }
-
-

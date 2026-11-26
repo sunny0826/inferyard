@@ -19,7 +19,7 @@
   "core.engine.err.exited": "The engine process exited. Check the logs, then restart and rebind manually.",
   "core.engine.err.exited_owner_remove_failed": "The engine exited, but the orphaned service record could not be cleared. You can remove only the record without terminating any process.",
   "core.engine.err.handle_orphan_first": "Resolve the orphaned service or invalid record before starting the engine.",
-  "core.engine.err.insufficient_memory": "Not enough available memory to start this service (estimated {required} GB needed, {remaining} GB remaining).",
+  "core.engine.err.insufficient_memory": "Not enough available memory to start this service (estimated {required} GiB needed, {remaining} GiB remaining).",
   "core.engine.err.orphan_identity_unreadable": "Unable to verify the orphaned engine's startup identity. You can remove only the record without terminating any process.",
   "core.engine.err.orphan_still_matches": "The orphaned service process identity still matches. Use \"Stop Orphaned Service\" instead.",
   "core.engine.err.orphan_still_running": "The orphaned engine has not exited yet. Ownership record preserved.",

@@ -4,8 +4,30 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
+
+func TestServicesLauncherRequiresEnvironment(t *testing.T) {
+	s := readyState("services")
+	s.serveSupported = true
+	s.ready.CLI.Status = "not_found"
+	tt := ui.NewTester(s.servicesView, 1120, 800)
+	tt.Frame()
+	launcher := l10n.TR("services.page.action.start_model")
+	if _, ok := tt.AccessByRole(ui.RoleButton, launcher); ok {
+		t.Fatal("launcher visible during setup")
+	}
+	if b, ok := tt.AccessByRole(ui.RoleButton, l10n.TR("onboarding.setup.prepare_button")); !ok || b.Disabled {
+		t.Fatal("setup action unavailable")
+	}
+	s.ready.CLI.Status = "ok"
+	tt.Frame()
+	if b, ok := tt.AccessByRole(ui.RoleButton, launcher); !ok || b.Disabled {
+		t.Fatal("launcher unavailable after setup")
+	}
+}
 
 func TestModelsStandaloneMultiServiceRowAndBenchmarkHandoff(t *testing.T) {
 	m1 := core.ModelAsset{Name: "m1.gguf", Path: "/models/m1.gguf", Format: "gguf", Available: true}
@@ -33,6 +55,7 @@ func TestModelsStandaloneMultiServiceRowAndBenchmarkHandoff(t *testing.T) {
 		LogPath:    "/logs/m2.log",
 	}
 	s := &viewState{
+		ready:           testState().ready,
 		serveSupported:  true,
 		registry:        core.Registry{Models: []core.ModelAsset{m1, m2, m3}},
 		engineState:     svc1,
