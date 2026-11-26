@@ -114,6 +114,9 @@ func (s *viewState) generalSettingsView(c *ui.Context) {
 			keyValueRow(c, tr(c, "settings.dev_paths.results"), p.Results, false)
 			keyValueRow(c, tr(c, "settings.dev_paths.models"), p.Models, false)
 			keyValueRow(c, tr(c, "settings.dev_paths.engines"), p.Engines, false)
+			ui.Row(c).Gap(tokens(c).Density.Row).Children(func() {
+				s.cleanWorkspaceArtifactsButton(c)
+			})
 		})
 		s.localInstallationsView(c)
 		s.proxySettingsView(c)
@@ -143,6 +146,7 @@ func (s *viewState) generalSettingsView(c *ui.Context) {
 				savedMsg := tr(c, "settings.workspace.saved")
 				s.workAs("save-workspace", func() (string, *core.ApiError) { return s.persistSettings(patch, submitted, savedMsg) })
 			}
+			s.cleanWorkspaceArtifactsButton(c)
 		},
 	})
 	s.localInstallationsView(c)

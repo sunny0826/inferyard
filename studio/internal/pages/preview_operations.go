@@ -51,6 +51,8 @@ func (p *previewSession) dispatch(intent previewIntent) {
 		p.browse(op.key)
 	case previewSettings:
 		p.saveSettings(op.patch)
+	case previewCleanWorkspaceArtifacts:
+		p.cleanWorkspaceArtifacts()
 	case previewInstallation:
 		p.installation(op)
 	case previewLocalBinding:
@@ -594,6 +596,12 @@ func (p *previewSession) startPreviewStandalone(op previewStandaloneStart) {
 			}
 		})
 	})
+}
+
+func (p *previewSession) cleanWorkspaceArtifacts() {
+	s := p.state
+	s.clearCleanedWorkspaceState()
+	s.enqueueStatusToast(l10n.TR("settings.workspace.cleanup.done"))
 }
 
 var _ previewMode = (*previewSession)(nil)

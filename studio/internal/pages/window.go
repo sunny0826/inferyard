@@ -200,7 +200,9 @@ type viewState struct {
 	announcedPage, promptPage                                                           string
 	announcedErrors                                                                     map[string]bool
 	refreshing                                                                          bool
-	initDir, engine, process, bindEndpoint, candidate, cliInstallStatus, refreshFailure string
+	initDir, engine, process, bindEndpoint, candidate, cliInstallStatus, refreshFailure, refreshFailureCode string
+	cleanArtifactsConfirm                                                                                   bool
+	cleanWorkspaceArtifactsFn                                                                               func() (core.WorkspaceCleanupResult, *core.ApiError)
 	openDialog                                                                          func(mygo.OpenDialogOptions) ([]string, error)
 	cancelRun                                                                           func(string) (core.RunTask, *core.ApiError)
 	stopEngineAPI                                                                       func() (core.EngineState, *core.ApiError)
