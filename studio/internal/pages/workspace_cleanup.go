@@ -4,6 +4,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -20,7 +21,7 @@ func (s *viewState) canCleanWorkspaceArtifacts() bool {
 	if s.service.BoundPaths() != nil {
 		return true
 	}
-	return emptyText(s.settings.Effective.WorkspaceRoot) != ""
+	return emptyText(s.settings.Effective.WorkspaceRoot) != "" && s.ready.Workspace.Initialized
 }
 
 func (s *viewState) cleanWorkspaceArtifactsButton(c *ui.Context) {
@@ -71,6 +72,8 @@ func (s *viewState) cleanWorkspaceArtifacts() {
 }
 
 func (s *viewState) clearCleanedWorkspaceState() {
+	s.clearBenchmark()
+	s.speed = &speedWorkspace{context: inferyard.ContextSpeed64K}
 	s.failure = nil
 	s.failurePage = ""
 	s.refreshFailure = ""
@@ -79,6 +82,7 @@ func (s *viewState) clearCleanedWorkspaceState() {
 	s.candidate = ""
 	s.bindingStale = false
 	s.history = core.RunHistoryResponse{}
+	s.tasks = nil
 	s.reports = nil
 	s.detail = nil
 	s.detailID = ""

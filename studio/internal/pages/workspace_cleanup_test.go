@@ -103,3 +103,16 @@ func TestWorkspaceCleanupDisabledWhileRunActive(t *testing.T) {
 		t.Fatal("expected cleanup disabled while a run is active")
 	}
 }
+
+func TestWorkspaceCleanupDisabledWhenWorkspaceUninitialized(t *testing.T) {
+	s := settingsState()
+	s.service = settingsTestService(t, t.TempDir())
+	s.ready.Workspace.Initialized = false
+	if s.canCleanWorkspaceArtifacts() {
+		t.Fatal("expected cleanup disabled for uninitialized workspace")
+	}
+	s.ready.Workspace.Initialized = true
+	if !s.canCleanWorkspaceArtifacts() {
+		t.Fatal("expected cleanup enabled for initialized workspace")
+	}
+}
