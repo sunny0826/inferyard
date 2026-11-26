@@ -26,25 +26,9 @@ _LEGACY_MODEL_PATH_KEYS = (
 )
 _TOKENIZER_PATH_KEYS = ("tokenizer", "tokenizer_path", "tokenizer_dir")
 _SAFE_DERIVED_KEYS = (
-    "exe",
-    "args",
-    "cwd",
-    "tokenizer",
-    "model_name",
-    "display_name",
-    "port",
-    "backend",
-    "gpu",
-    "gpus_asked",
-    "hip_ordinal",
-    "layer_split",
-    "split_skip_if_fits",
-    "lib_dirs",
-    "cuda",
-    "tool_call_recovery",
-    "sampling",
-    "vision",
-    "env",
+    "engine", "exe", "args", "cwd", "tokenizer", "model_name", "display_name",
+    "port", "parallel", "backend", "gpu", "gpus_asked", "hip_ordinal", "layer_split",
+    "split_skip_if_fits", "lib_dirs", "cuda", "tool_call_recovery", "sampling", "vision", "env",
 )
 UPSTREAM_DEFAULT_CONTEXT = 4096
 
@@ -261,6 +245,8 @@ def _resolve_existing_json(
     system: str,
     served_model: str | None,
     default_asset_dir: Path | None = None,
+    include_vision: bool = True,
+    managed_log_path: Path | None = None,
 ) -> tuple[Path, Path, dict | None, int, Path | None, str, Path | None, str | None]:
     payload = read_json(config_file, "polystrata_config_invalid")
     if not isinstance(payload, dict):
@@ -323,6 +309,8 @@ def _resolve_existing_json(
         resolve_ref=_resolve_ref,
         set_arg_value=_set_arg_value,
         system=system,
+        include_vision=include_vision,
+        managed_log_path=managed_log_path,
     )
     config_path = derived_path if derived_path is not None else config_file
     return (
@@ -346,6 +334,8 @@ def resolve_polystrata_model(
     system: str,
     served_model: str | None,
     port: int,
+    include_vision: bool = True,
+    managed_log_path: Path | None = None,
 ) -> tuple[Path, Path, dict | None, int, Path | None, str, str]:
     """Resolve GGUF, strata-*.json, or pack dir -> (asset, cfg, derived, ctx, tok, served, backend)."""
     if model_input.is_file():
@@ -368,6 +358,8 @@ def resolve_polystrata_model(
                 "model_name": resolved_served,
                 "port": port,
             }
+            if managed_log_path is not None:
+                derived["log"] = str(managed_log_path)
             tok_dir = _discover_tokenizer_dir(installation, model_input)
             if tok_dir is not None:
                 derived["tokenizer"] = str(tok_dir)
@@ -399,6 +391,8 @@ def resolve_polystrata_model(
                 context_size,
                 system=system,
                 served_model=served_model,
+                include_vision=include_vision,
+                managed_log_path=managed_log_path,
             )
             backend = select_polystrata_backend(
                 installation,
@@ -434,6 +428,8 @@ def resolve_polystrata_model(
             system=system,
             served_model=served_model,
             default_asset_dir=model_input,
+            include_vision=include_vision,
+            managed_log_path=managed_log_path,
         )
         backend = select_polystrata_backend(
             installation,

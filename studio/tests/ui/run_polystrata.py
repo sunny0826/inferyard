@@ -12,213 +12,45 @@ import subprocess
 import sys
 import tempfile
 import time
-from dataclasses import dataclass
 from pathlib import Path
 
+from polystrata_stage import (
+    WEIGHT_FLAGS,
+    StagedPolystrata,
+    clone_tree_cow,
+    estimate_strata_disk_bytes,
+    polystrata_config_display_name,
+    resolve_local_installation,
+    rewrite_prefixes,
+    snapshot_dir_state,
+    stage_local_polystrata,
+    verify_dir_unchanged,
+)
 from run import require_unlocked_desktop, resolve_derived_data
 
 PASS_MARKER = (
     "Test Case '-[PreviewUITests.PolystrataRealUITests testRealPolystrataStudioLifecycle]' passed"
 )
-WEIGHT_FLAGS = frozenset({"--pack", "--native", "--ple-gguf", "--model", "--mtp"})
 
-
-@dataclass(frozen=True)
-class StagedPolystrata:
-    installation_path: Path
-    work_dir: Path
-    data_dir: Path
-    model_name: str
-    src_work_dir: Path
-    src_data_dir: Path
-    work_snapshot: dict[str, str]
-    data_snapshot: dict[str, str]
+__all__ = [
+    "PASS_MARKER",
+    "WEIGHT_FLAGS",
+    "StagedPolystrata",
+    "clone_tree_cow",
+    "estimate_strata_disk_bytes",
+    "main",
+    "polystrata_config_display_name",
+    "resolve_local_installation",
+    "rewrite_prefixes",
+    "snapshot_dir_state",
+    "stage_local_polystrata",
+    "verify_dir_unchanged",
+]
 
 
 def default_cli_path() -> Path:
     repo_root = Path(__file__).resolve().parents[3]
     return repo_root / "cli/.venv/bin/inferyard"
-
-
-def resolve_local_installation(override: Path | None) -> Path:
-    if override is not None:
-        resolved = override.expanduser().resolve()
-        if not resolved.is_file():
-            raise FileNotFoundError(f"PolyStrata installation.json is missing: {resolved}")
-        return resolved
-    env_override = os.environ.get("INFERYARD_POLYSTRATA_INSTALLATION", "").strip()
-    if env_override:
-        resolved = Path(env_override).expanduser().resolve()
-        if not resolved.is_file():
-            raise FileNotFoundError(
-                f"INFERYARD_POLYSTRATA_INSTALLATION is missing: {resolved}"
-            )
-        return resolved
-    home = Path.home()
-    candidates = [
-        home / ".inferyard/engines/polystrata/installation.json",
-        home / "PolyStrata/installation.json",
-        home / "polystrata/installation.json",
-    ]
-    for candidate in candidates:
-        if candidate.is_file():
-            return candidate
-    raise FileNotFoundError(
-        f"no local PolyStrata installation.json found in {[str(c) for c in candidates]} "
-        "(downloading models is forbidden; pass --installation or INFERYARD_POLYSTRATA_INSTALLATION)"
-    )
-
-
-def snapshot_dir_state(root: Path) -> dict[str, str]:
-    snap: dict[str, str] = {}
-    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
-        current = Path(dirpath)
-        rel_dir = current.relative_to(root)
-        kept_dirs: list[str] = []
-        for dirname in sorted(dirnames):
-            child = current / dirname
-            rel = str(rel_dir / dirname) if rel_dir != Path(".") else dirname
-            if child.is_symlink():
-                snap[rel] = f"sym:{os.readlink(child)}"
-            elif dirname == ".venv":
-                snap[rel] = "dir:.venv"
-            else:
-                snap[rel] = "dir"
-                kept_dirs.append(dirname)
-        dirnames[:] = kept_dirs
-        for filename in sorted(filenames):
-            child = current / filename
-            rel = str(rel_dir / filename) if rel_dir != Path(".") else filename
-            if child.is_symlink():
-                snap[rel] = f"sym:{os.readlink(child)}"
-            else:
-                st = child.lstat()
-                snap[rel] = f"file:{st.st_size}:{st.st_mtime_ns}"
-    return snap
-
-
-def verify_dir_unchanged(label: str, root: Path, expected: dict[str, str]) -> None:
-    actual = snapshot_dir_state(root)
-    if actual != expected:
-        raise RuntimeError(f"{label} was mutated during UI E2E: {root}")
-
-
-def clone_tree_cow(src: Path, dst: Path) -> None:
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    if sys.platform == "darwin":
-        cp_cow = subprocess.run(
-            ["/bin/cp", "-cR", str(src), str(dst)], capture_output=True, check=False
-        )
-        if cp_cow.returncode == 0:
-            return
-    subprocess.run(["cp", "-R", str(src), str(dst)], check=True)
-
-
-def rewrite_prefixes(path: Path, replacements: list[tuple[str, str]]) -> None:
-    raw = path.read_text(encoding="utf-8")
-    updated = raw
-    for old, new in replacements:
-        if old and old != new:
-            updated = updated.replace(old, new)
-    if updated != raw:
-        path.write_text(updated, encoding="utf-8")
-
-
-def estimate_strata_disk_bytes(cfg_path: Path) -> int:
-    try:
-        doc = json.loads(cfg_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return 1 << 60
-    args = doc.get("args")
-    if not isinstance(args, list):
-        return 1 << 60
-    total = 0
-    for idx in range(len(args) - 1):
-        if args[idx] in WEIGHT_FLAGS and isinstance(args[idx + 1], str):
-            target = Path(args[idx + 1])
-            if target.is_file():
-                total += target.stat().st_size
-            elif target.is_dir():
-                for root, _, files in os.walk(target):
-                    for name in files:
-                        fp = Path(root) / name
-                        if fp.is_file() and not fp.is_symlink():
-                            total += fp.stat().st_size
-    return total if total > 0 else (1 << 60)
-
-
-def polystrata_config_display_name(cfg_path: Path) -> str:
-    try:
-        doc = json.loads(cfg_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        doc = {}
-    if isinstance(doc, dict):
-        for key in ("display_name", "model_name"):
-            raw = doc.get(key)
-            if isinstance(raw, str):
-                cleaned = " ".join(raw.split())
-                if cleaned:
-                    return cleaned
-    return cfg_path.stem or cfg_path.name
-
-
-def stage_local_polystrata(src_inst_path: Path, workspace: Path) -> StagedPolystrata:
-    decl = json.loads(src_inst_path.read_text(encoding="utf-8"))
-    if decl.get("family") != "polystrata":
-        raise ValueError(f"expected family=polystrata in {src_inst_path}")
-    src_work = Path(str(decl.get("working_directory") or src_inst_path.parent)).expanduser()
-    raw_data = str(decl.get("data_dir") or "").strip()
-    if not raw_data:
-        raise ValueError(f"missing data_dir in {src_inst_path}")
-    src_data = Path(raw_data).expanduser()
-
-    work_snap = snapshot_dir_state(src_work)
-    data_snap = snapshot_dir_state(src_data)
-
-    dst_work = workspace / "engines/polystrata"
-    dst_data = workspace / "models/polystrata-data"
-    clone_tree_cow(src_work, dst_work)
-    clone_tree_cow(src_data, dst_data)
-
-    replacements = [
-        (str(src_work), str(dst_work)),
-        (str(src_work.resolve()), str(dst_work)),
-        (str(src_data), str(dst_data)),
-        (str(src_data.resolve()), str(dst_data)),
-    ]
-    dst_inst = dst_work / "installation.json"
-    rewrite_prefixes(dst_inst, replacements)
-
-    configs: list[tuple[int, str, Path]] = []
-    for search_dir in (dst_work, dst_work / "terminal", dst_data, dst_data / "models"):
-        if not search_dir.is_dir():
-            continue
-        for entry in sorted(search_dir.iterdir()):
-            if not entry.is_file():
-                continue
-            if entry.suffix == ".log":
-                entry.unlink(missing_ok=True)
-                continue
-            if entry.name.startswith("strata-") and entry.name.endswith(".json"):
-                rewrite_prefixes(entry, replacements)
-                configs.append((estimate_strata_disk_bytes(entry), str(entry), entry))
-    if not configs:
-        raise RuntimeError(f"no strata-*.json found in staged PolyStrata ({dst_work}, {dst_data})")
-    configs.sort(key=lambda item: (item[0], item[1]))
-    chosen = configs[0][2]
-    for _, _, extra in configs[1:]:
-        extra.unlink(missing_ok=True)
-    model_name = polystrata_config_display_name(chosen)
-    return StagedPolystrata(
-        installation_path=dst_inst,
-        work_dir=dst_work,
-        data_dir=dst_data,
-        model_name=model_name,
-        src_work_dir=src_work,
-        src_data_dir=src_data,
-        work_snapshot=work_snap,
-        data_snapshot=data_snap,
-    )
 
 
 def build_local_studio_app(studio_dir: Path, output: Path) -> Path:
@@ -311,7 +143,9 @@ def xcode_command(output: Path, derived_data: Path) -> list[str]:
 
 def terminate_workspace_processes(workspace: Path) -> None:
     needle = str(workspace)
-    proc = subprocess.run(["ps", "-ax", "-o", "pid=,command="], capture_output=True, text=True, check=False)
+    proc = subprocess.run(
+        ["ps", "-ax", "-o", "pid=,command="], capture_output=True, text=True, check=False
+    )
     for line in proc.stdout.splitlines():
         parts = line.strip().split(None, 1)
         if len(parts) == 2 and needle in parts[1]:
@@ -344,7 +178,13 @@ def main() -> int:
         parser.error(str(exc))
     try:
         require_unlocked_desktop()
-    except (OSError, TypeError, ValueError, plistlib.InvalidFileException, subprocess.SubprocessError) as exc:
+    except (
+        OSError,
+        TypeError,
+        ValueError,
+        plistlib.InvalidFileException,
+        subprocess.SubprocessError,
+    ) as exc:
         parser.error(f"desktop preflight failed: {exc}")
 
     args.output_root.mkdir(parents=True, exist_ok=True)

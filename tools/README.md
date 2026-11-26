@@ -20,6 +20,20 @@ mise run dev:stop
 
 Development flags (`--dev-profile`, `--dev-assets`, `--dev-cli`, `--dev-label`, `--dev-status`) are excluded from `-tags release` builds.
 
+## Shared dev assets
+
+Downloaded models and engines are resolved in this order:
+
+1. `mise run dev -- --assets <dir>` or a non-empty `INFERYARD_DEV_ASSETS=<dir>`, with the flag winning.
+2. When running from a linked `git worktree`, the main checkout's `.inferyard-dev/assets`
+   is reused automatically if it already exists as a real directory.
+3. Otherwise this worktree's own `.inferyard-dev/assets`.
+
+Symlinked assets roots, or symlinked `models` / `engines` subdirectories, are rejected.
+Profiles, `launcher.lock`, and `session.json` always stay inside the current worktree's
+`.inferyard-dev/`, so parallel worktrees keep isolated state. `--assets` cannot be
+combined with `stop`.
+
 ## Fast release
 
 ```sh

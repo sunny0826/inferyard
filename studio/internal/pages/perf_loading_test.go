@@ -350,3 +350,98 @@ func TestReportRequestsAndDetailCasesPaginateOverFiftyRows(t *testing.T) {
 		t.Fatalf("expected detail page 2 to render remaining 5 cases, texts=%v", dt.Texts())
 	}
 }
+
+func TestServicesRefreshWarmsUnverifiedLocalEngineOnce(t *testing.T) {
+	workspace := t.TempDir()
+	for _, sub := range []string{"bundles", "preflight", "candidates", "bound", "results", "reports", "models", "engines"} {
+		if err := os.MkdirAll(filepath.Join(workspace, sub), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	instDir := filepath.Join(workspace, "engines", "polystrata-1")
+	if err := os.MkdirAll(instDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	exePath := filepath.Join(instDir, "python")
+	if err := os.WriteFile(exePath, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	instPath := filepath.Join(instDir, "installation.json")
+	instRaw, _ := json.Marshal(map[string]any{
+		"schema_version":    3,
+		"definition":        "local-engine-installation.v1",
+		"family":            "polystrata",
+		"working_directory": instDir,
+		"executable":        exePath,
+	})
+	if err := os.WriteFile(instPath, instRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cliPath := filepath.Join(t.TempDir(), "inferyard")
+	if err := os.WriteFile(cliPath, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	settingsPath := filepath.Join(t.TempDir(), "settings.json")
+	cfgRaw, _ := json.Marshal(core.UserSettings{
+		WorkspaceRoot:       &workspace,
+		InferyardPath:       &cliPath,
+		EngineInstallations: []string{instPath},
+	})
+	if err := os.WriteFile(settingsPath, cfgRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var checkCalls atomic.Int32
+	svc, err := core.New(context.Background(), core.Options{
+		SettingsPath: settingsPath,
+		Execute: func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
+			if len(args) == 1 && args[0] == "--version" {
+				return inferyard.Execution{ExitCode: 0, Stdout: []byte("inferyard 99.0.0 source=release\n")}, nil
+			}
+			if len(args) >= 2 && args[0] == "engine" && args[1] == "check" {
+				checkCalls.Add(1)
+				body := fmt.Sprintf(`{"schema_version":3,"definition":"local-engine-check.v1","eligible":true,"family":"polystrata","installation_path":%q,"declaration_sha256":%q}`, instPath, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+				return inferyard.Execution{ExitCode: 0, Stdout: []byte(body)}, nil
+			}
+			return inferyard.Execution{ExitCode: 0}, nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = svc.Shutdown(context.Background()) })
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s := testState()
+	s.ctx = ctx
+	s.service = svc
+	s.selected = "services"
+
+	s.refreshMask(refreshAll)
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) && checkCalls.Load() == 0 {
+		time.Sleep(15 * time.Millisecond)
+	}
+	if checkCalls.Load() != 1 {
+		t.Fatalf("expected initial Services refreshAll to warm unverified local engine once, got %d", checkCalls.Load())
+	}
+	// Wait for EngineChecks to reflect eligible state, then verify subsequent refreshAll on Services does not re-spawn.
+	for time.Now().Before(deadline) {
+		checks := svc.EngineChecks()
+		done := false
+		for _, c := range checks.Engines {
+			if c.State == core.EngineCheckEligible {
+				done = true
+			}
+		}
+		if done {
+			break
+		}
+		time.Sleep(15 * time.Millisecond)
+	}
+	s.refreshMask(refreshAll)
+	time.Sleep(50 * time.Millisecond)
+	if checkCalls.Load() != 1 {
+		t.Fatalf("expected cached eligible local engine not to re-run CLI engine check on Services page, got %d", checkCalls.Load())
+	}
+}

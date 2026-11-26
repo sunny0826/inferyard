@@ -289,6 +289,8 @@ def _prepare_installation(request, model: Path, out: Path, port: int) -> dict:
             system=system,
             served_model=None,
             port=port,
+            include_vision=True,
+            managed_log_path=out / "strata-engine.log",
         )
         declared_limit = _polystrata_declared_context(installation, model)
         if asset.is_file() and asset.suffix.lower() == ".gguf":

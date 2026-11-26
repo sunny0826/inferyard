@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/json"
 	"inferyard/studio/internal/inferyard"
 	"net"
 	"os"
@@ -8,6 +9,23 @@ import (
 	"strconv"
 	"strings"
 )
+
+func polystrataCachedConfigValid(cfgPath, serveDir string) bool {
+	if cfgPath == "" || !isRegularNonSymlinkFile(cfgPath) {
+		return false
+	}
+	raw, err := os.ReadFile(cfgPath)
+	if err != nil {
+		return false
+	}
+	var doc struct {
+		Log string `json:"log"`
+	}
+	if json.Unmarshal(raw, &doc) != nil || strings.TrimSpace(doc.Log) == "" {
+		return false
+	}
+	return normalizedPath(doc.Log) == normalizedPath(filepath.Join(serveDir, "strata-engine.log"))
+}
 
 func loadCachedStandalonePlan(planPath string, modelPath string, eng registryEntry, contextSize int64) (Startup, string, int, bool) {
 	if !isRegularNonSymlinkFile(planPath) {
@@ -53,7 +71,7 @@ func loadCachedStandalonePlan(planPath string, modelPath string, eng registryEnt
 	}
 	if plan.Family == "polystrata" {
 		cfgPath, _, _ := findConfigArg(plan.Argv[1:])
-		if cfgPath == "" || !isRegularNonSymlinkFile(cfgPath) {
+		if !polystrataCachedConfigValid(cfgPath, filepath.Dir(planPath)) {
 			return Startup{}, "", 0, false
 		}
 	}
@@ -66,7 +84,7 @@ func loadCachedStandalonePlan(planPath string, modelPath string, eng registryEnt
 }
 
 func rewriteStartupPort(startup Startup, newPort int) (Startup, bool) {
-	if startup.Family == "polystrata" || newPort <= 0 || newPort > 65535 {
+	if newPort <= 0 || newPort > 65535 {
 		return Startup{}, false
 	}
 	host, _, apiErr := validateStartup(startup)

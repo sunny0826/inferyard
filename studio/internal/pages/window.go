@@ -2,7 +2,6 @@ package pages
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 	"sync"
 	"time"
@@ -43,19 +42,21 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 	syncNativeTheme(initialTheme)
 	syncNativeLocale(initialLanguage)
 	s := &viewState{
-		ctx:                   ctx,
-		service:               service,
-		selected:              firstOpen(page, service.FirstRun()),
-		windowTitle:           title,
-		denied:                map[string]bool{},
-		speed:                 &speedWorkspace{context: inferyard.ContextSpeed64K},
-		themeMode:             initialTheme,
-		appliedThemeMode:      initialTheme,
-		languageMode:          initialLanguage,
-		appliedLanguageMode:   initialLanguage,
-		minimizeToTray:        initialMinimizeToTray,
-		appliedMinimizeToTray: false,
-		keepServicesOnQuit:    initialKeepServices,
+		ctx:         ctx,
+		service:     service,
+		selected:    firstOpen(page, service.FirstRun()),
+		windowTitle: title,
+		denied:      map[string]bool{},
+		speed:       &speedWorkspace{context: inferyard.ContextSpeed64K},
+		settingsViewState: settingsViewState{
+			themeMode:             initialTheme,
+			appliedThemeMode:      initialTheme,
+			languageMode:          initialLanguage,
+			appliedLanguageMode:   initialLanguage,
+			minimizeToTray:        initialMinimizeToTray,
+			appliedMinimizeToTray: false,
+		},
+		keepServicesOnQuit: initialKeepServices,
 		settings: core.SettingsResponse{
 			Settings:  core.UserSettings{Theme: initialTheme, Language: initialLanguage, MinimizeToTray: initialMinimizeToTray},
 			Effective: core.EffectiveSettings{Theme: initialTheme, Language: initialLanguage, MinimizeToTray: initialMinimizeToTray, KeepServicesOnQuit: initialKeepServices},
@@ -153,6 +154,7 @@ func pageID(page string) string {
 }
 
 type viewState struct {
+	settingsViewState
 	speed                                                                               *speedWorkspace
 	preview                                                                             previewMode
 	lastEngineVerification                                                              time.Time
@@ -202,8 +204,6 @@ type viewState struct {
 	announcedErrors                                                                     map[string]bool
 	refreshing                                                                          bool
 	initDir, engine, process, bindEndpoint, candidate, cliInstallStatus, refreshFailure, refreshFailureCode string
-	cleanArtifactsConfirm                                                                                   bool
-	cleanWorkspaceArtifactsFn                                                                               func() (core.WorkspaceCleanupResult, *core.ApiError)
 	openDialog                                                                          func(mygo.OpenDialogOptions) ([]string, error)
 	cancelRun                                                                           func(string) (core.RunTask, *core.ApiError)
 	stopEngineAPI                                                                       func() (core.EngineState, *core.ApiError)
@@ -222,8 +222,6 @@ type viewState struct {
 	newSVGStage                                                                         func() (svgStageView, error)
 	benchmarksTab                                                                       int
 	reportsTab                                                                          int
-	settingsTab                                                                         int
-	buildInfo                                                                           func() core.BuildInfo
 	refreshMu                                                                           sync.Mutex
 	bgRefresh                                                                           bgRefreshCache
 	detailMu                                                                            sync.Mutex
@@ -271,7 +269,6 @@ type viewState struct {
 	resumeSource                                                                        *core.RunSummary
 	resumeDiscardConfirm                                                                bool
 	reportDialogOpen, reportDiscardConfirm                                              bool
-	settingsLeaveConfirm                                                                bool
 	pendingNavAction                                                                    func()
 	endpoint, pid                                                                       string
 	denied                                                                              map[string]bool
@@ -281,41 +278,7 @@ type viewState struct {
 	engineFailureCleared                                                                string
 	localUsedPIDs                                                                       map[int64]bool
 	localPendingPIDs                                                                    map[string]int64
-	tokenEnv, downloadProxy                                                             string
-	themeMode, appliedThemeMode                                                         string
-	themeSaving                                                                         bool
-	themeMu                                                                             sync.Mutex
-	themeWanted                                                                         string
-	themeWantedSeq                                                                      uint64
-	themeWorkerRunning                                                                  bool
-	applyNativeTheme                                                                    func(string)
-	persistTheme                                                                        func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
-	languageMode, appliedLanguageMode                                                   string
-	languageSaving                                                                      bool
-	languageMu                                                                          sync.Mutex
-	languageWanted                                                                      string
-	languageWantedSeq                                                                   uint64
-	languageWorkerRunning                                                               bool
-	applyNativeLocale                                                                   func(string)
-	persistLanguage                                                                     func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
-	minimizeToTray, appliedMinimizeToTray                                               bool
-	trayUnavailable                                                                     bool
-	minimizeToTraySaving                                                                bool
-	minimizeToTrayMu                                                                    sync.Mutex
-	minimizeToTrayWanted                                                                bool
-	minimizeToTrayWantedSeq                                                             uint64
-	minimizeToTrayWorkerRunning                                                         bool
-	minimizeToTrayWorkerDone                                                            chan struct{}
-	applyMinimizeToTray                                                                 func(bool) error
-	persistMinimizeToTray                                                               func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
 	keepServicesOnQuit                                                                  bool
-	keepServicesSaving                                                                  bool
-	keepServicesMu                                                                      sync.Mutex
-	keepServicesWanted                                                                  bool
-	keepServicesWantedSeq                                                               uint64
-	keepServicesWorkerRunning                                                           bool
-	keepServicesWorkerDone                                                              chan struct{}
-	persistKeepServices                                                                 func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
 	historyTable                                                                        pageTableState
 	historyQuery, historyStatusFilter, historyDetailPath                                string
 	downloadsUI                                                                         *downloadsUIState
@@ -329,23 +292,6 @@ type viewState struct {
 	reportLoadSeq                                                                       uint64
 	processesLoading                                                                    bool
 	processesLoadedAt                                                                   time.Time
-	settingsEpochMu                                                                     sync.Mutex
-	settingsEpoch                                                                       uint64
-	updateState                                                                         core.UpdateState
-	cliUpgrade                                                                          core.CLIUpgradeState
-	cliUpgradeDismissedSeq                                                              uint64
-	updateDialogOpen                                                                    bool
-	updateReadyPromptDismissedVersion                                                   string
-	updateCheckFn                                                                       func(context.Context) (core.UpdateState, error)
-	updateStartFn                                                                       func()
-	updateCancelFn                                                                      func() core.UpdateState
-	updateApplyFn                                                                       func(context.Context, bool) (core.UpdateState, error)
-}
-
-func (s *viewState) settingsSequence() uint64 {
-	s.settingsEpochMu.Lock()
-	defer s.settingsEpochMu.Unlock()
-	return s.settingsEpoch
 }
 
 func (s *viewState) work(fn func() (string, *core.ApiError)) {

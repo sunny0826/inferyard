@@ -208,10 +208,163 @@ class TestPolystrataRealRunner(unittest.TestCase):
             )
             self.assertEqual(no_report_code, 66)
 
+    def test_resolve_local_installation_discovers_versioned_and_settings_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory) / "home"
+            data_dir = home / ".inferyard/models/polystrata-data"
+            data_dir.mkdir(parents=True)
+
+            # Broken/incomplete polystrata dir without data_dir must be skipped.
+            broken_dir = home / ".inferyard/engines/polystrata-broken"
+            broken_dir.mkdir(parents=True)
+            (broken_dir / "installation.json").write_text(
+                json.dumps({"family": "polystrata", "working_directory": str(broken_dir)}),
+                encoding="utf-8",
+            )
+
+            versioned_dir = home / ".inferyard/engines/polystrata-v0.2.20-poly.5"
+            versioned_dir.mkdir(parents=True)
+            versioned_inst = versioned_dir / "installation.json"
+            versioned_inst.write_text(
+                json.dumps(
+                    {
+                        "family": "polystrata",
+                        "working_directory": str(versioned_dir),
+                        "data_dir": str(data_dir),
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with patch.dict("os.environ", {"INFERYARD_POLYSTRATA_INSTALLATION": ""}, clear=False):
+                resolved = run_polystrata.resolve_local_installation(None, home=home)
+            self.assertEqual(resolved, versioned_inst.resolve())
+
+            # Registered external installation in Studio settings.json is also discovered.
+            versioned_inst.unlink()
+            ext_dir = Path(directory) / "custom-ps"
+            ext_dir.mkdir(parents=True)
+            ext_inst = ext_dir / "installation.json"
+            ext_inst.write_text(
+                json.dumps(
+                    {
+                        "family": "polystrata",
+                        "working_directory": str(ext_dir),
+                        "data_dir": str(data_dir),
+                    }
+                ),
+                encoding="utf-8",
+            )
+            settings_dir = home / "Library/Application Support/InferYard Studio"
+            settings_dir.mkdir(parents=True)
+            (settings_dir / "settings.json").write_text(
+                json.dumps(
+                    {
+                        "engine_installations": [
+                            str(home / ".inferyard/stale/installation.json"),
+                            str(ext_inst),
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with (
+                patch.object(run_polystrata.sys, "platform", "darwin"),
+                patch("polystrata_stage.sys.platform", "darwin"),
+                patch.dict("os.environ", {"INFERYARD_POLYSTRATA_INSTALLATION": ""}, clear=False),
+            ):
+                resolved_ext = run_polystrata.resolve_local_installation(None, home=home)
+            self.assertEqual(resolved_ext, ext_inst.resolve())
+
+    def test_stage_prefers_usable_local_config_and_rewrites_inferyard_config(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work_dir = root / "engines/polystrata-v0.2.20-poly.5"
+            data_dir = root / "models/polystrata-data"
+            (work_dir / "terminal").mkdir(parents=True)
+            (work_dir / "engine/build-metal").mkdir(parents=True)
+            (work_dir / ".inferyard-config/polystrata").mkdir(parents=True)
+            (data_dir / "packs/q2_0").mkdir(parents=True)
+            (data_dir / "models/extra").mkdir(parents=True)
+
+            live_bin = work_dir / "engine/build-metal/strata"
+            live_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+            live_bin.chmod(0o755)
+            (data_dir / "packs/q2_0/dense.bin").write_bytes(b"w" * 4096)
+            (data_dir / "models/extra/tiny.gguf").write_bytes(b"t" * 128)
+
+            inst_path = work_dir / "installation.json"
+            inst_path.write_text(
+                json.dumps(
+                    {
+                        "family": "polystrata",
+                        "working_directory": str(work_dir),
+                        "data_dir": str(data_dir),
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (work_dir / ".inferyard-config/polystrata/settings.json").write_text(
+                json.dumps(
+                    {
+                        "data_dir": str(data_dir),
+                        "installs": [str(work_dir / "terminal")],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (work_dir / "terminal/strata-q2_0.json").write_text(
+                json.dumps(
+                    {
+                        "exe": str(live_bin),
+                        "args": ["--pack", str(data_dir / "packs/q2_0")],
+                        "model_name": "qwen3.8-flash-next-q2_0",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            # Stale smaller config in polystrata-data pointing to a deleted old engine binary.
+            (data_dir / "strata-stale.json").write_text(
+                json.dumps(
+                    {
+                        "exe": str(root / "engines/polystrata-old/build-metal/strata"),
+                        "args": ["--model", str(data_dir / "models/extra/tiny.gguf")],
+                        "model_name": "stale-tiny",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            # Extra config inside models/<tag>/ subdirectory must also be cleaned up.
+            (data_dir / "models/extra/strata-sub.json").write_text(
+                json.dumps(
+                    {
+                        "exe": str(live_bin),
+                        "args": ["--pack", str(data_dir / "packs/q2_0")],
+                        "model_name": "extra-sub",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            workspace = root / "workspace"
+            staged = run_polystrata.stage_local_polystrata(inst_path, workspace)
+            self.assertEqual(staged.model_name, "qwen3.8-flash-next-q2_0")
+            self.assertTrue((staged.work_dir / "terminal/strata-q2_0.json").is_file())
+            self.assertFalse((staged.data_dir / "strata-stale.json").exists())
+            self.assertFalse((staged.data_dir / "models/extra/strata-sub.json").exists())
+
+            cfg_settings = (
+                staged.work_dir / ".inferyard-config/polystrata/settings.json"
+            ).read_text(encoding="utf-8")
+            self.assertNotIn(str(data_dir), cfg_settings)
+            self.assertIn(str(staged.data_dir), cfg_settings)
+
 
 _TEST_METHODS = (
     TestPolystrataRealRunner.test_runner_stages_smallest_local_model_isolates_home_and_preserves_host,
     TestPolystrataRealRunner.test_missing_pass_marker_or_studio_report_fails,
+    TestPolystrataRealRunner.test_resolve_local_installation_discovers_versioned_and_settings_paths,
+    TestPolystrataRealRunner.test_stage_prefers_usable_local_config_and_rewrites_inferyard_config,
 )
 
 

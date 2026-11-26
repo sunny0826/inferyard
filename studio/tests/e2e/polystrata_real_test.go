@@ -275,8 +275,15 @@ func TestPolystrataRealLifecycle(t *testing.T) {
 	if apiErr := service.DeleteManagedAssetVerified("model", modelAsset.Name, modDelInfo.TargetPath, modDelInfo.Fingerprint); apiErr != nil {
 		t.Fatalf("DeleteManagedAssetVerified(model) failed: %+v", apiErr)
 	}
-	if _, err := os.Stat(filepath.Join(staged.DataDir, "mtp")); !os.IsNotExist(err) {
-		t.Fatalf("expected staged polystrata-data/mtp removed with model, stat err=%v", err)
+	if _, err := os.Stat(modDelInfo.TargetPath); !os.IsNotExist(err) {
+		t.Fatalf("expected staged PolyStrata model config removed at %s, stat err=%v", modDelInfo.TargetPath, err)
+	}
+	for _, covered := range modelAsset.CoveredPaths {
+		if rel, rErr := filepath.Rel(staged.DataDir, covered); rErr == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			if _, err := os.Stat(covered); !os.IsNotExist(err) {
+				t.Fatalf("expected covered staged PolyStrata model weight removed at %s, stat err=%v", covered, err)
+			}
+		}
 	}
 
 	engDelInfo, apiErr := service.InspectDeleteAsset("engine", engineAsset.Name)

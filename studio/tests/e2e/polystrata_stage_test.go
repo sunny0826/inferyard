@@ -18,39 +18,10 @@ import (
 )
 
 type stagedPolystrata struct {
-	InstPath string
-	WorkDir  string
-	DataDir  string
-}
-
-func resolveLocalPolystrataInstallation(t *testing.T) string {
-	t.Helper()
-	if raw := strings.TrimSpace(os.Getenv("INFERYARD_POLYSTRATA_INSTALLATION")); raw != "" {
-		abs, err := filepath.Abs(raw)
-		if err != nil {
-			t.Fatalf("resolve INFERYARD_POLYSTRATA_INSTALLATION: %v", err)
-		}
-		if _, err := os.Stat(abs); err != nil {
-			t.Fatalf("INFERYARD_POLYSTRATA_INSTALLATION missing at %s: %v", abs, err)
-		}
-		return abs
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatalf("resolve home dir: %v", err)
-	}
-	candidates := []string{
-		filepath.Join(home, ".inferyard", "engines", "polystrata", "installation.json"),
-		filepath.Join(home, "PolyStrata", "installation.json"),
-		filepath.Join(home, "polystrata", "installation.json"),
-	}
-	for _, c := range candidates {
-		if info, err := os.Stat(c); err == nil && info.Mode().IsRegular() {
-			return c
-		}
-	}
-	t.Fatalf("no local PolyStrata installation.json found in %v (set INFERYARD_POLYSTRATA_INSTALLATION; downloading models is forbidden)", candidates)
-	return ""
+	InstPath   string
+	WorkDir    string
+	DataDir    string
+	ChosenPath string
 }
 
 func snapshotDirState(t *testing.T, root string) map[string]string {
@@ -142,6 +113,62 @@ func rewritePathPrefixesInFile(t *testing.T, path string, replacements [][2]stri
 	}
 }
 
+func strataConfigUsable(cfgPath, dstWorkDir string, diskBytes int64) bool {
+	if diskBytes >= 1<<60 {
+		return false
+	}
+	raw, err := os.ReadFile(cfgPath)
+	if err != nil {
+		return false
+	}
+	var doc struct {
+		Exe string `json:"exe"`
+		Cwd string `json:"cwd"`
+	}
+	if json.Unmarshal(raw, &doc) != nil {
+		return false
+	}
+	exe := strings.TrimSpace(doc.Exe)
+	if exe == "" {
+		return false
+	}
+	if filepath.IsAbs(exe) {
+		info, sErr := os.Stat(exe)
+		return sErr == nil && info.Mode().IsRegular()
+	}
+	if strings.ContainsAny(exe, `/\`) {
+		cwd := strings.TrimSpace(doc.Cwd)
+		if cwd == "" {
+			cwd = dstWorkDir
+		}
+		if info, sErr := os.Stat(filepath.Join(cwd, exe)); sErr == nil && info.Mode().IsRegular() {
+			return true
+		}
+		info, sErr := os.Stat(filepath.Join(dstWorkDir, exe))
+		return sErr == nil && info.Mode().IsRegular()
+	}
+	_, lErr := exec.LookPath(exe)
+	return lErr == nil
+}
+
+func polystrataStageSearchDirs(dstWorkDir, dstDataDir string) []string {
+	dirs := []string{
+		dstWorkDir,
+		filepath.Join(dstWorkDir, "terminal"),
+		dstDataDir,
+		filepath.Join(dstDataDir, "models"),
+	}
+	modelsDir := filepath.Join(dstDataDir, "models")
+	if subEntries, err := os.ReadDir(modelsDir); err == nil {
+		for _, sub := range subEntries {
+			if sub.Type()&os.ModeSymlink == 0 && sub.IsDir() {
+				dirs = append(dirs, filepath.Join(modelsDir, sub.Name()))
+			}
+		}
+	}
+	return dirs
+}
+
 func stageLocalPolystrata(t *testing.T, workspace string) stagedPolystrata {
 	t.Helper()
 	srcInstPath := resolveLocalPolystrataInstallation(t)
@@ -189,23 +216,39 @@ func stageLocalPolystrata(t *testing.T, workspace string) stagedPolystrata {
 
 	dstInstPath := filepath.Join(dstWorkDir, "installation.json")
 	rewritePathPrefixesInFile(t, dstInstPath, replacements)
+	for _, relCfg := range []string{
+		filepath.Join(".inferyard-config", "polystrata", "settings.json"),
+		filepath.Join(".inferyard-config", "PolyStrata", "settings.json"),
+	} {
+		cfgFile := filepath.Join(dstWorkDir, relCfg)
+		if info, sErr := os.Lstat(cfgFile); sErr == nil && info.Mode().IsRegular() {
+			rewritePathPrefixesInFile(t, cfgFile, replacements)
+		}
+	}
 
 	type cfgCandidate struct {
-		path  string
-		bytes int64
+		path       string
+		usableRank int
+		localRank  int
+		bytes      int64
 	}
 	var configs []cfgCandidate
-	for _, searchDir := range []string{dstWorkDir, filepath.Join(dstWorkDir, "terminal"), dstDataDir, filepath.Join(dstDataDir, "models")} {
+	seenFiles := map[string]bool{}
+	for _, searchDir := range polystrataStageSearchDirs(dstWorkDir, dstDataDir) {
 		entries, err := os.ReadDir(searchDir)
 		if err != nil {
 			continue
 		}
 		for _, entry := range entries {
 			name := entry.Name()
-			if entry.IsDir() {
+			if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 {
 				continue
 			}
 			full := filepath.Join(searchDir, name)
+			if seenFiles[full] {
+				continue
+			}
+			seenFiles[full] = true
 			if strings.HasSuffix(name, ".log") {
 				_ = os.Remove(full)
 				continue
@@ -214,13 +257,33 @@ func stageLocalPolystrata(t *testing.T, workspace string) stagedPolystrata {
 				continue
 			}
 			rewritePathPrefixesInFile(t, full, replacements)
-			configs = append(configs, cfgCandidate{path: full, bytes: estimateStrataConfigDiskBytes(full)})
+			bytes := estimateStrataConfigDiskBytes(full)
+			usableRank := 1
+			if strataConfigUsable(full, dstWorkDir, bytes) {
+				usableRank = 0
+			}
+			localRank := 1
+			if rel, rErr := filepath.Rel(dstWorkDir, full); rErr == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				localRank = 0
+			}
+			configs = append(configs, cfgCandidate{
+				path:       full,
+				usableRank: usableRank,
+				localRank:  localRank,
+				bytes:      bytes,
+			})
 		}
 	}
 	if len(configs) == 0 {
 		t.Fatalf("no strata-*.json model configs found in staged PolyStrata (%s, %s)", dstWorkDir, dstDataDir)
 	}
 	sort.Slice(configs, func(i, j int) bool {
+		if configs[i].usableRank != configs[j].usableRank {
+			return configs[i].usableRank < configs[j].usableRank
+		}
+		if configs[i].localRank != configs[j].localRank {
+			return configs[i].localRank < configs[j].localRank
+		}
 		if configs[i].bytes != configs[j].bytes {
 			return configs[i].bytes < configs[j].bytes
 		}
@@ -231,9 +294,10 @@ func stageLocalPolystrata(t *testing.T, workspace string) stagedPolystrata {
 	}
 	t.Logf("staged smallest local PolyStrata model config: %s (referenced disk bytes=%d)", filepath.Base(configs[0].path), configs[0].bytes)
 	return stagedPolystrata{
-		InstPath: dstInstPath,
-		WorkDir:  dstWorkDir,
-		DataDir:  dstDataDir,
+		InstPath:   dstInstPath,
+		WorkDir:    dstWorkDir,
+		DataDir:    dstDataDir,
+		ChosenPath: configs[0].path,
 	}
 }
 

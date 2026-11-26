@@ -229,8 +229,16 @@ def create(request):
     polystrata_config_path = None
     polystrata_config_sha256 = None
     derived_polystrata_config = None
+    polystrata_log_path: Path | None = None
     fallback_tokenizer = None
     if family == "polystrata":
+        cand_parent = out.resolve().parent
+        log_dir = (
+            cand_parent.parent / "logs"
+            if cand_parent.name == "candidates"
+            else cand_parent / "logs"
+        )
+        polystrata_log_path = log_dir / "polystrata-engine.log"
         (
             model,
             polystrata_config_path,
@@ -247,6 +255,8 @@ def create(request):
             system=system,
             served_model=request.served_model,
             port=port,
+            include_vision=False,
+            managed_log_path=polystrata_log_path,
         )
         if derived_polystrata_config is not None:
             polystrata_config_sha256 = sha256(json_bytes(derived_polystrata_config))
@@ -383,6 +393,8 @@ def create(request):
     output.write("installation.json", json_bytes(runtime))
     output.write("chat-template.jinja", raw_template)
     if derived_polystrata_config is not None:
+        if polystrata_log_path is not None:
+            polystrata_log_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         output.write("strata-candidate.json", json_bytes(derived_polystrata_config))
     candidate = output.write("candidate.toml", content.encode())
     if load_config(candidate).config.to_dict() != config:
