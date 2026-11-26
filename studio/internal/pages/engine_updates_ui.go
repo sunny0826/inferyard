@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -37,7 +36,7 @@ func (s *viewState) applyEngineUpdatesStatus(status core.EngineUpdatesStatus, ma
 		Key:   "engine-updates:" + sig,
 		Title: l10n.TR("notif.engine_updates.available.title"),
 		Body: l10n.TRf("notif.engine_updates.available.body",
-			"count", strconv.Itoa(status.UpdatableCount),
+			"count", status.UpdatableCount,
 			"engines", strings.Join(labels, ", "),
 		),
 		Kind: stateInfo,
@@ -153,7 +152,7 @@ func (s *viewState) checkEngineUpdatesAction() {
 			s.win.Update(func() { s.applyEngineUpdatesStatus(status, true) })
 		}
 		if status.UpdatableCount > 0 {
-			return l10n.TRf("models.engine.toast.check_found", "count", strconv.Itoa(status.UpdatableCount)), nil
+			return l10n.TRf("models.engine.toast.check_found", "count", status.UpdatableCount), nil
 		}
 		return l10n.TR("models.engine.toast.check_up_to_date"), nil
 	})

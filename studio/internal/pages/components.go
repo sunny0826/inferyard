@@ -86,9 +86,9 @@ type taskCardOptions struct {
 	active            bool
 	metrics           []taskMetric
 	status            string
-	headerRight func()
-	notice      func()
-	actions     func()
+	headerRight       func()
+	notice            func()
+	actions           func()
 }
 
 func taskCard(c *ui.Context, options taskCardOptions) {
@@ -119,7 +119,7 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 				for _, metric := range options.metrics {
 					ui.Column(c).Gap(t.Density.Tight).Children(func() {
 						ui.Text(c, metric.label).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
-						ui.Text(c, metric.value).Bold().FontSize(t.Type.Metric)
+						ui.Text(c, metric.value).Bold().FontSize(t.Type.Metric).FontFeatures("tnum")
 						if metric.reason != "" {
 							ui.Text(c, metric.reason).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
 						}
@@ -356,6 +356,14 @@ func studioDialog(c *ui.Context, open *bool, options components.DialogOptions, b
 }
 
 func studioAlertDialog(c *ui.Context, open *bool, options components.AlertDialogOptions) components.DialogResult {
+	return studioAlertDialogStyled(c, open, options, false)
+}
+
+func studioDestructiveAlertDialog(c *ui.Context, open *bool, options components.AlertDialogOptions) components.DialogResult {
+	return studioAlertDialogStyled(c, open, options, true)
+}
+
+func studioAlertDialogStyled(c *ui.Context, open *bool, options components.AlertDialogOptions, destructive bool) components.DialogResult {
 	result := components.DialogNone
 	wasOpen := *open
 	opts := options.DialogOptions
@@ -374,7 +382,11 @@ func studioAlertDialog(c *ui.Context, open *bool, options components.AlertDialog
 				result = components.DialogCancelled
 				*open = false
 			}
-			if primaryButton(c, options.ConfirmLabel).Clicked() {
+			confirmBtn := primaryButton
+			if destructive {
+				confirmBtn = dangerButton
+			}
+			if confirmBtn(c, options.ConfirmLabel).Clicked() {
 				result = components.DialogConfirmed
 				*open = false
 			}

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
 )
@@ -46,29 +45,17 @@ func (s *viewState) loadTraySettings(v core.SettingsResponse) {
 func (s *viewState) traySettingsView(c *ui.Context) {
 	t := tokens(c)
 	card(c, tr(c, "settings.tray.title"), func() {
-		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-				ui.Text(c, tr(c, "settings.tray.minimize_label")).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary)
-				ui.Text(c, tr(c, "settings.tray.minimize_desc")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-			})
-			enabled := s.minimizeToTray
-			components.Switch(c, &enabled, tr(c, "settings.tray.switch_label"), components.SwitchOptions{HideLabel: true})
-			if enabled != s.minimizeToTray {
-				s.changeMinimizeToTray(enabled)
-			}
-		})
+		enabled := s.minimizeToTray
+		labeledSwitchRow(c, tr(c, "settings.tray.minimize_label"), tr(c, "settings.tray.minimize_desc"), tr(c, "settings.tray.switch_label"), &enabled)
+		if enabled != s.minimizeToTray {
+			s.changeMinimizeToTray(enabled)
+		}
 		ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
-		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-				ui.Text(c, tr(c, "settings.keep_services.label")).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary)
-				ui.Text(c, tr(c, "settings.keep_services.desc")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-			})
-			keep := s.keepServicesOnQuit
-			components.Switch(c, &keep, tr(c, "settings.keep_services.switch_label"), components.SwitchOptions{HideLabel: true})
-			if keep != s.keepServicesOnQuit {
-				s.changeKeepServicesOnQuit(keep)
-			}
-		})
+		keep := s.keepServicesOnQuit
+		labeledSwitchRow(c, tr(c, "settings.keep_services.label"), tr(c, "settings.keep_services.desc"), tr(c, "settings.keep_services.switch_label"), &keep)
+		if keep != s.keepServicesOnQuit {
+			s.changeKeepServicesOnQuit(keep)
+		}
 	})
 }
 

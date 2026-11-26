@@ -13,6 +13,7 @@ const (
 	destructiveCancelRun          destructiveKind = "cancel_run"
 	destructiveStopEngine         destructiveKind = "stop_engine"
 	destructiveStopService        destructiveKind = "stop_service"
+	destructiveStopStandalone     destructiveKind = "stop_standalone"
 	destructiveStopOrphan         destructiveKind = "stop_orphan"
 	destructiveDiscardOrphan      destructiveKind = "discard_orphan"
 	destructiveCancelDownload     destructiveKind = "cancel_download"
@@ -86,12 +87,12 @@ func (s *viewState) destructiveActionWithTrigger(c *ui.Context, option destructi
 		panel.Children(func() {
 			ui.Column(c).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, option.prompt)
-				ui.Row(c).Wrap().Gap(t.Density.Row).Children(func() {
-					if primaryButton(c, option.confirmLabel).AlignSelf(ui.Start).Clicked() {
-						confirmed = true
+				ui.Row(c).FillWidth().Wrap().Justify(ui.End).Gap(t.Density.Row).Children(func() {
+					if button(c, destructiveDismissLabel(c, option)).AlignSelf(ui.Start).Clicked() {
 						open = false
 					}
-					if button(c, destructiveDismissLabel(c, option)).AlignSelf(ui.Start).Clicked() {
+					if dangerButton(c, option.confirmLabel).AlignSelf(ui.Start).Clicked() {
+						confirmed = true
 						open = false
 					}
 				})
@@ -132,7 +133,7 @@ func (s *viewState) destructiveRequestFor(option destructiveOption) destructiveR
 func (s *viewState) destructiveDialogModal(c *ui.Context, option destructiveOption) bool {
 	request := s.destructiveRequestFor(option)
 	open := s.pendingDestructive == request
-	result := studioAlertDialog(c, &open, components.AlertDialogOptions{
+	result := studioDestructiveAlertDialog(c, &open, components.AlertDialogOptions{
 		DialogOptions: components.DialogOptions{Label: option.label},
 		Title:         option.label,
 		Message:       option.prompt,
@@ -181,6 +182,13 @@ func (s *viewState) destructiveTargetValid(request destructiveRequest) bool {
 	case destructiveStopService:
 		svc, ok := s.findManagedServiceByID(request.id)
 		return ok && (svc.State == "starting" || svc.State == "running") && s.idleForEngineStop()
+	case destructiveStopStandalone:
+		m, ok := s.findModelAsset(request.id)
+		if !ok {
+			return false
+		}
+		rowState, _, _, _, _ := s.standaloneRowState(m)
+		return (rowState == "starting" || rowState == "running") && s.idleForEngineStop()
 	case destructiveStopOrphan, destructiveDiscardOrphan:
 		return (s.engineState.State == "orphaned" || s.hasOrphanService(request.id)) && s.idleForEngineStop()
 	case destructiveCancelDownload:

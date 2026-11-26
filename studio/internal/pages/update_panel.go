@@ -221,7 +221,7 @@ func (s *viewState) updateDialog(c *ui.Context) {
 					})
 				case core.UpdateDownloading:
 					progressBar(c, progressValue(st.DownloadedBytes, st.TotalBytes), tr(c, "update.progress.downloading"))
-					ui.Text(c, formatUpdateProgress(st)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+					ui.Text(c, formatUpdateProgress(st)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 						if button(c, tr(c, "update.action.cancel_download")).Clicked() {
 							s.triggerUpdateCancel()

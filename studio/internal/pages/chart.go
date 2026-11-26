@@ -126,7 +126,7 @@ func sourceLabelFor(c *ui.Context, source core.ResourceSource) string {
 func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 	card(c, tr(c, "chart.resource.title"), func() {
 		series, selected := s.cachedResourceSeries(samples)
-		ui.Text(c, trf(c, "chart.resource.sample_count", "count", len(samples)))
+		ui.Text(c, trf(c, "chart.resource.sample_count", "count", len(samples))).FontFeatures("tnum")
 		if len(series) == 0 {
 			ui.Text(c, tr(c, "chart.resource.waiting"))
 			return
@@ -248,7 +248,7 @@ func (s *viewState) resourceTable(c *ui.Context, samples []core.ResourceSample) 
 		if button(c, tr(c, "chart.table.prev_page")).Disabled(s.resourceTablePage == 0).Clicked() {
 			s.resourceTablePage--
 		}
-		ui.Text(c, trf(c, "chart.table.page_status", "page", s.resourceTablePage+1, "totalPages", pages, "count", len(samples)))
+		ui.Text(c, trf(c, "chart.table.page_status", "page", s.resourceTablePage+1, "totalPages", pages, "count", len(samples))).FontFeatures("tnum")
 		if button(c, tr(c, "chart.table.next_page")).Disabled(s.resourceTablePage == pages-1).Clicked() {
 			s.resourceTablePage++
 		}
@@ -268,7 +268,10 @@ func (s *viewState) resourceTable(c *ui.Context, samples []core.ResourceSample) 
 		p := samples[row]
 		value, unit := formatResourceSample(c, p)
 		values := []string{formatTimestamp(p.Utc), sourceLabelFor(c, p.Source), value, unit, emptyText(p.MissingReason)}
-		ui.Text(c, values[col]).Selectable()
+		cell := ui.Text(c, values[col]).Selectable()
+		if col == 0 || col == 2 {
+			cell.FontFeatures("tnum")
+		}
 	}).Height(180).Label(tableLabel)
 }
 

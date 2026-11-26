@@ -29,12 +29,12 @@ type localEngineWizardState struct {
 }
 
 var localEngineFamilyOptions = []components.NativeSelectOption[string]{
-	{Value: "polystrata", Label: "polystrata"},
-	{Value: "llama-cpp", Label: "llama-cpp"},
+	{Value: "polystrata", Label: "PolyStrata"},
+	{Value: "llama-cpp", Label: "llama.cpp"},
 	{Value: "mlx-lm", Label: "mlx-lm"},
-	{Value: "vllm", Label: "vllm"},
-	{Value: "sglang", Label: "sglang"},
-	{Value: "lmstudio", Label: "lmstudio"},
+	{Value: "vllm", Label: "vLLM"},
+	{Value: "sglang", Label: "SGLang"},
+	{Value: "lmstudio", Label: "LM Studio"},
 }
 
 func (s *viewState) localEngineWizardView(c *ui.Context) {

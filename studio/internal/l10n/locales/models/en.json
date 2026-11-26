@@ -1,6 +1,6 @@
 {
   "engine.action.copy_endpoint": "Copy Service Endpoint",
-  "engine.action.go_dashboard": "Go to Tasks",
+  "engine.action.go_dashboard": "Open Benchmarks",
   "engine.action.in_progress": "{action} in progress",
   "engine.action.open_log": "Open Log File",
   "engine.action.open_webui": "Open Web UI",
@@ -68,7 +68,7 @@
   "engine.local.remove_registration": "Unregister",
   "engine.local.schema_desc": "Set definition to local-engine-installation.v1 and provide absolute paths for family, executable, working_directory, runtime_roots, and environment.",
   "engine.local.schema_fold": "installation.json Field Reference",
-  "engine.local.service_choice": "PID {pid} · {endpoint} · {count} models",
+  "engine.local.service_choice": "PID {pid} · {endpoint} · {count, plural, one {{count} model} other {{count} models}}",
   "engine.local.toast.recheck_started": "Started re-verifying engines",
   "engine.local.toast.registered": "Local engine registered",
   "engine.local.toast.removed": "Engine unregistered",
@@ -151,7 +151,7 @@
   "models.action.delete_label": "Delete · {name}",
   "models.action.download_more": "Download More",
   "models.action.go_downloads": "Go to Downloads",
-  "models.action.goto_downloads": "Go to Downloads",
+  "models.action.goto_downloads": "Open Library",
   "models.action.open_dir": "Open Folder",
   "models.action.open_dir_label": "Open Folder · {name}",
   "models.action.refresh": "Refresh",
@@ -199,7 +199,7 @@
   "models.section.installed_models": "Installed Models",
   "models.serve.action.cancel": "Cancel",
   "models.serve.action.confirm_start": "Start Model",
-  "models.serve.action.go_models": "Go to Models",
+  "models.serve.action.go_models": "Open Library",
   "models.serve.action.retry": "Retry",
   "models.serve.action.start": "Start",
   "models.serve.action.stop": "Stop",
@@ -247,7 +247,7 @@
   "models.engine.action.update_label": "Update {name}",
   "models.engine.action.check_updates": "Check Engine Updates",
   "models.engine.toast.check_up_to_date": "All engines are up to date",
-  "models.engine.toast.check_found": "{count} engine update(s) available",
+  "models.engine.toast.check_found": "{count, plural, one {{count} engine update available} other {{count} engine updates available}}",
   "models.engine.toast.update_started": "Started updating {name}",
   "models.engine.toast.update_started_preview": "Simulated updating {name}"
 }

@@ -108,12 +108,12 @@ func (s *viewState) generalSettingsView(c *ui.Context) {
 	if s.service != nil && s.service.BoundPaths() != nil {
 		p := s.service.BoundPaths()
 		card(c, tr(c, "settings.dev_paths.title"), func() {
-			keyValueRow(c, tr(c, "settings.dev_paths.source"), p.Source, false)
-			keyValueRow(c, "CLI", p.CLI, false)
-			keyValueRow(c, tr(c, "settings.dev_paths.workspace"), p.Workspace, false)
-			keyValueRow(c, tr(c, "settings.dev_paths.results"), p.Results, false)
-			keyValueRow(c, tr(c, "settings.dev_paths.models"), p.Models, false)
-			keyValueRow(c, tr(c, "settings.dev_paths.engines"), p.Engines, false)
+			pathKeyValueRow(c, tr(c, "settings.dev_paths.source"), p.Source)
+			pathKeyValueRow(c, "CLI", p.CLI)
+			pathKeyValueRow(c, tr(c, "settings.dev_paths.workspace"), p.Workspace)
+			pathKeyValueRow(c, tr(c, "settings.dev_paths.results"), p.Results)
+			pathKeyValueRow(c, tr(c, "settings.dev_paths.models"), p.Models)
+			pathKeyValueRow(c, tr(c, "settings.dev_paths.engines"), p.Engines)
 			ui.Row(c).Gap(tokens(c).Density.Row).Children(func() {
 				s.cleanWorkspaceArtifactsButton(c)
 			})

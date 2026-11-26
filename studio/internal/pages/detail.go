@@ -76,7 +76,7 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 		if elapsed != "" {
 			ui.Row(c.Key("detail-waiting-elapsed-" + d.Task.TaskId)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 				ui.Text(c, waiting)
-				ui.Text(c, "· "+elapsed).TextColor(c.Theme().TextMuted)
+				ui.Text(c, "· "+elapsed).FontFeatures("tnum").TextColor(c.Theme().TextMuted)
 			})
 		} else {
 			ui.Text(c, waiting)
@@ -86,11 +86,11 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 	headline := progressHeadline(p)
 	if elapsed != "" {
 		ui.Row(c.Key("detail-elapsed-" + d.Task.TaskId)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-			ui.Text(c, headline)
-			ui.Text(c, "· "+elapsed).TextColor(c.Theme().TextMuted)
+			ui.Text(c, headline).FontFeatures("tnum")
+			ui.Text(c, "· "+elapsed).FontFeatures("tnum").TextColor(c.Theme().TextMuted)
 		})
 	} else {
-		ui.Text(c, headline)
+		ui.Text(c, headline).FontFeatures("tnum")
 	}
 	progressBar(c, progressValue(p.Done, p.Total), tr(c, "detail.progress_bar_label"))
 	ui.Text(c, trf(c, "detail.current_case", "case_id", text(p.CurrentCaseId)))
@@ -103,7 +103,7 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 			if button(c, tr(c, "detail.table.prev_page")).Disabled(s.casesTablePage == 0).Clicked() {
 				s.casesTablePage--
 			}
-			ui.Text(c, trf(c, "detail.table.page_status", "page", s.casesTablePage+1, "totalPages", pages, "count", totalCases))
+			ui.Text(c, trf(c, "detail.table.page_status", "page", s.casesTablePage+1, "totalPages", pages, "count", totalCases)).FontFeatures("tnum")
 			if button(c, tr(c, "detail.table.next_page")).Disabled(s.casesTablePage == pages-1).Clicked() {
 				s.casesTablePage++
 			}
@@ -124,7 +124,10 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 	pageTable(c, &s.casesTable, tableLabel, columns, len(visibleCases), func(row, col int) {
 		item := visibleCases[row]
 		values := []string{item.CaseId, stateLabel(item.State), optionalText(item.Category), caseQuality(item), formatDurationMs(item.DurationMs), caseErrorCategory(item)}
-		ui.Text(c, values[col]).Selectable()
+		cell := ui.Text(c, values[col]).Selectable()
+		if col == 4 {
+			cell.FontFeatures("tnum")
+		}
 	}).Height(240).Label(tableLabel)
 }
 

@@ -132,8 +132,8 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 
 	applyMaterial(c, ui.Column(c.Key("managed-service-card-"+svcKey)).FillWidth().Padding(pad).Gap(t.Density.Row), materialCard).Radius(outerR).Children(func() {
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			toggleRow := ui.Row(c.Key("toggle-"+svcKey)).Grow(1).MinWidth(0).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).
-				Label(modelName)
+			toggleRow := ui.Row(c.Key("toggle-" + svcKey)).Grow(1).MinWidth(0).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).
+				Role(ui.RoleButton).Focusable().Label(modelName)
 			if toggleRow.Clicked() {
 				s.toggleServiceExpanded(svcKey, idx)
 			}
@@ -163,7 +163,7 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 				}
 				copyPill := ui.Row(c).AlignSelf(ui.Center).AlignItems(ui.Center).Gap(5).
 					Padding(4, 9).Radius(innerR).Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).
-					Label(tr(c, "services.card.copy_endpoint"))
+					Role(ui.RoleButton).Focusable().Label(tr(c, "services.card.copy_endpoint"))
 				if copyPill.Hovered() {
 					copyPill.Background(t.Color.SurfaceHover).Border(1, t.Color.BorderDefault)
 				}
@@ -303,7 +303,7 @@ func (s *viewState) renderOrphanedServiceCard(c *ui.Context, state core.EngineSt
 		Title:   tr(c, "services.orphan.title"),
 		Message: tr(c, "engine.service.orphan_notice"),
 		Details: func() {
-			ui.Column(c.Key("orphan-details-"+svcKey)).FillWidth().Gap(t.Density.Tight).Children(func() {
+			ui.Column(c.Key("orphan-details-" + svcKey)).FillWidth().Gap(t.Density.Tight).Children(func() {
 				if state.ModelName != "" {
 					keyValueRow(c, tr(c, "services.card.metric.model"), state.ModelName, false)
 				} else if state.Candidate != "" {

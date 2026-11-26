@@ -316,7 +316,7 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 				s.dismissToast(s.engineStartToastID)
 				s.engineStartToastID = ""
 			}
-			primaryLabel := l10n.TR("notif.action.go_tasks")
+			primaryLabel := l10n.TR("sidebar.status.open_services")
 			primaryTarget := "services"
 			if payload.Engine.Origin == core.EngineOriginStandalone {
 				primaryLabel = l10n.TR("models.serve.action.go_models")
@@ -392,7 +392,7 @@ func (s *viewState) ingestCoreEvent(event core.Event) {
 				Kind:          stateWarning,
 				NeedsDecision: true,
 				Primary: &notificationAction{
-					Label:   l10n.TR("notif.action.view_engines"),
+					Label: l10n.TR("notif.action.view_engines"),
 					OnClick: func() {
 						s.libraryTab = 1
 						s.navigateTo("library", "")

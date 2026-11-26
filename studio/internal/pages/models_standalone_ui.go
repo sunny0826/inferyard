@@ -191,14 +191,10 @@ func (s *viewState) modelStandaloneActions(c *ui.Context, m core.ModelAsset) {
 			})
 		}
 		if rowState != "preparing" {
-			targetID := svc.ServiceID
-			dangerButton(c, tr(c, "models.serve.action.stop")).Disabled(rowState == "stopping" || s.busy).OnClick(func() {
-				if targetID != "" {
-					s.stopManagedServiceByID(targetID)
-				} else {
-					s.stopStandaloneService()
-				}
-			})
+			stopLabel := tr(c, "models.serve.action.stop")
+			if dangerButton(c, stopLabel).Label(stopLabel + " · " + m.Name).Disabled(rowState == "stopping" || s.busy).Clicked() {
+				s.pendingDestructive = destructiveRequest{kind: string(destructiveStopStandalone), id: m.Name}
+			}
 		}
 	case "failed":
 		badge(c, tr(c, "models.serve.badge.failed"), stateDanger, badgeOptions{Style: badgeDot, Size: sizeSM})
@@ -225,6 +221,44 @@ func (s *viewState) modelStandaloneActions(c *ui.Context, m core.ModelAsset) {
 		}
 		if primaryButton(c, label).Label(label + " · " + m.Name).Disabled(disabled).Clicked() {
 			s.requestStandaloneStart(m, false)
+		}
+	}
+}
+
+func (s *viewState) standaloneStopDialog(c *ui.Context) {
+	targetModel := ""
+	if destructiveKind(s.pendingDestructive.kind) == destructiveStopStandalone {
+		targetModel = s.pendingDestructive.id
+	}
+	var targetID string
+	displayModel := targetModel
+	disabled := !s.idleForEngineStop()
+	if targetModel != "" {
+		if m, ok := s.findModelAsset(targetModel); ok {
+			rowState, svc, _, _, _ := s.standaloneRowState(m)
+			targetID = svc.ServiceID
+			if title := s.serviceModelTitle(c, svc); title != "" {
+				displayModel = title
+			}
+			if rowState != "starting" && rowState != "running" {
+				disabled = true
+			}
+		} else {
+			disabled = true
+		}
+	}
+	if s.destructiveDialogModal(c, destructiveOption{
+		kind:         destructiveStopStandalone,
+		id:           targetModel,
+		label:        tr(c, "services.card.stop_confirm_title"),
+		confirmLabel: tr(c, "services.card.stop_confirm_action"),
+		prompt:       trf(c, "services.card.stop_confirm_prompt", "model", displayModel),
+		disabled:     disabled,
+	}) {
+		if targetID != "" {
+			s.stopManagedServiceByID(targetID)
+		} else {
+			s.stopStandaloneService()
 		}
 	}
 }

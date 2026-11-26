@@ -84,12 +84,32 @@ func (s *viewState) selectPageNow(id string) {
 	}()
 }
 
+func (s *viewState) resetActivePage(resolved string) {
+	switch resolved {
+	case "benchmarks":
+		s.detailID = ""
+		if !s.newTaskPending {
+			s.benchFlowOpen = false
+		}
+		if s.speed != nil {
+			s.speed.opened = nil
+		}
+	case "reports":
+		if s.openedReport != nil {
+			s.closeOpenedReport()
+			s.reportsTab = reportsTabList
+		}
+		if s.speed != nil {
+			s.speed.opened = nil
+		}
+	}
+	s.pageScroll().ScrollTo(0, 0, ui.Animation{})
+}
+
 func (s *viewState) selectPage(id string) {
 	resolved := canonicalPageID(id)
 	if canonicalPageID(s.selected) == resolved && id == resolved {
-		if resolved == "benchmarks" {
-			s.detailID = ""
-		}
+		s.resetActivePage(resolved)
 		return
 	}
 	if s.guardLeaveSettings(resolved, func() { s.selectPageNow(id) }) {
@@ -179,7 +199,7 @@ func (s *viewState) sidebarNavRow(c *ui.Context, id, label string, icon func() *
 		row.Background(t.Color.SurfaceHover)
 	}
 	row.Children(func() {
-		btn := ui.Row(c.Key("nav-btn-"+id)).Grow(1).MinWidth(0).AlignItems(ui.Center).Gap(t.Density.Row).
+		btn := ui.Row(c.Key("nav-btn-" + id)).Grow(1).MinWidth(0).AlignItems(ui.Center).Gap(t.Density.Row).
 			Role(ui.RoleButton).Focusable().Label(label)
 		if btn.Clicked() {
 			onSelect()
@@ -201,7 +221,8 @@ func (s *viewState) newTaskPlusButton(c *ui.Context) {
 	hint := s.newTaskEntryHintFor(contextLocale(c))
 	label := tr(c, "shell.nav.new_task")
 	if hint == "" {
-		plus := iconButton(c, lucide.Plus, label, components.IconButtonCompact).Size(22, 22).Padding(0).AlignSelf(ui.Center)
+		plus := iconButton(c, lucide.Plus, label, components.IconButtonCompact).Size(24, 24).Padding(0).AlignSelf(ui.Center)
+		components.Tooltip(c, plus, label)
 		if plus.Clicked() {
 			if s.guardLeaveSettings("benchmarks", func() { s.newBenchmark() }) {
 				return
@@ -212,7 +233,7 @@ func (s *viewState) newTaskPlusButton(c *ui.Context) {
 	}
 	wrap := ui.Box(c).AlignSelf(ui.Center)
 	wrap.Children(func() {
-		iconButton(c, lucide.Plus, label, components.IconButtonCompact).Size(22, 22).Padding(0).Disabled(true).Description(hint)
+		iconButton(c, lucide.Plus, label, components.IconButtonCompact).Size(24, 24).Padding(0).Disabled(true).Description(hint)
 	})
 	components.Tooltip(c, wrap, hint)
 }

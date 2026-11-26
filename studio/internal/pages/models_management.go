@@ -261,7 +261,8 @@ func (s *viewState) modelStorageAndRootsView(c *ui.Context) {
 					dir := rawDir
 					c.Key("model-root-" + dir)
 					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-						ui.Text(c, dir).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine()
+						dirText := ui.Text(c, dir).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine().TruncateMiddle()
+						components.Tooltip(c, dirText, dir)
 						if s.isExtraModelRootDir(dir, primaryRoot) {
 							sizedButton(c, components.ButtonGhost, sizeSM, tr(c, "models.roots.remove")).
 								Label(trf(c, "models.roots.remove_label", "dir", dir)).

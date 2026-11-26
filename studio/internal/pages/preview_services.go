@@ -406,7 +406,7 @@ func (p *previewSession) checkEngineUpdates() {
 		}
 	}
 	if count > 0 {
-		p.state.enqueueStatusToast(l10n.TRf("models.engine.toast.check_found", "count", strconv.Itoa(count)))
+		p.state.enqueueStatusToast(l10n.TRf("models.engine.toast.check_found", "count", count))
 	} else {
 		p.state.enqueueStatusToast(l10n.TR("models.engine.toast.check_up_to_date"))
 	}

@@ -237,15 +237,23 @@ func validatedField(c *ui.Context, opts validatedFieldOptions) ui.Element {
 }
 
 func switchField(c *ui.Context, label, description string, on *bool) ui.Element {
+	return labeledSwitchRow(c, label, description, label, on)
+}
+
+func labeledSwitchRow(c *ui.Context, label, description, switchLabel string, on *bool) ui.Element {
 	t := tokens(c)
 	return ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Section).Children(func() {
-		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
+		labelCol := ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline)
+		if on != nil && labelCol.Clicked() {
+			*on = !*on
+		}
+		labelCol.Children(func() {
 			ui.Text(c, label).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary)
 			if description != "" {
 				ui.Text(c, description).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			}
 		})
-		components.Switch(c, on, label, components.SwitchOptions{HideLabel: true})
+		components.Switch(c, on, switchLabel, components.SwitchOptions{HideLabel: true})
 	})
 }
 
@@ -304,7 +312,7 @@ func listRow(c *ui.Context, opts listRowOptions) ui.Element {
 		row.Background(t.Color.SurfaceHover)
 	}
 	if opts.OnClick != nil {
-		row.OnClick(opts.OnClick)
+		row.Role(ui.RoleButton).Focusable().OnClick(opts.OnClick)
 	}
 	row.Children(func() {
 		if opts.Leading != nil {
@@ -342,6 +350,26 @@ func keyValueRow(c *ui.Context, key, value string, tabular bool) {
 		val := ui.Text(c, display).FontSize(t.Type.Body).TextColor(valColor).Selectable()
 		if tabular {
 			val.FontFeatures("tnum")
+		}
+	})
+}
+
+func pathKeyValueRow(c *ui.Context, key, value string) {
+	t := tokens(c)
+	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Section).
+		Padding(t.Density.Tight, 0).Children(func() {
+		ui.Box(c).Width(140).Shrink(0).Children(func() {
+			ui.Text(c, key).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		})
+		display := value
+		valColor := t.Color.FgPrimary
+		if display == "" {
+			display = tr(c, "common.missing")
+			valColor = t.Color.FgTertiary
+		}
+		val := ui.Text(c, display).FontSize(t.Type.Body).TextColor(valColor).Grow(1).MinWidth(0).SingleLine().TruncateMiddle().Selectable()
+		if value != "" {
+			components.Tooltip(c, val, value)
 		}
 	})
 }

@@ -291,7 +291,7 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 				Size:    bannerCompact,
 				Message: tr(c, "engine.notice.orphan_unconfirmed"),
 			})
-			button(c, tr(c, "engine.action.go_dashboard")).FillWidth().Padding(theme.Space(1.75), theme.Space(3.5)).Radius(theme.Space(2.5)).OnClick(func() {
+			button(c, tr(c, "notif.action.resolve")).FillWidth().Padding(theme.Space(1.75), theme.Space(3.5)).Radius(theme.Space(2.5)).OnClick(func() {
 				s.navigateTo("services", "")
 				close()
 			})
@@ -304,7 +304,7 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 			}
 			if s.managedEngineCandidate() == "" && state.Origin != core.EngineOriginStandalone {
 				ui.Text(c, tr(c, "engine.notice.need_candidate")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-				button(c, tr(c, "engine.action.go_dashboard")).FillWidth().Padding(theme.Space(1.75), theme.Space(3.5)).Radius(theme.Space(2.5)).OnClick(func() {
+				button(c, tr(c, "services.empty.go_benchmarks")).FillWidth().Padding(theme.Space(1.75), theme.Space(3.5)).Radius(theme.Space(2.5)).OnClick(func() {
 					s.openBenchmarksFlow()
 					close()
 				})

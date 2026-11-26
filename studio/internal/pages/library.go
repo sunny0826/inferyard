@@ -46,6 +46,7 @@ func (s *viewState) libraryView(c *ui.Context) {
 	})
 
 	s.standaloneDrawer(c)
+	s.standaloneStopDialog(c)
 	s.assetDeleteDialog(c, pending)
 	s.downloadsEngineDrawer(c)
 	s.downloadsModelDrawer(c)

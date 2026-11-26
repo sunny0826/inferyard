@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
 )
@@ -275,7 +276,7 @@ func (s *viewState) localServicePicker(c *ui.Context, pidLabel, endpointLabel st
 	if choices := s.localServiceChoices(); len(choices) > 0 {
 		ui.Text(c, tr(c, "engine.local.discovered_hint")).TextColor(c.Theme().TextMuted)
 		for _, choice := range choices {
-			label := trf(c, "engine.local.service_choice", "pid", strconv.FormatInt(choice.pid, 10), "endpoint", choice.endpoint, "count", strconv.Itoa(choice.models))
+			label := trf(c, "engine.local.service_choice", "pid", strconv.FormatInt(choice.pid, 10), "endpoint", choice.endpoint, "count", choice.models)
 			if name := displayName(choice.name); name != "" {
 				label += " · " + name
 			}
@@ -313,9 +314,10 @@ func (s *viewState) localInstallationsView(c *ui.Context) {
 		})
 		for _, path := range s.settings.Settings.EngineInstallations {
 			path := path
-			ui.Row(c.Key(path)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-				ui.Text(c, path)
-				if dangerButton(c, tr(c, "engine.local.remove_registration")).AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
+			ui.Row(c.Key(path)).FillWidth().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+				pathText := ui.Text(c, path).Grow(1).MinWidth(0).SingleLine().TruncateMiddle().Selectable()
+				components.Tooltip(c, pathText, path)
+				if dangerButton(c, tr(c, "engine.local.remove_registration")).AlignSelf(ui.Center).Shrink(0).Disabled(s.busy).Clicked() {
 					s.removeInstallationWithUndo(path)
 				}
 			})

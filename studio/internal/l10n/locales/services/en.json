@@ -45,7 +45,7 @@
   "services.recent.action.params": "Params",
   "services.recent.action.start": "▶ Start",
   "services.discovered.external_badge": "External",
-  "services.discovered.models_count": "{count} models",
+  "services.discovered.models_count": "{count, plural, one {{count} model} other {{count} models}}",
   "services.discovered.copy_url": "Copy URL",
   "services.discovered.usage": "Usage Examples",
   "services.discovered.benchmark": "Benchmark",
