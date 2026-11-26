@@ -318,7 +318,7 @@ func (s *Service) StartStandalone(ctx context.Context, req StandaloneStartReques
 			reservedPort = cachedPort
 			startup = cached
 			reused = true
-		} else if cached.Family != "polystrata" {
+		} else {
 			targetPort, portErr := s.reserveStandalonePort(bindHost, req.Port)
 			if portErr != nil {
 				return EngineState{}, portErr

@@ -161,6 +161,7 @@ def test_cross_installation_strata_config_rebinds_worker_executable_and_passes_w
                     str(new_root / "data" / "expert-profile.bin"),
                     "--mtp",
                     str(mtp_dir),
+                    "--vision",
                     "--max-context",
                     "32768",
                 ],
@@ -198,10 +199,35 @@ def test_cross_installation_strata_config_rebinds_worker_executable_and_passes_w
     old_root = strata_old.parent.parent.resolve()
     assert derived_cfg["exe"] == str(strata_old.resolve())
     assert derived_cfg["cwd"] == str(old_root)
-    assert "log" not in derived_cfg
-    assert derived_cfg["vision"]["exe"] == str((strata_old.parent / "strata-vision").resolve())
+    assert derived_cfg["log"] == str((tmp_path / "logs" / "polystrata-engine.log").resolve())
+    assert not Path(derived_cfg["log"]).is_relative_to(old_root)
+    assert not Path(derived_cfg["log"]).is_relative_to(new_root.resolve())
+    assert "vision" not in derived_cfg
+    assert "--vision" not in derived_cfg["args"]
     ep_idx = derived_cfg["args"].index("--expert-profile")
     assert derived_cfg["args"][ep_idx + 1] == str((old_root / "data" / "expert-profile.bin").resolve())
+
+    # Standalone service resolution (include_vision=True) still preserves and rebinds vision.exe.
+    from inferyard.config.local_engines.polystrata import resolve_polystrata_model
+    from inferyard.platforms.local_engines import read_installation
+
+    serve_out = tmp_path / "serve-cross"
+    serve_out.mkdir()
+    _, _, serve_derived, _, _, _, _ = resolve_polystrata_model(
+        read_installation(inst_old),
+        cfg_new,
+        serve_out,
+        32768,
+        system="Darwin",
+        served_model=None,
+        port=48857,
+        include_vision=True,
+        managed_log_path=serve_out / "strata-engine.log",
+    )
+    assert serve_derived is not None
+    assert serve_derived["vision"]["exe"] == str((strata_old.parent / "strata-vision").resolve())
+    assert serve_derived["log"] == str(serve_out / "strata-engine.log")
+    assert "--vision" in serve_derived["args"]
 
     # Verify assets() and observe_workers() accept the rebound worker executable.
     loaded_cfg = load_config(details["candidate"]).config.to_dict()

@@ -68,6 +68,7 @@ def test_serve_prepare_polystrata_gguf_and_atomic_reprepare(capsys, monkeypatch,
     assert cfg1_path.is_file()
     cfg1 = json.loads(cfg1_path.read_text(encoding="utf-8"))
     assert cfg1["port"] == 49040
+    assert cfg1["log"] == str((out / "strata-engine.log").resolve())
     assert "--max-context" in cfg1["args"] and "12000" in cfg1["args"]
 
     # If publishing serve-plan.json fails on re-prepare, prior plan and config stay intact.

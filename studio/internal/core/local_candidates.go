@@ -113,6 +113,7 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 	}
 	seen := map[string]bool{}
 	candidates := []CandidateRun{}
+	var sharedInstallation string
 	for _, bundle := range req.Bundles {
 		if ctx.Err() != nil {
 			return nil, Err("cancelled")
@@ -125,13 +126,16 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 		if err != nil {
 			return nil, Err("invalid_request")
 		}
-		installation := selected.installation
-		if family == "sglang" && req.ServicePID == 0 {
-			installation, failure = scopedSGLangInstallation(*workspace, installation, key)
-			if failure != nil {
-				return nil, failure
+		if sharedInstallation == "" {
+			sharedInstallation = selected.installation
+			if family == "sglang" && req.ServicePID == 0 {
+				sharedInstallation, failure = scopedSGLangInstallation(*workspace, sharedInstallation, key)
+				if failure != nil {
+					return nil, failure
+				}
 			}
 		}
+		installation := sharedInstallation
 		output, failure := NextOutput(*workspace, "candidates", bundle)
 		if failure != nil {
 			return nil, failure

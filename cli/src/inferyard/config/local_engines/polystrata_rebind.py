@@ -242,6 +242,11 @@ def _rebind_lib_dirs(payload: dict, target_exe: Path, inst_root: Path) -> list[s
     return result
 
 
+def _strip_vision_args(args: list[str]) -> tuple[list[str], bool]:
+    filtered = [arg for arg in args if arg != "--vision" and not arg.startswith("--vision=")]
+    return filtered, len(filtered) != len(args)
+
+
 def rebind_or_keep_polystrata_config(
     payload: dict,
     installation: dict,
@@ -263,6 +268,8 @@ def rebind_or_keep_polystrata_config(
     resolve_ref: Callable[[str, tuple[Path, ...]], Path | None],
     set_arg_value: Callable[[list[str], str, str], list[str]],
     system: str,
+    include_vision: bool = True,
+    managed_log_path: Path | None = None,
 ) -> tuple[Path | None, dict | None, Path]:
     """Return (derived_config_path_or_None, derived_payload_or_None, target_exe)."""
     inst_root = Path(installation["working_directory"]).resolve(strict=True)
@@ -292,14 +299,17 @@ def rebind_or_keep_polystrata_config(
         )
         if expected_backend is not None and src_backend != expected_backend:
             raise PreparationError("polystrata_backend_unsupported")
-    rebound_vision, vision_rebound = _rebind_vision(
-        payload,
-        target_exe,
-        runtime_roots,
-        orig_bases,
-        resolve_ref=resolve_ref,
-        system=system,
-    )
+    if include_vision:
+        rebound_vision, vision_rebound = _rebind_vision(
+            payload,
+            target_exe,
+            runtime_roots,
+            orig_bases,
+            resolve_ref=resolve_ref,
+            system=system,
+        )
+    else:
+        rebound_vision, vision_rebound = None, False
     cwd_mismatch = False
     raw_cwd = payload.get("cwd")
     if isinstance(raw_cwd, str) and raw_cwd.strip():
@@ -313,6 +323,7 @@ def rebind_or_keep_polystrata_config(
 
     rewritten_args: list[str] | None = None
     ep_rebound = False
+    arg_vision_stripped = False
     if isinstance(payload.get("args"), list):
         rewritten_args, ep_rebound = _rewrite_args(
             payload["args"],
@@ -322,12 +333,19 @@ def rebind_or_keep_polystrata_config(
             exe_rebound=exe_rebound,
             resolve_ref=resolve_ref,
         )
+        if not include_vision:
+            rewritten_args, arg_vision_stripped = _strip_vision_args(rewritten_args)
+
+    vision_stripped = not include_vision and ("vision" in payload or arg_vision_stripped)
+    log_rebound = managed_log_path is not None and payload.get("log") != str(managed_log_path)
 
     needs_derive = (
         (context_size is not None and existing_ctx != context_size)
         or (served_model is not None and served_model != json_model_name)
         or exe_rebound
         or vision_rebound
+        or vision_stripped
+        or log_rebound
         or cwd_mismatch
         or ep_rebound
     )
@@ -338,8 +356,12 @@ def rebind_or_keep_polystrata_config(
     derived["exe"] = str(target_exe)
     derived["cwd"] = str(inst_root)
     derived["model_name"] = resolved_served
-    if rebound_vision is not None:
+    if not include_vision:
+        derived.pop("vision", None)
+    elif rebound_vision is not None:
         derived["vision"] = rebound_vision
+    if managed_log_path is not None:
+        derived["log"] = str(managed_log_path)
     has_build_meta = any((target_exe.parent / n).is_file() for n in POLYSTRATA_BUILD_JSON_NAMES)
     if exe_rebound and ("lib_dirs" in derived or has_build_meta):
         new_libs = _rebind_lib_dirs(payload, target_exe, inst_root)

@@ -66,7 +66,7 @@ func loadCachedStandalonePlan(planPath string, modelPath string, eng registryEnt
 }
 
 func rewriteStartupPort(startup Startup, newPort int) (Startup, bool) {
-	if startup.Family == "polystrata" || newPort <= 0 || newPort > 65535 {
+	if newPort <= 0 || newPort > 65535 {
 		return Startup{}, false
 	}
 	host, _, apiErr := validateStartup(startup)
