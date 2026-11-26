@@ -25,8 +25,11 @@ func httpBody(status int, body string) *http.Response {
 func stubInstall(t *testing.T) {
 	t.Helper()
 	look, stat, httpDo, cmdOut := installLookPath, installStat, installHTTPDo, installCommandOutput
+	retryDelays := autoCLIUpgradeRetryDelays
+	autoCLIUpgradeRetryDelays = nil
 	t.Cleanup(func() {
 		installLookPath, installStat, installHTTPDo, installCommandOutput = look, stat, httpDo, cmdOut
+		autoCLIUpgradeRetryDelays = retryDelays
 	})
 	home := t.TempDir()
 	t.Setenv("HOME", home)

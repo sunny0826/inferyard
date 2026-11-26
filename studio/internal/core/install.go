@@ -11,6 +11,7 @@ import (
 	"inferyard/studio/internal/l10n"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,12 +24,69 @@ const installPython = "3.15.2"
 
 const uvRelease = "0.13.6"
 
+type installProxyCtxKey struct{}
+
+func withInstallProxy(ctx context.Context, proxy string) context.Context {
+	trimmed := strings.TrimSpace(proxy)
+	if trimmed == "" || !ValidateDownloadProxy(trimmed) {
+		return ctx
+	}
+	return context.WithValue(ctx, installProxyCtxKey{}, trimmed)
+}
+
+func installProxyFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	proxy, _ := ctx.Value(installProxyCtxKey{}).(string)
+	return proxy
+}
+
+func applyInstallProxyEnv(environ []string, proxy string) []string {
+	if strings.TrimSpace(proxy) == "" {
+		return environ
+	}
+	filtered := make([]string, 0, len(environ)+6)
+	for _, entry := range environ {
+		k, _, ok := strings.Cut(entry, "=")
+		if ok {
+			switch strings.ToUpper(k) {
+			case "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY":
+				continue
+			}
+		}
+		filtered = append(filtered, entry)
+	}
+	return append(filtered,
+		"HTTP_PROXY="+proxy,
+		"HTTPS_PROXY="+proxy,
+		"ALL_PROXY="+proxy,
+		"http_proxy="+proxy,
+		"https_proxy="+proxy,
+		"all_proxy="+proxy,
+	)
+}
+
+func defaultInstallHTTPDo(req *http.Request) (*http.Response, error) {
+	if proxy := installProxyFromContext(req.Context()); proxy != "" {
+		if proxyURL, err := url.Parse(proxy); err == nil {
+			tr := &http.Transport{Proxy: http.ProxyURL(proxyURL)}
+			defer tr.CloseIdleConnections()
+			return (&http.Client{Transport: tr}).Do(req)
+		}
+	}
+	return http.DefaultClient.Do(req)
+}
+
 var (
-	installHTTPDo        = http.DefaultClient.Do
+	installHTTPDo        = defaultInstallHTTPDo
 	installLookPath      = exec.LookPath
 	installStat          = os.Stat
 	installCommandOutput = func(ctx context.Context, path string, args ...string) ([]byte, error) {
 		cmd := exec.CommandContext(ctx, path, args...)
+		if proxy := installProxyFromContext(ctx); proxy != "" {
+			cmd.Env = applyInstallProxyEnv(os.Environ(), proxy)
+		}
 		return cmd.CombinedOutput()
 	}
 )
@@ -390,6 +448,7 @@ func (s *Service) installCLILocked(ctx context.Context, onStatus func(string)) (
 	}
 	toolsDir := filepath.Join(filepath.Dir(s.settingsPath), "tools")
 	initialSettings := s.userSettings()
+	ctx = withInstallProxy(ctx, str(initialSettings.DownloadProxy))
 	initialCLIPath := str(initialSettings.InferyardPath)
 	reusable, outdated := s.inspectCLIForInstall(initialSettings)
 	if reusable != "" {
