@@ -326,7 +326,9 @@ def test_local_host_admit_reuses_clean_service_and_require_gone_guards_dirty(
         assert inspect_after_fail.state["dirty"] is True
         assert inspect_after_fail.state["local_service"]["service"] == svc_a
 
-    # Case 2: Both A and A's worker exited, B is alive -> recovery succeeds and clean() persists B.
+    # Case 2: Both A and A's worker exited, B is alive -> native clean_observed persists B.
+    from inferyard.runtime.service_observation import clean_observed
+
     def _only_b_alive(pid: int) -> int:
         if pid == 903:
             return 333
@@ -337,7 +339,7 @@ def test_local_host_admit_reuses_clean_service_and_require_gone_guards_dirty(
         admit(ok_rec, config, {"bundle_id": "zh-core"}, id_b, _only_b_alive)
         rec = ok_rec.verify_manual_recovery(token, "stopped A and worker", ep_b)
         assert rec["old_process_gone"] is True
-        ok_rec.clean()
+        clean_observed(ok_rec, SimpleNamespace(observation_mode="native"), None, recovery=rec)
 
     with lock_mod.HostLock() as inspect_after_ok:
         assert inspect_after_ok.state["dirty"] is False
