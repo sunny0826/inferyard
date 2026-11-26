@@ -71,12 +71,13 @@ func (s *viewState) ensureManualProcesses() {
 }
 
 func (s *viewState) applyDashboard(v dashboardSnapshot, e *core.ApiError) {
-	s.refreshFailure = ""
+	s.refreshFailure, s.refreshFailureCode = "", ""
 	if e == nil {
 		e = v.failure
 	}
 	if e != nil {
 		s.refreshFailure = human(e.Code)
+		s.refreshFailureCode = e.Code
 	}
 	if s.initDir == "" {
 		s.initDir = emptyText(s.ready.Workspace.Path)

@@ -17,6 +17,16 @@ type serviceCaches struct {
 	runs         map[string]cachedRunScan
 }
 
+func (c *serviceCaches) clearAll() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.reports = nil
+	c.runInputs = nil
+	c.speedResults = nil
+	c.candidates = nil
+	c.runs = nil
+}
+
 type cachedStudioReport struct {
 	size    int64
 	modTime int64

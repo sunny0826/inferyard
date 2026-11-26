@@ -17,7 +17,8 @@ func (s *viewState) resetWorkspace() {
 	s.initDir, s.engine, s.process, s.bindEndpoint, s.candidate = "", "", "", "", ""
 	s.bindingStale = false
 	s.engineState, s.startup, s.processes = core.EngineState{}, core.Startup{}, nil
-	s.cliInstallStatus, s.refreshFailure = "", ""
+	s.cliInstallStatus, s.refreshFailure, s.refreshFailureCode = "", "", ""
+	s.cleanArtifactsConfirm = false
 	s.runProgress, s.progress, s.resumeSource, s.detail = nil, nil, nil, nil
 	s.endpoint, s.pid, s.detailID = "", "", ""
 	s.detailMu.Lock()

@@ -95,6 +95,10 @@ func (previewRetryDownload) previewIntent() {}
 
 type previewSettings struct{ patch map[string]json.RawMessage }
 
+type previewCleanWorkspaceArtifacts struct{}
+
+func (previewCleanWorkspaceArtifacts) previewIntent() {}
+
 type previewBrowsePath struct{ key string }
 
 func (previewBrowsePath) previewIntent() {}

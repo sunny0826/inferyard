@@ -172,6 +172,7 @@ func (s *viewState) contentView(c *ui.Context) {
 	}
 	s.resumeDialog(c)
 	s.settingsDiscardDialog(c)
+	s.cleanWorkspaceArtifactsDialog(c)
 	s.standaloneDialogs(c)
 	s.serviceDrawersAndDialogs(c)
 	s.updateDialog(c)

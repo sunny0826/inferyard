@@ -176,6 +176,9 @@ func (s *viewState) feedback(c *ui.Context) {
 			s.failurePage = ""
 		} else if !s.stepOwnsError(s.failure) {
 			errorRecoveryBanner(c, s.failure, func() {
+				if s.failure.Code == "workspace_artifact_unreadable" {
+					s.cleanWorkspaceArtifactsButton(c)
+				}
 				if ghostButton(c, tr(c, "dashboard.feedback.close")).Clicked() {
 					s.failure = nil
 					s.failurePage = ""
@@ -189,9 +192,13 @@ func (s *viewState) feedback(c *ui.Context) {
 			Size:    bannerCompact,
 			Message: s.refreshFailure,
 			Actions: func() {
+				if s.refreshFailureCode == "workspace_artifact_unreadable" {
+					s.cleanWorkspaceArtifactsButton(c)
+				}
 				button(c, tr(c, "dashboard.feedback.retry")).OnClick(s.refreshAction)
 				if ghostButton(c, tr(c, "dashboard.feedback.close")).Clicked() {
 					s.refreshFailure = ""
+					s.refreshFailureCode = ""
 				}
 			},
 		})

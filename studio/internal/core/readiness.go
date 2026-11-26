@@ -81,15 +81,25 @@ func directoryReadiness(path *string, configured bool) DirectoryReadiness {
 	}
 	return r
 }
+func isInitializedWorkspace(wsPath string) bool {
+	if strings.TrimSpace(wsPath) == "" {
+		return false
+	}
+	raw, err := os.ReadFile(filepath.Join(wsPath, "preparation.json"))
+	if err != nil {
+		return false
+	}
+	var prep struct {
+		Kind string `json:"kind"`
+	}
+	return json.Unmarshal(raw, &prep) == nil && prep.Kind == "community_init.v1"
+}
+
 func (s *Service) Readiness() Readiness {
 	u := s.userSettings()
 	w := directoryReadiness(workspaceRoot(u), u.WorkspaceRoot != nil)
 	if w.Exists {
-		raw, err := os.ReadFile(filepath.Join(*w.Path, "preparation.json"))
-		var prep struct {
-			Kind string `json:"kind"`
-		}
-		w.Initialized = err == nil && json.Unmarshal(raw, &prep) == nil && prep.Kind == "community_init.v1"
+		w.Initialized = isInitializedWorkspace(*w.Path)
 	}
 	results := s.resultsRoot(u)
 	models := s.modelsRoot(u)
