@@ -112,14 +112,16 @@ func previewBase(ctx context.Context) *viewState {
 	reportsRoot := previewValue(filepath.Join(root, "reports"))
 	s := &viewState{
 		speed: &speedWorkspace{context: inferyard.ContextSpeed64K},
-		buildInfo: func() core.BuildInfo {
-			return core.BuildInfo{
-				Version:   "0.0.14",
-				BuildTime: "2026-11-25T03:30:00Z",
-				GitCommit: "0123456789abcdef0123456789abcdef01234567",
-			}
+		settingsViewState: settingsViewState{
+			buildInfo: func() core.BuildInfo {
+				return core.BuildInfo{
+					Version:   "0.0.14",
+					BuildTime: "2026-11-25T03:30:00Z",
+					GitCommit: "0123456789abcdef0123456789abcdef01234567",
+				}
+			},
 		},
-		ctx:   ctx, selected: "benchmarks", benchFlowOpen: true, loaded: true, settingsLoaded: true, serveSupported: true,
+		ctx: ctx, selected: "benchmarks", benchFlowOpen: true, loaded: true, settingsLoaded: true, serveSupported: true,
 		denied: map[string]bool{}, model: model, engine: engine, discoveryLoaded: true,
 		engineState: core.EngineState{State: "stopped"},
 		ready: core.Readiness{
