@@ -69,7 +69,9 @@ func metricCard(c *ui.Context, label, value, detail, note string) {
 		Children(func() {
 			ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			ui.Text(c, value).Bold().FontSize(t.Type.MetricLarge).FontFeatures("tnum").Selectable()
-			ui.Text(c, detail).TextColor(t.Color.FgSecondary)
+			if detail != "" {
+				ui.Text(c, detail).TextColor(t.Color.FgSecondary)
+			}
 			if note != "" {
 				ui.Text(c, note).TextColor(t.Color.FgSecondary)
 			}

@@ -205,12 +205,34 @@ func previewRunning(s *viewState) {
 }
 
 func previewCompleted(s *viewState) {
+	s.benchFlowOpen = false
 	s.task.stage, s.task.report = "done", "preview-report"
 	s.progress.NextAction, s.progress.DefaultScopeComplete = "done", true
 	s.progress.Report = inferyard.ProgressReport{Status: "present", Path: previewValue("preview-report"), Runs: []string{"preview-run"}}
 	for i := range s.progress.Bundles {
 		s.progress.Bundles[i].Phase, s.progress.Bundles[i].NextAction = "run_complete", "none"
 	}
+	batchID := "preview-batch-01"
+	partialRun := core.RunSummary{
+		RunId:        "preview-batch-run",
+		Path:         "/preview/results/preview-batch-run",
+		BatchId:      previewValue(batchID),
+		ModelName:    previewValue("Preview-Small.gguf"),
+		Engine:       previewValue(s.engine),
+		Bundle:       previewValue(inferyard.DefaultBundlePelican),
+		Status:       "partial",
+		Sealed:       false,
+		Completeness: previewValue("partial"),
+		StopReason:   previewValue("interrupted_checkpoint"),
+		Resumable:    true,
+		StartedAt:    previewValue("2026-10-17T00:12:00Z"),
+		Score:        &core.RunScore{Passed: 2, Valid: 5, Rate: previewValue(0.4)},
+	}
+	s.history.Batches = []core.BatchSummary{{
+		BatchId: batchID,
+		Path:    "/preview/results/" + batchID,
+		Runs:    []core.RunSummary{partialRun},
+	}}
 }
 
 func previewReportSummary(id string) core.ReportSummary {

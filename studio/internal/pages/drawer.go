@@ -26,10 +26,9 @@ var (
 		Exit:     &ui.Motion{Opacity: 0},
 	}
 	drawerSlide = ui.ElementTransition{
-		Duration: 180 * time.Millisecond,
-		Colors:   true,
-		Enter:    &ui.Motion{Opacity: 0, X: 24},
-		Exit:     &ui.Motion{Opacity: 0, X: 24},
+		Duration: 160 * time.Millisecond,
+		Enter:    &ui.Motion{Opacity: 1, X: 28},
+		Exit:     &ui.Motion{Opacity: 1, X: 28},
 	}
 )
 
@@ -61,11 +60,15 @@ func drawer(c *ui.Context, open *bool, options drawerOptions, build func(panel u
 		*open = false
 	}
 
+	reduceMotion := c.Preferences().ReduceMotion
 	ui.Overlay(c, func() {
-		ui.Box(c).Absolute().Left(0).Top(0).Right(0).Bottom(0).
-			Background(ui.RGBA(0, 0, 0, .18)).Transition(drawerFade)
+		backdrop := ui.Box(c).Absolute().Left(0).Top(0).Right(0).Bottom(0).
+			Background(ui.RGBA(0, 0, 0, .18))
+		if !reduceMotion {
+			backdrop.Transition(drawerFade)
+		}
 		back := ui.Row(c).Absolute().Left(0).Top(0).Right(0).Bottom(0).
-			Justify(ui.End).Modal().Transition(drawerSlide)
+			Justify(ui.End).Modal()
 		clicked := back.Clicked()
 		escape := back.OverlayShortcut(0, ui.KeyEscape)
 		if !options.SuspendDismiss && (clicked || escape) {
@@ -82,6 +85,9 @@ func drawer(c *ui.Context, open *bool, options drawerOptions, build func(panel u
 					TextColor(t.Color.FgPrimary),
 				t.Elevation.LG,
 			)
+			if !reduceMotion {
+				panel.Transition(drawerSlide)
+			}
 			panel.Clicked()
 			panel.Children(func() {
 				if options.Title != "" {

@@ -78,8 +78,8 @@ mise run test:studio                 # Studio Go unit tests (macOS)
 mise run test:studio:preview         # UI debug preview Go tests (macOS)
 mise run test:studio:e2e             # Boundary E2E with synced CLI (cross-platform)
 mise run test:studio:e2e:polystrata  # Real-machine PolyStrata lifecycle E2E (opt-in, uses local assets)
-mise run test:studio-ui              # macOS native UI E2E: daily 3 workflows
-mise run test:studio-ui:full         # macOS native UI E2E: all 7 workflows
+mise run test:studio-ui              # macOS native UI E2E: daily 4 workflows
+mise run test:studio-ui:full         # macOS native UI E2E: all 8 workflows
 mise run test:studio-ui:polystrata   # Local-only real-window PolyStrata UI E2E (not run in CI)
 ```
 

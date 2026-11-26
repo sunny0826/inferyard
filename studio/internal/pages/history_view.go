@@ -251,7 +251,7 @@ func (s *viewState) historyView(c *ui.Context) {
 				s.refreshAction()
 			}
 			if len(runs) > 0 {
-				if outlineButton(c, tr(c, "reports.action.create_from_history")).Clicked() {
+				if button(c, tr(c, "reports.action.create_from_history")).Clicked() {
 					s.reportDialogOpen = true
 					s.reportDiscardConfirm = false
 				}
@@ -471,7 +471,7 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 					keyValueRow(c, tr(c, "dashboard.history.mode_label"), modeVal, false)
 					evidenceVal := sealedLabel
 					if comp := strings.TrimSpace(emptyText(run.Completeness)); comp != "" {
-						evidenceVal = trf(c, "dashboard.history.sealed_completeness", "sealed", sealedLabel, "completeness", stateLabelFor(loc, comp))
+						evidenceVal = sealedLabel + " · " + stateLabelFor(loc, comp)
 					}
 					keyValueRow(c, tr(c, "dashboard.history.evidence_label"), evidenceVal, false)
 					keyValueRow(c, tr(c, "dashboard.history.col_started"), historyStarted(run), true)
