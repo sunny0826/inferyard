@@ -62,8 +62,9 @@ func runLocalBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result
 			if failure != nil {
 				return failure
 			}
+		} else {
+			initial = nil
 		}
-		initial = nil
 	}
 	if len(candidates) > 0 {
 		announce("run")

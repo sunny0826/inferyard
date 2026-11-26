@@ -20,6 +20,7 @@ type previewLocalTask struct {
 	index    int
 	family   string
 	pid      int64
+	reused   bool
 	usedPIDs map[int64]bool
 	fail     bool
 }
@@ -109,16 +110,29 @@ func (p *previewSession) beginLocalBenchmark(op previewBenchmark, retry bool) {
 	p.cancelEvents("task")
 	p.local = &previewLocalTask{op: op, family: family, usedPIDs: used, fail: p.takeFailure()}
 	pid := int64(0)
-	if !retry {
+	endpoint := s.localEndpoint
+	if op.reusedService != nil && family != "lmstudio" {
+		pid = op.reusedService.Pid
+		endpoint = op.reusedService.Endpoint
+		p.local.pid = pid
+		p.local.reused = true
+		if !retry {
+			s.task.runs = nil
+		}
+	} else if !retry {
 		pid, _ = strconv.ParseInt(s.localPID, 10, 64)
 		p.local.pid = pid
 		s.task.runs = nil
 	} else {
 		s.localPID = ""
 	}
-	s.busy, s.failure, s.task.failure = true, nil, nil
+	s.busy, s.busyAction, s.failure, s.task.failure = true, "prepare-benchmark", nil, nil
 	s.task.stage, s.task.bundles = "prepare_candidate", allBundles
-	s.task.start = startChainResult{workspace: s.workspace, localRequest: &core.LocalCandidateRequest{ModelName: op.model, EngineName: op.engine, Bundles: allBundles, ServicePID: pid, Endpoint: s.localEndpoint}}
+	s.task.start = startChainResult{
+		workspace:       s.workspace,
+		localRequest:    &core.LocalCandidateRequest{ModelName: op.model, EngineName: op.engine, Bundles: allBundles, ServicePID: pid, Endpoint: endpoint},
+		existingService: op.reusedService,
+	}
 	for _, bundle := range allBundles {
 		s.task.start.localCandidates = append(s.task.start.localCandidates, core.CandidateRun{Bundle: bundle, Family: family, CandidatePath: filepath.Join(s.workspace, "candidates", p.nextID("candidate"))})
 	}
@@ -170,6 +184,10 @@ func (p *previewSession) advanceLocalRun(index int) {
 		}
 		task.PreparationStage, task.AwaitingService = "awaiting_service", true
 		p.copyLocalTask(id)
+		return
+	}
+	if l.reused && l.pid > 0 {
+		p.startLocalBinding(l.pid)
 		return
 	}
 	s.engineState.State = "stopping"
@@ -246,8 +264,8 @@ func (p *previewSession) failLocalScope(failure *core.ApiError) {
 		p.details[id].Task.Error = err
 		p.copyLocalTask(id)
 	}
-	s.busy, s.failure, s.task.failure = false, failure, failure
-	if l.family != "lmstudio" {
+	s.busy, s.busyAction, s.failure, s.task.failure = false, "", failure, failure
+	if l.family != "lmstudio" && !l.reused {
 		s.engineState.State = "stopped"
 	}
 }

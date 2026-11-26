@@ -49,7 +49,7 @@ def test_studio_context_speed_bridge(speed_service, monkeypatch, capsys):
     assert code == 0
     assert before == tree_hashes(batch)
     assert calls == speed_service["calls"]
-    assert len(speed_service["requests"]) == 20
+    assert len(speed_service["requests"]) == 5
     assert not list(batch.rglob("*.html"))
     (output / "result.json").write_text(json.dumps(result))
     (output / "evidence.json").write_text(
@@ -57,7 +57,7 @@ def test_studio_context_speed_bridge(speed_service, monkeypatch, capsys):
             {
                 "batch": str(batch),
                 "exit_code": code,
-                "request_count": 20,
+                "request_count": 5,
                 "read_added_requests": 0,
                 "before": before,
                 "after": tree_hashes(batch),

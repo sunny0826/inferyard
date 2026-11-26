@@ -189,10 +189,10 @@ func TestStartingProbeIntervalProgression(t *testing.T) {
 	}{
 		{0, 150 * time.Millisecond},
 		{4999 * time.Millisecond, 150 * time.Millisecond},
-		{5 * time.Second, 500 * time.Millisecond},
-		{14999 * time.Millisecond, 500 * time.Millisecond},
-		{15 * time.Second, time.Second},
-		{30 * time.Second, time.Second},
+		{5 * time.Second, 250 * time.Millisecond},
+		{14999 * time.Millisecond, 250 * time.Millisecond},
+		{15 * time.Second, 500 * time.Millisecond},
+		{30 * time.Second, 500 * time.Millisecond},
 	}
 	for _, tc := range cases {
 		if got := startingProbeInterval(tc.elapsed); got != tc.want {

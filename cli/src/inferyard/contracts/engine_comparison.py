@@ -25,8 +25,7 @@ ENGINE_DIFFERENCES = (
 )
 MODEL_FORMAT_DIFFERENCES = (
     "config.model.kind",
-    "config.model.content_sha256",
-    "config.model.assets_sha256",
+    "config.model.local_path",
     "config.model.repo",
     "config.model.revision",
     "config.model.sha256",
@@ -54,9 +53,8 @@ def config_pair_blockers(
     right = {"config": right_config}
     blockers = [item for item in engine_blockers(left, right) if item not in PENDING]
     if families(left, right) == SAME_ASSET:
-        for key in ("content_sha256", "assets_sha256"):
-            if left_config["model"].get(key) != right_config["model"].get(key):
-                blockers.append(f"config.model.{key}:different")
+        if left_config["model"].get("local_path") != right_config["model"].get("local_path"):
+            blockers.append("config.model.local_path:different")
     return blockers
 
 

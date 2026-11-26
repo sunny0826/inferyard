@@ -54,11 +54,14 @@ func (s *viewState) servicesView(c *ui.Context) {
 func (s *viewState) servicesSummaryLine(c *ui.Context) string {
 	var parts []string
 	active := s.activeManagedServices()
+	preparing := s.pendingStandalonePreparations()
 	switch {
 	case len(active) > 1:
 		parts = append(parts, trf(c, "services.page.summary_running_count", "count", len(active)))
 	case len(active) == 1:
 		parts = append(parts, tr(c, "services.page.summary_running"))
+	case len(preparing) > 0:
+		parts = append(parts, tr(c, "sidebar.status.service_starting"))
 	case s.hasOrphanService("") || s.engineState.State == "orphaned":
 		parts = append(parts, tr(c, "services.page.summary_orphaned"))
 	case s.engineState.State == "failed":
@@ -85,14 +88,18 @@ func (s *viewState) servicesSummaryLine(c *ui.Context) string {
 
 func (s *viewState) managedServiceSection(c *ui.Context) {
 	services := s.effectiveManagedServices()
-	if len(services) > 0 {
-		multi := len(services) > 1
+	preparing := s.pendingStandalonePreparations()
+	if len(services) > 0 || len(preparing) > 0 {
+		multi := len(services)+len(preparing) > 1
 		for idx, svc := range services {
 			if svc.State == "orphaned" {
 				s.renderOrphanedServiceCard(c, svc)
 			} else {
 				s.renderRunningServiceCard(c, svc, idx, multi)
 			}
+		}
+		for _, prep := range preparing {
+			s.renderPreparingServiceCard(c, prep)
 		}
 		return
 	}

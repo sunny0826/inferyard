@@ -23,19 +23,25 @@ def require_gone(service, process_start):
 
 
 def admit(lock, config, bundle, identity, process_start):
+    _ = process_start
     scope = {key: config[key] for key in ("model", "engine", "generation", "conditions")}
     scope["bundle"] = bundle
+    service = identity["local_engine"]["binding"]["service"]
     current = {
         "definition": "local-host-service.v1",
         "scope_sha256": sha256(json_bytes(scope)).hexdigest(),
-        "service": identity["local_engine"]["binding"]["service"],
+        "service": service,
     }
-    previous = (lock.state or {}).get("local_service")
-    if previous is not None:
-        old, new = previous["service"], current["service"]
-        if (old["pid"], old["start_ticks"]) == (new["pid"], new["start_ticks"]):
-            if previous["scope_sha256"] != current["scope_sha256"]:
-                raise PreflightError("local_scope_requires_new_service_process")
-        else:
-            require_gone(old, process_start)
+    state = getattr(lock, "state", None)
+    previous = lock.local_service or (state.get("local_service") if state else None)
+    if (
+        previous is not None
+        and config["engine"].get("family") == "lmstudio"
+        and previous.get("scope_sha256") != current["scope_sha256"]
+        and previous.get("service", {}).get("pid") == service["pid"]
+        and previous.get("service", {}).get("start_ticks") == service["start_ticks"]
+    ):
+        raise PreflightError("local_scope_requires_new_service_process")
     lock.local_service = current
+    if state is not None and not state.get("dirty") and hasattr(lock, "write"):
+        lock.write({**state, "local_service": current})

@@ -226,6 +226,35 @@ func (s *viewState) configStage(c *ui.Context, body func()) {
 	stepTrack(c, "3", tr(c, "dashboard.stage.configure"), body)
 }
 
+func (s *viewState) isPreparingBenchmark() bool {
+	if s.task.failure != nil {
+		return false
+	}
+	if s.probingReuse {
+		return true
+	}
+	return s.busy && s.busyAction == "prepare-benchmark" && s.task.stage == "prepare_candidate"
+}
+
+func (s *viewState) renderPreparingBenchmarkView(c *ui.Context) {
+	t := tokens(c)
+	ui.Column(c.Key("preparing-benchmark-card")).FillWidth().Gap(t.Density.Row).Children(func() {
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			if s.model != "" {
+				ui.Text(c, s.model).Bold().FontSize(t.Type.Section).SingleLine()
+			}
+			if s.engine != "" {
+				enginePill(c, s.engine)
+			}
+			for _, bundle := range s.task.bundles {
+				inlineBadge(c, bundle, stateNeutral, badgeOptions{Size: sizeSM, Style: badgeOutline})
+			}
+			inlineBadge(c, tr(c, "benchmarks.badge.active_flow"), stateActive, badgeOptions{Size: sizeSM, Style: badgeDot})
+		})
+		progressBar(c, -1, tr(c, "sidebar.status.queue_preparing"))
+	})
+}
+
 func (s *viewState) stageView(c *ui.Context) {
 	action := ""
 	if s.progress != nil {
@@ -260,6 +289,12 @@ func (s *viewState) stageView(c *ui.Context) {
 			})
 		})
 	case "prepare_candidate":
+		if s.isPreparingBenchmark() {
+			s.configStage(c, func() {
+				s.renderPreparingBenchmarkView(c)
+			})
+			break
+		}
 		ui.Column(c.Key("config-stage")).Gap(tokens(c).Density.CardGap).Children(func() {
 			s.speedTypeSwitch(c)
 			s.configStage(c, func() {

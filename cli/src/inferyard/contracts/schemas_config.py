@@ -86,7 +86,7 @@ CONFIG = obj(
         "telemetry": obj(
             {
                 "interval_ms": POS,
-                "baseline_seconds": {"type": "number", "exclusiveMinimum": 0},
+                "baseline_seconds": {"type": "number", "minimum": 0},
                 "system_memory_required": {"type": "boolean", "const": True},
                 "service_rss_required": BOOL,
                 "window_definition": enum("v1"),
@@ -186,14 +186,14 @@ CONFIG_DEFAULTS = {
         "repeats": 1,
         "order": "fixed",
         "timeout_seconds": 180,
-        "warmup_count": 3,
+        "warmup_count": 0,
         "warmup_prompt": "请只回答：准备就绪",
         "probe_prompt": "请只用中文回答：中国的首都是哪里？只回答城市名。",
         "idle_wait_seconds": 5,
     },
     "telemetry": {
         "interval_ms": 500,
-        "baseline_seconds": 5,
+        "baseline_seconds": 0,
         "system_memory_required": True,
         "service_rss_required": False,
         "window_definition": "v1",

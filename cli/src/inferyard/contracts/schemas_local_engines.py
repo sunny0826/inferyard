@@ -54,13 +54,16 @@ LOCAL_CONFIG_SCHEMA["properties"]["model"] = obj(
         "kind": enum("gguf", "directory"),
         "local_path": LABEL,
         "packing": LABEL,
-        "assets_path": LABEL,
-        "assets_sha256": HASH,
-        "content_sha256": HASH,
         "template_path": LABEL,
         "template_sha256": HASH,
     }
 )
+for _legacy_key, _legacy_spec in (
+    ("assets_path", LABEL),
+    ("assets_sha256", HASH),
+    ("content_sha256", HASH),
+):
+    LOCAL_CONFIG_SCHEMA["properties"]["model"]["properties"][_legacy_key] = _legacy_spec
 LOCAL_CONFIG_SCHEMA["properties"]["engine"] = obj(
     {
         "adapter": enum(LOCAL_ADAPTER),

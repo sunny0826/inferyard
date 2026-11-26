@@ -407,6 +407,7 @@ func (s *viewState) stopManagedServiceThen(serviceID string, after func()) {
 		}
 		if apiErr != nil {
 			s.runOnUI(func() {
+				s.standalone.preparing = nil
 				s.failure = apiErr
 				s.failurePage = s.selected
 			})

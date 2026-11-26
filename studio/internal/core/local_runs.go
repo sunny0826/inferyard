@@ -19,6 +19,7 @@ type candidateRunState struct {
 	candidate, family, group string
 	attach                   chan EngineState
 	initial                  *EngineState
+	reused                   *EngineState
 	bound                    *EngineState
 	description              inferyard.CandidateDescription
 	size                     int64
@@ -54,7 +55,7 @@ func (s *Service) StartCandidateRuns(req CandidateRunsRequest) ([]RunTask, *ApiE
 		if st, err := os.Stat(path); err == nil {
 			size, modTime, fingerprinted = st.Size(), st.ModTime().UnixNano(), true
 		}
-		description, failure := s.DescribeCandidate(s.ctx, path)
+		description, failure := s.describeCandidateCached(s.ctx, path)
 		if failure != nil {
 			return nil, failure
 		}
@@ -78,12 +79,19 @@ func (s *Service) StartCandidateRuns(req CandidateRunsRequest) ([]RunTask, *ApiE
 		seen[bundle] = true
 		local := &candidateRunState{candidate: path, family: description.Family, group: group, attach: make(chan EngineState, 1),
 			description: description, size: size, modTime: modTime, fingerprinted: fingerprinted}
-		if i == 0 && req.ExistingService != nil {
-			if description.Family != "lmstudio" || req.ExistingService.Pid <= 0 || req.ExistingService.Endpoint != description.Endpoint.URL || !validBindingEndpoint(req.ExistingService.Endpoint) {
+		if req.ExistingService != nil {
+			if req.ExistingService.Pid <= 0 || req.ExistingService.Endpoint != description.Endpoint.URL || !validBindingEndpoint(req.ExistingService.Endpoint) {
 				return nil, Err("invalid_request")
 			}
-			copy := *req.ExistingService
-			local.initial = &copy
+			if description.Family == "lmstudio" {
+				if i == 0 {
+					copy := *req.ExistingService
+					local.initial = &copy
+				}
+			} else {
+				copy := *req.ExistingService
+				local.reused = &copy
+			}
 		}
 		task := RunTask{TaskId: uuid(), Kind: "run", State: "starting", Queued: true, Bundle: &bundle, CreatedAt: now(), CandidatePath: &path, EngineFamily: description.Family}
 		entries = append(entries, &runEntry{Task: task, root: root, binary: *probe.Path, Resources: []ResourceSample{}, local: local, initialExclusivity: normalizeInitialExclusivity(req.InitialExclusivity)})
@@ -220,6 +228,15 @@ func (s *Service) prepareCandidateRun(ctx context.Context, t *runEntry) (failure
 		if reused {
 			return Err("local_engine_service_reused")
 		}
+	} else if t.local.reused != nil {
+		state = *t.local.reused
+		if state.Endpoint != description.Endpoint.URL {
+			return Err("candidate_endpoint_mismatch")
+		}
+		state.StartTicks, _ = s.processTicks(state.Pid)
+		if state.StartTicks <= 0 {
+			return Err("service_identity_unavailable")
+		}
 	} else {
 		s.candidateStage(t, "switching_service", false)
 		if failure := s.stopEngineForHandoff(ctx); failure != nil {
@@ -318,7 +335,7 @@ func waitCandidateTick(ctx context.Context) bool {
 }
 
 func (s *Service) cleanupCancelledCandidate(ctx context.Context, t *runEntry) {
-	if ctx.Err() == nil || t.local.family == "lmstudio" {
+	if ctx.Err() == nil || t.local.family == "lmstudio" || t.local.reused != nil {
 		return
 	}
 	cleanup, stop := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)

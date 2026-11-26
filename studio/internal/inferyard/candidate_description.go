@@ -52,11 +52,9 @@ type CandidateInstallationAsset struct {
 }
 
 type CandidateModelAsset struct {
-	Path           string `json:"path"`
-	Kind           string `json:"kind"`
-	ContentSHA256  string `json:"content_sha256"`
-	ManifestPath   string `json:"manifest_path"`
-	ManifestSHA256 string `json:"manifest_sha256"`
+	Path          string `json:"path"`
+	Kind          string `json:"kind"`
+	ContentSHA256 string `json:"content_sha256"`
 }
 
 type CandidateAssets struct {
@@ -256,17 +254,16 @@ func validCandidateAssets(raw []byte, assets CandidateAssets, local bool) bool {
 	if !ok || !discoveryFields(fields["template"], "path", "sha256") || !candidatePath(assets.Template.Path) || !candidateHash(assets.Template.SHA256) {
 		return false
 	}
-	modelKeys := []string{"path", "kind", "content_sha256"}
 	if local {
-		modelKeys = append(modelKeys, "manifest_path", "manifest_sha256")
-	}
-	if !discoveryFields(fields["model"], modelKeys...) || !candidatePath(assets.Model.Path) || !candidateHash(assets.Model.ContentSHA256) {
-		return false
-	}
-	if local {
+		if !discoveryFields(fields["model"], "path", "kind") || !candidatePath(assets.Model.Path) {
+			return false
+		}
 		a := assets.Installation
 		return a != nil && discoveryFields(fields["installation"], "path", "sha256", "declaration_sha256") && candidatePath(a.Path) && candidateHash(a.SHA256) && candidateHash(a.DeclarationSHA256) &&
-			slices.Contains([]string{"gguf", "directory"}, assets.Model.Kind) && candidatePath(assets.Model.ManifestPath) && candidateHash(assets.Model.ManifestSHA256)
+			slices.Contains([]string{"gguf", "directory"}, assets.Model.Kind)
+	}
+	if !discoveryFields(fields["model"], "path", "kind", "content_sha256") || !candidatePath(assets.Model.Path) || !candidateHash(assets.Model.ContentSHA256) {
+		return false
 	}
 	return assets.Engine != nil && discoveryFields(fields["engine"], "path", "sha256") && candidatePath(assets.Engine.Path) && candidateHash(assets.Engine.SHA256) && slices.Contains([]string{"gguf", "ninfer"}, assets.Model.Kind)
 }

@@ -438,6 +438,49 @@ func (s *viewState) stopActiveServiceThen(after func()) {
 	}()
 }
 
+func (s *viewState) reusableStandaloneService(modelName, engineName string) (core.EngineState, bool) {
+	e := s.localEngine()
+	if e == nil || e.Family == "lmstudio" || modelName == "" || engineName == "" {
+		return core.EngineState{}, false
+	}
+	modelAsset, hasModel := s.findModelAsset(modelName)
+	for _, st := range s.activeStandaloneServices() {
+		if st.State != "running" || st.Pid <= 0 {
+			continue
+		}
+		modelMatch := (st.ModelName != "" && st.ModelName == modelName) ||
+			displayName(st.Model) == modelName ||
+			(hasModel && standaloneServiceMatchesModel(st, modelAsset))
+		engineMatch := st.EngineName == engineName || (st.EngineName == "" && st.Family == e.Family)
+		if !modelMatch || !engineMatch {
+			continue
+		}
+		if e.Family == "polystrata" {
+			if st.ContextSize > 0 && st.ContextSize < 4096 {
+				continue
+			}
+		} else if st.ContextSize < 8192 {
+			continue
+		}
+		port := st.Port
+		if port <= 0 {
+			if localURL, ok := serviceLocalURL(st); ok {
+				if idx := strings.LastIndex(localURL, ":"); idx >= 0 {
+					port, _ = strconv.Atoi(localURL[idx+1:])
+				}
+			}
+		}
+		if port <= 0 {
+			continue
+		}
+		reused := st
+		reused.Port = port
+		reused.Endpoint = fmt.Sprintf("http://127.0.0.1:%d", port)
+		return reused, true
+	}
+	return core.EngineState{}, false
+}
+
 func (s *viewState) standaloneRunningForBenchmarkConflict() bool {
 	return len(s.activeStandaloneServices()) > 0
 }

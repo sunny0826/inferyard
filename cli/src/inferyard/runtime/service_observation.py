@@ -35,6 +35,11 @@ def clean_observed(lock, adapter, store, *, run_id=None, key=None, recovery=None
                 "dirty": False,
                 "completion_scope": "process_replacement",
                 "engine_internal_drain": None,
+                **(
+                    {"local_service": lock.local_service}
+                    if lock.local_service is not None
+                    else {}
+                ),
             }
         )
         return

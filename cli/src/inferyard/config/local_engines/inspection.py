@@ -30,9 +30,6 @@ def describe(request):
             "model": {
                 "path": model["local_path"],
                 "kind": model["kind"],
-                "content_sha256": model["content_sha256"],
-                "manifest_path": model["assets_path"],
-                "manifest_sha256": model["assets_sha256"],
             },
             "template": {"path": model["template_path"], "sha256": model["template_sha256"]},
         },

@@ -26,7 +26,7 @@ func (p *previewSession) beginBenchmark(op previewBenchmark) {
 	op.bundles = slices.Clone(op.bundles)
 	p.cancelEvents("task")
 	s.model, s.engine = op.model, op.engine
-	s.busy, s.failure = true, nil
+	s.busy, s.busyAction, s.failure = true, "prepare-benchmark", nil
 	s.bindFailure, s.failedBundle, s.handoffFailure = nil, "", nil
 	s.task = benchmarkTask{stage: "prepare_candidate", bundles: slices.Clone(op.bundles)}
 	s.progress.DefaultScopeComplete = false
@@ -50,7 +50,7 @@ func (p *previewSession) beginBenchmark(op previewBenchmark) {
 		}
 		p.after("task", 800*time.Millisecond, func() {
 			if fail {
-				s.busy = false
+				s.busy, s.busyAction = false, ""
 				s.task.failure = core.Err("engine_start_failed")
 				s.failure, s.engineState.Error = s.task.failure, s.task.failure
 				s.engineState.State = "failed"
@@ -272,7 +272,7 @@ func (p *previewSession) finishBenchmark() {
 	s.task.stage, s.progress.NextAction = "report", "report"
 	p.after("task", 600*time.Millisecond, func() {
 		s.task.report = p.createReport(s.task.runs)
-		s.task.stage, s.progress.NextAction, s.busy = "done", "done", false
+		s.task.stage, s.progress.NextAction, s.busy, s.busyAction = "done", "done", false, ""
 		s.progress.DefaultScopeComplete = true
 		for _, b := range s.progress.Bundles {
 			if b.Phase != "run_complete" {
@@ -334,7 +334,7 @@ func (p *previewSession) resetTask(model, engine string) {
 			}
 		}
 		s.clearBenchmark()
-		s.failure, s.busy = nil, false
+		s.failure, s.busy, s.busyAction = nil, false, ""
 		s.selected, s.detailID, s.focusedRun = "benchmarks", "", ""
 		s.benchFlowOpen = true
 		s.detail, s.resumeSource, s.runProgress = nil, nil, nil

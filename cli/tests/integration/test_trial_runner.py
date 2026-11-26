@@ -94,7 +94,7 @@ def test_budget_cancellation_is_not_mislabeled_as_user_cancellation(scenario):
         original = instance.generate
 
         async def generate(*args, **kwargs):
-            if len(scenario[2]) == 5:
+            if len(scenario[2]) == 0:
                 await asyncio.sleep(2)
             return await original(*args, **kwargs)
 

@@ -55,9 +55,74 @@ func prepareCombination(ctx context.Context, service *core.Service, model, engin
 	return result, e
 }
 
+func (s *viewState) probeReusableStandaloneBeforeStart(svc core.EngineState, names []string) bool {
+	modelName, engineName := s.model, s.engine
+	openExternalDialog := func(probe core.ExternalConnProbe) {
+		budget := s.checkMemoryBudget(modelName, "", svc.ContextSize, svc.GPULayers)
+		s.extCheckDialog = extConnCheckDialogState{
+			open:         true,
+			autoStart:    true,
+			serviceID:    svc.ServiceID,
+			modelName:    modelName,
+			engineName:   engineName,
+			endpoint:     svc.Endpoint,
+			contextSize:  svc.ContextSize,
+			gpuLayers:    svc.GPULayers,
+			probe:        probe,
+			memoryBudget: budget,
+			hasBudget:    budget.Known,
+		}
+	}
+	if s.probeServiceConnFunc != nil {
+		probe := s.probeServiceConnFunc(s.ctx, svc.ServiceID)
+		if probe.Status == core.ExclusivityExternal {
+			openExternalDialog(probe)
+			return true
+		}
+		return false
+	}
+	if s.preview != nil {
+		if pm, ok := s.preview.(previewExclusivityMode); ok {
+			if probe := pm.probeServiceConnections(svc); probe.Status == core.ExclusivityExternal {
+				openExternalDialog(probe)
+				return true
+			}
+		}
+		return false
+	}
+	if s.service == nil || svc.ServiceID == "" {
+		return false
+	}
+	if s.win == nil {
+		if probe := s.service.ProbeServiceConnections(s.ctx, svc.ServiceID); probe.Status == core.ExclusivityExternal {
+			openExternalDialog(probe)
+			return true
+		}
+		return false
+	}
+	s.probingReuse = true
+	s.task = benchmarkTask{stage: "prepare_candidate", bundles: slices.Clone(names)}
+	go func() {
+		probe := s.service.ProbeServiceConnections(s.ctx, svc.ServiceID)
+		s.runOnUI(func() {
+			s.probingReuse = false
+			if probe.Status == core.ExclusivityExternal {
+				openExternalDialog(probe)
+				return
+			}
+			s.pendingExclusivityMode = "reuse"
+			s.pendingExclusivity = ""
+			s.pendingExclusivityModel = modelName
+			s.pendingExclusivityEngine = engineName
+			s.startBenchmark()
+		})
+	}()
+	return true
+}
+
 func (s *viewState) startBenchmark() {
 	names := s.checkedBundles()
-	if s.environmentMissing() || !s.preflightReady() || s.busy || len(names) == 0 || s.model == "" || s.engine == "" || s.engineState.State == "orphaned" || s.localSelectionError() != "" {
+	if s.environmentMissing() || !s.preflightReady() || s.busy || s.probingReuse || len(names) == 0 || s.model == "" || s.engine == "" || s.engineState.State == "orphaned" || s.localSelectionError() != "" {
 		return
 	}
 	matchesPending := s.pendingExclusivityMatchesTarget()
@@ -65,6 +130,20 @@ func (s *viewState) startBenchmark() {
 		s.clearPendingExclusivity()
 	}
 	skipStandaloneGuard := matchesPending && s.pendingExclusivityMode == "isolated"
+	var reusedService *core.EngineState
+	if !skipStandaloneGuard {
+		if svc, ok := s.reusableStandaloneService(s.model, s.engine); ok {
+			if matchesPending && s.pendingExclusivityMode == "reuse" {
+				skipStandaloneGuard = true
+				reusedService = &svc
+			} else if s.probeReusableStandaloneBeforeStart(svc, names) {
+				return
+			} else {
+				skipStandaloneGuard = true
+				reusedService = &svc
+			}
+		}
+	}
 	if !skipStandaloneGuard {
 		if !s.guardStandaloneForBenchmark(func() { s.startBenchmark() }) {
 			return
@@ -76,15 +155,23 @@ func (s *viewState) startBenchmark() {
 	}
 	s.clearPendingExclusivity()
 	s.beginAttempt()
-	if s.simulate(previewBenchmark{model: s.model, engine: s.engine, bundles: names}) {
+	if s.simulate(previewBenchmark{model: s.model, engine: s.engine, bundles: names, reusedService: reusedService}) {
 		return
 	}
 	ctx, cancel := context.WithCancel(s.ctx)
 	s.taskCancel = cancel
-	s.task = benchmarkTask{stage: "prepare_candidate", bundles: names, bindings: &benchmarkBindings{initialExclusivity: initialExclusivity}}
+	s.task = benchmarkTask{
+		stage:   "prepare_candidate",
+		bundles: names,
+		bindings: &benchmarkBindings{
+			initialExclusivity: initialExclusivity,
+			isolated:           skipStandaloneGuard && reusedService == nil,
+			reuseMode:          reusedService != nil,
+		},
+	}
 	model, engine := s.model, s.engine
-	localRequest := s.localCandidateRequest(names)
-	s.guideWork(func() (string, *core.ApiError) {
+	localRequest := s.localCandidateRequest(names, reusedService)
+	s.guideWorkAs("prepare-benchmark", func() (string, *core.ApiError) {
 		defer cancel()
 		announce := func(stage string) { s.runOnUI(func() { s.task.stage = stage }) }
 		var result startChainResult
@@ -124,6 +211,8 @@ type benchmarkBindings struct {
 	completed          map[string]string
 	failedBundle       string
 	initialExclusivity string
+	isolated           bool
+	reuseMode          bool
 }
 
 type benchmarkBackend interface {
@@ -365,7 +454,22 @@ func (s *viewState) retryBenchmark() {
 	if s.busy || (s.task.stage != "bind" && len(s.task.start.localCandidates) == 0) || s.task.failure == nil {
 		return
 	}
-	if !s.guardStandaloneForBenchmark(func() { s.retryBenchmark() }) {
+	skipGuard := s.task.bindings != nil && s.task.bindings.isolated
+	if !skipGuard && s.task.bindings != nil && s.task.bindings.reuseMode {
+		if e := s.localEngine(); e != nil && e.Family != "lmstudio" && s.task.start.localRequest != nil {
+			if svc, ok := s.reusableStandaloneService(s.model, s.engine); ok {
+				skipGuard = true
+				s.task.start.localRequest.ServicePID = svc.Pid
+				s.task.start.localRequest.Endpoint = svc.Endpoint
+				s.task.start.existingService = &core.EngineState{State: "running", Pid: svc.Pid, Endpoint: svc.Endpoint}
+			} else {
+				s.task.start.localRequest.ServicePID = 0
+				s.task.start.localRequest.Endpoint = ""
+				s.task.start.existingService = nil
+			}
+		}
+	}
+	if !skipGuard && !s.guardStandaloneForBenchmark(func() { s.retryBenchmark() }) {
 		return
 	}
 	if s.simulate(previewRetryBenchmark) {
@@ -377,7 +481,7 @@ func (s *viewState) retryBenchmark() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	s.taskCancel = cancel
 	result, names := s.task.start, s.task.bundles
-	s.guideWork(func() (string, *core.ApiError) {
+	s.guideWorkAs("prepare-benchmark", func() (string, *core.ApiError) {
 		defer cancel()
 		e := s.runBenchmark(ctx, result, names, func(stage string) { s.win.Update(func() { s.task.stage = stage }) })
 		s.win.Update(func() {

@@ -22,7 +22,8 @@ def qualification(data, workload):
         return ["cache_warmup_history_unknown"]
     requests = data.get("requests", [])
     rows = observation.get("rows", [])
-    phases = ["probe"] * 2 + ["warmup"] * warmups + ["formal"] * len(requests)
+    probe_count = 2 if rows and rows[0].get("phase") == "probe" else 0
+    phases = ["probe"] * probe_count + ["warmup"] * warmups + ["formal"] * len(requests)
     if not requests or len(rows) != len(phases):
         return ["cache_history_incomplete"]
     reasons = []
@@ -43,7 +44,7 @@ def qualification(data, workload):
         elif not expected and counts[0] != 0:
             reasons.append("cache_reuse_contradicts_request")
         if phase == "formal":
-            request = requests[index - 2 - warmups]
+            request = requests[index - probe_count - warmups]
             if request.get("execution_state") != "completed" or any(
                 row.get(k) != request.get(k) for k in ("request_id", "case_id")
             ):

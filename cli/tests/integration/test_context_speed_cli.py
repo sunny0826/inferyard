@@ -40,7 +40,7 @@ def run_speed(service, monkeypatch, capsys, context=65536):
 @pytest.mark.parametrize("context", [65536, 131072, 262144])
 def test_public_five_trials_and_readonly_results(speed_service, monkeypatch, capsys, context):
     batch, execution = run_speed(speed_service, monkeypatch, capsys, context)
-    assert len(speed_service["requests"]) == 20
+    assert len(speed_service["requests"]) == 5
     assert len(execution["details"]["runs"]) == 5
     assert "repetition_metrics" not in execution["details"]
     before = tree_hashes(batch)

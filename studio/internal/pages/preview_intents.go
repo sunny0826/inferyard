@@ -72,6 +72,7 @@ type previewBenchmark struct {
 	model, engine string
 	bundles       []string
 	resumePath    string
+	reusedService *core.EngineState
 }
 
 func (previewBenchmark) previewIntent() {}

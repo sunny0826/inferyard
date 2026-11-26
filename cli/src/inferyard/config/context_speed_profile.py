@@ -60,7 +60,8 @@ def classify_workload_inputs(workload, config, bundle, *, experiment_profile=Non
     )
     execution = config["execution"]
     require_profile(
-        execution["repeats"] == execution["concurrency"] == execution["warmup_count"] == 1
+        execution["repeats"] == execution["concurrency"] == 1
+        and execution["warmup_count"] in (0, 1)
         and execution["order"] == "fixed"
         and not execution.get("require_fresh_process", False),
         "execution_recipe_mismatch",

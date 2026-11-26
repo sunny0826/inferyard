@@ -233,13 +233,8 @@ def test_upstream_pack_config_credential_rejection_and_arch_enforcement(
     assert loaded["model"]["kind"] == "directory"
     assert loaded["model"]["local_path"] == str(pack_dir.resolve())
     assert loaded["conditions"]["context_size"] == 4096
-    manifest_files = {
-        row["path"]
-        for row in json.loads(Path(loaded["model"]["assets_path"]).read_text(encoding="utf-8"))[
-            "files"
-        ]
-    }
-    assert "weights.bin" in manifest_files
+    assert "assets_path" not in loaded["model"]
+    assert not (Path(details["candidate"]).parent / "model-assets.json").exists()
 
     mcp_secret_json = ps_root / "data" / "strata-mcp-secret.json"
     mcp_secret_json.write_text(

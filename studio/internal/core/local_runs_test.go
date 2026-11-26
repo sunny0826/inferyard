@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"testing"
@@ -85,5 +86,72 @@ func TestStartCandidateRunsRejectsMismatchedBundleID(t *testing.T) {
 	}
 	if _, failure := f.s.StartCandidateRuns(CandidateRunsRequest{Candidates: mismatched, AllowSingleBundle: true}); failure == nil || failure.Code != "invalid_request" {
 		t.Fatalf("expected invalid_request for mismatched bundle, got %#v", failure)
+	}
+}
+
+func TestLocalQueueReusesExistingManagedServiceAcrossBundles(t *testing.T) {
+	for _, family := range []string{"llama-cpp", "mlx-lm", "polystrata"} {
+		t.Run(family, func(t *testing.T) {
+			f := newLocalQueueFixture(t, family)
+			f.s.identityReader = func(pid int64) (int64, error) { return pid * 100, nil }
+			existing := &EngineState{State: "running", Pid: 9101, Endpoint: f.endpoint}
+			tasks, failure := f.s.StartCandidateRuns(CandidateRunsRequest{
+				Candidates:      f.candidates,
+				ExistingService: existing,
+			})
+			if failure != nil {
+				t.Fatal(failure)
+			}
+			for _, task := range f.done(t, tasks) {
+				if task.State != "done" || task.Exit.ExitCode != 0 {
+					t.Fatalf("unexpected task result: %+v", task)
+				}
+			}
+			f.mu.Lock()
+			pids := append([]int64{}, f.bindPIDs...)
+			bundles := append([]string{}, f.runBundles...)
+			f.mu.Unlock()
+			if !reflect.DeepEqual(pids, []int64{9101, 9101}) || !reflect.DeepEqual(bundles, []string{"zh-core", "zh-svg-pelican"}) {
+				t.Fatalf("expected reused pid 9101 across both bundles, got pids=%v bundles=%v", pids, bundles)
+			}
+			if f.s.engine != nil || f.s.Engine().State != "stopped" {
+				t.Fatalf("expected no dedicated benchmark engine spawned when reusing standalone service, got %+v", f.s.Engine())
+			}
+		})
+	}
+}
+
+func TestDescribeCandidateCachesUnchangedCandidateFile(t *testing.T) {
+	f := newLocalQueueFixture(t, "polystrata")
+	if err := os.WriteFile(filepath.Join(f.workspace, "model"), []byte("gguf"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	path := f.candidates[0].CandidatePath
+	for range 3 {
+		if _, failure := f.s.describeCandidateCached(context.Background(), path); failure != nil {
+			t.Fatal(failure)
+		}
+	}
+	f.mu.Lock()
+	calls := f.describeCalls
+	f.mu.Unlock()
+	if calls != 1 {
+		t.Fatalf("expected 1 config describe subprocess for unchanged candidate, got %d", calls)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(raw, '\n'), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, failure := f.s.describeCandidateCached(context.Background(), path); failure != nil {
+		t.Fatal(failure)
+	}
+	f.mu.Lock()
+	callsAfter := f.describeCalls
+	f.mu.Unlock()
+	if callsAfter != 2 {
+		t.Fatalf("expected cache invalidation after file change to trigger 2nd call, got %d", callsAfter)
 	}
 }

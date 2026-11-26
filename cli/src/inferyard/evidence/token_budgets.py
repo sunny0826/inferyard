@@ -11,11 +11,12 @@ DEFINITION = "token-budgets.v2"
 
 
 def planned_inputs(config, selected, *, kind="run"):
-    entries = [("probe", None)]
-    if kind == "run":
-        if config["execution"]["warmup_count"]:
-            entries.append(("warmup", None))
-        entries.extend(("formal", cid) for cid in selected)
+    if kind == "check":
+        return [("probe", None)]
+    entries = []
+    if config["execution"]["warmup_count"]:
+        entries.append(("warmup", None))
+    entries.extend(("formal", cid) for cid in selected)
     return entries
 
 
@@ -64,7 +65,9 @@ def entries_v2(value):
 
 def validate_inventory(value, config, selected, *, kind="run"):
     entries = entries_v2(value)
-    if [(e["phase"], e["case_id"]) for e in entries] != planned_inputs(config, selected, kind=kind):
+    observed = [(e["phase"], e["case_id"]) for e in entries]
+    expected = planned_inputs(config, selected, kind=kind)
+    if observed != expected and not (kind != "check" and observed == [("probe", None), *expected]):
         raise EvidenceError("token_budget_inventory_mismatch")
     return entries
 

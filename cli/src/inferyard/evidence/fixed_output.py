@@ -100,11 +100,12 @@ def verify_execution(
         capabilities = bound_capabilities(root, manifest, reads=reads)
     if not capabilities.prism_definition:
         raise EvidenceError("strict_output_engine_unverified")
+    probes = [e for e in starts if e["phase"] == "probe"]
+    if not probes:
+        return
     ends = {e["request_id"]: e["data"] for e in events if e["event_type"] == "request_finished"}
     for stream in (False, True):
-        matching = [
-            e for e in starts if e["phase"] == "probe" and e["data"]["body"]["stream"] is stream
-        ]
+        matching = [e for e in probes if e["data"]["body"]["stream"] is stream]
         stage = "stream" if stream else "ordinary"
         if len(matching) != 1 or (
             manifest is not None

@@ -391,7 +391,7 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 3,
-              "default": 3
+              "default": 0
             },
             "warmup_prompt": {
               "type": "string",
@@ -426,8 +426,8 @@
             },
             "baseline_seconds": {
               "type": "number",
-              "exclusiveMinimum": 0,
-              "default": 5
+              "minimum": 0,
+              "default": 0
             },
             "system_memory_required": {
               "type": "boolean",
@@ -753,6 +753,14 @@
               "type": "string",
               "minLength": 1
             },
+            "template_path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "template_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
             "assets_path": {
               "type": "string",
               "minLength": 1
@@ -764,14 +772,6 @@
             "content_sha256": {
               "type": "string",
               "pattern": "^[a-f0-9]{64}$"
-            },
-            "template_path": {
-              "type": "string",
-              "minLength": 1
-            },
-            "template_sha256": {
-              "type": "string",
-              "pattern": "^[a-f0-9]{64}$"
             }
           },
           "required": [
@@ -781,9 +781,6 @@
             "kind",
             "local_path",
             "packing",
-            "assets_path",
-            "assets_sha256",
-            "content_sha256",
             "template_path",
             "template_sha256"
           ],
@@ -1026,7 +1023,7 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 3,
-              "default": 3
+              "default": 0
             },
             "warmup_prompt": {
               "type": "string",
@@ -1062,8 +1059,8 @@
             },
             "baseline_seconds": {
               "type": "number",
-              "exclusiveMinimum": 0,
-              "default": 5
+              "minimum": 0,
+              "default": 0
             },
             "system_memory_required": {
               "type": "boolean",

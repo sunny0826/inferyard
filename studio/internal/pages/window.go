@@ -242,6 +242,7 @@ type viewState struct {
 	detail                                                                              *core.RunTaskDetail
 	historyError, reportsError, detailError                                             *core.ApiError
 	loaded, busy, settingsLoaded                                                        bool
+	probingReuse                                                                        bool
 	busyAction                                                                          string
 	windowTitle                                                                         string
 	pendingToast                                                                        string

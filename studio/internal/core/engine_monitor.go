@@ -21,7 +21,7 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 	probeInFlight := false
 	startedAt := time.Now()
 	deadline := startedAt.Add(s.engineStartTimeout())
-	probeInterval := startingProbeInterval(0)
+	probeInterval := 40 * time.Millisecond
 	ticker := time.NewTicker(probeInterval)
 	defer ticker.Stop()
 	treeTicker := time.NewTicker(500 * time.Millisecond)
