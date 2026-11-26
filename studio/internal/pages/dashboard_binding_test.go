@@ -9,6 +9,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/l10n"
 )
 
 type taskBackendFixture struct {
@@ -78,5 +79,42 @@ func TestDashboardSelectedRunReportIgnoresUnfinishedPelican(t *testing.T) {
 	e = runBenchmarkFlow(context.Background(), f, startChainResult{workspace: root}, []string{"zh-core"}, nil, func(string) {}, func([]string) {}, func([]string, string) { t.Fatal("unsealed report") })
 	if e == nil || e.Code != "run_incomplete" || len(f.requests) != 1 {
 		t.Fatal(e, f.requests)
+	}
+}
+
+func TestDashboardRetryReplacesFailedTaskNotice(t *testing.T) {
+	s := readyState("benchmarks")
+	s.task.stage = "run"
+	failed := core.RunTask{TaskId: "old", State: "failed", Bundle: ptr("zh-core"), CreatedAt: "2026-01-01T00:00:00Z", Error: core.Err("cli_blocked")}
+	s.tasks = []core.RunTask{failed}
+	s.task.failure = failed.Error
+	s.task.start.localCandidates = []core.CandidateRun{{Bundle: "zh-core"}}
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.dashboardView(c) }) }, 1120, 1200)
+	if !tt.HasText(failed.Error.Message) || !tt.HasText(l10n.TR("dashboard.retry.button")) {
+		t.Fatalf("failed attempt lost diagnosis or retry action: %v", tt.Texts())
+	}
+	s.task.failure = nil
+	retry := core.RunTask{TaskId: "retry", State: "starting", AwaitingService: true, Bundle: failed.Bundle, CreatedAt: "2026-01-01T00:00:01Z"}
+	s.tasks = append(s.tasks, retry)
+	for _, stage := range []string{"awaiting_service", "binding", "running", "done"} {
+		s.tasks[1].PreparationStage = stage
+		s.tasks[1].AwaitingService = stage == "awaiting_service"
+		if stage == "running" || stage == "done" {
+			s.tasks[1].State = stage
+		}
+		tt.Frame()
+		if tt.HasText(failed.Error.Message) || tt.HasText(taskLabel(failed)) || tt.HasText(l10n.TR("dashboard.retry.button")) {
+			t.Fatalf("%s shows previous failure: %v", stage, tt.Texts())
+		}
+	}
+	s.tasks[0], s.tasks[1] = s.tasks[1], s.tasks[0]
+	tt.Frame()
+	if tt.HasText(failed.Error.Message) {
+		t.Fatal("newest-first task snapshot revived the previous failure")
+	}
+	s.tasks[0].CreatedAt = "2025-12-31T23:59:59Z"
+	tt.Frame()
+	if !tt.HasText(failed.Error.Message) {
+		t.Fatal("an earlier success hid a newer undiagnosed failure")
 	}
 }

@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"time"
 
 	"inferyard/studio/internal/core"
 )
@@ -94,4 +95,45 @@ func (s *viewState) stepOwnsTaskError(task core.RunTask) bool {
 		return false
 	}
 	return terminal(task.State)
+}
+
+func (s *viewState) dashboardTaskNotices() []core.RunTask {
+	active := s.running() != nil || s.isPreparingBenchmark()
+	var notices []core.RunTask
+	for _, task := range s.tasks {
+		if task.Kind == "context_speed" || emptyText(task.RunPath) != "" || (task.Queued && task.Bundle != nil && task.Error == nil) {
+			continue
+		}
+		if task.State == "failed" || (terminal(task.State) && task.Error != nil) {
+			if active || s.supersededTask(task) {
+				continue
+			}
+		}
+		if !s.stepOwnsTaskError(task) {
+			notices = append(notices, task)
+		}
+	}
+	return notices
+}
+
+func (s *viewState) supersededTask(task core.RunTask) bool {
+	bundle := emptyText(task.Bundle)
+	if !s.busy && s.task.stage != "" && bundle != "" {
+		if current := s.currentRoundTask(bundle); current != nil && current.TaskId != task.TaskId {
+			return true
+		}
+	}
+	created, err := time.Parse(time.RFC3339Nano, task.CreatedAt)
+	if bundle == "" || err != nil {
+		return false
+	}
+	for _, other := range s.tasks {
+		if other.Kind != "context_speed" && emptyText(other.Bundle) == bundle {
+			stamp, err := time.Parse(time.RFC3339Nano, other.CreatedAt)
+			if err == nil && stamp.After(created) {
+				return true
+			}
+		}
+	}
+	return false
 }

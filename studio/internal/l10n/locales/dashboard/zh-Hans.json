@@ -66,6 +66,8 @@
   "dashboard.failure.no_detail": "操作失败，无详细原因。",
   "dashboard.feedback.close": "关闭",
   "dashboard.feedback.retry": "重试",
+  "dashboard.handoff.match_endpoint": "服务地址须与首轮一致（{endpoint}）。",
+  "dashboard.handoff.select_pid": "请刷新服务列表后选择服务，或填写新的后台 PID。",
   "dashboard.history.badge_resumable": "可续测",
   "dashboard.history.batch_header": "批次 {id} · {status}",
   "dashboard.history.col_finished": "结束时间",

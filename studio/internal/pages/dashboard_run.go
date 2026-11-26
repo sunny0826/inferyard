@@ -427,7 +427,11 @@ func (w *viewState) runView(c *ui.Context) {
 		id := task.TaskId
 		var cancelConfirmed bool
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			primaryButton(c, tr(c, "dashboard.run.view_live_detail")).AlignSelf(ui.Start).OnClick(func() { w.selectTask(id) })
+			detailButton := primaryButton
+			if task.AwaitingService {
+				detailButton = outlineButton
+			}
+			detailButton(c, tr(c, "dashboard.run.view_live_detail")).AlignSelf(ui.Start).OnClick(func() { w.selectTask(id) })
 			cancelConfirmed = w.cancelRunGate(c, id, task.State)
 		})
 		if cancelConfirmed {

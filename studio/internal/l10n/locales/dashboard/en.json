@@ -66,6 +66,8 @@
   "dashboard.failure.no_detail": "Operation failed with no additional details.",
   "dashboard.feedback.close": "Dismiss",
   "dashboard.feedback.retry": "Retry",
+  "dashboard.handoff.match_endpoint": "Use the endpoint from the first bundle ({endpoint}).",
+  "dashboard.handoff.select_pid": "Refresh the service list and select a service, or enter its new PID.",
   "dashboard.history.badge_resumable": "Resumable",
   "dashboard.history.batch_header": "Batch {id} · {status}",
   "dashboard.history.col_finished": "Finished",

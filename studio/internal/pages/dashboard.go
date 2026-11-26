@@ -97,19 +97,10 @@ func (s *viewState) dashboardView(c *ui.Context) {
 			},
 		})
 	}
-	for _, task := range s.tasks {
-		if task.Kind != "context_speed" && emptyText(task.RunPath) == "" {
-			if task.Queued && task.Bundle != nil && task.Error == nil {
-				continue
-			}
-			if s.stepOwnsTaskError(task) {
-				continue
-			}
-			ui.Text(c, taskLabel(task))
-			errorView(c, task.Error)
-		}
+	for _, task := range s.dashboardTaskNotices() {
+		ui.Text(c, taskLabel(task))
+		errorView(c, task.Error)
 	}
-
 }
 
 func (s *viewState) environmentMissing() bool {
