@@ -34,23 +34,20 @@ type (
 	ReportOutputBlockIntervals = inferyard.StudioOutputBlockIntervals
 )
 
-func reportSummary(path string) (ReportSummary, error) {
+func (s *Service) reportSummary(path string) (ReportSummary, error) {
 	r := ReportSummary{ReportId: filepath.Base(path), Path: path, RunIds: []string{}, RunPaths: []*string{}}
 	if _, e := os.Stat(path); e != nil {
 		return r, e
 	}
-	file, e := os.Stat(filepath.Join(path, "studio.json"))
+	studioPath := filepath.Join(path, "studio.json")
+	file, e := os.Stat(studioPath)
 	if e != nil {
+		s.evictStudioReportCache(filepath.Clean(studioPath))
 		r.Unreadable = true
 		return r, e
 	}
 	r.ModifiedAt = ptr(file.ModTime().UTC().Format(time.RFC3339Nano))
-	raw, e := os.ReadFile(filepath.Join(path, "studio.json"))
-	if e != nil {
-		r.Unreadable = true
-		return r, e
-	}
-	report, e := inferyard.ParseStudioReport(raw)
+	report, _, e := s.loadStudioReport(studioPath)
 	if e != nil {
 		r.Unreadable = true
 		return r, e
@@ -97,7 +94,7 @@ func (s *Service) Reports() (*string, []ReportSummary, *ApiError) {
 		if _, e := os.Stat(filepath.Join(path, "studio.json")); e != nil {
 			continue
 		}
-		r, _ := reportSummary(path)
+		r, _ := s.reportSummary(path)
 		out = append(out, r)
 	}
 	sort.Slice(out, func(i, j int) bool { return str(out[i].ModifiedAt) > str(out[j].ModifiedAt) })
@@ -181,7 +178,7 @@ func (s *Service) CreateReport(req CreateReportRequest) (ReportSummary, *ApiErro
 	if _, e := inferyard.Parse(out.Stdout); e != nil {
 		return ReportSummary{}, Err("internal_error")
 	}
-	r, err := reportSummary(path)
+	r, err := s.reportSummary(path)
 	if err != nil {
 		return ReportSummary{}, Err("internal_error")
 	}
@@ -221,38 +218,42 @@ func (s *Service) ReportFile(relative string) (string, *ApiError) {
 	return path, nil
 }
 
-func (s *Service) ReportIndex(reference string) (*ReportIndex, *ApiError) {
+func (s *Service) resolveReportStudioJSON(reference string) (string, *ApiError) {
 	if filepath.IsAbs(reference) {
 		root := s.reportsRoot(s.userSettings())
 		if root == nil {
-			return nil, Err("not_found")
+			return "", Err("not_found")
 		}
 		resolvedRoot, err := canonical(*root)
 		if err != nil {
-			return nil, Err("invalid_request")
+			return "", Err("invalid_request")
 		}
 		resolved, err := Resolve(resolvedRoot, reference)
 		if err != nil {
-			return nil, Err("invalid_request")
+			return "", Err("invalid_request")
 		}
 		relative, err := filepath.Rel(resolvedRoot, resolved)
 		if err != nil {
-			return nil, Err("invalid_request")
+			return "", Err("invalid_request")
 		}
 		reference = filepath.ToSlash(relative)
 	}
 	path, e := s.ReportFile(reference + "/studio.json")
 	if e != nil {
 		if e.Code == "not_found" && s.legacyReport(reference) {
-			return nil, &ApiError{Code: "unsupported_report_format", Message: l10n.TR("core.report.err.unsupported_format")}
+			return "", &ApiError{Code: "unsupported_report_format", Message: l10n.TR("core.report.err.unsupported_format")}
 		}
+		return "", e
+	}
+	return path, nil
+}
+
+func (s *Service) ReportIndex(reference string) (*ReportIndex, *ApiError) {
+	path, e := s.resolveReportStudioJSON(reference)
+	if e != nil {
 		return nil, e
 	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return nil, reportUnreadable()
-	}
-	report, err := inferyard.ParseStudioReport(raw)
+	report, _, err := s.loadStudioReport(path)
 	if err != nil {
 		return nil, reportUnreadable()
 	}

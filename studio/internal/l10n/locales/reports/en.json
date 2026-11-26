@@ -243,6 +243,8 @@
   "reports.tables.col_quality": "Quality",
   "reports.tables.requests.aria_label": "Per-case results table",
   "reports.tables.requests.empty": "No per-case data available.",
+  "reports.tables.requests.next_page": "Next Cases",
+  "reports.tables.requests.prev_page": "Previous Cases",
   "reports.tables.requests.title": "Per-Case Results",
   "reports.tables.requests.total": "{count} cases total",
   "reports.throughput.goodput_per_sec": "Goodput req/s",

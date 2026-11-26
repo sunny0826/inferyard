@@ -112,6 +112,7 @@ type Service struct {
 	cliUpgrade        CLIUpgradeState
 	cliUpgradeCancel  context.CancelFunc
 	cliUpgradeOnce    sync.Once
+	caches            serviceCaches
 }
 
 func New(ctx context.Context, o Options) (*Service, error) {

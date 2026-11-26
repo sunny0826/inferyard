@@ -9,8 +9,43 @@ import (
 )
 
 func (s *viewState) ingestCoreEvents(events []core.Event) {
+	syncRuns := false
 	for _, event := range events {
+		switch event.Type {
+		case "run.progress", "run.resources", "run.state":
+			syncRuns = true
+		}
 		s.ingestCoreEvent(event)
+	}
+	if syncRuns {
+		s.syncLiveRunState()
+	}
+}
+
+func (s *viewState) syncLiveRunState() {
+	if s.preview != nil || s.service == nil {
+		return
+	}
+	tasks := s.service.RunTasks()
+	s.tasks = tasks
+	s.reconcileLocalPIDs(tasks)
+	if active := activeRunTask(tasks); active != nil {
+		if d, e := s.service.RunDetail(active.TaskId); e == nil {
+			s.runProgress = d.Progress
+			if s.detailID == active.TaskId {
+				s.detail, s.detailError = &d, nil
+				return
+			}
+		}
+	} else {
+		s.runProgress = nil
+	}
+	if s.detailID != "" {
+		if d, e := s.service.RunDetail(s.detailID); e == nil {
+			s.detail, s.detailError = &d, nil
+		} else {
+			s.detailError = e
+		}
 	}
 }
 

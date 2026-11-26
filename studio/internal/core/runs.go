@@ -168,9 +168,9 @@ func (s *Service) state(t *runEntry) {
 func (s *Service) RunTasks() []RunTask {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	out := []RunTask{}
+	out := make([]RunTask, 0, len(s.runs))
 	for i := len(s.runs) - 1; i >= 0; i-- {
-		out = append(out, clone(s.runs[i].Task))
+		out = append(out, cloneRunTask(s.runs[i].Task))
 	}
 	return out
 }
@@ -179,7 +179,7 @@ func (s *Service) RunDetail(id string) (RunTaskDetail, *ApiError) {
 	defer s.mu.Unlock()
 	for _, t := range s.runs {
 		if t.Task.TaskId == id {
-			return clone(RunTaskDetail{t.Task, t.Progress, t.Resources}), nil
+			return cloneRunTaskDetail(RunTaskDetail{t.Task, t.Progress, t.Resources}), nil
 		}
 	}
 	return RunTaskDetail{}, Err("not_found")
@@ -331,7 +331,7 @@ func (s *Service) executeRun(t *runEntry) {
 		if str(a.Progress.Phase) != prevPhase {
 			pending = true
 		}
-		t.Progress = ptr(clone(a.Progress))
+		t.Progress = cloneRunProgress(&a.Progress)
 		if pending && time.Since(lastProgress) >= ProgressInterval {
 			s.Bus.Publish("run.progress", map[string]any{"task_id": t.Task.TaskId, "run_id": t.Task.RunId, "progress": a.Progress})
 			pending = false

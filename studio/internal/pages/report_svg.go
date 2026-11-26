@@ -294,12 +294,15 @@ func (s *viewState) ensureSVGStage(report *reportViewState, item core.ReportSVGO
 		report.releaseSVGStage()
 		return false
 	}
-	doc, ok := buildSVGPreviewHTML(*item.SVG)
+	key := *item.SVG
+	if report.svgStage != nil && report.svgLoadedKey == key {
+		return true
+	}
+	doc, ok := buildSVGPreviewHTML(key)
 	if !ok {
 		report.releaseSVGStage()
 		return false
 	}
-	key := *item.SVG
 	if report.svgStage == nil && !report.svgStageErr {
 		stage, err := s.createSVGStage()
 		if err != nil {
