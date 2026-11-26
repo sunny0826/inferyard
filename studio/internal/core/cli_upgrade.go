@@ -80,6 +80,8 @@ func (s *Service) clearCLIUpgradeState() {
 }
 
 func (s *Service) recoverAfterCLICompatible(u UserSettings) {
+	s.clearProbeCache()
+	s.evictProgressCache()
 	s.mu.Lock()
 	needRefresh := (s.device.LastError != nil && s.device.LastError.Code == "cli_outdated") ||
 		(s.assets.AssetsError != nil && s.assets.AssetsError.Code == "cli_outdated")
@@ -203,6 +205,8 @@ func (s *Service) UpgradeCLI(ctx context.Context, onStatus func(string)) (string
 		return "", apiErr
 	}
 
+	s.clearProbeCache()
+	s.evictProgressCache()
 	s.clearCLIUpgradeState()
 	if s.Bus != nil {
 		_ = s.Bus.Publish("sync.reset", map[string]string{"reason": "cli_upgraded"})

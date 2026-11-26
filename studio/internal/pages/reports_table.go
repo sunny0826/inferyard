@@ -13,7 +13,7 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 		})
 		return
 	}
-	if !s.loaded {
+	if !s.loaded || s.hydrating {
 		ui.Text(c, tr(c, "reports.list.loading"))
 		return
 	}

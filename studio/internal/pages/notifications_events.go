@@ -9,16 +9,26 @@ import (
 )
 
 func (s *viewState) ingestCoreEvents(events []core.Event) {
-	syncRuns := false
+	syncRuns, syncDownloads, syncChecks := false, false, false
 	for _, event := range events {
 		switch event.Type {
 		case "run.progress", "run.resources", "run.state":
 			syncRuns = true
+		case "download.progress", "download.state":
+			syncDownloads = true
+		case "engine.check":
+			syncChecks = true
 		}
 		s.ingestCoreEvent(event)
 	}
 	if syncRuns {
 		s.syncLiveRunState()
+	}
+	if syncDownloads && s.preview == nil && s.service != nil {
+		s.downloads = s.service.Downloads()
+	}
+	if syncChecks && s.preview == nil && s.service != nil {
+		s.checks = s.service.EngineChecks()
 	}
 }
 

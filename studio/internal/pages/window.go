@@ -103,7 +103,8 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 	wake, off, cursor := service.Bus.Subscribe()
 	go func() {
 		defer off()
-		s.refresh(true)
+		s.bootstrap()
+		s.refreshMask(refreshAll)
 		for {
 			select {
 			case <-ctx.Done():
@@ -115,8 +116,8 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 					batch := events
 					s.win.Update(func() { s.ingestCoreEvents(batch) })
 				}
-				if needsRefresh(events, reset) {
-					s.refresh(fullRefresh(events, reset))
+				if mask := refreshMaskFor(events, reset); mask != refreshNone {
+					s.refreshMask(mask)
 				}
 			}
 		}
@@ -243,7 +244,7 @@ type viewState struct {
 	reports                                                                             []core.ReportSummary
 	detail                                                                              *core.RunTaskDetail
 	historyError, reportsError, detailError                                             *core.ApiError
-	loaded, busy, settingsLoaded                                                        bool
+	loaded, hydrating, busy, settingsLoaded                                             bool
 	probingReuse                                                                        bool
 	busyAction                                                                          string
 	windowTitle                                                                         string

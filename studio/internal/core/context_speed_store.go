@@ -2,6 +2,7 @@ package core
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"inferyard/studio/internal/evidence"
@@ -88,18 +89,100 @@ func saveSpeedTask(root string, task RunTask) error {
 	return err
 }
 
+type cachedSpeedHistory struct {
+	signature string
+	rows      []RunTask
+}
+
+func cloneRunTasksSlice(in []RunTask) []RunTask {
+	out := make([]RunTask, len(in))
+	for i := range in {
+		out[i] = cloneRunTask(in[i])
+	}
+	return out
+}
+
+func speedHistorySignature(tasksRoot, resultsRoot string) (string, bool) {
+	h := sha256.New()
+	if !appendDirChildrenSigs(h, "speed-tasks", tasksRoot) {
+		return "", false
+	}
+	appendFileSig(h, "results", resultsRoot)
+	entries, err := os.ReadDir(resultsRoot)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return "", false
+		}
+	} else {
+		for _, entry := range entries {
+			name := entry.Name()
+			child := filepath.Join(resultsRoot, name)
+			appendFileSig(h, "results/"+name, child)
+			if !entry.IsDir() {
+				continue
+			}
+			appendFileSig(h, "results/"+name+"/batch.json", filepath.Join(child, "batch.json"))
+			appendFileSig(h, "results/"+name+"/inputs.json", filepath.Join(child, "inputs.json"))
+			appendFileSig(h, "results/"+name+"/frozen-plan/plan.json", filepath.Join(child, "frozen-plan", "plan.json"))
+			appendFileSig(h, "results/"+name+"/frozen-plan/config.json", filepath.Join(child, "frozen-plan", "config.json"))
+			if subEntries, subErr := os.ReadDir(filepath.Join(child, "runs")); subErr == nil {
+				for _, sub := range subEntries {
+					appendFileSig(h, "results/"+name+"/runs/"+sub.Name(), filepath.Join(child, "runs", sub.Name()))
+				}
+			}
+		}
+	}
+	return hex.EncodeToString(h.Sum(nil)), true
+}
+
 func (s *Service) ContextSpeedHistory() ([]RunTask, *ApiError) {
 	u := s.userSettings()
 	w := workspaceRoot(u)
 	results := s.resultsRoot(u)
-	rows := []RunTask{}
 	if w == nil || results == nil {
-		return rows, nil
+		return []RunTask{}, nil
 	}
 	root, err := Resolve(*w, filepath.Join(*w, "logs", "context-speed-tasks"))
 	if err != nil {
 		return nil, Err("task_history_unreadable")
 	}
+	rows, apiErr := s.contextSpeedDiskRowsCached(*w, root, *results)
+	if apiErr != nil {
+		return rows, apiErr
+	}
+	live := s.RunTasks()
+	for _, t := range live {
+		if t.ContextSpeed == nil {
+			continue
+		}
+		found := false
+		for i, r := range rows {
+			if r.TaskId == t.TaskId {
+				rows[i] = t
+				found = true
+				break
+			}
+		}
+		if !found {
+			rows = append(rows, t)
+		}
+	}
+	sort.Slice(rows, func(i, j int) bool { return rows[i].CreatedAt > rows[j].CreatedAt })
+	return rows, nil
+}
+
+func (s *Service) contextSpeedDiskRowsCached(ws, root, results string) ([]RunTask, *ApiError) {
+	sig, sigOK := speedHistorySignature(root, results)
+	if sigOK {
+		s.caches.mu.Lock()
+		if s.caches.speedHistory != nil && s.caches.speedHistory.signature == sig {
+			copied := cloneRunTasksSlice(s.caches.speedHistory.rows)
+			s.caches.mu.Unlock()
+			return copied, nil
+		}
+		s.caches.mu.Unlock()
+	}
+	rows := []RunTask{}
 	entries, err := os.ReadDir(root)
 	if os.IsNotExist(err) {
 		err = nil
@@ -124,11 +207,11 @@ func (s *Service) ContextSpeedHistory() ([]RunTask, *ApiError) {
 				v := wire.Task
 				valid := true
 				if v.ContextSpeed.Batch != nil {
-					_, e = Resolve(*results, v.ContextSpeed.Batch.Path)
+					_, e = Resolve(results, v.ContextSpeed.Batch.Path)
 					valid = e == nil
 				}
 				if v.ContextSpeed.Plan != nil {
-					_, e = Resolve(*w, v.ContextSpeed.Plan.Path)
+					_, e = Resolve(ws, v.ContextSpeed.Plan.Path)
 					valid = valid && e == nil
 				}
 				if valid {
@@ -142,12 +225,12 @@ func (s *Service) ContextSpeedHistory() ([]RunTask, *ApiError) {
 		}
 		rows = append(rows, row)
 	}
-	paths, scanErr := evidence.ContextSpeedBatchPaths(*results)
+	paths, scanErr := evidence.ContextSpeedBatchPaths(results)
 	if scanErr != nil {
 		return rows, Err("task_history_unreadable")
 	}
 	for _, path := range paths {
-		path, err = Resolve(*results, path)
+		path, err = Resolve(results, path)
 		if err != nil {
 			continue
 		}
@@ -177,23 +260,13 @@ func (s *Service) ContextSpeedHistory() ([]RunTask, *ApiError) {
 		s.speedFrozenIdentity(path, task.ContextSpeed)
 		rows = append(rows, task)
 	}
-	live := s.RunTasks()
-	for _, t := range live {
-		if t.ContextSpeed == nil {
-			continue
+	if sigOK {
+		s.caches.mu.Lock()
+		s.caches.speedHistory = &cachedSpeedHistory{
+			signature: sig,
+			rows:      cloneRunTasksSlice(rows),
 		}
-		found := false
-		for i, r := range rows {
-			if r.TaskId == t.TaskId {
-				rows[i] = t
-				found = true
-				break
-			}
-		}
-		if !found {
-			rows = append(rows, t)
-		}
+		s.caches.mu.Unlock()
 	}
-	sort.Slice(rows, func(i, j int) bool { return rows[i].CreatedAt > rows[j].CreatedAt })
 	return rows, nil
 }

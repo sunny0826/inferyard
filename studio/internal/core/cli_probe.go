@@ -156,6 +156,15 @@ func (s *Service) probeCLI(path string) InferyardProbe {
 	if cached, ok := s.cachedProbe(p, st, statErr); ok {
 		return cached
 	}
+	s.probeExecMu.Lock()
+	defer s.probeExecMu.Unlock()
+	st, statErr = os.Stat(p)
+	if cached, ok := s.cachedProbe(p, st, statErr); ok {
+		return cached
+	}
+	s.probeMu.Lock()
+	gen := s.probeGen
+	s.probeMu.Unlock()
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 	out, e := s.exec(ctx, p, "--version")
@@ -176,7 +185,7 @@ func (s *Service) probeCLI(path string) InferyardProbe {
 		}
 	}
 	result := InferyardProbe{Path: &p, Version: &v, Source: source, Status: "ok"}
-	s.rememberProbe(p, st, statErr, result)
+	s.rememberProbe(gen, p, st, statErr, result)
 	return result
 }
 
@@ -189,18 +198,18 @@ func (s *Service) cachedProbe(p string, st os.FileInfo, statErr error) (Inferyar
 	if s.probeResult.Status != "ok" || s.probePath != p || s.probeVersion != Version || s.probeSize != st.Size() || s.probeModTime != st.ModTime().UnixNano() {
 		return InferyardProbe{}, false
 	}
-	if time.Since(s.probeCheckedAt) >= probeTTL {
-		return InferyardProbe{}, false
-	}
 	return copyProbe(s.probeResult), true
 }
 
-func (s *Service) rememberProbe(p string, st os.FileInfo, statErr error, result InferyardProbe) {
+func (s *Service) rememberProbe(gen uint64, p string, st os.FileInfo, statErr error, result InferyardProbe) {
 	if statErr != nil || result.Status != "ok" {
 		return
 	}
 	s.probeMu.Lock()
 	defer s.probeMu.Unlock()
+	if s.probeGen != gen {
+		return
+	}
 	s.probePath = p
 	s.probeVersion = Version
 	s.probeSize = st.Size()
@@ -212,6 +221,7 @@ func (s *Service) rememberProbe(p string, st os.FileInfo, statErr error, result 
 func (s *Service) clearProbeCache() {
 	s.probeMu.Lock()
 	defer s.probeMu.Unlock()
+	s.probeGen++
 	s.probePath = ""
 	s.probeVersion = ""
 	s.probeSize = 0

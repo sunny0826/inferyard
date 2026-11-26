@@ -122,7 +122,7 @@ func (s *viewState) contentView(c *ui.Context) {
 		ui.Scroll(c.Key(page)).Grow(1).TrackScroll(s.pageScroll()).Padding(tokens(c).Density.Page).Children(func() {
 			ui.Column(c).Gap(tokens(c).Density.Section).Children(func() {
 				s.feedback(c)
-				if !s.loaded {
+				if !s.loaded || (s.hydrating && (page == "benchmarks" || page == "reports")) {
 					s.loadingView(c)
 					return
 				}

@@ -1,12 +1,9 @@
 package core
 
 import (
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -67,124 +64,6 @@ type registryData struct {
 	psScope         polystrataManagedScope
 	totalModelBytes int64
 	diskFreeBytes   *int64
-}
-
-func scanEngineBinaries(roots ...string) []registryEntry {
-	entries := []registryEntry{}
-	seen := map[string]bool{}
-	for _, root := range roots {
-		if root == "" {
-			continue
-		}
-		_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return nil
-			}
-			rel, err := filepath.Rel(root, path)
-			if err != nil {
-				return nil
-			}
-			if strings.Count(rel, string(filepath.Separator)) > 4 {
-				if d.IsDir() {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-			name := strings.ToLower(d.Name())
-			if d.IsDir() || (name != "llama-server" && name != "llama-server.exe") {
-				return nil
-			}
-			info, err := d.Info()
-			if err != nil || !info.Mode().IsRegular() || (runtime.GOOS != "windows" && info.Mode()&0111 == 0) {
-				return nil
-			}
-			identity, err := canonical(path)
-			if err != nil || seen[identity] {
-				return nil
-			}
-			seen[identity] = true
-			entries = append(entries, registryEntry{path: path, source: root, receipt: engineReceipt(path), displayName: engineReadableName(path, "", ""), modified: info.ModTime()})
-			return nil
-		})
-	}
-	sort.SliceStable(entries, func(i, j int) bool { return entries[i].modified.After(entries[j].modified) })
-	return entries
-}
-
-func engineReadableName(enginePath, folder, sourceURL string) string {
-	dir := filepath.Dir(enginePath)
-	var mode, release, prepareOut, prepareURL string
-	for _, root := range []string{dir, filepath.Dir(dir)} {
-		if raw, err := os.ReadFile(filepath.Join(root, "runtime-receipt.json")); err == nil {
-			var doc struct {
-				Mode          string `json:"mode"`
-				EngineRelease string `json:"engine_release"`
-			}
-			if json.Unmarshal(raw, &doc) == nil && (doc.Mode != "" || doc.EngineRelease != "") {
-				mode, release = doc.Mode, doc.EngineRelease
-				if folder == "" {
-					folder = filepath.Base(root)
-				}
-			}
-		}
-		if raw, err := os.ReadFile(filepath.Join(root, "engine-prepare.json")); err == nil {
-			var doc struct {
-				SourceURL string `json:"source_url"`
-				Out       string `json:"out"`
-			}
-			if json.Unmarshal(raw, &doc) == nil && (doc.SourceURL != "" || doc.Out != "") {
-				prepareURL, prepareOut = doc.SourceURL, doc.Out
-				if folder == "" {
-					if prepareOut != "" {
-						folder = filepath.Base(prepareOut)
-					} else {
-						folder = filepath.Base(root)
-					}
-				}
-			}
-		}
-	}
-	if sourceURL == "" {
-		sourceURL = prepareURL
-	}
-	if folder == "" && sourceURL == "" {
-		return ""
-	}
-	entry, inCatalog := CatalogEntryByURL(sourceURL)
-	prefix := folder
-	if prefix == "" || prefix == "engine" {
-		switch {
-		case release != "":
-			prefix = release
-		case inCatalog && entry.Revision != "":
-			prefix = entry.Revision
-		case sourceURL != "":
-			prefix = SuggestDownloadSlug("engine", sourceURL)
-		}
-	}
-	if prefix == "" {
-		return ""
-	}
-	bin := filepath.Base(enginePath)
-	if strings.EqualFold(mode, "cuda") || (inCatalog && entry.RuntimeURL != "") {
-		return prefix + " · CUDA · " + bin
-	}
-	return prefix + " · " + bin
-}
-
-func engineReceipt(enginePath string) string {
-	dir := filepath.Dir(enginePath)
-	for _, root := range []string{dir, filepath.Dir(dir)} {
-		receipt := filepath.Join(root, "runtime-receipt.json")
-		info, err := os.Stat(receipt)
-		if err != nil || !info.Mode().IsRegular() {
-			continue
-		}
-		if resolved, err := canonical(receipt); err == nil {
-			return resolved
-		}
-	}
-	return ""
 }
 
 func (s *Service) registry() registryData {
@@ -305,12 +184,12 @@ func (s *Service) registry() registryData {
 		rootsFor = s.registryRoots
 	}
 	roots := rootsFor(str(u.WorkspaceRoot))
-	data.engines = scanEngineBinaries(roots...)
+	data.engines = s.scanEngineBinariesCached(roots...)
 	engines := map[string]int{}
 	for i, e := range data.engines {
-		identity, err := canonical(e.path)
-		if err != nil {
-			continue
+		identity := e.path
+		if resolved, err := canonical(e.path); err == nil {
+			identity = resolved
 		}
 		data.engines[i].path = identity
 		engines[identity] = i
@@ -408,63 +287,11 @@ func (s *Service) registry() registryData {
 	return data
 }
 
-func nameEntries(entries []registryEntry, engine bool) {
-	counts := map[string]int{}
-	for i := range entries {
-		e := &entries[i]
-		name := filepath.Base(e.path)
-		if e.displayName != "" {
-			name = e.displayName
-		}
-		if engine {
-			name = filepath.Base(filepath.Dir(e.path)) + " · " + filepath.Base(e.path)
-			if e.installation != "" {
-				name = e.family + " · " + filepath.Base(e.installation)
-			}
-			if e.displayName != "" {
-				name = e.displayName
-			}
-		}
-		counts[name]++
-		if engine {
-			kind, family := "legacy_binary", "llama-cpp"
-			if e.installation != "" {
-				kind, family = "local_installation", e.family
-			}
-			e.engine = EngineAsset{Name: name, Source: e.source, Kind: kind, Family: family}
-		} else {
-			e.model.Name = name
-		}
-	}
-	labels := make([]string, len(entries))
-	duplicates := map[string]int{}
-	for i, e := range entries {
-		name := e.model.Name
-		if engine {
-			name = e.engine.Name
-		}
-		if counts[name] > 1 {
-			name += " · " + e.source
-		}
-		labels[i] = name
-		duplicates[name]++
-	}
-	for i := range entries {
-		name := labels[i]
-		if duplicates[name] > 1 {
-			identity := sha256.Sum256([]byte(entries[i].path))
-			name += fmt.Sprintf(" · %x", identity[:6])
-		}
-		if engine {
-			entries[i].engine.Name = name
-		} else {
-			entries[i].model.Name = name
-		}
-	}
+func (s *Service) Registry() Registry {
+	return s.buildRegistryFromData(s.registry())
 }
 
-func (s *Service) Registry() Registry {
-	data := s.registry()
+func (s *Service) buildRegistryFromData(data registryData) Registry {
 	result := Registry{
 		Models:          []ModelAsset{},
 		Engines:         []EngineAsset{},
