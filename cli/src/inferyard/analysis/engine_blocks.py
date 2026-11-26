@@ -243,9 +243,6 @@ def _compare_ordered(ordered: list[JSONRecord], blockers: list[str]) -> JSONReco
     tuning, scope = _tuning(left[0], right[0])
     if cross_format:
         scope = "engine_and_model_format"
-    temperature_overridden = any(
-        "temperature_stop_override_reason" in d["config"].get("safety", {}) for d in ordered
-    )
     eligible = not blockers
     verdicts = {
         metric: {
@@ -284,6 +281,5 @@ def _compare_ordered(ordered: list[JSONRecord], blockers: list[str]) -> JSONReco
             *(["model_format_differs_not_attributable_to_engine"] if cross_format else []),
             *(["decode_interval_not_matched_by_output_length"] if cross_format else []),
             *(["first_content_token_not_aligned_across_formats"] if cross_format else []),
-            *(["temperature_stop_overridden"] if temperature_overridden else []),
         ],
     }

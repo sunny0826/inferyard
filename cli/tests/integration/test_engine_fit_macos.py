@@ -3,7 +3,6 @@
 import json
 import os
 import selectors
-import shutil
 import subprocess
 import sys
 from contextlib import contextmanager
@@ -13,7 +12,6 @@ import pytest
 
 from inferyard.cli import main
 from inferyard.errors import PreflightError
-from inferyard.evidence.storage import read_json
 from inferyard.platforms.engine_fit import bind_service, check_service, resource_snapshot
 
 pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Native Darwin engine-fit test")
@@ -121,68 +119,8 @@ def native_fit(tmp_path, monkeypatch, capsys):
     return tmp_path, model, start
 
 
-def _run(root, service, engine, name):
-    process, origin, *_ = service
-    return main(
-        [
-            "engine-fit",
-            "run",
-            "--plan",
-            str(root / "plan/plan.json"),
-            "--engine",
-            engine,
-            "--endpoint-url",
-            origin,
-            "--server-pid",
-            str(process.pid),
-            "--served-model",
-            "native-macos-fixture",
-            "--out",
-            str(root / name),
-        ]
-    )
-
-
 def _posts(record):
     return [json.loads(line) for line in record.read_text().splitlines()] if record.exists() else []
-
-
-def _stop_on_temperature(root, engine, record, code, output):
-    """A native hardware stop is retained as incomplete evidence, never retried."""
-    payload = json.loads(output.out.strip().splitlines()[-1])
-    reason = "temperature_safety_threshold_reached"
-    if (
-        reason not in payload.get("limitations", [])
-        and (payload.get("details") or {}).get("stop_reason") != reason
-    ):
-        return
-    directory = root / engine
-    posts = _posts(record)
-    if code == 2:
-        assert not directory.exists()
-        assert posts == []
-        pytest.skip("hardware threshold before evidence creation; native fit smoke not validated")
-    assert code == 3
-    run = read_json(directory / "run.json")
-    rows = read_json(directory / "requests.json")
-    assert run["stop_reason"] == reason and run["completeness"] == "incomplete"
-    assert run["counts"]["planned"] == len(rows) == 3
-    assert sum(value for key, value in run["counts"].items() if key != "planned") == 3
-    for state in ("completed", "failed", "cancelled", "invalid", "not_executed"):
-        assert run["counts"][state] == sum(row["status"] == state for row in rows)
-    assert len(posts) <= 3 - run["counts"]["not_executed"]
-    assert all(row["status"] != "not_executed" for row in rows[: len(posts)])
-    assert all(row["response"] is None for row in rows if row["status"] == "not_executed")
-    assert any(
-        sample["phase"].startswith("stop:")
-        and any(
-            reading["value"] is not None and reading["value"] >= 85
-            for reading in sample["temperature_samples"]
-        )
-        for sample in run["resources"]
-    )
-    assert main(["engine-fit", "verify", "--path", str(directory)]) == 0
-    pytest.skip(f"hardware threshold; native fit smoke not validated; evidence: {directory}")
 
 
 def test_native_closed_listener_and_reaped_service_invalidate_binding(native_fit):

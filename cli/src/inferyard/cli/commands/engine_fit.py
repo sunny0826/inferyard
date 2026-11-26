@@ -35,12 +35,6 @@ def add_commands(commands):
         metavar="REASON",
         help="freeze a reason to disable memory stopping; still collect memory and missing reasons",
     )
-    plan.add_argument(
-        "--skip-temperature-stop",
-        dest="fit_temperature_stop_override_reason",
-        metavar="REASON",
-        help="freeze an explicit reason to disable temperature stopping; still collect temperature",
-    )
     plan.add_argument("--out", type=Path, required=True)
     run = actions.add_parser("run", help="diagnose an externally started Linux/macOS service")
     run.set_defaults(command="engine-fit run")

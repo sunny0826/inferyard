@@ -205,7 +205,6 @@ def test_prepare_polystrata_v0220_terminal_layout_end_to_end(
             max_tokens=256,
             timeout_seconds=600,
             prompt_cache=None,
-            temperature_stop_override_reason=None,
         )
         created = create_candidate(req)
         loaded = load_config(created["candidate"]).config.to_dict()

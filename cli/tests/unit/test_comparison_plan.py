@@ -153,8 +153,6 @@ def _local_config(
     base["conditions"]["model_loaded"] = True
     base["safety"] = {
         "interval_seconds": 0.5,
-        "max_temperature_celsius": 85,
-        "require_temperature": True,
         "check_environment": True,
     }
     base["generation"] = {"temperature": 0, "max_tokens": spec.get("max_tokens", 32)}

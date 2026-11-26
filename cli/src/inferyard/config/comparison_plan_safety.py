@@ -19,22 +19,6 @@ def comparison_overhead(config: JSONRecord, count: int) -> float:
     )
 
 
-def comparison_safety_overrides(policies: list[JSONRecord]) -> list[bool]:
-    overrides = ["temperature_stop_override_reason" in policy for policy in policies]
-    if any(overrides) and not all(overrides):
-        raise ContractError(
-            "compare_plan.safety",
-            "temperature stop override must cover every comparison config",
-        )
-    return overrides
-
-
-def _max_temperature(policies: list[JSONRecord], overrides: list[bool]) -> float | None:
-    if all(overrides):
-        return None
-    return min(policy["max_temperature_celsius"] for policy in policies)
-
-
 def comparison_safety(configs: list[JSONRecord]) -> JSONRecord | None:
     if not all("safety" in config for config in configs):
         if any("safety" in config for config in configs):
@@ -44,11 +28,8 @@ def comparison_safety(configs: list[JSONRecord]) -> JSONRecord | None:
             )
         return None
     policies = [config["safety"] for config in configs]
-    overrides = comparison_safety_overrides(policies)
     return {
         "interval_seconds": min(policy["interval_seconds"] for policy in policies),
-        "max_temperature_celsius": _max_temperature(policies, overrides),
-        "require_temperature": all(policy["require_temperature"] for policy in policies),
         "check_environment": all(policy["check_environment"] for policy in policies),
         "max_external_cpu_percent": None,
     }

@@ -101,7 +101,7 @@ def test_formal_local_run_seals_and_renders_offline(local_run, tmp_path, capsys)
     assert data["summary"]["counts"]["completed"] == len(command.config.bundle.to_dict()["cases"])
     assert len(state.posts) == 2 + data["summary"]["counts"]["planned"]
     assert read_json(locking.STATE_PATH)["dirty"] is False
-    assert TrialEvidence(root).observation("safety_policy")["policy"]["require_temperature"] is True
+    assert TrialEvidence(root).observation("safety_policy")["policy"]["check_environment"] is True
     assert data["summary"]["engine_observation"]["engine_internal_drain"]["value"] is None
     assert [body["stream"] for body in state.posts[:2]] == [False, True]
     before = len(state.posts)
@@ -190,7 +190,10 @@ def test_uncertain_generation_stays_dirty_even_with_zero_queue(local_run, fault_
 
     if fault_kind == "safety":
         deps.safety = lambda policy, config, environment: SafetyGuard(
-            policy, config, lambda: config["conditions"], sensors=Sensors()
+            policy,
+            config,
+            lambda: {**config["conditions"], "ac_online": not started.is_set()},
+            sensors=Sensors(),
         )
     intercept(state, fault)
 
@@ -219,7 +222,7 @@ def test_uncertain_generation_stays_dirty_even_with_zero_queue(local_run, fault_
         assert errors[0]["observation"]["temperature_samples"] == [{"value": 85}]
         assert errors[0]["error"] == {
             "type": "PreflightError",
-            "reason": "temperature_safety_threshold_reached",
+            "reason": "environment_safety_condition_changed",
         }
 
 

@@ -130,8 +130,6 @@ EXPERIMENT["properties"]["resource_comparison"] = obj(
 EXPERIMENT["properties"]["safety"] = obj(
     {
         "interval_seconds": {"type": "number", "minimum": 0.1, "maximum": 60},
-        "max_temperature_celsius": nullable({"type": "number", "minimum": 1, "maximum": 150}),
-        "require_temperature": BOOL,
         "max_external_cpu_percent": nullable({"type": "number", "minimum": 0, "maximum": 100}),
         "check_environment": BOOL,
     }

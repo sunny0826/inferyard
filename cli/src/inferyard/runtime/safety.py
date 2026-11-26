@@ -72,7 +72,6 @@ class SafetyGuard:
 
     def check(self, *, periodic=False):
         rows = self.sensors.collect("safety", None)
-        values = [r["value"] for r in rows if r["value"] is not None]
         self.last = {
             "temperature_samples": rows,
             "environment": None,
@@ -104,11 +103,6 @@ class SafetyGuard:
                 raise PreflightError("intel_pstate_safety_condition_changed")
         if external is not None and external > self.policy["max_external_cpu_percent"]:
             raise PreflightError("external_cpu_safety_threshold_reached")
-        threshold = self.policy["max_temperature_celsius"]
-        if threshold is not None and any(value >= threshold for value in values):
-            raise PreflightError("temperature_safety_threshold_reached")
-        if self.policy["require_temperature"] and (not rows or len(values) != len(rows)):
-            raise PreflightError("temperature_safety_source_unavailable")
         if self.policy["check_environment"]:
             if mismatches(self.config["conditions"], environment):
                 raise PreflightError("environment_safety_condition_changed")

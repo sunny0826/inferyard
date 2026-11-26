@@ -10,13 +10,7 @@ from inferyard.contracts.validation import validated_dict, json_bytes
 
 
 def local_safety(safety):
-    """A declared temperature-stop override freezes a null stop threshold."""
-    policy = {
-        key: value for key, value in safety.items() if key != "temperature_stop_override_reason"
-    }
-    if "temperature_stop_override_reason" in safety:
-        policy["max_temperature_celsius"] = None
-    return {**policy, "max_external_cpu_percent": None}
+    return {**safety, "max_external_cpu_percent": None}
 
 
 def compile_single_plan(config, bundle, *, experiment_id=None):

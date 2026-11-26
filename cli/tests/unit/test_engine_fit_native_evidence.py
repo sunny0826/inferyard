@@ -45,7 +45,7 @@ def native_data():
     return plan, run, rows
 
 
-def test_macos_guard_stops_at_smc_temperature_without_linux_conversion(
+def test_macos_guard_records_smc_temperature_without_stopping_or_linux_conversion(
     tmp_path, native_data, monkeypatch
 ):
     from inferyard.platforms import sensors_macos
@@ -66,6 +66,6 @@ def test_macos_guard_stops_at_smc_temperature_without_linux_conversion(
     monkeypatch.setattr(engine_fit, "check_service", lambda binding: None)
     monkeypatch.setattr(engine_fit, "resource_snapshot", lambda binding: sample)
     guard = engine_fit.Guard(run["binding"], plan, tmp_path)
-    with pytest.raises(PreflightError, match="temperature_safety_threshold_reached"):
-        guard.check("before_run")
+    recorded = guard.check("before_run")
+    assert recorded["temperature_samples"][0]["value"] == 86.5
     assert guard.last_sample["temperature_samples"][0]["value"] == 86.5
