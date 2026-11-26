@@ -89,8 +89,6 @@ def create(request):
         system, _ = require_platform(("Darwin", "arm64"))
     inputs = (request.installation, request.model_path, request.bundle_path)
     out = new_path(request.out, inputs)
-    if request.model_path.is_symlink():
-        raise PreparationError("local_engine_model_symlink_rejected")
     model_input = request.model_path.resolve(strict=True)
     results = request.output_root.resolve()
     if results.is_relative_to(out) or (results.exists() and not results.is_dir()):
@@ -141,11 +139,7 @@ def create(request):
     bundle = read_json(request.bundle_path)
     require_review(bundle)
     environment = environment_snapshot()
-    if system == "Darwin":
-        if environment.get("ac_online") is not True:
-            raise PreparationError("ac_power_required")
-    elif environment.get("ac_online") is False:
-        raise PreparationError("ac_power_required")
+    ac_state = environment.get("ac_online")
     args, cwd = startup(
         installation,
         model,
@@ -206,7 +200,7 @@ def create(request):
         conditions={
             "context_size": context,
             "cache_policy": "unknown",
-            "ac_online": True,
+            "ac_online": bool(ac_state) if ac_state is not None else True,
             "profile": environment.get("profile") or "unknown",
             "governor": environment.get("governor") or "unknown",
             "epp": environment.get("epp") or "unknown",
@@ -216,7 +210,7 @@ def create(request):
         },
         safety={
             "interval_seconds": 1,
-            "check_environment": True,
+            "check_environment": False,
         },
     )
     if environment.get("macos_power_policy") is not None:

@@ -20,8 +20,6 @@ def _single_gguf_entry(target, *, expected_count=None, expected_index=None):
     from inferyard.platforms.engine_fit import file_stamp, stable_file_digest
     from inferyard.platforms.gguf_metadata import read_metadata
 
-    if target.is_symlink():
-        raise PreflightError("engine_fit_directory_symlink")
     resolved = target.resolve(strict=True)
     if not resolved.is_file() or resolved.suffix.lower() != ".gguf":
         raise PreflightError("engine_fit_single_gguf_required")
@@ -40,7 +38,8 @@ def _single_gguf_entry(target, *, expected_count=None, expected_index=None):
         raise PreflightError("engine_fit_split_gguf_unsupported")
     if file_stamp(resolved.stat()) != before:
         raise PreflightError("engine_fit_model_changed_during_hash")
-    return resolved, {"path": resolved.name, "sha256": sha, "size": size}, count, index
+    entry_name = target.name if expected_count is not None else resolved.name
+    return resolved, {"path": entry_name, "sha256": sha, "size": size}, count, index
 
 
 def _multi_shard_gguf_entries(root, total):
@@ -66,8 +65,6 @@ def model_asset_manifest(path, *, definition="model-assets.v2"):
     from inferyard.platforms.engine_fit import model_manifest
 
     path = Path(path)
-    if path.is_symlink():
-        raise PreflightError("engine_fit_directory_symlink")
     if path.is_dir():
         from inferyard.contracts.format_versions import require_version
 

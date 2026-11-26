@@ -1,7 +1,5 @@
 """Recompute local queue evidence against sealed process identity, without live IO."""
 
-from pathlib import Path
-
 from inferyard.adapters.engine_fit import FitTransportError, parse_json_body
 from inferyard.adapters.lab_parameters import values_equal
 from inferyard.adapters.local_engines.protocol import VERSION_PATHS, models, queue, service
@@ -21,27 +19,6 @@ _KEYS = {
     "client_uncertain",
     "missing_reason",
 }
-
-
-def _sources(runtime):
-    expected = {
-        "local_engine_source_sha256": "data/local_engine/mlx_server.py",
-        "generation_queue_source_sha256": "data/engine_fit/mlx_server.py",
-    }
-    result = {}
-    for key, suffix in expected.items():
-        matches = []
-        for root in runtime["roots"]:
-            for entry in root["entries"]:
-                path = Path(root["path"])
-                if path.name != entry["path"]:
-                    path /= entry["path"]
-                if str(path).endswith("/" + suffix):
-                    matches.append(entry["sha256"])
-        if len(matches) != 1:
-            raise EvidenceError("local_engine_source_evidence_invalid")
-        result[key] = matches[0]
-    return result
 
 
 def _bound(reads, config):

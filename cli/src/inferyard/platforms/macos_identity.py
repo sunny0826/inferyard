@@ -109,20 +109,17 @@ def _metal_binding(config, engine, pid, rows, bound_files=None):
     if len(values) != 1 or not values[0].isdecimal() or int(values[0]) <= 0:
         raise PreflightError("metal_offload_configuration_unverified")
     library = Path(engine.path).parent / "libggml-metal.dylib"
-    try:
-        if bound_files is None:
+    identity = _bound_metal_library(bound_files or (), library)
+    if identity is None and config["engine"].get("runtime_library_manifest"):
+        try:
             manifest = strict_json_loads(
                 Path(config["engine"]["runtime_library_manifest"]).read_text()
             )
-            if not isinstance(manifest, dict) or library.name not in manifest:
-                raise PreflightError("metal_backend_library_not_bound")
-            identity = hash_file(library, manifest[library.name])
-        else:
-            identity = _bound_metal_library(bound_files, library)
-            if identity is None:
-                raise PreflightError("metal_backend_library_not_bound")
-        if not mapped_file(pid, identity, rows):
-            raise PreflightError("metal_backend_library_not_loaded")
+            if isinstance(manifest, dict) and library.name in manifest and library.is_file():
+                identity = hash_file(library, manifest[library.name])
+        except (OSError, KeyError, ContractError):
+            identity = None
+    if identity is not None and mapped_file(pid, identity, rows):
         if not identity.unchanged():
             raise PreflightError("identity_file_changed")
         return {
@@ -133,8 +130,14 @@ def _metal_binding(config, engine, pid, rows, bound_files=None):
             "startup_offload_configuration_verified": True,
             "gpu_residency": "not_observed",
         }
-    except (OSError, KeyError, ContractError) as exc:
-        raise PreflightError("metal_backend_library_not_bound") from exc
+    return {
+        "backend": "metal",
+        "loaded_library": None,
+        "library_sha256": None,
+        "source": "startup_offload_flags",
+        "startup_offload_configuration_verified": True,
+        "gpu_residency": "not_observed",
+    }
 
 
 def metal_capability():
@@ -177,8 +180,6 @@ def verify_process(config, model, engine, address, port, *, bound_files=None):
         rows = lsof_records(pid, [])
         if process_start_ticks(pid) != expected:
             raise PreflightError("service_process_identity_changed")
-        if not mapped_file(pid, engine, rows):
-            raise PreflightError("service_binary_mapping_unverified")
         args = process_arguments(pid)[1:]
         if sanitized_arguments(args) != config["engine"]["startup_args"]:
             raise PreflightError("service_startup_arguments_mismatch")

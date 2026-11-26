@@ -77,7 +77,12 @@ def _mlx_script(arguments, cwd):
         "-OO",
     ):
         cursor += 1
-    if cursor == len(arguments) or arguments[cursor].startswith("-"):
+    if cursor == len(arguments):
+        raise PreflightError("engine_fit_startup_entrypoint_unverified")
+    if arguments[cursor : cursor + 2] in (["-m", "mlx_lm.server"], ["-m", "mlx_lm"]):
+        model = _options(arguments[cursor + 2 :], model_options={"--model"})
+        return model, {}
+    if arguments[cursor].startswith("-"):
         raise PreflightError("engine_fit_startup_entrypoint_unverified")
     script = Path(arguments[cursor])
     if not script.is_absolute():

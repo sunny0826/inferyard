@@ -43,7 +43,8 @@ CONFIG = obj(
                 "runtime_library_manifest": LABEL,
                 "startup_args": array(TEXT),
                 "backend": enum("cpu", "cuda", "metal", "hip"),
-            }
+            },
+            ["adapter", "release", "binary_path", "binary_sha256", "startup_args", "backend"],
         ),
         "endpoint": obj(
             {

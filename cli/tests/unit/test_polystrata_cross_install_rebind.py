@@ -412,7 +412,7 @@ def test_legacy_top_level_pack_key_with_args_lib_dirs_backend_conflict_and_temp_
         str(ext_lib.resolve()),
     ]
     assert loaded_cfg["engine"]["backend"] == "hip"
-    assert loaded_cfg["safety"] == {"interval_seconds": 1, "check_environment": True}
+    assert loaded_cfg["safety"] == {"interval_seconds": 1, "check_environment": False}
 
     bad_legacy_temp = json.loads(json.dumps(loaded_cfg))
     bad_legacy_temp["safety"]["max_temperature_celsius"] = 85

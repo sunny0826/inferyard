@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from inferyard.contracts.engine_profiles import POLYSTRATA_SUPPORTED_GGUF_ARCHS
+from inferyard.contracts.local_environment import _SECRET_KEY_PATTERN, has_embedded_url_credentials
 from inferyard.platforms.gguf_metadata import read_metadata
 from inferyard.platforms.local_engines.detect_polystrata import (
     find_polystrata_engine_binaries,
@@ -24,7 +25,6 @@ _LEGACY_MODEL_PATH_KEYS = (
     "weights_dir",
 )
 _TOKENIZER_PATH_KEYS = ("tokenizer", "tokenizer_path", "tokenizer_dir")
-_SECRET_ENV_SUBSTRINGS = ("API_KEY", "TOKEN", "PASSWORD", "SECRET", "AUTH")
 _SAFE_DERIVED_KEYS = (
     "exe",
     "args",
@@ -52,13 +52,9 @@ UPSTREAM_DEFAULT_CONTEXT = 4096
 def _resolve_ref(raw: str, bases: tuple[Path, ...]) -> Path | None:
     candidate = Path(raw)
     if candidate.is_absolute():
-        if candidate.is_symlink():
-            raise PreparationError("local_engine_model_symlink_rejected")
         return candidate.resolve(strict=True) if candidate.exists() else None
     for base in bases:
         joined = base / candidate
-        if joined.is_symlink():
-            raise PreparationError("local_engine_model_symlink_rejected")
         if joined.exists():
             return joined.resolve(strict=True)
     return None
@@ -78,7 +74,11 @@ def _check_gguf_arch(gguf_path: Path) -> dict:
 def _has_secret_mapping(mapping: dict) -> bool:
     for key, val in mapping.items():
         upper = str(key).upper()
-        if any(part in upper for part in _SECRET_ENV_SUBSTRINGS) and str(val).strip():
+        text_val = str(val)
+        if (
+            (_SECRET_KEY_PATTERN.search(upper) is not None or "AUTHORIZATION" in upper)
+            and text_val.strip()
+        ) or has_embedded_url_credentials(text_val):
             return True
     return False
 

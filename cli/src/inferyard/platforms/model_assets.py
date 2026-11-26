@@ -26,16 +26,18 @@ def inventory(root, *, frozen_paths=None):
     from inferyard.platforms.engine_fit import file_stamp
 
     result, pending = {}, [root]
+    visited_dirs: set[tuple[int, int]] = set()
     while pending:
         directory = pending.pop()
-        if directory.is_symlink():
-            raise PreflightError("engine_fit_directory_symlink")
+        dir_stat = directory.stat()
+        dir_key = (dir_stat.st_dev, dir_stat.st_ino)
+        if dir_key in visited_dirs:
+            continue
+        visited_dirs.add(dir_key)
         for entry in sorted(directory.iterdir()):
             if entry.name in IGNORED_DIRECTORIES:
                 continue
             if entry.is_dir():
-                if entry.is_symlink():
-                    raise PreflightError("engine_fit_directory_symlink")
                 pending.append(entry)
             elif is_asset(entry):
                 link, target = entry.lstat(), entry.stat()

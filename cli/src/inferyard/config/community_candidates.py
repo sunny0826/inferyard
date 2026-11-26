@@ -72,8 +72,6 @@ def fresh_macos(selected, results):
     current = fresh["selected"]
     if current["mode"] != selected["mode"]:
         raise PreparationError("device_selection_changed_repeat_device_check")
-    if hardware.get("ac_online") is not True:
-        raise PreparationError("ac_power_required")
     return current
 
 

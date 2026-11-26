@@ -1,7 +1,6 @@
 """Uniform native Windows file stamps; never mix Python stat/fstat semantics."""
 
 import ctypes
-import hashlib
 import os
 import stat
 from ctypes import wintypes
@@ -76,7 +75,7 @@ def path_stamp(path):
 
 
 def file_hash(path):
-    from inferyard.platforms.engine_fit import file_stamp
+    from inferyard.platforms.engine_fit import bounded_stream_sha256, file_stamp
 
     path = Path(path)
     before, link = path.stat(), path.lstat()
@@ -88,7 +87,7 @@ def file_hash(path):
     with os.fdopen(descriptor, "rb") as stream:
         if descriptor_stamp(stream.fileno()) != expected:
             raise PreflightError("engine_fit_file_changed")
-        digest = hashlib.file_digest(stream, "sha256").hexdigest()
+        digest = bounded_stream_sha256(stream, expected[3])
         if descriptor_stamp(stream.fileno()) != expected:
             raise PreflightError("engine_fit_file_changed")
     if (

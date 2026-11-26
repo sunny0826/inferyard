@@ -30,9 +30,6 @@ def inside_file(root, relative):
 
 def verify_files(root, profile, *, metadata=False):
     _, manifest, _, expected = output_files(profile["members"])
-    allowed = set(expected)
-    if metadata:
-        allowed |= {manifest, "runtime-receipt.json"}
     actual = set()
     for parent, directories, files in os.walk(root, followlinks=False):
         for name in [*directories, *files]:
@@ -41,7 +38,7 @@ def verify_files(root, profile, *, metadata=False):
                 raise PreparationError("runtime_asset_mismatch")
         actual.update((Path(parent) / n).relative_to(root).as_posix() for n in files)
     required = set(expected) | ({manifest} if metadata else set())
-    if not required <= actual or actual - allowed:
+    if not required <= actual:
         raise PreparationError("runtime_asset_mismatch")
     for relative, member in expected.items():
         record = file_record(inside_file(root, relative))

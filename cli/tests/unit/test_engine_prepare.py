@@ -73,7 +73,7 @@ def _zip_bytes(entries):
                 info.external_attr = spec["attr"]
                 package.writestr(info, spec["data"])
             else:
-                package.writestr(name, spec)
+                package.writestr(zipfile.ZipInfo(name), spec)
     return buf.getvalue()
 
 

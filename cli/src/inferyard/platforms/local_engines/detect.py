@@ -510,8 +510,6 @@ def build_installation(
 
     if family == "sglang" and platform.system() == "Darwin":
         environment = {"SGLANG_USE_MLX": "1"}
-    elif family == "polystrata":
-        environment = {"PYTHONDONTWRITEBYTECODE": "1"}
     else:
         environment = {}
     payload: dict = {

@@ -333,10 +333,18 @@ def normalize_polystrata_root(directory: Path) -> Path:
     return directory
 
 
+def _is_polystrata_python_env(directory: Path) -> bool:
+    return (
+        (directory / "pyvenv.cfg").is_file()
+        or (directory / "conda-meta").is_dir()
+        or pick_venv_python(directory) is not None
+    )
+
+
 def infer_polystrata_root(executable: Path) -> Path | None:
-    """Infer PolyStrata working_directory from a .venv Python executable."""
+    """Infer PolyStrata working_directory from a .venv or Conda Python executable."""
     venv_dir = executable.parent.parent
-    if executable.parent.name in ("bin", "Scripts") and (venv_dir / "pyvenv.cfg").is_file():
+    if executable.parent.name in ("bin", "Scripts") and _is_polystrata_python_env(venv_dir):
         candidate = normalize_polystrata_root(venv_dir.parent)
         if is_polystrata_root(candidate):
             return _safe_resolve(candidate)
@@ -355,10 +363,16 @@ def probe_polystrata_root(
         resolved = _safe_resolve(normalize_polystrata_root(resolved))
     if resolved is None or not is_polystrata_root(resolved):
         return False
-    venv_dir = resolved / ".venv"
-    if not (venv_dir / "pyvenv.cfg").is_file():
-        venv_dir = resolved / "terminal" / ".venv"
-    if not (venv_dir / "pyvenv.cfg").is_file():
+    env_candidates = [
+        resolved / ".venv",
+        resolved / "venv",
+        resolved / "terminal" / ".venv",
+        resolved / "terminal" / "venv",
+    ]
+    if conda_prefix := os.environ.get("CONDA_PREFIX"):
+        env_candidates.append(Path(conda_prefix))
+    venv_dir = next((d for d in env_candidates if _is_polystrata_python_env(d)), None)
+    if venv_dir is None:
         return False
     python_exec = pick_venv_python(venv_dir, preferred=preferred_python)
     if python_exec is None:
