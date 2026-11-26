@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.19
+
+- fix(studio): resolve 12 UI/UX issues identified via native UI E2E and visual audit (#255)
+- fix(release,studio): publish PyPI before Studio release and retry auto CLI upgrade (#254)
+- fix(studio): anchor update prompt and notification overlays with absolute bounds (#253)
+
 ## 0.0.18
 
 - feat(studio): unify design-system sizing and polish Library, Benchmarks, and Run History UX (#251)
