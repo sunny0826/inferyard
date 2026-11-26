@@ -68,7 +68,7 @@ def interleaved(left=None, right=None, blocks=3):
             "block_service_not_replaced",
         ),
         (
-            lambda rows: rows[2]["config"]["model"].update(content_sha256="other"),
+            lambda rows: rows[2]["config"]["model"].update(local_path="/fixture/other.gguf"),
             "side_configuration_changed",
         ),
     ],
@@ -84,7 +84,7 @@ def test_gates_block_verdict(mutate, blocker):
 
 def mlx_block(order, **fields):
     data = block("mlx-lm", order, **fields)
-    data["config"]["model"].update(kind="directory", content_sha256="m", assets_sha256="ma")
+    data["config"]["model"].update(kind="directory", local_path="/fixture/mlx-model")
     for row in data["requests"]:
         row["usage_detail"]["cached_tokens"] = None
     return data

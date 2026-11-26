@@ -63,7 +63,7 @@ else:
         instance = factory(*args, **kwargs)
         original_generate = instance.generate
         async def generate(*args, **kwargs):
-            if len(fixture[2]) == 5:
+            if len(fixture[2]) == 0:
                 print('ready', flush=True)
                 await asyncio.sleep(30)
             return await original_generate(*args, **kwargs)
@@ -141,7 +141,7 @@ def test_killed_controller_rebuilds_and_resumes_without_overwriting(
         assert child_data["summary"]["counts"]["planned"] == remaining
         assert child_data["summary"]["scope_complete"]
         assert child_data["summary"]["completeness"] == "incomplete"
-        assert len(fixture[2]) == 5 + remaining
+        assert len(fixture[2]) == remaining
         assert before == {p.name: sha256_file(p) for p in parent_path.iterdir()}
         assert not read_json(locking.STATE_PATH)["dirty"]
     finally:

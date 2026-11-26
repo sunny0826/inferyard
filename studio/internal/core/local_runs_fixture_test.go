@@ -33,6 +33,7 @@ type localQueueFixture struct {
 	workspace, results, family, endpoint string
 	candidates                           []CandidateRun
 	bindPIDs                             []int64
+	describeCalls                        int
 	runBundles                           []string
 	failBundle                           string
 	blockRun                             bool
@@ -110,7 +111,7 @@ func (f *localQueueFixture) description() inferyard.Execution {
 		launch["kind"], launch["lms_executable"], launch["models_root"], launch["background_argv"], launch["served_model"], launch["requires_loaded_instance"] = "lmstudio", os.Args[0], f.workspace, []string{os.Args[0]}, "fixture", true
 	}
 	details := map[string]any{"schema_version": 3, "definition": "local-engine-description.v2", "family": f.family, "model_requests_sent": 0, "bound": false,
-		"launch": launch, "assets": map[string]any{"installation": map[string]any{"path": filepath.Join(f.workspace, "installation.json"), "sha256": hash, "declaration_sha256": hash}, "model": map[string]any{"path": filepath.Join(f.workspace, "model"), "kind": kind, "content_sha256": hash, "manifest_path": filepath.Join(f.workspace, "model-manifest.json"), "manifest_sha256": hash}, "template": map[string]any{"path": filepath.Join(f.workspace, "template.jinja"), "sha256": hash}},
+		"launch": launch, "assets": map[string]any{"installation": map[string]any{"path": filepath.Join(f.workspace, "installation.json"), "sha256": hash, "declaration_sha256": hash}, "model": map[string]any{"path": filepath.Join(f.workspace, "model"), "kind": kind}, "template": map[string]any{"path": filepath.Join(f.workspace, "template.jinja"), "sha256": hash}},
 		"endpoint": map[string]any{"url": f.endpoint, "server_pid": 1, "process_start_ticks": 1}, "conditions": map[string]any{"context_size": 4096}, "generation": map[string]any{"max_tokens": 32, "temperature": 0},
 		"safety": map[string]any{"interval_seconds": 1, "check_environment": true}, "effective_parameters": nil, "effective_template": nil, "effective_unknown_reason": "requires_live_engine_observation"}
 	raw, _ := json.Marshal(map[string]any{"command": "config describe", "status": "prepared", "completeness": "complete", "run_id": nil, "evidence_dir": nil, "limitations": []string{}, "details": details})
@@ -122,6 +123,9 @@ func (f *localQueueFixture) execute(ctx context.Context, _ string, args ...strin
 		return out, nil
 	}
 	if len(args) > 1 && args[0] == "config" && args[1] == "describe" {
+		f.mu.Lock()
+		f.describeCalls++
+		f.mu.Unlock()
 		return f.description(), nil
 	}
 	if len(args) > 1 && args[0] == "config" && args[1] == "bind" {

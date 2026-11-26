@@ -80,6 +80,8 @@ def sample(root, trial, data):
     )
     fixed_refs = []
     for stage in ("ordinary", "stream"):
+        if not reads.has_observation("effective_parameters", stage=stage):
+            continue
         effective = reads.observation("effective_parameters", stage=stage) or {}
         item = observation("effective_parameters", stage)
         if item:
@@ -116,6 +118,8 @@ def sample(root, trial, data):
     request_ref = ref(reads.request_reference(starts[0]))
     if request_ref.get("member", {}).get("request_id") != row["request_id"]:
         raise EvidenceError("context_speed_request_member_required")
+    if not fixed_refs:
+        fixed_refs = [r for r in (request_ref, log) if r]
     final = [
         e for e in request_events if e["event_type"] == "engine_timings" and e["data"]["final"]
     ]

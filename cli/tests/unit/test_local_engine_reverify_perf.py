@@ -76,9 +76,6 @@ def test_verify_bound_service_reuses_asset_cache_when_bound_files_omitted(
         "model": {
             "local_path": str(model_file),
             "kind": "gguf",
-            "assets_path": str(tmp_path / "assets.json"),
-            "assets_sha256": "b" * 64,
-            "content_sha256": "c" * 64,
             "template_path": str(tmp_path / "template.jinja"),
             "template_sha256": "d" * 64,
         },

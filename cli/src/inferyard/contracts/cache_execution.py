@@ -24,6 +24,5 @@ def validate_inputs(workload, config):
 
 
 def request_value(config, phase, ordinal):
-    return config["conditions"]["cache_policy"] == "enabled" and not (
-        phase == "probe" and ordinal == 1
-    )
+    _ = phase
+    return config["conditions"]["cache_policy"] == "enabled" and ordinal != 1

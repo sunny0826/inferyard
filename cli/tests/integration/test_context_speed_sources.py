@@ -57,11 +57,9 @@ def test_semantic_source_mismatch(speed_service, monkeypatch, capsys, change):
             if change == "sequence":
                 event["seq"] = 1
             else:
-                event["request_id"] = next(
-                    e["request_id"] for e in rows if e["phase"] == "probe" and e["request_id"]
-                )
+                event["request_id"] = "forged-other-request-id"
         elif change == "member":
-            rows[-1]["request_id"] = rows[0]["request_id"]
+            rows[-1]["request_id"] = "forged-other-request-id"
         elif change == "request_body":
             row = rows[-1]
             row["body"]["seed"] = 42

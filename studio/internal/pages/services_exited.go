@@ -223,25 +223,7 @@ func (s *viewState) dismissExitedServiceNoticeByID(id string) {
 	}()
 }
 
-func (s *viewState) launchOrRestartService(req core.StandaloneStartRequest, restartServiceID string) {
-	if restartServiceID != "" {
-		s.serviceParams.open = false
-		s.stopManagedServiceThen(restartServiceID, func() {
-			s.launchStandaloneRequest(req)
-		})
-		return
-	}
-	if existing, ok := s.findRunningServiceByModelEngine(req.Model, req.Engine); ok {
-		s.serviceParams.open = false
-		s.stopManagedServiceThen(existing.ServiceID, func() {
-			s.launchStandaloneRequest(req)
-		})
-		return
-	}
-	s.launchStandaloneRequest(req)
-}
-
-func (s *viewState) launchStandaloneRequest(req core.StandaloneStartRequest) {
+func (s *viewState) markStandalonePreparing(req core.StandaloneStartRequest) {
 	s.standalone.drawerOpen = false
 	s.serviceParams.open = false
 	s.standalone.setPreparing(req.Model, true)
@@ -251,6 +233,28 @@ func (s *viewState) launchStandaloneRequest(req core.StandaloneStartRequest) {
 	}
 	s.standalone.lastParams[req.Model] = standaloneAttempt{engine: req.Engine, context: req.ContextSize}
 	s.standalone.setLastError(req.Model, nil)
+}
+
+func (s *viewState) launchOrRestartService(req core.StandaloneStartRequest, restartServiceID string) {
+	if restartServiceID != "" {
+		s.markStandalonePreparing(req)
+		s.stopManagedServiceThen(restartServiceID, func() {
+			s.launchStandaloneRequest(req)
+		})
+		return
+	}
+	if existing, ok := s.findRunningServiceByModelEngine(req.Model, req.Engine); ok {
+		s.markStandalonePreparing(req)
+		s.stopManagedServiceThen(existing.ServiceID, func() {
+			s.launchStandaloneRequest(req)
+		})
+		return
+	}
+	s.launchStandaloneRequest(req)
+}
+
+func (s *viewState) launchStandaloneRequest(req core.StandaloneStartRequest) {
+	s.markStandalonePreparing(req)
 	if s.simulate(previewStandaloneStart{
 		model:       req.Model,
 		engine:      req.Engine,

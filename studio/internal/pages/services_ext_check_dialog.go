@@ -13,6 +13,7 @@ import (
 
 type extConnCheckDialogState struct {
 	open         bool
+	autoStart    bool
 	serviceID    string
 	modelName    string
 	engineName   string
@@ -188,6 +189,11 @@ func (s *viewState) handleExtConnProbeResult(serviceID, modelName, engineName, e
 	if probe.Status != core.ExclusivityExternal {
 		s.clearPendingExclusivity()
 		s.applyServiceBenchmarkTarget(modelName, engineName)
+		if serviceID != "" {
+			s.pendingExclusivityMode = "reuse"
+			s.pendingExclusivityModel = strings.TrimSpace(modelName)
+			s.pendingExclusivityEngine = strings.TrimSpace(engineName)
+		}
 		s.openBenchmarksFlow()
 		return
 	}
@@ -252,11 +258,17 @@ func (s *viewState) extConnCheckDialog(c *ui.Context) {
 		}
 
 		applyBenchmarkTarget := func(mode, exclusivity string) {
-			s.applyServiceBenchmarkTarget(d.modelName, d.engineName)
+			if !d.autoStart {
+				s.applyServiceBenchmarkTarget(d.modelName, d.engineName)
+			}
 			s.pendingExclusivityMode = mode
 			s.pendingExclusivity = exclusivity
 			s.pendingExclusivityModel = strings.TrimSpace(d.modelName)
 			s.pendingExclusivityEngine = strings.TrimSpace(d.engineName)
+			if d.autoStart {
+				s.startBenchmark()
+				return
+			}
 			s.openBenchmarksFlow()
 		}
 

@@ -27,7 +27,7 @@ _CACHE_LIMIT = 8
 
 type Stamp = tuple[int, int, int, int, int]
 type StampGroup = tuple[tuple[tuple[str, Stamp], ...], tuple[tuple[str, Stamp], ...]]
-type AssetKey = tuple[str, str, str, str, str, str, str, str, str]
+type AssetKey = tuple[str, str, str, str, str, str]
 type CachedAssets = tuple[JsonObject, list[FileIdentity], list[FileIdentity], StampGroup]
 
 _ASSET_CACHE: dict[AssetKey, CachedAssets] = {}
@@ -40,9 +40,6 @@ def _asset_key(config: JsonObject) -> AssetKey:
         engine["installation_sha256"],
         model["local_path"],
         model["kind"],
-        model["assets_path"],
-        model["assets_sha256"],
-        model["content_sha256"],
         model["template_path"],
         model["template_sha256"],
     )

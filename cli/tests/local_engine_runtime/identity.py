@@ -8,7 +8,6 @@ from inferyard.config.local_engines.launch import startup
 from inferyard.contracts.validation import json_bytes
 from inferyard.platforms.identity import hash_file
 from inferyard.platforms.local_engines.offline import validate_frozen_identity
-from inferyard.platforms.model_asset_manifest import model_asset_manifest
 
 
 def freeze(config, state, root):
@@ -74,17 +73,13 @@ def freeze(config, state, root):
         return str(path), identity.sha256
 
     engine["installation_path"], engine["installation_sha256"] = document("runtime.json", runtime)
-    manifest = model_asset_manifest(model)
+    template_identity = hash_file(template)
+    files.append(template_identity)
     config["model"].update(
         local_path=str(model),
-        content_sha256=manifest["sha256"],
         template_path=str(template),
-        template_sha256=hash_file(template).sha256,
+        template_sha256=template_identity.sha256,
     )
-    config["model"]["assets_path"], config["model"]["assets_sha256"] = document(
-        "assets.json", manifest
-    )
-    files.extend(hash_file(model / entry["path"]) for entry in manifest["files"])
     raw = b"\0".join(arg.encode() for arg in [str(executable), *engine["startup_args"]]) + b"\0"
     state.binding.update(
         executable_sha256=exe_identity.sha256,
@@ -103,6 +98,6 @@ def freeze(config, state, root):
     }
     endpoint = config["endpoint"]
     endpoint["binding_path"], endpoint["binding_sha256"] = document("binding.json", binding)
-    local = {"runtime": runtime, "binding": binding, "model_assets": manifest}
+    local = {"runtime": runtime, "binding": binding}
     validate_frozen_identity(config, local, files=files)
     return local, files

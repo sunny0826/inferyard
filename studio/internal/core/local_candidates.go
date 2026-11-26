@@ -58,21 +58,34 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 		return nil, cliProbeError(probe)
 	}
 	key := installationKey(selected.installation)
-	checked, err := s.exec(ctx, *probe.Path, "engine", "check", "--installation", selected.installation)
-	if failure := exitError(checked, err); failure != nil {
-		return nil, failure
+	cliKey, generation := s.captureCheckGeneration(probe)
+	var family, declSHA256 string
+	s.checkMu.Lock()
+	if cached, ok := s.checks[selected.path]; ok && cached.verified && cached.key == key &&
+		cached.result.State == EngineCheckEligible && cached.result.Family != "" && cached.result.DeclarationSHA256 != nil {
+		family = cached.result.Family
+		declSHA256 = *cached.result.DeclarationSHA256
 	}
-	check, err := inferyard.ParseEngineCheck(checked.Stdout, checked.ExitCode)
-	if err != nil || check.Family == nil || check.DeclarationSHA256 == nil {
-		return nil, Err("engine_check_invalid_response")
+	s.checkMu.Unlock()
+	if family == "" || declSHA256 == "" {
+		checked, err := s.exec(ctx, *probe.Path, "engine", "check", "--installation", selected.installation)
+		if failure := exitError(checked, err); failure != nil {
+			return nil, failure
+		}
+		check, err := inferyard.ParseEngineCheck(checked.Stdout, checked.ExitCode)
+		if err != nil || check.Family == nil || check.DeclarationSHA256 == nil {
+			return nil, Err("engine_check_invalid_response")
+		}
+		if !check.Eligible {
+			return nil, &ApiError{Code: "local_engine_installation_rejected", Limitations: []string{str(check.Reason)}}
+		}
+		if key != installationKey(selected.installation) {
+			return nil, Err("local_engine_installation_changed")
+		}
+		s.cacheInstallationCheck(cliKey, generation, selected.path, key, check)
+		family = *check.Family
+		declSHA256 = *check.DeclarationSHA256
 	}
-	if !check.Eligible {
-		return nil, &ApiError{Code: "local_engine_installation_rejected", Limitations: []string{str(check.Reason)}}
-	}
-	if key != installationKey(selected.installation) {
-		return nil, Err("local_engine_installation_changed")
-	}
-	family := *check.Family
 	port := strconv.Itoa(DefaultBenchmarkPort)
 	if family == "lmstudio" {
 		if req.ServicePID <= 0 {
@@ -83,10 +96,15 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 		if failure != nil {
 			return nil, failure
 		}
-	} else {
-		if req.ServicePID != 0 {
-			return nil, Err("invalid_request")
+	} else if req.ServicePID > 0 {
+		var failure *ApiError
+		port, failure = localEndpointPort(req.Endpoint)
+		if failure != nil {
+			return nil, failure
 		}
+	} else if req.ServicePID < 0 {
+		return nil, Err("invalid_request")
+	} else {
 		allocated, err := ChooseFreeLoopbackPort(DefaultBenchmarkPort)
 		if err != nil || allocated <= 0 {
 			return nil, Err("internal_error")
@@ -108,7 +126,7 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 			return nil, Err("invalid_request")
 		}
 		installation := selected.installation
-		if family == "sglang" {
+		if family == "sglang" && req.ServicePID == 0 {
 			installation, failure = scopedSGLangInstallation(*workspace, installation, key)
 			if failure != nil {
 				return nil, failure
@@ -120,7 +138,7 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 		}
 		args := []string{"config", "create", "--installation", installation, "--model", model,
 			"--bundle", bundlePath, "--results", *results, "--port", port, "--out", output}
-		if family == "lmstudio" {
+		if req.ServicePID > 0 {
 			args = append(args, "--service-pid", strconv.FormatInt(req.ServicePID, 10))
 		}
 		out, err := s.exec(ctx, *probe.Path, args...)
@@ -143,7 +161,7 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 		if description.Family != family || !modelMatches || description.Assets.Installation == nil {
 			return nil, Err("candidate_mismatch")
 		}
-		if family != "sglang" && description.Assets.Installation.DeclarationSHA256 != *check.DeclarationSHA256 {
+		if family != "sglang" && description.Assets.Installation.DeclarationSHA256 != declSHA256 {
 			return nil, Err("candidate_mismatch")
 		}
 		s.mu.Lock()

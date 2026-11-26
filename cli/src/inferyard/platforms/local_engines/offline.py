@@ -4,20 +4,16 @@ import hashlib
 import os
 from pathlib import PurePosixPath
 
-from inferyard.contracts.engine_profiles import DIRECTORY_FAMILIES
 from inferyard.contracts.local_environment import (
     is_absolute_path,
     parse_absolute_path,
     validate_installation_environment,
 )
-from inferyard.contracts.schemas_common import HASH, LABEL, NAT, array, obj
 from inferyard.contracts.validation import validate_value, json_bytes
 from inferyard.errors import ContractError, PreflightError
 from inferyard.platforms.local_engines.binding_schema import validate as validate_binding
 from inferyard.platforms.local_engines.runtime_schema import RUNTIME
 from inferyard.platforms.local_engines.startup import validate_arguments
-
-_ENTRY = obj({"path": LABEL, "sha256": HASH, "size": NAT})
 
 
 def _require(value):
@@ -26,12 +22,12 @@ def _require(value):
 
 
 def validate_frozen_identity(config, local_identity, *, files):
-    """Check canonical document hashes, closed fields and model/file correspondence."""
+    """Check canonical document hashes, closed fields and binding correspondence."""
     _require(
         isinstance(local_identity, dict)
-        and set(local_identity) == {"runtime", "binding", "model_assets"}
+        and set(local_identity) == {"runtime", "binding"}
     )
-    runtime, binding, manifest = (local_identity[k] for k in ("runtime", "binding", "model_assets"))
+    runtime, binding = (local_identity[k] for k in ("runtime", "binding"))
     validate_value(runtime, RUNTIME, "identity.local_engine.runtime")
     try:
         service = validate_binding(binding, config)
@@ -68,16 +64,8 @@ def validate_frozen_identity(config, local_identity, *, files):
                 not PurePosixPath(row["path"]).is_absolute()
                 and all(part not in ("", ".", "..") for part in row["path"].split("/"))
             )
-    properties = {"kind": LABEL, "path": LABEL, "sha256": HASH, "files": array(_ENTRY, 1)}
-    if model["kind"] == "directory":
-        properties["definition"] = {"type": "string", "const": "model-assets.v2"}
-    validate_value(manifest, obj(properties), "identity.local_engine.model_assets")
-    _require(manifest["kind"] == model["kind"] and manifest["path"] == model["local_path"])
-    _require(
-        manifest["sha256"]
-        == model["content_sha256"]
-        == hashlib.sha256(json_bytes(manifest["files"])).hexdigest()
-    )
+    _require(model["kind"] in ("gguf", "directory"))
+    _require(parse_absolute_path(model["local_path"]) is not None)
     inventory = {}
     for item in files:
         path = item["path"] if isinstance(item, dict) else item.path
@@ -88,7 +76,6 @@ def validate_frozen_identity(config, local_identity, *, files):
     documents = (
         (runtime, engine["installation_path"], engine["installation_sha256"]),
         (binding, config["endpoint"]["binding_path"], config["endpoint"]["binding_sha256"]),
-        (manifest, model["assets_path"], model["assets_sha256"]),
     )
     for document, path, expected in documents:
         content = json_bytes(document)
@@ -100,25 +87,4 @@ def validate_frozen_identity(config, local_identity, *, files):
             inventory.get(engine["polystrata_config_path"], (None,))[0]
             == engine["polystrata_config_sha256"]
         )
-    names = [entry["path"] for entry in manifest["files"]]
-    _require(names == sorted(set(names)))
-    base = parse_absolute_path(model["local_path"])
-    _require(base is not None)
-    multi_shard = model["kind"] == "gguf" and len(names) > 1
-    for entry in manifest["files"]:
-        relative = PurePosixPath(entry["path"])
-        _require(
-            not relative.is_absolute()
-            and all(p not in ("", ".", "..") for p in entry["path"].split("/"))
-            and "\\" not in entry["path"]
-        )
-        if model["kind"] == "directory":
-            path = str(base / relative)
-        elif multi_shard:
-            path = str(base.parent / relative)
-        else:
-            path = str(base)
-        _require(inventory.get(path) == (entry["sha256"], entry["size"]))
-    if model["kind"] == "gguf":
-        _require(base.name in names if multi_shard else names == [base.name])
     return service

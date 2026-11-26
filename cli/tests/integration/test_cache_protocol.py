@@ -36,13 +36,9 @@ def test_frozen_prefix_reuse_trial_and_offline_replay(scenario, policy):
     )
     assert code == 0
     calls = scenario[2]
-    assert len(calls) == 8
+    assert len(calls) == 3
     assert calls[0]["cache_prompt"] is False
     assert all(c["cache_prompt"] is (policy == "enabled") for c in calls[1:])
-    assert (
-        TrialEvidence(root).observation("effective_parameters", "stream")["cache"]["value"]
-        == policy
-    )
     assert data["summary"]["counts"]["completed"] == 3
     change_request(
         root,

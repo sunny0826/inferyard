@@ -96,12 +96,12 @@ async def probe_service(
 
 
 async def warmup_and_baseline(execution, config, sampler, *, sleep=asyncio.sleep):
+    _ = sleep
     for _ in range(config["execution"]["warmup_count"]):
         response = await execution.one("warmup", config["execution"]["warmup_prompt"])
         if response["execution_state"] != "completed":
             raise PreflightError("warmup_failed")
     sampler.set_phase("baseline")
-    await sleep(config["telemetry"]["baseline_seconds"])
 
 
 async def run_formal(execution, store, cases, *, duration_protocol=None, capacity_stop=None):

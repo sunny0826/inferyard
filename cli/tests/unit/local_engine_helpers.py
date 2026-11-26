@@ -22,9 +22,6 @@ def local_config(config_path):
         "kind": "directory",
         "local_path": "model",
         "packing": "4bit",
-        "assets_path": "model-assets.json",
-        "assets_sha256": "1" * 64,
-        "content_sha256": "2" * 64,
         "template_path": "template.jinja",
         "template_sha256": "3" * 64,
     }

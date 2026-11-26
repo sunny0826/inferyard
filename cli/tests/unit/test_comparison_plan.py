@@ -89,8 +89,6 @@ def write_bundle(root: Path, name: str, bundle: JSONRecord) -> Path:
 
 
 LOCAL_MODEL = {
-    "content_sha256": "2" * 64,
-    "assets_sha256": "1" * 64,
     "template_sha256": "3" * 64,
 }
 
@@ -104,9 +102,6 @@ def _local_model(family: str) -> JSONRecord:
         "kind": kind,
         "local_path": "model" if kind == "directory" else "model.gguf",
         "packing": "4bit",
-        "assets_path": "model-assets.json",
-        "assets_sha256": LOCAL_MODEL["assets_sha256"],
-        "content_sha256": LOCAL_MODEL["content_sha256"],
         "template_path": "template.jinja",
         "template_sha256": LOCAL_MODEL["template_sha256"],
     }

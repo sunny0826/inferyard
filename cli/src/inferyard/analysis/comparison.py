@@ -186,8 +186,7 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
             "config.engine.family",
             "config.engine.installation_sha256",
             "config.model.kind",
-            "config.model.content_sha256",
-            "config.model.assets_sha256",
+            "config.model.local_path",
         ):
             check(path, _get(left, path), _get(right, path))
     for key in ("repo", "revision", "sha256", "packing", "template_sha256"):
@@ -290,8 +289,8 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
                 if record["input_target_tokens"] is None:
                     record["input_target_tokens"] = "not_targeted"
             check("task_protocol", a, b)
-        effective = _get(data, "identity.effective_parameters.parameters") or {}
-        for key in () if engine_mode and local_profile else (
+        effective = _get(data, "identity.effective_parameters.parameters")
+        for key in () if (engine_mode and local_profile) or not effective else (
             "seed",
             "temperature",
             "top_k",

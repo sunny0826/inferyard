@@ -99,17 +99,17 @@ def test_formal_local_run_seals_and_renders_offline(local_run, tmp_path, capsys)
     assert len(verified) == 3
     assert len(guarded) == 2
     assert data["summary"]["counts"]["completed"] == len(command.config.bundle.to_dict()["cases"])
-    assert len(state.posts) == 2 + data["summary"]["counts"]["planned"]
+    assert len(state.posts) == data["summary"]["counts"]["planned"]
     assert read_json(locking.STATE_PATH)["dirty"] is False
     assert TrialEvidence(root).observation("safety_policy")["policy"]["check_environment"] is True
     assert data["summary"]["engine_observation"]["engine_internal_drain"]["value"] is None
-    assert [body["stream"] for body in state.posts[:2]] == [False, True]
+    assert all(body["stream"] is True for body in state.posts)
     before = len(state.posts)
     import shutil
 
     shutil.rmtree(tmp_path / "synthetic-runtime")
     shutil.rmtree(tmp_path / "synthetic-model")
-    for name in ("runtime.json", "assets.json", "binding.json"):
+    for name in ("runtime.json", "binding.json"):
         (tmp_path / name).unlink()
     report = tmp_path / "report"
     assert main(["report", "--runs", str(root), "--out", str(report)]) == 0
@@ -130,7 +130,7 @@ def intercept(state, fault):
 
     async def handler(request):
         response = await original(request)
-        if len(state.posts) >= 3:
+        if len(state.posts) >= 1:
             return await fault(request, response)
         return response
 
@@ -206,7 +206,7 @@ def test_uncertain_generation_stays_dirty_even_with_zero_queue(local_run, fault_
 
     code, result = asyncio.run(run())
     assert code == (130 if fault_kind == "cancelled" else 3)
-    assert len(state.posts) == 3
+    assert len(state.posts) == 1
     assert_stopped(result, terminal="failed" if fault_kind == "truncated" else "cancelled")
     assert "num_requests_running 0" in state.metrics
     events, issues = read_jsonl(Path(result.evidence_dir) / "events.jsonl")

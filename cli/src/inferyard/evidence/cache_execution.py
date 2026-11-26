@@ -31,20 +31,27 @@ def verify_execution(
     if not capabilities.prism_definition:
         raise EvidenceError("cache_protocol_engine_unverified")
     first = starts[0]
-    if first["phase"] != "probe" or first["data"]["body"]["stream"] is not False:
+    has_probes = first["phase"] == "probe"
+    if has_probes and first["data"]["body"]["stream"] is not False:
         raise EvidenceError("cache_protocol_initial_probe_missing")
     ends = {e["request_id"]: e["data"] for e in events if e["event_type"] == "request_finished"}
-    if len(starts) > 1 and ends.get(first["request_id"], {}).get("execution_state") != "completed":
+    if (
+        has_probes
+        and len(starts) > 1
+        and ends.get(first["request_id"], {}).get("execution_state") != "completed"
+    ):
         raise EvidenceError("cache_protocol_initial_probe_not_completed")
+    probe_count = 2 if has_probes else 0
     for ordinal, event in enumerate(starts, 1):
         phase = (
             "probe"
-            if ordinal <= 2
+            if ordinal <= probe_count
             else "warmup"
-            if ordinal <= 2 + config["execution"]["warmup_count"]
+            if ordinal <= probe_count + config["execution"]["warmup_count"]
             else "formal"
         )
-        if event["phase"] != phase or event["data"]["body"]["stream"] is not (ordinal != 1):
+        expected_stream = ordinal != 1 if has_probes else True
+        if event["phase"] != phase or event["data"]["body"]["stream"] is not expected_stream:
             raise EvidenceError("cache_protocol_request_sequence_mismatch")
         if (
             phase != "formal"

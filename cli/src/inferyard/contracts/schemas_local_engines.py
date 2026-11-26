@@ -54,9 +54,6 @@ LOCAL_CONFIG_SCHEMA["properties"]["model"] = obj(
         "kind": enum("gguf", "directory"),
         "local_path": LABEL,
         "packing": LABEL,
-        "assets_path": LABEL,
-        "assets_sha256": HASH,
-        "content_sha256": HASH,
         "template_path": LABEL,
         "template_sha256": HASH,
     }

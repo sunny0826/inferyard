@@ -88,6 +88,8 @@ func (s *viewState) sidebarServiceRow(c *ui.Context) {
 	}
 	if len(active) > 0 {
 		state = active[0].State
+	} else if (state == "stopped" || state == "failed") && len(s.pendingStandalonePreparations()) > 0 {
+		state = "starting"
 	}
 	exitedAlert := len(exited) > 0 && len(active) == 0
 	kind := engineStateKind(state)

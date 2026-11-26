@@ -182,9 +182,9 @@ func startingProbeInterval(elapsed time.Duration) time.Duration {
 	case elapsed < 5*time.Second:
 		return 150 * time.Millisecond
 	case elapsed < 15*time.Second:
-		return 500 * time.Millisecond
+		return 250 * time.Millisecond
 	default:
-		return time.Second
+		return 500 * time.Millisecond
 	}
 }
 

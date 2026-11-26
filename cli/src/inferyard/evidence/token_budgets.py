@@ -11,11 +11,12 @@ DEFINITION = "token-budgets.v2"
 
 
 def planned_inputs(config, selected, *, kind="run"):
-    entries = [("probe", None)]
-    if kind == "run":
-        if config["execution"]["warmup_count"]:
-            entries.append(("warmup", None))
-        entries.extend(("formal", cid) for cid in selected)
+    if kind == "check":
+        return [("probe", None)]
+    entries = []
+    if config["execution"]["warmup_count"]:
+        entries.append(("warmup", None))
+    entries.extend(("formal", cid) for cid in selected)
     return entries
 
 

@@ -65,7 +65,7 @@ def test_cli_stream_usage(native_scenario, phase, mode, tmp_path, monkeypatch, c
     service.options["usage_mode"] = mode
     if phase == "run":
         service.options["fail_at"] = (
-            3 + command.config.config.to_dict()["execution"]["warmup_count"]
+            1 + command.config.config.to_dict()["execution"]["warmup_count"]
         )
     config_path = tmp_path / "native.toml"
     write_config(command, config_path)

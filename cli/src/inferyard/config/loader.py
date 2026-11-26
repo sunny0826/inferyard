@@ -35,7 +35,6 @@ def path_fields(config):
         for section, key in (
             ("model", "local_path"),
             ("model", "template_path"),
-            ("model", "assets_path"),
             ("engine", "installation_path"),
             ("engine", "working_directory"),
             ("engine", "polystrata_config_path"),

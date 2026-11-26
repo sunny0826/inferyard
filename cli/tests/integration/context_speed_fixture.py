@@ -90,14 +90,14 @@ def speed_service(scenario, tmp_path, monkeypatch):
                 formal = len(body["messages"][0]["content"]) > 1000
                 return self.respond({"prompt": "formal-rendered" if formal else "probe-rendered"})
             if self.path == "/tokenize":
-                index = min(len(state["requests"]) // 4, 4)
+                index = min(len(state["requests"]), 4)
                 tokens = (
                     state["formal_tokens"][index] if body["content"] == "formal-rendered" else 1
                 )
                 return self.respond({"tokens": list(range(tokens))})
             assert self.path == "/v1/chat/completions"
             formal = len(body["messages"][0]["content"]) > 1000
-            index = min(len(state["requests"]) // 4, 4)
+            index = min(len(state["requests"]), 4)
             state["requests"].append(body)
             state["params"].update(body)
             if formal and state["formal_delay"]:
@@ -141,7 +141,7 @@ def speed_service(scenario, tmp_path, monkeypatch):
     config["bundle"] = {"path": str(tmp_path / "bundle.json"), "version": "2026.10.1"}
     config["conditions"]["context_size"] = 65536
     config["generation"] = dict(GENERATION)
-    config["execution"].update(warmup_count=1, timeout_seconds=3)
+    config["execution"].update(warmup_count=0, timeout_seconds=3)
     config["engine"]["startup_args"] += [
         "-m",
         config["model"]["local_path"],

@@ -30,7 +30,7 @@ def verify_parameters(root, config, props, events, bodies, usage, manifest, *, r
             and e["phase"] == "probe"
             and e["data"]["execution_state"] == "completed"
         ]
-        if successful and len(probes) != 2:
+        if successful and reads.input("run")["kind"] == "check" and len(probes) != 2:
             raise EvidenceError("lab_parameter_probes_missing")
         for event in probes:
             body = bodies[event["request_id"]]

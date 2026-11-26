@@ -106,13 +106,13 @@ def test_cancel_resume_only_unexecuted_then_next_planned_repetitions(
 
     async def cancel():
         task = asyncio.create_task(execute_async(request, deps))
-        while len(scenario[2]) < 6 and not task.done():
+        while len(scenario[2]) < 1 and not task.done():
             await asyncio.sleep(0.001)
         task.cancel()
         return await task
 
     code, result = asyncio.run(cancel())
-    assert code == 130 and len(scenario[2]) == 6
+    assert code == 130 and len(scenario[2]) == 1
     parent_path = Path(result.details["runs"][0])
     hashes = {p.name: sha256_file(p) for p in parent_path.iterdir()}
     from inferyard.application.verification import execute as verify
@@ -137,11 +137,11 @@ def test_cancel_resume_only_unexecuted_then_next_planned_repetitions(
     assert verify(CommandRequest("verify", run=request.output_root))[0] == 3
     manifest.write_bytes(raw_manifest)
     code, blocked = asyncio.run(execute_async(request, deps))
-    assert code == 3 and blocked.status == "resume_required" and len(scenario[2]) == 6
+    assert code == 3 and blocked.status == "resume_required" and len(scenario[2]) == 1
     resume = CommandRequest("resume", from_run=parent_path)
     code, resumed = asyncio.run(execute_async(resume, deps))
     assert code == 0 and resumed.status == "resumed_subset"
-    assert len(scenario[2]) == 13
+    assert len(scenario[2]) == 3
     child = read_trial(Path(resumed.details["runs"][-1]))
     assert child["selection"]["case_ids"] == read_trial(parent_path)["selection"]["case_ids"][1:]
     assert child["summary"]["scope_complete"] and child["summary"]["completeness"] == "incomplete"
@@ -149,7 +149,7 @@ def test_cancel_resume_only_unexecuted_then_next_planned_repetitions(
     with pytest.raises(PreflightError, match="latest_unfinished"):
         asyncio.run(execute_async(resume, deps))
     code, done = asyncio.run(execute_async(request, deps))
-    assert code == 0 and len(scenario[2]) == 29
+    assert code == 0 and len(scenario[2]) == 9
     assert len(done.details["runs"]) == 4
 
 
@@ -168,9 +168,9 @@ def test_workload_handoff_cold_policy_requires_binding_and_new_process(
     )
     request, deps = batch(tmp_path, scenario, BatchOptions(second=True))
     code, first = asyncio.run(execute_async(request, deps))
-    assert code == 3 and first.status == "awaiting_handoff" and len(scenario[2]) == 8
+    assert code == 3 and first.status == "awaiting_handoff" and len(scenario[2]) == 3
     code, waiting = asyncio.run(execute_async(request, deps))
-    assert code == 3 and waiting.status == "awaiting_handoff" and len(scenario[2]) == 8
+    assert code == 3 and waiting.status == "awaiting_handoff" and len(scenario[2]) == 3
     old = scenario[0].config.config.to_dict()["endpoint"]
     same = replace(
         request,
@@ -192,6 +192,6 @@ def test_workload_handoff_cold_policy_requires_binding_and_new_process(
 
     monkeypatch.setattr(state, "process_start_ticks", ticks)
     code, final = asyncio.run(execute_async(replace(same, server_pid=new_pid), deps))
-    assert code == 0 and len(scenario[2]) == 16
+    assert code == 0 and len(scenario[2]) == 6
     binding = TrialEvidence(Path(final.details["runs"][-1])).observation("service_binding")
     assert binding["effective_endpoint"]["server_pid"] == new_pid

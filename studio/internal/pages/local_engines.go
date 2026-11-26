@@ -76,7 +76,7 @@ func (s *viewState) hasLocalEngine() bool {
 	return false
 }
 
-func (s *viewState) localCandidateRequest(bundles []string) *core.LocalCandidateRequest {
+func (s *viewState) localCandidateRequest(bundles []string, reused *core.EngineState) *core.LocalCandidateRequest {
 	e := s.localEngine()
 	if e == nil {
 		return nil
@@ -85,6 +85,9 @@ func (s *viewState) localCandidateRequest(bundles []string) *core.LocalCandidate
 	if e.Family == "lmstudio" {
 		request.ServicePID, _ = strconv.ParseInt(s.localPID, 10, 64)
 		request.Endpoint = s.localEndpoint
+	} else if reused != nil && reused.Pid > 0 && reused.Endpoint != "" {
+		request.ServicePID = reused.Pid
+		request.Endpoint = reused.Endpoint
 	}
 	return request
 }

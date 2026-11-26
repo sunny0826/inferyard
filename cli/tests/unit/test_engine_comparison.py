@@ -16,7 +16,7 @@ def local(family, **model):
         "startup_args": [family],
     }
     data["config"]["model"].update(
-        {"kind": "gguf", "content_sha256": "g", "assets_sha256": "a", **model}
+        {"kind": "gguf", "local_path": "/fixture/model.gguf", **model}
     )
     data["identity"]["runtime_library_hashes"] = {"lib": family}
     return data
@@ -32,12 +32,12 @@ def local(family, **model):
             local("lmstudio", kind="directory"),
             "engine_mode_requires_single_gguf",
         ),
-        (local("llama-cpp"), local("lmstudio", content_sha256="other"), None),
+        (local("llama-cpp"), local("lmstudio", local_path="/fixture/other.gguf"), None),
     ],
 )
 def test_engine_mode_rejections(left, right, blocker):
     result = compare_trials(left, right)
     if blocker is None:
-        assert "config.model.content_sha256:different" in result["blockers"]
+        assert "config.model.local_path:different" in result["blockers"]
     else:
         assert blocker in result["blockers"]

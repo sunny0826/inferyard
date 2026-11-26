@@ -180,10 +180,10 @@ def scenario(tmp_path, monkeypatch, config_path, *, initialize_host=True):
 
 def test_f07_full_pipeline_warmups_failed_case_and_no_retries(scenario):
     request, deps, calls, settings = scenario
-    settings["fail_index"] = 6
+    settings["fail_index"] = 1
     code, result = asyncio.run(execute_async(request, deps))
     assert code == 0, result
-    assert len(calls) == 8
+    assert len(calls) == 3
     data = rebuild(Path(result.evidence_dir))
     assert [r["execution_state"] for r in data["requests"]] == ["completed", "failed", "completed"]
     assert data["summary"]["counts"]["planned"] == 3
@@ -212,12 +212,12 @@ def test_pid_change_between_requests_stops_without_new_generation(scenario):
     request, deps, calls, settings = scenario
 
     def guard(*args):
-        if len(calls) == 6:
+        if len(calls) == 1:
             raise PreflightError("service_process_identity_changed")
 
     deps.guard = guard
     code, result = asyncio.run(execute_async(request, deps))
-    assert code == 3 and len(calls) == 6
+    assert code == 3 and len(calls) == 1
     assert rebuild(Path(result.evidence_dir))["summary"]["counts"]["not_executed"] == 2
 
 
@@ -229,14 +229,14 @@ def test_unconfirmed_residual_stops_and_keeps_dirty(scenario):
         instance = factory(*args, **kwargs)
 
         async def idle(*args, **kwargs):
-            return len(calls) < 6
+            return len(calls) < 1
 
         instance.wait_idle = idle
         return instance
 
     deps.adapter = adapter
     code, result = asyncio.run(execute_async(request, deps))
-    assert code == 3 and len(calls) == 6
+    assert code == 3 and len(calls) == 1
     data = rebuild(Path(result.evidence_dir))
     assert data["summary"]["completeness"] == "incomplete"
     assert data["summary"]["counts"]["not_executed"] == 2
@@ -281,7 +281,7 @@ def test_io_failure_mid_answer_stops_without_counting_model_failure(scenario, mo
 
     monkeypatch.setattr(TrialJournal, "event", event)
     code, result = asyncio.run(execute_async(request, deps))
-    assert code == 4 and injected and len(calls) == 6
+    assert code == 4 and injected and len(calls) == 1
     data = rebuild(Path(result.evidence_dir))
     assert data["summary"]["counts"]["invalid"] == 1
     assert data["summary"]["counts"]["failed"] == 0

@@ -296,19 +296,21 @@ async def run_trial(
             scorer=deps.scorer,
         )
         deadline.execution = execution
-        await probe_service(
-            execution,
-            adapter,
-            config,
-            store,
-            budgets,
-            identity,
-            output_budget_tokens=workload["output_budget_tokens"] if workload else None,
-            check_budget=deadline.check if single else None,
-        )
-        if single and not store.has_observation("identity"):
-            store.observe("identity", identity, stage="post_probe")
-        if not single or profile.kind == "run":
+        if single and profile.kind == "check":
+            await probe_service(
+                execution,
+                adapter,
+                config,
+                store,
+                budgets,
+                identity,
+                output_budget_tokens=workload["output_budget_tokens"] if workload else None,
+                check_budget=deadline.check,
+            )
+            if not store.has_observation("identity"):
+                store.observe("identity", identity, stage="post_probe")
+            reason = "check_only_no_formal_cases"
+        else:
             await warmup_and_baseline(
                 execution, config, sampler, sleep=profile.sleep if single else asyncio.sleep
             )
@@ -323,8 +325,6 @@ async def run_trial(
                 deadline.check()
                 if diagnostic:
                     code, reason = 3, "diagnostic_run_not_formal"
-        else:
-            reason = "check_only_no_formal_cases"
         if hasattr(adapter, "verify_service"):
             # Requests only re-checked process incarnations; prove the full binding still holds.
             await adapter.verify_service(config["execution"]["idle_wait_seconds"])

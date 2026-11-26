@@ -16,7 +16,7 @@ def apply_recipe(config, metadata, context):
     config["conditions"].update(context_size=context, slots=1, cache_policy="disabled")
     config["generation"] = deepcopy(GENERATION)
     config["execution"].update(
-        repeats=1, concurrency=1, warmup_count=1, order="fixed", require_fresh_process=False
+        repeats=1, concurrency=1, warmup_count=0, order="fixed", require_fresh_process=False
     )
     config["engine"]["startup_args"] = replace_arguments(
         config["engine"]["startup_args"], {"-c": str(context), "--ctx-size": str(context)}
