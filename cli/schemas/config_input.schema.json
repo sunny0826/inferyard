@@ -760,6 +760,18 @@
             "template_sha256": {
               "type": "string",
               "pattern": "^[a-f0-9]{64}$"
+            },
+            "assets_path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "assets_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "content_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
             }
           },
           "required": [

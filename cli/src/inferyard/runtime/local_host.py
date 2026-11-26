@@ -26,9 +26,19 @@ def admit(lock, config, bundle, identity, process_start):
     _ = process_start
     scope = {key: config[key] for key in ("model", "engine", "generation", "conditions")}
     scope["bundle"] = bundle
+    service = identity["local_engine"]["binding"]["service"]
     current = {
         "definition": "local-host-service.v1",
         "scope_sha256": sha256(json_bytes(scope)).hexdigest(),
-        "service": identity["local_engine"]["binding"]["service"],
+        "service": service,
     }
+    previous = lock.local_service
+    if (
+        previous is not None
+        and config["engine"].get("family") == "lmstudio"
+        and previous.get("scope_sha256") != current["scope_sha256"]
+        and previous.get("service", {}).get("pid") == service["pid"]
+        and previous.get("service", {}).get("start_ticks") == service["start_ticks"]
+    ):
+        raise PreflightError("local_scope_requires_new_service_process")
     lock.local_service = current

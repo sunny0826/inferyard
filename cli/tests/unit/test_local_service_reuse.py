@@ -219,7 +219,7 @@ def test_llama_cpp_candidate_adopts_running_managed_service(
         "32768",
         "--parallel",
         "1",
-        "--alias",
+        "-a",
         "llama-live",
         "--no-webui",
     ]
@@ -266,3 +266,31 @@ def test_local_host_admit_reuses_clean_service_and_require_gone_guards_dirty() -
 
     with pytest.raises(PreflightError, match="previous_local_process_still_alive"):
         require_gone(service, lambda pid: 123456)
+
+    lmstudio_cfg = {**config, "engine": {"family": "lmstudio"}}
+    lmstudio_lock = SimpleNamespace(local_service=None)
+    admit(lmstudio_lock, lmstudio_cfg, {"bundle_id": "zh-core"}, identity, lambda pid: 123456)
+    with pytest.raises(PreflightError, match="local_scope_requires_new_service_process"):
+        admit(
+            lmstudio_lock,
+            lmstudio_cfg,
+            {"bundle_id": "zh-svg-pelican"},
+            identity,
+            lambda pid: 123456,
+        )
+
+
+def test_legacy_probe_token_budgets_remain_readable() -> None:
+    from inferyard.evidence.token_budgets import DEFINITION, validate_inventory
+
+    cfg = {"execution": {"warmup_count": 3}}
+    legacy = {
+        "definition": DEFINITION,
+        "entries": [
+            {"phase": "probe", "case_id": None, "budget": {"input_tokens": 8}},
+            {"phase": "warmup", "case_id": None, "budget": {"input_tokens": 8}},
+            {"phase": "formal", "case_id": "c1", "budget": {"input_tokens": 16}},
+        ],
+    }
+    assert len(validate_inventory(legacy, cfg, ["c1"], kind="run")) == 3
+

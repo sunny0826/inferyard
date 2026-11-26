@@ -227,7 +227,13 @@ func (s *viewState) configStage(c *ui.Context, body func()) {
 }
 
 func (s *viewState) isPreparingBenchmark() bool {
-	return s.busy && s.busyAction == "prepare-benchmark" && s.task.stage == "prepare_candidate" && s.task.failure == nil
+	if s.task.failure != nil {
+		return false
+	}
+	if s.probingReuse {
+		return true
+	}
+	return s.busy && s.busyAction == "prepare-benchmark" && s.task.stage == "prepare_candidate"
 }
 
 func (s *viewState) renderPreparingBenchmarkView(c *ui.Context) {

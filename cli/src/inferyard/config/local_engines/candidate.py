@@ -175,7 +175,7 @@ def _adopt_running_managed_service(
     }[family]
     try:
         obs_ctx = _optional_value(args, ctx_flags)
-        obs_served = _optional_value(args, {"--alias", "--served-model-name"})
+        obs_served = _optional_value(args, {"-a", "--alias", "--served-model-name"})
     except PreflightError as exc:
         raise PreparationError(str(exc)) from exc
     adopted_ctx = context

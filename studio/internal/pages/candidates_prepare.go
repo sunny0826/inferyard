@@ -55,7 +55,7 @@ func prepareCombination(ctx context.Context, service *core.Service, model, engin
 	return result, e
 }
 
-func (s *viewState) probeReusableStandaloneBeforeStart(svc core.EngineState) bool {
+func (s *viewState) probeReusableStandaloneBeforeStart(svc core.EngineState, names []string) bool {
 	modelName, engineName := s.model, s.engine
 	openExternalDialog := func(probe core.ExternalConnProbe) {
 		budget := s.checkMemoryBudget(modelName, "", svc.ContextSize, svc.GPULayers)
@@ -101,6 +101,7 @@ func (s *viewState) probeReusableStandaloneBeforeStart(svc core.EngineState) boo
 		return false
 	}
 	s.probingReuse = true
+	s.task = benchmarkTask{stage: "prepare_candidate", bundles: slices.Clone(names)}
 	go func() {
 		probe := s.service.ProbeServiceConnections(s.ctx, svc.ServiceID)
 		s.runOnUI(func() {
@@ -135,7 +136,7 @@ func (s *viewState) startBenchmark() {
 			if matchesPending && s.pendingExclusivityMode == "reuse" {
 				skipStandaloneGuard = true
 				reusedService = &svc
-			} else if s.probeReusableStandaloneBeforeStart(svc) {
+			} else if s.probeReusableStandaloneBeforeStart(svc, names) {
 				return
 			} else {
 				skipStandaloneGuard = true
@@ -444,9 +445,16 @@ func (s *viewState) retryBenchmark() {
 		return
 	}
 	reusingRunning := false
-	if s.task.start.existingService != nil {
-		if svc, ok := s.reusableStandaloneService(s.model, s.engine); ok && svc.Pid == s.task.start.existingService.Pid {
+	if e := s.localEngine(); e != nil && e.Family != "lmstudio" && s.task.start.localRequest != nil {
+		if svc, ok := s.reusableStandaloneService(s.model, s.engine); ok {
 			reusingRunning = true
+			s.task.start.localRequest.ServicePID = svc.Pid
+			s.task.start.localRequest.Endpoint = svc.Endpoint
+			s.task.start.existingService = &core.EngineState{State: "running", Pid: svc.Pid, Endpoint: svc.Endpoint}
+		} else {
+			s.task.start.localRequest.ServicePID = 0
+			s.task.start.localRequest.Endpoint = ""
+			s.task.start.existingService = nil
 		}
 	}
 	if !reusingRunning && !s.guardStandaloneForBenchmark(func() { s.retryBenchmark() }) {

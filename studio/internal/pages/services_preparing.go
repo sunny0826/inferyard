@@ -25,10 +25,24 @@ func (s *viewState) pendingStandalonePreparations() []pendingServicePrep {
 			continue
 		}
 		modelAsset, hasModel := s.findModelAsset(model)
+		attempt := s.standalone.lastParams[model]
+		wantID := ""
+		if attempt.engine != "" {
+			wantID = core.ServiceIDFor(model, attempt.engine)
+		}
 		alreadyShown := false
 		for _, st := range services {
-			if (st.ModelName != "" && st.ModelName == model) || displayName(st.Model) == model ||
-				(hasModel && standaloneServiceMatchesModel(st, modelAsset)) {
+			if wantID != "" && st.ServiceID != "" {
+				if st.ServiceID == wantID {
+					alreadyShown = true
+					break
+				}
+				continue
+			}
+			modelMatch := (st.ModelName != "" && st.ModelName == model) || displayName(st.Model) == model ||
+				(hasModel && standaloneServiceMatchesModel(st, modelAsset))
+			engineMatch := attempt.engine == "" || st.EngineName == "" || st.EngineName == attempt.engine
+			if modelMatch && engineMatch {
 				alreadyShown = true
 				break
 			}
@@ -36,7 +50,6 @@ func (s *viewState) pendingStandalonePreparations() []pendingServicePrep {
 		if alreadyShown {
 			continue
 		}
-		attempt := s.standalone.lastParams[model]
 		out = append(out, pendingServicePrep{
 			model:       model,
 			engine:      attempt.engine,

@@ -25,7 +25,7 @@ def validate_frozen_identity(config, local_identity, *, files):
     """Check canonical document hashes, closed fields and binding correspondence."""
     _require(
         isinstance(local_identity, dict)
-        and set(local_identity) == {"runtime", "binding"}
+        and {"runtime", "binding"} <= set(local_identity) <= {"runtime", "binding", "model_assets"}
     )
     runtime, binding = (local_identity[k] for k in ("runtime", "binding"))
     validate_value(runtime, RUNTIME, "identity.local_engine.runtime")
