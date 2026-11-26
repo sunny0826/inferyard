@@ -2,23 +2,12 @@ from inferyard.errors import PreflightError
 """Admission for the initial serial local-engine profile."""
 
 
-def _temperature_admitted(policy, required):
-    if "temperature_stop_override_reason" in required:
-        return policy["max_temperature_celsius"] is None
-    return (
-        policy["max_temperature_celsius"] is not None
-        and policy["max_temperature_celsius"] <= required["max_temperature_celsius"]
-    )
-
-
 def safety_policy(plan, config):
     policy = plan["experiment"].get("safety")
     required = config["safety"]
     if (
         policy is None
-        or not _temperature_admitted(policy, required)
         or policy["interval_seconds"] > required["interval_seconds"]
-        or (required["require_temperature"] and policy["require_temperature"] is not True)
         or (required["check_environment"] and policy["check_environment"] is not True)
     ):
         raise PreflightError("local_engine_safety_policy_required")

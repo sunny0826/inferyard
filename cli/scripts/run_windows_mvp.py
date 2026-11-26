@@ -93,9 +93,6 @@ def command(arguments, out, label, minimum, deadline, gpu_index=None):
                     if gpu is None:
                         stopped = "gpu_observation_unavailable"
                         break
-                    if gpu["temperature_c"] is not None and gpu["temperature_c"] >= 85:
-                        stopped = "gpu_temperature_limit_reached"
-                        break
                     if gpu["memory_free_bytes"] < 512 * 1024**2:
                         stopped = "gpu_free_memory_floor_reached"
                         break
@@ -155,7 +152,6 @@ def operate(config_path, out, *, formal=False, max_wall_seconds=1800):
             {
                 "gpu_limits": {
                     "index": gpu_index,
-                    "temperature_stop_c": 85,
                     "minimum_free_bytes": 512 * 1024**2,
                     "sampling_interval_seconds": 1,
                 }

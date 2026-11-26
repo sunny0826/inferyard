@@ -49,8 +49,6 @@ def local_config(config_path):
     config["conditions"].update(cache_policy="unknown", ac_online=True, model_loaded=True)
     config["safety"] = {
         "interval_seconds": 0.5,
-        "max_temperature_celsius": 85,
-        "require_temperature": True,
         "check_environment": True,
     }
     return config

@@ -79,7 +79,6 @@ class CommandRequest:
     fit_min_memory_mib: int = 512
     fit_lms_path: Path | None = None
     fit_models_root: Path | None = None
-    fit_temperature_stop_override_reason: str | None = None
     fit_memory_stop_override_reason: str | None = None
     source_roots: list[str] | None = None
     community_bundle: str | None = None
@@ -124,7 +123,6 @@ class CommandRequest:
     workspace: Path | None = None
     results_root: Path | None = None
     reports_root: Path | None = None
-    temperature_stop_override_reason: str | None = None
     prompt_cache: str | None = None
 
 

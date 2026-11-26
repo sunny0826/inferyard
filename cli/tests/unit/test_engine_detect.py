@@ -177,22 +177,8 @@ def test_legacy_bootstrap_upgrade_and_mixed_policy_regressions(tmp_path: Path) -
 
     merged_safety = comparison_safety(
         [
-            {
-                "safety": {
-                    "interval_seconds": 1,
-                    "max_temperature_celsius": 85,
-                    "require_temperature": False,
-                    "check_environment": True,
-                }
-            },
-            {
-                "safety": {
-                    "interval_seconds": 2,
-                    "max_temperature_celsius": 90,
-                    "require_temperature": False,
-                    "check_environment": False,
-                }
-            },
+            {"safety": {"interval_seconds": 1, "check_environment": True}},
+            {"safety": {"interval_seconds": 2, "check_environment": False}},
         ]
     )
     assert merged_safety is not None and merged_safety["check_environment"] is True

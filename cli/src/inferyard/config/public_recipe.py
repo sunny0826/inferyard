@@ -156,10 +156,7 @@ def reproduction_recipe(data, numeric):
     if "safety" in experiment:
         safety = experiment["safety"]
         result["safety"] = {
-            **numeric_fields(
-                safety, ("interval_seconds", "max_temperature_celsius", "max_external_cpu_percent")
-            ),
-            "require_temperature": boolean(safety["require_temperature"]),
+            **numeric_fields(safety, ("interval_seconds", "max_external_cpu_percent")),
             "check_environment": boolean(safety["check_environment"]),
         }
     else:

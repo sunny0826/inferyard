@@ -163,7 +163,7 @@ func ParseCandidateDescription(raw []byte, exitCode int) (CandidateDescription, 
 	if local {
 		if !localFamily(result.Family) || !bytes.Equal(fields["effective_parameters"], []byte("null")) || !bytes.Equal(fields["effective_template"], []byte("null")) ||
 			!bytes.Equal(fields["effective_unknown_reason"], []byte(`"requires_live_engine_observation"`)) ||
-			(!bytes.Equal(fields["bound"], []byte("true")) && !bytes.Equal(fields["bound"], []byte("false"))) || !validCandidateSafety(fields["safety"], result.Family) {
+			(!bytes.Equal(fields["bound"], []byte("true")) && !bytes.Equal(fields["bound"], []byte("false"))) || !validCandidateSafety(fields["safety"]) {
 			return CandidateDescription{}, invalid
 		}
 	} else if !slices.Contains([]string{ContextSpeedAdapter, "llama_cpp_b11146_v1", "kvmem", "ninfer"}, result.Adapter) {
@@ -346,39 +346,20 @@ func validCandidateEnvironment(environment map[string]string) bool {
 	return true
 }
 
-func validCandidateSafety(raw []byte, family string) bool {
-	fields, ok := candidateObject(
+func validCandidateSafety(raw []byte) bool {
+	if _, ok := candidateObject(
 		raw,
-		[]string{"interval_seconds", "max_temperature_celsius", "require_temperature", "check_environment"},
-		[]string{"temperature_stop_override_reason"},
-	)
-	if !ok {
+		[]string{"interval_seconds", "check_environment"},
+		nil,
+	); !ok {
 		return false
 	}
 	var value struct {
-		Interval       *float64 `json:"interval_seconds"`
-		Maximum        *float64 `json:"max_temperature_celsius"`
-		Temperature    *bool    `json:"require_temperature"`
-		Environment    *bool    `json:"check_environment"`
-		OverrideReason *string  `json:"temperature_stop_override_reason"`
+		Interval    *float64 `json:"interval_seconds"`
+		Environment *bool    `json:"check_environment"`
 	}
 	if json.Unmarshal(raw, &value) != nil || value.Interval == nil || *value.Interval < 0.1 || *value.Interval > 5 ||
-		value.Maximum == nil || value.Temperature == nil || value.Environment == nil {
-		return false
-	}
-	maxAllowed := 85.0
-	if *value.Temperature {
-		maxAllowed = 115.0
-	}
-	if *value.Maximum < 1 || *value.Maximum > maxAllowed {
-		return false
-	}
-	if _, hasOverride := fields["temperature_stop_override_reason"]; hasOverride {
-		if value.OverrideReason == nil || strings.TrimSpace(*value.OverrideReason) == "" || strings.ContainsRune(*value.OverrideReason, 0) {
-			return false
-		}
-	}
-	if family != PolystrataFamily && !*value.Temperature {
+		value.Environment == nil {
 		return false
 	}
 	return true

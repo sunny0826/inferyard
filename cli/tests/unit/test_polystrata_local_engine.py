@@ -105,7 +105,6 @@ def _candidate_request(
         max_tokens=512,
         timeout_seconds=600,
         prompt_cache=None,
-        temperature_stop_override_reason=None,
     )
 
 

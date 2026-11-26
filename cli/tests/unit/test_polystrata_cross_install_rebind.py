@@ -108,7 +108,6 @@ def _candidate_request(
         max_tokens=None,
         timeout_seconds=600,
         prompt_cache=None,
-        temperature_stop_override_reason=None,
     )
 
 
@@ -413,24 +412,12 @@ def test_legacy_top_level_pack_key_with_args_lib_dirs_backend_conflict_and_temp_
         str(ext_lib.resolve()),
     ]
     assert loaded_cfg["engine"]["backend"] == "hip"
-    assert loaded_cfg["safety"]["max_temperature_celsius"] == 85
+    assert loaded_cfg["safety"] == {"interval_seconds": 1, "check_environment": True}
 
-    # Non-Metal candidate must reject max_temperature_celsius > 85; Metal accepts 115 and rejects 116.
-    bad_non_metal = json.loads(json.dumps(loaded_cfg))
-    bad_non_metal["safety"]["max_temperature_celsius"] = 86
+    bad_legacy_temp = json.loads(json.dumps(loaded_cfg))
+    bad_legacy_temp["safety"]["max_temperature_celsius"] = 85
     with pytest.raises(ContractError):
-        validate_document("config", bad_non_metal)
-
-    metal_ok = json.loads(json.dumps(loaded_cfg))
-    metal_ok["engine"]["backend"] = "metal"
-    metal_ok["safety"]["require_temperature"] = True
-    metal_ok["safety"]["max_temperature_celsius"] = 115
-    validate_document("config", metal_ok)
-
-    metal_bad = json.loads(json.dumps(metal_ok))
-    metal_bad["safety"]["max_temperature_celsius"] = 116
-    with pytest.raises(ContractError):
-        validate_document("config", metal_bad)
+        validate_document("config", bad_legacy_temp)
 
     # Explicit CUDA config rebound onto HIP installation must fail fast with polystrata_backend_unsupported.
     cuda_cfg = strata_other.parent.parent / "strata-cuda.json"

@@ -136,8 +136,6 @@ def freeze(out, config, bundle, *, fixed_output=False, case_ids=None, comparison
         },
         "safety": {
             "interval_seconds": 1,
-            "max_temperature_celsius": None,
-            "require_temperature": False,
             "max_external_cpu_percent": 25,
             "check_environment": True,
         },
