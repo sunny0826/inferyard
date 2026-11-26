@@ -393,59 +393,22 @@ func searchableSelectField(c *ui.Context, name, description, placeholder, emptyF
 	}
 }
 
-func studioDialog(c *ui.Context, open *bool, options components.DialogOptions, build func(panel ui.Element)) ui.Element {
+func (s *viewState) subpageHeader(c *ui.Context, title, backLabel string, onBack func(), extraActions ...func()) {
 	t := tokens(c)
-	return components.Dialog(c, open, options, func(panel ui.Element) {
-		panel.Padding(t.Density.Section).Gap(t.Density.Stack).Radius(t.Radius.Modal)
-		if build != nil {
-			build(panel)
+	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		s.header(c, title)
+		ui.Box(c).Grow(1)
+		for _, action := range extraActions {
+			if action != nil {
+				action()
+			}
+		}
+		if backLabel != "" && onBack != nil {
+			if outlineButton(c, backLabel).Clicked() {
+				onBack()
+			}
 		}
 	})
-}
-
-func studioAlertDialog(c *ui.Context, open *bool, options components.AlertDialogOptions) components.DialogResult {
-	return studioAlertDialogStyled(c, open, options, false)
-}
-
-func studioDestructiveAlertDialog(c *ui.Context, open *bool, options components.AlertDialogOptions) components.DialogResult {
-	return studioAlertDialogStyled(c, open, options, true)
-}
-
-func studioAlertDialogStyled(c *ui.Context, open *bool, options components.AlertDialogOptions, destructive bool) components.DialogResult {
-	result := components.DialogNone
-	wasOpen := *open
-	opts := options.DialogOptions
-	if opts.Label == "" {
-		opts.Label = options.Title
-	}
-	t := tokens(c)
-	studioDialog(c, open, opts, func(panel ui.Element) {
-		panel.Role(ui.RoleAlertDialog)
-		if options.Title != "" {
-			components.Text(c, options.Title).Bold()
-		}
-		if options.Message != "" {
-			components.Text(c, options.Message).TextColor(t.Color.FgSecondary)
-		}
-		ui.Row(c).FillWidth().Wrap().Justify(ui.End).Gap(t.Density.Row).Children(func() {
-			if !options.HideCancel && button(c, options.CancelLabel).Clicked() {
-				result = components.DialogCancelled
-				*open = false
-			}
-			confirmBtn := primaryButton
-			if destructive {
-				confirmBtn = dangerButton
-			}
-			if confirmBtn(c, options.ConfirmLabel).Clicked() {
-				result = components.DialogConfirmed
-				*open = false
-			}
-		})
-	})
-	if wasOpen && !*open && result == components.DialogNone {
-		result = components.DialogCancelled
-	}
-	return result
 }
 
 func studioPopover(c *ui.Context, anchor ui.Element, open *bool, build func(panel ui.Element)) ui.Element {
