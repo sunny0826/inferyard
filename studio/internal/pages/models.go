@@ -53,15 +53,14 @@ func (s *viewState) modelsView(c *ui.Context) {
 				})
 				return
 			}
-			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Tight), materialInset).Children(func() {
-				for _, model := range s.registry.Models {
+			ui.Column(c).FillWidth().Children(func() {
+				for i, model := range s.registry.Models {
+					if i > 0 {
+						ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+					}
 					m := model
 					c.Key(m.Name)
-					listRow(c, listRowOptions{
-						Title:    modelLabel(m),
-						Subtitle: modelDetails(m),
-						Trailing: func() { s.modelRowTrailing(c, m, pending) },
-					})
+					s.installedModelRow(c, m, pending)
 				}
 			})
 		})
@@ -80,16 +79,15 @@ func (s *viewState) modelsView(c *ui.Context) {
 				})
 				return
 			}
-			ui.Text(c, s.engineFit()).TextColor(t.Color.FgSecondary)
-			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Tight), materialInset).Children(func() {
-				for _, engine := range s.registry.Engines {
+			ui.Text(c, s.engineFit()).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
+			ui.Column(c).FillWidth().Children(func() {
+				for i, engine := range s.registry.Engines {
+					if i > 0 {
+						ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+					}
 					eng := engine
 					c.Key(eng.Name)
-					listRow(c, listRowOptions{
-						Title:    eng.Name,
-						Subtitle: s.engineStateLine(eng),
-						Trailing: func() { s.engineRowTrailing(c, eng, pending) },
-					})
+					s.installedEngineRow(c, eng, pending)
 				}
 			})
 		})
@@ -115,12 +113,12 @@ func modelTaskAction(c *ui.Context, s *viewState, model core.ModelAsset) {
 	if blocked {
 		wrap := ui.Box(c)
 		wrap.Children(func() {
-			button(c, label).Label(label + " · " + model.Name).Disabled(true).Description(hint)
+			outlineButton(c, label).Label(label + " · " + model.Name).Disabled(true).Description(hint)
 		})
 		components.Tooltip(c, wrap, hint)
 		return
 	}
-	b := button(c, label).Label(label + " · " + model.Name)
+	b := outlineButton(c, label).Label(label + " · " + model.Name)
 	if b.Clicked() {
 		s.model = model.Name
 		s.newBenchmark()
@@ -129,7 +127,7 @@ func modelTaskAction(c *ui.Context, s *viewState, model core.ModelAsset) {
 
 func modelDetails(model core.ModelAsset) string {
 	parts := []string{}
-	if model.Format != "" {
+	if model.Format != "" && model.Format != "gguf" && model.Format != "strata_pack" && model.Format != "directory" {
 		parts = append(parts, model.Format)
 	}
 	if model.Architecture != "" {
@@ -181,7 +179,9 @@ func (s *viewState) engineStateLine(engine core.EngineAsset) string {
 	el := s.eligibility(engine.Name)
 	switch el.State {
 	case core.EngineCheckEligible:
-		parts = append(parts, l10n.TR("engine.detail.verified"))
+		if len(parts) == 0 {
+			parts = append(parts, l10n.TR("engine.detail.verified"))
+		}
 	case core.EngineCheckChecking:
 		parts = append(parts, l10n.TR("engine.detail.checking"))
 	case core.EngineCheckIneligible:

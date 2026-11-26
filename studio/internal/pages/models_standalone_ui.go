@@ -159,50 +159,84 @@ func standaloneHandoffCopyKeys(activeCount int) (titleKey, msgKey, confirmKey st
 	return "models.serve.handoff.title", "models.serve.handoff.message", "models.serve.handoff.confirm"
 }
 
-func (s *viewState) modelStandaloneActions(c *ui.Context, m core.ModelAsset) {
+func (s *viewState) renderModelStandaloneBadge(c *ui.Context, m core.ModelAsset) {
 	if !m.Available {
+		inlineBadge(c, tr(c, "models.badge.unavailable"), stateWarning, badgeOptions{Style: badgeDot, Size: sizeSM})
 		return
 	}
-	rowState, svc, endpoint, logPath, canWebUI := s.standaloneRowState(m)
+	rowState, _, _, _, _ := s.standaloneRowState(m)
 	switch rowState {
 	case "preparing", "starting", "running", "stopping":
 		kind := stateActive
-		badgeKey := "models.serve.badge." + rowState
 		if rowState == "running" {
 			kind = stateSuccess
 		}
-		badge(c, tr(c, badgeKey), kind, badgeOptions{Style: badgeDot, Size: sizeSM})
-		if endpoint != "" {
-			ui.Text(c, endpoint).FontSize(tokens(c).Type.Caption).TextColor(tokens(c).Color.FgSecondary).SingleLine()
-			outlineButton(c, tr(c, "engine.action.copy_endpoint")).OnClick(func() {
-				s.copyServiceEndpoint(c, svc)
-			})
-		}
+		inlineBadge(c, tr(c, "models.serve.badge."+rowState), kind, badgeOptions{Style: badgeDot, Size: sizeSM})
+	case "failed":
+		inlineBadge(c, tr(c, "models.serve.badge.failed"), stateDanger, badgeOptions{Style: badgeDot, Size: sizeSM})
+	}
+}
+
+func (s *viewState) renderModelStandaloneSubrow(c *ui.Context, m core.ModelAsset) {
+	if !m.Available {
+		return
+	}
+	t := tokens(c)
+	rowState, svc, endpoint, logPath, canWebUI := s.standaloneRowState(m)
+	switch rowState {
+	case "preparing", "starting", "running", "stopping":
+		var webURL string
+		var webOK bool
 		if canWebUI {
-			if webURL, ok, _ := serviceWebUIInfo(svc); ok {
-				outlineButton(c, tr(c, "engine.action.open_webui")).OnClick(func() {
+			webURL, webOK, _ = serviceWebUIInfo(svc)
+		}
+		if endpoint == "" && !webOK && logPath == "" {
+			return
+		}
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			if endpoint != "" {
+				ui.Text(c, endpoint).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
+				inlineButton(c, components.ButtonOutline, tr(c, "engine.action.copy_endpoint")).OnClick(func() {
+					s.copyServiceEndpoint(c, svc)
+				})
+			}
+			if webOK {
+				inlineButton(c, components.ButtonOutline, tr(c, "engine.action.open_webui")).OnClick(func() {
 					s.openEngineWebUI(c, webURL)
 				})
 			}
+			if logPath != "" {
+				inlineButton(c, components.ButtonOutline, tr(c, "engine.action.open_log")).OnClick(func() {
+					s.openEngineCardLog(logPath)
+				})
+			}
+		})
+	case "failed":
+		if logPath == "" {
+			return
 		}
-		if logPath != "" {
-			outlineButton(c, tr(c, "engine.action.open_log")).OnClick(func() {
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			inlineButton(c, components.ButtonOutline, tr(c, "engine.action.open_log")).OnClick(func() {
 				s.openEngineCardLog(logPath)
 			})
-		}
-		if rowState != "preparing" {
-			stopLabel := tr(c, "models.serve.action.stop")
-			if dangerButton(c, stopLabel).Label(stopLabel + " · " + m.Name).Disabled(rowState == "stopping" || s.busy).Clicked() {
-				s.pendingDestructive = destructiveRequest{kind: string(destructiveStopStandalone), id: m.Name}
-			}
+		})
+	}
+}
+
+func (s *viewState) renderModelStandalonePrimaryAction(c *ui.Context, m core.ModelAsset) {
+	if !m.Available {
+		return
+	}
+	rowState, _, _, _, _ := s.standaloneRowState(m)
+	switch rowState {
+	case "preparing":
+		return
+	case "starting", "running", "stopping":
+		stopLabel := tr(c, "models.serve.action.stop")
+		if dangerButton(c, stopLabel).Label(stopLabel + " · " + m.Name).Disabled(rowState == "stopping" || s.busy).Clicked() {
+			s.pendingDestructive = destructiveRequest{kind: string(destructiveStopStandalone), id: m.Name}
 		}
 	case "failed":
-		badge(c, tr(c, "models.serve.badge.failed"), stateDanger, badgeOptions{Style: badgeDot, Size: sizeSM})
-		if logPath != "" {
-			outlineButton(c, tr(c, "engine.action.open_log")).OnClick(func() {
-				s.openEngineCardLog(logPath)
-			})
-		}
 		retryDisabled := s.standaloneStartBlockReason() != "" || s.serveProbing || s.busy || s.standalone.isPreparing(m.Name)
 		button(c, tr(c, "models.serve.action.retry")).Disabled(retryDisabled).OnClick(func() {
 			s.requestStandaloneStart(m, true)

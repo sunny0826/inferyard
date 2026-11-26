@@ -348,7 +348,7 @@ func listRow(c *ui.Context, opts listRowOptions) ui.Element {
 			}
 		})
 		if opts.Trailing != nil {
-			opts.Trailing()
+			ui.Row(c).Shrink(0).AlignItems(ui.Center).Children(opts.Trailing)
 		}
 	})
 	return row

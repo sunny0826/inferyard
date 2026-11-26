@@ -265,3 +265,95 @@ func TestModelsManagementPreviewSafeAndInlineEngineWizard(t *testing.T) {
 		t.Fatalf("preview delete did not update in-memory registry: %+v", sPrev.registry)
 	}
 }
+
+func TestLibraryModelsAndEnginesPolishLayout(t *testing.T) {
+	s := testState()
+	s.selected = "library"
+	s.preview = &testPreviewStub{}
+	modelsRoot := "/preview/models"
+	s.settings.Effective.ModelsRoot = &modelsRoot
+	s.registry = core.Registry{
+		Models: []core.ModelAsset{
+			{
+				Name:         "Preview-Model-Q4.gguf",
+				Format:       "gguf",
+				Architecture: "llama",
+				SizeBytes:    ptr(int64(4 << 30)),
+				Available:    true,
+				Path:         "/preview/models/Preview-Model-Q4.gguf",
+				Deletable:    true,
+			},
+			{
+				Name:      "Preview-Small.gguf",
+				Format:    "gguf",
+				SizeBytes: ptr(int64(2 << 30)),
+				Available: true,
+				Path:      "/preview/models/Preview-Small.gguf",
+				Deletable: true,
+			},
+		},
+		Engines: []core.EngineAsset{{
+			Name:      "llama-server",
+			Family:    "llama-cpp",
+			Path:      "/preview/engines/llama-server",
+			Deletable: true,
+		}},
+		TotalModelBytes: 6 << 30,
+		DiskFreeBytes:   ptr(int64(100 << 30)),
+		ModelRoots:      []string{modelsRoot},
+	}
+	best := core.EngineSpeedRecord{Engine: "llama.cpp", TokensPerSecond: 68.4, ReportRef: "rep-1"}
+	second := core.EngineSpeedRecord{Engine: "mlx-lm", TokensPerSecond: 54.2, ReportRef: "rep-2"}
+	s.modelEvidence = map[string]core.ModelEvidenceSummary{
+		core.NormalizeModelEvidenceKey("Preview-Model-Q4.gguf"): {
+			Model:    "Preview-Model-Q4.gguf",
+			Best:     &best,
+			ByEngine: []core.EngineSpeedRecord{best, second},
+		},
+	}
+
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).FillWidth().Children(func() { s.libraryView(c) }) }, 1120, 1400)
+	tt.Frame()
+
+	if _, ok := tt.AccessByRole(ui.RoleHeading, "可下载模型"); !ok {
+		t.Fatalf("expected single catalog heading 可下载模型, texts=%v", tt.Texts())
+	}
+	if _, ok := tt.AccessByRole(ui.RoleHeading, "模型"); ok {
+		t.Fatalf("unexpected duplicate inner heading 模型 inside library models tab")
+	}
+	if tt.HasText("gguf · 约 2.0 GiB") || tt.HasText("gguf · 架构 llama · 约 4.0 GiB") {
+		t.Fatalf("redundant lowercase format prefix still present in model details: %v", tt.Texts())
+	}
+
+	for _, name := range []string{"Preview-Model-Q4.gguf", "Preview-Small.gguf"} {
+		startBtn, ok1 := tt.AccessByRole(ui.RoleButton, "启动 · "+name)
+		benchBtn, ok2 := tt.AccessByRole(ui.RoleButton, "用此模型测评 · "+name)
+		openBtn, ok3 := tt.AccessByRole(ui.RoleButton, "打开目录 · "+name)
+		delBtn, ok4 := tt.AccessByRole(ui.RoleButton, "删除 · "+name)
+		if !ok1 || !ok2 || !ok3 || !ok4 {
+			t.Fatalf("missing action buttons for %s: ok=%v,%v,%v,%v", name, ok1, ok2, ok3, ok4)
+		}
+		for label, b := range map[string]ui.Rect{"bench": benchBtn.Bounds, "open": openBtn.Bounds, "del": delBtn.Bounds} {
+			if d := b.Y - startBtn.Bounds.Y; d < -1 || d > 1 {
+				t.Fatalf("%s %s wrapped onto another row: startY=%.1f gotY=%.1f", name, label, startBtn.Bounds.Y, b.Y)
+			}
+			if d := b.H - startBtn.Bounds.H; d < -1 || d > 1 {
+				t.Fatalf("%s %s height mismatch: startH=%.1f gotH=%.1f", name, label, startBtn.Bounds.H, b.H)
+			}
+		}
+	}
+
+	click(t, tt, "添加模型目录")
+	if len(s.registry.ModelRoots) != 2 || s.registry.ModelRoots[1] != "/preview/extra-models" {
+		t.Fatalf("add model dir from library models tab failed: %+v", s.registry.ModelRoots)
+	}
+
+	s.libraryTab = 1
+	tt.Frame()
+	if _, ok := tt.AccessByRole(ui.RoleHeading, "可下载引擎"); !ok {
+		t.Fatalf("expected single catalog heading 可下载引擎, texts=%v", tt.Texts())
+	}
+	if _, ok := tt.AccessByRole(ui.RoleHeading, "引擎"); ok {
+		t.Fatalf("unexpected duplicate inner heading 引擎 inside library engines tab")
+	}
+}

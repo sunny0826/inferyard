@@ -56,6 +56,29 @@ func dangerButton(c *ui.Context, label string) ui.Element {
 	return b.Background(background).TextColor(danger.Mix(theme.Text, .2)).Border(1, danger.Alpha(.7))
 }
 
+func quietDangerButton(c *ui.Context, label string) ui.Element {
+	theme := c.Theme()
+	t := tokens(c)
+	danger := t.State.Danger
+	b := styleButtonSize(c, components.Button(c, label, components.ButtonOutline), sizeMD)
+	background := t.Color.Surface
+	border := t.Color.BorderDefault
+	if c.Preferences().HighContrast {
+		border = danger
+	}
+	if !b.IsDisabled() {
+		switch {
+		case b.Pressed():
+			background = theme.Surface.Mix(danger, .20)
+			border = danger.Alpha(.70)
+		case b.Hovered():
+			background = theme.Surface.Mix(danger, .10)
+			border = danger.Alpha(.55)
+		}
+	}
+	return b.Background(background).TextColor(danger.Mix(theme.Text, .18)).Border(1, border)
+}
+
 func activitySpinner(c *ui.Context, label string) ui.Element {
 	return components.Spinner(c, components.SpinnerRing).Label(label)
 }

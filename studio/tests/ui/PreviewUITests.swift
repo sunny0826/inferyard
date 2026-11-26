@@ -299,6 +299,32 @@ final class PreviewUITests: XCTestCase {
         XCTAssertEqual(prepBtn.frame.height, startModelBtn.frame.height, accuracy: 1.0, "准备环境 and + 启动模型 must match in height")
         keepScreenshot("Services setup uniform buttons")
 
+        click("模型库")
+        let rescanBtn = app.buttons["重新扫描"].firstMatch
+        let addDirBtn = app.buttons["添加模型目录"].firstMatch
+        expectExists(rescanBtn, timeout: 5)
+        expectExists(addDirBtn, timeout: 5)
+        XCTAssertEqual(rescanBtn.frame.height, addDirBtn.frame.height, accuracy: 1.0, "重新扫描 and 添加模型目录 must match in height")
+        for modelName in ["Preview-Model-Q4.gguf", "Preview-Small.gguf"] {
+            let startBtn = app.buttons["启动 · \(modelName)"].firstMatch
+            let delBtn = app.buttons["删除 · \(modelName)"].firstMatch
+            expectExists(startBtn, timeout: 5)
+            expectExists(delBtn, timeout: 5)
+            XCTAssertEqual(startBtn.frame.minY, delBtn.frame.minY, accuracy: 1.5, "\(modelName) action buttons must stay on one row")
+            XCTAssertEqual(startBtn.frame.height, delBtn.frame.height, accuracy: 1.0, "\(modelName) action buttons must match in height")
+        }
+        XCTAssertFalse(text("gguf · 约 2.0 GiB").exists)
+        keepScreenshot("Library models tab polished")
+
+        selectTab("引擎")
+        let registerEngineBtn = app.buttons["注册本地引擎"].firstMatch
+        let checkUpdatesBtn = app.buttons["检查引擎更新"].firstMatch
+        expectExists(registerEngineBtn, timeout: 5)
+        expectExists(checkUpdatesBtn, timeout: 5)
+        XCTAssertEqual(registerEngineBtn.frame.minY, checkUpdatesBtn.frame.minY, accuracy: 1.5, "Engine header actions must align")
+        XCTAssertEqual(registerEngineBtn.frame.height, checkUpdatesBtn.frame.height, accuracy: 1.0, "Engine header actions must match in height")
+        keepScreenshot("Library engines tab polished")
+
         selectScene("测评 · 已完成")
         click("报告")
         expectTab("测评报告")

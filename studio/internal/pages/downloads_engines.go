@@ -31,45 +31,54 @@ func (s *viewState) downloadsEnginesTab(c *ui.Context) {
 	ui.Column(c.Key("downloads-engines-tab")).FillWidth().Gap(t.Density.Section).Children(func() {
 		applyMaterial(c, ui.Column(c).MinWidth(0).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
 			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				ui.Row(c).Grow(1).MinWidth(0).Children(func() { heading(c, tr(c, "downloads.kind.engine"), 2) })
+				ui.Row(c).Grow(1).MinWidth(0).Children(func() { heading(c, tr(c, "library.section.catalog_engines"), 2) })
 				outlineButton(c, tr(c, "downloads.engines.link_existing")).OnClick(func() { s.openLocalEngineWizard("") })
 			})
 			if len(managed) == 0 {
 				ui.Text(c, tr(c, "downloads.engines.none_available")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				return
 			}
-			for i, fam := range managed {
-				if i > 0 {
-					ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
-				}
-				hostReleases := fam.ReleasesForPlatform(hostPlatform, false)
-				rel := resolveEngineRelease(st.selectedRelease[fam.ID], hostReleases)
-				build := pickEngineBuildForPlatform(st, fam.ID, rel, hostPlatform)
-				s.engineFamilyRow(c, fam, rel, build, hostPlatform)
-			}
-		})
-
-		if len(externalApps) > 0 {
-			card(c, tr(c, "downloads.engines.external_apps"), func() {
-				for i, fam := range externalApps {
+			ui.Column(c).FillWidth().Children(func() {
+				ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+				for i, fam := range managed {
 					if i > 0 {
 						ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
 					}
 					hostReleases := fam.ReleasesForPlatform(hostPlatform, false)
 					rel := resolveEngineRelease(st.selectedRelease[fam.ID], hostReleases)
 					build := pickEngineBuildForPlatform(st, fam.ID, rel, hostPlatform)
-					s.externalEngineAppRow(c, fam, rel, build)
+					s.engineFamilyRow(c, fam, rel, build, hostPlatform)
 				}
+			})
+		})
+
+		if len(externalApps) > 0 {
+			card(c, tr(c, "downloads.engines.external_apps"), func() {
+				ui.Column(c).FillWidth().Children(func() {
+					ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+					for i, fam := range externalApps {
+						if i > 0 {
+							ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+						}
+						hostReleases := fam.ReleasesForPlatform(hostPlatform, false)
+						rel := resolveEngineRelease(st.selectedRelease[fam.ID], hostReleases)
+						build := pickEngineBuildForPlatform(st, fam.ID, rel, hostPlatform)
+						s.externalEngineAppRow(c, fam, rel, build)
+					}
+				})
 			})
 		}
 
 		if len(otherPlatform) > 0 {
 			componentFoldKeyed(c, "downloads-other-platform-engines", trf(c, "downloads.engines.other_platform_fold", "count", strconv.Itoa(len(otherPlatform))), func() {
-				for i, fam := range otherPlatform {
-					if i > 0 {
-						ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+				ui.Column(c).FillWidth().Children(func() {
+					for i, fam := range otherPlatform {
+						if i > 0 {
+							ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+						}
+						s.otherPlatformEngineRow(c, fam)
 					}
-					s.otherPlatformEngineRow(c, fam)
-				}
+				})
 			})
 		}
 
@@ -94,18 +103,20 @@ func (s *viewState) engineFamilyRow(c *ui.Context, fam core.EngineFamilyCatalog,
 	installed := s.isEngineFamilyInstalled(fam.ID)
 	installing := s.isEngineFamilyDownloading(fam)
 
-	ui.Row(c.Key("downloads-engine-" + fam.ID)).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
-			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-				ui.Text(c, fam.Name).Bold()
-				badge(c, core.ModelFormatLabel(fam.ModelFormat), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
+	ui.Row(c.Key("downloads-engine-" + fam.ID)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).
+		Padding(t.Density.Stack, t.Density.Tight).Children(func() {
+		engineIconBox(c, fam.Name, 36, t.Radius.Control)
+		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				ui.Text(c, fam.Name).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
+				inlineBadge(c, core.ModelFormatLabel(fam.ModelFormat), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
 				if installed {
-					badge(c, tr(c, "downloads.badge.installed"), stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
+					inlineBadge(c, tr(c, "downloads.badge.installed"), stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
 				} else if installing {
-					badge(c, tr(c, "downloads.badge.installing"), stateActive, badgeOptions{Style: badgeSoft, Size: sizeSM})
+					inlineBadge(c, tr(c, "downloads.badge.installing"), stateActive, badgeOptions{Style: badgeSoft, Size: sizeSM})
 				}
 			})
-			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				metaParts := []string{rel.Distribution, rel.Version}
 				if build.Variant != "" {
 					metaParts = append(metaParts, build.Variant)
@@ -113,11 +124,11 @@ func (s *viewState) engineFamilyRow(c *ui.Context, fam core.EngineFamilyCatalog,
 				if total := build.TotalBytes(); total > 0 {
 					metaParts = append(metaParts, catalogHumanSize(total))
 				}
-				ui.Text(c, joinParts(metaParts)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-				badge(c, core.ChannelLabel(rel.Channel), engineChannelState(rel.Channel), badgeOptions{Style: badgeSoft, Size: sizeSM})
+				ui.Text(c, joinParts(metaParts)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
+				inlineBadge(c, core.ChannelLabel(rel.Channel), engineChannelState(rel.Channel), badgeOptions{Style: badgeSoft, Size: sizeSM})
 			})
 		})
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+		ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			outlineButton(c, tr(c, "downloads.engines.versions_urls")).Label(trf(c, "downloads.engines.versions_urls_label", "id", fam.ID)).OnClick(func() {
 				if fam.ID == "polystrata" {
 					s.openPolystrataConfigDrawer(fam.ID, rel.ID, build.Platform, build.ID)
@@ -159,22 +170,24 @@ func (s *viewState) externalEngineAppRow(c *ui.Context, fam core.EngineFamilyCat
 	t := tokens(c)
 	installed := s.isEngineFamilyInstalled(fam.ID)
 
-	ui.Row(c.Key("downloads-ext-" + fam.ID)).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
-			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-				ui.Text(c, fam.Name).Bold()
-				badge(c, core.ModelFormatLabel(fam.ModelFormat), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
+	ui.Row(c.Key("downloads-ext-" + fam.ID)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).
+		Padding(t.Density.Stack, t.Density.Tight).Children(func() {
+		engineIconBox(c, fam.Name, 36, t.Radius.Control)
+		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				ui.Text(c, fam.Name).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
+				inlineBadge(c, core.ModelFormatLabel(fam.ModelFormat), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
 				if installed {
-					badge(c, tr(c, "downloads.badge.linked"), stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
+					inlineBadge(c, tr(c, "downloads.badge.linked"), stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
 				}
 			})
 			metaParts := []string{rel.Distribution, rel.Version}
 			if build.Variant != "" {
 				metaParts = append(metaParts, build.Variant)
 			}
-			ui.Text(c, joinParts(metaParts)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			ui.Text(c, joinParts(metaParts)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 		})
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+		ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			outlineButton(c, tr(c, "downloads.engines.open_website")).Label(trf(c, "downloads.engines.open_website_label", "id", fam.ID)).OnClick(func() {
 				s.openDownloadURL(c, fam.Name, build.PrimaryURL())
 			})
@@ -200,16 +213,20 @@ func (s *viewState) otherPlatformEngineRow(c *ui.Context, fam core.EngineFamilyC
 		firstBuild = builds[0]
 	}
 
-	ui.Row(c.Key("downloads-other-engine-" + fam.ID)).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
-			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-				ui.Text(c, fam.Name).Bold()
-				badge(c, core.ModelFormatLabel(fam.ModelFormat), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
+	ui.Row(c.Key("downloads-other-engine-" + fam.ID)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).
+		Padding(t.Density.Stack, t.Density.Tight).Children(func() {
+		engineIconBox(c, fam.Name, 36, t.Radius.Control)
+		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				ui.Text(c, fam.Name).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
+				inlineBadge(c, core.ModelFormatLabel(fam.ModelFormat), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
 			})
 			ui.Text(c, trf(c, "downloads.platform.supported_line", "platforms", enginePlatformSummary(rel))).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		})
-		outlineButton(c, tr(c, "downloads.engines.versions_urls")).Label(trf(c, "downloads.engines.versions_urls_label", "id", fam.ID)).OnClick(func() {
-			st.openEngineDrawer(fam.ID, rel.ID, firstPlatform, firstBuild.ID)
+		ui.Row(c).Shrink(0).AlignItems(ui.Center).Children(func() {
+			outlineButton(c, tr(c, "downloads.engines.versions_urls")).Label(trf(c, "downloads.engines.versions_urls_label", "id", fam.ID)).OnClick(func() {
+				st.openEngineDrawer(fam.ID, rel.ID, firstPlatform, firstBuild.ID)
+			})
 		})
 	})
 }
