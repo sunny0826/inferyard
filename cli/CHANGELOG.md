@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.0.18
+
+- feat(studio): unify design-system sizing and polish Library, Benchmarks, and Run History UX (#251)
+- refactor: decouple Studio UI/preview hotspots and share dev assets across worktrees (#250)
+- perf(polystrata): speed up Studio service and multi-bundle startup (#249)
+- fix(studio): discover versioned PolyStrata installations in local E2E (#248)
+- perf(studio): slim UI refresh pipeline and cache CLI/workspace probes (#247)
+- feat(studio): add workspace benchmark artifact cleanup action (#246)
+
 ## 0.0.17
 
 - perf: eliminate model hashing, pre-run probes/waits, and cold service restarts (#244)
