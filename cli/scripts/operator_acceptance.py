@@ -85,7 +85,7 @@ def verify(out, packet, source_sha256, plan_sha256):
     if code or details["plan_sha256"] != plan_sha256 or frozen["plan_sha256"] != plan_sha256:
         raise RuntimeError("计划哈希不匹配")
     safety = frozen["experiment"]["safety"]
-    if safety["max_temperature_celsius"] is not None or safety["require_temperature"]:
+    if "max_temperature_celsius" in safety or "require_temperature" in safety:
         raise RuntimeError("新版验收计划不应包含温度门禁")
     if details["request_limit"] != 40 or len(details["trials"]) != 1:
         raise RuntimeError("计划必须为单轮 40 题")

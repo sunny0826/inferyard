@@ -56,17 +56,6 @@ def validate_config(config):
         "reasoning_effort is supported for polystrata only",
     )
     require(
-        engine["backend"] != "metal" or config["safety"]["require_temperature"] is True,
-        "config.safety.require_temperature",
-        "macOS Metal profiles require temperature telemetry",
-    )
-    max_temp_limit = 115 if engine["backend"] == "metal" else 85
-    require(
-        config["safety"]["max_temperature_celsius"] <= max_temp_limit,
-        "config.safety.max_temperature_celsius",
-        "non-Metal local profiles cap max_temperature_celsius at 85",
-    )
-    require(
         ("binding_path" in config["endpoint"]) == ("binding_sha256" in config["endpoint"]),
         "config.endpoint",
         "binding path and hash must occur together",
@@ -74,12 +63,6 @@ def validate_config(config):
     from inferyard.contracts.engine_tuning import validate_tuning
 
     validate_tuning(engine)
-    reason = config["safety"].get("temperature_stop_override_reason")
-    require(
-        reason is None or bool(reason.strip()),
-        "config.safety.temperature_stop_override_reason",
-        "override reason must not be blank",
-    )
     environment = engine["environment"]
     validate_root_environment(family, environment, engine["working_directory"])
     require(

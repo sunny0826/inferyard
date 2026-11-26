@@ -105,11 +105,6 @@ class Guard:
                 raise PreflightError("memory_safety_threshold_reached")
         if self.last_sample["disk_free_bytes"] < self.parameters["min_free_disk_bytes"]:
             raise PreflightError("disk_safety_threshold_reached")
-        threshold = self.parameters["max_temperature_celsius"]
-        if threshold is not None and any(
-            s["value"] is not None and s["value"] >= threshold for s in temperature
-        ):
-            raise PreflightError("temperature_safety_threshold_reached")
         return self.last_sample
 
 
@@ -244,7 +239,6 @@ async def _run(request, plan, key, lock):
         if plan["definition"] != "engine_fit_plan.v1":
             run["definition"] = {
                 "engine_fit_plan.v2": "engine_fit_run.v3",
-                "engine_fit_plan.v3": "engine_fit_run.v4",
                 "engine_fit_plan.v4": "engine_fit_run.v5",
             }[plan["definition"]]
             run["platform"] = platform.system()
@@ -257,8 +251,6 @@ async def _run(request, plan, key, lock):
                 "model_binding_is_startup_directory_not_observed_gpu_residency"
             )
             run["limitations"].extend(WINDOWS_LIMITATIONS)
-        if plan["parameters"].get("temperature_stop_override_reason") is not None:
-            run["limitations"].append("temperature_stop_explicitly_disabled")
         if plan["parameters"].get("memory_stop_override_reason") is not None:
             run["limitations"].append("memory_stop_explicitly_disabled")
         if request.fit_engine == "lmstudio":

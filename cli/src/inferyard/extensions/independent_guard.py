@@ -18,8 +18,6 @@ from inferyard.runtime.safety import SafetyGuard
 
 POLICY = {
     "interval_seconds": 0.5,
-    "max_temperature_celsius": 90,
-    "require_temperature": True,
     "max_external_cpu_percent": 20,
     "check_environment": True,
 }

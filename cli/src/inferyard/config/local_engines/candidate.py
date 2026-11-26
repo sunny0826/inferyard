@@ -216,8 +216,6 @@ def create(request):
         },
         safety={
             "interval_seconds": 1,
-            "max_temperature_celsius": 115 if system == "Darwin" else 85,
-            "require_temperature": system == "Darwin",
             "check_environment": True,
         },
     )
@@ -225,10 +223,6 @@ def create(request):
         config["conditions"]["macos_power_policy"] = environment["macos_power_policy"]
     if request.prompt_cache is not None:
         config["engine"]["tuning"] = {"prompt_cache": request.prompt_cache}
-    if request.temperature_stop_override_reason is not None:
-        config["safety"]["temperature_stop_override_reason"] = (
-            request.temperature_stop_override_reason
-        )
     config["output"].update(root=str(results), min_available_memory_bytes=1024**3)
     config["execution"]["timeout_seconds"] = request.timeout_seconds or 600
     config["execution"]["idle_wait_seconds"] = 30

@@ -57,10 +57,6 @@ def add_commands(commands):
     create.add_argument("--max-tokens", type=int)
     create.add_argument("--timeout-seconds", type=float)
     create.add_argument(
-        "--temperature-stop-override-reason",
-        help="local engines: record temperature but never stop on it; reason is frozen",
-    )
-    create.add_argument(
         "--prompt-cache",
         choices=("disabled",),
         help="llama-cpp only: freeze engine.tuning.prompt_cache and send cache_prompt=false",

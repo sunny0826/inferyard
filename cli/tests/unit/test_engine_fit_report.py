@@ -31,7 +31,6 @@ def plan():
             "request_timeout_seconds": 30,
             "min_free_memory_bytes": 128 * 2**20,
             "min_free_disk_bytes": 256 * 2**20,
-            "max_temperature_celsius": 85,
         },
         "request_count": 2,
         "max_request_wall_seconds": 60,

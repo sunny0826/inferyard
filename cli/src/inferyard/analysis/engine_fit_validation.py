@@ -244,7 +244,6 @@ def validate_run(plan, run, rows):
     require(type(run) is dict, "run_fields")
     modern = run.get("definition") in (
         "engine_fit_run.v3",
-        "engine_fit_run.v4",
         "engine_fit_run.v5",
         "engine_fit_run.v6",
     )
@@ -253,14 +252,22 @@ def validate_run(plan, run, rows):
 
     require_core(run, "engine-fit run")
     require_version(
-        run, "definition", tuple(f"engine_fit_run.v{i}" for i in range(1, 7)), "engine-fit run"
+        run,
+        "definition",
+        (
+            "engine_fit_run.v1",
+            "engine_fit_run.v2",
+            "engine_fit_run.v3",
+            "engine_fit_run.v5",
+            "engine_fit_run.v6",
+        ),
+        "engine-fit run",
     )
     fields(run, RUN_FIELDS | ({"platform"} if modern else set()), "run_fields")
     windows = run["definition"] == "engine_fit_run.v6"
     if windows:
         require(
-            plan["definition"]
-            in ("engine_fit_plan.v2", "engine_fit_plan.v3", "engine_fit_plan.v4"),
+            plan["definition"] in ("engine_fit_plan.v2", "engine_fit_plan.v4"),
             "run_plan_definition",
         )
         require(
@@ -276,7 +283,6 @@ def validate_run(plan, run, rows):
                 "engine_fit_run.v1": "engine_fit_plan.v1",
                 "engine_fit_run.v2": "engine_fit_plan.v1",
                 "engine_fit_run.v3": "engine_fit_plan.v2",
-                "engine_fit_run.v4": "engine_fit_plan.v3",
                 "engine_fit_run.v5": "engine_fit_plan.v4",
             }[run["definition"]],
             "run_plan_definition",
@@ -311,7 +317,6 @@ def validate_run(plan, run, rows):
         )
     disabled_reasons = {}
     for measure, reasons in (
-        ("temperature", ("temperature_safety_threshold_reached",)),
         ("memory", ("memory_safety_threshold_reached", "system_memory_unavailable")),
     ):
         disabled = plan["parameters"].get(measure + "_stop_override_reason") is not None

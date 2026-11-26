@@ -19,10 +19,8 @@ class Sensors:
         return {}
 
 
-def test_thermal_threshold_missing_source_and_environment_changes():
+def test_thermal_samples_recorded_without_stopping_and_environment_changes_stop():
     policy = {
-        "max_temperature_celsius": 90,
-        "require_temperature": True,
         "check_environment": True,
         "max_external_cpu_percent": None,
     }
@@ -33,15 +31,13 @@ def test_thermal_threshold_missing_source_and_environment_changes():
         "epp": "balance_performance",
     }
     env = dict(conditions)
-    sensors = Sensors(89)
+    sensors = Sensors(115)
     guard = SafetyGuard(policy, {"conditions": conditions}, lambda: env, sensors=sensors)
     guard.check()
-    sensors.value = 90
-    with pytest.raises(PreflightError, match="temperature_safety_threshold"):
-        guard.check()
+    assert guard.last["temperature_samples"] == [{"value": 115}]
     sensors.value = None
-    with pytest.raises(PreflightError, match="source_unavailable"):
-        guard.check()
+    guard.check()
+    assert guard.last["temperature_samples"] == [{"value": None}]
     sensors.value = 40
     env["ac_online"] = False
     with pytest.raises(PreflightError, match="environment_safety"):
