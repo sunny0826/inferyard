@@ -26,26 +26,9 @@ _LEGACY_MODEL_PATH_KEYS = (
 )
 _TOKENIZER_PATH_KEYS = ("tokenizer", "tokenizer_path", "tokenizer_dir")
 _SAFE_DERIVED_KEYS = (
-    "engine",
-    "exe",
-    "args",
-    "cwd",
-    "tokenizer",
-    "model_name",
-    "display_name",
-    "port",
-    "backend",
-    "gpu",
-    "gpus_asked",
-    "hip_ordinal",
-    "layer_split",
-    "split_skip_if_fits",
-    "lib_dirs",
-    "cuda",
-    "tool_call_recovery",
-    "sampling",
-    "vision",
-    "env",
+    "engine", "exe", "args", "cwd", "tokenizer", "model_name", "display_name",
+    "port", "parallel", "backend", "gpu", "gpus_asked", "hip_ordinal", "layer_split",
+    "split_skip_if_fits", "lib_dirs", "cuda", "tool_call_recovery", "sampling", "vision", "env",
 )
 UPSTREAM_DEFAULT_CONTEXT = 4096
 

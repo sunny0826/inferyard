@@ -214,7 +214,12 @@ func TestStartStandalonePolystrataPortChangeRewritesWithoutCLI(t *testing.T) {
 					t.Fatal(err)
 				}
 				cfgPath := filepath.Join(outArg, "polystrata.json")
-				if err := os.WriteFile(cfgPath, []byte(`{"host":"127.0.0.1","port":`+portArg+`}`), 0o600); err != nil {
+				cfgDoc, _ := json.Marshal(map[string]any{
+					"host": "127.0.0.1",
+					"port": portArg,
+					"log":  filepath.Join(outArg, "strata-engine.log"),
+				})
+				if err := os.WriteFile(cfgPath, cfgDoc, 0o600); err != nil {
 					t.Fatal(err)
 				}
 				plan := inferyard.ServePlan{
@@ -309,6 +314,43 @@ func TestStartStandalonePolystrataPortChangeRewritesWithoutCLI(t *testing.T) {
 	waitEngineState(t, s, "running")
 	if prepareCalls.Load() != 1 || st3.Port != port2 || st3.Endpoint != "http://127.0.0.1:"+strconv.Itoa(port2) {
 		t.Fatalf("expected polystrata port change hot rewrite without CLI (prepare=1, port=%d), got prepare=%d port=%d endpoint=%q", port2, prepareCalls.Load(), st3.Port, st3.Endpoint)
+	}
+	if _, err := s.StopEngine(); err != nil {
+		t.Fatalf("StopEngine failed: %+v", err)
+	}
+	waitEngineState(t, s, "stopped")
+
+	// Pre-upgrade cached PolyStrata config without managed strata-engine.log refreshes once via serve prepare, then caches again.
+	serveDir, dirErr := safeServeDir(workspace, st1.Candidate)
+	if dirErr != nil {
+		t.Fatalf("safeServeDir failed: %+v", dirErr)
+	}
+	if err := os.WriteFile(filepath.Join(serveDir, "polystrata.json"), []byte(`{"host":"127.0.0.1"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, apiErr := s.StartStandalone(context.Background(), StandaloneStartRequest{
+		Model: modelName, Engine: engName, ContextSize: 8192, Port: port2,
+	}); apiErr != nil {
+		t.Fatalf("4th polystrata legacy-log refresh start failed: %+v", apiErr)
+	}
+	waitEngineState(t, s, "running")
+	if prepareCalls.Load() != 2 {
+		t.Fatalf("expected legacy polystrata config without managed log to refresh once via CLI (prepare=2), got %d", prepareCalls.Load())
+	}
+	if _, err := s.StopEngine(); err != nil {
+		t.Fatalf("StopEngine failed: %+v", err)
+	}
+	waitEngineState(t, s, "stopped")
+
+	s.clearServeSupport()
+	if _, apiErr := s.StartStandalone(context.Background(), StandaloneStartRequest{
+		Model: modelName, Engine: engName, ContextSize: 8192, Port: port1,
+	}); apiErr != nil {
+		t.Fatalf("5th polystrata post-refresh hot cache start failed: %+v", apiErr)
+	}
+	waitEngineState(t, s, "running")
+	if prepareCalls.Load() != 2 {
+		t.Fatalf("expected refreshed polystrata plan to hit hot cache without CLI (prepare=2), got %d", prepareCalls.Load())
 	}
 }
 

@@ -177,6 +177,47 @@ def test_serve_prepare_polystrata_native_pack_context(capsys, tmp_path):
     _assert_valid_serve_plan(plan)
     assert plan["model_kind"] == "strata_pack"
 
+    # Same-installation config with only managed log path differing must derive while keeping parallel=4.
+    parallel_cfg = ps_root / "strata-parallel.json"
+    parallel_cfg.write_text(
+        json.dumps(
+            {
+                "exe": str(strata_exe),
+                "args": ["--pack", str(weights_dir), "--max-context", "32768"],
+                "cwd": str(ps_root),
+                "model_name": "PackParallel",
+                "parallel": 4,
+                "log": str(ps_root / "strata-parallel.log"),
+            }
+        ),
+        encoding="utf-8",
+    )
+    out_parallel = tmp_path / "out-parallel"
+    code_parallel, _ = _run_cli(
+        capsys,
+        [
+            "serve",
+            "prepare",
+            "--model",
+            str(parallel_cfg),
+            "--installation",
+            str(inst),
+            "--context-size",
+            "32768",
+            "--port",
+            "49043",
+            "--out",
+            str(out_parallel),
+        ],
+    )
+    assert code_parallel == 0
+    parallel_plan = json.loads((out_parallel / "serve-plan.json").read_text(encoding="utf-8"))
+    parallel_derived_path = Path(parallel_plan["argv"][parallel_plan["argv"].index("--config") + 1])
+    assert parallel_derived_path != parallel_cfg.resolve()
+    parallel_derived = json.loads(parallel_derived_path.read_text(encoding="utf-8"))
+    assert parallel_derived["parallel"] == 4
+    assert parallel_derived["log"] == str((out_parallel / "strata-engine.log").resolve())
+
     code_over, res_over = _run_cli(
         capsys,
         [
