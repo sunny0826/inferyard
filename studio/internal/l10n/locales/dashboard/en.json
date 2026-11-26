@@ -143,7 +143,7 @@
   "dashboard.run.start_button": "Start Run",
   "dashboard.run.view_live_detail": "View Live Details",
   "dashboard.run.waiting_progress": "Running, waiting for progress…",
-  "dashboard.score.gap_incomplete": "Run did not complete all cases",
+  "dashboard.score.gap_incomplete": "Incomplete",
   "dashboard.score.gap_missing": "{count} missing scores",
   "dashboard.score.gap_unscorable": "{count} unscorable",
   "dashboard.score.no_valid_cases": "No valid cases",

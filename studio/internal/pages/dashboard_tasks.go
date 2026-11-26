@@ -1,7 +1,9 @@
 package pages
 
 import (
+	"cmp"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -153,4 +155,23 @@ func runScore(r core.RunSummary) string {
 		rate += l10n.TRf("dashboard.score.with_failed", "count", r.Score.Failed)
 	}
 	return fmt.Sprintf("%d/%d · %s", r.Score.Passed, r.Score.Valid, rate)
+}
+
+func benchmarkTaskTitle(c *ui.Context, task core.RunTask) string {
+	label := tr(c, "shell.header.context_speed")
+	if speed := task.ContextSpeed; task.Kind == "context_speed" && speed != nil {
+		var parts []string
+		if model := cmp.Or(strings.TrimSpace(speed.DisplayModel), strings.TrimSpace(speed.Model)); model != "" {
+			parts = append(parts, model)
+		}
+		if speed.Context > 0 {
+			parts = append(parts, speedContext(speed.Context))
+		}
+		return strings.Join(append(parts, label), " · ")
+	}
+	label = cmp.Or(emptyText(task.Bundle), label)
+	if base := filepath.Base(emptyText(task.RunPath)); base != "" && base != "." {
+		return base + " · " + label
+	}
+	return label
 }

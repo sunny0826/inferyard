@@ -1,7 +1,7 @@
 package pages
 
 import (
-	"path/filepath"
+	"cmp"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -351,16 +351,7 @@ func (s *viewState) renderActiveFlowRow(c *ui.Context) {
 
 func (s *viewState) renderBenchmarkTaskRow(c *ui.Context, task core.RunTask) {
 	t := tokens(c)
-	title := tr(c, "shell.header.context_speed")
-	if task.Bundle != nil && *task.Bundle != "" {
-		title = *task.Bundle
-	}
-	if rp := emptyText(task.RunPath); rp != "" {
-		base := filepath.Base(rp)
-		if base != "" && base != "." {
-			title = base + " · " + title
-		}
-	}
+	title := benchmarkTaskTitle(c, task)
 	sub := s.benchmarkTaskSubtitle(c, task)
 	kind := stateNeutral
 	switch task.State {
@@ -461,6 +452,11 @@ func (s *viewState) renderRecentReportRow(c *ui.Context, rep core.ReportSummary)
 
 func (s *viewState) benchmarkTaskSubtitle(c *ui.Context, task core.RunTask) string {
 	sub := taskLabelFor(contextLocale(c), task)
+	if speed := task.ContextSpeed; task.Kind == "context_speed" && speed != nil {
+		if engine := cmp.Or(strings.TrimSpace(speed.DisplayEngine), strings.TrimSpace(speed.Engine)); engine != "" {
+			sub = engine + " · " + sub
+		}
+	}
 	if terminal(task.State) || task.Queued || task.State == "queued" {
 		if task.StartedAt != nil && *task.StartedAt != "" {
 			sub += " · " + formatTimestamp(*task.StartedAt)
