@@ -120,9 +120,7 @@ const previewSnapshotMac48 = `{
 			"vram_bytes": null,
 			"unified_memory_bytes": 51539607552
 		},
-		"notes": [
-			"cpu_missing_avx2_experimental_build"
-		],
+		"notes": [],
 		"alternatives": [
 			{
 				"engine": "polystrata",

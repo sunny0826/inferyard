@@ -86,6 +86,30 @@ func TestLegacyPageIDRedirects(t *testing.T) {
 	}
 }
 
+func TestRunHistoryTabBelongsToBenchmarks(t *testing.T) {
+	s := readyState("reports")
+	s.reportsTab = 2 // Former history tab.
+	reports := ui.NewTester(s.reportsView, 1120, 900)
+	if tab, ok := reports.AccessByRole(ui.RoleTab, tr(nil, "reports.tab.reports")); !ok || !tab.Selected {
+		t.Fatal("expected the report list to be selected")
+	}
+	if _, ok := reports.AccessByRole(ui.RoleTab, tr(nil, "reports.tab.history")); ok {
+		t.Fatal("unexpected history tab on reports page")
+	}
+	speed := tr(nil, "reports.tab.context_speed")
+	click(t, reports, speed)
+	if tab, ok := reports.AccessByRole(ui.RoleTab, speed); !ok || !tab.Selected {
+		t.Fatal("expected context speed tab to be selected")
+	}
+	s.selectPage("benchmarks")
+	bench := ui.NewTester(s.benchmarksView, 1120, 900)
+	history := tr(nil, "reports.tab.history")
+	click(t, bench, history)
+	if tab, ok := bench.AccessByRole(ui.RoleTab, history); !ok || !tab.Selected {
+		t.Fatal("expected the benchmark history tab to be selected")
+	}
+}
+
 func TestFirstOpenDefaultsToServices(t *testing.T) {
 	if got := firstOpen("", false); got != "services" {
 		t.Fatalf("firstOpen(\"\", false) = %q, want \"services\"", got)
@@ -154,7 +178,7 @@ func TestInterfaceDetailsPolishInteractionsAndPlurals(t *testing.T) {
 	// 2. Re-selecting active Reports or Benchmarks resets sub-views.
 	s.selected = "reports"
 	s.openedReport = &reportViewState{reference: "rep-1"}
-	s.reportsTab = reportsTabHistory
+	s.reportsTab = reportsTabSpeed
 	s.selectPage("reports")
 	if s.openedReport != nil || s.reportsTab != reportsTabList {
 		t.Fatalf("expected re-selecting reports to close opened report and return to list tab, got opened=%v tab=%d", s.openedReport, s.reportsTab)

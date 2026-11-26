@@ -190,7 +190,7 @@
   "reports.metrics.median_latency": "完成请求耗时（中位）",
   "reports.metrics.memory_reason.multiple_sources": "多个采样来源，未合并",
   "reports.metrics.memory_reason.resource_samples_missing": "缺少资源采样",
-  "reports.metrics.min_system_available_detail": "采样期间系统最少可用 {value}",
+  "reports.metrics.min_system_available_detail": "最低可用 {value}",
   "reports.metrics.no_summary": "本次运行暂无可汇总的指标。",
   "reports.metrics.not_measured": "未提供测量",
   "reports.metrics.partial_scoring": "部分评分",

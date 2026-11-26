@@ -119,19 +119,21 @@ func (s *viewState) openReport(reference string) {
 	}()
 }
 
-func (s *viewState) reportBackLink(c *ui.Context) {
-	button(c, tr(c, "reports.detail.back")).OnClick(func() {
-		s.closeOpenedReport()
-		s.reportsTab = reportsTabList
-	})
-}
-
 func (s *viewState) reportView(c *ui.Context) {
 	report := s.openedReport
 	id := displayName(report.reference)
-	s.reportBackLink(c)
+	title := trf(c, "reports.detail.title_with_id", "id", id)
+	if !report.loading && report.failure == nil && len(report.index.Runs) > 0 {
+		title = reportModel(report.index.Runs[report.run])
+	}
+	s.subpageHeader(c, title, tr(c, "reports.detail.back"), func() {
+		s.closeOpenedReport()
+		s.reportsTab = reportsTabList
+	})
+	if s.openedReport == nil {
+		return
+	}
 	if report.loading {
-		s.header(c, trf(c, "reports.detail.title_with_id", "id", id))
 		host := ui.Column(c.Key("report-loading-" + report.reference)).FillWidth().Gap(tokens(c).Density.Section)
 		show := delayedVisible(c, host, "report-load", true)
 		host.Children(func() {
@@ -142,14 +144,12 @@ func (s *viewState) reportView(c *ui.Context) {
 		return
 	}
 	if report.failure != nil {
-		s.header(c, trf(c, "reports.detail.title_with_id", "id", id))
 		errorRecoveryBanner(c, report.failure, func() {
 			button(c, tr(c, "reports.detail.retry_read")).OnClick(func() { s.openReport(report.reference) })
 		})
 		return
 	}
 	if len(report.index.Runs) == 0 {
-		s.header(c, trf(c, "reports.detail.title_with_id", "id", id))
 		emptyGuideCard(c, emptyGuideOptions{
 			Icon:    lucide.FileText,
 			Title:   tr(c, "reports.detail.empty_runs"),
@@ -158,7 +158,6 @@ func (s *viewState) reportView(c *ui.Context) {
 		return
 	}
 	run := report.index.Runs[report.run]
-	s.header(c, reportModel(run))
 	ui.Text(c, id+" · "+reportText(run.Facets.BundleLabel)).TextColor(c.Theme().TextMuted)
 	if len(report.index.Runs) > 1 {
 		report.runPicker(c)

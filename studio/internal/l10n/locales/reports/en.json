@@ -190,7 +190,7 @@
   "reports.metrics.median_latency": "Completed Latency (Median)",
   "reports.metrics.memory_reason.multiple_sources": "Multiple sampling sources (not merged)",
   "reports.metrics.memory_reason.resource_samples_missing": "Resource samples missing",
-  "reports.metrics.min_system_available_detail": "Min system available during sampling: {value}",
+  "reports.metrics.min_system_available_detail": "Min available {value}",
   "reports.metrics.no_summary": "No summary metrics available for this run.",
   "reports.metrics.not_measured": "Not measured",
   "reports.metrics.partial_scoring": "Partially scored",

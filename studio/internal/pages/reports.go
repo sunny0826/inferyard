@@ -9,7 +9,6 @@ import (
 const (
 	reportsTabList = iota
 	reportsTabSpeed
-	reportsTabHistory
 )
 
 func (s *viewState) reportsView(c *ui.Context) {
@@ -22,13 +21,13 @@ func (s *viewState) reportsView(c *ui.Context) {
 		return
 	}
 	s.header(c, tr(c, "reports.title"))
-	if s.reportsTab < reportsTabList || s.reportsTab > reportsTabHistory {
+	if s.reportsTab < reportsTabList || s.reportsTab > reportsTabSpeed {
 		s.reportsTab = reportsTabList
 	}
 	ui.Column(c.Key("reports-tabs")).Gap(tokens(c).Density.Row).Children(func() {
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 			ui.Box(c).Grow(1).Children(func() {
-				components.Tabs(c, &s.reportsTab, components.TabsUnderline, tr(c, "reports.tab.reports"), tr(c, "reports.tab.context_speed"), tr(c, "reports.tab.history"))
+				components.Tabs(c, &s.reportsTab, components.TabsUnderline, tr(c, "reports.tab.reports"), tr(c, "reports.tab.context_speed"))
 			})
 			if s.reportsTab == reportsTabList {
 				button(c, tr(c, "reports.action.create_from_history")).OnClick(func() {
@@ -37,16 +36,13 @@ func (s *viewState) reportsView(c *ui.Context) {
 				})
 			}
 		})
-		switch s.reportsTab {
-		case reportsTabSpeed:
+		if s.reportsTab == reportsTabSpeed {
 			s.speedReportsTabView(c)
-		case reportsTabHistory:
-			s.historyReportsTabView(c)
-		default:
+		} else {
 			s.reportsTableView(c)
 		}
 	})
-	s.historyOverlays(c)
+	s.reportSourcesDialog(c)
 }
 
 func (s *viewState) speedReportsTabView(c *ui.Context) {
@@ -60,11 +56,6 @@ func (s *viewState) speedReportsTabView(c *ui.Context) {
 		return
 	}
 	s.speedHistoryView(c)
-}
-
-func (s *viewState) historyReportsTabView(c *ui.Context) {
-	errorView(c, s.historyError)
-	s.historyView(c)
 }
 
 func (s *viewState) reportSourcesDialog(c *ui.Context) {
