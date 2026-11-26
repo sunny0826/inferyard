@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
@@ -61,19 +62,46 @@ func (w *viewState) candidateFields(c *ui.Context) {
 		}
 	}
 
+	t := tokens(c)
 	engineOptions, revoked, hasEligible := w.engineChoices()
 	engineHint := ""
 	if !w.checks.Supported {
 		engineHint = tr(c, "dashboard.candidate.cli_outdated_hint")
 	}
-	selectField(c, tr(c, "dashboard.candidate.engine"), engineHint, &w.engine, engineOptions)
-	selectField(c, tr(c, "dashboard.candidate.model"), "", &w.model, modelOptions)
+	cols := 2
+	if compactLayout(c) {
+		cols = 1
+	}
+	ui.Grid(c).FillWidth().Columns(cols).Gap(t.Density.Stack).Children(func() {
+		selectField(c, tr(c, "dashboard.candidate.engine"), engineHint, &w.engine, engineOptions)
+		selectField(c, tr(c, "dashboard.candidate.model"), "", &w.model, modelOptions)
+	})
 	if w.checks.Checking > 0 {
-		ui.Text(c, trf(c, "dashboard.candidate.verifying_engines", "count", w.checks.Checking)).TextColor(c.Theme().TextMuted)
+		ui.Text(c, trf(c, "dashboard.candidate.verifying_engines", "count", w.checks.Checking)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 	}
 
-	if meta := w.modelMetadata(w.model); meta != "" {
-		ui.Text(c, meta).TextColor(c.Theme().TextMuted)
+	meta := w.modelMetadata(w.model)
+	speedSelected := w.speed != nil && w.speed.selected
+	summary := ""
+	if !speedSelected {
+		summary = launchSummaryLine(w)
+	}
+	if meta != "" || summary != "" {
+		applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).
+			Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
+			if w.model != "" {
+				modelIconBox(c, w.model+" "+w.modelArchFor(w.model), 28, t.Radius.SM)
+			}
+			if meta != "" {
+				ui.Text(c, meta).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgPrimary)
+			}
+			if summary != "" {
+				if meta != "" {
+					ui.Text(c, "·").FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary)
+				}
+				ui.Text(c, summary).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
+			}
+		})
 	}
 
 	if w.speedSelection(c) {
@@ -81,9 +109,6 @@ func (w *viewState) candidateFields(c *ui.Context) {
 	}
 	w.bundleSelection(c)
 	w.localSelectionView(c)
-	if summary := launchSummaryLine(w); summary != "" {
-		ui.Text(c, summary).FontSize(tokens(c).Type.Caption).TextColor(c.Theme().TextMuted)
-	}
 	if notice := lmStudioHandoffNotice(w); notice != "" {
 		noticeBanner(c, noticeBannerOptions{
 			Kind:    stateInfo,
@@ -144,6 +169,7 @@ func (w *viewState) candidateFields(c *ui.Context) {
 			Message: tr(c, "dashboard.candidate.macos_battery_warning"),
 		})
 	}
+	ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
 	if primaryButton(c, tr(c, "dashboard.candidate.start")).AlignSelf(ui.Start).Disabled(createDisabled).Clicked() {
 		w.startBenchmark()
 	}
@@ -331,8 +357,9 @@ func (w *viewState) serviceView(c *ui.Context) {
 	})
 }
 func (w *viewState) runView(c *ui.Context) {
-	heading(c, tr(c, "dashboard.run.heading"), 3)
+	t := tokens(c)
 	if w.stepFailed() && w.running() == nil && !w.serviceCardVisible() {
+		heading(c, tr(c, "dashboard.run.heading"), 3)
 		failureView(c, tr(c, "dashboard.run.incomplete_title"), w.activeTaskFailure(), tr(c, "dashboard.retry.completed_kept"))
 	}
 	if task := w.running(); task != nil {
@@ -342,7 +369,8 @@ func (w *viewState) runView(c *ui.Context) {
 			label = taskLabelFor(contextLocale(c), *task)
 		}
 		var total int64
-		if p := w.runProgress; p != nil && p.Total != nil && *p.Total > 0 {
+		p := w.runProgress
+		if p != nil && p.Total != nil && *p.Total > 0 {
 			total = *p.Total
 			if p.Done > 0 || p.CurrentCaseId != nil {
 				value = progressValue(p.Done, p.Total)
@@ -352,26 +380,57 @@ func (w *viewState) runView(c *ui.Context) {
 				label += " · " + stateLabelFor(contextLocale(c), phase)
 			}
 		}
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			heading(c, tr(c, "dashboard.run.heading"), 3).Grow(1)
+			if value >= 0 {
+				ui.Text(c, fmt.Sprintf("%.0f%%", value*100)).Bold().FontSize(t.Type.Section).FontFeatures("tnum").TextColor(stateColor(c, stateActive))
+			}
+		})
+		if bundleName := emptyText(task.Bundle); bundleName != "" || w.model != "" || w.engine != "" {
+			applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).
+				Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
+				if w.model != "" {
+					modelIconBox(c, w.model+" "+w.modelArchFor(w.model), 28, t.Radius.SM)
+				} else {
+					components.Icon(c, lucide.Play).Size(15, 15).TextColor(stateColor(c, stateActive))
+				}
+				if bundleName != "" {
+					ui.Text(c, bundleName).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
+				}
+				if w.model != "" {
+					ui.Text(c, w.model).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
+				}
+				if w.engine != "" {
+					enginePill(c, w.engine)
+				}
+				ui.Box(c).Grow(1)
+				if p != nil && p.CurrentCaseId != nil && *p.CurrentCaseId != "" {
+					inlineBadge(c, trf(c, "detail.current_case", "case_id", *p.CurrentCaseId), stateActive, badgeOptions{Size: sizeSM, Style: badgeSoft})
+				}
+			})
+		}
 		progressBar(c, value, tr(c, "dashboard.run.progress_bar_label"))
 		if task.State == "cancelling" {
-			ui.Text(c, tr(c, "dashboard.run.cancelling_notice"))
+			ui.Text(c, tr(c, "dashboard.run.cancelling_notice")).FontSize(t.Type.Caption).TextColor(stateColor(c, stateWarning))
 		}
-		row := ui.Row(c.Key("run-elapsed-" + task.TaskId)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row)
+		row := ui.Row(c.Key("run-elapsed-" + task.TaskId)).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row)
 		elapsed := ""
 		if task.State != "cancelling" && !task.AwaitingService {
 			elapsed = w.formatTaskElapsed(c, emptyText(task.StartedAt))
 		}
 		row.Children(func() {
-			ui.Text(c, label)
+			ui.Text(c, label).FontFeatures("tnum")
 			if elapsed != "" {
-				ui.Text(c, "· "+elapsed).TextColor(c.Theme().TextMuted)
+				ui.Text(c, "· "+elapsed).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 			}
 		})
 		id := task.TaskId
-		ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
-			button(c, tr(c, "dashboard.run.view_live_detail")).AlignSelf(ui.Start).OnClick(func() { w.selectTask(id) })
+		var cancelConfirmed bool
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			primaryButton(c, tr(c, "dashboard.run.view_live_detail")).AlignSelf(ui.Start).OnClick(func() { w.selectTask(id) })
+			cancelConfirmed = w.cancelRunGate(c, id, task.State)
 		})
-		if w.cancelRunGate(c, id, task.State) {
+		if cancelConfirmed {
 			if w.task.stage != "" {
 				w.newBenchmark()
 				return
@@ -385,6 +444,9 @@ func (w *viewState) runView(c *ui.Context) {
 			})
 		}
 		return
+	}
+	if !(w.stepFailed() && !w.serviceCardVisible()) {
+		heading(c, tr(c, "dashboard.run.heading"), 3)
 	}
 	for _, task := range w.tasks {
 		if task.State == "failed" || task.State == "cancelled" {

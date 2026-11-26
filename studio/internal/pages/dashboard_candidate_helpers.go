@@ -46,23 +46,60 @@ func (s *viewState) bundleSelection(c *ui.Context) {
 		return
 	}
 	t := tokens(c)
+	cols := min(2, max(1, len(s.progress.Bundles)))
+	if compactLayout(c) {
+		cols = 1
+	}
 	ui.Field(c, tr(c, "dashboard.candidate.bundle"), func() {
-		ui.Column(c).Gap(t.Density.Tight).Children(func() {
+		ui.Grid(c).FillWidth().Columns(cols).Gap(t.Density.Row).Children(func() {
 			for _, b := range s.progress.Bundles {
-				checked := s.selectedBundles[b.Bundle]
-				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-					if components.Checkbox(c, &checked, b.Bundle).Changed() {
-						s.selectedBundles[b.Bundle] = checked
+				bundle := b
+				checked := s.selectedBundles[bundle.Bundle]
+				tile := ui.Row(c.Key("bundle-card-" + bundle.Bundle)).FillWidth().AlignItems(ui.Center).
+					Gap(t.Density.Row).Padding(t.Density.Stack).Radius(t.Radius.Control)
+				bg := t.Color.Sunken
+				border := t.Color.BorderSubtle
+				borderW := float32(1)
+				if checked {
+					bg = t.Color.Surface
+					if c.Theme().Dark {
+						bg = t.Color.Elevated
 					}
-					if description := bundleDescription(b.Bundle); description != "" {
-						ui.Text(c, "· "+description).TextColor(c.Theme().TextMuted)
+					border = t.Color.Accent
+					borderW = 1.5
+				} else if tile.Hovered() {
+					bg = t.Color.SurfaceHover
+					border = t.Color.BorderStrong
+				}
+				tile.Background(bg).Border(borderW, border)
+				var cbChanged bool
+				tile.Children(func() {
+					cb := components.Checkbox(c, &checked, bundle.Bundle)
+					if cb.Changed() {
+						cbChanged = true
+						s.selectedBundles[bundle.Bundle] = checked
 					}
+					if description := bundleDescription(bundle.Bundle); description != "" {
+						ui.Text(c, "· "+description).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
+					}
+					ui.Box(c).Grow(1)
+					phaseKind := stateNeutral
+					switch bundle.Phase {
+					case "run_complete":
+						phaseKind = stateSuccess
+					case "run_incomplete":
+						phaseKind = stateWarning
+					}
+					inlineBadge(c, stateLabel(bundle.Phase), phaseKind, badgeOptions{Size: sizeSM, Style: badgeSoft})
 				})
+				if tile.Clicked() && !cbChanged {
+					s.selectedBundles[bundle.Bundle] = !checked
+				}
 			}
 		})
 	})
 	if len(s.checkedBundles()) == 0 {
-		ui.Text(c, tr(c, "dashboard.candidate.select_bundle_required"))
+		ui.Text(c, tr(c, "dashboard.candidate.select_bundle_required")).FontSize(t.Type.Caption).TextColor(stateColor(c, stateWarning))
 	}
 }
 

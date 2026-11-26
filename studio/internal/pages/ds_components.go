@@ -68,13 +68,14 @@ type emptyStateOptions struct {
 }
 
 type listRowOptions struct {
-	Leading  func()
-	Title    string
-	Subtitle string
-	Trailing func()
-	Radius   float32
-	Selected bool
-	OnClick  func()
+	Leading   func()
+	Title     string
+	Subtitle  string
+	Trailing  func()
+	Radius    float32
+	Selected  bool
+	BoldTitle bool
+	OnClick   func()
 }
 
 func styleButtonSize(c *ui.Context, b ui.Element, size controlSize) ui.Element {
@@ -340,7 +341,7 @@ func listRow(c *ui.Context, opts listRowOptions) ui.Element {
 		}
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
 			title := ui.Text(c, opts.Title).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
-			if opts.Selected {
+			if opts.Selected || opts.BoldTitle {
 				title.Bold()
 			}
 			if opts.Subtitle != "" {

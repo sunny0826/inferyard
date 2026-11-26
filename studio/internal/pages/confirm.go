@@ -60,6 +60,12 @@ func (s *viewState) destructiveAction(c *ui.Context, option destructiveOption) b
 	})
 }
 
+func (s *viewState) quietDestructiveAction(c *ui.Context, option destructiveOption) bool {
+	return s.destructiveActionWithTrigger(c, option, false, func(bool) ui.Element {
+		return quietDangerButton(c, option.label).AlignSelf(ui.Start).Disabled(option.disabled)
+	})
+}
+
 func (s *viewState) destructiveActionWithTrigger(c *ui.Context, option destructiveOption, alignRight bool, renderTrigger func(open bool) ui.Element) bool {
 	t := tokens(c)
 	request := destructiveRequest{kind: string(option.kind), id: option.id}
@@ -116,6 +122,15 @@ func (s *viewState) destructiveDialog(c *ui.Context, option destructiveOption) b
 	request := s.destructiveRequestFor(option)
 	c.Key("alertdialog-" + string(option.kind) + "-" + option.id)
 	if dangerButton(c, option.label).AlignSelf(ui.Start).Disabled(option.disabled).Clicked() {
+		s.pendingDestructive = request
+	}
+	return s.destructiveDialogModal(c, option)
+}
+
+func (s *viewState) quietDestructiveDialog(c *ui.Context, option destructiveOption) bool {
+	request := s.destructiveRequestFor(option)
+	c.Key("alertdialog-" + string(option.kind) + "-" + option.id)
+	if quietDangerButton(c, option.label).AlignSelf(ui.Start).Disabled(option.disabled).Clicked() {
 		s.pendingDestructive = request
 	}
 	return s.destructiveDialogModal(c, option)
@@ -243,9 +258,9 @@ func (w *viewState) cancelRunGate(c *ui.Context, id, state string) bool {
 		disabled:     (w.busy && w.task.stage == "") || state == "cancelling",
 	}
 	if wholeRound {
-		return w.destructiveDialog(c, option)
+		return w.quietDestructiveDialog(c, option)
 	}
-	return w.destructiveAction(c, option)
+	return w.quietDestructiveAction(c, option)
 }
 
 func (w *viewState) stopEngineGate(c *ui.Context) bool {

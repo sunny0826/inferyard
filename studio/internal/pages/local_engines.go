@@ -270,21 +270,30 @@ func (s *viewState) localSelectionInvalid(pid int64, err error) bool {
 }
 
 func (s *viewState) localServicePicker(c *ui.Context, pidLabel, endpointLabel string) {
-	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+	t := tokens(c)
+	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 		refreshButton(c, tr(c, "engine.discovery.refresh"), s.discovering).Disabled(s.discovering).OnClick(s.refreshDiscovery)
 	})
 	if choices := s.localServiceChoices(); len(choices) > 0 {
-		ui.Text(c, tr(c, "engine.local.discovered_hint")).TextColor(c.Theme().TextMuted)
-		for _, choice := range choices {
-			label := trf(c, "engine.local.service_choice", "pid", strconv.FormatInt(choice.pid, 10), "endpoint", choice.endpoint, "count", choice.models)
-			if name := displayName(choice.name); name != "" {
-				label += " · " + name
+		ui.Text(c, tr(c, "engine.local.discovered_hint")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			for _, choice := range choices {
+				label := trf(c, "engine.local.service_choice", "pid", strconv.FormatInt(choice.pid, 10), "endpoint", choice.endpoint, "count", choice.models)
+				if name := displayName(choice.name); name != "" {
+					label += " · " + name
+				}
+				outlineButton(c, label).OnClick(func() { s.useDiscoveredService(choice) })
 			}
-			button(c, label).OnClick(func() { s.useDiscoveredService(choice) })
-		}
+		})
 	}
-	field(c, pidLabel, &s.localPID).MaxWidth(360)
-	field(c, endpointLabel, &s.localEndpoint).MaxWidth(360).Description(tr(c, "engine.local.endpoint_example"))
+	cols := 2
+	if compactLayout(c) {
+		cols = 1
+	}
+	ui.Grid(c).FillWidth().Columns(cols).Gap(t.Density.Stack).Children(func() {
+		field(c, pidLabel, &s.localPID)
+		field(c, endpointLabel, &s.localEndpoint).Description(tr(c, "engine.local.endpoint_example"))
+	})
 }
 
 func (s *viewState) localSelectionView(c *ui.Context) {
@@ -396,7 +405,7 @@ func (s *viewState) awaitingLocalServiceView(c *ui.Context) {
 			if err == nil && pid > 0 && s.localPIDUsed(pid) {
 				noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: human("local_engine_service_reused")})
 			}
-			button(c, tr(c, "engine.local.handoff.connect_continue")).Disabled(s.localSelectionInvalid(pid, err)).OnClick(func() {
+			primaryButton(c, tr(c, "engine.local.handoff.connect_continue")).Disabled(s.localSelectionInvalid(pid, err)).OnClick(func() {
 				s.connectHandoffService(task.TaskId, pid)
 			})
 		})

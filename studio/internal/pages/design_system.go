@@ -103,18 +103,26 @@ func progressBar(c *ui.Context, value float64, label string) ui.Element {
 	}
 	t := tokens(c)
 	reduced := c.Preferences().ReduceMotion
-	trackColor := t.Color.BorderSubtle
+	borderColor := t.Color.BorderSubtle
+	trackColor := t.Color.Sunken
 	fillColor := t.Color.Active.Solid
 	if value >= 1 {
 		fillColor = t.Color.Success.Solid
 	}
-	e := ui.Box(c).Height(c.Theme().Space(1.5)).FillWidth().Role(ui.RoleProgress).Range(0, 1, value).Label(label)
+	sheenColor := fillColor.Mix(ui.RGB(255, 255, 255), .24)
+	e := ui.Box(c).Height(c.Theme().Space(2)).FillWidth().Role(ui.RoleProgress).Range(0, 1, value).Label(label)
 	e.Draw(func(p *ui.Painter, r ui.Rect) {
 		if r.W <= 0 || r.H <= 0 {
 			return
 		}
 		rad := r.H / 2
-		p.Fill(r, trackColor, rad)
+		if r.H >= 5 {
+			p.Fill(r, borderColor, rad)
+			inner := ui.Rect{X: r.X + 1, Y: r.Y + 1, W: max(0, r.W-2), H: max(0, r.H-2)}
+			p.Fill(inner, trackColor, inner.H/2)
+		} else {
+			p.Fill(r, borderColor, rad)
+		}
 		x, w := r.X, r.W*float32(value)
 		if value < 0 {
 			phase := 0.25
@@ -122,11 +130,25 @@ func progressBar(c *ui.Context, value float64, label string) ui.Element {
 				p.AnimationFrame()
 				phase = float64(p.Now().UnixMilli()%1400) / 1400
 			}
-			w = r.W * 0.3
+			w = r.W * 0.32
 			x = r.X + (r.W-w)*float32((1-math.Cos(phase*2*math.Pi))/2)
+		} else if value > 0 && value < 1 {
+			w = min(r.W, max(r.H, w))
 		}
 		if w > 0 {
-			p.Clip(r, rad, func() { p.Fill(ui.Rect{X: x, Y: r.Y, W: w, H: r.H}, fillColor, rad) })
+			p.Clip(r, rad, func() {
+				fillRect := ui.Rect{X: x, Y: r.Y, W: w, H: r.H}
+				p.Fill(fillRect, fillColor, rad)
+				if !reduced && value > 0 && value < 1 && w >= 24 {
+					p.AnimationFrame()
+					phase := float32(p.Now().UnixMilli()%1800) / 1800
+					bandW := max(18, w*0.35)
+					bandX := x - bandW + (w+bandW*2)*phase
+					p.Clip(fillRect, rad, func() {
+						p.Fill(ui.Rect{X: bandX, Y: r.Y, W: bandW, H: r.H}, sheenColor, rad)
+					})
+				}
+			})
 		}
 	})
 	return e

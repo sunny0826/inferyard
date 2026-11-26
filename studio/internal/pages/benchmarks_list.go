@@ -15,6 +15,33 @@ func (s *viewState) openBenchmarksFlow() {
 	s.navigateTo("benchmarks", "")
 }
 
+func (s *viewState) flowHeader(c *ui.Context, title string) {
+	t := tokens(c)
+	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		s.header(c, title)
+		if s.benchFlowOpen && !s.newTaskPending && !s.environmentMissing() {
+			ui.Box(c).Grow(1)
+			if outlineButton(c, tr(c, "benchmarks.action.back_list")).Clicked() {
+				s.benchFlowOpen = false
+			}
+			if outlineButton(c, tr(c, "reports.tab.history")).Clicked() {
+				s.benchFlowOpen = false
+				s.benchmarksTab = benchmarksTabHistory
+			}
+		}
+	})
+}
+
+func (s *viewState) modelArchFor(name string) string {
+	trimmed := strings.TrimSpace(name)
+	for _, m := range s.registry.Models {
+		if m.Name == trimmed || modelLabel(m) == trimmed {
+			return m.Architecture
+		}
+	}
+	return ""
+}
+
 func (s *viewState) benchmarksView(c *ui.Context) {
 	if s.newTaskPending {
 		s.dashboardView(c)
@@ -27,17 +54,6 @@ func (s *viewState) benchmarksView(c *ui.Context) {
 	}
 	defer s.historyOverlays(c)
 	if s.benchFlowOpen {
-		t := tokens(c)
-		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			if outlineButton(c, tr(c, "benchmarks.action.back_list")).Clicked() {
-				s.benchFlowOpen = false
-			}
-			ui.Box(c).Grow(1)
-			if outlineButton(c, tr(c, "reports.tab.history")).Clicked() {
-				s.benchFlowOpen = false
-				s.benchmarksTab = benchmarksTabHistory
-			}
-		})
 		s.dashboardView(c)
 		return
 	}
@@ -107,7 +123,11 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 			s.renderActiveFlowRow(c)
 		}
 		if !found {
-			ui.Text(c, tr(c, "benchmarks.group.running_empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
+				Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
+				components.Icon(c, lucide.Play).Size(14, 14).TextColor(t.Color.FgTertiary)
+				ui.Text(c, tr(c, "benchmarks.group.running_empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			})
 		}
 	})
 
@@ -125,7 +145,11 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 			s.renderBenchmarkTaskRow(c, extraSpeed)
 		}
 		if !found {
-			ui.Text(c, tr(c, "benchmarks.group.queued_empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
+				Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
+				components.Icon(c, lucide.Clock).Size(14, 14).TextColor(t.Color.FgTertiary)
+				ui.Text(c, tr(c, "benchmarks.group.queued_empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			})
 		}
 	})
 
@@ -236,10 +260,11 @@ func (s *viewState) renderRecentHistoryRunRow(c *ui.Context, r core.RunSummary) 
 	iconR := concentricRadius(rowR, t.Density.Row)
 	cardEl.Children(func() {
 		listRow(c, listRowOptions{
-			Radius:   rowR,
-			Leading:  func() { modelIconBox(c, modelTitle, 26, iconR) },
-			Title:    title,
-			Subtitle: strings.Join(subParts, " · "),
+			Radius:    rowR,
+			BoldTitle: true,
+			Leading:   func() { modelIconBox(c, modelTitle+" "+s.modelArchFor(modelTitle), 32, iconR) },
+			Title:     title,
+			Subtitle:  strings.Join(subParts, " · "),
 			Trailing: func() {
 				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 					if s.canResumeHistoryRun(r) {
@@ -311,10 +336,11 @@ func (s *viewState) renderActiveFlowRow(c *ui.Context) {
 	iconR := concentricRadius(rowR, t.Density.Row)
 	cardEl.Children(func() {
 		listRow(c, listRowOptions{
-			Radius:   rowR,
-			Leading:  func() { engineIconBox(c, s.engine, 26, iconR) },
-			Title:    title,
-			Subtitle: sub,
+			Radius:    rowR,
+			BoldTitle: true,
+			Leading:   func() { engineIconBox(c, s.engine, 32, iconR) },
+			Title:     title,
+			Subtitle:  sub,
 			Trailing: func() {
 				inlineBadge(c, tr(c, "benchmarks.badge.active_flow"), stateActive, badgeOptions{Size: sizeSM, Style: badgeDot})
 			},
@@ -347,14 +373,30 @@ func (s *viewState) renderBenchmarkTaskRow(c *ui.Context, task core.RunTask) {
 	case "cancelled":
 		kind = stateWarning
 	}
+	engName := s.engine
+	if task.ContextSpeed != nil && task.ContextSpeed.Engine != "" {
+		engName = task.ContextSpeed.Engine
+	}
+	isLive := !terminal(task.State) && !task.Queued && task.State != "queued"
+	liveProgress := -1.0
+	if isLive {
+		if task.ContextSpeed != nil && task.ContextSpeed.Stage == "measuring" {
+			liveProgress = float64(task.ContextSpeed.Completed) / 5
+		} else if active := s.running(); active != nil && active.TaskId == task.TaskId && s.runProgress != nil && s.runProgress.Total != nil && *s.runProgress.Total > 0 {
+			if s.runProgress.Done > 0 || s.runProgress.CurrentCaseId != nil {
+				liveProgress = progressValue(s.runProgress.Done, s.runProgress.Total)
+			}
+		}
+	}
 	cardEl, rowR := compactCard(c, ui.Column(c.Key("bench-task-"+task.TaskId)).FillWidth(), t.Density.Tight)
 	iconR := concentricRadius(rowR, t.Density.Row)
 	cardEl.Children(func() {
 		listRow(c, listRowOptions{
-			Radius:   rowR,
-			Leading:  func() { engineIconBox(c, s.engine, 26, iconR) },
-			Title:    title,
-			Subtitle: sub,
+			Radius:    rowR,
+			BoldTitle: true,
+			Leading:   func() { engineIconBox(c, engName, 32, iconR) },
+			Title:     title,
+			Subtitle:  sub,
 			Trailing: func() {
 				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 					if task.Exclusivity != "" {
@@ -378,6 +420,11 @@ func (s *viewState) renderBenchmarkTaskRow(c *ui.Context, task core.RunTask) {
 				s.selectTask(task.TaskId)
 			},
 		})
+		if isLive {
+			ui.Box(c).FillWidth().Padding(0, t.Density.Stack, t.Density.Tight, t.Density.Stack).Children(func() {
+				progressBar(c, liveProgress, title).Height(4)
+			})
+		}
 	})
 }
 
@@ -388,12 +435,13 @@ func (s *viewState) renderRecentReportRow(c *ui.Context, rep core.ReportSummary)
 	iconR := concentricRadius(rowR, t.Density.Row)
 	cardEl.Children(func() {
 		listRow(c, listRowOptions{
-			Radius: rowR,
+			Radius:    rowR,
+			BoldTitle: true,
 			Leading: func() {
-				ui.Box(c).Size(26, 26).Radius(iconR).Shrink(0).AlignSelf(ui.Center).
+				ui.Box(c).Size(32, 32).Radius(iconR).Shrink(0).AlignSelf(ui.Center).
 					Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).
 					AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-					components.Icon(c, lucide.FileText).Size(14, 14).TextColor(t.Color.FgSecondary)
+					components.Icon(c, lucide.FileText).Size(16, 16).TextColor(t.Color.FgSecondary)
 				})
 			},
 			Title:    reportHeadingFor(c, repCopy),

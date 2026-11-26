@@ -80,7 +80,12 @@ final class PreviewUITests: XCTestCase {
         chooseModel(downloadedModelLabel)
         XCTAssertFalse(app.buttons["确认开始新任务"].exists, "Task nav must not ask to confirm")
         click("开始测评")
-        expectExists(app.buttons["查看实时详情"], timeout: 10)
+        let liveDetailBtn = app.buttons["查看实时详情"].firstMatch
+        let cancelRunBtn = app.buttons["取消运行"].firstMatch
+        expectExists(liveDetailBtn, timeout: 10)
+        expectExists(cancelRunBtn, timeout: 5)
+        XCTAssertEqual(liveDetailBtn.frame.minY, cancelRunBtn.frame.minY, accuracy: 1.5, "查看实时详情 and 取消运行 must align on one row")
+        XCTAssertEqual(liveDetailBtn.frame.height, cancelRunBtn.frame.height, accuracy: 1.0, "查看实时详情 and 取消运行 must match in height")
         keepScreenshot("Task running without obsolete title")
         click("查看实时详情", timeout: 10)
         expectText("实时进度")

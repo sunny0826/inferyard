@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
@@ -182,12 +183,18 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 	if !w.selected {
 		return false
 	}
+	t := tokens(c)
 	segmentedField(c, tr(c, "speed.select.context_tier"), "", &w.context, []components.NativeSelectOption[int]{
 		{Value: inferyard.ContextSpeed64K, Label: "64k"},
 		{Value: inferyard.ContextSpeed128K, Label: "128k"},
 		{Value: inferyard.ContextSpeed256K, Label: "256k"},
 	})
-	ui.Text(c, trf(c, "speed.select.spec_summary", "bundle", inferyard.ContextSpeedBundleID, "samples", inferyard.ContextSpeedSamples))
+	applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).
+		Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
+		components.Icon(c, lucide.Gauge).Size(14, 14).TextColor(t.Color.FgSecondary)
+		ui.Text(c, trf(c, "speed.select.spec_summary", "bundle", inferyard.ContextSpeedBundleID, "samples", inferyard.ContextSpeedSamples)).
+			FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgPrimary)
+	})
 	reason := s.speedStartBlockReason()
 	if engineLocked(s.engineState.State) {
 		if s.destructiveDialog(c, destructiveOption{
@@ -201,6 +208,7 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 	if reason != "" {
 		noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: reason})
 	}
+	ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
 	if primaryButton(c, tr(c, "speed.action.start")).Disabled(reason != "").AlignSelf(ui.Start).Clicked() {
 		s.startSpeed()
 	}
@@ -252,35 +260,82 @@ func (s *viewState) speedStartBlockReason() string {
 	}
 }
 
+func speedPhaseCurrent(stage speedStage) int {
+	switch stage {
+	case speedPreparing, speedQueued:
+		return 0
+	case speedBinding:
+		return 1
+	case speedPlanning:
+		return 2
+	case speedMeasuring, speedCancelling:
+		return 3
+	case speedReading:
+		return 4
+	case speedDone, speedPartial:
+		return 5
+	default:
+		return 3
+	}
+}
+
+func speedStageStateKind(stage speedStage) stateKind {
+	switch stage {
+	case speedDone:
+		return stateSuccess
+	case speedPartial, speedCancelled, speedCancelling:
+		return stateWarning
+	case speedFailed:
+		return stateDanger
+	case speedQueued:
+		return stateNeutral
+	default:
+		return stateActive
+	}
+}
+
 func (s *viewState) speedTaskView(c *ui.Context) {
+	t := tokens(c)
 	r := s.speed.current
-	s.header(c, tr(c, "speed.title"))
-	ui.Text(c, fmt.Sprintf("%s · %s · %s", r.model, r.engine, speedContext(r.context)))
-	if s.preview != nil {
-		ui.Text(c, trf(c, "speed.task.meta_preview", "bundle", inferyard.ContextSpeedBundleID, "id", r.id)).TextColor(c.Theme().TextMuted)
-	} else {
-		ui.Text(c, inferyard.ContextSpeedBundleID+" · "+r.id).TextColor(c.Theme().TextMuted)
-	}
-	if r.budget > 0 {
-		ui.Text(c, trf(c, "speed.task.time_budget", "seconds", fmt.Sprintf("%.0f", r.budget)))
-	}
+	s.flowHeader(c, tr(c, "speed.title"))
+
+	applyMaterial(c, ui.Row(c.Key("speed-target-card")).FillWidth().Wrap().AlignItems(ui.Center).
+		Gap(t.Density.Stack).Padding(t.Card.Padding), materialCard).Children(func() {
+		modelIconBox(c, r.model+" "+s.modelArchFor(r.model), 36, t.Radius.Control)
+		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				ui.Text(c, fmt.Sprintf("%s · %s · %s", r.model, r.engine, speedContext(r.context))).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary)
+				inlineBadge(c, r.label(), speedStageStateKind(r.stage), badgeOptions{Size: sizeSM, Style: badgeDot})
+			})
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				if s.preview != nil {
+					ui.Text(c, trf(c, "speed.task.meta_preview", "bundle", inferyard.ContextSpeedBundleID, "id", r.id)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				} else {
+					ui.Text(c, inferyard.ContextSpeedBundleID+" · "+r.id).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				}
+				if r.budget > 0 {
+					ui.Text(c, "·").FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary)
+					ui.Text(c, trf(c, "speed.task.time_budget", "seconds", fmt.Sprintf("%.0f", r.budget))).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
+				}
+			})
+		})
+	})
+
 	card(c, tr(c, "speed.task.progress_card"), func() {
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-			for i, label := range []string{
+		phaseProgress(c, phaseProgressOptions{
+			Labels: []string{
 				tr(c, "speed.step.prepare"),
 				tr(c, "speed.step.bind"),
 				tr(c, "speed.step.plan"),
 				tr(c, "speed.step.measure"),
 				tr(c, "speed.step.read"),
-			} {
-				if speedStage(i) == r.stage {
-					statusBadge(c, label, stateColor(c, stateActive))
-				} else {
-					ui.Text(c, label)
-				}
-			}
+			},
+			Current:  speedPhaseCurrent(r.stage),
+			RowLabel: tr(c, "speed.task.progress_card"),
+			BarLabel: tr(c, "speed.task.progress_card"),
 		})
 	})
+
 	step := "—"
 	if r.stage <= speedReading {
 		step = fmt.Sprint(int(r.stage) + 1)
@@ -288,20 +343,55 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 		step = "✓"
 	}
 	stepTrack(c, step, r.label(), func() {
-		row := ui.Row(c.Key("speed-elapsed-" + r.id)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row)
 		elapsed := ""
 		if r.stage == speedMeasuring {
 			elapsed = s.formatTaskElapsed(c, r.startedAt)
 		}
-		row.Children(func() {
-			ui.Text(c, trf(c, "speed.task.completed_count", "completed", r.completed))
+		pct := min(100, max(0, r.completed*20))
+		ui.Row(c.Key("speed-elapsed-" + r.id)).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			ui.Text(c, trf(c, "speed.task.completed_count", "completed", r.completed)).Bold().FontFeatures("tnum")
 			if elapsed != "" {
-				ui.Text(c, "· "+elapsed).TextColor(c.Theme().TextMuted)
+				ui.Text(c, "· "+elapsed).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 			}
+			ui.Box(c).Grow(1)
+			ui.Text(c, fmt.Sprintf("%d%%", pct)).Bold().FontSize(t.Type.Section).FontFeatures("tnum").TextColor(stateColor(c, speedStageStateKind(r.stage)))
 		})
 		progressBar(c, float64(r.completed)/5, tr(c, "speed.task.progress_bar_label"))
+
+		ui.Grid(c).FillWidth().Columns(5).Gap(t.Density.Row).Children(func() {
+			for idx := range 5 {
+				slotLabel := fmt.Sprintf("#%d", idx+1)
+				done := idx < r.completed
+				active := idx == r.completed && r.stage == speedMeasuring
+				bg := t.Color.Sunken
+				border := t.Color.BorderSubtle
+				fg := t.Color.FgTertiary
+				if done {
+					bg = t.Color.Success.SubtleBg
+					border = t.Color.Success.Border
+					fg = t.Color.Success.Fg
+				} else if active {
+					bg = t.Color.Active.SubtleBg
+					border = t.Color.Active.Border
+					fg = t.Color.Active.Fg
+				}
+				ui.Row(c).FillWidth().AlignItems(ui.Center).Justify(ui.Center).Gap(t.Density.Tight).
+					Padding(t.Density.Row).Radius(t.Radius.Control).Background(bg).Border(1, border).Children(func() {
+					if done {
+						components.Icon(c, lucide.Check).Size(12, 12).TextColor(fg)
+					} else if active {
+						ui.Box(c).Size(6, 6).Radius(t.Radius.Full).Background(t.Color.Active.Solid)
+					}
+					txt := ui.Text(c, slotLabel).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(fg).SingleLine()
+					if done || active {
+						txt.Bold()
+					}
+				})
+			}
+		})
+
 		if r.reason != "" {
-			ui.Text(c, r.reason).TextColor(stateColor(c, stateWarning))
+			noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: r.reason})
 		}
 		s.speedTaskActions(c, r)
 	})
@@ -309,7 +399,7 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 
 func (s *viewState) speedTaskActions(c *ui.Context, r *speedTask) {
 	if r.active() {
-		if s.destructiveAction(c, destructiveOption{
+		if s.quietDestructiveAction(c, destructiveOption{
 			kind: destructiveCancelRun, id: r.id, label: tr(c, "speed.cancel.label"), confirmLabel: tr(c, "speed.cancel.confirm"),
 			prompt:   tr(c, "speed.cancel.prompt"),
 			disabled: r.stage == speedCancelling,
@@ -320,7 +410,7 @@ func (s *viewState) speedTaskActions(c *ui.Context, r *speedTask) {
 	}
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 		primaryButton(c, tr(c, "speed.action.view_result")).OnClick(func() { s.openSpeed(r.id) })
-		button(c, tr(c, "speed.action.new_with_combo")).Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
+		outlineButton(c, tr(c, "speed.action.new_with_combo")).Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
 	})
 }
 

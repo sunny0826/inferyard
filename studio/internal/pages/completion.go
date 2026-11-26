@@ -10,25 +10,46 @@ import (
 )
 
 func (s *viewState) completionView(c *ui.Context) {
+	t := tokens(c)
 	runs := s.completionRuns()
 	path := s.completedReportPath()
 	if len(runs) == 0 {
-		ui.Text(c, tr(c, "dashboard.completion.empty"))
+		ui.Text(c, tr(c, "dashboard.completion.empty")).TextColor(t.Color.FgSecondary)
 		s.completionActions(c, path)
 		return
 	}
 	for _, run := range runs {
-		card(c, completionRunTitle(run), func() {
-			deviceRow(c, tr(c, "dashboard.completion.pass_rate"), runPassRate(run))
-			deviceRow(c, tr(c, "dashboard.completion.duration"), runDuration(run))
-			deviceRow(c, tr(c, "dashboard.completion.status"), stateLabel(run.Status))
+		r := run
+		applyMaterial(c, ui.Column(c.Key("completion-run-"+r.Path)).FillWidth().Gap(t.Density.Stack).Padding(t.Density.Stack), materialSunken).Children(func() {
+			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				ui.Text(c, completionRunTitle(r)).Bold().FontSize(t.Type.Body).Grow(1).MinWidth(0).SingleLine()
+				inlineBadge(c, stateLabel(r.Status), historyStatusKind(r.Status), badgeOptions{Size: sizeSM, Style: badgeDot})
+			})
+			cols := 3
+			if compactLayout(c) {
+				cols = 1
+			}
+			ui.Grid(c).FillWidth().Columns(cols).Gap(t.Density.Stack).Children(func() {
+				ui.Column(c).Gap(t.Density.Hairline).Children(func() {
+					ui.Text(c, tr(c, "dashboard.completion.pass_rate")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+					ui.Text(c, runPassRate(r)).Bold().FontFeatures("tnum")
+				})
+				ui.Column(c).Gap(t.Density.Hairline).Children(func() {
+					ui.Text(c, tr(c, "dashboard.completion.duration")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+					ui.Text(c, runDuration(r)).Bold().FontFeatures("tnum")
+				})
+				ui.Column(c).Gap(t.Density.Hairline).Children(func() {
+					ui.Text(c, tr(c, "dashboard.completion.status")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+					ui.Text(c, stateLabel(r.Status)).Bold()
+				})
+			})
 		})
 	}
 	s.completionActions(c, path)
 }
 
 func (s *viewState) completionActions(c *ui.Context, path string) {
-	ui.Row(c).Wrap().Gap(tokens(c).Density.CardGap).Children(func() {
+	ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
 		if path != "" {
 			if primaryButton(c, tr(c, "dashboard.completion.view_report")).AlignSelf(ui.Start).Clicked() {
 				s.openReport(path)
@@ -36,7 +57,7 @@ func (s *viewState) completionActions(c *ui.Context, path string) {
 		} else if primaryButton(c, tr(c, "dashboard.completion.view_reports")).AlignSelf(ui.Start).Clicked() {
 			s.selected = "reports"
 		}
-		if button(c, tr(c, "dashboard.completion.run_again")).AlignSelf(ui.Start).Clicked() {
+		if outlineButton(c, tr(c, "dashboard.completion.run_again")).AlignSelf(ui.Start).Clicked() {
 			s.newBenchmark()
 		}
 	})
