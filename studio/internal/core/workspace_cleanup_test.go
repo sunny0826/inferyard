@@ -79,10 +79,10 @@ func TestCleanWorkspaceArtifactsRemovesArtifactsAndPreservesAssets(t *testing.T)
 	}
 
 	for _, gone := range []string{
-		filepath.Join(ws, "candidates"),
-		filepath.Join(ws, "bound"),
+		filepath.Join(ws, "candidates", "zh-core-1"),
+		filepath.Join(ws, "bound", "zh-core-1"),
 		filepath.Join(ws, "results", "run-1"),
-		filepath.Join(ws, "reports"),
+		filepath.Join(ws, "reports", "summary-1"),
 		filepath.Join(ws, "logs", "context-speed-tasks"),
 		filepath.Join(ws, exclusivitySidecarName),
 	} {
@@ -90,9 +90,11 @@ func TestCleanWorkspaceArtifactsRemovesArtifactsAndPreservesAssets(t *testing.T)
 			t.Fatalf("expected %s to be removed, err=%v", gone, err)
 		}
 	}
-	// Empty results directory is preserved so workspace stays ready.
-	if st, err := os.Lstat(filepath.Join(ws, "results")); err != nil || !st.IsDir() {
-		t.Fatalf("expected empty results dir to be preserved, err=%v", err)
+	// Empty workspace artifact parent directories are preserved so subsequent runs work without re-init.
+	for _, preservedDir := range []string{"candidates", "bound", "results", "reports"} {
+		if st, err := os.Lstat(filepath.Join(ws, preservedDir)); err != nil || !st.IsDir() {
+			t.Fatalf("expected empty %s dir to be preserved, err=%v", preservedDir, err)
+		}
 	}
 	for _, kept := range []string{
 		filepath.Join(ws, "preparation.json"),

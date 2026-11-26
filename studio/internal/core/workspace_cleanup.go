@@ -105,7 +105,7 @@ func (s *Service) CleanWorkspaceArtifacts() (WorkspaceCleanupResult, *ApiError) 
 				if markSeen(canonTarget) {
 					targets = append(targets, cleanupTarget{
 						path:         target,
-						contentsOnly: name == "results" && st.IsDir(),
+						contentsOnly: st.IsDir(),
 					})
 				}
 			}
