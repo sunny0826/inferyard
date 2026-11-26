@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -150,15 +151,26 @@ func (s *viewState) reportExclusivity(ref string) string {
 	if ref == "" {
 		return core.ExclusivityUnknown
 	}
+	base := filepath.Base(ref)
 	if s.reportExclusivities != nil {
 		if status, ok := s.reportExclusivities[ref]; ok && strings.TrimSpace(status) != "" {
 			return status
+		}
+		if base != "" && base != "." && base != "/" {
+			if status, ok := s.reportExclusivities[base]; ok && strings.TrimSpace(status) != "" {
+				return status
+			}
 		}
 	}
 	if s.preview != nil {
 		if pm, ok := s.preview.(previewExclusivityMode); ok {
 			if status := pm.reportExclusivity(ref); strings.TrimSpace(status) != "" {
 				return status
+			}
+			if base != "" && base != "." && base != "/" {
+				if status := pm.reportExclusivity(base); strings.TrimSpace(status) != "" {
+					return status
+				}
 			}
 		}
 	}

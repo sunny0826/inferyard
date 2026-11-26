@@ -99,12 +99,22 @@ func engineFromReportProfile(eng ReportEngine) (key, display string) {
 // registry aliases) and engine.
 func (s *Service) ModelBenchmarkEvidence() map[string]ModelEvidenceSummary {
 	_, summaries, apiErr := s.Reports()
-	out := map[string]ModelEvidenceSummary{}
 	if apiErr != nil || len(summaries) == 0 {
+		return map[string]ModelEvidenceSummary{}
+	}
+	history, _ := s.History()
+	return s.ModelBenchmarkEvidenceWith(summaries, history)
+}
+
+// ModelBenchmarkEvidenceWith aggregates throughput measurements reusing already-scanned
+// report summaries and run history to avoid redundant disk scans during full refreshes.
+func (s *Service) ModelBenchmarkEvidenceWith(summaries []ReportSummary, history RunHistoryResponse) map[string]ModelEvidenceSummary {
+	out := map[string]ModelEvidenceSummary{}
+	if len(summaries) == 0 {
 		return out
 	}
 
-	runAliases := s.buildRunModelKeyAliases()
+	runAliases := buildRunModelKeyAliasesFromHistory(history)
 	regAliases := buildRegistryModelKeyAliases(s.registry())
 	exclPath := s.exclusivityFilePath()
 	s.exclusivityMu.Lock()
@@ -135,7 +145,7 @@ func (s *Service) ModelBenchmarkEvidence() map[string]ModelEvidenceSummary {
 				continue
 			}
 			modelDisplay := strings.TrimSpace(run.Model)
-			inputsEngineFamily, inputsModelPath := readRunInputsConfig(run.Source.Path, summary.Path)
+			inputsEngineFamily, inputsModelPath := s.readRunInputsConfigCached(run.Source.Path, summary.Path)
 			modelKeys := collectRunModelKeys(run, inputsModelPath, runAliases, regAliases)
 			if len(modelKeys) == 0 {
 				continue
@@ -219,12 +229,8 @@ func exclusivityFromStore(store exclusivityStore, runID, reportRef string) strin
 	return ExclusivityUnknown
 }
 
-func (s *Service) buildRunModelKeyAliases() map[string][]string {
+func buildRunModelKeyAliasesFromHistory(history RunHistoryResponse) map[string][]string {
 	aliases := map[string][]string{}
-	history, apiErr := s.History()
-	if apiErr != nil {
-		return aliases
-	}
 	addRun := func(r RunSummary) {
 		if r.RunId == "" {
 			return

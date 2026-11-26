@@ -34,6 +34,8 @@ func (r *reportViewState) categoryView(c *ui.Context, run core.ReportRun) {
 	})
 }
 
+const reportRequestPageSize = 50
+
 func (r *reportViewState) requestView(c *ui.Context, run core.ReportRun) {
 	card(c, tr(c, "reports.tables.requests.title"), func() {
 		requests := run.Requests
@@ -41,7 +43,23 @@ func (r *reportViewState) requestView(c *ui.Context, run core.ReportRun) {
 			ui.Text(c, tr(c, "reports.tables.requests.empty"))
 			return
 		}
-		selectableTable(&r.requests, func(i int) any { return i }, func(i int) string { return requests[i].CaseID })
+		totalCount := len(requests)
+		pages := max(1, (totalCount+reportRequestPageSize-1)/reportRequestPageSize)
+		r.requestsPage = min(max(0, r.requestsPage), pages-1)
+		if pages > 1 {
+			ui.Row(c).AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+				if button(c, tr(c, "reports.tables.requests.prev_page")).Disabled(r.requestsPage == 0).Clicked() {
+					r.requestsPage--
+				}
+				ui.Text(c, trf(c, "chart.table.page_status", "page", r.requestsPage+1, "totalPages", pages, "count", totalCount))
+				if button(c, tr(c, "reports.tables.requests.next_page")).Disabled(r.requestsPage == pages-1).Clicked() {
+					r.requestsPage++
+				}
+			})
+		}
+		start := r.requestsPage * reportRequestPageSize
+		visible := requests[start:min(start+reportRequestPageSize, totalCount)]
+		selectableTable(&r.requests, func(i int) any { return start + i }, func(i int) string { return visible[i].CaseID })
 		columns := []ui.TableColumn{
 			{Title: tr(c, "reports.tables.col_case"), MinWidth: c.Theme().Rem(13)},
 			{Title: tr(c, "reports.tables.col_category"), MinWidth: c.Theme().Rem(9)},
@@ -49,11 +67,11 @@ func (r *reportViewState) requestView(c *ui.Context, run core.ReportRun) {
 			{Title: tr(c, "reports.tables.col_quality"), MinWidth: c.Theme().Rem(7)},
 			{Title: tr(c, "reports.tables.col_latency"), MinWidth: c.Theme().Rem(7)},
 		}
-		pageTable(c.Key("report-requests"), &r.requests, tr(c, "reports.tables.requests.aria_label"), columns, len(requests), func(row, col int) {
-			request := requests[row]
+		pageTable(c.Key("report-requests"), &r.requests, tr(c, "reports.tables.requests.aria_label"), columns, len(visible), func(row, col int) {
+			request := visible[row]
 			ui.Text(c, []string{reportText(request.CaseID), reportText(request.CategoryLabel), reportText(stateLabel(request.State)), reportQualityFor(c, request.Quality), reportScaled(request.LatencyMS, 1000, "s")}[col]).SingleLine()
-		}).Height(c.Theme().Space(8)*float32(min(len(requests), 8)+1) + 2)
-		ui.Text(c, trf(c, "reports.tables.requests.total", "count", len(requests))).TextColor(c.Theme().TextMuted)
+		}).Height(c.Theme().Space(8)*float32(min(len(visible), 8)+1) + 2)
+		ui.Text(c, trf(c, "reports.tables.requests.total", "count", totalCount)).TextColor(c.Theme().TextMuted)
 	})
 }
 

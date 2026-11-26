@@ -181,6 +181,13 @@ func (s *Service) readContextSpeed(ctx context.Context, binary string, task *Con
 	if err != nil {
 		return fail("output_root_outside_results")
 	}
+	planSHA := ""
+	if task.Plan != nil {
+		planSHA = task.Plan.SHA256
+	}
+	if cached, ok := s.cachedSpeedResultGet(path, binary, planSHA); ok {
+		return cached, nil
+	}
 	out, err := s.exec(ctx, binary, "speed-results", "--batch", path)
 	if ctx.Err() != nil || out.ExitCode == 130 {
 		return fail("cancelled")
@@ -229,5 +236,6 @@ func (s *Service) readContextSpeed(ctx context.Context, binary string, task *Con
 			return fail("run_identity_mismatch")
 		}
 	}
+	s.cachedSpeedResultPut(path, binary, planSHA, r)
 	return r, nil
 }

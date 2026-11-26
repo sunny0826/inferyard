@@ -5,6 +5,7 @@ import (
 	"inferyard/studio/internal/inferyard"
 	"net"
 	"path/filepath"
+	"time"
 )
 
 type dashboardSnapshot struct {
@@ -12,7 +13,6 @@ type dashboardSnapshot struct {
 	stale     bool
 	unknown   bool
 	startup   core.Startup
-	processes []core.ProcessCandidate
 	failure   *core.ApiError
 }
 
@@ -33,9 +33,6 @@ func (s *viewState) readDashboard(p *inferyard.WorkspaceProgress) dashboardSnaps
 			break
 		}
 		result.startup, result.failure = s.service.Startup(result.candidate)
-		if result.failure == nil {
-			result.processes, result.failure = s.service.Processes(s.ctx)
-		}
 		if b.BoundPath != nil && result.failure == nil {
 			alive, e := s.service.BindingAlive(*b.BoundPath)
 			result.stale, result.unknown, result.failure = !alive && e == nil, e != nil, e
@@ -43,6 +40,34 @@ func (s *viewState) readDashboard(p *inferyard.WorkspaceProgress) dashboardSnaps
 		break
 	}
 	return result
+}
+
+func (s *viewState) ensureManualProcesses() {
+	if s.preview != nil || s.service == nil || s.processesLoading {
+		return
+	}
+	if !s.processesLoadedAt.IsZero() && time.Since(s.processesLoadedAt) < 3*time.Second {
+		return
+	}
+	if s.win == nil && s.updateWindow == nil {
+		if procs, err := s.service.Processes(s.ctx); err == nil {
+			s.processes = procs
+			s.processesLoadedAt = time.Now()
+		}
+		return
+	}
+	s.processesLoading = true
+	svc, ctx := s.service, s.ctx
+	go func() {
+		procs, err := svc.Processes(ctx)
+		s.updateView(func() {
+			s.processesLoading = false
+			s.processesLoadedAt = time.Now()
+			if err == nil {
+				s.processes = procs
+			}
+		})
+	}()
 }
 
 func (s *viewState) applyDashboard(v dashboardSnapshot, e *core.ApiError) {
@@ -58,6 +83,7 @@ func (s *viewState) applyDashboard(v dashboardSnapshot, e *core.ApiError) {
 	}
 	if v.candidate != s.candidate {
 		s.process = ""
+		s.processesLoadedAt = time.Time{}
 		s.candidate = v.candidate
 		s.bindEndpoint = ""
 		host, port := "", ""
@@ -76,5 +102,5 @@ func (s *viewState) applyDashboard(v dashboardSnapshot, e *core.ApiError) {
 			s.bindEndpoint = "http://" + net.JoinHostPort(host, port)
 		}
 	}
-	s.startup, s.processes, s.bindingStale = v.startup, v.processes, v.stale
+	s.startup, s.bindingStale = v.startup, v.stale
 }

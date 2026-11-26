@@ -24,6 +24,47 @@ type resourceChartState struct {
 	chart  chart.State
 }
 
+type resourceViewCache struct {
+	taskID  string
+	count   int
+	lastSeq int64
+	series  []resourceSeries
+	sorted  []core.ResourceSample
+}
+
+func (s *viewState) cachedResourceSeries(samples []core.ResourceSample) ([]resourceSeries, []core.ResourceSample) {
+	if len(samples) == 0 {
+		return nil, nil
+	}
+	var lastSeq int64
+	lastSeq = samples[len(samples)-1].Seq
+	if s.resourceCache.taskID == s.detailID && s.resourceCache.count == len(samples) && s.resourceCache.lastSeq == lastSeq && s.resourceCache.series != nil {
+		return s.resourceCache.series, s.resourceCache.sorted
+	}
+	series := resourceSeriesData(samples)
+	metricAllowed := map[string]bool{
+		"system_mem_available": true,
+		"service_rss":          true,
+		"service_cpu_percent":  true,
+		"temperature":          true,
+	}
+	var selected []core.ResourceSample
+	for _, sr := range series {
+		if metricAllowed[sr.source.Metric] {
+			selected = append(selected, sr.points...)
+		}
+	}
+	sort.SliceStable(selected, func(i, j int) bool { return selected[i].Seq < selected[j].Seq })
+	s.resourceCache = resourceViewCache{
+		taskID:  s.detailID,
+		count:   len(samples),
+		lastSeq: lastSeq,
+		series:  series,
+		sorted:  selected,
+	}
+	return series, selected
+}
+
 func resourceSeriesData(samples []core.ResourceSample) []resourceSeries {
 	groups := map[core.ResourceSource][]core.ResourceSample{}
 	for _, sample := range samples {
@@ -84,7 +125,7 @@ func sourceLabelFor(c *ui.Context, source core.ResourceSource) string {
 
 func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 	card(c, tr(c, "chart.resource.title"), func() {
-		series := resourceSeriesData(samples)
+		series, selected := s.cachedResourceSeries(samples)
 		ui.Text(c, trf(c, "chart.resource.sample_count", "count", len(samples)))
 		if len(series) == 0 {
 			ui.Text(c, tr(c, "chart.resource.waiting"))
@@ -92,7 +133,6 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 		}
 		theme := c.Theme()
 		metrics := resourceMetrics(c, theme)
-		selected := []core.ResourceSample{}
 		draw := func(metric resourceMetric) {
 			c.Key(metric.id)
 			var options []resourceSeries
@@ -117,9 +157,6 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 				}
 				if label := secondarySourceLabel(c, metric.id, chosen.source); label != "" {
 					ui.Text(c, label).TextColor(theme.TextMuted)
-				}
-				for _, option := range options {
-					selected = append(selected, option.points...)
 				}
 				if !chartHasValues(data) {
 					reason := tr(c, "chart.resource.no_valid_samples")
@@ -203,7 +240,6 @@ func (s *viewState) resourceSampleFold(c *ui.Context, selected []core.ResourceSa
 }
 
 func (s *viewState) resourceTable(c *ui.Context, samples []core.ResourceSample) {
-	sort.SliceStable(samples, func(i, j int) bool { return samples[i].Seq < samples[j].Seq })
 	heading(c, tr(c, "chart.table.heading"), 3)
 	const pageSize = 50
 	pages := max(1, (len(samples)+pageSize-1)/pageSize)

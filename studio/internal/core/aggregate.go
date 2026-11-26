@@ -183,16 +183,6 @@ func (s *Service) scan(u UserSettings) (RunHistoryResponse, *ApiError) {
 	if resolveErr != nil {
 		return h, Err("internal_error")
 	}
-	index := evidence.Index(scanRoot)
-	if index.Error != nil {
-		return h, Err("internal_error")
-	}
-	skipped := index.Skipped
-	defer func() {
-		if skipped > 0 {
-			log.Printf("history scan: skipped %d entries", skipped)
-		}
-	}()
 	host := s.hostStatePath
 	if host == "" {
 		var e error
@@ -201,40 +191,109 @@ func (s *Service) scan(u UserSettings) (RunHistoryResponse, *ApiError) {
 			return h, Err("internal_error")
 		}
 	}
-	if _, err := evidence.DirtyRun(host, ""); err != nil {
+	dirtyRunID, dirtyErr := readHostDirtyRunID(host)
+	if dirtyErr != nil {
 		return h, Err("internal_error")
 	}
-	summaries := map[string]RunSummary{}
-	for _, r := range index.Runs {
-		if evidence.IsContextSpeedRun(r.Inputs) {
-			continue
-		}
-		v, _, e := summarize(r, host)
-		if e != nil {
+
+	type scannedBatch struct {
+		path string
+		runs []cachedRunScan
+	}
+	var allRuns []cachedRunScan
+	var batches []scannedBatch
+	skipped := 0
+	var walkErr error
+	var walk func(string, string)
+	walk = func(dir, batch string) {
+		info, err := os.Lstat(dir)
+		if err != nil || !info.IsDir() {
 			skipped++
+			if err != nil && !os.IsNotExist(err) && walkErr == nil {
+				walkErr = err
+			}
+			return
+		}
+		if _, err := os.Lstat(filepath.Join(dir, "inputs.json")); !os.IsNotExist(err) {
+			entry, ok := s.scanRunCached(dir, batch)
+			if !ok {
+				skipped++
+				return
+			}
+			allRuns = append(allRuns, entry)
+			return
+		}
+		if _, err := os.Lstat(filepath.Join(dir, "batch.json")); !os.IsNotExist(err) {
+			if _, err := readRegularJSONObject(filepath.Join(dir, "batch.json")); err != nil {
+				skipped++
+				return
+			}
+			start := len(allRuns)
+			walk(filepath.Join(dir, "runs"), dir)
+			runs := append([]cachedRunScan(nil), allRuns[start:]...)
+			batches = append(batches, scannedBatch{path: dir, runs: runs})
+			return
+		}
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			skipped++
+			if !os.IsNotExist(err) && walkErr == nil {
+				walkErr = err
+			}
+			return
+		}
+		children := 0
+		for _, entry := range entries {
+			if entry.IsDir() {
+				children++
+				walk(filepath.Join(dir, entry.Name()), batch)
+			} else if entry.Type()&os.ModeSymlink != 0 {
+				skipped++
+			}
+		}
+		if children == 0 {
+			skipped++
+		}
+	}
+	walk(scanRoot, "")
+	if walkErr != nil {
+		return h, Err("internal_error")
+	}
+	defer func() {
+		if skipped > 0 {
+			log.Printf("history scan: skipped %d entries", skipped)
+		}
+	}()
+
+	summaries := make(map[string]RunSummary, len(allRuns))
+	for _, entry := range allRuns {
+		if entry.isContextSpeed {
 			continue
 		}
-		summaries[r.Path] = v
-		if r.BatchPath == "" {
+		v := entry.baseSummary
+		dirty := dirtyRunID != "" && entry.id == dirtyRunID
+		v.Status = evidence.RunStatus(v.Sealed, str(v.Completeness), str(v.StopReason), dirty)
+		summaries[entry.path] = v
+		if entry.batchPath == "" {
 			h.StandaloneRuns = append(h.StandaloneRuns, v)
 		}
 	}
-	for _, b := range index.Batches {
-		if evidence.IsContextSpeedBatch(b.Path) {
+	for _, b := range batches {
+		if evidence.IsContextSpeedBatch(b.path) {
 			continue
 		}
-		bs := BatchSummary{BatchId: filepath.Base(b.Path), Path: b.Path, Runs: []RunSummary{}}
-		validRuns := []evidence.Run{}
-		for _, r := range b.Runs {
-			if summary, ok := summaries[r.Path]; ok {
+		bs := BatchSummary{BatchId: filepath.Base(b.path), Path: b.path, Runs: []RunSummary{}}
+		var validRuns []cachedRunScan
+		for _, r := range b.runs {
+			if summary, ok := summaries[r.path]; ok {
 				bs.Runs = append(bs.Runs, summary)
 				validRuns = append(validRuns, r)
 			}
 		}
-		if len(bs.Runs) == 0 && len(b.Runs) > 0 {
+		if len(bs.Runs) == 0 && len(b.runs) > 0 {
 			continue
 		}
-		markResumable(bs.Runs, validRuns)
+		markResumableCached(bs.Runs, validRuns)
 		sort.SliceStable(bs.Runs, func(i, j int) bool { return str(bs.Runs[i].StartedAt) > str(bs.Runs[j].StartedAt) })
 		h.Batches = append(h.Batches, bs)
 	}
@@ -251,21 +310,18 @@ func (s *Service) scan(u UserSettings) (RunHistoryResponse, *ApiError) {
 	})
 	return h, nil
 }
-func markResumable(summaries []RunSummary, runs []evidence.Run) {
+
+func markResumableCached(summaries []RunSummary, runs []cachedRunScan) {
 	if len(runs) == 0 {
 		return
 	}
-	plan := payload(runs[0].Inputs, "plan")
-	trials, _ := plan["trials"].([]any)
-	for _, trial := range trials {
-		id := str(text(obj(trial)["trial_id"]))
+	for _, id := range runs[0].planTrialIDs {
 		group := []int{}
 		latest := -1
 		for i, r := range runs {
-			run := payload(r.Inputs, "run")
-			if str(text(run["trial_id"])) == id {
+			if r.trialID == id {
 				group = append(group, i)
-				if run["relation"] != "resume" {
+				if r.relation != "resume" {
 					if latest != -1 {
 						return
 					}
@@ -284,7 +340,7 @@ func markResumable(summaries []RunSummary, runs []evidence.Run) {
 			visited[latest] = true
 			child := -1
 			for _, i := range group {
-				if str(text(payload(runs[i].Inputs, "run")["parent_run_id"])) == runs[latest].ID {
+				if runs[i].parentRunID == runs[latest].id {
 					if child != -1 {
 						return
 					}
@@ -299,26 +355,7 @@ func markResumable(summaries []RunSummary, runs []evidence.Run) {
 		if len(visited) != len(group) {
 			return
 		}
-		a := newAggregate(runs[latest].Inputs)
-		rows, _, err := evidence.Tail(filepath.Join(runs[latest].Path, "events.jsonl"), evidence.Cursor{})
-		if err != nil && !os.IsNotExist(err) {
-			return
-		}
-		a.events(rows)
-		if a.Progress.Total != nil && a.Progress.Done < *a.Progress.Total {
-			summaries[latest].Resumable = true
-			return
-		}
-		durationStarted, durationComplete := false, false
-		for _, r := range rows {
-			if r.EventType == "duration_started" {
-				durationStarted = true
-			}
-			if r.EventType == "duration_closed" {
-				durationComplete = str(text(obj(document(r.Raw)["data"])["reason"])) == "duration_elapsed"
-			}
-		}
-		if durationStarted && !durationComplete {
+		if runs[latest].resumableByEvents {
 			summaries[latest].Resumable = true
 			return
 		}
@@ -340,7 +377,7 @@ func (s *Service) rebuild(u UserSettings) {
 func (s *Service) History() (RunHistoryResponse, *ApiError) {
 	s.mu.Lock()
 	if s.rebuilding {
-		h := clone(s.history)
+		h := cloneRunHistoryResponse(s.history)
 		s.mu.Unlock()
 		return h, nil
 	}

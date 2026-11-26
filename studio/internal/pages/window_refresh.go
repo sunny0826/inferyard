@@ -52,7 +52,7 @@ func (s *viewState) refresh(full bool) {
 	if full {
 		history, he = s.service.History()
 		_, reports, re = s.service.Reports()
-		modelEvidence = s.service.ModelBenchmarkEvidence()
+		modelEvidence = s.service.ModelBenchmarkEvidenceWith(reports, history)
 		reportExclusivities = s.service.ReportExclusivities(reports)
 	}
 	engineUpdateStatus := s.service.EngineUpdateStatus()

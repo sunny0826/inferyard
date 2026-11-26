@@ -271,6 +271,10 @@ func (w *viewState) executeBindingFor(target, command string, e *core.ApiError) 
 }
 
 func (w *viewState) updateView(fn func()) {
+	if w.updateWindow != nil {
+		w.updateWindow(fn)
+		return
+	}
 	if w.win == nil {
 		fn()
 		return
@@ -457,46 +461,4 @@ func (s *viewState) prepareEnvironment() {
 		}
 		return l10n.TR("dashboard.toast.env_ready"), e
 	})
-}
-func (s *viewState) checkWorkspaceDevice() {
-	if s.progress == nil || s.progress.DevicePreflight.Status != "missing" || s.busy || s.ready.CLI.Status != "ok" || s.needsTaskAssets() {
-		return
-	}
-	if s.simulate(previewCheckDevice) || s.service == nil {
-		return
-	}
-	request, ok := s.takeWorkspaceDeviceRequest()
-	if !ok {
-		return
-	}
-	s.guideWork(func() (string, *core.ApiError) {
-		r, e := s.service.WizardExecute(s.ctx, request)
-		if e != nil {
-			return "", e
-		}
-		if missingModelResult(r) {
-			return "", nil
-		}
-		if r.ExitCode != 0 {
-			return "", wizardFailure(r)
-		}
-		return l10n.TR("dashboard.toast.device_check_done"), nil
-	})
-}
-func (s *viewState) taskBundles() []inferyard.BundleProgress {
-	if s.progress == nil {
-		return nil
-	}
-	if len(s.task.bundles) == 0 {
-		return s.progress.Bundles
-	}
-	return selectedProgress(s.progress, s.task.bundles).Bundles
-}
-
-func (s *viewState) takeWorkspaceDeviceRequest() (core.WizardRequest, bool) {
-	if s.progress == nil || s.progress.DevicePreflight.Status != "missing" || s.deviceChecked == s.progress.Workspace {
-		return core.WizardRequest{}, false
-	}
-	s.deviceChecked = s.progress.Workspace
-	return core.WizardRequest{Command: s.nextCommand(), ModelName: ""}, true
 }

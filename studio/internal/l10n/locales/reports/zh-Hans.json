@@ -243,6 +243,8 @@
   "reports.tables.col_quality": "质量",
   "reports.tables.requests.aria_label": "逐题结果表",
   "reports.tables.requests.empty": "暂无逐题数据。",
+  "reports.tables.requests.next_page": "下一页",
+  "reports.tables.requests.prev_page": "上一页",
   "reports.tables.requests.title": "逐题结果",
   "reports.tables.requests.total": "共 {count} 题",
   "reports.throughput.goodput_per_sec": "达标请求/秒",

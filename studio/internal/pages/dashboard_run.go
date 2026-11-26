@@ -11,7 +11,6 @@ import (
 	"inferyard/studio/internal/l10n"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 var openLogPathFunc = core.OpenPathInOS
@@ -312,6 +311,7 @@ func (w *viewState) serviceView(c *ui.Context) {
 	}
 	componentFoldKeyed(c, "bind-discovered-services", tr(c, "dashboard.service.connect_existing_fold"), func() { w.discoveryBody(c, true) })
 	componentFold(c, tr(c, "dashboard.service.manual_fold"), func() {
+		w.ensureManualProcesses()
 		heading(c, tr(c, "dashboard.service.manual_heading"), 3)
 		options := []string{}
 		for _, p := range w.processes {
@@ -428,104 +428,4 @@ func (w *viewState) runServiceReady(b inferyard.BundleProgress) bool {
 		return true
 	}
 	return b.NextAction == "run" && b.BoundPath != nil
-}
-
-func (w *viewState) modelMetadata(name string) string {
-	for _, m := range w.registry.Models {
-		if m.Name != name {
-			continue
-		}
-		parts := []string{}
-		if m.Architecture != "" {
-			parts = append(parts, l10n.TRf("dashboard.model_meta.arch", "arch", m.Architecture))
-		}
-		if m.SizeBytes != nil {
-			parts = append(parts, l10n.TRf("dashboard.model_meta.size_gib", "gib", fmt.Sprintf("%.1f", float64(*m.SizeBytes)/(1<<30))))
-		}
-		return strings.Join(parts, " · ")
-	}
-	return ""
-}
-
-func bundleDescription(bundle string) string {
-	switch bundle {
-	case inferyard.DefaultBundleCore:
-		return l10n.TR("dashboard.bundle.desc_core")
-	case inferyard.DefaultBundlePelican:
-		return l10n.TR("dashboard.bundle.desc_pelican")
-	default:
-		return ""
-	}
-}
-
-func (s *viewState) bundleSelection(c *ui.Context) {
-	s.checkedBundles()
-	if s.progress == nil {
-		return
-	}
-	t := tokens(c)
-	ui.Field(c, tr(c, "dashboard.candidate.bundle"), func() {
-		ui.Column(c).Gap(t.Density.Tight).Children(func() {
-			for _, b := range s.progress.Bundles {
-				checked := s.selectedBundles[b.Bundle]
-				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-					if components.Checkbox(c, &checked, b.Bundle).Changed() {
-						s.selectedBundles[b.Bundle] = checked
-					}
-					if description := bundleDescription(b.Bundle); description != "" {
-						ui.Text(c, "· "+description).TextColor(c.Theme().TextMuted)
-					}
-				})
-			}
-		})
-	})
-	if len(s.checkedBundles()) == 0 {
-		ui.Text(c, tr(c, "dashboard.candidate.select_bundle_required"))
-	}
-}
-
-func blockedPlan(b inferyard.BundleProgress) bool {
-	args, e := inferyard.SplitCommand(emptyText(b.NextCommand))
-	if e != nil {
-		return false
-	}
-	for _, arg := range args {
-		if arg == "--plan" {
-			return true
-		}
-	}
-	return false
-}
-
-func (s *viewState) verifyTaskEngines() {
-	if s.service == nil || (s.win == nil && s.updateWindow == nil) || s.engineVerifyPending {
-		return
-	}
-	unchecked := s.hasUncheckedRegistryEngine()
-	if !unchecked && (s.win == nil || s.task.stage != "prepare_candidate" || s.busy || s.refreshing) {
-		return
-	}
-	now := time.Now()
-	if !unchecked && !s.task.lastVerify.IsZero() && now.Sub(s.task.lastVerify) < 5*time.Second {
-		return
-	}
-	s.task.lastVerify = now
-	s.engineVerifyPending = true
-	go func() {
-		s.service.VerifyEngines()
-		apply := func() {
-			s.engineVerifyPending = false
-			if s.ctx != nil && s.ctx.Err() != nil {
-				return
-			}
-			s.checks = s.service.EngineChecks()
-			s.adoptDownloadedEngine()
-			s.adoptOnlyModel()
-		}
-		if s.updateWindow != nil {
-			s.updateWindow(apply)
-		} else if s.win != nil {
-			s.win.Update(apply)
-		}
-	}()
 }

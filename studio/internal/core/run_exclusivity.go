@@ -180,6 +180,11 @@ func (s *Service) ReportExclusivity(reportRef string) string {
 	if st, ok := store.Reports[ref]; ok && validExclusivityStatus(st) {
 		return st
 	}
+	if base := filepath.Base(ref); base != "" && base != "." && base != "/" {
+		if st, ok := store.Reports[base]; ok && validExclusivityStatus(st) {
+			return st
+		}
+	}
 	if st, ok := store.Runs[ref]; ok && validExclusivityStatus(st) {
 		return st
 	}

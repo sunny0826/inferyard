@@ -94,6 +94,23 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 	}
 	progressBar(c, progressValue(p.Done, p.Total), tr(c, "detail.progress_bar_label"))
 	ui.Text(c, trf(c, "detail.current_case", "case_id", text(p.CurrentCaseId)))
+	const detailCasePageSize = 50
+	totalCases := len(p.Cases)
+	pages := max(1, (totalCases+detailCasePageSize-1)/detailCasePageSize)
+	s.casesTablePage = min(max(0, s.casesTablePage), pages-1)
+	if pages > 1 {
+		ui.Row(c).AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+			if button(c, tr(c, "detail.table.prev_page")).Disabled(s.casesTablePage == 0).Clicked() {
+				s.casesTablePage--
+			}
+			ui.Text(c, trf(c, "detail.table.page_status", "page", s.casesTablePage+1, "totalPages", pages, "count", totalCases))
+			if button(c, tr(c, "detail.table.next_page")).Disabled(s.casesTablePage == pages-1).Clicked() {
+				s.casesTablePage++
+			}
+		})
+	}
+	start := s.casesTablePage * detailCasePageSize
+	visibleCases := p.Cases[start:min(start+detailCasePageSize, totalCases)]
 	columns := []ui.TableColumn{
 		{Title: tr(c, "detail.col.case"), Width: 180},
 		{Title: tr(c, "detail.col.status"), Width: 160},
@@ -102,10 +119,10 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 		{Title: tr(c, "detail.col.duration"), Width: 100},
 		{Title: tr(c, "detail.col.error_category"), Width: 160},
 	}
-	s.casesTable.Key = func(i int) any { return p.Cases[i].CaseId }
+	s.casesTable.Key = func(i int) any { return visibleCases[i].CaseId }
 	tableLabel := tr(c, "detail.cases_table_label")
-	pageTable(c, &s.casesTable, tableLabel, columns, len(p.Cases), func(row, col int) {
-		item := p.Cases[row]
+	pageTable(c, &s.casesTable, tableLabel, columns, len(visibleCases), func(row, col int) {
+		item := visibleCases[row]
 		values := []string{item.CaseId, stateLabel(item.State), optionalText(item.Category), caseQuality(item), formatDurationMs(item.DurationMs), caseErrorCategory(item)}
 		ui.Text(c, values[col]).Selectable()
 	}).Height(240).Label(tableLabel)
