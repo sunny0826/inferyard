@@ -93,6 +93,10 @@ type Service struct {
 	checkSem          chan struct{}
 	checkRetry        time.Duration
 	probeMu           sync.Mutex
+	probeExecMu       sync.Mutex
+	serveProbeExecMu  sync.Mutex
+	progressExecMu    sync.Mutex
+	probeGen          uint64
 	probePath         string
 	probeVersion      string
 	probeSize         int64
@@ -385,8 +389,12 @@ func (s *Service) persistSettings(u UserSettings, forceCLIRefresh bool) (Setting
 		s.history = RunHistoryResponse{ResultsRoot: s.resultsRoot(u), ScannedAt: now(), Batches: []BatchSummary{}, StandaloneRuns: []RunSummary{}}
 	}
 	s.mu.Unlock()
+	if workspaceChanged || changed {
+		s.caches.clearAll()
+	}
 	if cliChanged {
 		s.clearProbeCache()
+		s.evictProgressCache()
 		if !forceCLIRefresh && s.probe(u).Status == "ok" {
 			s.clearCLIUpgradeState()
 		}

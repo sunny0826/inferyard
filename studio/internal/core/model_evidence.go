@@ -109,13 +109,20 @@ func (s *Service) ModelBenchmarkEvidence() map[string]ModelEvidenceSummary {
 // ModelBenchmarkEvidenceWith aggregates throughput measurements reusing already-scanned
 // report summaries and run history to avoid redundant disk scans during full refreshes.
 func (s *Service) ModelBenchmarkEvidenceWith(summaries []ReportSummary, history RunHistoryResponse) map[string]ModelEvidenceSummary {
+	if len(summaries) == 0 {
+		return map[string]ModelEvidenceSummary{}
+	}
+	return s.modelBenchmarkEvidenceFromData(summaries, history, s.registry())
+}
+
+func (s *Service) modelBenchmarkEvidenceFromData(summaries []ReportSummary, history RunHistoryResponse, reg registryData) map[string]ModelEvidenceSummary {
 	out := map[string]ModelEvidenceSummary{}
 	if len(summaries) == 0 {
 		return out
 	}
 
 	runAliases := buildRunModelKeyAliasesFromHistory(history)
-	regAliases := buildRegistryModelKeyAliases(s.registry())
+	regAliases := buildRegistryModelKeyAliases(reg)
 	exclPath := s.exclusivityFilePath()
 	s.exclusivityMu.Lock()
 	exclStore := readExclusivityStore(exclPath)

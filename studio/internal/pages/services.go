@@ -20,11 +20,11 @@ func (s *viewState) servicesView(c *ui.Context) {
 		})
 		canOpenLauncher := s.serveSupported || s.preview != nil
 		startModelBtn := primaryActionButton(c, tr(c, "services.page.action.start_model"), false).
-			Disabled(!canOpenLauncher || s.busy)
+			Disabled(!canOpenLauncher || s.serveProbing || s.busy)
 		if startModelBtn.Clicked() {
 			s.openServiceParamsDrawerForNew()
 		}
-		if !canOpenLauncher {
+		if !canOpenLauncher && !s.serveProbing {
 			components.Tooltip(c, startModelBtn, tr(c, "models.serve.blocked.cli_outdated"))
 		}
 	})

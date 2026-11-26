@@ -22,6 +22,7 @@ func (s *Service) configuredCLIPath(u UserSettings) string {
 
 func (s *Service) clearServeSupport() {
 	s.probeMu.Lock()
+	s.probeGen++
 	s.serveProbePath = ""
 	s.serveProbeVersion = ""
 	s.serveProbeSize = 0
@@ -29,6 +30,20 @@ func (s *Service) clearServeSupport() {
 	s.serveProbeChecked = time.Time{}
 	s.serveSupported = false
 	s.probeMu.Unlock()
+}
+
+func (s *Service) cachedServeSupportLocked(cliPath string, st os.FileInfo) (bool, bool) {
+	if s.serveProbeChecked.IsZero() ||
+		s.serveProbePath != cliPath ||
+		s.serveProbeVersion != Version ||
+		s.serveProbeSize != st.Size() ||
+		s.serveProbeModTime != st.ModTime().UnixNano() {
+		return false, false
+	}
+	if !s.serveSupported && time.Since(s.serveProbeChecked) >= probeTTL {
+		return false, false
+	}
+	return s.serveSupported, true
 }
 
 func (s *Service) ServeSupported(ctx context.Context) bool {
@@ -43,13 +58,7 @@ func (s *Service) ServeSupported(ctx context.Context) bool {
 	st, statErr := os.Stat(absPath)
 	if statErr == nil {
 		s.probeMu.Lock()
-		cached := !s.serveProbeChecked.IsZero() &&
-			s.serveProbePath == absPath &&
-			s.serveProbeVersion == Version &&
-			s.serveProbeSize == st.Size() &&
-			s.serveProbeModTime == st.ModTime().UnixNano() &&
-			time.Since(s.serveProbeChecked) < probeTTL
-		ok := s.serveSupported
+		ok, cached := s.cachedServeSupportLocked(absPath, st)
 		s.probeMu.Unlock()
 		if cached {
 			return ok
@@ -78,30 +87,40 @@ func (s *Service) checkServeSupported(ctx context.Context, cliPath string) bool 
 	st, statErr := os.Stat(cliPath)
 	if statErr == nil {
 		s.probeMu.Lock()
-		cached := !s.serveProbeChecked.IsZero() &&
-			s.serveProbePath == cliPath &&
-			s.serveProbeVersion == Version &&
-			s.serveProbeSize == st.Size() &&
-			s.serveProbeModTime == st.ModTime().UnixNano() &&
-			time.Since(s.serveProbeChecked) < probeTTL
-		ok := s.serveSupported
+		ok, cached := s.cachedServeSupportLocked(cliPath, st)
 		s.probeMu.Unlock()
 		if cached {
 			return ok
 		}
 	}
+	s.serveProbeExecMu.Lock()
+	defer s.serveProbeExecMu.Unlock()
+	st, statErr = os.Stat(cliPath)
+	if statErr == nil {
+		s.probeMu.Lock()
+		ok, cached := s.cachedServeSupportLocked(cliPath, st)
+		s.probeMu.Unlock()
+		if cached {
+			return ok
+		}
+	}
+	s.probeMu.Lock()
+	gen := s.probeGen
+	s.probeMu.Unlock()
 	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	out, err := s.exec(probeCtx, cliPath, "--schema", "serve_plan")
 	supported := err == nil && out.ExitCode == 0 && inferyard.SupportsServePlanSchema(out.Stdout)
 	if probeCtx.Err() == nil && statErr == nil {
 		s.probeMu.Lock()
-		s.serveProbePath = cliPath
-		s.serveProbeVersion = Version
-		s.serveProbeSize = st.Size()
-		s.serveProbeModTime = st.ModTime().UnixNano()
-		s.serveProbeChecked = time.Now()
-		s.serveSupported = supported
+		if s.probeGen == gen {
+			s.serveProbePath = cliPath
+			s.serveProbeVersion = Version
+			s.serveProbeSize = st.Size()
+			s.serveProbeModTime = st.ModTime().UnixNano()
+			s.serveProbeChecked = time.Now()
+			s.serveSupported = supported
+		}
 		s.probeMu.Unlock()
 	}
 	return supported

@@ -281,7 +281,7 @@ func (s *viewState) standaloneStartBlockReason() string {
 			return l10n.TR("models.serve.blocked.orphaned")
 		}
 	}
-	if !s.serveSupported {
+	if !s.serveSupported && !s.serveProbing {
 		return l10n.TR("models.serve.blocked.cli_outdated")
 	}
 	return ""
@@ -352,7 +352,7 @@ func (s *viewState) openStandaloneFromHeader(prefillLast bool) {
 }
 
 func (s *viewState) requestStandaloneStart(model core.ModelAsset, prefillLast bool) {
-	if reason := s.standaloneStartBlockReason(); reason != "" || s.busy || s.standalone.isPreparing(model.Name) {
+	if reason := s.standaloneStartBlockReason(); reason != "" || s.serveProbing || s.busy || s.standalone.isPreparing(model.Name) {
 		return
 	}
 	// If the same model is already active, do not reopen drawer or stop it.

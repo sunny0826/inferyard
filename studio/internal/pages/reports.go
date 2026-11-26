@@ -87,7 +87,7 @@ func (s *viewState) reportSourcesDialog(c *ui.Context) {
 			runs := s.historyRuns()
 			if s.historyError != nil {
 				button(c, tr(c, "reports.dialog.retry_load")).AlignSelf(ui.Start).OnClick(s.refreshAction)
-			} else if !s.loaded {
+			} else if !s.loaded || s.hydrating {
 				ui.Text(c, tr(c, "reports.dialog.loading"))
 			} else if len(runs) == 0 {
 				ui.Text(c, tr(c, "reports.dialog.empty"))

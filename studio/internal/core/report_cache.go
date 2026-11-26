@@ -15,6 +15,7 @@ type serviceCaches struct {
 	speedResults map[string]cachedSpeedResult
 	candidates   map[string]cachedCandidateDesc
 	runs         map[string]cachedRunScan
+	progress     *cachedProgressEntry
 }
 
 func (c *serviceCaches) clearAll() {
@@ -25,6 +26,13 @@ func (c *serviceCaches) clearAll() {
 	c.speedResults = nil
 	c.candidates = nil
 	c.runs = nil
+	c.progress = nil
+}
+
+func (s *Service) evictProgressCache() {
+	s.caches.mu.Lock()
+	s.caches.progress = nil
+	s.caches.mu.Unlock()
 }
 
 type cachedStudioReport struct {
