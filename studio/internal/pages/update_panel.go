@@ -295,7 +295,8 @@ func (s *viewState) updateReadyPrompt(c *ui.Context) {
 	promptPad := t.Density.Section
 	promptBtnRadius := concentricRadius(t.Radius.Modal, promptPad)
 	ui.Overlay(c, func() {
-		ui.Box(c).Fill().PassThrough().AlignItems(ui.End).Justify(ui.End).Padding(t.Density.Section).Children(func() {
+		ui.Box(c.Key("update-ready-prompt-overlay")).Absolute().Left(0).Top(0).Right(0).Bottom(0).PassThrough().
+			AlignItems(ui.End).Justify(ui.End).Padding(t.Density.Section).Children(func() {
 			card := applyShadow(
 				ui.Column(c.Key("update-ready-prompt")).
 					Width(340).MaxWidthPercent(90).

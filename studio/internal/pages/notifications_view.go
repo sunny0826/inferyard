@@ -42,7 +42,8 @@ func (s *viewState) studioNotifications(c *ui.Context) {
 		nc.tappedExpanded = false
 		nc.screenPaused = false
 		ui.Overlay(c, func() {
-			ui.Box(c).Fill().PassThrough().AlignItems(ui.End).Justify(ui.Start).Padding(topInset, 16, 16, 16).Children(func() {
+			ui.Box(c.Key("studio-notif-overlay")).Absolute().Left(0).Top(0).Right(0).Bottom(0).PassThrough().
+				AlignItems(ui.End).Justify(ui.Start).Padding(topInset, 16, 16, 16).Children(func() {
 				ui.Box(c.Key("studio-notif-stack")).Width(cardWidth).Height(0).PassThrough()
 			})
 		})
@@ -59,7 +60,8 @@ func (s *viewState) studioNotifications(c *ui.Context) {
 	}
 
 	ui.Overlay(c, func() {
-		ui.Box(c).Fill().PassThrough().AlignItems(ui.End).Justify(ui.Start).Padding(topInset, 16, 16, 16).Children(func() {
+		ui.Box(c.Key("studio-notif-overlay")).Absolute().Left(0).Top(0).Right(0).Bottom(0).PassThrough().
+			AlignItems(ui.End).Justify(ui.Start).Padding(topInset, 16, 16, 16).Children(func() {
 			stack := ui.Box(c.Key("studio-notif-stack")).Width(cardWidth)
 			paused := stack.Hovered() || stack.FocusWithin()
 			if nextWake := nc.advanceScreenTimers(now, maxVisibleScreenNotifications, paused); nextWake > 0 {

@@ -319,3 +319,48 @@ func TestUpdateChangelogLinksInSettingsUpToDateDialogAndMissingReleaseURL(t *tes
 		t.Fatalf("dialog should hide release card and raw notes when ReleaseURL is non-HTTPS: %v", tt.Texts())
 	}
 }
+
+func TestUpdateReadyPromptBottomRightPlacementWithNotificationOverlay(t *testing.T) {
+	const winW, winH = 1120, 800
+	s := readyState("services")
+	s.updateState = core.UpdateState{
+		Seq:            1,
+		State:          core.UpdateReadyToApply,
+		CurrentVersion: "0.0.17",
+		Release:        sampleUpdateRelease(),
+		CanSelfUpdate:  true,
+	}
+	s.pushNotification(studioNotification{
+		Key:   "notif-coexist",
+		Kind:  stateInfo,
+		Title: "服务已启动",
+		Body:  "端口 8000 已就绪",
+	})
+
+	tt := ui.NewTester(s.contentView, winW, winH)
+	tt.Frame()
+
+	restartBtn, ok := tt.AccessByRole(ui.RoleButton, "更新并重启")
+	if !ok {
+		t.Fatalf("expected ready prompt action button, texts=%v", tt.Texts())
+	}
+	r := restartBtn.Bounds
+	if r.Y+r.H < float32(winH)-80 || r.Y+r.H > float32(winH) {
+		t.Fatalf("expected update ready prompt anchored near bottom of window (H=%d), got restart button bounds %+v", winH, r)
+	}
+	if r.X+r.W < float32(winW)-80 || r.X+r.W > float32(winW) {
+		t.Fatalf("expected update ready prompt anchored near right edge of window (W=%d), got restart button bounds %+v", winW, r)
+	}
+
+	notifCard, ok := tt.AccessByRole(ui.RoleStatus, "服务已启动")
+	if !ok {
+		t.Fatalf("expected on-screen notification card, texts=%v", tt.Texts())
+	}
+	nr := notifCard.Bounds
+	if nr.Y > 120 {
+		t.Fatalf("expected notification card anchored near top-right header, got bounds %+v", nr)
+	}
+	if nr.Y+nr.H >= r.Y {
+		t.Fatalf("expected notification card (%+v) above update ready prompt (%+v)", nr, r)
+	}
+}
