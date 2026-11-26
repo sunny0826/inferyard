@@ -36,7 +36,7 @@ var blockedEngineLoaderEnv = map[string]bool{
 
 var (
 	secretEngineEnvPattern = regexp.MustCompile(`(?:PASSWORD|PASSWD|SECRET|API_?KEY|ACCESS_KEY|PRIVATE_KEY|AUTH_KEY|BEARER|MYSQL_PWD)|(?:^|_)TOKEN(?:$|_)`)
-	urlAuthorityPattern    = regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://([^\s/,;]+)`)
+	urlAuthorityPattern    = regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://([^\s/?#"']+)`)
 )
 
 func isBlockedEngineEnv(key, value string) bool {

@@ -92,6 +92,7 @@ def test_custom_env_vars_allowed_while_plaintext_credentials_blocked(tmp_path: P
         {"PGPASSWORD": "db-password-123"},
         {"HF_TOKEN": "hf_secret_token"},
         {"HTTPS_PROXY": "http://user:pass@proxy.example.com:8080"},
+        {"HTTPS_PROXY": "http://user:pa,ss;1@proxy.example.com:8080"},
         {"HF_ENDPOINT": "https://token@hf-mirror.com"},
     ):
         with pytest.raises(ContractError, match="plaintext credentials"):
@@ -199,8 +200,8 @@ def test_legacy_bootstrap_upgrade_and_mixed_policy_regressions(tmp_path: Path) -
     gguf.write_bytes(b"GGUF")
     for bad_argv in (
         ["llama-server", "-m", str(gguf), "--api-key", "secret123"],
-        ["llama-server", "-m", str(gguf), "--otlp=https://user:pass@telemetry.example.com"],
-        ["llama-server", "-m", str(gguf), "https://token@telemetry.example.com"],
+        ["llama-server", "-m", str(gguf), "--otlp=https://user:pa,ss;1@telemetry.example.com"],
+        ["llama-server", "-m", str(gguf), "https://tok,en;1@telemetry.example.com"],
     ):
         with pytest.raises(PreflightError, match="engine_credentials_forbidden"):
             startup_binding("llama-cpp", bad_argv, Path("/usr/bin/llama-server"), tmp_path)
@@ -211,7 +212,7 @@ def test_legacy_bootstrap_upgrade_and_mixed_policy_regressions(tmp_path: Path) -
         .read_text(encoding="utf-8")
         .replace(
             "startup_args = []",
-            'startup_args = ["--telemetry-url=https://user:pass@telemetry.example.com"]',
+            'startup_args = ["--telemetry-url=https://user:pa,ss;1@telemetry.example.com"]',
         ),
         encoding="utf-8",
     )

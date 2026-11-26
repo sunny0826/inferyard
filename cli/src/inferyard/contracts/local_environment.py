@@ -10,7 +10,7 @@ _SECRET_KEY_PATTERN = re.compile(
     r"(?:PASSWORD|PASSWD|SECRET|API_?KEY|ACCESS_KEY|PRIVATE_KEY|AUTH_KEY|BEARER|MYSQL_PWD)"
     r"|(?:^|_)TOKEN(?:$|_)"
 )
-_URL_AUTHORITY_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://([^\s/,;]+)")
+_URL_AUTHORITY_PATTERN = re.compile(r"""[A-Za-z][A-Za-z0-9+.-]*://([^\s/?#"']+)""")
 
 
 def has_embedded_url_credentials(value: str) -> bool:
