@@ -8,11 +8,15 @@ import (
 )
 
 type bgRefreshCache struct {
-	epoch    uint64
-	hasEpoch bool
-	history  core.RunHistoryResponse
-	reports  []core.ReportSummary
-	progress *inferyard.WorkspaceProgress
+	rootsKey    string
+	initialized bool
+	history     core.RunHistoryResponse
+	reports     []core.ReportSummary
+	progress    *inferyard.WorkspaceProgress
+}
+
+func refreshRootsKey(eff core.EffectiveSettings) string {
+	return emptyText(eff.WorkspaceRoot) + "|" + emptyText(eff.ResultsRoot) + "|" + emptyText(eff.ReportsRoot)
 }
 
 func (s *viewState) runRefreshUI(fn func()) {
@@ -125,9 +129,6 @@ func (s *viewState) refreshMask(mask refreshMask) {
 		return
 	}
 	settingsEpoch := s.settingsSequence()
-	if !s.bgRefresh.hasEpoch || s.bgRefresh.epoch != settingsEpoch {
-		s.bgRefresh = bgRefreshCache{epoch: settingsEpoch, hasEpoch: true}
-	}
 	s.runRefreshUI(func() { s.refreshing = true })
 
 	device, tasks, downloads := s.service.Device(), s.service.RunTasks(), s.service.Downloads()
@@ -151,6 +152,10 @@ func (s *viewState) refreshMask(mask refreshMask) {
 	}
 
 	settings := s.service.Settings()
+	rootsKey := refreshRootsKey(settings.Effective)
+	if !s.bgRefresh.initialized || s.bgRefresh.rootsKey != rootsKey {
+		s.bgRefresh = bgRefreshCache{rootsKey: rootsKey, initialized: true}
+	}
 	updateState := s.service.UpdateStatus()
 	cliUpgrade := s.service.CLIUpgradeStatus()
 	engineUpdateStatus := s.service.EngineUpdateStatus()
@@ -166,6 +171,8 @@ func (s *viewState) refreshMask(mask refreshMask) {
 		history, he = s.service.History()
 		if he == nil {
 			s.bgRefresh.history = history
+		} else {
+			s.bgRefresh.history = core.RunHistoryResponse{}
 		}
 	}
 
@@ -177,6 +184,8 @@ func (s *viewState) refreshMask(mask refreshMask) {
 		if re == nil {
 			s.bgRefresh.reports = reports
 			reportExclusivities = s.service.ReportExclusivities(reports)
+		} else {
+			s.bgRefresh.reports = nil
 		}
 	}
 

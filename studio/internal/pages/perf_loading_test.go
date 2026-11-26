@@ -237,11 +237,17 @@ func TestAsyncWindowUpdatePartialRegistryRefreshPreservesReportEvidence(t *testi
 		t.Fatalf("expected initial refreshAll to populate modelEvidence from fixture report")
 	}
 
-	// Simulate assets.updated while updateWindow is queued asynchronously (not run inline inside refreshMask).
+	// Simulate non-workspace settings save (e.g. minimize_to_tray / theme bumping settingsEpoch),
+	// followed by download completion / assets.updated (refreshRegistry without refreshReports).
+	if _, apiErr := svc.UpdateSettings(map[string]json.RawMessage{"minimize_to_tray": json.RawMessage(`true`)}); apiErr != nil {
+		t.Fatalf("UpdateSettings(minimize_to_tray) failed: %+v", apiErr)
+	}
+	s.bumpSettingsEpoch()
+
 	s.refreshMask(refreshCore | refreshRegistry)
 	flushQueued()
 	if len(s.modelEvidence) == 0 {
-		t.Fatalf("expected async partial registry refresh to preserve modelEvidence, got empty map")
+		t.Fatalf("expected async partial registry refresh after tray setting save to preserve modelEvidence, got empty map")
 	}
 }
 

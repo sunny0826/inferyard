@@ -223,7 +223,7 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 			if target, ok := s.headerStandaloneModel(); ok {
 				headerPreparing = s.standalone.isPreparing(target.Name)
 			}
-			disabled := s.standaloneStartBlockReason() != "" || s.busy || headerPreparing
+			disabled := s.standaloneStartBlockReason() != "" || s.serveProbing || s.busy || headerPreparing
 			tip := s.standaloneStartBlockReason()
 			if tip == "" {
 				tip = tr(c, "engine.tooltip.click_start")
