@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestLocalQueueStartsFreshProcessPerBundle(t *testing.T) {
+func TestLocalQueueReusesOwnedEngineWithinGroupAndHandoffsAcrossGroups(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("local process isolation is unavailable on Windows")
 	}
@@ -29,13 +29,36 @@ func TestLocalQueueStartsFreshProcessPerBundle(t *testing.T) {
 			pids := append([]int64{}, f.bindPIDs...)
 			bundles := append([]string{}, f.runBundles...)
 			f.mu.Unlock()
-			if len(pids) != 2 || pids[0] == pids[1] || !reflect.DeepEqual(bundles, []string{"zh-core", "zh-svg-pelican"}) {
-				t.Fatal(pids, bundles)
+			if len(pids) != 2 || pids[0] != pids[1] || !reflect.DeepEqual(bundles, []string{"zh-core", "zh-svg-pelican"}) {
+				t.Fatalf("expected same owned engine pid reused across group bundles, got pids=%v bundles=%v", pids, bundles)
+			}
+			if f.s.Engine().Pid != pids[0] {
+				t.Fatal(f.s.Engine())
+			}
+
+			// Starting a new benchmark group must hand off cleanly by terminating the previous group's engine.
+			nextTasks, failure := f.s.StartCandidateRuns(CandidateRunsRequest{
+				Candidates:        []CandidateRun{f.candidates[0]},
+				AllowSingleBundle: true,
+			})
+			if failure != nil {
+				t.Fatal(failure)
+			}
+			for _, task := range f.done(t, nextTasks) {
+				if task.State != "done" || task.Exit.ExitCode != 0 {
+					t.Fatalf("%+v", task)
+				}
+			}
+			f.mu.Lock()
+			allPIDs := append([]int64{}, f.bindPIDs...)
+			f.mu.Unlock()
+			if len(allPIDs) != 3 || allPIDs[2] == pids[0] {
+				t.Fatalf("expected fresh engine pid for new group, got %v", allPIDs)
 			}
 			if _, err := processStartTicks(pids[0]); !os.IsNotExist(err) {
-				t.Fatal("first service survived handoff", err)
+				t.Fatal("first group service survived cross-group handoff", err)
 			}
-			if f.s.Engine().Pid != pids[1] {
+			if f.s.Engine().Pid != allPIDs[2] {
 				t.Fatal(f.s.Engine())
 			}
 		})

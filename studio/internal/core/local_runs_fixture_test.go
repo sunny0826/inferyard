@@ -55,7 +55,7 @@ func newLocalQueueFixture(t *testing.T, family string) *localQueueFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := &localQueueFixture{workspace: workspace, results: filepath.Join(workspace, "results"), family: family, endpoint: fmt.Sprintf("http://127.0.0.1:%d", freePort(t)), runStarted: make(chan string, 2)}
+	f := &localQueueFixture{workspace: workspace, results: filepath.Join(workspace, "results"), family: family, endpoint: fmt.Sprintf("http://127.0.0.1:%d", freePort(t)), runStarted: make(chan string, 8)}
 	f.s = testService(t, f.execute)
 	f.s.settings.WorkspaceRoot = &f.workspace
 	f.s.engineTimeout = 3 * time.Second

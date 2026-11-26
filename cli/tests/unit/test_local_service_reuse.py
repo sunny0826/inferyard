@@ -360,3 +360,100 @@ def test_legacy_probe_token_budgets_remain_readable() -> None:
     }
     assert len(validate_inventory(legacy, cfg, ["c1"], kind="run")) == 3
 
+
+def test_polystrata_sibling_bundle_binds_to_first_bundle_service(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from inferyard.config.local_engines import binding as binding_mod
+    from inferyard.platforms.local_engines.assets import preflight_assets
+    from inferyard.platforms.local_engines.offline import validate_frozen_identity
+
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setattr("platform.system", lambda: "Darwin")
+    monkeypatch.setattr("platform.machine", lambda: "arm64")
+    monkeypatch.setattr(
+        "inferyard.config.local_engines.candidate.environment_snapshot",
+        lambda: {"ac_online": True},
+    )
+
+    ps_root, exe = _create_polystrata_layout(tmp_path / "polystrata")
+    inst_path = tmp_path / "inst.json"
+    inst_path.write_bytes(json_bytes(build_installation("polystrata", exe)))
+    bundle_core = _write_bundle(tmp_path / "bundles" / "zh-core.json")
+    bundle_pelican = _write_bundle(tmp_path / "bundles" / "zh-svg-pelican.json")
+    model = _write_gguf(
+        tmp_path / "qwen36.gguf",
+        {
+            "general.name": "Qwen3.6-35B",
+            "general.architecture": "qwen35moe",
+            "tokenizer.chat_template": "{{ messages }}",
+        },
+    )
+
+    ws = tmp_path / "workspace"
+    (ws / "candidates").mkdir(parents=True)
+    (ws / "bound").mkdir(parents=True)
+    cand1 = create_candidate(
+        _request(
+            inst_path=inst_path,
+            model_path=model,
+            bundle_path=bundle_core,
+            out_dir=ws / "candidates" / "zh-core-1",
+            results_dir=ws / "results",
+            port=49150,
+            server_pid=None,
+        )
+    )
+    cand2 = create_candidate(
+        _request(
+            inst_path=inst_path,
+            model_path=model,
+            bundle_path=bundle_pelican,
+            out_dir=ws / "candidates" / "zh-svg-pelican-1",
+            results_dir=ws / "results",
+            port=49150,
+            server_pid=None,
+        )
+    )
+    c1_cfg = load_config(cand1["candidate"]).config.to_dict()
+    c2_cfg = load_config(cand2["candidate"]).config.to_dict()
+    assert c1_cfg["engine"]["polystrata_config_sha256"] == c2_cfg["engine"]["polystrata_config_sha256"]
+    assert c1_cfg["engine"]["polystrata_config_path"] != c2_cfg["engine"]["polystrata_config_path"]
+
+    live_argv = [exe.resolve().as_posix(), *c1_cfg["engine"]["startup_args"]]
+    monkeypatch.setattr(binding_mod, "process_arguments", lambda pid: list(live_argv))
+    monkeypatch.setattr(binding_mod, "process_start_ticks", lambda pid: 777001)
+    monkeypatch.setattr(
+        "inferyard.platforms.engine_fit_macos.service_process_state",
+        lambda pid, psutil: (777001, list(live_argv), b"", exe.resolve(), ps_root.resolve()),
+    )
+    monkeypatch.setattr(
+        "inferyard.platforms.local_engines.service.lsof_records",
+        lambda pid, extra: [],
+    )
+    monkeypatch.setattr(
+        "inferyard.platforms.local_engines.service._listener_identity",
+        lambda pid, address, port, rows: f"tcp://{address}:{port}/pid:{pid}",
+    )
+    monkeypatch.setattr(
+        "inferyard.platforms.engine_fit_macos.unique_listener",
+        lambda pid, address, port: None,
+    )
+    monkeypatch.setattr(
+        "inferyard.platforms.local_engines.service.observe_workers",
+        lambda *args, **kwargs: [],
+    )
+
+    bound2 = binding_mod.prepare(
+        SimpleNamespace(
+            candidate=Path(cand2["candidate"]),
+            out=ws / "bound" / "zh-svg-pelican-1",
+            server_pid=6060,
+            endpoint_url="http://127.0.0.1:49150",
+        )
+    )
+    bound2_cfg = load_config(bound2["config"]).config.to_dict()
+    assert bound2_cfg["engine"]["polystrata_config_path"] == c1_cfg["engine"]["polystrata_config_path"]
+    local_id, files = preflight_assets(bound2_cfg)
+    validate_frozen_identity(bound2_cfg, local_id["local_engine"], files=files)
+

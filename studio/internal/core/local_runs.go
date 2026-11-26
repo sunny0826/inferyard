@@ -159,6 +159,45 @@ func (s *Service) candidateStage(t *runEntry, stage string, awaiting bool) {
 	s.state(t)
 }
 
+func (s *Service) reusableGroupEngine(t *runEntry, description inferyard.CandidateDescription) (EngineState, bool) {
+	s.mu.Lock()
+	if s.closing || s.orphan != nil || s.engine == nil || s.engine.state.State != "running" {
+		s.mu.Unlock()
+		return EngineState{}, false
+	}
+	var matched *runEntry
+	for _, previous := range s.runs {
+		if previous == t {
+			break
+		}
+		if previous.local != nil && previous.local.group == t.local.group && previous.local.bound != nil {
+			matched = previous
+		}
+	}
+	if matched == nil {
+		s.mu.Unlock()
+		return EngineState{}, false
+	}
+	state := clone(s.engine.state)
+	bound := matched.local.bound
+	prevDesc := matched.local.description
+	s.mu.Unlock()
+	if state.Pid <= 0 || state.Pid != bound.Pid || state.StartTicks <= 0 || state.StartTicks != bound.StartTicks {
+		return EngineState{}, false
+	}
+	if state.Endpoint != description.Endpoint.URL ||
+		prevDesc.Family != description.Family ||
+		prevDesc.Assets.Model.Path != description.Assets.Model.Path ||
+		prevDesc.Conditions.ContextSize != description.Conditions.ContextSize {
+		return EngineState{}, false
+	}
+	ticks, err := s.processTicks(state.Pid)
+	if err != nil || ticks != state.StartTicks {
+		return EngineState{}, false
+	}
+	return state, true
+}
+
 func (s *Service) prepareCandidateRun(ctx context.Context, t *runEntry) (failure *ApiError) {
 	ownedStarted := false
 	defer func() {
@@ -237,6 +276,9 @@ func (s *Service) prepareCandidateRun(ctx context.Context, t *runEntry) (failure
 		if state.StartTicks <= 0 {
 			return Err("service_identity_unavailable")
 		}
+	} else if groupState, ok := s.reusableGroupEngine(t, description); ok {
+		state = groupState
+		ownedStarted = true
 	} else {
 		s.candidateStage(t, "switching_service", false)
 		if failure := s.stopEngineForHandoff(ctx); failure != nil {

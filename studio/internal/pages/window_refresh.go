@@ -19,6 +19,19 @@ func refreshRootsKey(eff core.EffectiveSettings) string {
 	return emptyText(eff.WorkspaceRoot) + "|" + emptyText(eff.ResultsRoot) + "|" + emptyText(eff.ReportsRoot)
 }
 
+func hasUnverifiedLocalEngine(reg core.Registry, checks core.EngineCheckOverview) bool {
+	for _, e := range reg.Engines {
+		if e.Kind != "local_installation" {
+			continue
+		}
+		chk, ok := checks.Engines[e.Name]
+		if !ok || (chk.State != core.EngineCheckEligible && chk.State != core.EngineCheckIneligible) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *viewState) runRefreshUI(fn func()) {
 	if s.win != nil {
 		s.win.Update(fn)
@@ -58,6 +71,7 @@ func (s *viewState) bootstrap() {
 		return
 	}
 	probingServe := ready.CLI.Status == "ok"
+	eagerVerify := probingServe && s.win != nil && hasUnverifiedLocalEngine(registry, checks)
 	svc, ctx := s.service, s.ctx
 	s.runRefreshUI(func() {
 		if s.ctx != nil && s.ctx.Err() != nil {
@@ -86,12 +100,18 @@ func (s *viewState) bootstrap() {
 		if s.initDir == "" {
 			s.initDir = emptyText(ready.Workspace.Path)
 		}
+		if eagerVerify {
+			s.lastEngineVerification = time.Now()
+		}
 		s.serveProbing = probingServe
 		s.hydrating = true
 		s.refreshing = true
 		s.loaded = true
 	})
 	if probingServe && s.win != nil {
+		if eagerVerify {
+			go svc.VerifyEngines()
+		}
 		go func() {
 			if ctx.Err() != nil {
 				return
@@ -250,7 +270,7 @@ func (s *viewState) refreshMask(mask refreshMask) {
 		}
 		curPage := canonicalPageID(s.selected)
 		verifyVisible := curPage == "library" ||
-			(curPage == "services" && (s.serviceParams.open || s.standalone.drawerOpen)) ||
+			(curPage == "services" && (s.serviceParams.open || s.standalone.drawerOpen || hasUnverifiedLocalEngine(s.registry, s.checks))) ||
 			(curPage == "benchmarks" && s.benchmarkNeedsEngineVerify())
 		if s.shouldVerifyEngines(mask == refreshAll, verifyVisible, time.Now()) {
 			go svc.VerifyEngines()

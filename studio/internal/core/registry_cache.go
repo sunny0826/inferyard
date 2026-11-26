@@ -12,6 +12,18 @@ import (
 	"strings"
 )
 
+func skipEngineBinaryScanDir(name string) bool {
+	if strings.HasPrefix(name, ".") {
+		return true
+	}
+	switch strings.ToLower(name) {
+	case "venv", "site-packages", "__pycache__", "node_modules", "cmakefiles", "docs":
+		return true
+	default:
+		return false
+	}
+}
+
 func scanEngineBinaries(roots ...string) []registryEntry {
 	entries := []registryEntry{}
 	seen := map[string]bool{}
@@ -26,6 +38,9 @@ func scanEngineBinaries(roots ...string) []registryEntry {
 			rel, err := filepath.Rel(root, path)
 			if err != nil {
 				return nil
+			}
+			if rel != "." && d.IsDir() && skipEngineBinaryScanDir(d.Name()) {
+				return filepath.SkipDir
 			}
 			if strings.Count(rel, string(filepath.Separator)) > 4 {
 				if d.IsDir() {

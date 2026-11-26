@@ -114,7 +114,7 @@ func TestStartStandaloneCacheHitSkipsCLIProbeAndRewritesExplicitPort(t *testing.
 	}
 }
 
-func TestStartStandalonePolystrataPortChangeFallsBackToCLI(t *testing.T) {
+func TestStartStandalonePolystrataPortChangeRewritesWithoutCLI(t *testing.T) {
 	t.Setenv("ENGINE_HELPER", "1")
 	workspace := t.TempDir()
 	modelsDir := filepath.Join(workspace, "models")
@@ -214,7 +214,12 @@ func TestStartStandalonePolystrataPortChangeFallsBackToCLI(t *testing.T) {
 					t.Fatal(err)
 				}
 				cfgPath := filepath.Join(outArg, "polystrata.json")
-				if err := os.WriteFile(cfgPath, []byte(`{"host":"127.0.0.1","port":`+portArg+`}`), 0o600); err != nil {
+				cfgDoc, _ := json.Marshal(map[string]any{
+					"host": "127.0.0.1",
+					"port": portArg,
+					"log":  filepath.Join(outArg, "strata-engine.log"),
+				})
+				if err := os.WriteFile(cfgPath, cfgDoc, 0o600); err != nil {
 					t.Fatal(err)
 				}
 				plan := inferyard.ServePlan{
@@ -294,11 +299,12 @@ func TestStartStandalonePolystrataPortChangeFallsBackToCLI(t *testing.T) {
 	}
 	waitEngineState(t, s, "stopped")
 
-	// Different port must fall back to CLI serve prepare.
+	// Different port hot-rewrites --port & Endpoint without calling CLI serve prepare.
 	port2 := freePort(t)
 	if port2 == port1 {
 		port2 = freePort(t)
 	}
+	s.clearServeSupport()
 	st3, apiErr := s.StartStandalone(context.Background(), StandaloneStartRequest{
 		Model: modelName, Engine: engName, ContextSize: 8192, Port: port2,
 	})
@@ -306,7 +312,78 @@ func TestStartStandalonePolystrataPortChangeFallsBackToCLI(t *testing.T) {
 		t.Fatalf("3rd polystrata new-port start failed: %+v", apiErr)
 	}
 	waitEngineState(t, s, "running")
-	if prepareCalls.Load() != 2 || st3.Port != port2 {
-		t.Fatalf("expected polystrata port change to invoke CLI (prepare=2, port=%d), got prepare=%d port=%d", port2, prepareCalls.Load(), st3.Port)
+	if prepareCalls.Load() != 1 || st3.Port != port2 || st3.Endpoint != "http://127.0.0.1:"+strconv.Itoa(port2) {
+		t.Fatalf("expected polystrata port change hot rewrite without CLI (prepare=1, port=%d), got prepare=%d port=%d endpoint=%q", port2, prepareCalls.Load(), st3.Port, st3.Endpoint)
+	}
+	if _, err := s.StopEngine(); err != nil {
+		t.Fatalf("StopEngine failed: %+v", err)
+	}
+	waitEngineState(t, s, "stopped")
+
+	// Pre-upgrade cached PolyStrata config without managed strata-engine.log refreshes once via serve prepare, then caches again.
+	serveDir, dirErr := safeServeDir(workspace, st1.Candidate)
+	if dirErr != nil {
+		t.Fatalf("safeServeDir failed: %+v", dirErr)
+	}
+	if err := os.WriteFile(filepath.Join(serveDir, "polystrata.json"), []byte(`{"host":"127.0.0.1"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, apiErr := s.StartStandalone(context.Background(), StandaloneStartRequest{
+		Model: modelName, Engine: engName, ContextSize: 8192, Port: port2,
+	}); apiErr != nil {
+		t.Fatalf("4th polystrata legacy-log refresh start failed: %+v", apiErr)
+	}
+	waitEngineState(t, s, "running")
+	if prepareCalls.Load() != 2 {
+		t.Fatalf("expected legacy polystrata config without managed log to refresh once via CLI (prepare=2), got %d", prepareCalls.Load())
+	}
+	if _, err := s.StopEngine(); err != nil {
+		t.Fatalf("StopEngine failed: %+v", err)
+	}
+	waitEngineState(t, s, "stopped")
+
+	s.clearServeSupport()
+	if _, apiErr := s.StartStandalone(context.Background(), StandaloneStartRequest{
+		Model: modelName, Engine: engName, ContextSize: 8192, Port: port1,
+	}); apiErr != nil {
+		t.Fatalf("5th polystrata post-refresh hot cache start failed: %+v", apiErr)
+	}
+	waitEngineState(t, s, "running")
+	if prepareCalls.Load() != 2 {
+		t.Fatalf("expected refreshed polystrata plan to hit hot cache without CLI (prepare=2), got %d", prepareCalls.Load())
+	}
+}
+
+func TestScanEngineBinariesSkipsHiddenAndVenvTrees(t *testing.T) {
+	root := t.TempDir()
+	binName := "llama-server"
+	if filepath.Separator == '\\' {
+		binName = "llama-server.exe"
+	}
+	writeExecutable := func(rel string) string {
+		p := filepath.Join(root, rel, binName)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte("#!/bin/sh\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	validPath := writeExecutable(filepath.Join("llama-b5000", "bin"))
+	_ = writeExecutable(filepath.Join("polystrata", ".venv", "bin"))
+	_ = writeExecutable(filepath.Join("polystrata", "venv", "bin"))
+	_ = writeExecutable(filepath.Join("polystrata", "site-packages", "pkg"))
+
+	got := scanEngineBinaries(root)
+	if len(got) != 1 {
+		t.Fatalf("expected only 1 scanned binary (skipping .venv/venv/site-packages), got %+v", got)
+	}
+	wantCanon, err := canonical(validPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got[0].path != wantCanon {
+		t.Fatalf("scanned path = %q, want %q", got[0].path, wantCanon)
 	}
 }
