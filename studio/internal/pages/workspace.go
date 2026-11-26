@@ -28,6 +28,8 @@ func (s *viewState) resetWorkspace() {
 	s.reportDialogOpen, s.reportDiscardConfirm = false, false
 	s.resumeDiscardConfirm = false
 	s.settingsLeaveConfirm, s.pendingNavAction = false, nil
+	s.benchmarksTab = benchmarksTabTasks
+	s.historyQuery, s.historyStatusFilter, s.historyDetailPath = "", "", ""
 	s.reportsTab = reportsTabList
 	s.settingsTab = settingsTabGeneral
 	s.closeOpenedReport()
@@ -81,6 +83,8 @@ func (s *viewState) checkedBundles() []string {
 
 func (s *viewState) newBenchmark() {
 	s.pendingDestructive = destructiveRequest{}
+	s.benchmarksTab = benchmarksTabTasks
+	s.historyDetailPath = ""
 	if s.speed != nil {
 		s.speed.selected = false
 	}

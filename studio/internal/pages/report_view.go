@@ -68,6 +68,7 @@ func (s *viewState) openReport(reference string) {
 	if s.speed != nil {
 		s.speed.opened = nil
 	}
+	s.historyDetailPath = ""
 	s.closeOpenedReport()
 	s.selected = "reports"
 

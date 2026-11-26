@@ -93,7 +93,7 @@ func (s *viewState) standaloneDrawer(c *ui.Context) {
 func (s *viewState) standaloneDialogs(c *ui.Context) {
 	c.Key("standalone-switch-dialog")
 	switchTitle := tr(c, "models.serve.switch.title")
-	switchRes := components.AlertDialog(c, &s.standalone.switchConfirm, components.AlertDialogOptions{
+	switchRes := studioAlertDialog(c, &s.standalone.switchConfirm, components.AlertDialogOptions{
 		DialogOptions: components.DialogOptions{Label: switchTitle},
 		Title:         switchTitle,
 		Message:       trf(c, "models.serve.switch.message", "model", s.standalone.switchModel),
@@ -133,7 +133,7 @@ func (s *viewState) standaloneDialogs(c *ui.Context) {
 	if activeCount > 1 {
 		handoffMsg = trf(c, msgKey, "count", strconv.Itoa(activeCount))
 	}
-	handoffRes := components.AlertDialog(c, &s.standalone.benchmarkConfirm, components.AlertDialogOptions{
+	handoffRes := studioAlertDialog(c, &s.standalone.benchmarkConfirm, components.AlertDialogOptions{
 		DialogOptions: components.DialogOptions{Label: handoffTitle},
 		Title:         handoffTitle,
 		Message:       handoffMsg,

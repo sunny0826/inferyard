@@ -367,7 +367,9 @@ func studioAlertDialogStyled(c *ui.Context, open *bool, options components.Alert
 	result := components.DialogNone
 	wasOpen := *open
 	opts := options.DialogOptions
-	opts.Label = options.Title
+	if opts.Label == "" {
+		opts.Label = options.Title
+	}
 	t := tokens(c)
 	studioDialog(c, open, opts, func(panel ui.Element) {
 		panel.Role(ui.RoleAlertDialog)

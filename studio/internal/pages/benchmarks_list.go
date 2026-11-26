@@ -25,11 +25,17 @@ func (s *viewState) benchmarksView(c *ui.Context) {
 		s.setupGuide(c)
 		return
 	}
+	defer s.historyOverlays(c)
 	if s.benchFlowOpen {
 		t := tokens(c)
-		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			if outlineButton(c, tr(c, "benchmarks.action.back_list")).Clicked() {
 				s.benchFlowOpen = false
+			}
+			ui.Box(c).Grow(1)
+			if outlineButton(c, tr(c, "reports.tab.history")).Clicked() {
+				s.benchFlowOpen = false
+				s.benchmarksTab = benchmarksTabHistory
 			}
 		})
 		s.dashboardView(c)
@@ -40,12 +46,16 @@ func (s *viewState) benchmarksView(c *ui.Context) {
 
 func (s *viewState) benchmarksListView(c *ui.Context) {
 	t := tokens(c)
+	if s.benchmarksTab < benchmarksTabTasks || s.benchmarksTab > benchmarksTabHistory {
+		s.benchmarksTab = benchmarksTabTasks
+	}
 	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 		s.header(c, tr(c, "benchmarks.page.title"))
 		ui.Box(c).Grow(1)
 		if s.hasActiveBenchmarkFlow() {
 			if outlineButton(c, tr(c, "benchmarks.action.open_flow")).Clicked() {
 				s.benchFlowOpen = true
+				s.benchmarksTab = benchmarksTabTasks
 			}
 		}
 		hint := s.newTaskEntryHintFor(contextLocale(c))
@@ -62,6 +72,21 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 		}
 	})
 
+	ui.Column(c.Key("benchmarks-tabs")).FillWidth().Gap(t.Density.Section).Children(func() {
+		components.Tabs(c, &s.benchmarksTab, components.TabsUnderline, tr(c, "benchmarks.tab.tasks"), tr(c, "reports.tab.history"))
+		if s.benchmarksTab == benchmarksTabHistory {
+			ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
+				errorView(c, s.historyError)
+				s.historyView(c)
+			})
+			return
+		}
+		s.benchmarksTasksTabView(c)
+	})
+}
+
+func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
+	t := tokens(c)
 	extraSpeed, hasExtraSpeed := s.unlistedCurrentSpeedTask()
 
 	section(c, tr(c, "benchmarks.group.running"), func() {
@@ -104,7 +129,16 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 		}
 	})
 
-	section(c, tr(c, "benchmarks.group.recent"), func() {
+	historyRuns := s.historyRuns()
+	ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
+		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			heading(c, tr(c, "benchmarks.group.recent"), 3).Grow(1)
+			if len(historyRuns) > 0 {
+				if inlineButton(c, components.ButtonGhost, tr(c, "benchmarks.recent.view_all_history")).Clicked() {
+					s.benchmarksTab = benchmarksTabHistory
+				}
+			}
+		})
 		found := false
 		seenRuns := map[string]bool{}
 		for _, task := range s.tasks {
@@ -117,6 +151,9 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 			}
 			if task.TaskId != "" {
 				seenRuns[task.TaskId] = true
+			}
+			if rid := emptyText(task.RunId); rid != "" {
+				seenRuns[rid] = true
 			}
 			s.renderBenchmarkTaskRow(c, task)
 		}
@@ -145,11 +182,74 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 			}
 			found = true
 			reportCount++
+			for _, rid := range rep.RunIds {
+				if rid != "" {
+					seenRuns[rid] = true
+				}
+			}
+			for _, rp := range rep.RunPaths {
+				if p := cleanMatchPath(emptyText(rp)); p != "" {
+					seenRuns[p] = true
+				}
+			}
 			s.renderRecentReportRow(c, rep)
+		}
+		historyCount := 0
+		for _, r := range historyRuns {
+			if historyCount >= 5 {
+				break
+			}
+			p := cleanMatchPath(r.Path)
+			if (p != "" && seenRuns[p]) || (r.RunId != "" && seenRuns[r.RunId]) {
+				continue
+			}
+			found = true
+			historyCount++
+			if p != "" {
+				seenRuns[p] = true
+			}
+			if r.RunId != "" {
+				seenRuns[r.RunId] = true
+			}
+			s.renderRecentHistoryRunRow(c, r)
 		}
 		if !found {
 			ui.Text(c, tr(c, "benchmarks.group.recent_empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		}
+	})
+}
+
+func (s *viewState) renderRecentHistoryRunRow(c *ui.Context, r core.RunSummary) {
+	t := tokens(c)
+	loc := contextLocale(c)
+	modelTitle := historyModel(r)
+	title := modelTitle
+	if b := strings.TrimSpace(emptyText(r.Bundle)); b != "" {
+		title = modelTitle + " · " + b
+	}
+	subParts := []string{runScore(r)}
+	if started := historyStarted(r); started != "—" {
+		subParts = append(subParts, started)
+	}
+	runPath := r.Path
+	cardEl, rowR := compactCard(c, ui.Column(c.Key("bench-recent-run-"+runPath)).FillWidth(), t.Density.Tight)
+	iconR := concentricRadius(rowR, t.Density.Row)
+	cardEl.Children(func() {
+		listRow(c, listRowOptions{
+			Radius:   rowR,
+			Leading:  func() { modelIconBox(c, modelTitle, 26, iconR) },
+			Title:    title,
+			Subtitle: strings.Join(subParts, " · "),
+			Trailing: func() {
+				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+					if s.canResumeHistoryRun(r) {
+						inlineBadge(c, tr(c, "dashboard.history.badge_resumable"), stateWarning, badgeOptions{Size: sizeSM})
+					}
+					inlineBadge(c, stateLabelFor(loc, r.Status), historyStatusKind(r.Status), badgeOptions{Size: sizeSM, Style: badgeDot})
+				})
+			},
+			OnClick: func() { s.openHistoryRunDetail(runPath) },
+		})
 	})
 }
 

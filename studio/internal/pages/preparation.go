@@ -182,7 +182,7 @@ func (s *viewState) settingsUnsaved() bool {
 
 func (s *viewState) settingsDiscardDialog(c *ui.Context) {
 	c.Key("settings-discard-dialog")
-	result := components.AlertDialog(c, &s.settingsLeaveConfirm, components.AlertDialogOptions{
+	result := studioAlertDialog(c, &s.settingsLeaveConfirm, components.AlertDialogOptions{
 		DialogOptions: components.DialogOptions{Label: tr(c, "settings.discard.label")},
 		Title:         tr(c, "settings.discard.title"),
 		Message:       tr(c, "settings.discard.message"),

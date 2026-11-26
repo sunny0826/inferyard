@@ -330,13 +330,13 @@ func (s *viewState) updateReadyPrompt(c *ui.Context) {
 					laterBtn := components.Button(c, "", components.ButtonGhost).
 						Padding(t.Density.Row, t.Density.Stack).Radius(promptBtnRadius).Label(laterLabel)
 					laterBtn.Children(func() {
-						ui.Text(c, laterLabel).FontSize(t.Type.Body).TextColor(t.Color.FgSecondary)
+						ui.Text(c, laterLabel).SingleLine().TextColor(t.Color.FgSecondary)
 					})
 					if laterBtn.Clicked() {
 						s.dismissUpdateReadyPrompt(st)
 					}
 					restartBtn := components.Button(c, tr(c, "update.action.update_and_restart"), components.ButtonPrimary).
-						Padding(t.Density.Row, t.Density.Section).Radius(promptBtnRadius)
+						Padding(t.Density.Row, t.Density.Stack).Radius(promptBtnRadius)
 					if restartBtn.Clicked() {
 						if s.effectiveUpdateWorkloads().Any() {
 							s.updateDialogOpen = true

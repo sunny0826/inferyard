@@ -167,9 +167,19 @@ func previewBase(ctx context.Context) *viewState {
 		reportExclusivities: seedPreviewReportExclusivities(),
 	}
 	s.loadSettings(s.settings)
-	seeded := core.RunSummary{RunId: "preview-run", Path: "/preview/results/preview-run", ModelName: previewValue(model), Bundle: previewValue(inferyard.DefaultBundleCore), Status: "complete", Sealed: true, Completeness: previewValue("complete")}
+	seeded := core.RunSummary{
+		RunId: "preview-run", Path: "/preview/results/preview-run",
+		ModelName: previewValue(model), Engine: previewValue(engine),
+		Bundle: previewValue(inferyard.DefaultBundleCore), Status: "complete",
+		Sealed: true, Completeness: previewValue("complete"),
+		StartedAt: previewValue("2026-10-16T23:55:00Z"), FinishedAt: previewValue("2026-10-16T23:58:12Z"),
+	}
 	seeded.Score = &core.RunScore{Passed: 7, Valid: 13, Rate: previewValue(7.0 / 13)}
-	s.history.StandaloneRuns = []core.RunSummary{seeded}
+	s.history = core.RunHistoryResponse{
+		ResultsRoot:    resultsRoot,
+		ScannedAt:      "2026-10-16T23:59:00Z",
+		StandaloneRuns: []core.RunSummary{seeded},
+	}
 	s.device.Snapshot = json.RawMessage(`{"hardware":{"cpu_model":"Preview CPU","logical_cpus":14,"architecture":"arm64","apple_silicon":true,"cpu_features":{"avx2":false,"avx512f":false},"memory_total_bytes":51539607552,"memory_available_bytes":32212254720,"disk_free_bytes":161061273600,"ac_online":true,"gpu":{"devices":[{"name":"Preview GPU","vendor":"apple","arch_family":"Apple Silicon","cores":20,"metal_supported":true,"missing":{"memory_total_bytes":"shared_host_memory","memory_free_bytes":"not_measured"}}]},"missing":{"temperature":"unsupported"}},"starter_recommendation":{"definition":"starter-recommendation.v1","status":"recommended","engine":"polystrata","backend":"metal","model_id":"polystrata-qwen36-ud-q4-k-m","model_title":"Qwen3.6 35B-A3B (UD-Q4_K_M)","family":"qwen36","size":"UD-Q4_K_M","engine_core":"llama","model_format":"gguf","fit_level":"fits","recommended_context":32768,"estimated_download_bytes":23085449216,"estimated_ram_bytes":25769803776,"gpu":{"name":"Preview GPU","vendor":"apple","arch_family":"Apple Silicon","unified_memory_bytes":51539607552},"alternatives":[{"engine":"llama-cpp","backend":"metal","model_id":"model-qwen3-0.6b-q8","model_title":"Qwen3-0.6B-Q8_0 (GGUF)","model_format":"gguf","fit_level":"fits","recommended_context":8192,"estimated_download_bytes":639446688,"estimated_ram_bytes":2147483648}]}}`)
 	return s
 }

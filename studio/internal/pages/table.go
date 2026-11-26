@@ -13,12 +13,14 @@ type pageTableState struct {
 	Label       func(int) string
 	selectedKey any
 	focus       ui.Handle
+	clicked     bool
 	submitted   bool
 }
 
 func (s *pageTableState) Focus(c *ui.Context) { s.focus.Focus(c) }
 
 func pageTable(c *ui.Context, s *pageTableState, label string, columns []ui.TableColumn, count int, cell func(int, int)) ui.Element {
+	s.clicked = false
 	s.submitted = false
 	if s.Selected == nil {
 		index := -1
@@ -46,8 +48,9 @@ func pageTable(c *ui.Context, s *pageTableState, label string, columns []ui.Tabl
 				selected := *s.Selected == i
 				row := components.TableRow(c, key, rowLabel, selected, func(col int) { cell(i, col) })
 				rows[i] = row
+				clicked := row.Clicked()
 				submit := row.Shortcut(0, ui.KeyEnter) || row.DoubleClicked()
-				if row.Clicked() || row.Focused() || submit {
+				if clicked || row.Focused() || submit {
 					*s.Selected, s.selectedKey = i, key
 					selected = true
 					row.AccessSelected(true)
@@ -55,6 +58,9 @@ func pageTable(c *ui.Context, s *pageTableState, label string, columns []ui.Tabl
 				if selected {
 					t := tokens(c)
 					row.Background(t.Color.AccentSelection).TextColor(t.Color.FgPrimary)
+				}
+				if clicked {
+					s.clicked = true
 				}
 				if submit {
 					s.submitted = true

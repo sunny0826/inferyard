@@ -88,6 +88,8 @@ func (s *viewState) resetActivePage(resolved string) {
 	switch resolved {
 	case "benchmarks":
 		s.detailID = ""
+		s.benchmarksTab = benchmarksTabTasks
+		s.historyDetailPath = ""
 		if !s.newTaskPending {
 			s.benchFlowOpen = false
 		}
@@ -95,6 +97,7 @@ func (s *viewState) resetActivePage(resolved string) {
 			s.speed.opened = nil
 		}
 	case "reports":
+		s.historyDetailPath = ""
 		if s.openedReport != nil {
 			s.closeOpenedReport()
 			s.reportsTab = reportsTabList

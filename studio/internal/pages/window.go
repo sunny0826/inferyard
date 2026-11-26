@@ -220,6 +220,7 @@ type viewState struct {
 	win                                                                                 *mygo.Window
 	openedReport                                                                        *reportViewState
 	newSVGStage                                                                         func() (svgStageView, error)
+	benchmarksTab                                                                       int
 	reportsTab                                                                          int
 	settingsTab                                                                         int
 	buildInfo                                                                           func() core.BuildInfo
@@ -316,6 +317,7 @@ type viewState struct {
 	keepServicesWorkerDone                                                              chan struct{}
 	persistKeepServices                                                                 func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
 	historyTable                                                                        pageTableState
+	historyQuery, historyStatusFilter, historyDetailPath                                string
 	downloadsUI                                                                         *downloadsUIState
 	engineCatalog                                                                       *core.EngineCatalogRegistry
 	pendingPolystrataSelection                                                          *polystrataSelectionTarget
