@@ -165,8 +165,6 @@ def validate_polystrata_layout(
         raise PreflightError("local_engine_polystrata_server_missing")
     if resolve_polystrata_setup_script(root) is None and not (root / "polystrata.py").is_file():
         raise PreflightError("local_engine_polystrata_layout_invalid")
-    if not (executable.parent.parent / "pyvenv.cfg").is_file():
-        raise PreflightError("local_engine_python_venv_required")
     if not _is_usable_binary(executable, system):
         raise PreflightError("local_engine_executable_invalid")
     binaries = find_polystrata_engine_binaries(root, platform_system=system)

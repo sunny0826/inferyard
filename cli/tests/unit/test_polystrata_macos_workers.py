@@ -1,4 +1,4 @@
-"""Regression tests for macOS PolyStrata worker observation and env policy."""
+"""Regression tests for macOS PolyStrata worker observation and transient probe filtering."""
 
 from __future__ import annotations
 
@@ -81,9 +81,6 @@ def _make_fake_env(
 
     monkeypatch.setattr(workers.native, "_children", _fake_children)
     monkeypatch.setattr(workers.native, "service_process_state", _fake_state)
-    monkeypatch.setattr(workers, "lsof_records", lambda _pid, _extra: [])
-    monkeypatch.setattr(workers, "mapped_file", lambda _pid, _ident, _rows: True)
-    monkeypatch.setattr(workers, "mapped_closure", lambda _rows, _rf, _exe, pid=None: None)
     monkeypatch.setattr(workers.time, "sleep", lambda _s: None)
 
     return SimpleNamespace(
@@ -94,11 +91,14 @@ def _make_fake_env(
     )
 
 
-def test_polystrata_ignores_macos_ioreg_telemetry_and_allows_declared_env(
+def test_polystrata_ignores_macos_ioreg_telemetry_and_allows_custom_env(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     strata_bin = tmp_path / "strata"
     strata_bin.write_bytes(b"fake-strata-binary")
+    fake_ioreg = tmp_path / "ioreg"
+    fake_ioreg.write_bytes(b"fake-ioreg")
+    monkeypatch.setattr(workers, "_POLYSTRATA_MACOS_TELEMETRY_EXE", fake_ioreg.resolve())
     runtime_files = [hash_file(strata_bin)]
 
     fake_psutil = _make_fake_env(
@@ -113,8 +113,8 @@ def test_polystrata_ignores_macos_ioreg_telemetry_and_allows_declared_env(
                 "exe": strata_bin.resolve(),
                 "cwd": tmp_path,
                 "env": {
-                    "PYTHONDONTWRITEBYTECODE": "1",
-                    "STRATA_METAL_STREAM": "0",
+                    "HF_ENDPOINT": "https://hf-mirror.com",
+                    "STRATA_METAL_STREAM": "1",
                     "OMP_NUM_THREADS": "4",
                 },
             },
@@ -122,9 +122,9 @@ def test_polystrata_ignores_macos_ioreg_telemetry_and_allows_declared_env(
                 "ppid": 100,
                 "start": 1002,
                 "args": ["ioreg", "-l", "-w0", "-r", "-c", "IOAccelerator"],
-                "exe": Path("/usr/sbin/ioreg"),
+                "exe": fake_ioreg.resolve(),
                 "cwd": tmp_path,
-                "env": {"PYTHONDONTWRITEBYTECODE": "1"},
+                "env": {},
             },
         },
     )
@@ -133,10 +133,8 @@ def test_polystrata_ignores_macos_ioreg_telemetry_and_allows_declared_env(
         100,
         fake_psutil,
         runtime_files,
-        {"PYTHONDONTWRITEBYTECODE": "1"},
+        {},
         family="polystrata",
-        allowed_extras=frozenset({"STRATA_METAL_STREAM", "OMP_NUM_THREADS"}),
-        expected_cfg_env={"STRATA_METAL_STREAM": "0", "OMP_NUM_THREADS": "4"},
     )
     assert [row["pid"] for row in observed] == [200]
 
@@ -148,7 +146,6 @@ def test_polystrata_retries_transient_telemetry_exit_race(
     strata_bin.write_bytes(b"fake-strata-binary")
     runtime_files = [hash_file(strata_bin)]
 
-    # Attempt 1 sees transient PID 301 that vanishes before state read; attempt 2 is clean.
     fake_psutil = _make_fake_env(
         monkeypatch,
         root_pid=100,
@@ -160,7 +157,7 @@ def test_polystrata_retries_transient_telemetry_exit_race(
                 "args": [str(strata_bin), "--serve"],
                 "exe": strata_bin.resolve(),
                 "cwd": tmp_path,
-                "env": {"PYTHONDONTWRITEBYTECODE": "1"},
+                "env": {},
             },
         },
     )
@@ -169,24 +166,21 @@ def test_polystrata_retries_transient_telemetry_exit_race(
         100,
         fake_psutil,
         runtime_files,
-        {"PYTHONDONTWRITEBYTECODE": "1"},
+        {},
         family="polystrata",
     )
     assert [row["pid"] for row in observed] == [200]
 
 
-def test_polystrata_still_rejects_rogue_ioreg_args_and_non_polystrata_rejects_ioreg(
+def test_non_telemetry_children_are_recorded_in_worker_snapshot(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     strata_bin = tmp_path / "strata"
     strata_bin.write_bytes(b"fake-strata-binary")
-    fake_ioreg = tmp_path / "ioreg"
-    fake_ioreg.write_bytes(b"fake-ioreg-binary")
-    fake_ioreg_resolved = fake_ioreg.resolve()
-    monkeypatch.setattr(workers, "_POLYSTRATA_MACOS_TELEMETRY_EXE", fake_ioreg_resolved)
-    runtime_files = [hash_file(strata_bin)]
+    helper_bin = tmp_path / "helper"
+    helper_bin.write_bytes(b"fake-helper-binary")
+    monkeypatch.setattr(workers, "_POLYSTRATA_MACOS_TELEMETRY_EXE", helper_bin.resolve())
 
-    # Rogue args on telemetry executable must not be ignored even for polystrata.
     fake_psutil = _make_fake_env(
         monkeypatch,
         root_pid=100,
@@ -196,77 +190,11 @@ def test_polystrata_still_rejects_rogue_ioreg_args_and_non_polystrata_rejects_io
                 "ppid": 100,
                 "start": 1002,
                 "args": ["ioreg", "-l"],
-                "exe": fake_ioreg_resolved,
+                "exe": helper_bin.resolve(),
                 "cwd": tmp_path,
-                "env": {"PYTHONDONTWRITEBYTECODE": "1"},
+                "env": {},
             },
         },
     )
-    with pytest.raises(PreflightError, match="local_engine_worker_executable_outside_runtime"):
-        workers.observe_workers(
-            100,
-            fake_psutil,
-            runtime_files,
-            {"PYTHONDONTWRITEBYTECODE": "1"},
-            family="polystrata",
-        )
-
-    # Exact telemetry ioreg must still be rejected for non-polystrata families.
-    fake_psutil_llama = _make_fake_env(
-        monkeypatch,
-        root_pid=100,
-        children_seq=[{300}, {300}],
-        proc_specs={
-            300: {
-                "ppid": 100,
-                "start": 1002,
-                "args": ["ioreg", "-l", "-w0", "-r", "-c", "IOAccelerator"],
-                "exe": fake_ioreg_resolved,
-                "cwd": tmp_path,
-                "env": {"PYTHONDONTWRITEBYTECODE": "1"},
-            },
-        },
-    )
-    with pytest.raises(PreflightError, match="local_engine_worker_executable_outside_runtime"):
-        workers.observe_workers(
-            100,
-            fake_psutil_llama,
-            runtime_files,
-            {"PYTHONDONTWRITEBYTECODE": "1"},
-            family="llama-cpp",
-        )
-
-
-def test_polystrata_rejects_mismatched_declared_env_on_macos(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    strata_bin = tmp_path / "strata"
-    strata_bin.write_bytes(b"fake-strata-binary")
-    runtime_files = [hash_file(strata_bin)]
-
-    fake_psutil = _make_fake_env(
-        monkeypatch,
-        root_pid=100,
-        children_seq=[{200}, {200}],
-        proc_specs={
-            200: {
-                "ppid": 100,
-                "start": 1001,
-                "args": [str(strata_bin), "--serve"],
-                "exe": strata_bin.resolve(),
-                "cwd": tmp_path,
-                "env": {"PYTHONDONTWRITEBYTECODE": "1", "STRATA_METAL_STREAM": "1"},
-            },
-        },
-    )
-
-    with pytest.raises(PreflightError, match="local_engine_environment_override"):
-        workers.observe_workers(
-            100,
-            fake_psutil,
-            runtime_files,
-            {"PYTHONDONTWRITEBYTECODE": "1"},
-            family="polystrata",
-            allowed_extras=frozenset({"STRATA_METAL_STREAM"}),
-            expected_cfg_env={"STRATA_METAL_STREAM": "0"},
-        )
+    observed = workers.observe_workers(100, fake_psutil, family="polystrata")
+    assert [row["pid"] for row in observed] == [300]

@@ -305,7 +305,6 @@ def bind_service(
     if engine not in ("vllm", "sglang", "llama-cpp") or type(pid) is not int or pid < 1:
         raise PreflightError("engine_fit_invalid_service")
     from inferyard.platforms.engine_fit_entrypoints import (
-        linux_llama_environment,
         startup_binding,
         validate_model,
     )
@@ -316,8 +315,6 @@ def bind_service(
         if directory.stat().st_uid != os.getuid():
             raise PreflightError("engine_fit_service_user_mismatch")
         ticks = process_start_ticks(pid, proc_root)
-        if engine == "llama-cpp":
-            linux_llama_environment(directory)
         raw, arguments = _arguments(directory)
         startup_model, source, extras = startup_binding(
             engine,
@@ -329,8 +326,6 @@ def bind_service(
         model_stat = model.stat()
         executable, _ = stable_file_digest(directory / "exe")
         listener = _listener(pid, address, port, proc_root)
-        if engine == "llama-cpp":
-            linux_llama_environment(directory)
         if process_start_ticks(pid, proc_root) != ticks or _arguments(directory)[0] != raw:
             raise PreflightError("engine_fit_service_identity_changed")
         return {

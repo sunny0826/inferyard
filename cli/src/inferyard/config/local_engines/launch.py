@@ -75,13 +75,14 @@ def startup(
             served_model,
             *network,
         ], cwd
-    entry = str(files("inferyard").joinpath("data/local_engine/bootstrap.py"))
-    prefix = ["-I", "-S", "-B", entry, family]
     if family == "mlx-lm":
         if standalone:
             raise PreparationError("serve_family_unsupported")
+        entry = str(files("inferyard").joinpath("data/local_engine/mlx_server.py"))
+        prefix = [entry]
         args = ["--model", str(model), "--max-model-len", str(context)]
     elif family == "vllm":
+        prefix = ["-m", "vllm.entrypoints.openai.api_server"]
         args = [
             "--model",
             str(model),
@@ -92,6 +93,7 @@ def startup(
             "0.20",
         ]
     elif family == "sglang":
+        prefix = ["-m", "sglang.launch_server"]
         args = [
             "--model-path",
             str(model),

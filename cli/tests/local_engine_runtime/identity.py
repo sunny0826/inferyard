@@ -2,16 +2,13 @@
 
 import hashlib
 from copy import deepcopy
-from importlib.resources import files as package_files
-from pathlib import Path
 from urllib.parse import urlsplit
 
-from inferyard.platforms.model_asset_manifest import model_asset_manifest
 from inferyard.config.local_engines.launch import startup
 from inferyard.contracts.validation import json_bytes
 from inferyard.platforms.identity import hash_file
-from inferyard.platforms.local_engines.installation import _snapshot
 from inferyard.platforms.local_engines.offline import validate_frozen_identity
+from inferyard.platforms.model_asset_manifest import model_asset_manifest
 
 
 def freeze(config, state, root):
@@ -19,8 +16,6 @@ def freeze(config, state, root):
     runtime_root.mkdir()
     executable = runtime_root / "python"
     executable.write_bytes(b"synthetic executable: never launched")
-    source = runtime_root / "api_server.py"
-    source.write_text("# synthetic server source\n")
     model = root / "synthetic-model"
     model.mkdir()
     (model / "config.json").write_text("{}")
@@ -47,38 +42,29 @@ def freeze(config, state, root):
         "runtime_roots": [str(runtime_root)],
         "environment": engine["environment"],
     }
-    bootstrap = Path(str(package_files("inferyard").joinpath("data/local_engine/bootstrap.py")))
-    roots, runtime_files = _snapshot([runtime_root, bootstrap])
+    exe_resolved = executable.resolve(strict=True)
+    exe_identity = hash_file(exe_resolved)
     runtime = {
         "schema_version": 3,
         "definition": "local-engine-runtime.v1",
         "installation": declaration,
-        "python": {
-            "path": [str(runtime_root)],
-            "prefix": str(runtime_root),
-            "base_prefix": str(runtime_root),
-            "paths": dict.fromkeys(
-                (
-                    "stdlib",
-                    "platstdlib",
-                    "purelib",
-                    "platlib",
-                    "include",
-                    "platinclude",
-                    "scripts",
-                    "data",
-                ),
-                str(runtime_root),
-            ),
-            "version": [3, 15],
-            "site_packages": str(runtime_root),
-            "import_roots": [str(runtime_root)],
-            "entrypoint_sources": [str(source)],
-        },
-        "roots": roots,
+        "python": None,
+        "roots": [
+            {
+                "path": str(exe_resolved),
+                "entries": [
+                    {
+                        "path": exe_resolved.name,
+                        "sha256": exe_identity.sha256,
+                        "size": exe_identity.size,
+                        "symlink": None,
+                    }
+                ],
+            }
+        ],
         "unresolved_libraries": [],
     }
-    files = list(runtime_files)
+    files = [exe_identity]
 
     def document(name, value):
         path = root / name
@@ -101,7 +87,7 @@ def freeze(config, state, root):
     files.extend(hash_file(model / entry["path"]) for entry in manifest["files"])
     raw = b"\0".join(arg.encode() for arg in [str(executable), *engine["startup_args"]]) + b"\0"
     state.binding.update(
-        executable_sha256=hash_file(executable).sha256,
+        executable_sha256=exe_identity.sha256,
         argv_sha256=hashlib.sha256(raw).hexdigest(),
         cwd_sha256=hashlib.sha256(str(root).encode()).hexdigest(),
         workers=[],

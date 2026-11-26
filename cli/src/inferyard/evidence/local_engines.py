@@ -73,7 +73,7 @@ def _bound(reads, config):
         family,
         payload,
         config,
-        sources=_sources(local["runtime"]) if family == "mlx-lm" else None,
+        sources=None,
         health=health,
     )
     if not values_equal(props, {"service": verified, "observation": capability}):

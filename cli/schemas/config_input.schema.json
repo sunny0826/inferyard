@@ -840,42 +840,13 @@
             },
             "environment": {
               "type": "object",
-              "properties": {
-                "SGLANG_USE_MLX": {
-                  "type": "string",
-                  "enum": [
-                    "1"
-                  ]
-                },
-                "PYTHONDONTWRITEBYTECODE": {
-                  "type": "string",
-                  "enum": [
-                    "1"
-                  ]
-                },
-                "HF_HUB_OFFLINE": {
-                  "type": "string",
-                  "enum": [
-                    "1"
-                  ]
-                },
-                "TRANSFORMERS_OFFLINE": {
-                  "type": "string",
-                  "enum": [
-                    "1"
-                  ]
-                },
-                "SGLANG_RUN_ID": {
-                  "type": "string",
-                  "pattern": "[A-Za-z0-9][A-Za-z0-9_.-]{0,127}"
-                },
-                "PROMETHEUS_MULTIPROC_DIR": {
-                  "type": "string",
-                  "minLength": 1
-                }
+              "propertyNames": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
               },
-              "required": [],
-              "additionalProperties": false
+              "additionalProperties": {
+                "type": "string"
+              }
             },
             "served_model": {
               "type": "string",
@@ -1352,8 +1323,7 @@
               "type": "boolean"
             },
             "check_environment": {
-              "type": "boolean",
-              "const": true
+              "type": "boolean"
             },
             "temperature_stop_override_reason": {
               "type": "string",

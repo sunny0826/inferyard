@@ -1,4 +1,4 @@
-"""Synthetic runtime drift checks: no model requests or service startup."""
+"""Lightweight local installation checks: package mutations in runtime_roots do not block."""
 
 import os
 
@@ -29,7 +29,7 @@ def installation(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("mutation", ["modify", "add", "delete", "pyc", "symlink", "same_mtime"])
-def test_runtime_drift(installation, mutation):
+def test_runtime_roots_mutations_are_ignored(installation, mutation):
     declaration, root = installation
     snapshot = runtime.freeze_installation(declaration)
     source = root / "package.py"
@@ -40,7 +40,7 @@ def test_runtime_drift(installation, mutation):
     elif mutation == "delete":
         source.unlink()
     elif mutation == "pyc":
-        (root / "package.pyc").write_bytes(b"old unchecked bytecode")
+        (root / "package.pyc").write_bytes(b"bytecode")
     elif mutation == "symlink":
         source.unlink()
         source.symlink_to(root / "server")
@@ -48,5 +48,14 @@ def test_runtime_drift(installation, mutation):
         before = source.stat()
         source.write_text("value = 2\n")
         os.utime(source, ns=(before.st_atime_ns, before.st_mtime_ns))
-    with pytest.raises(PreflightError, match="runtime_changed"):
+    identities = runtime.verify_installation(snapshot)
+    assert len(identities) == 1
+    assert identities[0].path == str((root / "server").resolve())
+
+
+def test_missing_executable_still_rejected(installation):
+    declaration, root = installation
+    snapshot = runtime.freeze_installation(declaration)
+    (root / "server").unlink()
+    with pytest.raises(PreflightError, match="local_engine_locator_missing"):
         runtime.verify_installation(snapshot)

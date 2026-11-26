@@ -13,7 +13,7 @@ from inferyard.config.loader import load_config
 from inferyard.config.local_engines.candidate import create as create_candidate
 from inferyard.contracts.validation import json_bytes, validate_document
 from inferyard.errors import ContractError
-from inferyard.platforms.local_engines import installation, workers
+from inferyard.platforms.local_engines import workers
 from inferyard.platforms.local_engines.assets import assets as verify_assets
 from inferyard.platforms.local_engines.detect import build_installation
 from inferyard.provisioning.preparation_io import PreparationError
@@ -116,7 +116,6 @@ def test_cross_installation_strata_config_rebinds_worker_executable_and_passes_w
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
-    monkeypatch.setattr(installation, "_FILE_CACHE", {})
     monkeypatch.setattr("platform.system", lambda: "Darwin")
     monkeypatch.setattr("platform.machine", lambda: "arm64")
     monkeypatch.setattr(
@@ -242,7 +241,6 @@ def test_migrated_config_after_uninstall_rebinds_and_missing_role_fails_fast(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
-    monkeypatch.setattr(installation, "_FILE_CACHE", {})
     monkeypatch.setattr("platform.system", lambda: "Darwin")
     monkeypatch.setattr("platform.machine", lambda: "arm64")
     monkeypatch.setattr(
@@ -329,7 +327,6 @@ def test_legacy_top_level_pack_key_with_args_lib_dirs_backend_conflict_and_temp_
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
-    monkeypatch.setattr(installation, "_FILE_CACHE", {})
     monkeypatch.setattr("platform.system", lambda: "Linux")
     monkeypatch.setattr("platform.machine", lambda: "x86_64")
     monkeypatch.setattr(

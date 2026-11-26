@@ -2,109 +2,48 @@
 
 import os
 from pathlib import Path
+
 from inferyard.errors import PreflightError
 
-
-_LLAMA_VALUES = {
-    "-m",
-    "--model",
-    "--host",
-    "--port",
-    "-a",
-    "--alias",
-    "--api-key",
-    "-c",
-    "--ctx-size",
-    "-t",
-    "--threads",
-    "-tb",
-    "--threads-batch",
-    "-np",
-    "--parallel",
-    "-ngl",
-    "--gpu-layers",
-    "--n-gpu-layers",
-    "-b",
-    "--batch-size",
-    "-ub",
-    "--ubatch-size",
-    "-fa",
-    "--flash-attn",
-    "-ctk",
-    "--cache-type-k",
-    "-ctv",
-    "--cache-type-v",
-    "--seed",
-    "--temp",
-    "--top-k",
-    "--top-p",
-    "--min-p",
-    "--repeat-penalty",
-    "--chat-template",
-    "--reasoning-format",
-    "--reasoning-budget",
-    "--log-verbosity",
-    "--timeout",
-    "--threads-http",
-    "--poll",
-    "--poll-batch",
-}
-_LLAMA_FLAGS = {
-    "--metrics",
-    "--slots",
-    "--no-webui",
-    "--offline",
-    "--jinja",
-    "--no-jinja",
-    "--no-mmap",
-    "--mlock",
-    "--no-warmup",
-    "--no-context-shift",
-    "--no-kv-offload",
-    "--no-cont-batching",
-    "--cont-batching",
-    "--log-disable",
-    "--log-colors",
-    "--log-prefix",
-    "--log-timestamps",
-}
-_MLX_VALUES = {
-    "--model",
-    "--host",
-    "--port",
-    "--served-model-name",
-    "--api-key-env",
-    "--max-model-len",
-}
+_CREDENTIAL_FLAGS = frozenset(
+    {"--api-key", "--api-key-file", "--password", "--token", "-hft", "--hf-token"}
+)
 
 
-def _options(arguments, valued, flags, model_options):
-    models, seen, cursor = [], set(), 0
+def _options(arguments, _valued=None, _flags=None, model_options=(), *, reject_credentials=False):
+    models = []
+    cursor = 0
     while cursor < len(arguments):
-        option, equal, value = arguments[cursor].partition("=")
-        if option not in valued | flags or option in seen:
-            raise PreflightError("engine_fit_model_argument_ambiguous")
-        seen.add(option)
-        if option in flags:
-            if equal:
-                raise PreflightError("engine_fit_model_argument_ambiguous")
-        else:
+        raw_arg = arguments[cursor]
+        option, equal, value = raw_arg.partition("=")
+        lowered = option.strip().lower()
+        if reject_credentials and (
+            lowered in _CREDENTIAL_FLAGS
+            or lowered.startswith("sk-")
+            or value.strip().lower().startswith("sk-")
+        ):
+            raise PreflightError("engine_credentials_forbidden")
+        if option in model_options:
             if not equal:
                 cursor += 1
                 if cursor == len(arguments):
                     raise PreflightError("engine_fit_model_argument_ambiguous")
                 value = arguments[cursor]
-            if not value or (option in model_options and value.startswith("-")):
+            if not value or value.startswith("-"):
                 raise PreflightError("engine_fit_model_argument_ambiguous")
-            if option == "--max-model-len":
-                try:
-                    valid_length = 1 <= int(value) <= 32768
-                except ValueError:
-                    valid_length = False
-                if not valid_length:
+            models.append(value)
+        elif option == "--max-model-len":
+            if not equal:
+                cursor += 1
+                if cursor == len(arguments):
                     raise PreflightError("engine_fit_model_argument_ambiguous")
-            if option in model_options:
-                models.append(value)
+                value = arguments[cursor]
+            try:
+                valid_length = int(value) >= 1
+            except ValueError:
+                valid_length = False
+            if not valid_length:
+                raise PreflightError("engine_fit_model_argument_ambiguous")
         cursor += 1
     if len(models) != 1:
         raise PreflightError("engine_fit_model_argument_ambiguous")
@@ -112,7 +51,6 @@ def _options(arguments, valued, flags, model_options):
 
 
 def _mlx_script(arguments, cwd):
-    from inferyard.platforms.engine_fit_assets import mlx_server_sha256
     from inferyard.platforms.engine_fit import stable_file_digest
 
     if not arguments:
@@ -136,9 +74,7 @@ def _mlx_script(arguments, cwd):
     if not script.is_absolute():
         script = cwd / script
     digest, _ = stable_file_digest(script)
-    if digest != mlx_server_sha256():
-        raise PreflightError("engine_fit_mlx_entrypoint_changed")
-    model = _options(arguments[cursor + 1 :], _MLX_VALUES, set(), {"--model"})
+    model = _options(arguments[cursor + 1 :], model_options={"--model"})
     return model, {"entrypoint_sha256": digest}
 
 
@@ -146,11 +82,12 @@ def startup_binding(engine, arguments, executable, cwd):
     """Return the declared model, binding source and extra immutable fields."""
     from inferyard.platforms.engine_fit import _startup_model
 
+    _ = executable
     if not arguments:
         raise PreflightError("engine_fit_arguments_unavailable")
     extras = {}
     if engine == "llama-cpp":
-        model = _options(arguments[1:], _LLAMA_VALUES, _LLAMA_FLAGS, {"-m", "--model"})
+        model = _options(arguments[1:], model_options={"-m", "--model"})
         source = "verified_startup_file_identity"
     else:
         if engine == "mlx-lm":
@@ -180,44 +117,3 @@ def lmstudio_executable(executable):
     ):
         return
     raise PreflightError("engine_fit_executable_entrypoint_unverified")
-
-
-def reject_llama_environment(environment):
-    """Require explicit arguments; never retain environment names or their values."""
-    if not isinstance(environment, dict) or any(
-        not isinstance(key, str)
-        or not key
-        or "=" in key
-        or "\0" in key
-        or not isinstance(value, str)
-        or "\0" in value
-        for key, value in environment.items()
-    ):
-        raise PreflightError("engine_fit_environment_unavailable")
-    if any(key.startswith("LLAMA_ARG_") for key in environment):
-        raise PreflightError("engine_fit_llama_environment_requires_explicit_args")
-
-
-def linux_llama_environment(directory):
-    try:
-        with (directory / "environ").open("rb") as stream:
-            raw = stream.read(1024 * 1024 + 1)
-        if len(raw) > 1024 * 1024 or (raw and not raw.endswith(b"\0")):
-            raise PreflightError("engine_fit_environment_unavailable")
-        environment = {}
-        for item in raw.removesuffix(b"\0").split(b"\0") if raw else []:
-            key, equal, value = item.partition(b"=")
-            name = os.fsdecode(key)
-            if not equal or name in environment:
-                raise PreflightError("engine_fit_environment_unavailable")
-            environment[name] = os.fsdecode(value)
-        reject_llama_environment(environment)
-    except OSError as exc:
-        raise PreflightError("engine_fit_environment_unavailable") from exc
-
-
-def macos_llama_environment(pid, psutil):
-    try:
-        reject_llama_environment(psutil.Process(pid).environ())
-    except (OSError, psutil.Error) as exc:
-        raise PreflightError("engine_fit_environment_unavailable") from exc

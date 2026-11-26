@@ -12,7 +12,6 @@ import pytest
 from inferyard.config.loader import load_config
 from inferyard.config.local_engines.candidate import create as create_candidate
 from inferyard.contracts.validation import json_bytes
-from inferyard.platforms.local_engines import installation
 from inferyard.platforms.local_engines.detect import build_installation
 from inferyard.provisioning.preparation_io import PreparationError
 
@@ -114,7 +113,6 @@ def test_upstream_pack_config_credential_rejection_and_arch_enforcement(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
-    monkeypatch.setattr(installation, "_FILE_CACHE", {})
     monkeypatch.setattr("platform.system", lambda: "Linux")
     monkeypatch.setattr("platform.machine", lambda: "x86_64")
     monkeypatch.setattr(

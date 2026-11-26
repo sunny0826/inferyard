@@ -1,98 +1,106 @@
-"""Runtime hash-cache tamper detection and symlink-escape safety tests."""
+"""Tests for Conda/venv local engine detection, custom env vars, and safety floors."""
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest
 
-from inferyard.errors import PreflightError
+from inferyard.errors import ContractError, PreflightError
 from inferyard.platforms.local_engines import installation
-from inferyard.platforms.local_engines.detect import build_installation
+from inferyard.platforms.local_engines.detect import build_installation, detect_local_engines
+from inferyard.platforms.local_engines.startup import validate_arguments
 
 
-def test_disk_hash_cache_reuses_unchanged_and_detects_drift(
+def test_detect_conda_and_system_site_packages_venvs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("HOME", str(tmp_path / "home"))
-    monkeypatch.setattr(installation, "darwin", lambda: None)
-    monkeypatch.setattr(installation, "_FILE_CACHE", {})
+    monkeypatch.setenv("HOME", str(tmp_path / "empty-home"))
+    monkeypatch.delenv("VIRTUAL_ENV", raising=False)
+    monkeypatch.delenv("CONDA_PREFIX", raising=False)
 
-    root = tmp_path / "runtime"
-    root.mkdir()
-    exe = root / "llama-server"
+    conda_env = tmp_path / "miniforge-vllm"
+    (conda_env / "conda-meta").mkdir(parents=True)
+    conda_py = conda_env / "bin" / "python"
+    conda_py.parent.mkdir(parents=True)
+    conda_py.write_bytes(b"#!/bin/sh\n")
+    conda_py.chmod(0o755)
+    vllm_site = conda_env / "lib" / "python3.12" / "site-packages" / "vllm"
+    vllm_site.mkdir(parents=True)
+    (vllm_site / "__init__.py").write_text("", encoding="utf-8")
+
+    shared_venv = tmp_path / "system-site-mlx"
+    shared_venv.mkdir()
+    (shared_venv / "pyvenv.cfg").write_text(
+        "home = /usr/bin\ninclude-system-site-packages = true\n", encoding="utf-8"
+    )
+    venv_py = shared_venv / "bin" / "python3"
+    venv_py.parent.mkdir(parents=True)
+    venv_py.write_bytes(b"#!/bin/sh\n")
+    venv_py.chmod(0o755)
+    mlx_site = shared_venv / "lib" / "python3.12" / "site-packages" / "mlx_lm"
+    mlx_site.mkdir(parents=True)
+    (mlx_site / "__init__.py").write_text("", encoding="utf-8")
+
+    detected = detect_local_engines(extra_paths=(str(conda_env), str(shared_venv)))
+    families = {(item["family"], Path(item["working_directory"])) for item in detected["candidates"]}
+    assert ("vllm", conda_env.resolve()) in families
+    assert ("mlx-lm", shared_venv.resolve()) in families
+
+    built = build_installation("vllm", conda_py)
+    assert "HF_HUB_OFFLINE" not in built["environment"]
+    assert "TRANSFORMERS_OFFLINE" not in built["environment"]
+
+
+def test_custom_env_vars_allowed_while_plaintext_credentials_blocked(tmp_path: Path) -> None:
+    exe = tmp_path / "llama-server"
     exe.write_bytes(b"binary")
-    lib = root / "lib.py"
-    lib.write_text("x = 1\n", encoding="utf-8")
 
     decl = build_installation("llama-cpp", exe)
-    snapshot = installation.freeze_installation(decl)
+    decl["environment"] = {
+        "HF_ENDPOINT": "https://hf-mirror.com",
+        "CUDA_VISIBLE_DEVICES": "0,1",
+    }
+    validated = installation.description(decl)
+    assert validated["environment"]["HF_ENDPOINT"] == "https://hf-mirror.com"
 
-    cache_file = Path.home() / ".cache" / "inferyard" / "runtime-hash-cache.v1.json"
-    assert cache_file.is_file()
-
-    # Clear in-memory cache and ensure disk cache prevents calling hash_file again.
-    monkeypatch.setattr(installation, "_FILE_CACHE", {})
-    calls = []
-    real_hash = installation.hash_file
-
-    def counting_hash(path, expected=None):
-        calls.append(Path(path))
-        return real_hash(path, expected)
-
-    monkeypatch.setattr(installation, "hash_file", counting_hash)
-    installation.verify_installation(snapshot)
-    assert calls == []
-
-    # Same-mtime edit updates st_ctime_ns -> disk cache misses and detects change!
-    before = lib.stat()
-    lib.write_text("x = 2\n", encoding="utf-8")
-    os.utime(lib, ns=(before.st_atime_ns, before.st_mtime_ns))
-    monkeypatch.setattr(installation, "_FILE_CACHE", {})
-    with pytest.raises(PreflightError, match="local_engine_runtime_changed"):
-        installation.verify_installation(snapshot)
-    assert calls
-
-    # Corrupted/unwritable cache path must never break verification.
-    lib.write_text("x = 1\n", encoding="utf-8")
-    snapshot = installation.freeze_installation(decl)
-    cache_file.write_text("{corrupt", encoding="utf-8")
-    monkeypatch.setattr(installation, "_FILE_CACHE", {})
-    installation.verify_installation(snapshot)
+    bad_decl = dict(decl, environment={"OPENAI_API_KEY": "sk-live-secret"})
+    with pytest.raises(ContractError, match="plaintext credentials"):
+        installation.description(bad_decl)
 
 
-def test_inventory_controlled_directory_symlinks(tmp_path: Path) -> None:
-    root = tmp_path / "runtime"
-    versions = root / "Versions"
-    version_a = versions / "A"
-    version_a.mkdir(parents=True)
-    (version_a / "module.py").write_text("ok = True\n", encoding="utf-8")
-    current = versions / "Current"
-    current.symlink_to("A")
+def test_unknown_cli_flags_allowed_and_credential_flags_blocked(tmp_path: Path) -> None:
+    model_dir = tmp_path / "model-dir"
+    model_dir.mkdir()
+    resolved_model = str(model_dir.resolve())
 
-    inv = installation.inventory(root, allowed_roots=[root])
-    assert "Versions/A/module.py" in inv
-    assert "Versions/Current/module.py" in inv
+    cfg = {
+        "engine": {
+            "family": "vllm",
+            "working_directory": str(tmp_path.resolve()),
+            "startup_args": [
+                "-m",
+                "vllm.entrypoints.openai.api_server",
+                "--model",
+                resolved_model,
+                "--max-model-len",
+                "8192",
+                "--enable-prefix-caching",
+                "--kv-cache-dtype",
+                "fp8",
+            ],
+        },
+        "model": {"local_path": resolved_model},
+        "conditions": {"context_size": 8192},
+    }
+    validate_arguments(cfg)
 
-    # Escaping directory symlink must be rejected.
-    outside = tmp_path / "outside"
-    outside.mkdir()
-    escape = root / "escape"
-    escape.symlink_to(outside)
-    with pytest.raises(PreflightError, match="local_engine_directory_symlink"):
-        installation.inventory(root, allowed_roots=[root])
-    escape.unlink()
-
-    # Cyclic directory symlink must be rejected.
-    loop = version_a / "loop"
-    loop.symlink_to("..")
-    with pytest.raises(PreflightError, match="local_engine_directory_symlink"):
-        installation.inventory(root, allowed_roots=[root])
-    loop.unlink()
-
-    # Broken symlink must be rejected.
-    broken = root / "broken"
-    broken.symlink_to(root / "does-not-exist")
-    with pytest.raises(PreflightError, match="local_engine_directory_symlink"):
-        installation.inventory(root, allowed_roots=[root])
+    cfg_cred = {
+        **cfg,
+        "engine": {
+            **cfg["engine"],
+            "startup_args": [*cfg["engine"]["startup_args"], "--api-key", "secret123"],
+        },
+    }
+    with pytest.raises(PreflightError, match="engine_credentials_forbidden"):
+        validate_arguments(cfg_cred)

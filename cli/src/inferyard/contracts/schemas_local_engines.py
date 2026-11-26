@@ -13,32 +13,12 @@ from inferyard.contracts.engine_profiles import (
 from inferyard.contracts.schemas_common import BOOL, HASH, LABEL, TEXT, VERSION, array, enum, obj
 from inferyard.contracts.schemas_config import CONFIG, CONFIG_DEFAULTS
 
-ENVIRONMENT = obj(
-    {
-        "SGLANG_USE_MLX": enum("1"),
-        "PYTHONDONTWRITEBYTECODE": enum("1"),
-        "HF_HUB_OFFLINE": enum("1"),
-        "TRANSFORMERS_OFFLINE": enum("1"),
-        "SGLANG_RUN_ID": {"type": "string", "pattern": "[A-Za-z0-9][A-Za-z0-9_.-]{0,127}"},
-        "PROMETHEUS_MULTIPROC_DIR": LABEL,
-    },
-    [],
-)
+ENVIRONMENT = {
+    "type": "object",
+    "propertyNames": {"type": "string", "pattern": r"^[A-Za-z_][A-Za-z0-9_]*$"},
+    "additionalProperties": TEXT,
+}
 WORKER_ENVIRONMENT = deepcopy(ENVIRONMENT)
-WORKER_ENVIRONMENT["properties"].update(
-    {
-        "VLLM_WORKER_MULTIPROC_METHOD": enum("spawn"),
-        "MLX_MAX_OPS_PER_BUFFER": enum("2000"),
-        "TRANSFORMERS_NO_ADVISORY_WARNINGS": enum("1"),
-        "VLLM_USE_V2_MODEL_RUNNER": enum("0"),
-        "VLLM_OMP_NUM_THREADS_SET_BY_VLLM": enum("1"),
-        "OMP_NUM_THREADS": {"type": "string", "pattern": "[1-9][0-9]{0,2}"},
-        "SGLANG_USE_CUDA_IPC_TRANSPORT": enum("0"),
-        "SGLANG_ENABLE_TORCH_COMPILE": enum("0"),
-        "SGLANG_DISABLE_OUTLINES_DISK_CACHE": enum("0"),
-        "SGLANG_ENABLE_DETERMINISTIC_INFERENCE": enum("0"),
-    }
-)
 
 INSTALLATION = obj(
     {
@@ -47,9 +27,17 @@ INSTALLATION = obj(
         "family": enum(*LOCAL_FAMILIES),
         "executable": LABEL,
         "working_directory": LABEL,
-        "runtime_roots": array(LABEL, 1),
+        "runtime_roots": array(LABEL),
         "environment": ENVIRONMENT,
-    }
+    },
+    required=[
+        "schema_version",
+        "definition",
+        "family",
+        "executable",
+        "working_directory",
+        "environment",
+    ],
 )
 INSTALLATION["properties"]["models_root"] = LABEL
 INSTALLATION["properties"]["data_dir"] = LABEL
@@ -111,7 +99,7 @@ LOCAL_CONFIG_SCHEMA["properties"]["safety"] = obj(
         "interval_seconds": {"type": "number", "minimum": 0.1, "maximum": 5},
         "max_temperature_celsius": {"type": "number", "minimum": 1, "maximum": 115},
         "require_temperature": BOOL,
-        "check_environment": {"type": "boolean", "const": True},
+        "check_environment": BOOL,
         "temperature_stop_override_reason": {"type": "string", "minLength": 1, "maxLength": 1024},
     },
     required=[

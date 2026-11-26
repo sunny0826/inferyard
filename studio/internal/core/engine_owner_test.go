@@ -6,8 +6,10 @@ import (
 	"errors"
 	"inferyard/studio/internal/inferyard"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sync"
 	"syscall"
 	"testing"
@@ -124,5 +126,37 @@ func TestOrphanExplicitStopAndRecheck(t *testing.T) {
 				t.Fatal(f.sent(), want)
 			}
 		})
+	}
+}
+
+func TestConfigureEngineProcessInheritsHostEnvAndStripsLoaderInjection(t *testing.T) {
+	t.Setenv("HF_ENDPOINT", "https://hf-mirror.com")
+	t.Setenv("DYLD_INSERT_LIBRARIES", "/tmp/evil.dylib")
+	t.Setenv("LD_PRELOAD", "/tmp/evil.so")
+
+	cmd := exec.Command("/bin/echo")
+	err := configureEngineProcess(cmd, Startup{
+		Local:            true,
+		WorkingDirectory: t.TempDir(),
+		Environment: map[string]string{
+			"CUDA_VISIBLE_DEVICES":  "0",
+			"DYLD_INSERT_LIBRARIES": "/tmp/override.dylib",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(cmd.Env, "HF_ENDPOINT=https://hf-mirror.com") {
+		t.Fatalf("expected HF_ENDPOINT in cmd.Env, got %v", cmd.Env)
+	}
+	if !slices.Contains(cmd.Env, "CUDA_VISIBLE_DEVICES=0") {
+		t.Fatalf("expected CUDA_VISIBLE_DEVICES in cmd.Env, got %v", cmd.Env)
+	}
+	for _, entry := range cmd.Env {
+		if entry == "DYLD_INSERT_LIBRARIES=/tmp/evil.dylib" ||
+			entry == "DYLD_INSERT_LIBRARIES=/tmp/override.dylib" ||
+			entry == "LD_PRELOAD=/tmp/evil.so" {
+			t.Fatalf("unexpected loader injection variable in cmd.Env: %s", entry)
+		}
 	}
 }
