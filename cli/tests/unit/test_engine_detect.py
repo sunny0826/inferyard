@@ -92,7 +92,7 @@ def test_custom_env_vars_allowed_while_plaintext_credentials_blocked(tmp_path: P
         {"PGPASSWORD": "db-password-123"},
         {"HF_TOKEN": "hf_secret_token"},
         {"HTTPS_PROXY": "http://user:pass@proxy.example.com:8080"},
-        {"HTTPS_PROXY": "http://user:pa,ss;1@proxy.example.com:8080"},
+        {"HTTPS_PROXY": "http://user:pa,ss;1'2@proxy.example.com:8080"},
         {"HF_ENDPOINT": "https://token@hf-mirror.com"},
     ):
         with pytest.raises(ContractError, match="plaintext credentials"):
