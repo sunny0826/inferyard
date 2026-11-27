@@ -262,7 +262,7 @@ func (s *viewState) renderRecentHistoryRunRow(c *ui.Context, r core.RunSummary) 
 		listRow(c, listRowOptions{
 			Radius:    rowR,
 			BoldTitle: true,
-			Leading:   func() { modelIconBox(c, modelTitle+" "+s.modelArchFor(modelTitle), 32, iconR) },
+			Leading:   func() { modelIconBox(c, s.modelIconHint(modelTitle), 32, iconR) },
 			Title:     title,
 			Subtitle:  strings.Join(subParts, " · "),
 			Trailing: func() {
@@ -338,7 +338,7 @@ func (s *viewState) renderActiveFlowRow(c *ui.Context) {
 		listRow(c, listRowOptions{
 			Radius:    rowR,
 			BoldTitle: true,
-			Leading:   func() { engineIconBox(c, s.engine, 32, iconR) },
+			Leading:   func() { engineIconBox(c, s.engineIconHint(s.engine), 32, iconR) },
 			Title:     title,
 			Subtitle:  sub,
 			Trailing: func() {
@@ -385,7 +385,7 @@ func (s *viewState) renderBenchmarkTaskRow(c *ui.Context, task core.RunTask) {
 		listRow(c, listRowOptions{
 			Radius:    rowR,
 			BoldTitle: true,
-			Leading:   func() { engineIconBox(c, engName, 32, iconR) },
+			Leading:   func() { engineIconBox(c, s.engineIconHint(engName), 32, iconR) },
 			Title:     title,
 			Subtitle:  sub,
 			Trailing: func() {

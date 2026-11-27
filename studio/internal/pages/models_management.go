@@ -307,7 +307,7 @@ func (s *viewState) installedModelRow(c *ui.Context, m core.ModelAsset, pending 
 	detailsText := modelDetails(m)
 	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).
 		Padding(t.Density.Stack, t.Density.Tight).Children(func() {
-		modelIconBox(c, titleText+" "+m.Architecture, 36, t.Radius.Control)
+		modelIconBox(c, titleText+" "+s.modelIconHint(m.Name), 36, t.Radius.Control)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
 			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				titleEl := ui.Text(c, titleText).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine().TruncateMiddle()
@@ -335,7 +335,7 @@ func (s *viewState) installedEngineRow(c *ui.Context, eng core.EngineAsset, pend
 	badgeLabel, badgeKind := s.engineBadgeState(eng)
 	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).
 		Padding(t.Density.Stack, t.Density.Tight).Children(func() {
-		engineIconBox(c, engineFamilyTitle(eng.Family, eng.Name), 36, t.Radius.Control)
+		engineIconBox(c, engineFamilyTitle(eng.Family, eng.Name)+" "+eng.Family, 36, t.Radius.Control)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, eng.Name).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()

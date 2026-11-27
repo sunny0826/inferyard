@@ -87,7 +87,7 @@ func (s *viewState) modelCatalogRow(c *ui.Context, st *downloadsUIState, entry c
 
 	ui.Row(c.Key("downloads-model-" + entry.ID)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).
 		Padding(t.Density.Stack, t.Density.Tight).Children(func() {
-		modelIconBox(c, title, 36, t.Radius.Control)
+		modelIconBox(c, title+" "+entry.ID+" "+entry.URL, 36, t.Radius.Control)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, title).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
@@ -121,7 +121,7 @@ func (s *viewState) otherPlatformModelRow(c *ui.Context, st *downloadsUIState, e
 	title := modelCatalogTitle(entry)
 	ui.Row(c.Key("downloads-other-model-" + entry.ID)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).
 		Padding(t.Density.Stack, t.Density.Tight).Children(func() {
-		modelIconBox(c, title, 36, t.Radius.Control)
+		modelIconBox(c, title+" "+entry.ID+" "+entry.URL, 36, t.Radius.Control)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, title).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()

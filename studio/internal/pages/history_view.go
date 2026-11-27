@@ -283,7 +283,7 @@ func (s *viewState) historyView(c *ui.Context) {
 				case 0:
 					modelTitle := historyModel(r)
 					ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).MinWidth(0).Children(func() {
-						modelIconBox(c, modelTitle, 22, t.Radius.XS)
+						modelIconBox(c, s.modelIconHint(modelTitle), 22, t.Radius.XS)
 						ui.Text(c, modelTitle).Bold().SingleLine().Grow(1).MinWidth(0)
 					})
 				case 1:
@@ -374,7 +374,7 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 		ui.Scroll(c.Key("history-drawer-scroll-" + run.Path)).FillWidth().Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
 				applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).Padding(t.Card.Padding), materialSunken).Children(func() {
-					modelIconBox(c, modelTitle, 36, t.Radius.SM)
+					modelIconBox(c, s.modelIconHint(modelTitle), 36, t.Radius.SM)
 					ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
 						ui.Text(c, modelTitle).Bold().FontSize(t.Type.CardTitle).SingleLine()
 						ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
@@ -382,7 +382,7 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 								inlineBadge(c, bundleLabel, stateNeutral, badgeOptions{Size: sizeSM, Style: badgeOutline})
 							}
 							if engineLabel != "" {
-								enginePill(c, engineLabel)
+								s.enginePill(c, engineLabel)
 							}
 							inlineBadge(c, stateLabelFor(loc, run.Status), historyStatusKind(run.Status), badgeOptions{Size: sizeSM, Style: badgeDot})
 							inlineBadge(c, sealedLabel, sealedKind, badgeOptions{Size: sizeSM})

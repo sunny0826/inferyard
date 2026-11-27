@@ -304,13 +304,19 @@ func (s *viewState) starterOptionTile(c *ui.Context, st *downloadsUIState, idx i
 		})
 
 		// Title & Engine/Backend line
-		ui.Column(c).FillWidth().Gap(t.Density.Hairline).Children(func() {
-			ui.Text(c, starterOptionTitle(opt)).Bold()
-			engineMeta := starterEngineLabel(opt.Engine)
-			if opt.Backend != "" {
-				engineMeta += " · " + deviceLabel(opt.Backend)
-			}
-			ui.Text(c, engineMeta).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			modelIconBox(c, opt.ModelTitle+" "+opt.Family+" "+opt.ModelID, 32, t.Radius.Control)
+			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
+				ui.Text(c, starterOptionTitle(opt)).Bold()
+				engineMeta := starterEngineLabel(opt.Engine)
+				if opt.Backend != "" {
+					engineMeta += " · " + deviceLabel(opt.Backend)
+				}
+				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+					renderBrandEngineIcon(c, opt.Engine, 12, t.Color.FgSecondary)
+					ui.Text(c, engineMeta).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				})
+			})
 		})
 
 		ui.Spacer(c)

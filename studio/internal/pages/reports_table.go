@@ -30,14 +30,24 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 		return
 	}
 	for _, report := range s.reports {
-		reportCard(c, report, s.reportExclusivity(report.ReportId), func() { s.openReport(report.ReportId) })
+		modelHint := ""
+		if !report.Unreadable {
+			modelHint = s.modelIconHint(reportHeadingFor(c, report))
+			if len(report.RunSummaries) > 0 {
+				modelHint += " " + s.modelIconHint(reportText(report.RunSummaries[0].Model))
+			}
+		}
+		reportCard(c, report, modelHint, s.reportExclusivity(report.ReportId), func() { s.openReport(report.ReportId) })
 	}
 }
 
-func reportCard(c *ui.Context, report core.ReportSummary, exclusivity string, open func()) {
+func reportCard(c *ui.Context, report core.ReportSummary, modelHint, exclusivity string, open func()) {
 	t := tokens(c)
 	applyMaterial(c, ui.Column(c.Key(report.ReportId)).MinWidth(0).Gap(t.Density.Row).Padding(t.Card.Padding), materialCard).Children(func() {
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			if !report.Unreadable {
+				modelIconBox(c, modelHint, 28, t.Radius.SM)
+			}
 			ui.Text(c, reportHeadingFor(c, report)).Bold()
 			if !report.Unreadable {
 				exclusivityBadge(c, exclusivity)
