@@ -9,6 +9,7 @@ import (
 
 type bgRefreshCache struct {
 	rootsKey    string
+	cleanSeq    uint64
 	initialized bool
 	history     core.RunHistoryResponse
 	reports     []core.ReportSummary
@@ -173,8 +174,9 @@ func (s *viewState) refreshMask(mask refreshMask) {
 
 	settings := s.service.Settings()
 	rootsKey := refreshRootsKey(settings.Effective)
-	if !s.bgRefresh.initialized || s.bgRefresh.rootsKey != rootsKey {
-		s.bgRefresh = bgRefreshCache{rootsKey: rootsKey, initialized: true}
+	cleanSeq := s.cleanArtifactsSeq.Load()
+	if !s.bgRefresh.initialized || s.bgRefresh.rootsKey != rootsKey || s.bgRefresh.cleanSeq != cleanSeq {
+		s.bgRefresh = bgRefreshCache{rootsKey: rootsKey, cleanSeq: cleanSeq, initialized: true}
 	}
 	updateState := s.service.UpdateStatus()
 	cliUpgrade := s.service.CLIUpgradeStatus()
@@ -226,7 +228,8 @@ func (s *viewState) refreshMask(mask refreshMask) {
 	var progress core.ProgressResponse
 	var pe *core.ApiError
 	var dashboard dashboardSnapshot
-	if mask&refreshProgress != 0 {
+	runActive := activeRunTask(tasks) != nil
+	if mask&refreshProgress != 0 && (!runActive || s.bgRefresh.progress == nil) {
 		if ready.CLI.Status == "ok" && ready.Workspace.Initialized {
 			progress, pe = s.service.ProgressCached(s.ctx)
 		}
@@ -237,6 +240,7 @@ func (s *viewState) refreshMask(mask refreshMask) {
 		}
 		dashboard = s.readDashboard(progress.Progress)
 	} else {
+		progress.Progress = s.bgRefresh.progress
 		dashboard = s.readDashboard(s.bgRefresh.progress)
 	}
 

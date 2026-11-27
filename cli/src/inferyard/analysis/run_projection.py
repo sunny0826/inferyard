@@ -157,3 +157,73 @@ def read_run_projection(root):
             retained, sealed="events.jsonl" in files, truncated=bool(tails), observation=observation
         ),
     }
+
+
+def read_unsealed_trial(root):
+    """Project an unsealed or actively running trial without finalized seal observations."""
+    from inferyard import SCHEMA_VERSION
+    from inferyard.analysis.ledger import _inputs, preload_inputs
+
+    root = root.resolve()
+    reads = TrialEvidence(root, projection=True)
+    preload_inputs(reads)
+    limits = _manifest(root, reads)
+    require_current_sources(root, {})
+    documents, limits, _, workload = _inputs(root, reads, limits)
+    reads.check_input_errors()
+    reads._observations.scan()
+    reads._prepared.scan()
+    if reads.errors:
+        raise next(iter(reads.errors.values()))
+    run, selection = documents["run"], documents["selection"]
+    duration = workload["protocol"] if workload["protocol"]["kind"] == "duration" else None
+    retained, tails = [], []
+    events = _events(root, reads, retained, tails) if reads.exists("events.jsonl") else ()
+    requests, clock, stopped = reduce_events(
+        events,
+        run,
+        selection,
+        {c["case_id"]: c for c in documents["bundle"]["cases"]},
+        duration=duration,
+        _projection=True,
+    )
+    validate_capacity_stop(documents["plan"]["experiment"], requests, stopped)
+    window = (
+        duration_summary(duration, selection["case_ids"], retained, requests) if duration else None
+    )
+    mem_tails = []
+    if reads.exists("memory.jsonl"):
+        samples, mem_tails = reads.checked_jsonl("memory.jsonl")
+        for i, sample in enumerate(samples, 1):
+            try:
+                require_core(sample, "sample")
+                validate_document("sample", sample)
+            except ContractError as exc:
+                raise EvidenceError("invalid_sample") from exc
+            if (
+                sample["schema_version"] != SCHEMA_VERSION
+                or sample["seq"] != i
+                or any(sample[k] != run[k] for k in ("run_id", "trial_id", "experiment_id"))
+                or (clock is not None and sample["clock_id"] != clock)
+            ):
+                raise EvidenceError("sample_trial_identity_mismatch")
+    container_tails = [
+        f"{name}:{tail}" for name, items in reads.container_tails.items() for tail in items
+    ]
+    summary = trial_summary(
+        run, requests, stopped, limits + tails + mem_tails + container_tails, window, duration
+    )
+    fields = (
+        "case_id",
+        "execution_state",
+        "category",
+        "quality_state",
+        "score",
+        "t_send_ns",
+        "t_terminal_ns",
+    )
+    return {
+        **documents,
+        "requests": [{k: row[k] for k in fields if k in row} for row in requests],
+        "summary": summary,
+    }

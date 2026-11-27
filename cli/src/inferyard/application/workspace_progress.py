@@ -69,6 +69,7 @@ def bindings(workspace):
 
 def run_records(workspace, results_root=None):
     from inferyard.analysis.ledger import read_trial
+    from inferyard.errors import EvidenceError
 
     root = results_root if results_root is not None else workspace / "results"
     if not root.exists():
@@ -88,7 +89,16 @@ def run_records(workspace, results_root=None):
     records = []
     for path in sorted(paths):
         metadata = {}
-        data = read_trial(path, metadata=metadata)
+        try:
+            data = read_trial(path, metadata=metadata)
+            sealed = metadata["manifest"] is not None
+        except EvidenceError:
+            if (path / "manifest.json").exists():
+                raise
+            from inferyard.analysis.run_projection import read_unsealed_trial
+
+            data = read_unsealed_trial(path)
+            sealed = False
         records.append(
             (
                 path,
@@ -96,7 +106,7 @@ def run_records(workspace, results_root=None):
                 {
                     "path": str(path.resolve()),
                     "complete": data["summary"]["completeness"] == "complete",
-                    "sealed": metadata["manifest"] is not None,
+                    "sealed": sealed,
                 },
             )
         )

@@ -371,3 +371,59 @@ def test_context_speed_preset_plan_and_batch_scoped_to_workspace(
     batch_b = inspect_workspace(ws_b, results_root=results, reports_root=reports)
     assert batch_b["bundles"][0]["phase"] == "plan_missing"
     assert batch_b["bundles"][0]["next_action"] == "freeze_plan"
+
+    # An active batch with an unsealed trial in runs/ stays in run_missing rather
+    # than failing workspace progress with workspace_artifact_unreadable.
+    from inferyard.analysis.scoring import ScoringContext
+    from inferyard.config.plan_inputs import read_frozen_plan
+    from inferyard.evidence.journal import TrialJournal
+
+    live_batch = results / "speed-batch-2"
+    shutil.copytree(plan_dir, live_batch / "frozen-plan")
+    _write_json(
+        live_batch / "batch.json",
+        {
+            "schema_version": 3,
+            "plan_sha256": plan_doc["plan_sha256"],
+            "diagnostic": False,
+            "tool_source_sha256": "0" * 64,
+        },
+    )
+    frozen_plan, frozen_loaded = read_frozen_plan(live_batch / "frozen-plan" / "plan.json")
+    first_loaded = next(iter(frozen_loaded.values()))
+    live_store = TrialJournal(
+        live_batch / "runs",
+        frozen_plan,
+        frozen_plan["trials"][0]["trial_id"],
+        first_loaded.config.to_dict(),
+        first_loaded.bundle.to_dict(),
+        scoring_context=ScoringContext(),
+    )
+    for stream in live_store._logs.values():
+        stream.close()
+
+    def fail_if_called(path):
+        raise AssertionError(f"read_inputs should not run on unsealed batch {path}")
+
+    monkeypatch.setattr("inferyard.application.context_speed_progress.read_inputs", fail_if_called)
+    shutil.rmtree(batch_dir)
+    live_state = inspect_workspace(ws_a, results_root=results, reports_root=reports)
+    assert live_state["bundles"][0]["phase"] == "run_missing"
+
+    # Malformed batch.json on an unsealed batch must still be rejected by progress.
+    _write_json(live_batch / "batch.json", {"kind": "batch"})
+    assert (
+        main(
+            [
+                "progress",
+                "--workspace",
+                str(ws_a),
+                "--results",
+                str(results),
+                "--reports",
+                str(reports),
+            ]
+        )
+        == 2
+    )
+    capsys.readouterr()

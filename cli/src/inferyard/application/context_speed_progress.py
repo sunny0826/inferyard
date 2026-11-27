@@ -3,6 +3,8 @@
 from inferyard.config.context_speed_profile import classify_verified_inputs
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.config.workspace_inputs import latest
+from inferyard.contracts.batch_envelope import validate_batch_envelope
+from inferyard.evidence.storage import read_json
 from inferyard.application.context_speed_evidence import read_inputs
 
 
@@ -27,6 +29,15 @@ def update(workspace, result, bundle, bound, *, results_root=None):
                 classify_verified_inputs(plan, item.config.to_dict(), item.bundle.to_dict())
                 for item in loaded.values()
             ):
+                continue
+            runs_dir = path / "runs"
+            if runs_dir.is_dir() and any(
+                r.is_dir()
+                and ((r / "inputs.json").exists() or (r / "run.json").exists())
+                and not (r / "manifest.json").exists()
+                for r in runs_dir.iterdir()
+            ):
+                validate_batch_envelope(read_json(path / "batch.json"), plan["plan_sha256"])
                 continue
             _, loaded, _ = read_inputs(path)
             if any(item.bundle.to_dict() == bundle for item in loaded.values()):

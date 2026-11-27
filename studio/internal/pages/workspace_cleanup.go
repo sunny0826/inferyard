@@ -78,13 +78,18 @@ func (s *viewState) clearCleanedWorkspaceState() {
 	s.failurePage = ""
 	s.refreshFailure = ""
 	s.refreshFailureCode = ""
+	s.cleanArtifactsSeq.Add(1)
+	s.bumpSettingsEpoch()
 	s.progress = nil
 	s.candidate = ""
 	s.bindingStale = false
 	s.history = core.RunHistoryResponse{}
+	s.historyError = nil
 	s.tasks = nil
 	s.reports = nil
+	s.reportsError = nil
 	s.detail = nil
+	s.detailError = nil
 	s.detailID = ""
 	s.detailMu.Lock()
 	s.requestedDetail = ""
