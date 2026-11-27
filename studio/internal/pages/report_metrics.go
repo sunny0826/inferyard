@@ -77,16 +77,12 @@ type reportMetricSpec struct {
 
 func reportMetricCard(c *ui.Context, spec reportMetricSpec) {
 	t := tokens(c)
-	applyMaterial(c, ui.Column(c).MinWidth(0).Gap(t.Density.Tight+1).Padding(t.Metric.PaddingY, t.Metric.PaddingX), materialCard).
+	applyMaterial(c, ui.Column(c).MinWidth(0).Gap(t.Density.Tight).Padding(t.Metric.PaddingY, t.Metric.PaddingX), materialCard).
 		Children(func() {
 			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, spec.label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).Grow(1).MinWidth(0).SingleLine()
 				if spec.icon != nil {
-					ui.Box(c).Size(22, 22).Radius(t.Radius.SM).Shrink(0).
-						Background(t.Color.Sunken).
-						AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-						studioIcon(c, spec.icon, t.Color.FgSecondary)
-					})
+					studioIcon(c, spec.icon, t.Color.FgTertiary)
 				}
 			})
 			valColor := t.Color.FgPrimary
@@ -95,7 +91,7 @@ func reportMetricCard(c *ui.Context, spec reportMetricSpec) {
 			}
 			ui.Text(c, spec.value).Bold().FontSize(t.Type.MetricLarge).FontFeatures("tnum").TextColor(valColor).SingleLine().Selectable()
 			if spec.hasRatio {
-				barColor := stateColor(c, spec.ratioKind)
+				barColor := t.Color.Accent
 				ui.Box(c).FillWidth().Height(4).Draw(func(p *ui.Painter, r ui.Rect) {
 					if r.W <= 0 || r.H <= 0 {
 						return

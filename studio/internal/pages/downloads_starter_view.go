@@ -90,7 +90,7 @@ func (s *viewState) renderStarterRecommendationPanel(c *ui.Context, contextMode 
 	hwSummary := s.starterHardwareSummary(rec)
 	showCollapse := contextMode == "downloads" && s.starterDefaultCollapsed()
 
-	applyMaterial(c, ui.Column(c.Key("downloads-starter-card")).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
+	ui.Column(c.Key("downloads-starter-card")).FillWidth().Gap(t.Density.CardGap).Children(func() {
 		if rec.Status == "blocked" && len(opts) == 0 {
 			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
@@ -140,10 +140,10 @@ func (s *viewState) renderStarterRecommendationPanel(c *ui.Context, contextMode 
 
 		// Hardware summary strip (omitted inside libraryView where libraryHardwareCard already sits directly above)
 		if hwSummary != "" && contextMode != "library" {
-			applyMaterial(c, ui.Row(c.Key("starter-hardware-strip")).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Inset, t.Density.Stack), materialSunken).Children(func() {
+			ui.Row(c.Key("starter-hardware-strip")).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Row(c).Grow(1).MinWidth(0).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 					studioIcon(c, reicon.Cpu, t.Color.FgSecondary)
-					ui.Text(c, trf(c, "downloads.starter.hw_line", "summary", hwSummary)).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).FontFeatures("tnum")
+					ui.Text(c, trf(c, "downloads.starter.hw_line", "summary", hwSummary)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).FontFeatures("tnum")
 				})
 				ghostButton(c, tr(c, "downloads.starter.device_details")).OnClick(func() {
 					s.libraryHwExpanded = true

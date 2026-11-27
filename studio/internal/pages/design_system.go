@@ -224,9 +224,6 @@ func progressBar(c *ui.Context, value float64, label string) ui.Element {
 	borderColor := t.Color.BorderSubtle
 	trackColor := t.Color.Sunken
 	fillColor := t.Color.Active.Solid
-	if value >= 1 {
-		fillColor = t.Color.Success.Solid
-	}
 	sheenColor := fillColor.Mix(ui.RGB(255, 255, 255), .24)
 	e := ui.Box(c).Height(c.Theme().Space(2)).FillWidth().Role(ui.RoleProgress).Range(0, 1, value).Label(label)
 	e.Draw(func(p *ui.Painter, r ui.Rect) {

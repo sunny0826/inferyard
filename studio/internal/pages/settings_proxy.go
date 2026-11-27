@@ -52,9 +52,8 @@ func (s *viewState) syncSavedProxy(patch map[string]json.RawMessage, submitted s
 func (s *viewState) proxySettingsView(c *ui.Context) {
 	loc := contextLocale(c)
 	settingsFormSection(c, settingsFormOptions{
-		Title:       tr(c, "settings.proxy.title"),
-		Description: tr(c, "settings.proxy.description"),
-		Dirty:       s.proxyEdited(),
+		Title: tr(c, "settings.proxy.title"),
+		Dirty: s.proxyEdited(),
 		Fields: func() {
 			field(c, tr(c, "settings.proxy.url_label"), &s.downloadProxy).
 				Placeholder("http://127.0.0.1:7890").

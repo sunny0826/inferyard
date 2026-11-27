@@ -35,8 +35,7 @@ func (p *previewSession) dsSurfacesCard(c *ui.Context) {
 					box.Radius(t.Radius.Inset).Border(1, t.Color.BorderSubtle)
 				}
 				box.Children(func() {
-					ui.Text(c, tr(c, layer.nameKey)).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary)
-					ui.Text(c, tr(c, "preview.ds.surface.secondary_sample")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+					ui.Text(c, tr(c, layer.nameKey)).FontWeight(600).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary)
 					inlineHexChip(c, layer.col)
 				})
 			}
@@ -64,7 +63,7 @@ func (p *previewSession) dsStatesCard(c *ui.Context) {
 			noticeBanner(c, noticeBannerOptions{Kind: stateSuccess, Size: bannerCompact, Message: tr(c, "preview.ds.banner.success")})
 			ui.Row(c).FillWidth().AlignItems(ui.Center).Wrap().Gap(t.Density.Row).Children(func() {
 				applyMaterial(c, ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).
-					Padding(t.Density.Tight+2, t.Density.Stack).Radius(t.Radius.Full), materialFloating).Children(func() {
+					Padding(t.Density.Tight, t.Density.Stack).Radius(t.Radius.Full), materialFloating).Children(func() {
 					studioIcon(c, reicon.CircleCheck, semanticAccentColor(c, t.Color.Success))
 					ui.Text(c, tr(c, "preview.ds.banner.success")).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).SingleLine()
 				})
@@ -122,8 +121,8 @@ func (p *previewSession) dsControlsCard(c *ui.Context) {
 		}
 		ui.Grid(c).Columns(cols).Gap(t.Density.Section).Children(func() {
 			ui.Column(c).FillWidth().Gap(t.Density.Stack).Children(func() {
-				monoField(c, tr(c, "preview.ds.control.input"), tr(c, "preview.ds.control.input_hint"), "http://127.0.0.1:48857", "", &p.dsInput)
-				switchField(c, tr(c, "preview.ds.control.switch"), tr(c, "preview.ds.control.switch_desc"), &p.dsSwitch)
+				monoField(c, tr(c, "preview.ds.control.input"), "", "http://127.0.0.1:48857", "", &p.dsInput)
+				switchField(c, tr(c, "preview.ds.control.switch"), "", &p.dsSwitch)
 				components.Checkbox(c, &p.dsCheck, tr(c, "preview.ds.control.checkbox"))
 			})
 			ui.Column(c).FillWidth().Gap(t.Density.Tight).Children(func() {

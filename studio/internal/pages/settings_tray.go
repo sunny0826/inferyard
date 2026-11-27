@@ -64,16 +64,14 @@ func (s *viewState) loadTraySettings(v core.SettingsResponse) {
 }
 
 func (s *viewState) traySettingsView(c *ui.Context) {
-	t := tokens(c)
 	card(c, tr(c, "settings.tray.title"), func() {
 		enabled := s.minimizeToTray
-		labeledSwitchRow(c, tr(c, "settings.tray.minimize_label"), tr(c, "settings.tray.minimize_desc"), tr(c, "settings.tray.switch_label"), &enabled)
+		labeledSwitchRow(c, tr(c, "settings.tray.minimize_label"), "", tr(c, "settings.tray.switch_label"), &enabled)
 		if enabled != s.minimizeToTray {
 			s.changeMinimizeToTray(enabled)
 		}
-		ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
 		keep := s.keepServicesOnQuit
-		labeledSwitchRow(c, tr(c, "settings.keep_services.label"), tr(c, "settings.keep_services.desc"), tr(c, "settings.keep_services.switch_label"), &keep)
+		labeledSwitchRow(c, tr(c, "settings.keep_services.label"), "", tr(c, "settings.keep_services.switch_label"), &keep)
 		if keep != s.keepServicesOnQuit {
 			s.changeKeepServicesOnQuit(keep)
 		}

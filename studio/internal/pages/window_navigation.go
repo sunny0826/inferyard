@@ -146,12 +146,8 @@ func (s *viewState) leftNav(c *ui.Context) {
 				})
 			})
 		})
-		ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
-		ui.Column(c).FillWidth().Padding(t.Density.Tight, t.Density.Row, 0, t.Density.Row).Gap(2).Children(func() {
+		ui.Column(c).FillWidth().Padding(t.Density.Stack, t.Density.Row, 0, t.Density.Row).Gap(t.Density.Tight).Children(func() {
 			s.sidebarStatusArea(c)
-			ui.Box(c).FillWidth().Padding(t.Density.Tight, 0).Children(func() {
-				ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
-			})
 			s.sidebarNavRow(c, "settings", tr(c, "nav.settings"), reicon.Settings, nil)
 		})
 	})

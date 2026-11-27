@@ -102,33 +102,23 @@ func reportCard(c *ui.Context, report core.ReportSummary, modelHint, exclusivity
 				ui.Text(c, tr(c, "reports.list.unreadable_body")).FontSize(t.Type.Caption).TextColor(t.Color.Danger.Fg)
 			})
 		} else if len(report.RunSummaries) > 0 {
-			applyMaterial(c, ui.Column(c).FillWidth().Gap(0).Padding(t.Density.Tight, t.Density.Stack), materialSunken).Children(func() {
-				for i, run := range report.RunSummaries {
-					if i > 0 {
-						ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
-					}
+			ui.Column(c).FillWidth().Gap(t.Density.Tight).Children(func() {
+				for _, run := range report.RunSummaries {
 					q := run.Quality
 					hasRatio := q.Numerator != nil && q.Denominator != nil && *q.Denominator > 0
 					dotColor := t.Color.BorderStrong
 					var ratio float64
 					if hasRatio {
 						ratio = float64(*q.Numerator) / float64(*q.Denominator)
-						if q.Complete {
-							dotColor = t.Color.Success.Solid
-							if ratio < 0.5 {
-								dotColor = t.Color.Warning.Solid
-							}
-						} else {
-							dotColor = t.Color.Active.Solid
-						}
+						dotColor = t.Color.Accent
 					}
-					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Tight+1, 0).Children(func() {
-						ui.Box(c).Size(6, 6).Radius(t.Radius.Full).Shrink(0).Background(dotColor)
+					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Hairline, 0).Children(func() {
+						ui.Box(c).Size(8, 8).Radius(t.Radius.Full).Shrink(0).Background(dotColor)
 						ui.Text(c, reportRunLineFor(c, report, run)).
 							FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgPrimary).
 							Grow(1).MinWidth(0).SingleLine().Selectable()
 						if hasRatio {
-							reportRatioBar(c, ratio, 68, 5, dotColor)
+							reportRatioBar(c, ratio, 72, 4, dotColor)
 						}
 					})
 				}

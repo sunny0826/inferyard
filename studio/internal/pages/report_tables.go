@@ -41,11 +41,7 @@ func (r *reportViewState) categoryView(c *ui.Context, run core.ReportRun) {
 						ui.Text(c, rateText).FontFeatures("tnum").SingleLine()
 						if category.Rate.Numerator != nil && category.Rate.Denominator != nil && *category.Rate.Denominator > 0 {
 							ratio := float64(*category.Rate.Numerator) / float64(*category.Rate.Denominator)
-							barColor := t.Color.Success.Solid
-							if ratio < 0.5 {
-								barColor = t.Color.Warning.Solid
-							}
-							reportRatioBar(c, ratio, 56, 5, barColor)
+							reportRatioBar(c, ratio, 56, 4, t.Color.Accent)
 						}
 					})
 				case 2:
@@ -56,7 +52,7 @@ func (r *reportViewState) categoryView(c *ui.Context, run core.ReportRun) {
 					}
 					ui.Text(c, exclText).FontFeatures("tnum").TextColor(exclColor).SingleLine()
 				}
-			}).Height(c.Theme().Space(8)*float32(min(len(categories), 8)+1) + 2)
+			}).Height(c.Theme().Space(11) * float32(min(len(categories), 8)+1))
 		})
 	})
 }
@@ -151,7 +147,7 @@ func (r *reportViewState) requestView(c *ui.Context, run core.ReportRun) {
 						studioIcon(c, reicon.ChevronRight, t.Color.FgTertiary)
 					})
 				}
-			}).Height(c.Theme().Space(8)*float32(min(len(visible), 8)+1) + 2)
+			}).Height(c.Theme().Space(11) * float32(min(len(visible), 8)+1))
 		})
 		if r.requests.clicked || r.requests.submitted {
 			if idx := selectedRow(&r.requests, len(visible)); idx >= 0 {

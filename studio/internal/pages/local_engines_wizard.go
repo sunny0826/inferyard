@@ -56,7 +56,7 @@ func (s *viewState) localEngineWizardView(c *ui.Context) {
 		w.family = "llama-cpp"
 	}
 	container.Children(func() {
-		section(c, tr(c, "engine.wizard.title"), func() {
+		ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
 			segmentedField(c, tr(c, "engine.wizard.family_label"), "", &w.family, localEngineFamilyOptions)
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				if secondaryActionButton(c, tr(c, "engine.wizard.detect_button"), w.detecting).Disabled(s.busy || w.detecting).Clicked() {
@@ -86,20 +86,17 @@ func (s *viewState) localEngineWizardView(c *ui.Context) {
 					}
 				})
 			}
-			execLabel, execDesc := wizardExecutableLabels(w.family)
-			execField := s.pathField(c, execLabel, &w.executable, browseExecutable).
+			execLabel, _ := wizardExecutableLabels(w.family)
+			s.pathField(c, execLabel, &w.executable, browseExecutable).
 				Error(s.browseError(browseExecutable.key, pathError(w.executable)))
-			if execDesc != "" {
-				execField.Description(execDesc)
-			}
 			if w.family == "lmstudio" {
 				s.pathField(c, tr(c, "engine.wizard.lmstudio_models_root"), &w.modelsRoot, browseModelsRootDir).
 					Error(s.browseError(browseModelsRootDir.key, pathError(w.modelsRoot)))
 			}
 			if w.family == "polystrata" {
-				monoField(c, tr(c, "engine.wizard.polystrata_data_dir"), tr(c, "engine.wizard.polystrata_data_dir_desc"), "", pathError(w.dataDir), &w.dataDir)
+				monoField(c, tr(c, "engine.wizard.polystrata_data_dir"), "", "", pathError(w.dataDir), &w.dataDir)
 			}
-			monoField(c, tr(c, "engine.wizard.working_dir"), tr(c, "engine.wizard.working_dir_desc"), "", pathError(w.workingDir), &w.workingDir)
+			monoField(c, tr(c, "engine.wizard.working_dir"), "", "", pathError(w.workingDir), &w.workingDir)
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				if wizardActionButton(c, tr(c, "engine.wizard.submit_visible"), tr(c, "engine.wizard.submit_accessible"), s.actionBusy("install-init")).Disabled(s.busy || !wizardCanSubmit(w)).Clicked() {
 					s.initAndRegisterWizardEngine(w)

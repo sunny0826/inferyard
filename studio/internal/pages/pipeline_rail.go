@@ -177,7 +177,7 @@ func pipelineRail(c *ui.Context, spec pipelineCardOptions) {
 				ui.Row(c).Grow(targetWeights[i]).MinWidth(0).AlignItems(ui.Center).Gap(4).Children(func() {
 					switch {
 					case i < spec.Current:
-						studioIcon(c, reicon.Check, t.Color.Success.Fg)
+						studioIcon(c, reicon.Check, t.Color.FgSecondary)
 						ui.Text(c, st.Label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
 					case i == spec.Current:
 						ambientLifecycleDot(c, activeScale, spec.Progress.Active && !spec.Failed)
@@ -281,10 +281,7 @@ func pipelineRail(c *ui.Context, spec pipelineCardOptions) {
 
 				switch {
 				case i < spec.Current:
-					p.Fill(seg, t.Color.Success.Solid, rad)
-					if !highContrast {
-						p.Stroke(inner, insetRing, innerR, 1)
-					}
+					p.Fill(seg, t.Color.FgPrimary.Alpha(.22), rad)
 				case i == spec.Current:
 					targetPtrX = seg.X + seg.W/2
 					borderCol := activeScale.Border

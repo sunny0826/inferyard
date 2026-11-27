@@ -208,12 +208,11 @@ func enginePillWithHint(c *ui.Context, label, hint string) {
 	if strings.TrimSpace(hint) == "" {
 		hint = label
 	}
-	scale := stateScale(c, engineIconKind(hint))
-	ui.Row(c).AlignSelf(ui.Center).AlignItems(ui.Center).MinHeight(22).Gap(t.Density.Tight).
-		Padding(t.Density.Tight, t.Density.Row).Radius(t.Radius.Full).
-		Background(scale.SubtleBg).Children(func() {
-		renderBrandEngineIcon(c, hint, 12, scale.Fg)
-		ui.Text(c, label).FontSize(max(11, t.Type.ShellLabel)).TextColor(scale.Fg).SingleLine()
+	ui.Row(c).AlignSelf(ui.Center).AlignItems(ui.Center).MinHeight(28).Gap(t.Density.Tight).
+		Padding(t.Density.Hairline, t.Density.Row).Radius(t.Radius.Full).
+		Background(t.Color.Sunken).Children(func() {
+		renderBrandEngineIcon(c, hint, 14, t.Color.FgSecondary)
+		ui.Text(c, label).FontSize(t.Type.ShellLabel).TextColor(t.Color.FgSecondary).SingleLine()
 	})
 }
 
@@ -266,10 +265,7 @@ func chevronBox(c *ui.Context, expanded bool) {
 	if expanded {
 		chev = reicon.ChevronDown
 	}
-	ui.Box(c).Size(20, 20).Shrink(0).AlignSelf(ui.Center).
-		AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-		studioIcon(c, chev, t.Color.FgSecondary)
-	})
+	studioIcon(c, chev, t.Color.FgSecondary).AlignSelf(ui.Center)
 }
 
 func sidebarIconSlot(c *ui.Context, fn func()) {

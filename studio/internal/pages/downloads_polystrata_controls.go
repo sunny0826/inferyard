@@ -93,7 +93,7 @@ func polystrataInstallStatusButton(c *ui.Context, confirmOpen, disabled bool) ui
 				ui.Text(c, cancelText).Bold().FontSize(t.Type.Caption).TextColor(fg).SingleLine()
 			} else {
 				ui.Box(c).Size(studioIconBoxSize, studioIconBoxSize).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-					components.Spinner(c, components.SpinnerRing).Size(12, 12).TextColor(fg).Label(tr(c, "downloads.polystrata.installing_label"))
+					components.Spinner(c, components.SpinnerRing).Size(16, 16).TextColor(fg).Label(tr(c, "downloads.polystrata.installing_label"))
 				})
 				ui.Text(c, installText).Bold().FontSize(t.Type.Caption).TextColor(fg).SingleLine()
 			}

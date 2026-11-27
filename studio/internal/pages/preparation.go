@@ -127,9 +127,8 @@ func (s *viewState) generalSettingsView(c *ui.Context) {
 		return
 	}
 	settingsFormSection(c, settingsFormOptions{
-		Title:       tr(c, "settings.workspace.title"),
-		Description: tr(c, "settings.workspace.description"),
-		Dirty:       s.workspaceEdited(),
+		Title: tr(c, "settings.workspace.title"),
+		Dirty: s.workspaceEdited(),
 		Fields: func() {
 			s.workspaceField(c)
 		},

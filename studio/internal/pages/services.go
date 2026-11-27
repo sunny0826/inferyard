@@ -167,11 +167,11 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 				if state.LANAccess {
 					pillLabel = trf(c, "services.card.lan_listen", "addr", shortAddr)
 				}
-				copyPill := ui.Row(c).AlignSelf(ui.Center).AlignItems(ui.Center).Gap(4).
-					Padding(4, 9).Radius(innerR).Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).
+				copyPill := ui.Row(c).AlignSelf(ui.Center).AlignItems(ui.Center).Gap(t.Density.Hairline).
+					Padding(t.Density.Hairline, t.Density.Tight).Radius(innerR).Background(t.Color.Sunken).
 					Role(ui.RoleButton).Focusable().Label(tr(c, "services.card.copy_endpoint"))
 				if copyPill.Hovered() {
-					copyPill.Background(t.Color.SurfaceHover).Border(1, t.Color.BorderDefault)
+					copyPill.Background(t.Color.SurfaceHover)
 				}
 				if copyPill.Clicked() {
 					s.copyServiceEndpoint(c, state)

@@ -46,20 +46,20 @@ func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 			if i > 0 {
 				lineColor := t.Color.BorderDefault
 				if i <= o.Current {
-					lineColor = t.Color.Success.Solid.Alpha(.55)
+					lineColor = t.Color.FgPrimary.Alpha(.22)
 				}
-				ui.Box(c).Height(2).MinWidth(10).MaxWidth(28).Grow(1).Radius(t.Radius.Full).Background(lineColor)
+				ui.Box(c).Height(2).MinWidth(12).MaxWidth(28).Grow(1).Radius(t.Radius.Full).Background(lineColor)
 			}
 			stepNum := fmt.Sprintf("%d", i+1)
 			switch {
 			case i < o.Current:
 				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-					ui.Box(c).Size(20, 20).Radius(t.Radius.Full).Shrink(0).
-						Background(t.Color.Success.SubtleBg).Border(1, t.Color.Success.Border).
+					ui.Box(c).Size(studioIconBoxSize, studioIconBoxSize).Radius(t.Radius.Full).Shrink(0).
+						Background(t.Color.Sunken).
 						AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-						studioIcon(c, reicon.Check, t.Color.Success.Fg)
+						studioIcon(c, reicon.Check, t.Color.FgSecondary)
 					})
-					ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).SingleLine()
+					ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
 				})
 			case i == o.Current:
 				scale := t.Color.Active
