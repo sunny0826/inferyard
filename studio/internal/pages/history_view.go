@@ -456,8 +456,9 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 					metricCard(c, tr(c, "dashboard.completion.duration"), runDuration(run), "", "")
 				})
 
-				applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Hairline).Padding(t.Card.Padding), materialCard).Children(func() {
+				applyMaterial(c, ui.Column(c).FillWidth().Gap(0).Padding(t.Density.Row, t.Card.Padding), materialCard).Children(func() {
 					keyValueRow(c, tr(c, "dashboard.history.col_run_id"), run.RunId, true)
+					reportKVDivider(c)
 					modeVal := tr(c, "dashboard.history.mode_standalone")
 					if batch := s.findBatchForHistoryRun(run.Path); batch != nil {
 						modeVal = trf(c, "dashboard.history.batch_header", "id", batch.BatchId, "status", aggregateStatus(batch.Runs))
@@ -465,18 +466,23 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 						modeVal = *run.BatchId
 					}
 					keyValueRow(c, tr(c, "dashboard.history.mode_label"), modeVal, false)
+					reportKVDivider(c)
 					evidenceVal := sealedLabel
 					if comp := strings.TrimSpace(emptyText(run.Completeness)); comp != "" {
 						evidenceVal = sealedLabel + " · " + stateLabelFor(loc, comp)
 					}
 					keyValueRow(c, tr(c, "dashboard.history.evidence_label"), evidenceVal, false)
+					reportKVDivider(c)
 					keyValueRow(c, tr(c, "dashboard.history.col_started"), historyStarted(run), true)
 					if fin := strings.TrimSpace(emptyText(run.FinishedAt)); fin != "" {
+						reportKVDivider(c)
 						keyValueRow(c, tr(c, "dashboard.history.col_finished"), formatTimestamp(fin), true)
 					}
 					if run.StopReason != nil && strings.TrimSpace(*run.StopReason) != "" {
+						reportKVDivider(c)
 						keyValueRow(c, tr(c, "dashboard.history.stop_reason_label"), stopReasonLabel(*run.StopReason), false)
 					}
+					reportKVDivider(c)
 					pathKeyValueRow(c, tr(c, "dashboard.history.run_path_label"), run.Path)
 				})
 			})

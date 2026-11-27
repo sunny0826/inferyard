@@ -10,6 +10,50 @@ import (
 	"inferyard/studio/internal/l10n"
 )
 
+func runTaskStateKind(task core.RunTask) stateKind {
+	if task.Queued && task.State == "starting" {
+		return stateNeutral
+	}
+	if task.Exit != nil {
+		switch task.Exit.ExitCode {
+		case 0:
+			return stateSuccess
+		case 2, 3:
+			return stateWarning
+		case 4:
+			return stateDanger
+		case 130:
+			return stateNeutral
+		}
+	}
+	switch task.State {
+	case "starting", "running", "cancelling":
+		return stateActive
+	case "done":
+		return stateSuccess
+	case "failed":
+		return stateDanger
+	case "cancelled":
+		return stateWarning
+	}
+	return stateNeutral
+}
+
+func runTaskIcon(kind stateKind) func() *ui.SVG {
+	switch kind {
+	case stateActive:
+		return lucide.Activity
+	case stateSuccess:
+		return lucide.CircleCheck
+	case stateDanger:
+		return lucide.CircleAlert
+	case stateWarning:
+		return lucide.TriangleAlert
+	default:
+		return lucide.FileText
+	}
+}
+
 func (s *viewState) detailView(c *ui.Context) {
 	tok := tokens(c)
 	s.subpageHeader(c, tr(c, "detail.title"), tr(c, "detail.back_dashboard"), func() { s.detailID = "" })
@@ -32,12 +76,33 @@ func (s *viewState) detailView(c *ui.Context) {
 	}
 	d := s.detail
 	t := d.Task
+	kind := runTaskStateKind(t)
+	scale := stateScale(c, kind)
+	active := !terminal(t.State) && t.State != "cancelling" && !t.Queued
 	var cancelConfirmed bool
 	applyMaterial(c, ui.Column(c.Key("detail-task-card")).FillWidth().MinWidth(0).Gap(tok.Density.CardGap).Padding(tok.Card.Padding), materialCard).Children(func() {
-		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(tok.Density.Row).Children(func() {
-			heading(c, text(t.Bundle)+" · "+t.TaskId, 2)
-			statusBadge(c, taskLabel(t), runColor(c, t))
-			ui.Box(c).Grow(1)
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(tok.Density.Stack).Children(func() {
+			ui.Box(c).Size(36, 36).Radius(tok.Radius.Inset).Shrink(0).
+				Background(scale.SubtleBg).Border(1, scale.Border).
+				AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+				components.Icon(c, runTaskIcon(kind)).Size(17, 17).TextColor(semanticAccentColor(c, scale))
+			})
+			ui.Column(c).Grow(1).MinWidth(180).Gap(2).Children(func() {
+				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tok.Density.Row).Children(func() {
+					heading(c, text(t.Bundle), 2)
+					if active {
+						ui.Row(c).AlignItems(ui.Center).Gap(tok.Density.Tight).
+							Padding(tok.Density.Tight, tok.Density.Row).Radius(tok.Radius.Full).
+							Background(scale.SubtleBg).Label(taskLabel(t)).Children(func() {
+							ambientLifecycleDot(c, scale, true)
+							ui.Text(c, taskLabel(t)).FontSize(max(11, tok.Type.ShellLabel)).TextColor(scale.Fg).SingleLine()
+						})
+					} else {
+						inlineBadge(c, taskLabel(t), kind, badgeOptions{Size: sizeSM, Style: badgeSoft})
+					}
+				})
+				ui.Text(c, t.TaskId).FontSize(tok.Type.Caption).FontFeatures("tnum").TextColor(tok.Color.FgSecondary).SingleLine().Selectable()
+			})
 			wholeRound := s.task.stage != ""
 			cancelOption := destructiveOption{
 				kind: destructiveCancelRun, id: t.TaskId, label: tr(c, "detail.cancel.label"), confirmLabel: tr(c, "detail.cancel.confirm"),
@@ -50,11 +115,15 @@ func (s *viewState) detailView(c *ui.Context) {
 				cancelConfirmed = s.quietDestructiveAction(c, cancelOption)
 			}
 		})
+		runPathRaw := emptyText(t.RunPath)
 		applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tok.Density.Row).
 			Padding(tok.Density.Row, tok.Density.Stack), materialSunken).Children(func() {
-			components.Icon(c, lucide.Folder).Size(14, 14).TextColor(tok.Color.FgSecondary)
-			ui.Text(c, trf(c, "detail.run_dir", "path", displayName(text(t.RunPath)))).
-				FontSize(tok.Type.Caption).TextColor(tok.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine().TruncateMiddle().Selectable()
+			components.Icon(c, lucide.Folder).Size(14, 14).TextColor(tok.Color.FgSecondary).Shrink(0)
+			pathEl := ui.Text(c, trf(c, "detail.run_dir", "path", displayName(text(t.RunPath)))).
+				FontSize(tok.Type.Caption).TextColor(tok.Color.FgSecondary).Grow(1).MinWidth(0).SingleLine().TruncateMiddle().Selectable()
+			if runPathRaw != "" {
+				components.Tooltip(c, pathEl, runPathRaw)
+			}
 		})
 		errorView(c, t.Error)
 	})
@@ -72,13 +141,35 @@ func (s *viewState) detailView(c *ui.Context) {
 			return l10n.TR("dashboard.toast.cancel_requested"), e
 		})
 	}
-	card(c, tr(c, "detail.live_progress_card"), func() { s.detailProgress(c, d) })
+	s.detailProgressCard(c, d)
 	s.resourceView(c, d.Resources)
+}
+
+func (s *viewState) detailProgressCard(c *ui.Context, d *core.RunTaskDetail) {
+	tok := tokens(c)
+	elapsed := ""
+	if !terminal(d.Task.State) && d.Task.State != "cancelling" && !d.Task.AwaitingService {
+		elapsed = s.formatTaskElapsed(c, emptyText(d.Task.StartedAt))
+	}
+	applyMaterial(c, ui.Column(c.Key("detail-progress-card-"+d.Task.TaskId)).FillWidth().MinWidth(0).Gap(tok.Density.CardGap).Padding(tok.Card.Padding), materialCard).Children(func() {
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(tok.Density.Row).Children(func() {
+			heading(c, tr(c, "detail.live_progress_card"), 2)
+			ui.Box(c).Grow(1)
+			if elapsed != "" {
+				applyMaterial(c, ui.Row(c).AlignItems(ui.Center).Gap(tok.Density.Tight).
+					Padding(tok.Density.Hairline, tok.Density.Row), materialSunken).Children(func() {
+					components.Icon(c, lucide.Clock).Size(12, 12).TextColor(tok.Color.FgSecondary)
+					ui.Text(c, elapsed).FontSize(tok.Type.Caption).FontFeatures("tnum").TextColor(tok.Color.FgPrimary).SingleLine()
+				})
+			}
+		})
+		s.detailProgress(c, d)
+	})
 }
 
 func caseStateKind(state string) stateKind {
 	switch state {
-	case "done", "complete":
+	case "done", "complete", "completed":
 		return stateSuccess
 	case "running", "starting":
 		return stateActive
@@ -93,37 +184,30 @@ func caseStateKind(state string) stateKind {
 
 func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 	tok := tokens(c)
-	elapsed := ""
-	if !terminal(d.Task.State) && d.Task.State != "cancelling" && !d.Task.AwaitingService {
-		elapsed = s.formatTaskElapsed(c, emptyText(d.Task.StartedAt))
-	}
 	p := d.Progress
+	isRunning := !terminal(d.Task.State) && d.Task.State != "cancelling"
 	if p == nil {
-		waiting := tr(c, "detail.waiting_progress")
-		if elapsed != "" {
-			ui.Row(c.Key("detail-waiting-elapsed-" + d.Task.TaskId)).Wrap().AlignItems(ui.Center).Gap(tok.Density.Row).Children(func() {
-				ui.Text(c, waiting)
-				ui.Text(c, "· "+elapsed).FontFeatures("tnum").TextColor(tok.Color.FgSecondary)
-			})
-		} else {
-			ui.Text(c, waiting)
-		}
-		progressBar(c, -1, tr(c, "detail.progress_bar_label"))
+		ui.Row(c.Key("detail-waiting-elapsed-" + d.Task.TaskId)).FillWidth().Wrap().AlignItems(ui.Center).Gap(tok.Density.Row).Children(func() {
+			ambientLifecycleDot(c, tok.Color.Active, isRunning)
+			ui.Text(c, tr(c, "detail.waiting_progress")).FontSize(tok.Type.Caption).TextColor(tok.Color.FgSecondary)
+		})
+		progressBar(c, -1, tr(c, "detail.progress_bar_label")).Height(10)
 		return
 	}
 	headline := progressHeadline(p)
 	val := progressValue(p.Done, p.Total)
 	ui.Row(c.Key("detail-elapsed-" + d.Task.TaskId)).FillWidth().Wrap().AlignItems(ui.Center).Gap(tok.Density.Row).Children(func() {
-		ui.Text(c, headline).Bold().FontFeatures("tnum")
-		if elapsed != "" {
-			ui.Text(c, "· "+elapsed).FontFeatures("tnum").TextColor(tok.Color.FgSecondary)
-		}
+		ui.Text(c, headline).Bold().FontSize(tok.Type.Section).FontFeatures("tnum")
 		ui.Box(c).Grow(1)
 		if val >= 0 {
-			ui.Text(c, fmt.Sprintf("%.1f%%", val*100)).Bold().FontFeatures("tnum").TextColor(stateColor(c, stateActive))
+			pctColor := stateColor(c, stateActive)
+			if val >= 1 {
+				pctColor = stateColor(c, stateSuccess)
+			}
+			ui.Text(c, fmt.Sprintf("%.1f%%", val*100)).Bold().FontSize(tok.Type.Metric).FontFeatures("tnum").TextColor(pctColor)
 		}
 	})
-	progressBar(c, val, tr(c, "detail.progress_bar_label"))
+	progressBar(c, val, tr(c, "detail.progress_bar_label")).Height(10)
 
 	var passCount, failCount int
 	for _, item := range p.Cases {
@@ -135,9 +219,13 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 	}
 	applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(tok.Density.Row).
 		Padding(tok.Density.Row, tok.Density.Stack), materialSunken).Children(func() {
-		components.Icon(c, lucide.Play).Size(13, 13).TextColor(stateColor(c, stateActive))
-		ui.Text(c, trf(c, "detail.current_case", "case_id", text(p.CurrentCaseId))).FontSize(tok.Type.Caption).FontFeatures("tnum").TextColor(tok.Color.FgPrimary)
-		ui.Box(c).Grow(1)
+		if isRunning {
+			ambientLifecycleDot(c, tok.Color.Active, true)
+		} else {
+			components.Icon(c, lucide.Play).Size(13, 13).TextColor(tok.Color.FgTertiary)
+		}
+		ui.Text(c, trf(c, "detail.current_case", "case_id", text(p.CurrentCaseId))).
+			FontSize(tok.Type.Caption).FontFeatures("tnum").TextColor(tok.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine()
 		if passCount > 0 {
 			passKey := "pass"
 			inlineBadge(c, fmt.Sprintf("%s %d", reportQuality(&passKey), passCount), stateSuccess, badgeOptions{Size: sizeSM, Style: badgeSoft})
@@ -152,11 +240,13 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 	pages := max(1, (totalCases+detailCasePageSize-1)/detailCasePageSize)
 	s.casesTablePage = min(max(0, s.casesTablePage), pages-1)
 	if pages > 1 {
-		ui.Row(c).AlignItems(ui.Center).Gap(tok.Density.Row).Children(func() {
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(tok.Density.Row).Children(func() {
+			ui.Text(c, trf(c, "detail.table.page_status", "page", s.casesTablePage+1, "totalPages", pages, "count", totalCases)).
+				FontSize(tok.Type.Caption).FontFeatures("tnum").TextColor(tok.Color.FgSecondary)
+			ui.Box(c).Grow(1)
 			if outlineIconButton(c, lucide.ArrowLeft, tr(c, "detail.table.prev_page")).Disabled(s.casesTablePage == 0).Clicked() {
 				s.casesTablePage--
 			}
-			ui.Text(c, trf(c, "detail.table.page_status", "page", s.casesTablePage+1, "totalPages", pages, "count", totalCases)).FontSize(tok.Type.Caption).FontFeatures("tnum")
 			if outlineIconButton(c, lucide.ArrowRight, tr(c, "detail.table.next_page")).Disabled(s.casesTablePage == pages-1).Clicked() {
 				s.casesTablePage++
 			}
@@ -165,39 +255,65 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 	start := s.casesTablePage * detailCasePageSize
 	visibleCases := p.Cases[start:min(start+detailCasePageSize, totalCases)]
 	columns := []ui.TableColumn{
-		{Title: tr(c, "detail.col.case"), Width: 180},
-		{Title: tr(c, "detail.col.status"), Width: 140},
-		{Title: tr(c, "detail.col.category"), Width: 110},
-		{Title: tr(c, "detail.col.quality"), Width: 100},
-		{Title: tr(c, "detail.col.duration"), Width: 100},
-		{Title: tr(c, "detail.col.error_category"), Width: 160},
+		{Title: tr(c, "detail.col.case"), MinWidth: 180},
+		{Title: tr(c, "detail.col.status"), MinWidth: 120},
+		{Title: tr(c, "detail.col.category"), MinWidth: 100},
+		{Title: tr(c, "detail.col.quality"), MinWidth: 96},
+		{Title: tr(c, "detail.col.duration"), MinWidth: 96},
+		{Title: tr(c, "detail.col.error_category"), MinWidth: 150},
 	}
 	s.casesTable.Key = func(i int) any { return visibleCases[i].CaseId }
 	tableLabel := tr(c, "detail.cases_table_label")
-	pageTable(c, &s.casesTable, tableLabel, columns, len(visibleCases), func(row, col int) {
-		item := visibleCases[row]
-		switch col {
-		case 1:
-			inlineBadge(c, stateLabel(item.State), caseStateKind(item.State), badgeOptions{Size: sizeSM, Style: badgeDot})
-			return
-		case 3:
-			qText := caseQuality(item)
-			qColor := tok.Color.FgSecondary
-			switch emptyText(item.QualityState) {
-			case "pass", "passed":
-				qColor = stateColor(c, stateSuccess)
-			case "fail", "failed":
-				qColor = stateColor(c, stateDanger)
+	applyMaterial(c, ui.Box(c).FillWidth().MinWidth(0).Clip(), materialInset).Children(func() {
+		pageTable(c, &s.casesTable, tableLabel, columns, len(visibleCases), func(row, col int) {
+			item := visibleCases[row]
+			switch col {
+			case 0:
+				ui.Text(c, item.CaseId).FontFeatures("tnum").SingleLine().Selectable()
+				return
+			case 1:
+				inlineBadge(c, stateLabel(item.State), caseStateKind(item.State), badgeOptions{Size: sizeSM, Style: badgeDot})
+				return
+			case 2:
+				catText := optionalText(item.Category)
+				catColor := tok.Color.FgSecondary
+				if item.Category == nil || *item.Category == "" {
+					catColor = tok.Color.FgTertiary
+				}
+				ui.Text(c, catText).TextColor(catColor).SingleLine().Selectable()
+				return
+			case 3:
+				qText := caseQuality(item)
+				switch emptyText(item.QualityState) {
+				case "pass", "passed":
+					inlineBadge(c, qText, stateSuccess, badgeOptions{Size: sizeSM, Style: badgeSoft})
+				case "fail", "failed":
+					inlineBadge(c, qText, stateDanger, badgeOptions{Size: sizeSM, Style: badgeSoft})
+				case "unscorable":
+					inlineBadge(c, qText, stateWarning, badgeOptions{Size: sizeSM, Style: badgeSoft})
+				default:
+					ui.Text(c, qText).FontSize(tok.Type.Caption).TextColor(tok.Color.FgTertiary).SingleLine().Selectable()
+				}
+				return
+			case 4:
+				durText := formatDurationMs(item.DurationMs)
+				durColor := tok.Color.FgPrimary
+				if item.DurationMs == nil {
+					durColor = tok.Color.FgTertiary
+				}
+				ui.Text(c, durText).FontFeatures("tnum").TextColor(durColor).SingleLine().Selectable()
+				return
+			case 5:
+				errText := caseErrorCategory(item)
+				errColor := tok.Color.FgTertiary
+				if item.ErrorCategory != nil && *item.ErrorCategory != "" {
+					errColor = stateScale(c, stateDanger).Fg
+				}
+				ui.Text(c, errText).TextColor(errColor).SingleLine().Selectable()
+				return
 			}
-			ui.Text(c, qText).TextColor(qColor).Selectable()
-			return
-		}
-		values := []string{item.CaseId, "", optionalText(item.Category), "", formatDurationMs(item.DurationMs), caseErrorCategory(item)}
-		cell := ui.Text(c, values[col]).Selectable()
-		if col == 4 {
-			cell.FontFeatures("tnum")
-		}
-	}).Height(detailCasesTableHeight(c.Theme(), len(visibleCases))).Label(tableLabel)
+		}).Height(detailCasesTableHeight(c.Theme(), len(visibleCases))).Label(tableLabel)
+	})
 }
 
 // detailCasesTableMaxHeight caps the live-progress case table so long runs

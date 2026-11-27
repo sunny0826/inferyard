@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 )
@@ -158,17 +159,25 @@ func (s *viewState) reportView(c *ui.Context) {
 		return
 	}
 	run := report.index.Runs[report.run]
-	ui.Text(c, id+" · "+reportText(run.Facets.BundleLabel)).TextColor(c.Theme().TextMuted)
-	if len(report.index.Runs) > 1 {
-		report.runPicker(c)
-		run = report.index.Runs[report.run]
-	}
-	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-		exclusivityBadge(c, s.reportExclusivity(report.reference))
-		if run.Diagnostic {
-			statusBadge(c, tr(c, "reports.detail.diagnostic_badge"), stateColor(c, stateWarning))
+	t := tokens(c)
+	applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Stack).
+		Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
+		modelIconBox(c, s.modelIconHint(reportModel(run)), 28, t.Radius.SM)
+		ui.Row(c).Grow(1).MinWidth(200).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			ui.Text(c, id+" · "+reportText(run.Facets.BundleLabel)).
+				FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine().Selectable()
+			exclusivityBadge(c, s.reportExclusivity(report.reference))
+			if run.Diagnostic {
+				inlineBadge(c, tr(c, "reports.detail.diagnostic_badge"), stateWarning, badgeOptions{Size: sizeSM, Style: badgeSoft})
+			}
+		})
+		if len(report.index.Runs) > 1 {
+			report.runPicker(c)
 		}
 	})
+	if len(report.index.Runs) > 1 {
+		run = report.index.Runs[report.run]
+	}
 	reportMetrics(c, run)
 	s.reportSVGSection(c, report, run)
 	reportSummaryGrid(c,
@@ -181,6 +190,73 @@ func (s *viewState) reportView(c *ui.Context) {
 		func(c *ui.Context) { reportSourceView(c, run) },
 	)
 	report.requestView(c, run)
+}
+
+func reportSectionCard(c *ui.Context, icon func() *ui.SVG, title string, trailing func(), body func()) {
+	t := tokens(c)
+	applyMaterial(c, ui.Column(c).FillWidth().MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			if icon != nil {
+				components.Icon(c, icon).Size(15, 15).TextColor(t.Color.FgSecondary).Shrink(0)
+			}
+			heading(c, title, 2)
+			if trailing != nil {
+				ui.Box(c).Grow(1)
+				trailing()
+			}
+		})
+		if body != nil {
+			body()
+		}
+	})
+}
+
+func reportKVRow(c *ui.Context, label, value string, tabular, muted, emphasize bool) {
+	t := tokens(c)
+	ariaLabel := trf(c, "device.row.aria_label", "label", label, "value", value)
+	valColor := t.Color.FgPrimary
+	if muted || value == "" || value == "—" {
+		valColor = t.Color.FgTertiary
+	}
+	renderVal := func() {
+		el := ui.Text(c, value).TextColor(valColor).Selectable().Label(ariaLabel)
+		if tabular {
+			el.FontFeatures("tnum")
+		}
+		if emphasize && !muted && value != "—" {
+			el.Bold()
+		}
+	}
+	if compactLayout(c) {
+		ui.Column(c).FillWidth().Gap(2).Padding(t.Density.Tight, 0).Children(func() {
+			ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			renderVal()
+		})
+		return
+	}
+	ui.Row(c).FillWidth().AlignItems(ui.Start).Gap(t.Density.Stack).Padding(t.Density.Tight+1, 0).Children(func() {
+		ui.Box(c).Width(c.Theme().Rem(9)).Shrink(0).Padding(1, 0, 0, 0).Children(func() {
+			ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		})
+		ui.Box(c).Grow(1).MinWidth(0).Children(renderVal)
+	})
+}
+
+func reportKVDivider(c *ui.Context) {
+	ui.Box(c).FillWidth().Height(1).Background(tokens(c).Color.BorderSubtle)
+}
+
+func stopReasonStateKind(raw string) stateKind {
+	switch raw {
+	case "plan_finished", "completed":
+		return stateSuccess
+	case "run_in_progress":
+		return stateActive
+	case "user_cancelled", "cancelled", "interrupted_checkpoint", "diagnostic_run_not_formal", "unscorable_case", "service_stop_unconfirmed":
+		return stateWarning
+	default:
+		return stateNeutral
+	}
 }
 
 func reportSummaryGrid(c *ui.Context, cards ...func(*ui.Context)) {
@@ -198,9 +274,35 @@ func reportSummaryGrid(c *ui.Context, cards ...func(*ui.Context)) {
 }
 
 func reportSourceView(c *ui.Context, run core.ReportRun) {
-	card(c, tr(c, "reports.detail.source.title"), func() {
-		deviceRow(c, tr(c, "reports.detail.source.run"), reportText(run.Source.RunID))
-		deviceRow(c, tr(c, "reports.detail.source.stop_reason"), stopReasonLabelFor(c, run.Summary.StopReason))
+	t := tokens(c)
+	reportSectionCard(c, lucide.Server, tr(c, "reports.detail.source.title"), nil, func() {
+		ui.Column(c).FillWidth().Gap(0).Children(func() {
+			reportKVRow(c, tr(c, "reports.detail.source.run"), reportText(run.Source.RunID), true, run.Source.RunID == "", false)
+			reportKVDivider(c)
+			label := tr(c, "reports.detail.source.stop_reason")
+			val := stopReasonLabelFor(c, run.Summary.StopReason)
+			if compactLayout(c) {
+				ui.Column(c).FillWidth().Gap(2).Padding(t.Density.Tight, 0).Children(func() {
+					ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+					if run.Summary.StopReason == "" {
+						ui.Text(c, val).TextColor(t.Color.FgTertiary)
+					} else {
+						inlineBadge(c, val, stopReasonStateKind(run.Summary.StopReason), badgeOptions{Size: sizeSM, Style: badgeDot})
+					}
+				})
+				return
+			}
+			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).Padding(t.Density.Tight+1, 0).Children(func() {
+				ui.Box(c).Width(c.Theme().Rem(9)).Shrink(0).Children(func() {
+					ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				})
+				if run.Summary.StopReason == "" {
+					ui.Text(c, val).TextColor(t.Color.FgTertiary)
+				} else {
+					inlineBadge(c, val, stopReasonStateKind(run.Summary.StopReason), badgeOptions{Size: sizeSM, Style: badgeDot})
+				}
+			})
+		})
 	})
 }
 
@@ -234,11 +336,13 @@ func stopReasonLabelFor(c *ui.Context, raw string) string {
 }
 
 func (r *reportViewState) runPicker(c *ui.Context) {
+	t := tokens(c)
 	pickerLabel := tr(c, "reports.detail.select_run")
-	ui.Field(c, pickerLabel, func() {
+	ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Shrink(0).Children(func() {
+		ui.Text(c, pickerLabel).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
 		selectRun := studioSelect(c, &r.run)
 		selectRun.Trigger.Label(pickerLabel).Value(reportRunLabel(r.index.Runs[r.run])).Children(func() {
-			ui.Text(c, reportRunLabel(r.index.Runs[r.run])).SingleLine()
+			ui.Text(c, reportRunLabel(r.index.Runs[r.run])).FontSize(t.Type.Caption).SingleLine()
 		})
 		selectRun.Popup(func(panel ui.Element) {
 			for i, run := range r.index.Runs {
@@ -268,19 +372,24 @@ func reportModel(run core.ReportRun) string {
 }
 
 func reportProfileView(c *ui.Context, run core.ReportRun) {
-	card(c, tr(c, "reports.detail.profile.title"), func() {
-		deviceRow(c, tr(c, "reports.detail.profile.model"), reportModel(run))
-		engine := displayName(emptyText(run.Profile.Engine.BinaryPath))
-		if engine == "" {
-			engine = run.Profile.Engine.Adapter
-		}
-		backend := strings.ToUpper(run.Profile.Engine.Backend)
-		if backend == "METAL" {
-			backend = "Metal"
-		}
-		deviceRow(c, tr(c, "reports.detail.profile.engine"), trf(c, "reports.detail.profile.engine_value", "engine", reportText(engine), "backend", reportText(backend), "threads", reportNumber(run.Threads)))
-		machine := run.Profile.Machine
-		deviceRow(c, tr(c, "reports.detail.profile.machine"), trf(c, "reports.detail.profile.machine_value", "cpu", reportText(emptyText(machine.CPU)), "cores", reportNumber(machine.LogicalCPUs), "memory", reportScaled(machine.MemoryTotalBytes, 1<<30, "GiB")))
-		deviceRow(c, tr(c, "reports.detail.profile.bundle"), reportText(run.Facets.BundleLabel))
+	reportSectionCard(c, lucide.Cpu, tr(c, "reports.detail.profile.title"), nil, func() {
+		ui.Column(c).FillWidth().Gap(0).Children(func() {
+			reportKVRow(c, tr(c, "reports.detail.profile.model"), reportModel(run), false, false, true)
+			reportKVDivider(c)
+			engine := displayName(emptyText(run.Profile.Engine.BinaryPath))
+			if engine == "" {
+				engine = run.Profile.Engine.Adapter
+			}
+			backend := strings.ToUpper(run.Profile.Engine.Backend)
+			if backend == "METAL" {
+				backend = "Metal"
+			}
+			reportKVRow(c, tr(c, "reports.detail.profile.engine"), trf(c, "reports.detail.profile.engine_value", "engine", reportText(engine), "backend", reportText(backend), "threads", reportNumber(run.Threads)), true, false, false)
+			reportKVDivider(c)
+			machine := run.Profile.Machine
+			reportKVRow(c, tr(c, "reports.detail.profile.machine"), trf(c, "reports.detail.profile.machine_value", "cpu", reportText(emptyText(machine.CPU)), "cores", reportNumber(machine.LogicalCPUs), "memory", reportScaled(machine.MemoryTotalBytes, 1<<30, "GiB")), true, false, false)
+			reportKVDivider(c)
+			reportKVRow(c, tr(c, "reports.detail.profile.bundle"), reportText(run.Facets.BundleLabel), false, run.Facets.BundleLabel == "", false)
+		})
 	})
 }
