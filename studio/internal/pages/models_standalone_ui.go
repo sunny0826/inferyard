@@ -258,6 +258,9 @@ func (s *viewState) renderModelStandalonePrimaryAction(c *ui.Context, m core.Mod
 	if reason == "" && s.serveProbing {
 		reason = tr(c, "models.serve.blocked.probing")
 	}
+	if reason == "" && len(s.standaloneEngineOptions(m)) == 0 && s.checks.Checking == 0 && !s.engineVerifyPending {
+		reason = tr(c, "models.serve.drawer.no_engine")
+	}
 	if modelRowButtonClicked(c, render, icon, label, m.Name, reason) {
 		s.requestStandaloneStart(m, retry)
 	}

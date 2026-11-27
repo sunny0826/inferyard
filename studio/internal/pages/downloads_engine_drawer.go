@@ -307,6 +307,7 @@ func (s *viewState) engineDrawerFooter(
 					})
 				}
 			})
+			releaseInstalled := s.isCatalogEngineReleaseInstalled(family.ID, rel)
 			ui.Box(c).Grow(1)
 			switch {
 			case build.AcquireMode == core.EngineAcquireManagedSetup && (build.Platform == hostPlatform || build.Platform == "any"):
@@ -316,7 +317,7 @@ func (s *viewState) engineDrawerFooter(
 				}
 				if s.downloadActive("polystrata") {
 					primaryButton(c, tr(c, "downloads.action.installing")).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(true)
-				} else if hasPolystrataOpt && s.isStarterOptionInstalled(polystrataSelected) {
+				} else if (hasPolystrataOpt && s.isStarterOptionInstalled(polystrataSelected)) || (!hasPolystrataOpt && releaseInstalled) {
 					button(c, tr(c, "downloads.starter.cta.ready")).Disabled(true)
 				} else {
 					primaryButton(c, ctaLabel).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(s.busy || !hasPolystrataOpt).OnClick(func() {
@@ -331,6 +332,8 @@ func (s *viewState) engineDrawerFooter(
 			case build.CanManagedVenvInstallOn(hostPlatform):
 				if s.isEngineFamilyDownloading(family) {
 					primaryButton(c, tr(c, "downloads.action.installing")).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(true)
+				} else if releaseInstalled {
+					button(c, tr(c, "downloads.starter.cta.ready")).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(true)
 				} else {
 					primaryButton(c, tr(c, "downloads.engine_drawer.install_version")).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(s.busy).OnClick(func() {
 						st.engineDrawerOpen = false
@@ -340,6 +343,8 @@ func (s *viewState) engineDrawerFooter(
 			case build.CanDirectDownloadOn(hostPlatform):
 				if s.isEngineSourceDownloading(build.PrimaryURL()) {
 					primaryButton(c, tr(c, "downloads.action.downloading")).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(true)
+				} else if releaseInstalled {
+					button(c, tr(c, "downloads.starter.cta.ready")).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(true)
 				} else {
 					primaryButton(c, tr(c, "downloads.engine_drawer.install_version")).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(s.busy).OnClick(func() {
 						s.acquireEngine(build.PrimaryURL(), "")

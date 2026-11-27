@@ -141,6 +141,7 @@ func modelTaskAction(c *ui.Context, s *viewState, model core.ModelAsset) {
 	}
 	if modelRowButtonClicked(c, outlineIconButton, lucide.Gauge, label, model.Name, reason) {
 		s.model = model.Name
+		s.reconcileEngineForModel(model.Name)
 		s.newBenchmark()
 	}
 }
@@ -292,6 +293,26 @@ func (s *viewState) adoptDownloadedEngine() {
 	if s.engine != "" {
 		return
 	}
+	if s.model != "" {
+		if model, ok := s.findModelAsset(s.model); ok && model.Available {
+			if adopted := s.findAdoptedEngine(func(e core.EngineAsset) bool {
+				return compatibleBenchmarkEngine(model, e)
+			}); adopted != "" {
+				s.engine = adopted
+				return
+			}
+		}
+	}
+	if adopted := s.findAdoptedEngine(nil); adopted != "" {
+		s.engine = adopted
+		return
+	}
+	if !s.checks.Supported && len(s.registry.Engines) > 0 {
+		s.engine = s.registry.DefaultEngine
+	}
+}
+
+func (s *viewState) findAdoptedEngine(filter func(core.EngineAsset) bool) string {
 	for _, task := range s.downloads {
 		if task.State != "done" || (task.Kind != "polystrata" && task.Kind != "engine") {
 			continue
@@ -307,19 +328,21 @@ func (s *viewState) adoptDownloadedEngine() {
 			if cleanMatchPath(e.Path) != wantPath {
 				continue
 			}
+			if filter != nil && !filter(e) {
+				continue
+			}
 			if s.checks.Engines[e.Name].State == core.EngineCheckEligible || !s.checks.Supported {
-				s.engine = e.Name
-				return
+				return e.Name
 			}
 		}
 	}
 	for _, e := range s.registry.Engines {
-		if s.checks.Engines[e.Name].State == core.EngineCheckEligible {
-			s.engine = e.Name
-			return
+		if filter != nil && !filter(e) {
+			continue
+		}
+		if s.checks.Engines[e.Name].State == core.EngineCheckEligible || (!s.checks.Supported && filter != nil && s.checks.Engines[e.Name].State != core.EngineCheckIneligible) {
+			return e.Name
 		}
 	}
-	if !s.checks.Supported && len(s.registry.Engines) > 0 {
-		s.engine = s.registry.DefaultEngine
-	}
+	return ""
 }

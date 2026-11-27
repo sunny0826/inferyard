@@ -286,6 +286,7 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 	displayName := orig.Task.DisplayName
 	totalBytes := orig.Task.TotalBytes
 	prevDataDir := orig.dataDir
+	prevReplacedEngine := orig.replacedEngine
 	prevModelSource := strings.TrimSpace(orig.Task.ModelSource)
 	if prevModelSource == "" && polystrataCopy != nil {
 		prevModelSource = strings.TrimSpace(polystrataCopy.ModelSource)
@@ -414,8 +415,9 @@ func (s *Service) RetryDownload(taskID string) (DownloadTask, *ApiError) {
 		tokenEnv:   tokenEnv,
 		resume:     resume,
 		retryOf:    taskID,
-		polystrata: polystrataCopy,
-		dataDir:    prevDataDir,
+		polystrata:     polystrataCopy,
+		dataDir:        prevDataDir,
+		replacedEngine: prevReplacedEngine,
 	}
 	s.downloads = append(s.downloads, entry)
 	s.Bus.Publish("download.state", map[string]any{"task": clone(entry.Task)})

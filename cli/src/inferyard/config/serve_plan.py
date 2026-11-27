@@ -26,7 +26,7 @@ from inferyard.provisioning.runtime_profiles import exact_value, load_profile, o
 from inferyard.provisioning.runtime_verification import inside_file
 
 _RUN_ID_INVALID = re.compile(r"[^A-Za-z0-9_.-]+")
-_UNSUPPORTED_SERVE_FAMILIES = ("lmstudio", "mlx-lm")
+_UNSUPPORTED_SERVE_FAMILIES = ("lmstudio",)
 _RECEIPT_KEYS = {
     "kind",
     "schema_version",

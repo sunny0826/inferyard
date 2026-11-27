@@ -13,7 +13,12 @@ func int64Ptr(v int64) *int64 { return &v }
 
 func TestModelRowActionReadiness(t *testing.T) {
 	s := readyState("library")
-	model := core.ModelAsset{Name: "m1.gguf", Available: true}
+	model := core.ModelAsset{Name: "m1.gguf", Format: "gguf", Available: true}
+	s.registry.Engines = []core.EngineAsset{{Name: "llama-ok", Family: "llama-cpp"}}
+	s.checks = core.EngineCheckOverview{
+		Supported: true,
+		Engines:   map[string]core.EngineEligibility{"llama-ok": {State: core.EngineCheckEligible}},
+	}
 	tt := ui.NewTester(func(c *ui.Context) {
 		s.renderModelStandalonePrimaryAction(c, model)
 		modelTaskAction(c, s, model)
@@ -51,6 +56,9 @@ func TestModelRowActionReadiness(t *testing.T) {
 	check(bench, "models.action.blocked.busy")
 	s.busy = false
 	check(start, "")
+	check(bench, "")
+	s.registry.Engines = nil
+	check(start, "models.serve.drawer.no_engine")
 	check(bench, "")
 }
 
@@ -91,8 +99,8 @@ func TestStandaloneEngineFilteringAndDefaults(t *testing.T) {
 
 	dirModel := core.ModelAsset{Name: "hf-dir", Format: "directory", Available: true}
 	dirOpts := s.standaloneEngineOptions(dirModel)
-	if len(dirOpts) != 1 || dirOpts[0].Value != "vllm-ok" {
-		t.Fatalf("expected only vllm-ok (excluding mlx-lm), got %+v", dirOpts)
+	if len(dirOpts) != 2 || dirOpts[0].Value != "mlx" || dirOpts[1].Value != "vllm-ok" {
+		t.Fatalf("expected [mlx, vllm-ok] for directory model, got %+v", dirOpts)
 	}
 }
 

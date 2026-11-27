@@ -35,15 +35,16 @@ func (s *Service) extractInstalledVersion(ctx context.Context, entry registryEnt
 			return ver
 		}
 	}
-	if ver := installedVersionFromRegistryEntry(entry); ver != "" {
-		return ver
-	}
 	switch familyID {
 	case "mlx-lm", "vllm", "sglang":
 		if ver := readVenvPackageVersion(entry, familyID); ver != "" {
 			return ver
 		}
-	case "llama-cpp":
+	}
+	if ver := installedVersionFromRegistryEntry(entry); ver != "" {
+		return ver
+	}
+	if familyID == "llama-cpp" {
 		binPath := resolveEngineExecutablePath(entry)
 		if binPath != "" {
 			if cached, ok := s.cachedBinaryVersion(binPath); ok {

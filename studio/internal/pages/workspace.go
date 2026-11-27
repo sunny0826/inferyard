@@ -54,6 +54,7 @@ func (s *viewState) clearBenchmark() {
 	}
 	s.task = benchmarkTask{}
 	s.skipAutoModelAdopt = false
+	s.lastCandidateModel, s.lastCandidateEngine, s.lastCandidateInit = "", "", false
 	s.selectedBundles = nil
 	s.focusedRun = ""
 	s.newTaskPending = false

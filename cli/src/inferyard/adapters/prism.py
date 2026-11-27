@@ -20,6 +20,7 @@ from inferyard.contracts.redaction import Redactor
 from inferyard.contracts.template_identity import (
     PRISM_BUILD,
     PRISM_TEMPLATE_PROFILE,
+    matches_prism_build,
     matches_template,
 )
 from inferyard.platforms.identity import resolve_loopback_origin
@@ -291,8 +292,14 @@ class PrismAdapter:
 
     async def verify_properties(self, config: dict) -> dict:
         props = await self.management("/props")
-        if not isinstance(props, dict) or props.get("build_info") != self.build_info:
+        valid_build = isinstance(props, dict) and (
+            props.get("build_info") == self.build_info
+            if self.build_info != BUILD
+            else matches_prism_build(config["engine"]["release"], props.get("build_info"))
+        )
+        if not valid_build:
             raise PreflightError("unsupported_engine_build")
+        self._verified_build_info = props["build_info"]
         if (
             props.get("total_slots") != getattr(self, "expected_slots", 1)
             or props.get("default_generation_settings", {}).get("n_ctx")
@@ -375,7 +382,8 @@ class PrismAdapter:
             "template_count_matches_usage": True,
             "stop": {
                 "value": config["generation"]["stop"],
-                "source": self.build_info + ":request_mapping",
+                "source": getattr(self, "_verified_build_info", self.build_info)
+                + ":request_mapping",
             },
             "reasoning": {
                 "value": config["generation"]["reasoning_mode"],

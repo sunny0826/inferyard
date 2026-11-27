@@ -382,5 +382,14 @@ func managedBinaryReceipt(sourceURL string) managedEngineReceipt {
 			}
 		}
 	}
+	if tag := extractTagFromReleaseURL(sourceURL); tag != "" {
+		receipt.Version = tag
+	} else if m := urlReleaseTagPattern.FindStringSubmatch(strings.TrimSpace(sourceURL)); len(m) >= 2 && strings.TrimSpace(m[1]) != "" {
+		receipt.Version = strings.TrimSpace(m[1])
+	}
+	lowerURL := strings.ToLower(sourceURL)
+	if strings.Contains(lowerURL, "prismml-eng/llama.cpp") || strings.Contains(lowerURL, "ggml-org/llama.cpp") {
+		receipt.Family = "llama-cpp"
+	}
 	return receipt
 }

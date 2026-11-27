@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"slices"
 	"strconv"
 	"time"
 
@@ -98,25 +97,10 @@ func (s *viewState) localCandidateRequest(bundles []string, reused *core.EngineS
 }
 
 func (s *viewState) compatibleModel(model core.ModelAsset) bool {
-	engine := s.localEngine()
-	if engine == nil {
-		return model.Format != "directory" && model.Format != "strata_pack"
+	if eng, ok := s.findEngineAsset(s.engine); ok {
+		return compatibleBenchmarkEngine(model, eng)
 	}
-	switch engine.Family {
-	case "llama-cpp", "lmstudio":
-		return model.Format != "directory" && model.Format != "strata_pack"
-	case "polystrata":
-		if model.Format == "strata_pack" {
-			return true
-		}
-		if model.Format != "gguf" {
-			return false
-		}
-		return model.Architecture == "" || slices.Contains(polystrataSupportedGGUFArchs, model.Architecture)
-	case "mlx-lm", "vllm", "sglang":
-		return model.Format == "directory"
-	}
-	return false
+	return compatibleBenchmarkEngine(model, core.EngineAsset{})
 }
 
 func modelLabel(model core.ModelAsset) string {

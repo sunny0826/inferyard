@@ -81,6 +81,11 @@ func TestCorePageIconButtons(t *testing.T) {
 		s.serveSupported = true
 		model := core.ModelAsset{Name: "model.gguf", Format: "gguf", Available: true}
 		s.registry.Models = []core.ModelAsset{model}
+		s.registry.Engines = []core.EngineAsset{{Name: "llama-ok", Family: "llama-cpp"}}
+		s.checks = core.EngineCheckOverview{
+			Supported: true,
+			Engines:   map[string]core.EngineEligibility{"llama-ok": {State: core.EngineCheckEligible}},
+		}
 		wizardOpen := false
 		tt := ui.NewTester(func(c *ui.Context) {
 			ui.Column(c).Children(func() {

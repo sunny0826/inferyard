@@ -53,11 +53,12 @@ func (w *viewState) candidateFields(c *ui.Context) {
 	w.verifyTaskEngines()
 	w.adoptDownloadedEngine()
 	w.adoptOnlyModel()
+	w.reconcileCandidateBeforeRender()
 
 	modelOptions := []components.NativeSelectOption[string]{{Value: "", Label: tr(c, "dashboard.candidate.select_model")}}
 	for _, m := range w.registry.Models {
 		if m.Available {
-			modelOptions = append(modelOptions, components.NativeSelectOption[string]{Value: m.Name, Label: modelLabel(m) + w.incompatibleModelSuffix(m), Disabled: w.engine != "" && !w.compatibleModel(m)})
+			modelOptions = append(modelOptions, components.NativeSelectOption[string]{Value: m.Name, Label: modelLabel(m) + w.candidateModelSuffix(m)})
 		}
 	}
 
@@ -71,10 +72,13 @@ func (w *viewState) candidateFields(c *ui.Context) {
 	if compactLayout(c) {
 		cols = 1
 	}
+	prevModel, prevEngine := w.model, w.engine
 	ui.Grid(c).FillWidth().Columns(cols).Gap(t.Density.Stack).Children(func() {
 		selectField(c, tr(c, "dashboard.candidate.engine"), engineHint, &w.engine, engineOptions)
 		selectField(c, tr(c, "dashboard.candidate.model"), "", &w.model, modelOptions)
 	})
+	w.applyCandidateSelectionDiff(prevModel, prevEngine)
+	w.recordCandidateSelection()
 	if w.checks.Checking > 0 {
 		ui.Text(c, trf(c, "dashboard.candidate.verifying_engines", "count", w.checks.Checking)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 	}

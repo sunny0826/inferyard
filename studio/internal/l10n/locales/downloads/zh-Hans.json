@@ -64,6 +64,7 @@
   "downloads.engine_drawer.stable_only": "仅正式版",
   "downloads.engine_drawer.title": "引擎详情",
   "downloads.engine_drawer.version_list": "版本列表",
+  "downloads.engines.all_installed": "当前平台目录引擎均已安装。",
   "downloads.engines.configure_install": "配置并安装",
   "downloads.engines.custom_url_fold": "自定义引擎地址",
   "downloads.engines.custom_url_label": "引擎归档 URL",
