@@ -114,8 +114,8 @@ func (s *viewState) caseDetailDrawer(c *ui.Context, modalKey string, open *bool,
 	if split {
 		modalW = min(float32(940), max(float32(720), winW-80))
 	}
-	maxModalH := min(float32(680), max(float32(360), winH-96))
-	bodyMaxH := max(float32(200), maxModalH-152)
+	maxModalH := min(float32(680), max(float32(340), winH-96))
+	bodyMaxH := max(float32(200), maxModalH-92)
 
 	ariaTitle := tr(c, "detail.case_drawer.title")
 	headerTitle := item.CaseID
@@ -161,16 +161,12 @@ func (s *viewState) caseDetailDrawer(c *ui.Context, modalKey string, open *bool,
 			}
 			panel.Clicked()
 			panel.Children(func() {
-				// 1. Header: Case ID + Status/Quality + Metadata strip + Close
+				// 1. Header: Case ID + Status/Quality + Metadata strip on left; Prev/Next + single Close on right
 				s.caseModalHeader(c, headerTitle, item, func() { *open = false })
 				ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
 
-				// 2. Body: Split side-by-side (when prompt & response on wide screen) or focused single pane
+				// 2. Body: Edge-to-edge split Q&A or focused single-column prompt reaching the bottom radius
 				s.caseModalBody(c, item, hasPrompt, hasResponse, split, bodyMaxH)
-
-				// 3. Footer: Prev/Next case navigator + Close
-				ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
-				s.caseModalFooter(c, item, func() { *open = false })
 			})
 		})
 	})
@@ -178,11 +174,14 @@ func (s *viewState) caseDetailDrawer(c *ui.Context, modalKey string, open *bool,
 
 func (s *viewState) caseModalHeader(c *ui.Context, headerTitle string, item caseDetailItem, onClose func()) {
 	t := tokens(c)
-	ui.Column(c).FillWidth().Gap(t.Density.Row).
-		Padding(t.Density.Section, t.Density.Page, t.Density.Stack, t.Density.Page).
+	hasCat := item.Category != "" && item.Category != "—"
+	hasDur := item.DurationText != "" && item.DurationText != "—"
+	hasErr := item.ErrorCategory != ""
+	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).
+		Padding(t.Density.Section, t.Density.Page, t.Density.Section-2, t.Density.Page).
 		Background(t.Color.Elevated).Children(func() {
-		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			ui.Row(c).Grow(1).MinWidth(0).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight + 2).Children(func() {
+			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, headerTitle).Bold().FontSize(t.Type.CardTitle + 2).FontFeatures("tnum").
 					TextColor(t.Color.FgPrimary).SingleLine().Selectable()
 				if item.StateLabel != "" {
@@ -194,33 +193,45 @@ func (s *viewState) caseModalHeader(c *ui.Context, headerTitle string, item case
 					inlineBadge(c, item.QualityText, stateNeutral, badgeOptions{Size: sizeSM, Style: badgeSoft})
 				}
 			})
-			if caseModalIconButton(c, components.ButtonGhost, lucide.X, 14, tr(c, "common.close"), false).Clicked() {
-				onClose()
+			if hasCat || hasDur || hasErr {
+				ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Stack).Children(func() {
+					if hasCat {
+						ui.Row(c).AlignItems(ui.Center).Gap(5).Children(func() {
+							components.Icon(c, lucide.Layers).Size(12, 12).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
+							ui.Text(c, item.Category).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
+						})
+					}
+					if hasDur {
+						ui.Row(c).AlignItems(ui.Center).Gap(5).Children(func() {
+							components.Icon(c, lucide.Clock).Size(12, 12).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
+							ui.Text(c, item.DurationText).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
+						})
+					}
+					if hasErr {
+						inlineBadge(c, item.ErrorCategory, stateDanger, badgeOptions{Size: sizeSM, Style: badgeSoft})
+					}
+				})
 			}
 		})
 
-		hasCat := item.Category != "" && item.Category != "—"
-		hasDur := item.DurationText != "" && item.DurationText != "—"
-		hasErr := item.ErrorCategory != ""
-		if hasCat || hasDur || hasErr {
-			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Stack).Children(func() {
-				if hasCat {
-					ui.Row(c).AlignItems(ui.Center).Gap(5).Children(func() {
-						components.Icon(c, lucide.Layers).Size(12, 12).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
-						ui.Text(c, item.Category).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
-					})
-				}
-				if hasDur {
-					ui.Row(c).AlignItems(ui.Center).Gap(5).Children(func() {
-						components.Icon(c, lucide.Clock).Size(12, 12).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
-						ui.Text(c, item.DurationText).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
-					})
-				}
-				if hasErr {
-					inlineBadge(c, item.ErrorCategory, stateDanger, badgeOptions{Size: sizeSM, Style: badgeSoft})
-				}
-			})
-		}
+		ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			if item.Total > 1 {
+				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
+					if caseModalIconButton(c, components.ButtonOutline, lucide.ArrowLeft, 13, tr(c, "detail.case_drawer.prev_case"), item.OnPrev == nil).Clicked() && item.OnPrev != nil {
+						item.OnPrev()
+					}
+					ui.Text(c, fmt.Sprintf("%d / %d", item.Index+1, item.Total)).
+						FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
+					if caseModalIconButton(c, components.ButtonOutline, lucide.ArrowRight, 13, tr(c, "detail.case_drawer.next_case"), item.OnNext == nil).Clicked() && item.OnNext != nil {
+						item.OnNext()
+					}
+				})
+				ui.Box(c).Width(1).Height(18).Shrink(0).Background(t.Color.BorderSubtle)
+			}
+			if caseModalIconButton(c, components.ButtonGhost, lucide.X, 15, tr(c, "common.close"), false).Clicked() {
+				onClose()
+			}
+		})
 	})
 }
 
@@ -276,11 +287,11 @@ func (s *viewState) caseModalBody(c *ui.Context, item caseDetailItem, hasPrompt,
 	ui.Scroll(c.Key("case-single-scroll-" + item.Key)).FillWidth().MaxHeight(bodyMaxH).Children(func() {
 		ui.Column(c).FillWidth().Gap(0).Children(func() {
 			if hasPrompt {
-				ui.Column(c).FillWidth().MinHeight(148).Background(t.Color.Sunken).Children(func() {
+				ui.Column(c).FillWidth().MinHeight(124).Background(t.Color.Sunken).Children(func() {
 					s.casePaneHeader(c, lucide.FileText, t.Color.FgTertiary,
 						tr(c, "detail.case_drawer.prompt_title"), tr(c, "detail.case_drawer.copy_prompt"),
 						item.Prompt, t.Density.Page, t.Density.Page)
-					ui.Column(c).FillWidth().Padding(0, t.Density.Page, t.Density.Section+4, t.Density.Page).Children(func() {
+					ui.Column(c).FillWidth().Padding(0, t.Density.Page, t.Density.Page, t.Density.Page).Children(func() {
 						ui.Text(c, item.Prompt).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).Selectable()
 					})
 				})
@@ -293,11 +304,11 @@ func (s *viewState) caseModalBody(c *ui.Context, item caseDetailItem, hasPrompt,
 				if hasPrompt {
 					ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
 				}
-				ui.Column(c).FillWidth().MinHeight(148).Background(t.Color.Surface).Children(func() {
+				ui.Column(c).FillWidth().MinHeight(124).Background(t.Color.Surface).Children(func() {
 					s.casePaneHeader(c, lucide.CircleCheck, semanticAccentColor(c, stateScale(c, accentKind)),
 						tr(c, "detail.case_drawer.response_title"), tr(c, "detail.case_drawer.copy_response"),
 						item.Response, t.Density.Page, t.Density.Page)
-					ui.Column(c).FillWidth().Padding(0, t.Density.Page, t.Density.Section+4, t.Density.Page).Children(func() {
+					ui.Column(c).FillWidth().Padding(0, t.Density.Page, t.Density.Page, t.Density.Page).Children(func() {
 						ui.Text(c, item.Response).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).Selectable()
 					})
 				})
@@ -316,43 +327,19 @@ func estimateSplitPaneHeight(prompt, response string, maxH float32) float32 {
 		return n
 	}
 	maxLines := max(lines(prompt, 36), lines(response, 52))
-	// 52px pane header + 24px bottom pad + ~22px per line
+	// 56px pane header + 24px bottom pad + ~24px per line
 	est := float32(84 + maxLines*24)
-	return min(maxH, max(float32(236), est))
+	return min(maxH, max(float32(168), est))
 }
 
 func (s *viewState) casePaneHeader(c *ui.Context, icon func() *ui.SVG, iconColor ui.Color, label, copyLabel, body string, padLeft, padRight float32) {
 	t := tokens(c)
 	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight+2).
-		Padding(t.Density.Stack, padRight, t.Density.Row, padLeft).Children(func() {
+		Padding(t.Density.Stack+2, padRight, t.Density.Stack, padLeft).Children(func() {
 		components.Icon(c, icon).Size(13, 13).TextColor(iconColor).Shrink(0).Role(ui.RoleNone)
 		ui.Text(c, label).Bold().FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).Grow(1).SingleLine()
 		if caseModalIconButton(c, components.ButtonGhost, lucide.Copy, 14, copyLabel, false).Clicked() {
 			s.copyCaseText(c, body)
-		}
-	})
-}
-
-func (s *viewState) caseModalFooter(c *ui.Context, item caseDetailItem, onClose func()) {
-	t := tokens(c)
-	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
-		Padding(t.Density.Row+2, t.Density.Page).
-		Background(t.Color.Elevated).Children(func() {
-		if item.Total > 1 {
-			ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				if caseModalIconButton(c, components.ButtonOutline, lucide.ArrowLeft, 13, tr(c, "detail.case_drawer.prev_case"), item.OnPrev == nil).Clicked() && item.OnPrev != nil {
-					item.OnPrev()
-				}
-				ui.Text(c, fmt.Sprintf("%d / %d", item.Index+1, item.Total)).
-					FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
-				if caseModalIconButton(c, components.ButtonOutline, lucide.ArrowRight, 13, tr(c, "detail.case_drawer.next_case"), item.OnNext == nil).Clicked() && item.OnNext != nil {
-					item.OnNext()
-				}
-			})
-		}
-		ui.Box(c).Grow(1)
-		if sizedButton(c, components.ButtonOutline, sizeSM, tr(c, "common.close")).Clicked() {
-			onClose()
 		}
 	})
 }
