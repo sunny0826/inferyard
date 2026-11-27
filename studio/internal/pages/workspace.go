@@ -2,7 +2,6 @@ package pages
 
 import (
 	"context"
-	"slices"
 	"time"
 
 	"inferyard/studio/internal/core"
@@ -71,7 +70,7 @@ func (s *viewState) checkedBundles() []string {
 	if s.selectedBundles == nil {
 		s.selectedBundles = map[string]bool{}
 		for _, b := range s.progress.Bundles {
-			s.selectedBundles[b.Bundle] = slices.Contains(inferyard.DefaultBundles, b.Bundle)
+			s.selectedBundles[b.Bundle] = b.Bundle != ""
 		}
 	}
 	for _, b := range s.progress.Bundles {

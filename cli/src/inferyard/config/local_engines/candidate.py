@@ -331,19 +331,26 @@ def create(request):
     if polystrata_config_path is not None:
         engine_section["polystrata_config_path"] = str(polystrata_config_path)
         engine_section["polystrata_config_sha256"] = polystrata_config_sha256
+    from inferyard.bundles.registry import effective_execution_hints
+
+    hints = effective_execution_hints(bundle)
+    has_svg = any(case.get("category") == "svg" for case in bundle.get("cases", ()))
     resolved_effort = (raw_effort or "none") if family == "polystrata" else None
     if request.max_tokens is not None:
         max_tokens = request.max_tokens
     elif resolved_effort not in (None, "none"):
-        pelican = bundle["bundle_id"] == "zh-svg-pelican"
-        target_tokens = (
-            (4096 if resolved_effort == "low" else 8192)
-            if pelican
-            else (2048 if resolved_effort == "low" else 4096)
-        )
+        reasoning_hints = hints.get("reasoning_max_tokens") or {}
+        if resolved_effort in reasoning_hints:
+            target_tokens = reasoning_hints[resolved_effort]
+        else:
+            target_tokens = (
+                (4096 if resolved_effort == "low" else 8192)
+                if has_svg
+                else (2048 if resolved_effort == "low" else 4096)
+            )
         max_tokens = min(target_tokens, context)
     else:
-        max_tokens = 4096 if bundle["bundle_id"] == "zh-svg-pelican" else 512
+        max_tokens = hints.get("default_max_tokens") or (4096 if has_svg else 512)
     generation_section = {
         "temperature": 0,
         "max_tokens": max_tokens,

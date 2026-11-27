@@ -1,11 +1,14 @@
 """Discover onboarding artifacts; reuse authoritative offline evidence readers."""
 
+import re
 import shlex
 from pathlib import Path
 
-from inferyard.provisioning.community_resources import BUNDLES
+from inferyard.bundles.registry import effective_metadata, is_context_speed_bundle
 from inferyard.provisioning.preparation_io import PreparationError, read_json
 from inferyard.config.workspace_inputs import latest, latest_preflight, preflight_files
+
+_VALID_BUNDLE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
 
 
 def command(*parts):
@@ -327,7 +330,12 @@ def bundle_state(
             result.update(phase="run_incomplete", next_action=action, next_command=text)
             if blocked:
                 result["blocked_reason"] = blocked
-    if name == "zh-context-speed":
+    meta = effective_metadata(bundle, name) if type(bundle) is dict else {}
+    if meta.get("display_name") is not None:
+        result["display_name"] = meta["display_name"]
+    if meta.get("description") is not None:
+        result["description"] = meta["description"]
+    if is_context_speed_bundle(bundle, name):
         from inferyard.application.context_speed_progress import update
 
         return update(workspace, result, bundle, bound, results_root=results_root)
@@ -359,11 +367,15 @@ def inspect_workspace(path, *, results_root=None, reports_root=None):
     if (
         type(names) is not list
         or not names
-        or any(type(item) is not dict or item.get("bundle") not in BUNDLES for item in names)
+        or any(
+            type(item) is not dict
+            or type(item.get("bundle")) is not str
+            or not _VALID_BUNDLE_NAME.fullmatch(item["bundle"])
+            for item in names
+        )
         or len({item["bundle"] for item in names}) != len(names)
     ):
         raise PreparationError("workspace_artifact_unreadable")
-    names = sorted(names, key=lambda item: (item["bundle"] != "zh-core", item["bundle"]))
     bundles = []
     report_sources = []
     for item in names:

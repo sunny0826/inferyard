@@ -78,13 +78,43 @@ CASE = {
         for category, rules in TASK_RULES.items()
     ]
 }
+BUNDLE_LANGUAGE = {"type": "string", "pattern": r"^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"}
+LOCALIZED_TEXT = {
+    "oneOf": [
+        LABEL,
+        {"type": "object", "minProperties": 1, "additionalProperties": LABEL},
+    ]
+}
+BUNDLE_METADATA = obj(
+    {
+        "display_name": LOCALIZED_TEXT,
+        "description": LOCALIZED_TEXT,
+        "tags": array(LABEL),
+    },
+    required=[],
+)
+POSITIVE_INT = {"type": "integer", "minimum": 1}
+REASONING_MAX_TOKENS = obj(
+    {"low": POSITIVE_INT, "medium": POSITIVE_INT, "high": POSITIVE_INT},
+    required=[],
+)
+EXECUTION_HINTS = obj(
+    {
+        "profile": LABEL,
+        "default_max_tokens": POSITIVE_INT,
+        "reasoning_max_tokens": REASONING_MAX_TOKENS,
+    },
+    required=[],
+)
 BUNDLE = obj(
     {
         "schema_version": VERSION,
         "bundle_id": IDENTIFIER,
         "version": LABEL,
-        "language": enum("zh-CN"),
+        "language": BUNDLE_LANGUAGE,
         "license_note": LABEL,
+        "metadata": BUNDLE_METADATA,
+        "execution_hints": EXECUTION_HINTS,
         "review_records": array(
             obj(
                 {

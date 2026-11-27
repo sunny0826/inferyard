@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 )
@@ -131,12 +130,15 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 		if ctx.Err() != nil {
 			return nil, Err("cancelled")
 		}
-		if !slices.Contains(inferyard.DefaultBundles, bundle) || seen[bundle] {
+		if bundle == "" || strings.ContainsAny(bundle, `/\`) || bundle == "." || bundle == ".." || seen[bundle] {
 			return nil, Err("invalid_request")
 		}
 		seen[bundle] = true
 		bundlePath, err := Resolve(*workspace, filepath.Join("bundles", bundle+".json"))
 		if err != nil {
+			return nil, Err("invalid_request")
+		}
+		if info, statErr := os.Stat(bundlePath); statErr != nil || info.IsDir() {
 			return nil, Err("invalid_request")
 		}
 		if sharedInstallation == "" {

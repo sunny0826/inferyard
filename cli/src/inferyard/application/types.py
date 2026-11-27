@@ -82,6 +82,8 @@ class CommandRequest:
     fit_memory_stop_override_reason: str | None = None
     source_roots: list[str] | None = None
     community_bundle: str | None = None
+    community_bundles: list[str] | None = None
+    bundle_target: Path | None = None
     benchmark_profile: str | None = None
     context_size: int | None = None
     preset: str | None = None

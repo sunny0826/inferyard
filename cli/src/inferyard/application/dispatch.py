@@ -8,6 +8,10 @@ from inferyard.errors import ContractError, PreflightError
 
 
 def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
+    if request.command in ("bundles list", "bundles verify"):
+        from inferyard.application.bundles import execute
+
+        return execute(request)
     if request.command == "speed-results" or (request.command == "plan" and request.preset):
         from inferyard.application.context_speed import execute
 

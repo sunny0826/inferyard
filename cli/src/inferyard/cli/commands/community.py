@@ -10,10 +10,10 @@ def add_commands(commands):
     init.add_argument("--out", type=Path, required=True)
     init.add_argument(
         "--bundle",
-        dest="community_bundle",
+        dest="community_bundles",
+        action="append",
         default=None,
-        choices=("zh-smoke", "zh-core", "zh-svg-pelican", "zh-context-speed"),
-        help="one fixed bundle; omit to export zh-core and zh-svg-pelican",
+        help="registered bundle name or local bundle JSON path (repeatable); omit for default bundles",
     )
     runtime = commands.add_parser("runtime", help="prepare existing, pinned local engine archives")
     actions = runtime.add_subparsers(required=True)
