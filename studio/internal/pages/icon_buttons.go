@@ -139,20 +139,11 @@ func refreshIconButton(c *ui.Context, label string, active bool) ui.Element {
 			icon.Rotate(angle)
 		}
 	})
-	components.Tooltip(c, b, label)
+	studioTooltip(c, b, label)
 	return b
 }
 
 // iconButtonWithTooltip renders an icon button and attaches a custom tooltip (including when disabled).
 func iconButtonWithTooltip(c *ui.Context, tip string, render func() ui.Element) ui.Element {
-	if tip == "" {
-		return render()
-	}
-	var btn ui.Element
-	wrap := ui.Box(c).AlignSelf(ui.Start)
-	wrap.Children(func() {
-		btn = render()
-	})
-	components.Tooltip(c, wrap, tip)
-	return btn
+	return withDisabledTooltip(c, tip, render)
 }

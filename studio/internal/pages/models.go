@@ -104,7 +104,7 @@ func (s *viewState) modelsView(c *ui.Context) {
 
 func (s *viewState) modelsIconPageActions(c *ui.Context, wizardOpen *bool) {
 	t := tokens(c)
-	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
+	studioTooltipGroup(c, ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap), func() {
 		outlineIconButton(c, lucide.Download, tr(c, "models.action.download_more")).OnClick(func() {
 			s.libraryTab = 0
 			s.navigateTo("library", "")
@@ -153,17 +153,12 @@ func modelRowButtonClicked(c *ui.Context, render func(*ui.Context, func() *ui.SV
 	}
 	if reason != "" {
 		iconButtonWithTooltip(c, reason, func() ui.Element {
-			return renderButton().Disabled(true).Description(reason)
+			return renderButton().Disabled(true)
 		})
 		return false
 	}
 	btn := renderButton()
-	t := tokens(c)
-	ui.TooltipBase(c, btn, func(tip ui.Element) {
-		tip.MaxWidth(c.Theme().Space(80)).Padding(t.Density.Tight, t.Density.Row).
-			Radius(t.Radius.Control).Background(t.Color.FgPrimary).TextColor(t.Color.Surface)
-		tip.Children(func() { ui.Text(c, label).FontSize(t.Type.Caption) })
-	})
+	studioTooltipVisual(c, btn, label)
 	return btn.Clicked()
 }
 

@@ -55,10 +55,7 @@ type toastCountdownState struct {
 	lastFrame time.Time
 }
 
-var (
-	toastEnterEase  = ui.CubicBezier(0.25, 0.1, 0.25, 1)
-	toastResizeEase = ui.CubicBezier(0.32, 0.72, 0, 1)
-)
+var toastResizeEase = ui.CubicBezier(0.32, 0.72, 0, 1)
 
 func statusToastDuration(title string) time.Duration {
 	n := utf8.RuneCountInString(strings.TrimSpace(title))
@@ -227,13 +224,11 @@ func studioToasts(c *ui.Context) {
 
 	enterMotion := &ui.Motion{Y: -10, Scale: .96, Blur: 8, Opacity: 0}
 	exitMotion := &ui.Motion{Y: -6, Blur: 6, Opacity: 0}
-	enterDuration := 500 * time.Millisecond
 	exitDuration := 220 * time.Millisecond
 	resizeDuration := 380 * time.Millisecond
 	if reduced {
 		enterMotion = &ui.Motion{Opacity: 0}
 		exitMotion = &ui.Motion{Opacity: 0}
-		enterDuration = 150 * time.Millisecond
 		exitDuration = 150 * time.Millisecond
 		resizeDuration = 150 * time.Millisecond
 	}
@@ -286,25 +281,15 @@ func studioToasts(c *ui.Context) {
 			Shadow(0, 16, 36, 0, shadowPrimary).
 			Shadow(0, 3, 10, 0, shadowSecondary).
 			Transition(ui.ElementTransition{
-				Duration:     enterDuration,
-				Ease:         toastEnterEase,
-				ExitDuration: exitDuration,
-				ExitEase:     ui.EaseIn,
-				Width:        true,
-				Enter:        enterMotion,
-				Exit:         exitMotion,
-			})
-		if !reduced {
-			pill.Transition(ui.ElementTransition{
 				Duration:     resizeDuration,
 				Ease:         toastResizeEase,
 				ExitDuration: exitDuration,
 				ExitEase:     ui.EaseIn,
 				Width:        true,
+				Colors:       reduced,
 				Enter:        enterMotion,
 				Exit:         exitMotion,
 			})
-		}
 
 		sheenState := ui.Local(pill, "sheen", func() toastSheenState { return toastSheenState{} })
 		if data.Sheen && sheenState.phase != data.Phase {
@@ -403,14 +388,16 @@ func studioToastBody(c *ui.Context, parts ui.ToastParts, toast ui.Toast, data to
 					})
 				}
 				if data.ShowClose {
+					closeLabel := tr(c, "common.toast.dismiss")
 					closeBtn := parts.CloseButton().Size(28, 28).Radius(innerRadius).
-						AlignItems(ui.Center).Justify(ui.Center).Label(tr(c, "common.toast.dismiss"))
+						AlignItems(ui.Center).Justify(ui.Center).Label(closeLabel)
 					if closeBtn.Hovered() {
 						closeBtn.Background(t.Color.SurfaceHover)
 					}
 					closeBtn.Children(func() {
 						components.Icon(c, lucide.X).Size(14, 14).TextColor(t.Color.FgSecondary).Role(ui.RoleNone)
 					})
+					studioTooltip(c, closeBtn, closeLabel)
 				}
 			})
 		}

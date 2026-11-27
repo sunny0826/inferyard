@@ -67,7 +67,7 @@ func (s *viewState) shellContentTitle(c *ui.Context, leading func(*ui.Context)) 
 	t := tokens(c)
 	row := ui.Row(c.Key("content-title-bar")).Fill().AlignItems(ui.Center).Gap(t.Density.Row)
 	availWidth := row.LayoutBounds().W
-	row.Children(func() {
+	studioTooltipGroup(c, row, func() {
 		if leading != nil {
 			leading(c)
 		}
@@ -198,7 +198,7 @@ func (s *viewState) sidebarManagedServicesPopover(c *ui.Context, active []core.E
 						ui.Text(c, portText).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
 					}
 				})
-				ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+				studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Tight), func() {
 					if canOpen {
 						if outlineIconButton(c, lucide.ExternalLink, tr(c, "sidebar.popover.web")).
 							Label(tr(c, "sidebar.popover.web") + " · " + modelName).Clicked() {

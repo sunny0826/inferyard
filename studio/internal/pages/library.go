@@ -27,7 +27,7 @@ func (s *viewState) libraryView(c *ui.Context) {
 	}
 
 	host.Children(func() {
-		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			s.header(c, tr(c, "library.page.title"))
 			ui.Box(c).Grow(1)
 			refreshIconButton(c, tr(c, "models.action.rescan"), s.registry.Refreshing).
@@ -275,7 +275,7 @@ func (s *viewState) libraryModelsTab(c *ui.Context, pending *pendingAssetDelete)
 func (s *viewState) libraryEnginesTab(c *ui.Context, pending *pendingAssetDelete, wizardOpen *bool) {
 	t := tokens(c)
 	applyMaterial(c, ui.Column(c.Key("library-installed-engines")).MinWidth(0).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
-		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			heading(c, tr(c, "models.section.installed_engines"), 2)
 			if len(s.registry.Engines) > 0 {
 				ui.Text(c, s.engineFit()).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)

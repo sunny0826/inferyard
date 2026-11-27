@@ -225,7 +225,6 @@ func (s *viewState) newTaskPlusButton(c *ui.Context) {
 	label := tr(c, "shell.nav.new_task")
 	if hint == "" {
 		plus := iconButton(c, lucide.Plus, label, components.IconButtonCompact).Size(24, 24).Padding(0).AlignSelf(ui.Center)
-		components.Tooltip(c, plus, label)
 		if plus.Clicked() {
 			if s.guardLeaveSettings("benchmarks", func() { s.newBenchmark() }) {
 				return
@@ -234,11 +233,10 @@ func (s *viewState) newTaskPlusButton(c *ui.Context) {
 		}
 		return
 	}
-	wrap := ui.Box(c).AlignSelf(ui.Center)
-	wrap.Children(func() {
-		iconButton(c, lucide.Plus, label, components.IconButtonCompact).Size(24, 24).Padding(0).Disabled(true).Description(hint)
+	iconButtonWithTooltip(c, hint, func() ui.Element {
+		return iconButton(c, lucide.Plus, "", components.IconButtonCompact).
+			Label(label).Size(24, 24).Padding(0).AlignSelf(ui.Center).Disabled(true)
 	})
-	components.Tooltip(c, wrap, hint)
 }
 
 func (s *viewState) newTaskEntryHint() string {

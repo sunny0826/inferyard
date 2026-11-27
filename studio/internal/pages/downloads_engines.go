@@ -140,7 +140,7 @@ func (s *viewState) engineFamilyRow(c *ui.Context, fam core.EngineFamilyCatalog,
 				ui.Text(c, fam.Description).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			}
 		})
-		ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			outlineIconButton(c, lucide.Info, trf(c, "downloads.engines.versions_urls_label", "id", fam.ID)).Label(trf(c, "downloads.engines.versions_urls_label", "id", fam.ID)).OnClick(func() {
 				if fam.ID == "polystrata" {
 					s.openPolystrataConfigDrawer(fam.ID, rel.ID, build.Platform, build.ID)
@@ -207,7 +207,7 @@ func (s *viewState) externalEngineAppRow(c *ui.Context, fam core.EngineFamilyCat
 				ui.Text(c, fam.Description).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			}
 		})
-		ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			outlineIconButton(c, lucide.ExternalLink, trf(c, "downloads.engines.open_website_label", "id", fam.ID)).OnClick(func() {
 				s.openDownloadURL(c, fam.Name, build.PrimaryURL())
 			})

@@ -100,7 +100,12 @@ func ghostButton(c *ui.Context, label string) ui.Element {
 }
 
 func iconButton(c *ui.Context, icon func() *ui.SVG, label string, style components.IconButtonStyle) ui.Element {
-	return components.IconButton(c, icon(), label, style).Radius(tokens(c).Radius.Control)
+	b := components.IconButton(c, icon(), "", style).Radius(tokens(c).Radius.Control)
+	if label != "" {
+		b.Label(label)
+		studioTooltip(c, b, label)
+	}
+	return b
 }
 
 func sizedButton(c *ui.Context, variant components.ButtonVariant, size controlSize, label string) ui.Element {
@@ -481,7 +486,7 @@ func pathKeyValueRow(c *ui.Context, key, value string) {
 		}
 		val := ui.Text(c, display).FontSize(t.Type.Body).TextColor(valColor).Grow(1).MinWidth(0).SingleLine().TruncateMiddle().Selectable()
 		if value != "" {
-			components.Tooltip(c, val, value)
+			studioTooltipIfTruncated(c, val, display, value, t.Type.Body, false)
 		}
 	})
 }

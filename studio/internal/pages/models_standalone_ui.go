@@ -194,7 +194,7 @@ func (s *viewState) renderModelStandaloneSubrow(c *ui.Context, m core.ModelAsset
 		if endpoint == "" && !webOK && logPath == "" {
 			return
 		}
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		studioTooltipGroup(c, ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			if endpoint != "" {
 				ui.Text(c, endpoint).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
 				outlineIconButton(c, lucide.Copy, tr(c, "engine.action.copy_endpoint")).OnClick(func() {

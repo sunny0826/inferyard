@@ -251,7 +251,7 @@ func (s *viewState) modelStorageAndRootsView(c *ui.Context) {
 						Padding(t.Density.Hairline, 0).Children(func() {
 						components.Icon(c, lucide.Folder).Size(14, 14).TextColor(t.Color.FgSecondary)
 						dirText := ui.Text(c, dir).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine().TruncateMiddle()
-						components.Tooltip(c, dirText, dir)
+						studioTooltipIfTruncated(c, dirText, dir, dir, t.Type.Caption, false)
 						if s.isExtraModelRootDir(dir, primaryRoot) {
 							sizedButton(c, components.ButtonGhost, sizeSM, tr(c, "models.roots.remove")).
 								Label(trf(c, "models.roots.remove_label", "dir", dir)).
@@ -290,7 +290,7 @@ func (s *viewState) installedModelRow(c *ui.Context, m core.ModelAsset, pending 
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
 			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				titleEl := ui.Text(c, titleText).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine().TruncateMiddle()
-				components.Tooltip(c, titleEl, titleText)
+				studioTooltipIfTruncated(c, titleEl, titleText, titleText, t.Type.Body, true)
 				s.renderModelStandaloneBadge(c, m)
 			})
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
@@ -301,7 +301,7 @@ func (s *viewState) installedModelRow(c *ui.Context, m core.ModelAsset, pending 
 			})
 			s.renderModelStandaloneSubrow(c, m)
 		})
-		ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			s.renderModelStandalonePrimaryAction(c, m)
 			modelTaskAction(c, s, m)
 			s.assetRowActions(c, "model", m.Name, m.Path, m.Format, "", m.SizeBytes, m.Deletable, pending)
@@ -331,7 +331,7 @@ func (s *viewState) installedEngineRow(c *ui.Context, eng core.EngineAsset, pend
 			})
 			ui.Text(c, s.engineStateLine(eng)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		})
-		ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			s.renderEngineUpdateAction(c, eng)
 			if eng.Kind == "local_installation" && !eng.Managed {
 				outlineIconButton(c, lucide.Unlink, trf(c, "models.action.unlink_engine_label", "name", eng.Name)).Size(t.Control.MD, t.Control.MD).Disabled(s.busy).OnClick(func() {

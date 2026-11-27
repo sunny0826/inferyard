@@ -49,12 +49,32 @@ func (n *studioNotification) screenDuration() time.Duration {
 }
 
 type notificationCenter struct {
-	items           []*studioNotification
-	nextID          uint64
-	tappedExpanded  bool
-	screenPaused    bool
-	bellOpen        bool
-	lastWindowTitle string
+	items             []*studioNotification
+	nextID            uint64
+	tappedExpanded    bool
+	hoverExpanded     bool
+	hoverSuppressed   bool
+	engagedInExpanded bool
+	wasStackHovered   bool
+	wasStackFocused   bool
+	hoverEnteredAt    time.Time
+	focusEnteredAt    time.Time
+	graceStartedAt    time.Time
+	screenPaused      bool
+	bellOpen          bool
+	lastWindowTitle   string
+}
+
+func (nc *notificationCenter) resetStackExpansion() {
+	nc.tappedExpanded = false
+	nc.hoverExpanded = false
+	nc.hoverSuppressed = false
+	nc.engagedInExpanded = false
+	nc.wasStackHovered = false
+	nc.wasStackFocused = false
+	nc.hoverEnteredAt = time.Time{}
+	nc.focusEnteredAt = time.Time{}
+	nc.graceStartedAt = time.Time{}
 }
 
 func (s *viewState) notifications() *notificationCenter {
@@ -146,7 +166,7 @@ func (s *viewState) clearScreenNotifications() {
 			}
 		}
 	}
-	nc.tappedExpanded = false
+	nc.resetStackExpansion()
 	nc.screenPaused = false
 	s.syncWindowTitle()
 }
@@ -161,7 +181,7 @@ func (s *viewState) markAllNotificationsRead() {
 		item.VisibleOnScreen = false
 		item.screenLastTick = time.Time{}
 	}
-	nc.tappedExpanded = false
+	nc.resetStackExpansion()
 	nc.screenPaused = false
 	s.syncWindowTitle()
 }
@@ -172,7 +192,7 @@ func (nc *notificationCenter) advanceScreenTimers(now time.Time, maxVisible int,
 	}
 	screen := nc.screenItems()
 	if len(screen) == 0 {
-		nc.tappedExpanded = false
+		nc.resetStackExpansion()
 		nc.screenPaused = false
 		return 0
 	}
@@ -227,7 +247,7 @@ func (nc *notificationCenter) advanceScreenTimers(now time.Time, maxVisible int,
 
 	remainingScreen := nc.screenItems()
 	if len(remainingScreen) == 0 {
-		nc.tappedExpanded = false
+		nc.resetStackExpansion()
 		return 0
 	}
 	if len(remainingScreen) > maxVisible {

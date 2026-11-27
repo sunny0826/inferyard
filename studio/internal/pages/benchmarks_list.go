@@ -17,7 +17,7 @@ func (s *viewState) openBenchmarksFlow() {
 
 func (s *viewState) flowHeader(c *ui.Context, title string) {
 	t := tokens(c)
-	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+	studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
 		s.header(c, title)
 		if s.benchFlowOpen && !s.newTaskPending && !s.environmentMissing() {
 			ui.Box(c).Grow(1)
@@ -65,7 +65,7 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 	if s.benchmarksTab < benchmarksTabTasks || s.benchmarksTab > benchmarksTabHistory {
 		s.benchmarksTab = benchmarksTabTasks
 	}
-	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+	studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
 		s.header(c, tr(c, "benchmarks.page.title"))
 		ui.Box(c).Grow(1)
 		if s.hasActiveBenchmarkFlow() {
@@ -82,7 +82,7 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 			}
 		} else {
 			iconButtonWithTooltip(c, hint, func() ui.Element {
-				return primaryIconButton(c, lucide.Plus, "").Label(label).Disabled(true).Description(hint)
+				return primaryIconButton(c, lucide.Plus, "").Label(label).Disabled(true)
 			})
 		}
 	})

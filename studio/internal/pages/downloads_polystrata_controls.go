@@ -37,10 +37,15 @@ func (s *viewState) polystrataInstallHeaderAction(c *ui.Context, task core.Downl
 func polystrataInstallStatusButton(c *ui.Context, confirmOpen, disabled bool) ui.Element {
 	t := tokens(c)
 	theme := c.Theme()
-	b := ui.ButtonBase(c).MinWidth(100).MinHeight(t.Control.SM).Padding(0, theme.Space(3), 0, theme.Space(2.25)).Radius(t.Radius.Full).Label(tr(c, "downloads.polystrata.cancel_install"))
+	cancelText := tr(c, "downloads.polystrata.cancel_install")
+	installText := tr(c, "downloads.badge.installing")
+	wCancel, _ := c.MeasureText(0, ui.Span{Text: cancelText, Size: t.Type.Caption, Weight: 700})
+	wInstall, _ := c.MeasureText(0, ui.Span{Text: installText, Size: t.Type.Caption, Weight: 700})
+	pillMinW := max(float32(100), float32(math.Ceil(float64(max(wCancel, wInstall)+12+theme.Space(1.5)+theme.Space(5.25)+4))))
+	b := ui.ButtonBase(c).MinWidth(pillMinW).MinHeight(t.Control.SM).Padding(0, theme.Space(3), 0, theme.Space(2.25)).Radius(t.Radius.Full).Label(cancelText)
 	b.Disabled(disabled)
 
-	showCancel := !disabled && (b.Hovered() || b.Pressed() || confirmOpen)
+	showCancel := !disabled && (b.Hovered() || b.Pressed() || b.FocusVisible() || confirmOpen)
 	var bg, border, fg ui.Color
 	borderWidth := float32(1)
 	if c.Preferences().HighContrast {
@@ -85,15 +90,15 @@ func polystrataInstallStatusButton(c *ui.Context, confirmOpen, disabled bool) ui
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.Center).Gap(theme.Space(1.5)).Children(func() {
 			if showCancel {
 				components.Icon(c, lucide.X).Size(12, 12).TextColor(fg).Role(ui.RoleNone)
-				ui.Text(c, tr(c, "downloads.polystrata.cancel_install")).Bold().FontSize(t.Type.Caption).TextColor(fg).SingleLine()
+				ui.Text(c, cancelText).Bold().FontSize(t.Type.Caption).TextColor(fg).SingleLine()
 			} else {
 				components.Spinner(c, components.SpinnerRing).Size(12, 12).TextColor(fg).Label(tr(c, "downloads.polystrata.installing_label"))
-				ui.Text(c, tr(c, "downloads.badge.installing")).Bold().FontSize(t.Type.Caption).TextColor(fg).SingleLine()
+				ui.Text(c, installText).Bold().FontSize(t.Type.Caption).TextColor(fg).SingleLine()
 			}
 		})
 	})
 	if !confirmOpen && !disabled {
-		components.Tooltip(c, b, tr(c, "downloads.polystrata.click_cancel_tooltip"))
+		studioTooltip(c, b, tr(c, "downloads.polystrata.click_cancel_tooltip"))
 	}
 	return b
 }

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
@@ -318,7 +317,7 @@ func (s *viewState) localInstallationsView(c *ui.Context) {
 			path := path
 			ui.Row(c.Key(path)).FillWidth().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 				pathText := ui.Text(c, path).Grow(1).MinWidth(0).SingleLine().TruncateMiddle().Selectable()
-				components.Tooltip(c, pathText, path)
+				studioTooltipIfTruncated(c, pathText, path, path, c.Theme().FontSize, false)
 				if dangerIconButton(c, lucide.Unlink, tr(c, "engine.local.remove_registration")).AlignSelf(ui.Center).Shrink(0).Disabled(s.busy).Clicked() {
 					s.removeInstallationWithUndo(path)
 				}
@@ -405,15 +404,13 @@ func (s *viewState) awaitingLocalServiceView(c *ui.Context) {
 			} else if reason != "" {
 				ui.Text(c, reason).FontSize(tokens(c).Type.Caption).TextColor(tokens(c).Color.FgSecondary)
 			}
-			wrap := ui.Box(c).AlignSelf(ui.Start)
-			wrap.Children(func() {
-				primaryButton(c, tr(c, "engine.local.handoff.connect_continue")).Disabled(reason != "").Description(reason).OnClick(func() {
-					s.connectHandoffService(task.TaskId, pid)
+			ui.Row(c).AlignItems(ui.Center).Children(func() {
+				withDisabledTooltip(c, reason, func() ui.Element {
+					return primaryButton(c, tr(c, "engine.local.handoff.connect_continue")).Disabled(reason != "").OnClick(func() {
+						s.connectHandoffService(task.TaskId, pid)
+					})
 				})
 			})
-			if reason != "" {
-				components.Tooltip(c, wrap, reason)
-			}
 		})
 		ui.Text(c, trf(c, "engine.local.handoff.waiting", "taskId", task.TaskId)).TextColor(c.Theme().TextMuted)
 	}

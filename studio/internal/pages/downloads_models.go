@@ -102,7 +102,7 @@ func (s *viewState) modelCatalogRow(c *ui.Context, st *downloadsUIState, entry c
 			meta := joinParts([]string{modelCatalogEngineLabel(entry), sizeText, activeSourceLabel})
 			ui.Text(c, meta).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 		})
-		ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			outlineIconButton(c, lucide.Info, tr(c, "downloads.models.details_urls")).Label(trf(c, "downloads.models.details_label", "id", entry.ID)).OnClick(func() {
 				st.openModelDrawer(entry.ID)
 			})
@@ -284,7 +284,7 @@ func (s *viewState) downloadsModelDrawer(c *ui.Context) {
 					if !usingMirror && entry.SHA256 != "" {
 						ui.Text(c, trf(c, "downloads.engine_drawer.sha256_value", "sha256", entry.SHA256)).Selectable().FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 					}
-					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+					studioTooltipGroup(c, ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight), func() {
 						outlineIconButton(c, lucide.Copy, tr(c, "downloads.action.copy_url")).Label(trf(c, "downloads.model_drawer.copy_url_label", "id", entry.ID)).OnClick(func() {
 							s.copyDownloadText(c, tr(c, "downloads.engine_drawer.section.urls"), activeURL)
 						})
@@ -299,7 +299,7 @@ func (s *viewState) downloadsModelDrawer(c *ui.Context) {
 					})
 				})
 
-				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				studioTooltipGroup(c, ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
 					if s.isModelEntryDownloading(entry) {
 						outlineIconButton(c, lucide.Download, tr(c, "downloads.action.downloading")).Label(trf(c, "downloads.model_drawer.download_this_label", "id", entry.ID)).Disabled(true)
 					} else {

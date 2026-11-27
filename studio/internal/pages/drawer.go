@@ -20,15 +20,17 @@ type drawerOptions struct {
 
 var (
 	drawerFade = ui.ElementTransition{
-		Duration: 180 * time.Millisecond,
-		Colors:   true,
-		Enter:    &ui.Motion{Opacity: 0},
-		Exit:     &ui.Motion{Opacity: 0},
+		Duration:     180 * time.Millisecond,
+		ExitDuration: 110 * time.Millisecond,
+		Colors:       true,
+		Enter:        &ui.Motion{Opacity: 0},
+		Exit:         &ui.Motion{Opacity: 0},
 	}
 	drawerSlide = ui.ElementTransition{
-		Duration: 160 * time.Millisecond,
-		Enter:    &ui.Motion{Opacity: 1, X: 28},
-		Exit:     &ui.Motion{Opacity: 1, X: 28},
+		Duration:     160 * time.Millisecond,
+		ExitDuration: 110 * time.Millisecond,
+		Enter:        &ui.Motion{Opacity: 1, X: 28},
+		Exit:         &ui.Motion{Opacity: 1, X: 28},
 	}
 )
 
@@ -62,11 +64,9 @@ func drawer(c *ui.Context, open *bool, options drawerOptions, build func(panel u
 
 	reduceMotion := c.Preferences().ReduceMotion
 	ui.Overlay(c, func() {
-		backdrop := ui.Box(c).Absolute().Left(0).Top(0).Right(0).Bottom(0).
-			Background(ui.RGBA(0, 0, 0, .18))
-		if !reduceMotion {
-			backdrop.Transition(drawerFade)
-		}
+		ui.Box(c).Absolute().Left(0).Top(0).Right(0).Bottom(0).
+			Background(ui.RGBA(0, 0, 0, .18)).
+			Transition(drawerFade)
 		back := ui.Row(c).Absolute().Left(0).Top(0).Right(0).Bottom(0).
 			Justify(ui.End).Modal()
 		clicked := back.Clicked()
@@ -85,7 +85,9 @@ func drawer(c *ui.Context, open *bool, options drawerOptions, build func(panel u
 					TextColor(t.Color.FgPrimary),
 				t.Elevation.LG,
 			)
-			if !reduceMotion {
+			if reduceMotion {
+				panel.Transition(drawerFade)
+			} else {
 				panel.Transition(drawerSlide)
 			}
 			panel.Clicked()
@@ -99,7 +101,7 @@ func drawer(c *ui.Context, open *bool, options drawerOptions, build func(panel u
 						closeBtn.Children(func() {
 							components.Icon(c, lucide.X).Size(16, 16).TextColor(t.Color.FgSecondary).Role(ui.RoleNone)
 						})
-						components.Tooltip(c, closeBtn, tr(c, "common.close"))
+						studioTooltip(c, closeBtn, tr(c, "common.close"))
 						if closeBtn.Clicked() {
 							requestClose()
 						}

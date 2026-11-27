@@ -34,15 +34,17 @@ type caseDetailItem struct {
 
 var (
 	caseModalFade = ui.ElementTransition{
-		Duration: 160 * time.Millisecond,
-		Colors:   true,
-		Enter:    &ui.Motion{Opacity: 0},
-		Exit:     &ui.Motion{Opacity: 0},
+		Duration:     160 * time.Millisecond,
+		ExitDuration: 110 * time.Millisecond,
+		Colors:       true,
+		Enter:        &ui.Motion{Opacity: 0},
+		Exit:         &ui.Motion{Opacity: 0},
 	}
 	caseModalPop = ui.ElementTransition{
-		Duration: 160 * time.Millisecond,
-		Enter:    &ui.Motion{Opacity: 0, Y: 10},
-		Exit:     &ui.Motion{Opacity: 0, Y: 10},
+		Duration:     160 * time.Millisecond,
+		ExitDuration: 110 * time.Millisecond,
+		Enter:        &ui.Motion{Opacity: 0, Y: 10},
+		Exit:         &ui.Motion{Opacity: 0, Y: 10},
 	}
 )
 
@@ -61,33 +63,32 @@ func (s *viewState) copyCaseText(c *ui.Context, content string) {
 }
 
 func caseModalIconButton(c *ui.Context, variant components.ButtonVariant, icon func() *ui.SVG, iconSize float32, label string, disabled bool) ui.Element {
-	t := tokens(c)
-	b := components.Button(c, "", variant).
-		Size(28, 28).Padding(0).Radius(t.Radius.Control).
-		Label(label).Disabled(disabled)
-	iconColor := t.Color.FgSecondary
-	if variant == components.ButtonOutline {
-		bg := t.Color.Surface
-		iconColor = t.Color.FgPrimary
-		if disabled {
-			bg = t.Color.Sunken
+	return withDisabledTooltip(c, label, func() ui.Element {
+		t := tokens(c)
+		b := components.Button(c, "", variant).
+			Size(28, 28).Padding(0).Radius(t.Radius.Control).
+			Label(label).Disabled(disabled)
+		iconColor := t.Color.FgSecondary
+		if variant == components.ButtonOutline {
+			bg := t.Color.Surface
+			iconColor = t.Color.FgPrimary
+			if disabled {
+				bg = t.Color.Sunken
+				iconColor = t.Color.FgTertiary
+			} else if b.Hovered() {
+				bg = t.Color.SurfaceHover
+			}
+			b.Background(bg).Border(1, t.Color.BorderDefault)
+		} else if disabled {
 			iconColor = t.Color.FgTertiary
 		} else if b.Hovered() {
-			bg = t.Color.SurfaceHover
+			iconColor = t.Color.FgPrimary
 		}
-		b.Background(bg).Border(1, t.Color.BorderDefault)
-	} else if disabled {
-		iconColor = t.Color.FgTertiary
-	} else if b.Hovered() {
-		iconColor = t.Color.FgPrimary
-	}
-	b.Children(func() {
-		components.Icon(c, icon).Size(iconSize, iconSize).TextColor(iconColor).Role(ui.RoleNone)
+		b.Children(func() {
+			components.Icon(c, icon).Size(iconSize, iconSize).TextColor(iconColor).Role(ui.RoleNone)
+		})
+		return b
 	})
-	if !disabled {
-		components.Tooltip(c, b, label)
-	}
-	return b
 }
 
 func (s *viewState) caseDetailDrawer(c *ui.Context, modalKey string, open *bool, item caseDetailItem) {
@@ -129,10 +130,8 @@ func (s *viewState) caseDetailDrawer(c *ui.Context, modalKey string, open *bool,
 	}
 
 	ui.Overlay(c, func() {
-		backdrop := ui.Box(c).Absolute().Left(0).Top(0).Right(0).Bottom(0).Background(scrim)
-		if !reduceMotion {
-			backdrop.Transition(caseModalFade)
-		}
+		ui.Box(c).Absolute().Left(0).Top(0).Right(0).Bottom(0).Background(scrim).
+			Transition(caseModalFade)
 		back := ui.Row(c).Absolute().Left(0).Top(0).Right(0).Bottom(0).
 			AlignItems(ui.Center).Justify(ui.Center).Padding(t.Density.Page).Modal()
 		if back.Clicked() || back.OverlayShortcut(0, ui.KeyEscape) {
@@ -156,7 +155,9 @@ func (s *viewState) caseDetailDrawer(c *ui.Context, modalKey string, open *bool,
 					TextColor(t.Color.FgPrimary),
 				t.Elevation.LG,
 			)
-			if !reduceMotion {
+			if reduceMotion {
+				panel.Transition(caseModalFade)
+			} else {
 				panel.Transition(caseModalPop)
 			}
 			panel.Clicked()
@@ -214,7 +215,7 @@ func (s *viewState) caseModalHeader(c *ui.Context, headerTitle string, item case
 			}
 		})
 
-		ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			if item.Total > 1 {
 				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
 					if caseModalIconButton(c, components.ButtonOutline, lucide.ArrowLeft, 13, tr(c, "detail.case_drawer.prev_case"), item.OnPrev == nil).Clicked() && item.OnPrev != nil {
