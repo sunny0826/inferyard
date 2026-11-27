@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/components/chart"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 )
 
@@ -123,12 +125,36 @@ func sourceLabelFor(c *ui.Context, source core.ResourceSource) string {
 	return source.Name
 }
 
+func latestResourceReading(c *ui.Context, series resourceSeries) string {
+	for i := len(series.points) - 1; i >= 0; i-- {
+		pt := series.points[i]
+		if !finite(pt.Value) || pt.MissingReason != nil {
+			continue
+		}
+		val, unit := formatResourceSample(c, pt)
+		if unit == "%" || unit == "" {
+			return val + unit
+		}
+		return val + " " + unit
+	}
+	return ""
+}
+
 func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
-	card(c, tr(c, "chart.resource.title"), func() {
+	t := tokens(c)
+	applyMaterial(c, ui.Column(c.Key("detail-resource-card")).FillWidth().MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
 		series, selected := s.cachedResourceSeries(samples)
-		ui.Text(c, trf(c, "chart.resource.sample_count", "count", len(samples))).FontFeatures("tnum")
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			heading(c, tr(c, "chart.resource.title"), 2)
+			ui.Box(c).Grow(1)
+			inlineBadge(c, trf(c, "chart.resource.sample_count", "count", len(samples)), stateNeutral, badgeOptions{Size: sizeSM, Style: badgeSoft})
+		})
 		if len(series) == 0 {
-			ui.Text(c, tr(c, "chart.resource.waiting"))
+			applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
+				Padding(t.Density.Stack, t.Density.Section), materialSunken).Children(func() {
+				components.Icon(c, lucide.Activity).Size(14, 14).TextColor(t.Color.FgTertiary)
+				ui.Text(c, tr(c, "chart.resource.waiting")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			})
 			return
 		}
 		theme := c.Theme()
@@ -142,21 +168,36 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 				}
 			}
 			if len(options) == 0 {
-				ui.Text(c, metric.label+" · —").TextColor(theme.TextMuted)
+				applyMaterial(c, ui.Column(c).FillWidth().MinHeight(184).Gap(t.Density.Row).Padding(t.Density.Stack), materialSunken).Children(func() {
+					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+						ui.Box(c).Size(7, 7).Radius(t.Radius.Full).Shrink(0).Background(t.Color.BorderStrong)
+						ui.Text(c, metric.label+" · —").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
+					})
+					ui.Box(c).Grow(1).FillWidth().AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+						ui.Text(c, tr(c, "chart.resource.no_valid_samples")).FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary)
+					})
+				})
 				return
 			}
-			container := ui.Column(c).FillWidth().Gap(tokens(c).Density.Row)
+			container := applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Row).Padding(t.Density.Stack), materialSunken)
 			state := ui.Local(container, "resource-chart", func() resourceChartState {
 				return resourceChartState{chart: chart.State{Index: -1}}
 			})
 			container.Children(func() {
-				ui.Text(c, metric.label).TextColor(metric.color)
 				chosen, data := defaultResourceSeries(options, metric.color)
 				if state.source != chosen.id {
 					state.source, state.chart.Index = chosen.id, -1
 				}
+				latest := latestResourceReading(c, chosen)
+				ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+					ui.Box(c).Size(7, 7).Radius(t.Radius.Full).Shrink(0).Background(metric.color)
+					ui.Text(c, metric.label).Bold().FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine()
+					if latest != "" {
+						ui.Text(c, latest).Bold().FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgPrimary).SingleLine()
+					}
+				})
 				if label := secondarySourceLabel(c, metric.id, chosen.source); label != "" {
-					ui.Text(c, label).TextColor(theme.TextMuted)
+					ui.Text(c, label).FontSize(t.Type.ShellLabel).TextColor(t.Color.FgTertiary).SingleLine()
 				}
 				if !chartHasValues(data) {
 					reason := tr(c, "chart.resource.no_valid_samples")
@@ -165,7 +206,9 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 							reason = *point.MissingReason
 						}
 					}
-					ui.Text(c, trf(c, "chart.resource.missing_reason", "reason", reason)).TextColor(theme.TextMuted)
+					ui.Box(c).FillWidth().MinHeight(120).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+						ui.Text(c, trf(c, "chart.resource.missing_reason", "reason", reason)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+					})
 					return
 				}
 				chart.Line(c, &state.chart, data, chart.Options{
@@ -174,7 +217,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 					Detail: func(c *ui.Context, selection chart.Selection) {
 						ui.Column(c).Children(func() {
 							if selection.Index >= 0 && selection.Index < len(chosen.points) {
-								ui.Text(c, formatResourceDetail(c, chosen.points[selection.Index])).Selectable()
+								ui.Text(c, formatResourceDetail(c, chosen.points[selection.Index])).FontSize(t.Type.Caption).FontFeatures("tnum").Selectable()
 							}
 						})
 					},
@@ -185,7 +228,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 		if compactLayout(c) {
 			cols = 1
 		}
-		ui.Grid(c).Columns(cols).Gap(tokens(c).Density.Stack).Children(func() {
+		ui.Grid(c).Columns(cols).Gap(t.Density.Stack).Children(func() {
 			for _, metric := range metrics {
 				draw(metric)
 			}
@@ -240,39 +283,60 @@ func (s *viewState) resourceSampleFold(c *ui.Context, selected []core.ResourceSa
 }
 
 func (s *viewState) resourceTable(c *ui.Context, samples []core.ResourceSample) {
-	heading(c, tr(c, "chart.table.heading"), 3)
+	t := tokens(c)
 	const pageSize = 50
 	pages := max(1, (len(samples)+pageSize-1)/pageSize)
 	s.resourceTablePage = min(max(0, s.resourceTablePage), pages-1)
-	ui.Row(c).AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-		if button(c, tr(c, "chart.table.prev_page")).Disabled(s.resourceTablePage == 0).Clicked() {
-			s.resourceTablePage--
+	ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			ui.Text(c, trf(c, "chart.table.page_status", "page", s.resourceTablePage+1, "totalPages", pages, "count", len(samples))).
+				FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
+			ui.Box(c).Grow(1)
+			if outlineIconButton(c, lucide.ArrowLeft, tr(c, "chart.table.prev_page")).Disabled(s.resourceTablePage == 0).Clicked() {
+				s.resourceTablePage--
+			}
+			if outlineIconButton(c, lucide.ArrowRight, tr(c, "chart.table.next_page")).Disabled(s.resourceTablePage == pages-1).Clicked() {
+				s.resourceTablePage++
+			}
+		})
+		start := s.resourceTablePage * pageSize
+		pageSamples := samples[start:min(start+pageSize, len(samples))]
+		cols := []ui.TableColumn{
+			{Title: tr(c, "chart.table.col_time"), Width: 220},
+			{Title: tr(c, "chart.table.col_source"), Width: 250},
+			{Title: tr(c, "chart.table.col_value"), Width: 140},
+			{Title: tr(c, "chart.table.col_unit"), Width: 80},
+			{Title: tr(c, "chart.table.col_missing_reason"), Width: 180},
 		}
-		ui.Text(c, trf(c, "chart.table.page_status", "page", s.resourceTablePage+1, "totalPages", pages, "count", len(samples))).FontFeatures("tnum")
-		if button(c, tr(c, "chart.table.next_page")).Disabled(s.resourceTablePage == pages-1).Clicked() {
-			s.resourceTablePage++
-		}
+		tableLabel := tr(c, "chart.table.aria_label")
+		s.samplesTable.Key = func(i int) any { return pageSamples[i].Seq }
+		applyMaterial(c, ui.Box(c).FillWidth().MinWidth(0).Clip(), materialInset).Children(func() {
+			pageTable(c, &s.samplesTable, tableLabel, cols, len(pageSamples), func(row, col int) {
+				p := pageSamples[row]
+				value, unit := formatResourceSample(c, p)
+				missing := emptyText(p.MissingReason)
+				values := []string{formatTimestamp(p.Utc), sourceLabelFor(c, p.Source), value, unit, missing}
+				cell := ui.Text(c, values[col]).SingleLine().Selectable()
+				switch col {
+				case 0:
+					cell.FontFeatures("tnum").TextColor(t.Color.FgSecondary)
+				case 2:
+					cell.FontFeatures("tnum")
+					if !finite(p.Value) || p.MissingReason != nil {
+						cell.TextColor(t.Color.FgTertiary)
+					}
+				case 3:
+					cell.TextColor(t.Color.FgSecondary)
+				case 4:
+					if missing == "" {
+						cell.TextColor(t.Color.FgTertiary)
+					} else {
+						cell.TextColor(stateScale(c, stateWarning).Fg)
+					}
+				}
+			}).Height(180).Label(tableLabel)
+		})
 	})
-	start := s.resourceTablePage * pageSize
-	samples = samples[start:min(start+pageSize, len(samples))]
-	cols := []ui.TableColumn{
-		{Title: tr(c, "chart.table.col_time"), Width: 220},
-		{Title: tr(c, "chart.table.col_source"), Width: 250},
-		{Title: tr(c, "chart.table.col_value"), Width: 140},
-		{Title: tr(c, "chart.table.col_unit"), Width: 80},
-		{Title: tr(c, "chart.table.col_missing_reason"), Width: 180},
-	}
-	tableLabel := tr(c, "chart.table.aria_label")
-	s.samplesTable.Key = func(i int) any { return samples[i].Seq }
-	pageTable(c, &s.samplesTable, tableLabel, cols, len(samples), func(row, col int) {
-		p := samples[row]
-		value, unit := formatResourceSample(c, p)
-		values := []string{formatTimestamp(p.Utc), sourceLabelFor(c, p.Source), value, unit, emptyText(p.MissingReason)}
-		cell := ui.Text(c, values[col]).Selectable()
-		if col == 0 || col == 2 {
-			cell.FontFeatures("tnum")
-		}
-	}).Height(180).Label(tableLabel)
 }
 
 func resourceDisplayUnit(unit string) string {

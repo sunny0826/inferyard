@@ -119,6 +119,8 @@ type StudioRequest struct {
 	State         string   `json:"state"`
 	Quality       *string  `json:"quality"`
 	LatencyMS     *float64 `json:"latency_ms"`
+	Prompt        *string  `json:"prompt,omitempty"`
+	Response      *string  `json:"response,omitempty"`
 }
 type StudioSVGOutput struct {
 	CaseID string  `json:"case_id"`

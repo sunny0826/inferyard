@@ -6,6 +6,7 @@ from inferyard.contracts.schemas_common import (
     IDENTIFIER,
     LABEL,
     NAT,
+    TEXT,
     array,
     enum,
     nullable,
@@ -98,6 +99,8 @@ REQUEST = obj(
         "latency_ms": nullable(NONNEGATIVE),
     }
 )
+REQUEST["properties"]["prompt"] = TEXT
+REQUEST["properties"]["response"] = nullable(TEXT)
 def _svg_output_variant(status, svg_spec, bytes_spec):
     return obj(
         {

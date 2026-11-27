@@ -295,6 +295,7 @@ type viewState struct {
 	scrolls                                                                             map[string]*ui.ScrollState
 	casesTable, samplesTable                                                            pageTableState
 	casesTablePage, resourceTablePage                                                   int
+	detailCaseID                                                                        string
 	resourceCache                                                                       resourceViewCache
 	reportLoadSeq                                                                       uint64
 	processesLoading                                                                    bool

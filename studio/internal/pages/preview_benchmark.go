@@ -229,6 +229,8 @@ func previewSimulatedCase(bundle string, seq int64) core.CaseProgress {
 			Category:     previewValue("svg"),
 			QualityState: previewValue("not_applicable"),
 			DurationMs:   previewValue(1240.0),
+			Prompt:       previewValue("Generate an animated SVG of a pelican riding a bicycle"),
+			Response:     previewValue(previewPelicanSVG),
 		}
 	}
 	return core.CaseProgress{
@@ -237,6 +239,8 @@ func previewSimulatedCase(bundle string, seq int64) core.CaseProgress {
 		Category:     previewValue(l10n.TR("preview.fixture.category")),
 		QualityState: previewValue("pass"),
 		DurationMs:   previewValue(1240.0),
+		Prompt:       previewValue(fmt.Sprintf("Preview benchmark prompt #%d: compute 12 + %d.", seq, seq)),
+		Response:     previewValue(fmt.Sprintf("%d", 12+seq)),
 	}
 }
 

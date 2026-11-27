@@ -119,6 +119,8 @@ func previewReportFixture(reference string) *core.ReportIndex {
 			State:         "completed",
 			Quality:       previewValue("not_applicable"),
 			LatencyMS:     &latency,
+			Prompt:        previewValue("Generate an animated SVG of a pelican riding a bicycle"),
+			Response:      previewValue(previewPelicanSVG),
 		}}
 		baseRun.Summary.CompletionRate = core.ReportCounts{Numerator: previewValue(int64(1)), Denominator: previewValue(int64(1)), Excluded: previewValue(int64(0))}
 		baseRun.Dashboard.Latency = core.ReportLatency{
@@ -281,7 +283,15 @@ func applyPreviewProgress(run *core.ReportRun, detail *core.RunTaskDetail, bundl
 		if item.State == "completed" {
 			completed++
 		}
-		run.Requests = append(run.Requests, core.ReportRequest{CaseID: item.CaseId, CategoryLabel: emptyText(item.Category), State: item.State, Quality: item.QualityState, LatencyMS: item.DurationMs})
+		run.Requests = append(run.Requests, core.ReportRequest{
+			CaseID:        item.CaseId,
+			CategoryLabel: emptyText(item.Category),
+			State:         item.State,
+			Quality:       item.QualityState,
+			LatencyMS:     item.DurationMs,
+			Prompt:        item.Prompt,
+			Response:      item.Response,
+		})
 	}
 	total := p.Done
 	if p.Total != nil {

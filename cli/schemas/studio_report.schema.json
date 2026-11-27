@@ -638,6 +638,19 @@
                       "type": "null"
                     }
                   ]
+                },
+                "prompt": {
+                  "type": "string"
+                },
+                "response": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [

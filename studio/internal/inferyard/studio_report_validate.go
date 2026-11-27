@@ -85,7 +85,9 @@ func validateStudioRequest(raw json.RawMessage) error {
 	if err != nil {
 		return err
 	}
-	if err := studioClosed(request, "case_id", "category_label", "state", "quality", "latency_ms"); err != nil {
+	required := []string{"case_id", "category_label", "state", "quality", "latency_ms"}
+	optional := []string{"prompt", "response"}
+	if err := studioClosedOptional(request, required, optional); err != nil {
 		return err
 	}
 	caseID, err := studioText(request["case_id"])
@@ -103,8 +105,20 @@ func validateStudioRequest(raw json.RawMessage) error {
 	if err != nil || quality != nil && !slices.Contains(studioQualities, *quality) {
 		return errors.New("invalid studio report request quality")
 	}
-	_, err = studioNullableNumber(request["latency_ms"])
-	return err
+	if _, err := studioNullableNumber(request["latency_ms"]); err != nil {
+		return err
+	}
+	if rawPrompt, ok := request["prompt"]; ok {
+		if _, err := studioString(rawPrompt); err != nil {
+			return err
+		}
+	}
+	if rawResp, ok := request["response"]; ok {
+		if _, err := studioNullableString(rawResp); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func validateStudioDashboard(raw json.RawMessage, requests int) error {
@@ -352,6 +366,28 @@ func studioText(raw json.RawMessage) (string, error) {
 		return "", errors.New("invalid studio report value")
 	}
 	return value, nil
+}
+
+func studioString(raw json.RawMessage) (string, error) {
+	if studioNull(raw) {
+		return "", errors.New("invalid studio report value")
+	}
+	var value string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return "", errors.New("invalid studio report value")
+	}
+	return value, nil
+}
+
+func studioNullableString(raw json.RawMessage) (*string, error) {
+	if studioNull(raw) {
+		return nil, nil
+	}
+	value, err := studioString(raw)
+	if err != nil {
+		return nil, err
+	}
+	return &value, nil
 }
 
 func studioNullableText(raw json.RawMessage) (*string, error) {

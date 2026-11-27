@@ -45,7 +45,23 @@ func speedSampleSlots(c *ui.Context, r *speedTask) {
 	})
 }
 
+func speedStageKind(stage speedStage) stateKind {
+	switch stage {
+	case speedDone:
+		return stateSuccess
+	case speedFailed:
+		return stateDanger
+	case speedCancelled, speedPartial:
+		return stateWarning
+	case speedPreparing, speedBinding, speedPlanning, speedMeasuring, speedReading, speedCancelling:
+		return stateActive
+	default:
+		return stateNeutral
+	}
+}
+
 func (s *viewState) speedResultView(c *ui.Context) {
+	t := tokens(c)
 	w, r := s.speed, s.speed.opened
 	s.subpageHeader(c, tr(c, "speed.result.title"), tr(c, "speed.action.back_history"), func() {
 		w.opened, w.readError, w.reading = nil, "", false
@@ -53,12 +69,21 @@ func (s *viewState) speedResultView(c *ui.Context) {
 	}, func() {
 		outlineButton(c, tr(c, "speed.action.new_with_combo")).Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
 	})
-	ui.Text(c, r.model+" · "+r.engine+" · "+inferyard.ContextSpeedBundleID)
+	stageKind := speedStageKind(r.stage)
+	metaText := r.id + " · " + tr(c, speedStageKeys[r.stage])
 	if s.preview != nil {
-		ui.Text(c, trf(c, "speed.result.meta_preview", "id", r.id, "status", tr(c, speedStageKeys[r.stage]))).TextColor(stateColor(c, stateWarning))
-	} else {
-		ui.Text(c, r.id+" · "+tr(c, speedStageKeys[r.stage])).TextColor(stateColor(c, stateWarning))
+		metaText = trf(c, "speed.result.meta_preview", "id", r.id, "status", tr(c, speedStageKeys[r.stage]))
 	}
+	applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Stack).
+		Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
+		modelIconBox(c, s.modelIconHint(r.model), 32, t.Radius.SM)
+		ui.Column(c).Grow(1).MinWidth(180).Gap(2).Children(func() {
+			ui.Text(c, r.model+" · "+r.engine+" · "+inferyard.ContextSpeedBundleID).
+				Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine().Selectable()
+			ui.Text(c, metaText).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
+		})
+		inlineBadge(c, tr(c, speedStageKeys[r.stage]), stageKind, badgeOptions{Size: sizeSM, Style: badgeSoft})
+	})
 	if w.reading {
 		host := ui.Column(c.Key("speed-result-loading-" + r.id)).FillWidth()
 		show := delayedVisible(c, host, "speed-read", true)
@@ -88,23 +113,26 @@ func (s *viewState) speedResultView(c *ui.Context) {
 			Message: tr(c, "speed.result.incomplete_notice"),
 		})
 	}
-	card(c, tr(c, "speed.result.card_title"), func() {
+	reportSectionCard(c, lucide.Gauge, tr(c, "speed.result.card_title"), nil, func() {
 		if r.summary != nil {
-			ui.Text(c, tr(c, "speed.result.valid_median"))
+			ui.Text(c, tr(c, "speed.result.valid_median")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			if r.result != nil && r.result.Summary != nil {
 				v := r.result.Summary.Columns
-				ui.Text(c, trf(c, "speed.result.range",
-					"time_min", fmt.Sprintf("%.2f", v.Time.Min),
-					"time_max", fmt.Sprintf("%.2f", v.Time.Max),
-					"prefill_min", fmt.Sprintf("%.2f", v.Prefill.Min),
-					"prefill_max", fmt.Sprintf("%.2f", v.Prefill.Max),
-					"decode_min", fmt.Sprintf("%.2f", v.Decode.Min),
-					"decode_max", fmt.Sprintf("%.2f", v.Decode.Max),
-				))
+				applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
+					Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
+					ui.Text(c, trf(c, "speed.result.range",
+						"time_min", fmt.Sprintf("%.2f", v.Time.Min),
+						"time_max", fmt.Sprintf("%.2f", v.Time.Max),
+						"prefill_min", fmt.Sprintf("%.2f", v.Prefill.Min),
+						"prefill_max", fmt.Sprintf("%.2f", v.Prefill.Max),
+						"decode_min", fmt.Sprintf("%.2f", v.Decode.Min),
+						"decode_max", fmt.Sprintf("%.2f", v.Decode.Max),
+					)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).Selectable()
+				})
 			}
 			speedTable(c.Key("speed-summary"), &w.table, tr(c, "speed.table.summary_label"), r, []speedSample{*r.summary})
 		} else {
-			ui.Text(c, trf(c, "speed.result.valid_partial", "valid", r.validCount()))
+			ui.Text(c, trf(c, "speed.result.valid_partial", "valid", r.validCount())).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 			if len(r.samples) > 0 {
 				speedTable(c.Key("speed-partial"), &w.table, tr(c, "speed.table.partial_label"), nil, r.samples)
 			}
@@ -161,26 +189,32 @@ func speedTable(c *ui.Context, state *pageTableState, label string, summaryTask 
 	}
 	loc := contextLocale(c)
 	selectableTable(state, func(i int) any { return i }, func(i int) string { return l10n.Tf(loc, "speed.table.row_label", "index", i+1) })
-	pageTable(c, state, label, columns, len(rows), func(row, col int) {
-		v := rows[row]
-		prompt := "—"
-		if v.prompt != nil {
-			prompt = fmt.Sprint(*v.prompt)
-		}
-		if col == 0 {
-			if summaryTask != nil {
-				speedIdentity(c, summaryTask)
-			} else {
-				ui.Text(c, fmt.Sprintf("#%d", row+1)).FontFeatures("tnum").SingleLine()
+	applyMaterial(c, ui.Box(c).FillWidth().MinWidth(0).Clip(), materialInset).Children(func() {
+		pageTable(c, state, label, columns, len(rows), func(row, col int) {
+			v := rows[row]
+			prompt := "—"
+			if v.prompt != nil {
+				prompt = fmt.Sprint(*v.prompt)
 			}
-			return
-		}
-		context := "—"
-		if v.context != nil {
-			context = speedContext(*v.context)
-		}
-		ui.Text(c, []string{"", context, prompt, speedNumber(v.seconds), speedNumber(v.prefill), speedNumber(v.decode)}[col]).SingleLine()
-	}).Shrink(0)
+			if col == 0 {
+				if summaryTask != nil {
+					speedIdentity(c, summaryTask)
+				} else {
+					ui.Text(c, fmt.Sprintf("#%d", row+1)).FontFeatures("tnum").SingleLine()
+				}
+				return
+			}
+			context := "—"
+			if v.context != nil {
+				context = speedContext(*v.context)
+			}
+			val := []string{"", context, prompt, speedNumber(v.seconds), speedNumber(v.prefill), speedNumber(v.decode)}[col]
+			cell := ui.Text(c, val).FontFeatures("tnum").SingleLine()
+			if val == "—" {
+				cell.TextColor(tokens(c).Color.FgTertiary)
+			}
+		}).Shrink(0)
+	})
 }
 
 func speedContext(tokens int) string {
@@ -202,19 +236,26 @@ func (s *viewState) speedHistoryView(c *ui.Context) {
 		return
 	}
 	w := s.speed
-	card(c, tr(c, "speed.history.card_title"), func() {
+	reportSectionCard(c, lucide.Gauge, tr(c, "speed.history.card_title"), nil, func() {
 		selectableTable(&w.historyTable, func(i int) any { return w.history[i].id }, func(i int) string { return w.history[i].id })
-		pageTable(c.Key("speed-history"), &w.historyTable, tr(c, "speed.history.table_label"), []ui.TableColumn{
-			{Title: tr(c, "speed.history.col_task"), MinWidth: c.Theme().Rem(11)}, {Title: tr(c, "speed.col.model_engine"), MinWidth: c.Theme().Rem(24)},
-			{Title: tr(c, "speed.history.col_context"), MinWidth: c.Theme().Rem(6)}, {Title: tr(c, "speed.history.col_status"), MinWidth: c.Theme().Rem(6)},
-		}, len(w.history), func(row, col int) {
-			r := w.history[row]
-			if col == 1 {
-				speedIdentity(c, r)
-				return
-			}
-			ui.Text(c, []string{r.id, "", speedContext(r.context), r.label()}[col]).SingleLine()
-		}).Height(c.Theme().Rem(4)*float32(min(len(w.history), 5)+1) + 2)
+		applyMaterial(c, ui.Box(c).FillWidth().MinWidth(0).Clip(), materialInset).Children(func() {
+			pageTable(c.Key("speed-history"), &w.historyTable, tr(c, "speed.history.table_label"), []ui.TableColumn{
+				{Title: tr(c, "speed.history.col_task"), MinWidth: c.Theme().Rem(11)}, {Title: tr(c, "speed.col.model_engine"), MinWidth: c.Theme().Rem(24)},
+				{Title: tr(c, "speed.history.col_context"), MinWidth: c.Theme().Rem(6)}, {Title: tr(c, "speed.history.col_status"), MinWidth: c.Theme().Rem(8)},
+			}, len(w.history), func(row, col int) {
+				r := w.history[row]
+				switch col {
+				case 0:
+					ui.Text(c, r.id).FontFeatures("tnum").SingleLine()
+				case 1:
+					speedIdentity(c, r)
+				case 2:
+					ui.Text(c, speedContext(r.context)).FontFeatures("tnum").SingleLine()
+				case 3:
+					inlineBadge(c, r.label(), speedStageKind(r.stage), badgeOptions{Size: sizeSM, Style: badgeDot})
+				}
+			}).Height(c.Theme().Rem(4)*float32(min(len(w.history), 5)+1) + 2)
+		})
 		if i := selectedRow(&w.historyTable, len(w.history)); i >= 0 {
 			if primaryButton(c, tr(c, "speed.history.open_result")).Clicked() || w.historyTable.submitted {
 				s.openSpeed(w.history[i].id)
@@ -224,8 +265,9 @@ func (s *viewState) speedHistoryView(c *ui.Context) {
 }
 
 func speedIdentity(c *ui.Context, task *speedTask) {
-	ui.Column(c).Gap(tokens(c).Density.Tight).Children(func() {
-		ui.Text(c, task.model)
-		ui.Text(c, task.engine).TextColor(c.Theme().TextMuted)
+	t := tokens(c)
+	ui.Column(c).Gap(2).Children(func() {
+		ui.Text(c, task.model).Bold().SingleLine()
+		ui.Text(c, task.engine).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
 	})
 }

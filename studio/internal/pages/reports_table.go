@@ -2,11 +2,13 @@ package pages
 
 import (
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 )
 
 func (s *viewState) reportsTableView(c *ui.Context) {
+	t := tokens(c)
 	if s.reportsError != nil {
 		errorRecoveryBanner(c, s.reportsError, func() {
 			refreshIconButton(c, tr(c, "reports.list.retry_load"), false).OnClick(s.refreshAction)
@@ -14,7 +16,10 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 		return
 	}
 	if !s.loaded || s.hydrating {
-		ui.Text(c, tr(c, "reports.list.loading"))
+		applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Card.Padding), materialCard).Children(func() {
+			activitySpinner(c, tr(c, "reports.list.loading"))
+			ui.Text(c, tr(c, "reports.list.loading")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		})
 		return
 	}
 	if len(s.reports) == 0 {
@@ -29,39 +34,107 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 		})
 		return
 	}
-	for _, report := range s.reports {
-		modelHint := ""
-		if !report.Unreadable {
-			modelHint = s.modelIconHint(reportHeadingFor(c, report))
-			if len(report.RunSummaries) > 0 {
-				modelHint += " " + s.modelIconHint(reportText(report.RunSummaries[0].Model))
+	ui.Column(c).FillWidth().Gap(t.Density.Stack).Children(func() {
+		for _, report := range s.reports {
+			modelHint := ""
+			if !report.Unreadable {
+				modelHint = s.modelIconHint(reportHeadingFor(c, report))
+				if len(report.RunSummaries) > 0 {
+					modelHint += " " + s.modelIconHint(reportText(report.RunSummaries[0].Model))
+				}
 			}
+			reportCard(c, report, modelHint, s.reportExclusivity(report.ReportId), func() { s.openReport(report.ReportId) })
 		}
-		reportCard(c, report, modelHint, s.reportExclusivity(report.ReportId), func() { s.openReport(report.ReportId) })
+	})
+}
+
+func reportRatioBar(c *ui.Context, ratio float64, width, height float32, color ui.Color) {
+	t := tokens(c)
+	if ratio < 0 {
+		ratio = 0
+	} else if ratio > 1 {
+		ratio = 1
 	}
+	ui.Box(c).Width(width).Height(height).Shrink(0).Draw(func(p *ui.Painter, r ui.Rect) {
+		if r.W <= 0 || r.H <= 0 {
+			return
+		}
+		rad := r.H / 2
+		p.Fill(r, t.Color.BorderDefault, rad)
+		fillW := r.W * float32(ratio)
+		if fillW > 0 {
+			fillW = min(r.W, max(r.H, fillW))
+			p.Fill(ui.Rect{X: r.X, Y: r.Y, W: fillW, H: r.H}, color, rad)
+		}
+	})
 }
 
 func reportCard(c *ui.Context, report core.ReportSummary, modelHint, exclusivity string, open func()) {
 	t := tokens(c)
-	applyMaterial(c, ui.Column(c.Key(report.ReportId)).MinWidth(0).Gap(t.Density.Row).Padding(t.Card.Padding), materialCard).Children(func() {
-		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			if !report.Unreadable {
-				modelIconBox(c, modelHint, 28, t.Radius.SM)
+	applyMaterial(c, ui.Column(c.Key(report.ReportId)).FillWidth().MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Stack).Children(func() {
+			if report.Unreadable {
+				scale := t.Color.Danger
+				ui.Box(c).Size(36, 36).Radius(t.Radius.Inset).Shrink(0).
+					Background(scale.SubtleBg).Border(1, scale.Border).
+					AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+					components.Icon(c, lucide.CircleAlert).Size(17, 17).TextColor(semanticAccentColor(c, scale))
+				})
+			} else {
+				modelIconBox(c, modelHint, 36, t.Radius.Inset)
 			}
-			ui.Text(c, reportHeadingFor(c, report)).Bold()
-			if !report.Unreadable {
-				exclusivityBadge(c, exclusivity)
-			}
+			ui.Column(c).Grow(1).MinWidth(180).Gap(2).Children(func() {
+				ui.Text(c, reportHeadingFor(c, report)).Bold().FontSize(t.Type.CardTitle).TextColor(t.Color.FgPrimary).SingleLine()
+				ui.Text(c, reportSubheadingFor(c, report)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
+			})
+			ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				if !report.Unreadable {
+					exclusivityBadge(c, exclusivity)
+				}
+				outlineIconButton(c, lucide.Eye, tr(c, "reports.list.open")).
+					Label(trf(c, "reports.list.open_aria", "id", report.ReportId)).
+					OnClick(open)
+			})
 		})
-		ui.Text(c, reportSubheadingFor(c, report)).TextColor(c.Theme().TextMuted)
 		if report.Unreadable {
-			ui.Text(c, tr(c, "reports.list.unreadable_body")).TextColor(stateColor(c, stateDanger))
-		} else {
-			for _, run := range report.RunSummaries {
-				ui.Text(c, reportRunLineFor(c, report, run)).Selectable()
-			}
+			applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
+				Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
+				components.Icon(c, lucide.CircleAlert).Size(14, 14).TextColor(semanticAccentColor(c, t.Color.Danger))
+				ui.Text(c, tr(c, "reports.list.unreadable_body")).FontSize(t.Type.Caption).TextColor(t.Color.Danger.Fg)
+			})
+		} else if len(report.RunSummaries) > 0 {
+			applyMaterial(c, ui.Column(c).FillWidth().Gap(0).Padding(t.Density.Tight, t.Density.Stack), materialSunken).Children(func() {
+				for i, run := range report.RunSummaries {
+					if i > 0 {
+						ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+					}
+					q := run.Quality
+					hasRatio := q.Numerator != nil && q.Denominator != nil && *q.Denominator > 0
+					dotColor := t.Color.BorderStrong
+					var ratio float64
+					if hasRatio {
+						ratio = float64(*q.Numerator) / float64(*q.Denominator)
+						if q.Complete {
+							dotColor = t.Color.Success.Solid
+							if ratio < 0.5 {
+								dotColor = t.Color.Warning.Solid
+							}
+						} else {
+							dotColor = t.Color.Active.Solid
+						}
+					}
+					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Tight+1, 0).Children(func() {
+						ui.Box(c).Size(6, 6).Radius(t.Radius.Full).Shrink(0).Background(dotColor)
+						ui.Text(c, reportRunLineFor(c, report, run)).
+							FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgPrimary).
+							Grow(1).MinWidth(0).SingleLine().Selectable()
+						if hasRatio {
+							reportRatioBar(c, ratio, 68, 5, dotColor)
+						}
+					})
+				}
+			})
 		}
-		primaryIconButton(c, lucide.Eye, tr(c, "reports.list.open")).Label(trf(c, "reports.list.open_aria", "id", report.ReportId)).OnClick(open)
 	})
 }
 

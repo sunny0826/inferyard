@@ -11,6 +11,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
 )
@@ -323,28 +324,31 @@ func (s *viewState) ensureSVGStage(report *reportViewState, item core.ReportSVGO
 }
 
 func (s *viewState) reportSVGSection(c *ui.Context, report *reportViewState, run core.ReportRun) {
+	t := tokens(c)
 	outputs := run.SVGOutputs
 	if len(outputs) == 0 {
 		report.releaseSVGStage()
 		if !runHasSVGCases(run) {
 			return
 		}
-		card(c, tr(c, "reports.svg.title"), func() {
-			ui.Text(c, tr(c, "reports.svg.regenerate_hint")).TextColor(c.Theme().TextMuted)
+		reportSectionCard(c, lucide.Layers, tr(c, "reports.svg.title"), nil, func() {
+			infoBanner(c, tr(c, "reports.svg.regenerate_hint"))
 		})
 		return
 	}
 	if report.svgIndex < 0 || report.svgIndex >= len(outputs) {
 		report.svgIndex = 0
 	}
-	card(c, tr(c, "reports.svg.title"), func() {
-		if len(outputs) > 1 {
+	var trailing func()
+	if len(outputs) > 1 {
+		trailing = func() {
 			pickerLabel := tr(c, "reports.svg.select_case")
-			ui.Field(c, pickerLabel, func() {
+			ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Shrink(0).Children(func() {
+				ui.Text(c, pickerLabel).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
 				picker := studioSelect(c, &report.svgIndex)
 				current := outputs[report.svgIndex].CaseID
 				picker.Trigger.Label(pickerLabel).Value(current).Children(func() {
-					ui.Text(c, current).SingleLine()
+					ui.Text(c, current).FontSize(t.Type.Caption).SingleLine()
 				})
 				picker.Popup(func(ui.Element) {
 					for i, item := range outputs {
@@ -355,46 +359,64 @@ func (s *viewState) reportSVGSection(c *ui.Context, report *reportViewState, run
 				})
 			})
 		}
+	}
+	reportSectionCard(c, lucide.Layers, tr(c, "reports.svg.title"), trailing, func() {
 		item := outputs[report.svgIndex]
-		svgItemHeader(c, run, outputs, report.svgIndex)
-		ui.Text(c, item.Prompt).TextColor(c.Theme().TextMuted).Selectable()
+		applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight+1).Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
+			svgItemHeader(c, run, outputs, report.svgIndex)
+			if item.Prompt != "" {
+				ui.Text(c, item.Prompt).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).Selectable()
+			}
+		})
 		if item.Status != "ok" || item.SVG == nil {
 			report.releaseSVGStage()
-			ui.Text(c, svgStatusMessage(c, item.Status)).TextColor(stateColor(c, stateWarning))
+			noticeBanner(c, noticeBannerOptions{
+				Kind:    stateWarning,
+				Size:    bannerCompact,
+				Message: svgStatusMessage(c, item.Status),
+			})
 			return
 		}
 		if s.ensureSVGStage(report, item) {
-			t := tokens(c)
-			ui.Box(c).FillWidth().Background(ui.Hex("#ffffff")).Border(1, t.Color.BorderDefault).Radius(t.Radius.Control).Children(func() {
+			ui.Box(c).FillWidth().Background(ui.Hex("#ffffff")).Border(1, t.Color.BorderDefault).Radius(t.Radius.Inset).Clip().Children(func() {
 				ui.WebView(c.Key("report-svg-webview"), report.svgStage.native()).
 					FillWidth().
 					Height(svgStageHeight).
-					Radius(t.Radius.Control).
+					Radius(t.Radius.Inset).
 					Label(trf(c, "reports.svg.stage_aria", "case_id", item.CaseID))
 			})
 		} else {
-			ui.Text(c, tr(c, "reports.svg.webview_unavailable")).TextColor(c.Theme().TextMuted)
+			infoBanner(c, tr(c, "reports.svg.webview_unavailable"))
 		}
 		componentFoldKeyed(c, "svg-source-"+run.Source.RunID+"-"+item.CaseID, tr(c, "reports.svg.source_fold"), func() {
-			applyMaterial(c, components.ScrollView(c, components.ScrollViewOptions{}).FillWidth().MaxHeight(260), materialInset).Children(func() {
-				ui.Column(c).FillWidth().Padding(tokens(c).Density.Inset).Children(func() {
-					ui.Text(c, *item.SVG).FontSize(tokens(c).Type.Caption).Selectable()
+			applyMaterial(c, components.ScrollView(c, components.ScrollViewOptions{}).FillWidth().MaxHeight(260), materialSunken).Children(func() {
+				ui.Column(c).FillWidth().Padding(t.Density.Stack).Children(func() {
+					ui.Text(c, *item.SVG).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Selectable()
 				})
 			})
 		})
 	})
 }
 
+func svgStatusKind(status string) stateKind {
+	if status == "ok" {
+		return stateSuccess
+	}
+	return stateWarning
+}
+
 func svgItemHeader(c *ui.Context, run core.ReportRun, outputs []core.ReportSVGOutput, index int) {
+	t := tokens(c)
 	item := outputs[index]
-	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-		ui.Text(c, item.CaseID).Bold()
-		statusBadge(c, svgStatusLabel(c, item.Status), svgStatusColor(c, item.Status))
+	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		ui.Text(c, item.CaseID).Bold().FontFeatures("tnum").SingleLine()
+		inlineBadge(c, svgStatusLabel(c, item.Status), svgStatusKind(item.Status), badgeOptions{Size: sizeSM, Style: badgeSoft})
+		ui.Box(c).Grow(1)
 		meta := trf(c, "reports.svg.meta_bytes", "bytes", groupedInt(item.Bytes))
 		if latency := svgCaseLatencyMS(run, outputs, index); latency != nil {
 			meta += " · " + trf(c, "reports.svg.meta_latency", "latency", reportScaled(latency, 1000, "s"))
 		}
-		ui.Text(c, meta).FontSize(tokens(c).Type.Caption).TextColor(c.Theme().TextMuted)
+		ui.Text(c, meta).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
 	})
 }
 
