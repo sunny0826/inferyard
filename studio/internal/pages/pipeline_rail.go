@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/icons/reicon"
 )
 
@@ -50,7 +51,7 @@ func pipelineTargetWeights(n, current int) []float32 {
 	weights := make([]float32, n)
 	for i := range n {
 		if i == current {
-			weights[i] = 2.6
+			weights[i] = 1.45
 		} else {
 			weights[i] = 1.0
 		}
@@ -174,16 +175,17 @@ func pipelineRail(c *ui.Context, spec pipelineCardOptions) {
 		// Optically aligned label row (design-2): exact same weights and 4px gap as segments below.
 		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(4).Children(func() {
 			for i, st := range spec.Steps {
-				ui.Row(c).Grow(targetWeights[i]).MinWidth(0).AlignItems(ui.Center).Gap(4).Children(func() {
+				row := ui.Row(c).Grow(anim.weights[i]).MinWidth(0).AlignItems(ui.Center).Gap(4).Description(st.Label)
+				row.Children(func() {
 					switch {
 					case i < spec.Current:
-						studioIcon(c, reicon.Check, t.Color.FgSecondary)
+						components.Icon(c, reicon.Check).Size(16, 16).TextColor(t.Color.FgSecondary).Shrink(0).Role(ui.RoleNone)
 						ui.Text(c, st.Label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
 					case i == spec.Current:
 						ambientLifecycleDot(c, activeScale, spec.Progress.Active && !spec.Failed)
-						ui.Text(c, st.Label).Bold().FontSize(t.Type.Caption).TextColor(activeScale.Fg).SingleLine()
+						ui.Text(c, st.Label).FontWeight(600).FontSize(t.Type.Caption).TextColor(activeScale.Fg).SingleLine()
 						if spec.Progress.PercentLabel != "" {
-							ui.Text(c, spec.Progress.PercentLabel).Bold().FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(activeScale.Fg).SingleLine()
+							ui.Text(c, spec.Progress.PercentLabel).FontWeight(600).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(activeScale.Fg).SingleLine()
 						}
 					default:
 						ui.Text(c, fmt.Sprintf("%d", i+1)).FontSize(t.Type.ShellDetail).FontFeatures("tnum").TextColor(t.Color.FgTertiary).SingleLine()
@@ -201,7 +203,7 @@ func pipelineRail(c *ui.Context, spec pipelineCardOptions) {
 				barLabel = spec.Progress.AriaLabel
 			}
 		}
-		rail := ui.Box(c).FillWidth().Height(24)
+		rail := ui.Box(c).FillWidth().Height(12)
 		if spec.Progress.Active {
 			rail.Role(ui.RoleProgress).Range(0, 1, barVal).Label(barLabel)
 		}
@@ -262,8 +264,8 @@ func pipelineRail(c *ui.Context, spec pipelineCardOptions) {
 			}
 
 			const gap float32 = 4
-			const barH float32 = 12
-			barY := r.Y + 1
+			const barH float32 = 8
+			barY := r.Y + 2
 			rad := barH / 2
 			totalW := float32(0)
 			for _, w := range anim.weights {
@@ -271,7 +273,6 @@ func pipelineRail(c *ui.Context, spec pipelineCardOptions) {
 			}
 			avail := max(0, r.W-gap*float32(n-1))
 			x := r.X
-			targetPtrX := float32(-1)
 
 			for i := range n {
 				segW := avail * (anim.weights[i] / totalW)
@@ -283,7 +284,6 @@ func pipelineRail(c *ui.Context, spec pipelineCardOptions) {
 				case i < spec.Current:
 					p.Fill(seg, t.Color.FgPrimary.Alpha(.22), rad)
 				case i == spec.Current:
-					targetPtrX = seg.X + seg.W/2
 					borderCol := activeScale.Border
 					if highContrast {
 						borderCol = activeScale.Solid
@@ -339,36 +339,6 @@ func pipelineRail(c *ui.Context, spec pipelineCardOptions) {
 					p.Fill(inner, t.Color.Sunken, innerR)
 				}
 				x += segW + gap
-			}
-
-			// Bottom divider hairline unifying rail and workspace.
-			lineY := r.Y + r.H - 1
-			p.Fill(ui.Rect{X: r.X, Y: lineY, W: r.W, H: 1}, t.Color.BorderSubtle, 0)
-
-			// Sliding optical connector latch tying active segment to workspace (design-2 / motion-17).
-			if targetPtrX >= 0 {
-				if !anim.hasPointer || reduced {
-					anim.pointerX = targetPtrX
-					anim.hasPointer = true
-				} else {
-					diff := targetPtrX - anim.pointerX
-					if float32(math.Abs(float64(diff))) > 0.5 {
-						anim.pointerX += diff * alpha
-						stillMoving = true
-					} else {
-						anim.pointerX = targetPtrX
-					}
-				}
-				cx := anim.pointerX
-				neckTop := barY + barH + 1
-				neckH := max(2, lineY-neckTop)
-				// Subtle vertical stem + grounded accent foot resting cleanly on the divider.
-				p.Fill(ui.Rect{X: cx - 1, Y: neckTop, W: 2, H: neckH}, activeScale.Solid.Alpha(.45), 1)
-				footW := float32(28)
-				if highContrast {
-					footW = 36
-				}
-				p.Fill(ui.Rect{X: cx - footW/2, Y: lineY - 1, W: footW, H: 2.5}, activeScale.Solid, 1.25)
 			}
 
 			if stillMoving && !reduced {

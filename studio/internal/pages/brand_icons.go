@@ -269,7 +269,7 @@ func chevronBox(c *ui.Context, expanded bool) {
 }
 
 func sidebarIconSlot(c *ui.Context, fn func()) {
-	ui.Box(c).Size(16, 16).Shrink(0).AlignSelf(ui.Center).
+	ui.Box(c).Size(studioIconBoxSize, studioIconBoxSize).Shrink(0).AlignSelf(ui.Center).
 		AlignItems(ui.Center).Justify(ui.Center).Children(fn)
 }
 

@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"cmp"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -122,8 +121,8 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 			s.renderActiveFlowRow(c)
 		}
 		if !found {
-			applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
-				Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
+			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).
+				Padding(t.Density.Hairline, 0).Children(func() {
 				studioIcon(c, reicon.Play, t.Color.FgTertiary)
 				ui.Text(c, tr(c, "benchmarks.group.running_empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			})
@@ -144,8 +143,8 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 			s.renderBenchmarkTaskRow(c, extraSpeed)
 		}
 		if !found {
-			applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
-				Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
+			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).
+				Padding(t.Density.Hairline, 0).Children(func() {
 				studioIcon(c, reicon.Clock, t.Color.FgTertiary)
 				ui.Text(c, tr(c, "benchmarks.group.queued_empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			})
@@ -153,7 +152,7 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 	})
 
 	historyRuns := s.historyRuns()
-	ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
+	ui.Column(c).FillWidth().Gap(t.Density.Stack).Children(func() {
 		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			heading(c, tr(c, "benchmarks.group.recent"), 3).Grow(1)
 			if len(historyRuns) > 0 {
@@ -162,13 +161,13 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 				}
 			}
 		})
-		found := false
+		var rowFns []func()
 		seenRuns := map[string]bool{}
 		for _, task := range s.tasks {
 			if !terminal(task.State) {
 				continue
 			}
-			found = true
+			tCopy := task
 			if p := cleanMatchPath(emptyText(task.RunPath)); p != "" {
 				seenRuns[p] = true
 			}
@@ -178,7 +177,7 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 			if rid := emptyText(task.RunId); rid != "" {
 				seenRuns[rid] = true
 			}
-			s.renderBenchmarkTaskRow(c, task)
+			rowFns = append(rowFns, func() { s.renderBenchmarkTaskRowMode(c, tCopy, false) })
 		}
 		if s.speed != nil {
 			speedCount := 0
@@ -189,10 +188,10 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 				if r == nil || r.active() || seenRuns[r.id] {
 					continue
 				}
-				found = true
 				speedCount++
 				seenRuns[r.id] = true
-				s.renderBenchmarkTaskRow(c, r.toRunTask())
+				rt := r.toRunTask()
+				rowFns = append(rowFns, func() { s.renderBenchmarkTaskRowMode(c, rt, false) })
 			}
 		}
 		reportCount := 0
@@ -203,7 +202,6 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 			if reportAlreadyListed(rep, seenRuns) {
 				continue
 			}
-			found = true
 			reportCount++
 			for _, rid := range rep.RunIds {
 				if rid != "" {
@@ -215,7 +213,8 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 					seenRuns[p] = true
 				}
 			}
-			s.renderRecentReportRow(c, rep)
+			repCopy := rep
+			rowFns = append(rowFns, func() { s.renderRecentReportRow(c, repCopy) })
 		}
 		historyCount := 0
 		for _, r := range historyRuns {
@@ -226,7 +225,6 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 			if (p != "" && seenRuns[p]) || (r.RunId != "" && seenRuns[r.RunId]) {
 				continue
 			}
-			found = true
 			historyCount++
 			if p != "" {
 				seenRuns[p] = true
@@ -234,46 +232,18 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 			if r.RunId != "" {
 				seenRuns[r.RunId] = true
 			}
-			s.renderRecentHistoryRunRow(c, r)
+			rCopy := r
+			rowFns = append(rowFns, func() { s.renderRecentHistoryRunRow(c, rCopy) })
 		}
-		if !found {
+		if len(rowFns) == 0 {
 			ui.Text(c, tr(c, "benchmarks.group.recent_empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		} else {
+			applyMaterial(c, ui.Column(c.Key("bench-recent-list")).FillWidth().Gap(t.Density.Hairline).Padding(t.Density.Tight), materialCard).Children(func() {
+				for _, fn := range rowFns {
+					fn()
+				}
+			})
 		}
-	})
-}
-
-func (s *viewState) renderRecentHistoryRunRow(c *ui.Context, r core.RunSummary) {
-	t := tokens(c)
-	loc := contextLocale(c)
-	modelTitle := historyModel(r)
-	title := modelTitle
-	if b := strings.TrimSpace(emptyText(r.Bundle)); b != "" {
-		title = modelTitle + " · " + b
-	}
-	subParts := []string{runScore(r)}
-	if started := historyStarted(r); started != "—" {
-		subParts = append(subParts, started)
-	}
-	runPath := r.Path
-	cardEl, rowR := compactCard(c, ui.Column(c.Key("bench-recent-run-"+runPath)).FillWidth(), t.Density.Tight)
-	iconR := concentricRadius(rowR, t.Density.Row)
-	cardEl.Children(func() {
-		listRow(c, listRowOptions{
-			Radius:    rowR,
-			BoldTitle: true,
-			Leading:   func() { modelIconBox(c, s.modelIconHint(modelTitle), 32, iconR) },
-			Title:     title,
-			Subtitle:  strings.Join(subParts, " · "),
-			Trailing: func() {
-				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-					if s.canResumeHistoryRun(r) {
-						inlineBadge(c, tr(c, "dashboard.history.badge_resumable"), stateWarning, badgeOptions{Size: sizeSM})
-					}
-					inlineBadge(c, stateLabelFor(loc, r.Status), historyStatusKind(r.Status), badgeOptions{Size: sizeSM, Style: badgeDot})
-				})
-			},
-			OnClick: func() { s.openHistoryRunDetail(runPath) },
-		})
 	})
 }
 
@@ -349,6 +319,10 @@ func (s *viewState) renderActiveFlowRow(c *ui.Context) {
 }
 
 func (s *viewState) renderBenchmarkTaskRow(c *ui.Context, task core.RunTask) {
+	s.renderBenchmarkTaskRowMode(c, task, true)
+}
+
+func (s *viewState) renderBenchmarkTaskRowMode(c *ui.Context, task core.RunTask, wrapCard bool) {
 	t := tokens(c)
 	title := benchmarkTaskTitle(c, task)
 	sub := s.benchmarkTaskSubtitle(c, task)
@@ -378,13 +352,18 @@ func (s *viewState) renderBenchmarkTaskRow(c *ui.Context, task core.RunTask) {
 			}
 		}
 	}
-	cardEl, rowR := compactCard(c, ui.Column(c.Key("bench-task-"+task.TaskId)).FillWidth(), t.Density.Tight)
-	iconR := concentricRadius(rowR, t.Density.Row)
+	var cardEl ui.Element
+	rowR := concentricRadius(t.Radius.Surface, t.Density.Tight)
+	if wrapCard {
+		cardEl, rowR = compactCard(c, ui.Column(c.Key("bench-task-"+task.TaskId)).FillWidth(), t.Density.Tight)
+	} else {
+		cardEl = ui.Column(c.Key("bench-task-" + task.TaskId)).FillWidth()
+	}
 	cardEl.Children(func() {
 		listRow(c, listRowOptions{
 			Radius:    rowR,
 			BoldTitle: true,
-			Leading:   func() { engineIconBox(c, s.engineIconHint(engName), 32, iconR) },
+			Leading:   func() { engineIconBox(c, s.engineIconHint(engName), 32, t.Radius.Control) },
 			Title:     title,
 			Subtitle:  sub,
 			Trailing: func() {
@@ -416,83 +395,4 @@ func (s *viewState) renderBenchmarkTaskRow(c *ui.Context, task core.RunTask) {
 			})
 		}
 	})
-}
-
-func (s *viewState) renderRecentReportRow(c *ui.Context, rep core.ReportSummary) {
-	t := tokens(c)
-	repCopy := rep
-	cardEl, rowR := compactCard(c, ui.Column(c.Key("bench-recent-rep-"+rep.ReportId)).FillWidth(), t.Density.Tight)
-	iconR := concentricRadius(rowR, t.Density.Row)
-	cardEl.Children(func() {
-		listRow(c, listRowOptions{
-			Radius:    rowR,
-			BoldTitle: true,
-			Leading: func() {
-				ui.Box(c).Size(32, 32).Radius(iconR).Shrink(0).AlignSelf(ui.Center).
-					Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).
-					AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-					studioIcon(c, reicon.FileText, t.Color.FgSecondary)
-				})
-			},
-			Title:    reportHeadingFor(c, repCopy),
-			Subtitle: reportSubheadingFor(c, repCopy),
-			Trailing: func() {
-				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-					if !repCopy.Unreadable {
-						exclusivityBadge(c, s.reportExclusivity(repCopy.ReportId))
-					}
-					inlineBadge(c, tr(c, "benchmarks.badge.report"), stateSuccess, badgeOptions{Size: sizeSM})
-				})
-			},
-			OnClick: func() { s.openReport(repCopy.ReportId) },
-		})
-	})
-}
-
-func (s *viewState) benchmarkTaskSubtitle(c *ui.Context, task core.RunTask) string {
-	sub := taskLabelFor(contextLocale(c), task)
-	if speed := task.ContextSpeed; task.Kind == "context_speed" && speed != nil {
-		if engine := cmp.Or(strings.TrimSpace(speed.DisplayEngine), strings.TrimSpace(speed.Engine)); engine != "" {
-			sub = engine + " · " + sub
-		}
-	}
-	if terminal(task.State) || task.Queued || task.State == "queued" {
-		if task.StartedAt != nil && *task.StartedAt != "" {
-			sub += " · " + formatTimestamp(*task.StartedAt)
-		}
-		return sub
-	}
-	if task.ContextSpeed != nil && task.ContextSpeed.Stage == "measuring" {
-		sub += " · " + trf(c, "speed.task.completed_count", "completed", task.ContextSpeed.Completed)
-	} else if active := s.running(); active != nil && active.TaskId == task.TaskId && s.runProgress != nil && s.runProgress.Total != nil && *s.runProgress.Total > 0 {
-		sub += " · " + trf(c, "dashboard.run.cases_progress", "done", s.runProgress.Done, "total", *s.runProgress.Total)
-	}
-	if task.State != "cancelling" && !task.AwaitingService {
-		if elapsed := s.formatTaskElapsed(c, emptyText(task.StartedAt)); elapsed != "" {
-			return sub + " · " + elapsed
-		}
-	}
-	if task.StartedAt != nil && *task.StartedAt != "" {
-		sub += " · " + formatTimestamp(*task.StartedAt)
-	}
-	return sub
-}
-
-func reportAlreadyListed(rep core.ReportSummary, seen map[string]bool) bool {
-	if rep.ReportId != "" && seen[rep.ReportId] {
-		return true
-	}
-	for _, run := range rep.RunSummaries {
-		if run.RunID != "" && seen[run.RunID] {
-			return true
-		}
-		if strings.TrimSpace(run.RunID) != "" {
-			for k := range seen {
-				if strings.Contains(k, run.RunID) {
-					return true
-				}
-			}
-		}
-	}
-	return false
 }

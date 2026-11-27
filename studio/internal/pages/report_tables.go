@@ -52,7 +52,7 @@ func (r *reportViewState) categoryView(c *ui.Context, run core.ReportRun) {
 					}
 					ui.Text(c, exclText).FontFeatures("tnum").TextColor(exclColor).SingleLine()
 				}
-			}).Height(c.Theme().Space(11) * float32(min(len(categories), 8)+1))
+			}).Height(c.Theme().Space(8) + c.Theme().Space(9)*float32(min(len(categories), 8)))
 		})
 	})
 }
@@ -147,7 +147,7 @@ func (r *reportViewState) requestView(c *ui.Context, run core.ReportRun) {
 						studioIcon(c, reicon.ChevronRight, t.Color.FgTertiary)
 					})
 				}
-			}).Height(c.Theme().Space(11) * float32(min(len(visible), 8)+1))
+			}).Height(c.Theme().Space(8) + c.Theme().Space(10)*float32(min(len(visible), 8)))
 		})
 		if r.requests.clicked || r.requests.submitted {
 			if idx := selectedRow(&r.requests, len(visible)); idx >= 0 {

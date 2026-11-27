@@ -215,7 +215,7 @@ func reportStatRow(c *ui.Context, label, value string, muted bool) {
 	if muted || value == "" || value == "—" {
 		valColor = t.Color.FgTertiary
 	}
-	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Tight+1, 0).Children(func() {
+	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Tight, 0).Children(func() {
 		ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).Grow(1).MinWidth(100)
 		el := ui.Text(c, value).FontFeatures("tnum").TextColor(valColor).Selectable().Label(ariaLabel)
 		if !muted && value != "" && value != "—" {

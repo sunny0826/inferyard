@@ -50,10 +50,11 @@ func listRow(c *ui.Context, opts listRowOptions) ui.Element {
 			opts.Leading()
 		}
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
-			title := ui.Text(c, opts.Title).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
+			weight := 500
 			if opts.Selected || opts.BoldTitle {
-				title.Bold()
+				weight = 600
 			}
+			ui.Text(c, opts.Title).FontSize(t.Type.Primary).FontWeight(weight).TextColor(t.Color.FgPrimary).SingleLine()
 			if opts.Subtitle != "" {
 				ui.Text(c, opts.Subtitle).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
 			}

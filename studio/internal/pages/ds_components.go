@@ -162,33 +162,37 @@ func studioSelect[T comparable](c *ui.Context, selected *T) *components.SelectPa
 	return sel
 }
 
-func badge(c *ui.Context, label string, kind stateKind, opts badgeOptions) ui.Element {
+func badgeColorsFor(c *ui.Context, kind stateKind) (bg, fg, border, dot ui.Color) {
 	t := tokens(c)
-	fontSize := t.Type.Caption
-	padY, padX := t.Density.Hairline, t.Density.Row
-	if opts.Size == sizeSM {
-		padY, padX = t.Density.Hairline, t.Density.Tight
-	}
-
-	// 90% neutral / 10% single accent color discipline (DESIGN.md §2):
-	// Reserve color strictly for active core state (Accent) and errors (Danger);
-	// render routine metadata/completed/warning badges in calm neutral monochrome.
-	dotColor := t.Color.FgSecondary
-	bg := t.Color.Sunken
-	fg := t.Color.FgSecondary
-	border := t.Color.BorderDefault
+	bg = t.Color.Sunken
+	fg = t.Color.FgSecondary
+	border = t.Color.BorderDefault
+	dot = t.Color.FgSecondary
 	switch kind {
 	case stateActive:
-		dotColor = t.Color.Accent
 		bg = t.Color.AccentSubtleBg
 		fg = t.Color.Active.Fg
 		border = t.Color.Active.Border
+		dot = t.Color.Accent
+	case stateWarning:
+		bg = t.Color.Sunken
+		fg = t.Color.Warning.Fg
+		border = t.Color.Warning.Border
+		dot = t.Color.Warning.Solid
 	case stateDanger:
-		dotColor = t.Color.Danger.Solid
 		bg = t.Color.Danger.SubtleBg
 		fg = t.Color.Danger.Fg
 		border = t.Color.Danger.Border
+		dot = t.Color.Danger.Solid
 	}
+	return bg, fg, border, dot
+}
+
+func badge(c *ui.Context, label string, kind stateKind, opts badgeOptions) ui.Element {
+	t := tokens(c)
+	fontSize := t.Type.Caption
+	padY, padX := t.Density.Hairline, t.Density.Tight
+	bg, fg, border, dotColor := badgeColorsFor(c, kind)
 
 	if opts.Style == badgeDot {
 		row := ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Label(label)
@@ -207,7 +211,12 @@ func badge(c *ui.Context, label string, kind stateKind, opts badgeOptions) ui.El
 		el.Background(bg)
 	}
 	el.Children(func() {
-		ui.Text(c, label).FontSize(fontSize).TextColor(fg).SingleLine()
+		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Hairline).Children(func() {
+			if kind == stateWarning {
+				ui.Box(c).Size(6, 6).Radius(t.Radius.Full).Shrink(0).Background(dotColor)
+			}
+			ui.Text(c, label).FontSize(fontSize).TextColor(fg).SingleLine()
+		})
 	})
 	return el
 }

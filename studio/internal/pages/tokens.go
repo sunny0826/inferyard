@@ -35,6 +35,7 @@ type typeTokens struct {
 	PageTitle   float32
 	CardTitle   float32
 	Section     float32
+	Primary     float32
 	Metric      float32
 	MetricLarge float32
 	Body        float32
@@ -177,6 +178,7 @@ func typeTokensFor(t *ui.Theme) typeTokens {
 		PageTitle:   t.Rem(18.0 / 14.0),
 		CardTitle:   t.Rem(18.0 / 14.0),
 		Section:     t.Rem(18.0 / 14.0),
+		Primary:     t.Rem(16.0 / 14.0),
 		Metric:      t.Rem(18.0 / 14.0),
 		MetricLarge: t.Rem(24.0 / 14.0),
 		Body:        t.Rem(1.0),

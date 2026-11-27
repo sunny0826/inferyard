@@ -95,10 +95,10 @@ func (s *viewState) renderModelEvidenceInline(c *ui.Context, m core.ModelAsset) 
 	}
 	scale := stateScale(c, stateSuccess)
 	btn := components.Button(c, label, components.ButtonGhost).
-		MinHeight(22).
-		Padding(2, t.Density.Row).
+		MinHeight(t.Control.SM).
+		Padding(t.Density.Hairline, t.Density.Tight).
 		Radius(t.Radius.Full).
-		FontSize(max(11, t.Type.ShellLabel)).
+		FontSize(t.Type.ShellLabel).
 		FontFeatures("tnum").
 		AlignSelf(ui.Center).
 		Label(trf(c, "models.evidence.open_report_label", "model", modelLabel(m)))
@@ -139,20 +139,30 @@ func serviceModelSpeedTile(c *ui.Context, radius float32, label, modelName, engi
 		return
 	}
 	t := tokens(c)
+	speedText := trf(c, "services.card.metric.speed_value", "tps", fmt.Sprintf("%.1f", rec.TokensPerSecond))
 	ui.Column(c).FillWidth().Padding(t.Density.Tight, 0).Gap(t.Density.Hairline).Children(func() {
 		ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
-		ui.Text(c, modelName).FontWeight(600).FontSize(c.Theme().Rem(16.0 / 14.0)).TextColor(t.Color.FgPrimary).SingleLine()
-		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-			speedText := trf(c, "services.card.metric.speed_value", "tps", fmt.Sprintf("%.1f", rec.TokensPerSecond))
-			ui.Text(c, speedText).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.Accent).FontWeight(500).SingleLine()
-			if rec.ReportRef != "" && onOpenReport != nil {
-				link := inlineButton(c, components.ButtonGhost, tr(c, "services.card.metric.view_report")).
-					Label(trf(c, "services.card.metric.view_report_label", "model", modelName))
-				if link.Clicked() {
-					onOpenReport()
-				}
+		ui.Text(c, speedText).FontWeight(600).FontSize(t.Type.Primary).FontFeatures("tnum").TextColor(t.Color.FgPrimary).SingleLine()
+		if rec.ReportRef != "" && onOpenReport != nil {
+			link := ui.ButtonBase(c).
+				MinHeight(t.Control.SM).
+				Padding(0, 0).
+				Radius(t.Radius.SM).
+				AlignSelf(ui.Start).
+				Label(trf(c, "services.card.metric.view_report_label", "model", modelName))
+			fg := t.Color.Accent
+			if link.Hovered() || link.Focused() {
+				fg = t.Color.AccentHover
 			}
-		})
+			link.Children(func() {
+				ui.Text(c, tr(c, "services.card.metric.view_report")).FontSize(t.Type.Caption).FontWeight(500).TextColor(fg).SingleLine()
+			})
+			if link.Clicked() {
+				onOpenReport()
+			}
+		} else if engineTitle != "" {
+			ui.Text(c, engineTitle).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
+		}
 	})
 }
 

@@ -401,9 +401,9 @@ func (w *viewState) runViewWithBar(c *ui.Context, embedBar bool) {
 			elapsed = w.formatTaskElapsed(c, emptyText(task.StartedAt))
 		}
 		row.Children(func() {
-			ui.Text(c, label).FontFeatures("tnum")
+			ui.Text(c, label).FontSize(t.Type.Primary).FontWeight(600).FontFeatures("tnum").TextColor(t.Color.FgPrimary)
 			if elapsed != "" {
-				ui.Text(c, "· "+elapsed).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
+				ui.Text(c, "· "+elapsed).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 			}
 		})
 		id := task.TaskId

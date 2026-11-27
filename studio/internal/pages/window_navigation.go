@@ -123,32 +123,48 @@ func (s *viewState) selectPage(id string) {
 
 func (s *viewState) leftNav(c *ui.Context) {
 	t := tokens(c)
-	ui.Column(c).Fill().MinWidth(0).Padding(sidebar.HeaderHeight(c), 0, t.Density.Row, 0).Children(func() {
-		ui.Scroll(c).Grow(1).FillWidth().Children(func() {
-			ui.Column(c).FillWidth().Padding(t.Density.Tight, t.Density.Row).Gap(t.Density.Row).Children(func() {
-				if s.service != nil {
-					if paths := s.service.BoundPaths(); paths != nil {
-						ui.Column(c).FillWidth().Padding(0, t.Density.Row, t.Density.Tight, t.Density.Row).Gap(t.Density.Hairline).Children(func() {
-							components.Text(c, tr(c, "shell.nav.dev_env")).Bold().FontSize(t.Type.ShellLabel)
-							components.Text(c, paths.SourceLabel).FontSize(t.Type.ShellDetail).TextColor(t.Color.FgSecondary)
-						})
-					}
-				}
-				ui.Column(c).FillWidth().Gap(t.Density.Hairline).Children(func() {
-					for _, n := range navigation {
-						n := n
-						var trailing func()
-						if n.id == "benchmarks" {
-							trailing = func() { s.newTaskPlusButton(c) }
-						}
-						s.sidebarNavRow(c, n.id, tr(c, n.labelKey), n.icon, trailing)
-					}
-				})
+	root := ui.Column(c).MinWidth(0).Padding(sidebar.HeaderHeight(c), 0, t.Density.Row, 0)
+	if s.preview == nil {
+		root.Fill()
+	} else {
+		root.FillWidth()
+	}
+	root.Children(func() {
+		navWrap := ui.Column(c).FillWidth()
+		if s.preview == nil {
+			ui.Scroll(c).Grow(1).FillWidth().Children(func() {
+				s.renderLeftNavPrimary(c)
 			})
-		})
+		} else {
+			navWrap.Children(func() { s.renderLeftNavPrimary(c) })
+		}
 		ui.Column(c).FillWidth().Padding(t.Density.Stack, t.Density.Row, 0, t.Density.Row).Gap(t.Density.Tight).Children(func() {
 			s.sidebarStatusArea(c)
 			s.sidebarNavRow(c, "settings", tr(c, "nav.settings"), reicon.Settings, nil)
+		})
+	})
+}
+
+func (s *viewState) renderLeftNavPrimary(c *ui.Context) {
+	t := tokens(c)
+	ui.Column(c).FillWidth().Padding(t.Density.Tight, t.Density.Row).Gap(t.Density.Row).Children(func() {
+		if s.service != nil {
+			if paths := s.service.BoundPaths(); paths != nil {
+				ui.Column(c).FillWidth().Padding(0, t.Density.Row, t.Density.Tight, t.Density.Row).Gap(t.Density.Hairline).Children(func() {
+					components.Text(c, tr(c, "shell.nav.dev_env")).Bold().FontSize(t.Type.ShellLabel)
+					components.Text(c, paths.SourceLabel).FontSize(t.Type.ShellDetail).TextColor(t.Color.FgSecondary)
+				})
+			}
+		}
+		ui.Column(c).FillWidth().Gap(t.Density.Hairline).Children(func() {
+			for _, n := range navigation {
+				n := n
+				var trailing func()
+				if n.id == "benchmarks" {
+					trailing = func() { s.newTaskPlusButton(c) }
+				}
+				s.sidebarNavRow(c, n.id, tr(c, n.labelKey), n.icon, trailing)
+			}
 		})
 	})
 }

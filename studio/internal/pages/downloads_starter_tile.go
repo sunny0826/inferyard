@@ -36,16 +36,19 @@ func (s *viewState) starterOptionTile(c *ui.Context, st *downloadsUIState, idx i
 	})
 
 	tile.Children(func() {
-		// Top row: tier badge, fit badge, installed badge, selection circle
-		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-			ui.Row(c).Grow(1).MinWidth(0).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-				badge(c, starterTierLabel(opt.Tier), starterTierState(opt.Tier), badgeOptions{Style: badgeSoft, Size: sizeSM})
-				if opt.FitLevel != "" {
-					badge(c, deviceLabel(opt.FitLevel), starterFitState(opt.FitLevel), badgeOptions{Style: badgeSoft, Size: sizeSM})
+		// Top row: Model icon + 16px/600 title + engine/backend + selection circle
+		ui.Row(c).FillWidth().AlignItems(ui.Start).Gap(t.Density.Row).Children(func() {
+			modelIconBox(c, opt.ModelTitle+" "+opt.Family+" "+opt.ModelID, 32, t.Radius.Control)
+			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
+				ui.Text(c, starterOptionTitle(opt)).FontWeight(600).FontSize(t.Type.Primary).TextColor(t.Color.FgPrimary)
+				engineMeta := starterEngineLabel(opt.Engine)
+				if opt.Backend != "" {
+					engineMeta += " · " + deviceLabel(opt.Backend)
 				}
-				if installed {
-					badge(c, tr(c, "downloads.badge.installed"), stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
-				}
+				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+					renderBrandEngineIcon(c, opt.Engine, 14, t.Color.FgSecondary)
+					ui.Text(c, engineMeta).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				})
 			})
 			checkCircle := ui.Box(c).Size(studioIconBoxSize, studioIconBoxSize).Radius(t.Radius.Full).AlignItems(ui.Center).Justify(ui.Center).Shrink(0)
 			if selected {
@@ -57,20 +60,15 @@ func (s *viewState) starterOptionTile(c *ui.Context, st *downloadsUIState, idx i
 			}
 		})
 
-		// Title & Engine/Backend line
-		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			modelIconBox(c, opt.ModelTitle+" "+opt.Family+" "+opt.ModelID, 32, t.Radius.Control)
-			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
-				ui.Text(c, starterOptionTitle(opt)).FontWeight(600).FontSize(c.Theme().Rem(16.0 / 14.0))
-				engineMeta := starterEngineLabel(opt.Engine)
-				if opt.Backend != "" {
-					engineMeta += " · " + deviceLabel(opt.Backend)
-				}
-				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-					renderBrandEngineIcon(c, opt.Engine, 14, t.Color.FgSecondary)
-					ui.Text(c, engineMeta).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-				})
-			})
+		// Distinguishing badges (tier + non-default fit + installed)
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+			badge(c, starterTierLabel(opt.Tier), starterTierState(opt.Tier), badgeOptions{Style: badgeSoft, Size: sizeSM})
+			if opt.FitLevel != "" && opt.FitLevel != "fits" && opt.FitLevel != "recommended" {
+				badge(c, deviceLabel(opt.FitLevel), starterFitState(opt.FitLevel), badgeOptions{Style: badgeSoft, Size: sizeSM})
+			}
+			if installed {
+				badge(c, tr(c, "downloads.badge.installed"), stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
+			}
 		})
 
 		ui.Spacer(c)

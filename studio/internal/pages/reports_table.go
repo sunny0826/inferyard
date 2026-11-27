@@ -82,8 +82,8 @@ func reportCard(c *ui.Context, report core.ReportSummary, modelHint, exclusivity
 			} else {
 				modelIconBox(c, modelHint, 36, t.Radius.Inset)
 			}
-			ui.Column(c).Grow(1).MinWidth(180).Gap(2).Children(func() {
-				ui.Text(c, reportHeadingFor(c, report)).Bold().FontSize(t.Type.CardTitle).TextColor(t.Color.FgPrimary).SingleLine()
+			ui.Column(c).Grow(1).MinWidth(180).Gap(t.Density.Hairline).Children(func() {
+				ui.Text(c, reportHeadingFor(c, report)).FontWeight(600).FontSize(t.Type.Primary).TextColor(t.Color.FgPrimary).SingleLine()
 				ui.Text(c, reportSubheadingFor(c, report)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
 			})
 			ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {

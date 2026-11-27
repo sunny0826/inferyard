@@ -50,12 +50,12 @@ func (p *previewSession) dsStatesCard(c *ui.Context) {
 
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			badge(c, tr(c, "preview.ds.state.neutral"), stateNeutral, badgeOptions{Style: badgeSoft})
-			badge(c, tr(c, "preview.ds.state.info"), stateInfo, badgeOptions{Style: badgeSoft})
+			badge(c, tr(c, "preview.ds.state.info"), stateActive, badgeOptions{Style: badgeSoft})
 			badge(c, tr(c, "preview.ds.state.success"), stateSuccess, badgeOptions{Style: badgeSoft})
 			badge(c, tr(c, "preview.ds.state.warning"), stateWarning, badgeOptions{Style: badgeSoft})
 			badge(c, tr(c, "preview.ds.state.danger"), stateDanger, badgeOptions{Style: badgeSoft})
-			badge(c, tr(c, "preview.ds.state.dot"), stateSuccess, badgeOptions{Style: badgeDot})
-			badge(c, tr(c, "preview.ds.state.outline"), stateInfo, badgeOptions{Style: badgeOutline})
+			badge(c, tr(c, "preview.ds.state.dot"), stateActive, badgeOptions{Style: badgeDot})
+			badge(c, tr(c, "preview.ds.state.outline"), stateNeutral, badgeOptions{Style: badgeOutline})
 		})
 
 		ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
@@ -165,6 +165,8 @@ func (p *previewSession) dsChartCard(c *ui.Context) {
 func (p *previewSession) dsTokensAndContrastCard(c *ui.Context, pal paletteColors) {
 	t := tokens(c)
 	rim := swatchRim(c)
+	succBg, succFg, _, _ := badgeColorsFor(c, stateSuccess)
+	warnBg, warnFg, _, _ := badgeColorsFor(c, stateWarning)
 	checks := []struct {
 		labelKey string
 		fg, bg   ui.Color
@@ -176,8 +178,8 @@ func (p *previewSession) dsTokensAndContrastCard(c *ui.Context, pal paletteColor
 		{"preview.ds.contrast.secondary_btn", t.Color.FgPrimary, pal.buttons.secondaryBg},
 		{"preview.ds.contrast.danger_btn", pal.buttons.dangerFg, pal.buttons.dangerBg},
 		{"preview.ds.contrast.danger_solid", ui.Hex("#ffffff"), pal.buttons.dangerSolid},
-		{"preview.ds.contrast.success_badge", t.Color.Success.Fg, t.Color.Success.SubtleBg},
-		{"preview.ds.contrast.warning_badge", t.Color.Warning.Fg, t.Color.Warning.SubtleBg},
+		{"preview.ds.contrast.success_badge", succFg, succBg},
+		{"preview.ds.contrast.warning_badge", warnFg, warnBg},
 	}
 
 	swatches := []struct {
@@ -206,13 +208,17 @@ func (p *previewSession) dsTokensAndContrastCard(c *ui.Context, pal paletteColor
 			for _, chk := range checks {
 				ratio := contrastRatio(chk.fg, chk.bg)
 				kind := stateSuccess
-				if ratio < 4.5 {
+				grade := "AA"
+				if ratio >= 7.0 {
+					grade = "AAA"
+				} else if ratio < 4.5 {
 					kind = stateWarning
+					grade = "LOW"
 				}
 				applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
 					Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
 					ui.Text(c, tr(c, chk.labelKey)).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1)
-					badge(c, fmt.Sprintf("%.2f:1 AA", ratio), kind, badgeOptions{Size: sizeSM})
+					badge(c, fmt.Sprintf("%.2f:1 %s", ratio, grade), kind, badgeOptions{Size: sizeSM})
 				})
 			}
 		})
