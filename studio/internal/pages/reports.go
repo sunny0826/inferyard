@@ -30,7 +30,7 @@ func (s *viewState) reportsView(c *ui.Context) {
 				components.Tabs(c, &s.reportsTab, components.TabsUnderline, tr(c, "reports.tab.reports"), tr(c, "reports.tab.context_speed"))
 			})
 			if s.reportsTab == reportsTabList {
-				button(c, tr(c, "reports.action.create_from_history")).OnClick(func() {
+				outlineIconButton(c, lucide.Plus, tr(c, "reports.action.create_from_history")).OnClick(func() {
 					s.reportDialogOpen = true
 					s.reportDiscardConfirm = false
 				})

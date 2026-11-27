@@ -449,8 +449,8 @@ func (s *Service) deleteManagedAssetInternal(kind, name, expectedTargetPath, exp
 			if !eng.Deletable {
 				return errAssetNotDeletable()
 			}
-			if eng.Kind == "local_installation" && eng.Family == "polystrata" {
-				return s.deleteManagedPolystrataEngine(name, eng, expectedTargetPath, expectedFingerprint)
+			if eng.Kind == "local_installation" {
+				return s.deleteManagedLocalInstallationEngine(name, eng, expectedTargetPath, expectedFingerprint)
 			}
 			assetPath, deletable = eng.Path, eng.Deletable
 			break

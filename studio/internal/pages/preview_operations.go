@@ -3,6 +3,7 @@
 package pages
 
 import (
+	"strings"
 	"time"
 
 	"inferyard/studio/internal/core"
@@ -92,7 +93,19 @@ func (p *previewSession) retryDownload(id string) {
 				p.startPolystrataSetup(previewPolystrataRequestFromTask(task, p.state.defaultPolystrataSetupRequest()))
 				return
 			}
-			p.startDownload(previewDownload{kind: task.Kind, source: task.SourceUrl})
+			op := previewDownload{kind: task.Kind, source: task.SourceUrl, name: task.OutName}
+			if task.RequestedSourceUrl != "" {
+				op.kind = "engine_install"
+				parts := strings.Split(task.DisplayName, " · ")
+				if len(parts) >= 2 {
+					op.family, op.version = parts[0], parts[1]
+				}
+				ids := strings.Split(task.RequestedSourceUrl, ":")
+				if len(ids) == 3 {
+					op.releaseID, op.buildID = ids[1], ids[2]
+				}
+			}
+			p.startDownload(op)
 			return
 		}
 	}

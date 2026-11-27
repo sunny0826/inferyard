@@ -152,7 +152,7 @@ func (s *viewState) downloadPrimaryKind() string {
 
 func (s *viewState) downloadActive(kind string) bool {
 	for _, task := range s.downloads {
-		if task.Kind == kind && task.State == "downloading" {
+		if (task.Kind == kind || kind == "engine" && task.Kind == "engine_install") && task.State == "downloading" {
 			return true
 		}
 	}
@@ -231,6 +231,25 @@ func (s *viewState) acquireEngine(source, name string) {
 	}
 	s.workDownload(func() (string, *core.ApiError) {
 		_, e := s.service.CreateEngineDownload(source, name)
+		return l10n.TR("downloads.toast.queued"), e
+	})
+}
+
+func (s *viewState) acquireManagedEngine(family core.EngineFamilyCatalog, release core.EngineRelease, build core.EnginePlatformBuild) {
+	req := core.ManagedEngineInstallRequest{Family: family.ID, ReleaseID: release.ID, BuildID: build.ID}
+	source := build.PrimaryURL()
+	if source == "" {
+		source = release.ReleaseURL
+	}
+	op := previewDownload{
+		kind: "engine_install", source: source, name: family.ID + "-" + strings.TrimPrefix(release.Version, "v"),
+		family: family.ID, version: release.Version, releaseID: release.ID, buildID: build.ID,
+	}
+	if s.simulate(op) {
+		return
+	}
+	s.workDownload(func() (string, *core.ApiError) {
+		_, e := s.service.CreateManagedEngineInstall(s.ctx, req)
 		return l10n.TR("downloads.toast.queued"), e
 	})
 }

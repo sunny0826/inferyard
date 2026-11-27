@@ -60,6 +60,7 @@ func prismLlamaCppProvider() EngineCatalogProvider {
 		Family: EngineFamilyCatalog{
 			ID:             "llama-cpp",
 			Name:           "llama.cpp",
+			Description:    l10n.TR("core.engine_catalog.description.llama_cpp"),
 			ModelFormat:    "gguf",
 			HomepageURL:    "https://github.com/ggml-org/llama.cpp",
 			ReleasesURL:    "https://github.com/PrismML-Eng/llama.cpp/releases",
@@ -156,6 +157,7 @@ func upstreamLlamaCppProvider() EngineCatalogProvider {
 		Family: EngineFamilyCatalog{
 			ID:             "llama-cpp",
 			Name:           "llama.cpp",
+			Description:    l10n.TR("core.engine_catalog.description.llama_cpp"),
 			ModelFormat:    "gguf",
 			HomepageURL:    "https://github.com/ggml-org/llama.cpp",
 			ReleasesURL:    "https://github.com/ggml-org/llama.cpp/releases",

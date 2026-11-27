@@ -87,12 +87,14 @@ func runMain() (exitCode int) {
 				})
 				return tray.SetEnabled
 			},
+			MinimizeToTray: func() error { return tray.MinimizeToTray() },
 			OnLocaleChanged: func(string) {
 				if tray != nil {
 					tray.RefreshLocale()
 				}
 			},
 		})
+		desktop.StartTrayStatusBridge(ctx, service, tray)
 		service.SetUpdateQuitHook(func() { mygo.App.Quit() })
 		service.StartBackgroundUpdateCheck()
 		service.StartBackgroundEngineUpdateCheck()

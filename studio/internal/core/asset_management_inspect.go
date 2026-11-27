@@ -349,6 +349,9 @@ func (s *Service) inspectDeleteEngineAsset(u UserSettings, paths *BoundPaths, re
 		if !eng.Deletable {
 			return AssetDeleteInfo{}, errAssetNotDeletable()
 		}
+		if eng.Kind == "local_installation" && eng.InstallMode == managedEngineVenvInstallMode {
+			return s.inspectManagedVenvEngineDelete(u, paths, eng)
+		}
 		if eng.Kind == "local_installation" && eng.Family == "polystrata" {
 			rawPath := s.findAssetRawPath("engine", name, eng.Path)
 			wsEngines := workspaceEnginesRoot(u, paths)

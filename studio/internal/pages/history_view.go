@@ -247,11 +247,11 @@ func (s *viewState) historyView(c *ui.Context) {
 		},
 		Actions: func() {
 			ui.Box(c).Grow(1)
-			if refreshButton(c, tr(c, "dashboard.history.refresh"), s.refreshing).Disabled(s.busy).Clicked() {
+			if refreshIconButton(c, tr(c, "dashboard.history.refresh"), s.refreshing).Disabled(s.busy).Clicked() {
 				s.refreshAction()
 			}
 			if len(runs) > 0 {
-				if button(c, tr(c, "reports.action.create_from_history")).Clicked() {
+				if outlineIconButton(c, lucide.Plus, tr(c, "reports.action.create_from_history")).Clicked() {
 					s.reportDialogOpen = true
 					s.reportDiscardConfirm = false
 				}
@@ -392,7 +392,7 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 
 				ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 					if repID := s.findReportForRun(run); repID != "" {
-						if primaryButton(c, tr(c, "dashboard.completion.view_report")).Clicked() {
+						if primaryIconButton(c, lucide.Eye, tr(c, "dashboard.completion.view_report")).Clicked() {
 							s.historyDetailPath = ""
 							s.openReport(repID)
 							return
@@ -407,7 +407,7 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 					}
 					if task := s.findTaskForHistoryRun(run); task != nil {
 						taskID := task.TaskId
-						if outlineButton(c, tr(c, "dashboard.history.live_detail")).Clicked() {
+						if outlineIconButton(c, lucide.Info, tr(c, "dashboard.history.live_detail")).Clicked() {
 							s.historyDetailPath = ""
 							s.selectTask(taskID)
 							s.selected = "benchmarks"
@@ -421,19 +421,17 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 						rerunBlocked = l10n.T(loc, "shell.nav.new_task_hint.round_active")
 					}
 					if rerunBlocked == "" {
-						if outlineButton(c, tr(c, "dashboard.history.rerun_same")).Clicked() {
+						if outlineIconButton(c, lucide.RotateCw, tr(c, "dashboard.history.rerun_same")).Clicked() {
 							s.rerunFromHistoryRun(run)
 							return
 						}
 					} else {
-						wrap := ui.Box(c)
-						wrap.Children(func() {
-							outlineButton(c, tr(c, "dashboard.history.rerun_same")).Disabled(true).Description(rerunBlocked)
+						iconButtonWithTooltip(c, rerunBlocked, func() ui.Element {
+							return outlineIconButton(c, lucide.RotateCw, "").Label(tr(c, "dashboard.history.rerun_same")).Disabled(true).Description(rerunBlocked)
 						})
-						components.Tooltip(c, wrap, rerunBlocked)
 					}
 					if s.canResumeHistoryRun(run) {
-						if outlineButton(c, tr(c, "dashboard.history.resume_button")).Disabled(s.busy).Clicked() {
+						if outlineIconButton(c, lucide.Play, tr(c, "dashboard.history.resume_button")).Disabled(s.busy).Clicked() {
 							source := run
 							s.historyDetailPath = ""
 							s.resumeSource = &source
@@ -443,11 +441,9 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 						}
 					} else if run.BatchId != nil && run.Status != "complete" && run.Status != "completed" {
 						reason := tr(c, "dashboard.history.not_resumable")
-						wrap := ui.Box(c)
-						wrap.Children(func() {
-							outlineButton(c, tr(c, "dashboard.history.resume_button")).Disabled(true).Description(reason)
+						iconButtonWithTooltip(c, reason, func() ui.Element {
+							return outlineIconButton(c, lucide.Play, "").Label(tr(c, "dashboard.history.resume_button")).Disabled(true).Description(reason)
 						})
-						components.Tooltip(c, wrap, reason)
 					}
 				})
 

@@ -35,6 +35,14 @@ func (s *viewState) handleWindowClose(e *mygo.CloseEvent) {
 	}
 	s.quitDialog.open = true
 	if s.win != nil {
+		if s.win.IsMinimized() {
+			s.win.Restore()
+		}
+		if !s.win.IsVisible() {
+			s.win.Show()
+		}
+		s.win.Focus()
+		mygo.App.Focus()
 		s.win.Invalidate()
 	}
 }
@@ -77,6 +85,12 @@ func (s *viewState) quitServiceDialog(c *ui.Context) {
 		ui.Row(c).FillWidth().Wrap().Justify(ui.End).Gap(t.Density.Row).Children(func() {
 			if button(c, tr(c, "services.quit_dialog.cancel")).Clicked() {
 				s.quitDialog.open = false
+			}
+			if s.canMinimizeToTray() {
+				if outlineButton(c, tr(c, "tray.action.minimize")).Clicked() {
+					s.quitDialog.open = false
+					s.minimizeToTrayAction()
+				}
 			}
 			if dangerButton(c, tr(c, "services.quit_dialog.stop_all_and_quit")).Clicked() {
 				s.confirmQuitWithServicePolicy(false)

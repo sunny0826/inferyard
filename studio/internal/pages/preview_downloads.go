@@ -29,7 +29,7 @@ func previewTaskInRoot(outRoot string, task core.DownloadTask) bool {
 func (p *previewSession) startDownload(op previewDownload) {
 	s := p.state
 	outRoot := emptyText(s.settings.Effective.ModelsRoot)
-	if op.kind == "engine" {
+	if op.kind == "engine" || op.kind == "engine_install" {
 		if ws := emptyText(s.settings.Effective.WorkspaceRoot); ws != "" {
 			outRoot = filepath.Join(ws, "engines")
 		} else {
@@ -65,6 +65,12 @@ func (p *previewSession) startDownload(op previewDownload) {
 		filename = "llama-server"
 	}
 	task := core.DownloadTask{TaskId: id, Kind: op.kind, State: "downloading", SourceUrl: op.source, OutName: name, OutDir: filepath.Join(outRoot, name), FileName: previewValue(filename), StartedAt: p.timestamp()}
+	if op.kind == "engine_install" {
+		task.Kind = "engine"
+		task.DisplayName = op.family + " · " + op.version
+		task.RequestedSourceUrl = op.family + ":" + op.releaseID + ":" + op.buildID
+		task.Stage, task.Step, task.StepTotal, task.Percent = "preparing_uv", previewValue(1), previewValue(4), previewValue(5.0)
+	}
 	s.downloads = append([]core.DownloadTask{task}, s.downloads...)
 	p.tickDownload(id, p.takeFailure(), 0)
 	p.noticeKey = "preview.notice.download_started"
@@ -178,11 +184,21 @@ func (p *previewSession) tickDownload(id string, fail bool, tick int) {
 				task.DownloadedBytes += 4 << 20
 				task.BytesPerSecond = previewValue(float64(4<<20) / .6)
 			}
+			if task.RequestedSourceUrl != "" {
+				switch tick {
+				case 0:
+					task.Stage, task.Step, task.Percent = "creating_venv", previewValue(2), previewValue(25.0)
+				case 1:
+					task.Stage, task.Step, task.Percent = "installing_packages", previewValue(3), previewValue(50.0)
+				case 2:
+					task.Stage, task.Step, task.Percent = "registering_engine", previewValue(4), previewValue(85.0)
+				}
+			}
 			if tick < 3 {
 				p.tickDownload(id, fail, tick+1)
 				return
 			}
-			task.State, task.FinishedAt = "done", previewValue(p.timestamp())
+			task.State, task.Stage, task.FinishedAt = "done", "", previewValue(p.timestamp())
 			p.installDownloadedAsset(task)
 			p.recordPreviewEvent("download.state", map[string]any{"task": *task})
 			return
@@ -193,7 +209,7 @@ func (p *previewSession) tickDownload(id string, fail bool, tick int) {
 func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 	s := p.state
 	outRoot := emptyText(s.settings.Effective.ModelsRoot)
-	if task.Kind == "engine" || task.Kind == "polystrata" {
+	if task.Kind == "engine" || task.Kind == "engine_install" || task.Kind == "polystrata" {
 		if ws := emptyText(s.settings.Effective.WorkspaceRoot); ws != "" {
 			outRoot = filepath.Join(ws, "engines")
 		} else {
@@ -218,7 +234,7 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 		if !existing {
 			s.registry.Engines = append(s.registry.Engines, core.EngineAsset{
 				Name: engName, Family: "polystrata", Kind: "local_installation", Source: guidedSource,
-				Path: instPath, Deletable: true,
+				Path: instPath, Managed: true, InstallMode: "polystrata", Version: "v0.2.20-poly.5", Deletable: true,
 			})
 		}
 		s.registry.DefaultEngine = engName
@@ -252,6 +268,27 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 		s.adoptOnlyModel()
 		return
 	}
+	if task.Kind == "engine" && task.RequestedSourceUrl != "" {
+		instPath := filepath.Join(task.OutDir, "installation.json")
+		task.EnginePath, task.InstallationPath = previewValue(instPath), previewValue(instPath)
+		parts := strings.Split(task.DisplayName, " · ")
+		family, version := parts[0], ""
+		if len(parts) > 1 {
+			version = parts[1]
+		}
+		name := task.DisplayName
+		s.registry.Engines = append(s.registry.Engines, core.EngineAsset{
+			Name: name, Family: family, Kind: "local_installation", Source: l10n.TR("preview.source.guided_install"),
+			Path: instPath, Managed: true, InstallMode: "managed_venv", Version: version, Deletable: true,
+		})
+		s.registry.DefaultEngine = name
+		if s.checks.Engines == nil {
+			s.checks.Engines = map[string]core.EngineEligibility{}
+		}
+		s.checks.Engines[name] = core.EngineEligibility{State: core.EngineCheckEligible, Family: family, VerificationScope: "installation", Version: version}
+		s.adoptDownloadedEngine()
+		return
+	}
 	if task.Kind == "engine" {
 		name := task.OutName + " · llama-server"
 		task.EnginePath = previewValue(filepath.Join(task.OutDir, "llama-server"))
@@ -260,7 +297,10 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 				return
 			}
 		}
-		s.registry.Engines = append(s.registry.Engines, core.EngineAsset{Name: name, Family: "llama-cpp", Source: l10n.TR("preview.source.download")})
+		s.registry.Engines = append(s.registry.Engines, core.EngineAsset{
+			Name: name, Family: "llama-cpp", Source: l10n.TR("preview.source.download"),
+			Path: emptyText(task.EnginePath), Managed: true, InstallMode: "binary", Deletable: true,
+		})
 		s.registry.DefaultEngine = name
 		if s.checks.Engines == nil {
 			s.checks.Engines = map[string]core.EngineEligibility{}

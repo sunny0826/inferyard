@@ -54,6 +54,7 @@ type settingsViewState struct {
 	minimizeToTrayWorkerRunning           bool
 	minimizeToTrayWorkerDone              chan struct{}
 	applyMinimizeToTray                   func(bool) error
+	minimizeToTrayNow                     func() error
 	persistMinimizeToTray                 func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
 	keepServicesSaving                    bool
 	keepServicesMu                        sync.Mutex

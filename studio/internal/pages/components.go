@@ -376,7 +376,7 @@ func (s *viewState) subpageHeader(c *ui.Context, title, backLabel string, onBack
 			}
 		}
 		if backLabel != "" && onBack != nil {
-			if outlineButton(c, backLabel).Clicked() {
+			if outlineIconButton(c, lucide.ArrowLeft, backLabel).Clicked() {
 				onBack()
 			}
 		}

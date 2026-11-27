@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/egoist/mygo/ui"
+	"inferyard/studio/internal/core"
 )
 
 func TestPreviewTraySwitchAndRollback(t *testing.T) {
@@ -36,5 +37,19 @@ func TestPreviewTraySwitchAndRollback(t *testing.T) {
 	if p.state.failure == nil || !p.state.minimizeToTray || !p.state.settings.Settings.MinimizeToTray {
 		t.Fatalf("expected failed preview tray toggle to roll back to true: failure=%+v state=%v saved=%v",
 			p.state.failure, p.state.minimizeToTray, p.state.settings.Settings.MinimizeToTray)
+	}
+}
+
+func TestPreviewHeaderMinimizeToTray(t *testing.T) {
+	p := newPreviewSession(context.Background())
+	p.state.engineState = core.EngineState{State: "running", ModelName: "Qwen3-8B"}
+	tt := ui.NewTester(func(c *ui.Context) {
+		c.SetTheme(p.themeFor(c))
+		p.state.shellContentTitle(c, nil)
+	}, 900, 120)
+	tt.Frame()
+	click(t, tt, "最小化到系统托盘")
+	if len(p.state.pendingToasts) == 0 || p.state.pendingToasts[len(p.state.pendingToasts)-1].Title != "已最小化到系统托盘（模拟）" {
+		t.Fatalf("expected simulated minimize toast, got %+v", p.state.pendingToasts)
 	}
 }

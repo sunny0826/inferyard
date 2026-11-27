@@ -12,6 +12,7 @@ type EngineAcquireMode string
 const (
 	EngineAcquireDirect        EngineAcquireMode = "direct_download"
 	EngineAcquireManagedSetup  EngineAcquireMode = "managed_setup"
+	EngineAcquireManagedVenv   EngineAcquireMode = "managed_venv"
 	EngineAcquireManualArchive EngineAcquireMode = "manual_archive"
 	EngineAcquireExternalPage  EngineAcquireMode = "external_page"
 )
@@ -35,6 +36,12 @@ type EngineArtifact struct {
 	SHA256   string
 }
 
+type EngineManagedVenvSpec struct {
+	Python    string
+	Packages  []string
+	WheelURLs []string
+}
+
 type EnginePlatformBuild struct {
 	ID             string
 	Platform       string
@@ -42,6 +49,7 @@ type EnginePlatformBuild struct {
 	AcquireMode    EngineAcquireMode
 	Profile        string
 	Artifacts      []EngineArtifact
+	ManagedSpec    *EngineManagedVenvSpec
 	InstallCommand string
 	Note           string
 }
@@ -60,6 +68,7 @@ type EngineRelease struct {
 type EngineFamilyCatalog struct {
 	ID             string
 	Name           string
+	Description    string
 	ModelFormat    string
 	HomepageURL    string
 	ReleasesURL    string
@@ -123,6 +132,9 @@ func (r *EngineCatalogRegistry) Register(provider EngineCatalogProvider) {
 	}
 	if existing.Name == "" {
 		existing.Name = incoming.Name
+	}
+	if existing.Description == "" {
+		existing.Description = incoming.Description
 	}
 	if existing.ModelFormat == "" {
 		existing.ModelFormat = incoming.ModelFormat
@@ -285,6 +297,11 @@ func (b EnginePlatformBuild) CanDirectDownloadOn(currentPlatform string) bool {
 	return b.AcquireMode == EngineAcquireDirect && (b.Platform == currentPlatform || b.Platform == "any")
 }
 
+func (b EnginePlatformBuild) CanManagedVenvInstallOn(currentPlatform string) bool {
+	return b.AcquireMode == EngineAcquireManagedVenv && b.ManagedSpec != nil &&
+		(b.Platform == currentPlatform || b.Platform == "any")
+}
+
 func ChannelLabel(ch ReleaseChannel) string {
 	switch ch {
 	case ReleaseStable:
@@ -306,6 +323,8 @@ func AcquireModeLabel(mode EngineAcquireMode) string {
 		return l10n.TR("core.engine_catalog.acquire.direct")
 	case EngineAcquireManagedSetup:
 		return l10n.TR("core.engine_catalog.acquire.managed_setup")
+	case EngineAcquireManagedVenv:
+		return l10n.TR("core.engine_catalog.acquire.managed_venv")
 	case EngineAcquireManualArchive:
 		return l10n.TR("core.engine_catalog.acquire.manual_archive")
 	case EngineAcquireExternalPage:
@@ -332,6 +351,12 @@ func CatalogPlatforms() []string {
 
 func cloneEnginePlatformBuild(b EnginePlatformBuild) EnginePlatformBuild {
 	b.Artifacts = slices.Clone(b.Artifacts)
+	if b.ManagedSpec != nil {
+		spec := *b.ManagedSpec
+		spec.Packages = slices.Clone(spec.Packages)
+		spec.WheelURLs = slices.Clone(spec.WheelURLs)
+		b.ManagedSpec = &spec
+	}
 	return b
 }
 

@@ -66,6 +66,7 @@
   "core.install.status.upgrading_cli": "Upgrading InferYard CLI to {version}…",
   "core.install.status.uv_missing_downloading": "uv not found. Downloading standalone tool…",
   "core.install.status.uv_outdated_downloading": "Current uv version is outdated. Downloading standalone tool…",
+  "core.managed_engine.err.command_failed": "Managed engine installation failed. Review the command output and retry.",
   "core.local_engine.err.data_dir_polystrata_only": "Only PolyStrata installation manifests support specifying a data directory.",
   "core.local_engine.err.detect_failed": "Local engine detection failed. Check your environment or CLI status and try again.",
   "core.local_engine.err.detect_invalid_response": "CLI returned an invalid local engine detection response. Upgrade the CLI and try again.",

@@ -24,6 +24,27 @@ func (s *viewState) syncMinimizeToTrayIfNeeded() error {
 	return nil
 }
 
+func (s *viewState) canMinimizeToTray() bool {
+	return !s.trayUnavailable && (s.minimizeToTrayNow != nil || s.preview != nil)
+}
+
+func (s *viewState) minimizeToTrayAction() {
+	if !s.canMinimizeToTray() {
+		return
+	}
+	if s.preview != nil {
+		s.enqueueStatusToast(l10n.TR("tray.preview.minimized"))
+		return
+	}
+	if err := s.minimizeToTrayNow(); err != nil {
+		s.trayUnavailable = true
+		s.failure = &core.ApiError{Code: "tray_unavailable", Message: l10n.TR("settings.tray.unavailable")}
+		s.failurePage = s.selected
+		return
+	}
+	s.trayUnavailable = false
+}
+
 func (s *viewState) loadTraySettings(v core.SettingsResponse) {
 	if !s.keepServicesSaving {
 		s.keepServicesOnQuit = core.EffectiveKeepServicesOnQuitValue(v.Settings)

@@ -72,6 +72,12 @@ func (s *viewState) shellContentTitle(c *ui.Context, leading func(*ui.Context)) 
 			leading(c)
 		}
 		ui.Spacer(c)
+		state := s.engineState.State
+		if s.canMinimizeToTray() && (len(s.activeManagedServices()) > 0 || state == "running" || state == "starting" || state == "stopping") {
+			if outlineIconButton(c, lucide.PanelBottomClose, tr(c, "tray.action.minimize")).Clicked() {
+				s.minimizeToTrayAction()
+			}
+		}
 		s.updateHeaderBadge(c)
 		s.notificationBell(c, availWidth)
 	})
@@ -194,20 +200,20 @@ func (s *viewState) sidebarManagedServicesPopover(c *ui.Context, active []core.E
 				})
 				ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 					if canOpen {
-						if inlineButton(c, components.ButtonOutline, tr(c, "sidebar.popover.web")).
+						if outlineIconButton(c, lucide.ExternalLink, tr(c, "sidebar.popover.web")).
 							Label(tr(c, "sidebar.popover.web") + " · " + modelName).Clicked() {
 							s.openEngineWebUI(c, uiURL)
 						}
 					}
 					if hasEndpoint {
-						if inlineButton(c, components.ButtonOutline, tr(c, "sidebar.popover.copy")).
+						if outlineIconButton(c, lucide.Copy, tr(c, "sidebar.popover.copy")).
 							Label(tr(c, "sidebar.popover.copy") + " · " + modelName).Clicked() {
 							s.copyServiceEndpoint(c, svc)
 						}
 					}
 					ui.Box(c).Grow(1)
 					stopDisabled := !s.serviceStopEnabled(svc, runActive)
-					if inlineDangerButton(c, tr(c, "sidebar.popover.stop")).
+					if dangerIconButton(c, lucide.Square, tr(c, "sidebar.popover.stop")).
 						Label(tr(c, "sidebar.popover.stop") + " · " + modelName).
 						Disabled(stopDisabled).Clicked() {
 						if svc.ServiceID != "" {

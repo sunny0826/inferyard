@@ -9,6 +9,7 @@ func polystrataProvider() EngineCatalogProvider {
 		Family: EngineFamilyCatalog{
 			ID:             "polystrata",
 			Name:           "PolyStrata",
+			Description:    l10n.TR("core.engine_catalog.description.polystrata"),
 			ModelFormat:    "gguf",
 			HomepageURL:    "https://github.com/simplexai-labs/PolyStrata",
 			ReleasesURL:    "https://github.com/simplexai-labs/PolyStrata/releases",
@@ -59,10 +60,13 @@ func polystrataProvider() EngineCatalogProvider {
 }
 
 func mlxLMProvider() EngineCatalogProvider {
+	mlxLMWheel := catalogEntryOrPanic("engine-mlx-lm").URL
+	mlxWheel := catalogEntryOrPanic("runtime-mlx").URL
 	return StaticEngineProvider{
 		Family: EngineFamilyCatalog{
 			ID:             "mlx-lm",
 			Name:           "mlx-lm",
+			Description:    l10n.TR("core.engine_catalog.description.mlx_lm"),
 			ModelFormat:    "directory",
 			HomepageURL:    "https://github.com/ml-explore/mlx-lm",
 			ReleasesURL:    "https://pypi.org/project/mlx-lm/#history",
@@ -81,11 +85,12 @@ func mlxLMProvider() EngineCatalogProvider {
 							ID:          "engine-mlx-lm-macos-arm64",
 							Platform:    "darwin/arm64",
 							Variant:     "Python venv",
-							AcquireMode: EngineAcquireManualArchive,
+							AcquireMode: EngineAcquireManagedVenv,
 							Artifacts: []EngineArtifact{
 								artifactFromCatalog("engine-mlx-lm", "engine", "mlx-lm", "0.32.2"),
 								artifactFromCatalog("runtime-mlx", "runtime", "mlx", "0.32.4"),
 							},
+							ManagedSpec:    &EngineManagedVenvSpec{Python: "3.12", WheelURLs: []string{mlxLMWheel, mlxWheel}},
 							InstallCommand: "uv venv ~/.venvs/mlx-lm --python 3.12 && uv pip install --python ~/.venvs/mlx-lm/bin/python mlx-lm==0.32.2 mlx==0.32.4",
 							Note:           l10n.TR("core.engine_catalog.note.python_venv_register"),
 						},
@@ -98,10 +103,13 @@ func mlxLMProvider() EngineCatalogProvider {
 
 func vllmProvider() EngineCatalogProvider {
 	tagURL := "https://github.com/vllm-project/vllm/releases/tag/v0.31.0"
+	vllmWheel := catalogEntryOrPanic("engine-vllm").URL
+	metalWheel := catalogEntryOrPanic("engine-vllm-metal").URL
 	return StaticEngineProvider{
 		Family: EngineFamilyCatalog{
 			ID:             "vllm",
 			Name:           "vLLM",
+			Description:    l10n.TR("core.engine_catalog.description.vllm"),
 			ModelFormat:    "directory",
 			HomepageURL:    "https://github.com/vllm-project/vllm",
 			ReleasesURL:    "https://github.com/vllm-project/vllm/releases",
@@ -120,11 +128,12 @@ func vllmProvider() EngineCatalogProvider {
 							ID:          "engine-vllm-macos-arm64",
 							Platform:    "darwin/arm64",
 							Variant:     "CPU + vllm-metal",
-							AcquireMode: EngineAcquireManualArchive,
+							AcquireMode: EngineAcquireManagedVenv,
 							Artifacts: []EngineArtifact{
 								artifactFromCatalog("engine-vllm", "engine", "vLLM (CPU)", "v0.31.0"),
 								artifactFromCatalog("engine-vllm-metal", "plugin", "vllm-metal", "0.31.0"),
 							},
+							ManagedSpec:    &EngineManagedVenvSpec{Python: "3.12", WheelURLs: []string{vllmWheel, metalWheel}},
 							InstallCommand: "uv venv ~/.venvs/vllm --python 3.12 && uv pip install --python ~/.venvs/vllm/bin/python vllm-0.31.0+cpu-cp312-cp312-macosx_11_0_arm64.whl vllm_metal-0.31.0-cp312-cp312-macosx_15_0_arm64.whl",
 							Note:           l10n.TR("core.engine_catalog.note.python_venv_register"),
 						},
@@ -137,7 +146,6 @@ func vllmProvider() EngineCatalogProvider {
 								{Role: "release_page", Label: l10n.TRf("core.engine_catalog.artifact.release_page", "version", "vLLM v0.31.0"), Version: "v0.31.0", URL: tagURL},
 							},
 							InstallCommand: "uv venv ~/.venvs/vllm --python 3.12 && uv pip install --python ~/.venvs/vllm/bin/python vllm==0.31.0",
-							Note:           l10n.TR("core.engine_catalog.note.python_venv_register"),
 						},
 						{
 							ID:          "engine-vllm-linux-arm64",
@@ -163,6 +171,7 @@ func sglangProvider() EngineCatalogProvider {
 		Family: EngineFamilyCatalog{
 			ID:             "sglang",
 			Name:           "SGLang",
+			Description:    l10n.TR("core.engine_catalog.description.sglang"),
 			ModelFormat:    "directory",
 			HomepageURL:    "https://github.com/sgl-project/sglang",
 			ReleasesURL:    releasesURL,
@@ -249,6 +258,7 @@ func lmStudioProvider() EngineCatalogProvider {
 		Family: EngineFamilyCatalog{
 			ID:             "lmstudio",
 			Name:           "LM Studio",
+			Description:    l10n.TR("core.engine_catalog.description.lmstudio"),
 			ModelFormat:    "gguf",
 			HomepageURL:    "https://lmstudio.ai",
 			ReleasesURL:    entry.URL,

@@ -66,6 +66,7 @@
   "core.install.status.upgrading_cli": "正在升级 InferYard CLI 至 {version}…",
   "core.install.status.uv_missing_downloading": "未找到 uv，正在下载独立工具…",
   "core.install.status.uv_outdated_downloading": "当前 uv 版本过旧，正在下载独立工具…",
+  "core.managed_engine.err.command_failed": "受管引擎安装失败，请查看命令输出后重试。",
   "core.local_engine.err.data_dir_polystrata_only": "仅 PolyStrata 安装声明支持指定数据目录。",
   "core.local_engine.err.detect_failed": "本地引擎探测失败，请检查环境或 CLI 状态后重试。",
   "core.local_engine.err.detect_invalid_response": "CLI 本地引擎探测结果格式无效，请升级 CLI 后重试。",

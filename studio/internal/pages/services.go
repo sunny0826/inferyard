@@ -228,24 +228,17 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 		}
 
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			if inlineButton(c, components.ButtonPrimary, tr(c, "services.card.action.benchmark")).Clicked() {
+			if primaryIconButton(c, lucide.Gauge, tr(c, "services.card.action.benchmark")).Clicked() {
 				s.startBenchmarkForManagedService(state)
 			}
 			if canOpen {
-				webBtn := inlineButton(c, components.ButtonOutline, "").Label(tr(c, "services.card.action.open_web"))
-				webBtn.Children(func() {
-					ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-						components.Icon(c, lucide.ExternalLink).Size(13, 13).TextColor(t.Color.FgPrimary)
-						ui.Text(c, tr(c, "services.card.action.open_web")).FontSize(t.Type.Caption).SingleLine()
-					})
-				})
-				if webBtn.Clicked() {
+				if outlineIconButton(c, lucide.ExternalLink, tr(c, "services.card.action.open_web")).Clicked() {
 					s.openEngineWebUI(c, uiURL)
 				}
 			}
 			if hasLocal {
 				usageLabel := tr(c, "services.card.action.usage")
-				usageBtn := inlineButton(c, components.ButtonOutline, usageLabel)
+				usageBtn := outlineIconButton(c, lucide.Code, usageLabel)
 				if multi {
 					usageBtn.Label(usageLabel + " · " + modelName)
 				}
@@ -259,7 +252,7 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 			}
 			if state.Origin == core.EngineOriginStandalone || s.serveSupported || s.preview != nil {
 				paramsLabel := tr(c, "services.card.action.params")
-				paramsBtn := inlineButton(c, components.ButtonOutline, paramsLabel)
+				paramsBtn := outlineIconButton(c, lucide.SlidersHorizontal, paramsLabel)
 				if multi {
 					paramsBtn.Label(paramsLabel + " · " + modelName)
 				}
@@ -269,7 +262,7 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 			}
 			if state.LogPath != "" {
 				logLabel := tr(c, "services.card.action.log")
-				logBtn := inlineButton(c, components.ButtonOutline, logLabel)
+				logBtn := outlineIconButton(c, lucide.FileText, logLabel)
 				if multi {
 					logBtn.Label(logLabel + " · " + modelName)
 				}
@@ -280,9 +273,29 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 			ui.Box(c).Grow(1)
 			stopDisabled := !s.serviceStopEnabled(state, q.active())
 			stopLabel := tr(c, "services.card.action.stop")
-			stopBtn := inlineDangerButton(c, stopLabel).Disabled(stopDisabled)
-			if multi {
-				stopBtn.Label(stopLabel + " · " + modelName)
+			stopReason := ""
+			if stopDisabled && q.active() {
+				stopReason = tr(c, "engine.tooltip.stop_busy_run")
+			}
+			renderStop := func() ui.Element {
+				tooltipLabel := stopLabel
+				if stopReason != "" {
+					tooltipLabel = ""
+				}
+				btn := dangerIconButton(c, lucide.Square, tooltipLabel).Label(stopLabel).Disabled(stopDisabled)
+				if multi {
+					btn.Label(stopLabel + " · " + modelName)
+				}
+				if stopReason != "" {
+					btn.Description(stopReason)
+				}
+				return btn
+			}
+			var stopBtn ui.Element
+			if stopReason != "" {
+				stopBtn = iconButtonWithTooltip(c, stopReason, renderStop)
+			} else {
+				stopBtn = renderStop()
 			}
 			if stopBtn.Clicked() {
 				if state.ServiceID != "" {
@@ -290,9 +303,6 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 				} else {
 					s.pendingDestructive = s.destructiveRequestFor(destructiveOption{kind: destructiveStopEngine, id: "header"})
 				}
-			}
-			if stopDisabled && q.active() {
-				components.Tooltip(c, stopBtn, tr(c, "engine.tooltip.stop_busy_run"))
 			}
 		})
 	})
@@ -357,12 +367,12 @@ func (s *viewState) renderFailedManagedCard(c *ui.Context) {
 		},
 		Actions: func() {
 			if s.canStartManagedEngine() {
-				if inlineButton(c, components.ButtonPrimary, tr(c, "services.card.action.retry")).Clicked() {
+				if primaryIconButton(c, lucide.RotateCw, tr(c, "services.card.action.retry")).Clicked() {
 					s.startManagedEngine()
 				}
 			}
 			if state.LogPath != "" {
-				if inlineButton(c, components.ButtonOutline, tr(c, "services.card.action.log")).Clicked() {
+				if outlineIconButton(c, lucide.FileText, tr(c, "services.card.action.log")).Clicked() {
 					s.openEngineCardLog(state.LogPath)
 				}
 			}
@@ -398,7 +408,7 @@ func (s *viewState) renderIdleManagedCard(c *ui.Context) {
 func (s *viewState) discoveredServicesSection(c *ui.Context) {
 	t := tokens(c)
 	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		refreshButton(c, tr(c, "engine.discovery.refresh"), s.discovering).Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)
+		refreshIconButton(c, tr(c, "engine.discovery.refresh"), s.discovering).Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)
 	})
 	errorView(c, s.discoveryError)
 	if s.discoveryError == nil {
@@ -448,10 +458,10 @@ func (s *viewState) renderDiscoveredServiceCard(c *ui.Context, service inferyard
 			})
 			ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				if validURL, ok := validLoopbackURL(endpoint.URL); ok {
-					if inlineButton(c, components.ButtonOutline, tr(c, "services.discovered.copy_url")).Clicked() {
+					if outlineIconButton(c, lucide.Copy, tr(c, "services.discovered.copy_url")).Clicked() {
 						s.copyEngineEndpoint(c, validURL)
 					}
-					if inlineButton(c, components.ButtonOutline, tr(c, "services.discovered.usage")).Clicked() {
+					if outlineIconButton(c, lucide.Code, tr(c, "services.discovered.usage")).Clicked() {
 						targetModel := name
 						if len(endpoint.Models) > 0 && strings.TrimSpace(endpoint.Models[0]) != "" {
 							targetModel = endpoint.Models[0]
@@ -459,7 +469,7 @@ func (s *viewState) renderDiscoveredServiceCard(c *ui.Context, service inferyard
 						s.openServiceUsageDrawer(validURL, targetModel, name)
 					}
 				}
-				if inlineButton(c, components.ButtonSecondary, tr(c, "services.discovered.benchmark")).Clicked() {
+				if outlineIconButton(c, lucide.Gauge, tr(c, "services.discovered.benchmark")).Clicked() {
 					s.startBenchmarkForDiscoveredService(service, endpoint)
 				}
 			})

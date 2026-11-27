@@ -248,3 +248,48 @@ func TestSettingsTrayCloseFlushesPendingToggleAfterCancel(t *testing.T) {
 		t.Fatal("expected reloaded settings.json MinimizeToTray to be false after close flush")
 	}
 }
+
+func TestMinimizeToTrayActionAndFailure(t *testing.T) {
+	s := settingsState()
+	calls := 0
+	s.minimizeToTrayNow = func() error {
+		calls++
+		return nil
+	}
+	if !s.canMinimizeToTray() {
+		t.Fatal("explicit tray callback should enable minimize action")
+	}
+	s.minimizeToTrayAction()
+	if calls != 1 || s.trayUnavailable {
+		t.Fatalf("unexpected successful minimize state: calls=%d unavailable=%v", calls, s.trayUnavailable)
+	}
+
+	s.minimizeToTrayNow = func() error { return errors.New("appindicator missing") }
+	s.minimizeToTrayAction()
+	if !s.trayUnavailable || s.failure == nil || s.failure.Code != "tray_unavailable" {
+		t.Fatalf("minimize failure should mark tray unavailable: failure=%+v unavailable=%v", s.failure, s.trayUnavailable)
+	}
+	if s.canMinimizeToTray() {
+		t.Fatal("unavailable tray must disable subsequent minimize actions")
+	}
+}
+
+func TestQuitDialogMinimizesWithoutStoppingServices(t *testing.T) {
+	s, _ := servicesP2State(t)
+	s.engineState = core.EngineState{
+		State: "running", Origin: core.EngineOriginStandalone, ModelName: "Qwen3-8B-Q4.gguf",
+	}
+	s.quitDialog.open = true
+	minimized := 0
+	s.minimizeToTrayNow = func() error {
+		minimized++
+		return nil
+	}
+	tt := newServicesTester(s)
+	tt.Frame()
+	click(t, tt, "最小化到系统托盘")
+	tt.Frame()
+	if minimized != 1 || s.quitDialog.open || s.quitDialog.bypassClose {
+		t.Fatalf("unexpected minimize dialog state: calls=%d dialog=%+v", minimized, s.quitDialog)
+	}
+}

@@ -77,7 +77,11 @@ type previewBenchmark struct {
 
 func (previewBenchmark) previewIntent() {}
 
-type previewDownload struct{ kind, source, name string }
+type previewDownload struct {
+	kind, source, name string
+	family, version    string
+	releaseID, buildID string
+}
 
 func (previewDownload) previewIntent() {}
 
