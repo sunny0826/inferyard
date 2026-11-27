@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.21
+
+- feat(studio): add multi-engine real UI upgrade & run E2E and fix macOS engine upgrades (#270)
+- feat(studio): unify hover-intent timings, toolbar tooltip groups, and overlay motion (#269)
+- fix(engine): unify model-engine association, mlx-lm serving, and llama-cpp upgrades (#268)
+- feat(studio): add configurable default model download source (#267)
+- feat(cli,studio): add Library Recommended tab, mlx-lm recommendations, and polish PolyStrata setup drawer (#266)
+
 ## 0.0.20
 
 - feat(cli,studio): add PolyStrata thinking config and fix worker RSS tracking (#264)
