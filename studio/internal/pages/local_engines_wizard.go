@@ -122,7 +122,7 @@ func wizardActionButton(c *ui.Context, visibleLabel, accessibleLabel string, act
 	}
 	applyButtonOpticalPadding(b, t, sizeMD, side)
 	b.Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 			if showSpinner {
 				components.Spinner(c, components.SpinnerRing).Size(14, 14).Label(trf(c, "engine.action.in_progress", "action", visibleLabel))
 			}

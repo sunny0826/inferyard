@@ -68,14 +68,15 @@ type emptyStateOptions struct {
 }
 
 type listRowOptions struct {
-	Leading   func()
-	Title     string
-	Subtitle  string
-	Trailing  func()
-	Radius    float32
-	Selected  bool
-	BoldTitle bool
-	OnClick   func()
+	Leading                func()
+	Title                  string
+	Subtitle               string
+	Trailing               func()
+	Radius                 float32
+	Selected               bool
+	BoldTitle              bool
+	RevealTrailingOnIntent bool
+	OnClick                func()
 }
 
 func styleButtonSize(c *ui.Context, b ui.Element, size controlSize) ui.Element {
@@ -100,7 +101,15 @@ func ghostButton(c *ui.Context, label string) ui.Element {
 }
 
 func iconButton(c *ui.Context, icon func() *ui.SVG, label string, style components.IconButtonStyle) ui.Element {
-	b := components.IconButton(c, icon(), "", style).Radius(tokens(c).Radius.Control)
+	t := tokens(c)
+	b := components.IconButton(c, icon(), "", style).
+		Radius(t.Radius.Control).
+		Size(t.Control.MD, t.Control.MD).
+		AlignItems(ui.Center).
+		Justify(ui.Center)
+	b.Children(func() {
+		studioIcon(c, icon, ui.Color{})
+	})
 	if label != "" {
 		b.Label(label)
 		studioTooltip(c, b, label)
@@ -124,7 +133,7 @@ func studioTextBox(c *ui.Context, value *string, opts ...components.TextBoxOptio
 	}
 	el := components.TextBox(c, value, o).Radius(t.Radius.Control)
 	if !o.Multiline && o.LeadingIcon == nil && o.LeadingText == "" {
-		el.Padding(c.Theme().Space(1.75), t.Density.Stack).MinHeight(t.Control.MD)
+		el.Padding(t.Density.Tight, t.Density.Stack).MinHeight(t.Control.MD)
 	} else if !o.Multiline {
 		el.MinHeight(t.Control.MD)
 	}
@@ -208,7 +217,7 @@ func applyNeutralNoticeStrip(c *ui.Context, el ui.Element, scale stateColorScale
 	if c.Preferences().HighContrast {
 		return el.Background(t.Color.Surface).Border(1.5, scale.Solid)
 	}
-	return el.Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle)
+	return el.Background(t.Color.Sunken).NoShadow()
 }
 
 func isQuietInlineNotice(opts noticeBannerOptions) bool {
@@ -266,25 +275,15 @@ func noticeBanner(c *ui.Context, opts noticeBannerOptions) {
 		if opts.Title != "" {
 			align = ui.Start
 		}
-		ui.Row(c).FillWidth().AlignItems(align).Gap(t.Density.Row).Padding(2, 0).Children(func() {
+		ui.Row(c).FillWidth().AlignItems(align).Gap(t.Density.Row).Padding(t.Density.Hairline, 0).Children(func() {
 			if opts.Kind == stateSuccess || opts.Icon != nil {
-				topPad := float32(0)
-				if opts.Title != "" {
-					topPad = 2
-				}
-				ui.Box(c).Padding(topPad, 0, 0, 0).Shrink(0).Children(func() {
-					components.Icon(c, icon).Size(14, 14).TextColor(semanticAccentColor(c, scale))
-				})
+				studioIcon(c, icon, semanticAccentColor(c, scale))
 			} else {
-				topPad := float32(0)
-				if opts.Title != "" {
-					topPad = 5
-				}
-				ui.Box(c).Padding(topPad, 0, 0, 0).Shrink(0).Children(func() {
-					ui.Box(c).Size(7, 7).Radius(t.Radius.Full).Background(scale.Solid)
+				ui.Box(c).Size(studioIconBoxSize, studioIconBoxSize).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+					ui.Box(c).Size(8, 8).Radius(t.Radius.Full).Background(scale.Solid)
 				})
 			}
-			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
 				renderNoticeBodyText(c, opts, compact, opts.Kind != stateSuccess)
 			})
 		})
@@ -305,13 +304,7 @@ func noticeBanner(c *ui.Context, opts noticeBannerOptions) {
 		}
 		inlineActions := opts.Actions != nil && opts.Details == nil
 		ui.Row(c).FillWidth().AlignItems(rowAlign).Wrap().Gap(gap).Children(func() {
-			iconTop := float32(0)
-			if rowAlign == ui.Start {
-				iconTop = 2
-			}
-			ui.Box(c).Padding(iconTop, 0, 0, 0).Shrink(0).Children(func() {
-				components.Icon(c, icon).Size(15, 15).TextColor(semanticAccentColor(c, scale))
-			})
+			studioIcon(c, icon, semanticAccentColor(c, scale))
 			ui.Column(c).Grow(1).MinWidth(180).Gap(t.Density.Tight).Children(func() {
 				renderNoticeBodyText(c, opts, compact, false)
 				if !inlineActions && opts.Actions != nil {
@@ -400,13 +393,13 @@ func emptyState(c *ui.Context, opts emptyStateOptions) {
 	}
 	col.Children(func() {
 		if opts.Icon != nil {
-			components.Icon(c, opts.Icon).Size(28, 28).TextColor(t.Color.FgTertiary)
+			studioIcon(c, opts.Icon, t.Color.FgTertiary)
 		}
 		if opts.Title != "" {
-			ui.Text(c, opts.Title).Bold().FontSize(t.Type.Section).TextColor(t.Color.FgPrimary)
+			ui.Text(c, opts.Title).FontWeight(600).FontSize(t.Type.Section).TextColor(t.Color.FgPrimary)
 		}
 		if opts.Description != "" {
-			ui.Text(c, opts.Description).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			ui.Text(c, opts.Description).FontSize(t.Type.Body).TextColor(t.Color.FgSecondary)
 		}
 		if opts.Action != nil {
 			ui.Row(c).Padding(t.Density.Tight, 0, 0, 0).Children(opts.Action)
@@ -445,7 +438,11 @@ func listRow(c *ui.Context, opts listRowOptions) ui.Element {
 			}
 		})
 		if opts.Trailing != nil {
-			ui.Row(c).Shrink(0).AlignItems(ui.Center).Children(opts.Trailing)
+			trailing := ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Tight)
+			if opts.RevealTrailingOnIntent && !opts.Selected && !row.Hovered() && !row.Focused() && !row.FocusWithin() {
+				trailing.Opacity(0)
+			}
+			trailing.Children(opts.Trailing)
 		}
 	})
 	return row

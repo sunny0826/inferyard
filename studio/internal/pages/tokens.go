@@ -154,50 +154,50 @@ func tokens(c *ui.Context) designTokens {
 func controlTokensFor(t *ui.Theme) controlTokens {
 	return controlTokens{
 		SM: t.Space(7),
-		MD: t.Space(9),
-		LG: t.Space(10),
+		MD: t.Space(10),
+		LG: t.Space(11),
 	}
 }
 
 func spacingTokensFor(t *ui.Theme) spacingTokens {
 	return spacingTokens{
-		Page:     t.Space(6),
-		Section:  t.Space(4),
-		CardGap:  t.Space(3),
-		Stack:    t.Space(3),
-		Row:      t.Space(2),
-		Inset:    t.Space(2),
-		Tight:    t.Space(1),
+		Page:     t.Space(9),
+		Section:  t.Space(6),
+		CardGap:  t.Space(5),
+		Stack:    t.Space(4),
+		Row:      t.Space(3),
+		Inset:    t.Space(3),
+		Tight:    t.Space(2),
 		Hairline: t.Space(1),
 	}
 }
 
 func typeTokensFor(t *ui.Theme) typeTokens {
 	return typeTokens{
-		PageTitle:   t.Rem(1.57),
-		CardTitle:   t.Rem(1.14),
-		Section:     t.Rem(1.0),
-		Metric:      t.Rem(1.29),
-		MetricLarge: t.Rem(1.71),
+		PageTitle:   t.Rem(18.0 / 14.0),
+		CardTitle:   t.Rem(18.0 / 14.0),
+		Section:     t.Rem(18.0 / 14.0),
+		Metric:      t.Rem(18.0 / 14.0),
+		MetricLarge: t.Rem(24.0 / 14.0),
 		Body:        t.Rem(1.0),
-		Caption:     max(12, t.Rem(.86)),
-		ShellLabel:  t.Rem(.75),
-		ShellDetail: t.Rem(.68),
+		Caption:     t.Rem(1.0),
+		ShellLabel:  t.Rem(1.0),
+		ShellDetail: t.Rem(1.0),
 	}
 }
 
 func concentricRadius(outer, padding float32) float32 {
-	return max(4, outer-padding)
+	return max(8, outer-padding)
 }
 
 func surfaceTokensFor(t *ui.Theme) (radiusTokens, cardTokens, metricTokens) {
-	cardPad := t.Space(3)
+	cardPad := t.Space(5)
 	cardRadius := t.Space(5)
-	modalRadius := t.Space(6)
-	floatingRadius := t.Space(3)
+	modalRadius := t.Space(7)
+	floatingRadius := t.Space(4)
 	radius := radiusTokens{
 		None:     0,
-		XS:       t.Space(1),
+		XS:       t.Space(2),
 		SM:       t.Space(2),
 		MD:       t.Space(3),
 		LG:       t.Space(4),
@@ -205,8 +205,8 @@ func surfaceTokensFor(t *ui.Theme) (radiusTokens, cardTokens, metricTokens) {
 		XXL:      modalRadius,
 		Full:     9999,
 		Surface:  cardRadius,
-		Inset:    concentricRadius(cardRadius, cardPad),
-		Control:  concentricRadius(floatingRadius, t.Space(1)),
+		Inset:    t.Space(3),
+		Control:  t.Space(2),
 		Floating: floatingRadius,
 		Modal:    modalRadius,
 	}
@@ -214,12 +214,12 @@ func surfaceTokensFor(t *ui.Theme) (radiusTokens, cardTokens, metricTokens) {
 		Padding:      cardPad,
 		Border:       1,
 		Edge:         1,
-		EmptyPadding: t.Space(8),
+		EmptyPadding: t.Space(12),
 	}
 	metric := metricTokens{
-		PaddingX: t.Space(4),
-		PaddingY: t.Space(3),
-		Gap:      t.Space(1),
+		PaddingX: t.Space(6),
+		PaddingY: t.Space(5),
+		Gap:      t.Space(2),
 	}
 	return radius, card, metric
 }
@@ -227,15 +227,13 @@ func surfaceTokensFor(t *ui.Theme) (radiusTokens, cardTokens, metricTokens) {
 func elevationTokensFor(dark bool) elevationTokens {
 	if dark {
 		return elevationTokens{
-			XS: shadowSpec{X: 0, Y: 1, Blur: 2, Spread: 0, Color: ui.RGBA(0, 0, 0, .14)},
-			MD: shadowSpec{X: 0, Y: 5, Blur: 14, Spread: -2, Color: ui.RGBA(0, 0, 0, .24)},
-			LG: shadowSpec{X: 0, Y: 12, Blur: 28, Spread: -4, Color: ui.RGBA(0, 0, 0, .34)},
+			MD: shadowSpec{X: 0, Y: 4, Blur: 12, Spread: 0, Color: ui.RGBA(0, 0, 0, .20)},
+			LG: shadowSpec{X: 0, Y: 8, Blur: 20, Spread: 0, Color: ui.RGBA(0, 0, 0, .28)},
 		}
 	}
 	return elevationTokens{
-		XS: shadowSpec{X: 0, Y: 1, Blur: 2, Spread: 0, Color: ui.RGBA(0, 0, 0, .04)},
-		MD: shadowSpec{X: 0, Y: 4, Blur: 12, Spread: -2, Color: ui.RGBA(0, 0, 0, .08)},
-		LG: shadowSpec{X: 0, Y: 10, Blur: 24, Spread: -4, Color: ui.RGBA(0, 0, 0, .12)},
+		MD: shadowSpec{X: 0, Y: 4, Blur: 12, Spread: 0, Color: ui.RGBA(0, 0, 0, .06)},
+		LG: shadowSpec{X: 0, Y: 8, Blur: 20, Spread: 0, Color: ui.RGBA(0, 0, 0, .10)},
 	}
 }
 
@@ -252,17 +250,17 @@ func applyMaterial(c *ui.Context, el ui.Element, kind materialKind) ui.Element {
 	case materialCanvas:
 		return el.Background(t.Color.Canvas).Radius(t.Radius.None).NoShadow()
 	case materialSunken:
-		return el.Background(t.Color.Sunken).Radius(t.Radius.Inset).Border(1, t.Color.BorderSubtle).NoShadow()
+		return el.Background(t.Color.Sunken).Radius(t.Radius.Inset).NoShadow()
 	case materialCard:
-		return applyShadow(el.Background(t.Color.Surface).Radius(t.Radius.Surface).Border(t.Card.Edge, t.Color.BorderDefault), t.Elevation.XS)
+		return el.Background(t.Color.Surface).Radius(t.Radius.Surface).Border(t.Card.Edge, t.Color.BorderSubtle).NoShadow()
 	case materialInset:
-		return el.Background(t.Color.Surface).Radius(t.Radius.Inset).Border(t.Card.Border, t.Color.BorderSubtle).NoShadow()
+		return el.Background(t.Color.Surface).Radius(t.Radius.Inset).NoShadow()
 	case materialControl:
 		return el.Background(t.Color.Surface).Radius(t.Radius.Control).Border(1, t.Color.BorderDefault).NoShadow()
 	case materialFloating:
-		return applyShadow(el.Background(t.Color.Elevated).Radius(t.Radius.Floating).Border(1, t.Color.BorderDefault), t.Elevation.MD)
+		return applyShadow(el.Background(t.Color.Elevated).Radius(t.Radius.Floating).Border(1, t.Color.BorderSubtle), t.Elevation.MD)
 	case materialModal:
-		return applyShadow(el.Background(t.Color.Elevated).Radius(t.Radius.Modal).Border(1, t.Color.BorderDefault), t.Elevation.LG)
+		return applyShadow(el.Background(t.Color.Elevated).Radius(t.Radius.Modal).Border(1, t.Color.BorderSubtle), t.Elevation.LG)
 	default:
 		return el
 	}

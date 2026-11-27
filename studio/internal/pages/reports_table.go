@@ -2,7 +2,6 @@ package pages
 
 import (
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
 )
@@ -78,7 +77,7 @@ func reportCard(c *ui.Context, report core.ReportSummary, modelHint, exclusivity
 				ui.Box(c).Size(36, 36).Radius(t.Radius.Inset).Shrink(0).
 					Background(scale.SubtleBg).Border(1, scale.Border).
 					AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-					components.Icon(c, reicon.CircleAlert).Size(17, 17).TextColor(semanticAccentColor(c, scale))
+					studioIcon(c, reicon.CircleAlert, semanticAccentColor(c, scale))
 				})
 			} else {
 				modelIconBox(c, modelHint, 36, t.Radius.Inset)
@@ -99,7 +98,7 @@ func reportCard(c *ui.Context, report core.ReportSummary, modelHint, exclusivity
 		if report.Unreadable {
 			applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
 				Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
-				components.Icon(c, reicon.CircleAlert).Size(14, 14).TextColor(semanticAccentColor(c, t.Color.Danger))
+				studioIcon(c, reicon.CircleAlert, semanticAccentColor(c, t.Color.Danger))
 				ui.Text(c, tr(c, "reports.list.unreadable_body")).FontSize(t.Type.Caption).TextColor(t.Color.Danger.Fg)
 			})
 		} else if len(report.RunSummaries) > 0 {

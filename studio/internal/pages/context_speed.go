@@ -191,7 +191,7 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 	})
 	applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).
 		Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
-		components.Icon(c, reicon.Gauge).Size(14, 14).TextColor(t.Color.FgSecondary)
+		studioIcon(c, reicon.Gauge, t.Color.FgSecondary)
 		ui.Text(c, trf(c, "speed.select.spec_summary", "bundle", inferyard.ContextSpeedBundleID, "samples", inferyard.ContextSpeedSamples)).
 			FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgPrimary)
 	})

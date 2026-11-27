@@ -52,7 +52,7 @@ func studioThemeFor(c *ui.Context, dark bool) *ui.Theme {
 	applyPalette(t, paletteFor(dark))
 	t.Radius, t.Spacing = 8, 4
 	t.Font = geistFontFamily
-	t.FontSize *= 0.96
+	t.FontSize = 14
 	t.TooltipDelay = labelOpenDelay
 	applyThemePreferences(t, c)
 	return t
@@ -100,11 +100,14 @@ func applyPalette(t *ui.Theme, p paletteColors) {
 	t.AccentHover, t.AccentPressed = p.accentHover, p.accentPressed
 	if t.Dark {
 		t.Selection, t.Focus = p.accent.Alpha(.14), p.accent.Alpha(.75)
-		t.Scrollbar = p.text.Alpha(.24)
+		t.Scrollbar = p.text.Alpha(.22)
 	} else {
 		t.Selection, t.Focus = p.accent.Alpha(.08), p.accent.Alpha(.65)
-		t.Scrollbar = p.text.Alpha(.20)
+		t.Scrollbar = p.text.Alpha(.16)
 	}
+	t.ScrollbarWidth = 6
+	t.FocusRingWidth = 2
+	t.FocusRingOffset = 2
 	if p.buttons.selectionBg.A > 0 {
 		t.Selection = p.buttons.selectionBg
 	}

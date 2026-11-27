@@ -41,8 +41,8 @@ func polystrataInstallStatusButton(c *ui.Context, confirmOpen, disabled bool) ui
 	installText := tr(c, "downloads.badge.installing")
 	wCancel, _ := c.MeasureText(0, ui.Span{Text: cancelText, Size: t.Type.Caption, Weight: 700})
 	wInstall, _ := c.MeasureText(0, ui.Span{Text: installText, Size: t.Type.Caption, Weight: 700})
-	pillMinW := max(float32(100), float32(math.Ceil(float64(max(wCancel, wInstall)+12+theme.Space(1.5)+theme.Space(5.25)+4))))
-	b := ui.ButtonBase(c).MinWidth(pillMinW).MinHeight(t.Control.SM).Padding(0, theme.Space(3), 0, theme.Space(2.25)).Radius(t.Radius.Full).Label(cancelText)
+	pillMinW := max(float32(100), float32(math.Ceil(float64(max(wCancel, wInstall)+studioIconBoxSize+theme.Space(2)+theme.Space(6)+4))))
+	b := ui.ButtonBase(c).MinWidth(pillMinW).MinHeight(t.Control.SM).Padding(0, theme.Space(3), 0, theme.Space(3)).Radius(t.Radius.Full).Label(cancelText)
 	b.Disabled(disabled)
 
 	showCancel := !disabled && (b.Hovered() || b.Pressed() || b.FocusVisible() || confirmOpen)
@@ -87,12 +87,14 @@ func polystrataInstallStatusButton(c *ui.Context, confirmOpen, disabled bool) ui
 
 	b.Background(bg).Border(borderWidth, border).TextColor(fg)
 	b.Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Justify(ui.Center).Gap(theme.Space(1.5)).Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Justify(ui.Center).Gap(theme.Space(2)).Children(func() {
 			if showCancel {
-				components.Icon(c, reicon.X).Size(12, 12).TextColor(fg).Role(ui.RoleNone)
+				studioIcon(c, reicon.X, fg)
 				ui.Text(c, cancelText).Bold().FontSize(t.Type.Caption).TextColor(fg).SingleLine()
 			} else {
-				components.Spinner(c, components.SpinnerRing).Size(12, 12).TextColor(fg).Label(tr(c, "downloads.polystrata.installing_label"))
+				ui.Box(c).Size(studioIconBoxSize, studioIconBoxSize).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+					components.Spinner(c, components.SpinnerRing).Size(12, 12).TextColor(fg).Label(tr(c, "downloads.polystrata.installing_label"))
+				})
 				ui.Text(c, installText).Bold().FontSize(t.Type.Caption).TextColor(fg).SingleLine()
 			}
 		})
@@ -129,7 +131,7 @@ func (s *viewState) polystrataInstallLogSection(c *ui.Context, taskID, logPath s
 				if *open {
 					chevron = reicon.ChevronDown
 				}
-				components.Icon(c, chevron).Size(12, 12).TextColor(fg).Role(ui.RoleNone)
+				studioIcon(c, chevron, fg)
 				ui.Text(c, labelText).FontSize(t.Type.Caption).TextColor(fg).SingleLine()
 			})
 		})
@@ -160,7 +162,7 @@ func (s *viewState) polystrataInstallLogSection(c *ui.Context, taskID, logPath s
 					}
 					copyBtn.Children(func() {
 						ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-							components.Icon(c, reicon.Copy).Size(11, 11).TextColor(copyFg).Role(ui.RoleNone)
+							studioIcon(c, reicon.Copy, copyFg)
 							ui.Text(c, tr(c, "downloads.action.copy")).FontSize(max(11, t.Type.Caption-1)).TextColor(copyFg).SingleLine()
 						})
 					})

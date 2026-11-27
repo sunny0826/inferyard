@@ -40,7 +40,7 @@ func (s *viewState) accentColorRow(c *ui.Context) {
 			ui.Text(c, tr(c, spec.labelKey)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		})
 
-		studioTooltipGroup(c, ui.Row(c).AlignItems(ui.Center).Gap(6), func() {
+		studioTooltipGroup(c, ui.Row(c).AlignItems(ui.Center).Gap(8), func() {
 			for _, candidate := range studioAccentSpecs {
 				candidate := candidate
 				active := candidate.id == selected

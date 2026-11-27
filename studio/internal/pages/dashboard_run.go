@@ -368,7 +368,7 @@ func (w *viewState) runViewWithBar(c *ui.Context, embedBar bool) {
 			if w.model != "" {
 				modelIconBox(c, w.modelIconHint(w.model), 30, t.Radius.SM)
 			} else {
-				components.Icon(c, reicon.Play).Size(15, 15).TextColor(stateColor(c, stateActive))
+				studioIcon(c, reicon.Play, stateColor(c, stateActive))
 			}
 			if bundleName := emptyText(task.Bundle); bundleName != "" {
 				ui.Text(c, bundleName).Bold().FontSize(t.Type.Section).TextColor(t.Color.FgPrimary).SingleLine()

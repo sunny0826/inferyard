@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/components/chart"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
@@ -152,7 +151,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 		if len(series) == 0 {
 			applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
 				Padding(t.Density.Stack, t.Density.Section), materialSunken).Children(func() {
-				components.Icon(c, reicon.Activity).Size(14, 14).TextColor(t.Color.FgTertiary)
+				studioIcon(c, reicon.Activity, t.Color.FgTertiary)
 				ui.Text(c, tr(c, "chart.resource.waiting")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			})
 			return

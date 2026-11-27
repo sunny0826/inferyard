@@ -124,7 +124,7 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 		if !found {
 			applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
 				Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
-				components.Icon(c, reicon.Play).Size(14, 14).TextColor(t.Color.FgTertiary)
+				studioIcon(c, reicon.Play, t.Color.FgTertiary)
 				ui.Text(c, tr(c, "benchmarks.group.running_empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			})
 		}
@@ -146,7 +146,7 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 		if !found {
 			applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
 				Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
-				components.Icon(c, reicon.Clock).Size(14, 14).TextColor(t.Color.FgTertiary)
+				studioIcon(c, reicon.Clock, t.Color.FgTertiary)
 				ui.Text(c, tr(c, "benchmarks.group.queued_empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			})
 		}
@@ -431,7 +431,7 @@ func (s *viewState) renderRecentReportRow(c *ui.Context, rep core.ReportSummary)
 				ui.Box(c).Size(32, 32).Radius(iconR).Shrink(0).AlignSelf(ui.Center).
 					Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).
 					AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-					components.Icon(c, reicon.FileText).Size(16, 16).TextColor(t.Color.FgSecondary)
+					studioIcon(c, reicon.FileText, t.Color.FgSecondary)
 				})
 			},
 			Title:    reportHeadingFor(c, repCopy),

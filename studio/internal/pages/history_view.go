@@ -300,7 +300,7 @@ func (s *viewState) historyView(c *ui.Context) {
 				case 4:
 					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 						ui.Text(c, historyStarted(r)).FontFeatures("tnum").TextColor(t.Color.FgSecondary).Grow(1).MinWidth(0).SingleLine()
-						components.Icon(c, reicon.ChevronRight).Size(14, 14).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
+						studioIcon(c, reicon.ChevronRight, t.Color.FgTertiary)
 					})
 				}
 			}).Height(c.Theme().Space(8)*float32(min(len(filtered), 10)+1) + 2).Label(tableLabel)

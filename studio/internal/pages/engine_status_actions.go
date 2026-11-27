@@ -79,8 +79,8 @@ func engineHeaderActionButton(c *ui.Context, opts engineHeaderActionOptions) ui.
 		}
 		wStatus, _ := c.MeasureText(0, ui.Span{Text: opts.statusText, Size: t.Type.Caption, Weight: 700})
 		wAction, _ := c.MeasureText(0, ui.Span{Text: actionText, Size: t.Type.Caption, Weight: 700})
-		pillMinW := max(float32(86), float32(math.Ceil(float64(max(wStatus, wAction)+12+theme.Space(1.5)+theme.Space(5.25)+4))))
-		b := ui.ButtonBase(c).MinWidth(pillMinW).MinHeight(t.Control.SM).Padding(0, theme.Space(3), 0, theme.Space(2.25)).Radius(t.Radius.Full).Label(opts.actionLabel)
+		pillMinW := max(float32(88), float32(math.Ceil(float64(max(wStatus, wAction)+12+theme.Space(2)+theme.Space(6)+4))))
+		b := ui.ButtonBase(c).MinWidth(pillMinW).MinHeight(t.Control.SM).Padding(0, theme.Space(3), 0, theme.Space(3)).Radius(t.Radius.Full).Label(opts.actionLabel)
 		b.Disabled(opts.disabled)
 
 		showSpinner := opts.busy
@@ -131,7 +131,6 @@ func engineHeaderActionButton(c *ui.Context, opts engineHeaderActionOptions) ui.
 				}
 				bg = enginePillSolidFill(c.Theme().Dark, b.Pressed(), fillKind)
 				border = bg
-				b.Shadow(0, 1, 3, 0, ui.RGBA(0, 0, 0, .14))
 			}
 		default: // "start"
 			if b.IsDisabled() {
@@ -142,21 +141,18 @@ func engineHeaderActionButton(c *ui.Context, opts engineHeaderActionOptions) ui.
 				iconFg = fg
 				bg = enginePillSolidFill(c.Theme().Dark, b.Pressed(), stateSuccess)
 				border = bg
-				b.Shadow(0, 1, 3, 0, ui.RGBA(0, 0, 0, .14))
 			} else if opts.kind == stateDanger {
 				bg, border, fg = scale.SubtleBg, scale.Solid.Alpha(.34), scale.Fg
 				iconFg = fg
-				b.Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, .06))
 			} else {
 				bg, border, fg = t.Color.Surface, t.Color.BorderStrong, t.Color.FgPrimary
 				iconFg = t.Color.Success.Fg
-				b.Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, .07))
 			}
 		}
 
-		b.Background(bg).Border(borderWidth, border).TextColor(fg)
+		b.Background(bg).Border(borderWidth, border).TextColor(fg).NoShadow()
 		b.Children(func() {
-			ui.Row(c).AlignItems(ui.Center).Justify(ui.Center).Gap(theme.Space(1.5)).Children(func() {
+			ui.Row(c).AlignItems(ui.Center).Justify(ui.Center).Gap(theme.Space(2)).Children(func() {
 				switch {
 				case showSpinner:
 					components.Spinner(c, components.SpinnerRing).Size(12, 12).TextColor(iconFg).Label(trf(c, "engine.action.in_progress", "action", opts.actionLabel))
@@ -165,7 +161,7 @@ func engineHeaderActionButton(c *ui.Context, opts engineHeaderActionOptions) ui.
 				case opts.action == "stop":
 					ui.Box(c).Size(8, 8).Radius(2).Background(iconFg)
 				default:
-					components.Icon(c, reicon.Play).Size(11, 11).TextColor(iconFg)
+					studioIcon(c, reicon.Play, iconFg)
 				}
 				ui.Text(c, labelText).Bold().FontSize(t.Type.Caption).TextColor(fg).SingleLine()
 			})

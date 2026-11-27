@@ -57,7 +57,7 @@ func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 					ui.Box(c).Size(20, 20).Radius(t.Radius.Full).Shrink(0).
 						Background(t.Color.Success.SubtleBg).Border(1, t.Color.Success.Border).
 						AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-						components.Icon(c, reicon.Check).Size(12, 12).TextColor(t.Color.Success.Fg)
+						studioIcon(c, reicon.Check, t.Color.Success.Fg)
 					})
 					ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).SingleLine()
 				})
@@ -67,7 +67,7 @@ func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 					scale = t.Color.Danger
 				}
 				pill := ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).
-					Padding(3, t.Density.Row, 3, 4).Radius(t.Radius.Full).
+					Padding(4, t.Density.Row, 4, 4).Radius(t.Radius.Full).
 					Background(scale.SubtleBg).Border(1, scale.Border).
 					Description(trf(c, "common.phase.current", "label", label))
 				pill.Children(func() {
@@ -302,7 +302,7 @@ func searchableSelectField(c *ui.Context, name, description, placeholder, emptyF
 			}
 			applyMaterial(c, cb.Input.FillWidth().Label(name).Placeholder(placeholder).
 				MinHeight(t.Control.MD).
-				Padding(c.Theme().Space(1.75), t.Density.Stack), materialControl).Border(1, border)
+				Padding(t.Density.Tight, t.Density.Stack), materialControl).Border(1, border)
 
 			visible := options
 			if cb.Filtering() {

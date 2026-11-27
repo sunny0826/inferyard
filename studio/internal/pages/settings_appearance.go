@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
 )
@@ -135,8 +134,8 @@ func (s *viewState) appearanceOptionTile(c *ui.Context, item ui.Element, opt app
 	item.Children(func() {
 		ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
 			appearancePreviewThumb(c, opt.value, t.Color.BorderDefault)
-			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(6).Padding(0, 2).Children(func() {
-				components.Icon(c, opt.icon).Size(14, 14).TextColor(iconColor)
+			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(8).Padding(0, 2).Children(func() {
+				studioIcon(c, opt.icon, iconColor)
 				label := ui.Text(c, optLabel).SingleLine()
 				if active {
 					label.Bold().TextColor(t.Color.FgPrimary)
@@ -148,7 +147,7 @@ func (s *viewState) appearanceOptionTile(c *ui.Context, item ui.Element, opt app
 					AlignItems(ui.Center).Justify(ui.Center)
 				if active {
 					checkCircle.Background(t.Color.Accent).Children(func() {
-						components.Icon(c, reicon.Check).Size(10, 10).TextColor(t.Color.FgOnAccent)
+						studioIcon(c, reicon.Check, t.Color.FgOnAccent)
 					})
 				} else {
 					checkCircle.Border(1.5, t.Color.BorderStrong)

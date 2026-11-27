@@ -149,8 +149,8 @@ func TestButtonVariantsHaveUniformHeight(t *testing.T) {
 		"studioSelect":         selRect,
 		"NativeSelect":         nativeSelRect,
 	} {
-		if math.Abs(float64(r.H-36)) > 0.01 {
-			t.Fatalf("%s height = %.2f, want Control.MD (36.00)", name, r.H)
+		if math.Abs(float64(r.H-40)) > 0.01 {
+			t.Fatalf("%s height = %.2f, want Control.MD (40.00)", name, r.H)
 		}
 	}
 }

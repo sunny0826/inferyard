@@ -185,7 +185,7 @@ func (s *viewState) sidebarNavRow(c *ui.Context, id, label string, icon func() *
 		}
 		row.Children(func() {
 			sidebarIconSlot(c, func() {
-				components.Icon(c, icon).Size(15, 15).TextColor(fg)
+				studioIcon(c, icon, fg)
 			})
 			txt := ui.Text(c, label).FontSize(t.Type.Body).TextColor(fg).Grow(1).SingleLine()
 			if active {
@@ -209,7 +209,7 @@ func (s *viewState) sidebarNavRow(c *ui.Context, id, label string, icon func() *
 		}
 		btn.Children(func() {
 			sidebarIconSlot(c, func() {
-				components.Icon(c, icon).Size(15, 15).TextColor(fg)
+				studioIcon(c, icon, fg)
 			})
 			txt := ui.Text(c, label).FontSize(t.Type.Body).TextColor(fg).Grow(1).SingleLine()
 			if active {

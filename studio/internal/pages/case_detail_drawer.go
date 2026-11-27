@@ -181,7 +181,7 @@ func (s *viewState) caseModalHeader(c *ui.Context, headerTitle string, item case
 	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).
 		Padding(t.Density.Section, t.Density.Page, t.Density.Section-2, t.Density.Page).
 		Background(t.Color.Elevated).Children(func() {
-		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight + 2).Children(func() {
+		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
 			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, headerTitle).Bold().FontSize(t.Type.CardTitle + 2).FontFeatures("tnum").
 					TextColor(t.Color.FgPrimary).SingleLine().Selectable()
@@ -197,14 +197,14 @@ func (s *viewState) caseModalHeader(c *ui.Context, headerTitle string, item case
 			if hasCat || hasDur || hasErr {
 				ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Stack).Children(func() {
 					if hasCat {
-						ui.Row(c).AlignItems(ui.Center).Gap(5).Children(func() {
-							components.Icon(c, reicon.Layers).Size(12, 12).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
+						ui.Row(c).AlignItems(ui.Center).Gap(4).Children(func() {
+							studioIcon(c, reicon.Layers, t.Color.FgTertiary)
 							ui.Text(c, item.Category).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
 						})
 					}
 					if hasDur {
-						ui.Row(c).AlignItems(ui.Center).Gap(5).Children(func() {
-							components.Icon(c, reicon.Clock).Size(12, 12).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
+						ui.Row(c).AlignItems(ui.Center).Gap(4).Children(func() {
+							studioIcon(c, reicon.Clock, t.Color.FgTertiary)
 							ui.Text(c, item.DurationText).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
 						})
 					}
@@ -217,7 +217,7 @@ func (s *viewState) caseModalHeader(c *ui.Context, headerTitle string, item case
 
 		studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			if item.Total > 1 {
-				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
+				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 					if caseModalIconButton(c, components.ButtonOutline, reicon.ArrowLeft, 13, tr(c, "detail.case_drawer.prev_case"), item.OnPrev == nil).Clicked() && item.OnPrev != nil {
 						item.OnPrev()
 					}
@@ -335,9 +335,9 @@ func estimateSplitPaneHeight(prompt, response string, maxH float32) float32 {
 
 func (s *viewState) casePaneHeader(c *ui.Context, icon func() *ui.SVG, iconColor ui.Color, label, copyLabel, body string, padLeft, padRight float32) {
 	t := tokens(c)
-	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight+2).
+	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).
 		Padding(t.Density.Stack+2, padRight, t.Density.Stack, padLeft).Children(func() {
-		components.Icon(c, icon).Size(13, 13).TextColor(iconColor).Shrink(0).Role(ui.RoleNone)
+		studioIcon(c, icon, iconColor)
 		ui.Text(c, label).Bold().FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).Grow(1).SingleLine()
 		if caseModalIconButton(c, components.ButtonGhost, reicon.Copy, 14, copyLabel, false).Clicked() {
 			s.copyCaseText(c, body)

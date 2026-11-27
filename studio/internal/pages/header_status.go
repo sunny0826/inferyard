@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
@@ -147,7 +146,7 @@ func (s *viewState) sidebarServiceRow(c *ui.Context) {
 		leading: func() {
 			cDot := stateColor(c, kind)
 			if exitedAlert || state == "failed" || state == "orphaned" {
-				components.Icon(c, reicon.CircleAlert).Size(14, 14).TextColor(cDot)
+				studioIcon(c, reicon.CircleAlert, cDot)
 				return
 			}
 			outer := ui.Box(c).Size(12, 12).Radius(t.Radius.Full).Background(cDot.Alpha(.20)).
@@ -249,7 +248,7 @@ func (s *viewState) sidebarQueueRow(c *ui.Context) {
 		kind:      stateActive,
 		progress:  -1,
 		leading: func() {
-			components.Icon(c, reicon.Activity).Size(14, 14).TextColor(stateColor(c, stateActive))
+			studioIcon(c, reicon.Activity, stateColor(c, stateActive))
 		},
 		open: &s.sidebarQueueOpen,
 		pop: func(close func()) {
@@ -306,7 +305,7 @@ func (s *viewState) sidebarDownloadRow(c *ui.Context) {
 		kind:      stateActive,
 		progress:  pct,
 		leading: func() {
-			components.Icon(c, reicon.Download).Size(14, 14).TextColor(stateColor(c, stateActive))
+			studioIcon(c, reicon.Download, stateColor(c, stateActive))
 		},
 		open: &s.sidebarDownloadOpen,
 		pop: func(close func()) {

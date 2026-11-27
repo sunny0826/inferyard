@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/icons/reicon"
 )
 
@@ -178,7 +177,7 @@ func pipelineRail(c *ui.Context, spec pipelineCardOptions) {
 				ui.Row(c).Grow(targetWeights[i]).MinWidth(0).AlignItems(ui.Center).Gap(4).Children(func() {
 					switch {
 					case i < spec.Current:
-						components.Icon(c, reicon.Check).Size(12, 12).TextColor(t.Color.Success.Fg)
+						studioIcon(c, reicon.Check, t.Color.Success.Fg)
 						ui.Text(c, st.Label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
 					case i == spec.Current:
 						ambientLifecycleDot(c, activeScale, spec.Progress.Active && !spec.Failed)

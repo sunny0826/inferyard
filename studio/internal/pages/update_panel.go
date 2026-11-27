@@ -104,10 +104,10 @@ func updateExternalButton(c *ui.Context, label string) ui.Element {
 	b := styleButtonSize(c, components.Button(c, "", components.ButtonOutline), sizeMD).Label(label)
 	applyButtonOpticalPadding(b, t, sizeMD, buttonIconTrailing)
 	b.Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 			ui.Text(c, label).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
 			ui.Box(c).Size(14, 14).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-				components.Icon(c, reicon.ArrowUpRight).Size(13, 13).TextColor(t.Color.FgSecondary).Role(ui.RoleNone)
+				studioIcon(c, reicon.ArrowUpRight, t.Color.FgSecondary)
 			})
 		})
 	})
@@ -133,7 +133,7 @@ func (s *viewState) updateChangelogCard(c *ui.Context, st core.UpdateState) {
 		AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Stack), materialSunken).
 		Children(func() {
 			ui.Row(c).Grow(1).MinWidth(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				components.Icon(c, reicon.FileText).Size(15, 15).TextColor(t.Color.FgSecondary).Role(ui.RoleNone)
+				studioIcon(c, reicon.FileText, t.Color.FgSecondary)
 				ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
 					ui.Text(c, title).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary)
 					ui.Text(c, subtitle).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
@@ -320,7 +320,7 @@ func (s *viewState) updateReadyPrompt(c *ui.Context) {
 						ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Hairline).Children(func() {
 							ui.Text(c, notesLabel).FontSize(t.Type.Body).
 								TextColor(t.Color.Accent).Underline().UnderlineOffset(2)
-							components.Icon(c, reicon.ArrowUpRight).Size(13, 13).TextColor(t.Color.Accent).Role(ui.RoleNone)
+							studioIcon(c, reicon.ArrowUpRight, t.Color.Accent)
 						})
 					})
 					if notesBtn.Clicked() {

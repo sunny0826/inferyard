@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
 )
@@ -86,7 +85,7 @@ func reportMetricCard(c *ui.Context, spec reportMetricSpec) {
 					ui.Box(c).Size(22, 22).Radius(t.Radius.SM).Shrink(0).
 						Background(t.Color.Sunken).
 						AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-						components.Icon(c, spec.icon).Size(13, 13).TextColor(t.Color.FgSecondary)
+						studioIcon(c, spec.icon, t.Color.FgSecondary)
 					})
 				}
 			})

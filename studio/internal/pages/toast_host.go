@@ -8,7 +8,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/icons/reicon"
 )
 
@@ -345,7 +344,7 @@ func studioToastIcon(c *ui.Context, host ui.Element, data toastRenderData, pause
 			})
 		default:
 			slot.Background(t.Color.Success.SubtleBg).Children(func() {
-				components.Icon(c, reicon.Check).Size(14, 14).TextColor(t.Color.Success.Fg).Role(ui.RoleNone)
+				studioIcon(c, reicon.Check, t.Color.Success.Fg)
 			})
 		}
 	})
@@ -395,7 +394,7 @@ func studioToastBody(c *ui.Context, parts ui.ToastParts, toast ui.Toast, data to
 						closeBtn.Background(t.Color.SurfaceHover)
 					}
 					closeBtn.Children(func() {
-						components.Icon(c, reicon.X).Size(14, 14).TextColor(t.Color.FgSecondary).Role(ui.RoleNone)
+						studioIcon(c, reicon.X, t.Color.FgSecondary)
 					})
 					studioTooltip(c, closeBtn, closeLabel)
 				}

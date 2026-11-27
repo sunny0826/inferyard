@@ -63,7 +63,7 @@ func swatchRim(c *ui.Context) ui.Color {
 func inlineHexChip(c *ui.Context, col ui.Color) {
 	t := tokens(c)
 	rim := swatchRim(c)
-	ui.Row(c).AlignItems(ui.Center).Gap(5).Children(func() {
+	ui.Row(c).AlignItems(ui.Center).Gap(4).Children(func() {
 		ui.Box(c).Size(10, 10).Radius(3).Shrink(0).Background(col).Border(1, rim)
 		ui.Text(c, colorHex(col)).FontSize(t.Type.ShellDetail).TextColor(t.Color.FgSecondary).FontFeatures("tnum").SingleLine()
 	})

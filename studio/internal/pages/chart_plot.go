@@ -328,7 +328,7 @@ func renderResourcePlotBody(
 					AttachEdgeMargin(tok.Density.Row).
 					MarginStart(theme.Space(3)).
 					MinWidth(theme.Space(30)).MaxWidth(theme.Space(80)).
-					Padding(theme.Space(2), theme.Space(2.5)).Gap(theme.Space(1)).
+					Padding(theme.Space(2), theme.Space(3)).Gap(theme.Space(1)).
 					Radius(tok.Radius.Floating).
 					Background(tok.Color.Elevated).Border(1, tok.Color.BorderDefault).
 					TextColor(tok.Color.FgPrimary).
@@ -346,6 +346,6 @@ func renderResourcePlotBody(
 					}
 				})
 			})
-		}).Fill().MinWidth(0).Gap(10)
+		}).Fill().MinWidth(0).Gap(12)
 	})
 }

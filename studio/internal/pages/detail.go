@@ -121,7 +121,7 @@ func (s *viewState) detailView(c *ui.Context) {
 		runPathRaw := emptyText(t.RunPath)
 		applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tok.Density.Row).
 			Padding(tok.Density.Row, tok.Density.Stack), materialSunken).Children(func() {
-			components.Icon(c, reicon.Folder).Size(14, 14).TextColor(tok.Color.FgSecondary).Shrink(0)
+			studioIcon(c, reicon.Folder, tok.Color.FgSecondary)
 			disp := trf(c, "detail.run_dir", "path", displayName(text(t.RunPath)))
 			pathEl := ui.Text(c, disp).
 				FontSize(tok.Type.Caption).TextColor(tok.Color.FgSecondary).Grow(1).MinWidth(0).SingleLine().TruncateMiddle().Selectable()
@@ -163,7 +163,7 @@ func (s *viewState) detailProgressCard(c *ui.Context, d *core.RunTaskDetail) {
 			if elapsed != "" {
 				applyMaterial(c, ui.Row(c).AlignItems(ui.Center).Gap(tok.Density.Tight).
 					Padding(tok.Density.Hairline, tok.Density.Row), materialSunken).Children(func() {
-					components.Icon(c, reicon.Clock).Size(12, 12).TextColor(tok.Color.FgSecondary)
+					studioIcon(c, reicon.Clock, tok.Color.FgSecondary)
 					ui.Text(c, elapsed).FontSize(tok.Type.Caption).FontFeatures("tnum").TextColor(tok.Color.FgPrimary).SingleLine()
 				})
 			}
@@ -227,7 +227,7 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 		if isRunning {
 			ambientLifecycleDot(c, tok.Color.Active, true)
 		} else {
-			components.Icon(c, reicon.Play).Size(13, 13).TextColor(tok.Color.FgTertiary)
+			studioIcon(c, reicon.Play, tok.Color.FgTertiary)
 		}
 		ui.Text(c, trf(c, "detail.current_case", "case_id", text(p.CurrentCaseId))).
 			FontSize(tok.Type.Caption).FontFeatures("tnum").TextColor(tok.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine()
@@ -316,7 +316,7 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 				}
 				ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tok.Density.Tight).Children(func() {
 					ui.Text(c, errText).TextColor(errColor).Grow(1).MinWidth(0).SingleLine().Selectable()
-					components.Icon(c, reicon.ChevronRight).Size(14, 14).TextColor(tok.Color.FgTertiary).Role(ui.RoleNone)
+					studioIcon(c, reicon.ChevronRight, tok.Color.FgTertiary)
 				})
 				return
 			}

@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/inferyard"
@@ -168,7 +167,7 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 				if state.LANAccess {
 					pillLabel = trf(c, "services.card.lan_listen", "addr", shortAddr)
 				}
-				copyPill := ui.Row(c).AlignSelf(ui.Center).AlignItems(ui.Center).Gap(5).
+				copyPill := ui.Row(c).AlignSelf(ui.Center).AlignItems(ui.Center).Gap(4).
 					Padding(4, 9).Radius(innerR).Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).
 					Role(ui.RoleButton).Focusable().Label(tr(c, "services.card.copy_endpoint"))
 				if copyPill.Hovered() {
@@ -179,7 +178,7 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 				}
 				copyPill.Children(func() {
 					ui.Text(c, pillLabel).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
-					components.Icon(c, reicon.Copy).Size(12, 12).TextColor(t.Color.FgTertiary)
+					studioIcon(c, reicon.Copy, t.Color.FgTertiary)
 				})
 			}
 		})

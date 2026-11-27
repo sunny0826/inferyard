@@ -2,7 +2,6 @@ package pages
 
 import (
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
 )
@@ -149,7 +148,7 @@ func (r *reportViewState) requestView(c *ui.Context, run core.ReportRun) {
 					}
 					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 						ui.Text(c, reportScaled(request.LatencyMS, 1000, "s")).FontFeatures("tnum").TextColor(latColor).Grow(1).MinWidth(0).SingleLine()
-						components.Icon(c, reicon.ChevronRight).Size(14, 14).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
+						studioIcon(c, reicon.ChevronRight, t.Color.FgTertiary)
 					})
 				}
 			}).Height(c.Theme().Space(8)*float32(min(len(visible), 8)+1) + 2)

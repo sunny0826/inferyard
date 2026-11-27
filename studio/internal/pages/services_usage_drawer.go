@@ -148,7 +148,7 @@ func (s *viewState) usageConnectivitySection(c *ui.Context) {
 				Padding(t.Density.Row).Radius(t.Radius.Control).
 				Background(scale.SubtleBg).Border(1, scale.Border).Children(func() {
 				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-					components.Icon(c, reicon.CircleCheck).Size(14, 14).TextColor(scale.Fg)
+					studioIcon(c, reicon.CircleCheck, scale.Fg)
 					ui.Text(c, trf(c, "services.usage.test.ok", "code", fmt.Sprintf("%d", res.StatusCode), "ms", fmt.Sprintf("%d", res.LatencyMs))).
 						Bold().FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(scale.Fg)
 				})
@@ -171,7 +171,7 @@ func (s *viewState) usageConnectivitySection(c *ui.Context) {
 		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).
 			Padding(t.Density.Row).Radius(t.Radius.Control).
 			Background(scale.SubtleBg).Border(1, scale.Border).Children(func() {
-			components.Icon(c, reicon.CircleAlert).Size(14, 14).TextColor(scale.Fg)
+			studioIcon(c, reicon.CircleAlert, scale.Fg)
 			ui.Text(c, msg).FontSize(t.Type.Caption).TextColor(scale.Fg).Grow(1).Selectable()
 		})
 	})

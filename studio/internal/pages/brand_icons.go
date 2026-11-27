@@ -268,7 +268,7 @@ func chevronBox(c *ui.Context, expanded bool) {
 	}
 	ui.Box(c).Size(20, 20).Shrink(0).AlignSelf(ui.Center).
 		AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-		components.Icon(c, chev).Size(14, 14).TextColor(t.Color.FgSecondary)
+		studioIcon(c, chev, t.Color.FgSecondary)
 	})
 }
 
