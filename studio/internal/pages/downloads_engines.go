@@ -105,7 +105,7 @@ func (s *viewState) engineFamilyRow(c *ui.Context, fam core.EngineFamilyCatalog,
 
 	ui.Row(c.Key("downloads-engine-" + fam.ID)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).
 		Padding(t.Density.Stack, t.Density.Tight).Children(func() {
-		engineIconBox(c, fam.Name, 36, t.Radius.Control)
+		engineIconBox(c, fam.Name+" "+fam.ID, 36, t.Radius.Control)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, fam.Name).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
@@ -172,7 +172,7 @@ func (s *viewState) externalEngineAppRow(c *ui.Context, fam core.EngineFamilyCat
 
 	ui.Row(c.Key("downloads-ext-" + fam.ID)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).
 		Padding(t.Density.Stack, t.Density.Tight).Children(func() {
-		engineIconBox(c, fam.Name, 36, t.Radius.Control)
+		engineIconBox(c, fam.Name+" "+fam.ID, 36, t.Radius.Control)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, fam.Name).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
@@ -215,7 +215,7 @@ func (s *viewState) otherPlatformEngineRow(c *ui.Context, fam core.EngineFamilyC
 
 	ui.Row(c.Key("downloads-other-engine-" + fam.ID)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).
 		Padding(t.Density.Stack, t.Density.Tight).Children(func() {
-		engineIconBox(c, fam.Name, 36, t.Radius.Control)
+		engineIconBox(c, fam.Name+" "+fam.ID, 36, t.Radius.Control)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, fam.Name).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()

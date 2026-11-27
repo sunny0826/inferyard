@@ -256,10 +256,11 @@ func (s *viewState) renderPreparingBenchmarkView(c *ui.Context) {
 	ui.Column(c.Key("preparing-benchmark-card")).FillWidth().Gap(t.Density.Row).Children(func() {
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			if s.model != "" {
+				modelIconBox(c, s.modelIconHint(s.model), 26, t.Radius.SM)
 				ui.Text(c, s.model).Bold().FontSize(t.Type.Section).SingleLine()
 			}
 			if s.engine != "" {
-				enginePill(c, s.engine)
+				s.enginePill(c, s.engine)
 			}
 			for _, bundle := range s.task.bundles {
 				inlineBadge(c, bundle, stateNeutral, badgeOptions{Size: sizeSM, Style: badgeOutline})

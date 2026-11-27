@@ -90,7 +90,7 @@ func (w *viewState) candidateFields(c *ui.Context) {
 		applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).
 			Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
 			if w.model != "" {
-				modelIconBox(c, w.model+" "+w.modelArchFor(w.model), 28, t.Radius.SM)
+				modelIconBox(c, w.modelIconHint(w.model), 28, t.Radius.SM)
 			}
 			if meta != "" {
 				ui.Text(c, meta).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgPrimary)
@@ -390,7 +390,7 @@ func (w *viewState) runView(c *ui.Context) {
 			applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).
 				Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
 				if w.model != "" {
-					modelIconBox(c, w.model+" "+w.modelArchFor(w.model), 28, t.Radius.SM)
+					modelIconBox(c, w.modelIconHint(w.model), 28, t.Radius.SM)
 				} else {
 					components.Icon(c, lucide.Play).Size(15, 15).TextColor(stateColor(c, stateActive))
 				}
@@ -401,7 +401,7 @@ func (w *viewState) runView(c *ui.Context) {
 					ui.Text(c, w.model).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
 				}
 				if w.engine != "" {
-					enginePill(c, w.engine)
+					w.enginePill(c, w.engine)
 				}
 				ui.Box(c).Grow(1)
 				if p != nil && p.CurrentCaseId != nil && *p.CurrentCaseId != "" {

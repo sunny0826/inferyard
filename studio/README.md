@@ -95,3 +95,4 @@ mise exec -- python -m unittest discover -s tests/ui -p 'test_*.py'
 
 - Boundary E2E (`tests/e2e`) runs the real CLI against a fake engine; see [tests/e2e/README.md](tests/e2e/README.md).
 - macOS native window E2E drives XCUITest against `--debug-ui`; see [tests/ui/README.md](tests/ui/README.md).
+- Brand marks in `internal/pages/brand_icons` identify upstream engines and model families from [`ggml-org/llama-brand`](https://github.com/ggml-org/llama-brand), [`simplexai-labs/PolyStrata`](https://github.com/simplexai-labs/PolyStrata), [`ml-explore/mlx`](https://github.com/ml-explore/mlx), [`sgl-project/sglang`](https://github.com/sgl-project/sglang), and [`lobehub/lobe-icons`](https://github.com/lobehub/lobe-icons); all trademarks belong to their respective owners.

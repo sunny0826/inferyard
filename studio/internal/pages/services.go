@@ -143,10 +143,10 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 			}
 			toggleRow.Children(func() {
 				chevronBox(c, expanded)
-				modelIconBox(c, modelName, 28, innerR)
+				modelIconBox(c, s.modelIconHint(modelName)+" "+state.Model, 28, innerR)
 				ui.Text(c, modelName).Bold().FontSize(t.Type.CardTitle).SingleLine()
 				if engineTitle != "" {
-					enginePill(c, engineTitle)
+					enginePillWithHint(c, engineTitle, state.Family+" "+state.Adapter+" "+s.engineIconHint(engineTitle)+" "+state.Executable)
 				}
 				if ctxStr != "" {
 					inlineBadge(c, ctxStr, stateNeutral, badgeOptions{Size: sizeSM, Style: badgeOutline})

@@ -337,11 +337,11 @@ func (s *viewState) recentServicesSection(c *ui.Context) {
 		cardEl, innerR := compactCard(c, ui.Column(c.Key("recent-svc-"+preset.Model+"-"+preset.Engine)).FillWidth().Gap(t.Density.Tight), t.Density.Stack)
 		cardEl.Children(func() {
 			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				modelIconBox(c, preset.Model, 30, innerR)
+				modelIconBox(c, s.modelIconHint(preset.Model), 30, innerR)
 				ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
 					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 						ui.Text(c, preset.Model).Bold().FontSize(t.Type.Section).SingleLine()
-						enginePill(c, preset.Engine)
+						s.enginePill(c, preset.Engine)
 						if preset.LANAccess {
 							inlineBadge(c, tr(c, "services.card.badge.lan"), stateWarning, badgeOptions{Size: sizeSM})
 						}

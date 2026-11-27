@@ -301,7 +301,7 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 
 	applyMaterial(c, ui.Row(c.Key("speed-target-card")).FillWidth().Wrap().AlignItems(ui.Center).
 		Gap(t.Density.Stack).Padding(t.Card.Padding), materialCard).Children(func() {
-		modelIconBox(c, r.model+" "+s.modelArchFor(r.model), 36, t.Radius.Control)
+		modelIconBox(c, s.modelIconHint(r.model), 36, t.Radius.Control)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, fmt.Sprintf("%s · %s · %s", r.model, r.engine, speedContext(r.context))).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary)

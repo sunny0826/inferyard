@@ -72,10 +72,10 @@ func (s *viewState) renderPreparingServiceCard(c *ui.Context, prep pendingServic
 
 	applyMaterial(c, ui.Column(c.Key("preparing-service-card-"+cardKey)).FillWidth().Padding(pad).Gap(t.Density.Row), materialCard).Radius(outerR).Children(func() {
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			modelIconBox(c, prep.model, 28, innerR)
+			modelIconBox(c, s.modelIconHint(prep.model), 28, innerR)
 			ui.Text(c, prep.model).Bold().FontSize(t.Type.CardTitle).SingleLine()
 			if prep.engine != "" {
-				enginePill(c, prep.engine)
+				s.enginePill(c, prep.engine)
 			}
 			if ctxStr != "" {
 				inlineBadge(c, ctxStr, stateNeutral, badgeOptions{Size: sizeSM, Style: badgeOutline})
