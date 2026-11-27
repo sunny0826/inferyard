@@ -157,3 +157,49 @@ def read_run_projection(root):
             retained, sealed="events.jsonl" in files, truncated=bool(tails), observation=observation
         ),
     }
+
+
+def read_unsealed_trial(root):
+    """Project an unsealed or actively running trial without finalized seal observations."""
+    from inferyard.analysis.ledger import _inputs, preload_inputs
+
+    root = root.resolve()
+    reads = TrialEvidence(root, projection=True)
+    preload_inputs(reads)
+    limits = _manifest(root, reads)
+    require_current_sources(root, {})
+    documents, limits, _, workload = _inputs(root, reads, limits)
+    if reads.errors:
+        raise next(iter(reads.errors.values()))
+    run, selection = documents["run"], documents["selection"]
+    duration = workload["protocol"] if workload["protocol"]["kind"] == "duration" else None
+    retained, tails = [], []
+    events = _events(root, reads, retained, tails) if reads.exists("events.jsonl") else ()
+    requests, _, stopped = reduce_events(
+        events,
+        run,
+        selection,
+        {c["case_id"]: c for c in documents["bundle"]["cases"]},
+        duration=duration,
+        _projection=True,
+    )
+    validate_capacity_stop(documents["plan"]["experiment"], requests, stopped)
+    window = (
+        duration_summary(duration, selection["case_ids"], retained, requests) if duration else None
+    )
+    mem_tails = _memory_tail(root) if reads.exists("memory.jsonl") else []
+    summary = trial_summary(run, requests, stopped, limits + tails + mem_tails, window, duration)
+    fields = (
+        "case_id",
+        "execution_state",
+        "category",
+        "quality_state",
+        "score",
+        "t_send_ns",
+        "t_terminal_ns",
+    )
+    return {
+        **documents,
+        "requests": [{k: row[k] for k in fields if k in row} for row in requests],
+        "summary": summary,
+    }

@@ -28,6 +28,14 @@ def update(workspace, result, bundle, bound, *, results_root=None):
                 for item in loaded.values()
             ):
                 continue
+            runs_dir = path / "runs"
+            if runs_dir.is_dir() and any(
+                r.is_dir()
+                and ((r / "inputs.json").exists() or (r / "run.json").exists())
+                and not (r / "manifest.json").exists()
+                for r in runs_dir.iterdir()
+            ):
+                continue
             _, loaded, _ = read_inputs(path)
             if any(item.bundle.to_dict() == bundle for item in loaded.values()):
                 batches.append(path)

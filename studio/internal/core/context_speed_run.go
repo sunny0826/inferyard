@@ -64,8 +64,10 @@ waitLoop:
 				}
 			}
 			s.mu.Lock()
-			t.Task.ContextSpeed.Completed = count
-			s.state(t)
+			if t.Task.ContextSpeed.Completed != count {
+				t.Task.ContextSpeed.Completed = count
+				s.state(t)
+			}
 			s.mu.Unlock()
 		}
 	}

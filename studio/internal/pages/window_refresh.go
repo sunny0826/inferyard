@@ -226,7 +226,8 @@ func (s *viewState) refreshMask(mask refreshMask) {
 	var progress core.ProgressResponse
 	var pe *core.ApiError
 	var dashboard dashboardSnapshot
-	if mask&refreshProgress != 0 {
+	runActive := activeRunTask(tasks) != nil
+	if mask&refreshProgress != 0 && (!runActive || s.bgRefresh.progress == nil) {
 		if ready.CLI.Status == "ok" && ready.Workspace.Initialized {
 			progress, pe = s.service.ProgressCached(s.ctx)
 		}
@@ -237,6 +238,7 @@ func (s *viewState) refreshMask(mask refreshMask) {
 		}
 		dashboard = s.readDashboard(progress.Progress)
 	} else {
+		progress.Progress = s.bgRefresh.progress
 		dashboard = s.readDashboard(s.bgRefresh.progress)
 	}
 
