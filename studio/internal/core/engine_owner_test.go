@@ -131,6 +131,7 @@ func TestOrphanExplicitStopAndRecheck(t *testing.T) {
 }
 
 func TestConfigureEngineProcessInheritsHostEnvAndStripsLoaderInjection(t *testing.T) {
+	workingDir := t.TempDir()
 	t.Setenv("HF_ENDPOINT", "https://hf-mirror.com")
 	t.Setenv("TOKENIZERS_PARALLELISM", "false")
 	t.Setenv("MODEL_METADATA", `{"homepage":"https://models.example","contact":"ops@example.org"}`)
@@ -145,7 +146,7 @@ func TestConfigureEngineProcessInheritsHostEnvAndStripsLoaderInjection(t *testin
 	cmd := exec.Command("/bin/echo")
 	err := configureEngineProcess(cmd, Startup{
 		Local:            true,
-		WorkingDirectory: t.TempDir(),
+		WorkingDirectory: workingDir,
 		Environment: map[string]string{
 			"CUDA_VISIBLE_DEVICES":  "0",
 			"DYLD_INSERT_LIBRARIES": "/tmp/override.dylib",
