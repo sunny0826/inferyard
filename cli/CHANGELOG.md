@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.0.20
+
+- feat(cli,studio): add PolyStrata thinking config and fix worker RSS tracking (#264)
+- feat(cli,studio): polish run detail and report UI and add case Q&A inspection (#263)
+- feat(studio): managed one-click engines, live tray status, and icon buttons (#261)
+- feat(studio): unify task steps and live progress with PipelineRail (#262)
+- fix(studio): replace wrong engine icons and optimize model brand icons (#260)
+- fix(cli,studio): avoid false incompatible artifact banner during active benchmark runs (#258)
+- feat(studio): refresh design system palettes, accent picker, optical icon buttons, and tiered notices (#259)
+- ci: split fast PR lint/compile gates from heavy Nightly CI (#257)
+
 ## 0.0.19
 
 - fix(studio): resolve 12 UI/UX issues identified via native UI E2E and visual audit (#255)
