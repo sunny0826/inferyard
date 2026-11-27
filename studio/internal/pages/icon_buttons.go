@@ -8,10 +8,6 @@ import (
 	"github.com/oneo-me/onevra/source/icons/lucide"
 )
 
-func squareIconButton(c *ui.Context, icon func() *ui.SVG, label string, style components.IconButtonStyle) ui.Element {
-	return iconButton(c, icon, label, style)
-}
-
 // outlineIconButton renders a bordered icon-only button with an accessible label and hover tooltip.
 func outlineIconButton(c *ui.Context, icon func() *ui.SVG, label string) ui.Element {
 	t := tokens(c)

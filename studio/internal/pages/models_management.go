@@ -230,27 +230,6 @@ func (s *viewState) revealAsset(kind, name string) {
 	}
 }
 
-func (s *viewState) modelsPageActions(c *ui.Context, wizardOpen *bool) {
-	t := tokens(c)
-	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
-		button(c, tr(c, "models.action.download_more")).OnClick(func() {
-			s.libraryTab = 0
-			s.navigateTo("library", "")
-		})
-		button(c, tr(c, "models.action.add_model_dir")).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
-			s.pickExtraModelsRoot(emptyText(s.settings.Effective.ModelsRoot))
-		})
-		engineLabel := tr(c, "engine.wizard.title")
-		if *wizardOpen {
-			engineLabel = tr(c, "models.action.collapse_add_engine")
-		}
-		button(c, engineLabel).OnClick(func() { *wizardOpen = !*wizardOpen })
-		refreshButton(c, tr(c, "models.action.refresh"), s.registry.Refreshing || s.refreshing).
-			Disabled(s.registry.Refreshing || s.busy).
-			OnClick(s.refreshAssetsAction)
-	})
-}
-
 func (s *viewState) modelStorageAndRootsView(c *ui.Context) {
 	t := tokens(c)
 	ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {

@@ -233,7 +233,7 @@ func isEngineAssetDeletable(u UserSettings, paths *BoundPaths, rawPath, canonPat
 	}
 	if family != "polystrata" {
 		installDir, _, ok := managedVenvInstallDir(rawPath, canonPath, wsEnginesRoot, resultsRoot)
-		return ok && !otherEngineSharesInstallDir(installDir, canonPath, engines)
+		return ok && !managedVenvHasExternalDependents(installDir, canonPath, engines)
 	}
 	installDir, ok := managedPolystrataInstallDir(rawPath, canonPath, wsEnginesRoot, resultsRoot)
 	if !ok {
@@ -315,6 +315,9 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 		}
 	}
 	if rawPath == "" {
+		rawPath = s.findAssetRawPath("engine", name, eng.Path)
+	}
+	if rawPath == "" {
 		return false, Err("not_found")
 	}
 	wsEngines := workspaceEnginesRoot(u, paths)
@@ -373,16 +376,18 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 		return false, Err("internal_error")
 	}
 
-	nextU := clone(u)
-	nextU.EngineInstallations = slices.DeleteFunc(slices.Clone(nextU.EngineInstallations), func(rawInst string) bool {
-		return removeRaw[rawInst]
-	})
-	if _, saveErr := s.saveSettings(nextU); saveErr != nil {
-		for i := len(migratedPaths) - 1; i >= 0; i-- {
-			_ = os.Remove(migratedPaths[i])
+	if len(removeRaw) > 0 {
+		nextU := clone(u)
+		nextU.EngineInstallations = slices.DeleteFunc(slices.Clone(nextU.EngineInstallations), func(rawInst string) bool {
+			return removeRaw[rawInst]
+		})
+		if _, saveErr := s.saveSettings(nextU); saveErr != nil {
+			for i := len(migratedPaths) - 1; i >= 0; i-- {
+				_ = os.Remove(migratedPaths[i])
+			}
+			_ = os.Rename(stagedDir, installDir)
+			return false, saveErr
 		}
-		_ = os.Rename(stagedDir, installDir)
-		return false, saveErr
 	}
 
 	rmErr := removeStagedPolystrataDir(stagedDir)

@@ -207,8 +207,8 @@ func TestCreateManagedEngineInstallCancellation(t *testing.T) {
 		t.Fatal(failure)
 	}
 	wait(t, func() bool { return s.Downloads()[0].State == "cancelled" })
-	if _, err := os.Stat(filepath.Join(task.OutDir, managedEngineReceiptName)); !os.IsNotExist(err) {
-		t.Fatalf("cancelled install wrote receipt: %v", err)
+	if _, err := os.Stat(task.OutDir); !os.IsNotExist(err) {
+		t.Fatalf("cancelled install left partial directory behind: %v", err)
 	}
 	blockPip = false
 	retried, failure := s.RetryDownload(task.TaskId)
@@ -301,5 +301,99 @@ func TestCreateManagedEngineInstallRejectsUnknownBuild(t *testing.T) {
 	})
 	if failure == nil || failure.Code != "invalid_request" {
 		t.Fatalf("expected invalid_request, got %+v", failure)
+	}
+}
+
+func TestManagedVenvDeleteBlockedByExternalWizardDependent(t *testing.T) {
+	_, workspace := isolatedHomeAndBase(t)
+	s := testService(t, assetTestExec)
+	s.settings.WorkspaceRoot = &workspace
+	installDir := filepath.Join(workspace, "engines", "mlx-lm-0.32.2")
+	venvDir := filepath.Join(installDir, "venv")
+	createManagedPython(t, venvDir)
+	py := managedEnginePython(venvDir)
+	instPath := filepath.Join(installDir, "installation.json")
+	decl := []byte(`{"schema_version":3,"definition":"local-engine-installation.v1","family":"mlx-lm","executable":"` + filepath.ToSlash(py) + `","working_directory":"` + filepath.ToSlash(installDir) + `","runtime_roots":["` + filepath.ToSlash(venvDir) + `"],"environment":{}}`)
+	mustWriteFile(t, instPath, decl, 0o600)
+	if failure := writeManagedEngineReceipt(installDir, managedEngineReceipt{
+		Definition: managedEngineDefinition, Family: "mlx-lm", Version: "0.32.2", InstallMode: managedEngineVenvInstallMode,
+	}); failure != nil {
+		t.Fatal(failure)
+	}
+	wizardInst := filepath.Join(workspace, "engine-installations", "mlx-lm-venv.json")
+	mustWriteFile(t, wizardInst, decl, 0o600)
+	s.settings.EngineInstallations = []string{instPath, wizardInst}
+
+	var managed *EngineAsset
+	for _, eng := range s.Registry().Engines {
+		if eng.Path == instPath {
+			managed = &eng
+			break
+		}
+	}
+	if managed == nil {
+		t.Fatal("expected managed installation in registry")
+	}
+	if managed.Deletable {
+		t.Fatalf("expected managed venv with external wizard dependent to be non-deletable: %+v", managed)
+	}
+	if _, err := s.InspectDeleteAsset("engine", managed.Name); err == nil || err.Code != "asset_not_deletable" {
+		t.Fatalf("expected asset_not_deletable, got %+v", err)
+	}
+}
+
+func TestManualWorkspaceInstallationWithoutReceiptIsNotManaged(t *testing.T) {
+	_, workspace := isolatedHomeAndBase(t)
+	s := testService(t, assetTestExec)
+	s.settings.WorkspaceRoot = &workspace
+	manualPath := filepath.Join(workspace, "engines", "custom-mlx", "installation.json")
+	decl := []byte(`{"schema_version":3,"definition":"local-engine-installation.v1","family":"mlx-lm","executable":"python","environment":{}}`)
+	mustWriteFile(t, manualPath, decl, 0o600)
+	s.settings.EngineInstallations = []string{manualPath}
+
+	var found *EngineAsset
+	for _, eng := range s.Registry().Engines {
+		if eng.Path == manualPath {
+			found = &eng
+			break
+		}
+	}
+	if found == nil {
+		t.Fatal("expected manual installation in registry")
+	}
+	if found.Managed || found.Deletable || found.InstallMode != "external" {
+		t.Fatalf("manual installation without receipt should remain external/linked: %+v", found)
+	}
+}
+
+func TestAutoDiscoveredPolystrataInspectAndDelete(t *testing.T) {
+	_, workspace := isolatedHomeAndBase(t)
+	s := testService(t, assetTestExec)
+	s.settings.WorkspaceRoot = &workspace
+	installDir := filepath.Join(workspace, "engines", "polystrata-discovered")
+	instPath := filepath.Join(installDir, "installation.json")
+	decl := []byte(`{"schema_version":3,"definition":"local-engine-installation.v1","family":"polystrata","executable":"python","environment":{}}`)
+	mustWriteFile(t, instPath, decl, 0o600)
+	mustWriteFile(t, filepath.Join(installDir, ".inferyard-runtime.json"), []byte(`{"definition":"polystrata-runtime.v1"}`), 0o600)
+
+	var found *EngineAsset
+	for _, eng := range s.Registry().Engines {
+		if eng.Path == instPath {
+			found = &eng
+			break
+		}
+	}
+	if found == nil || !found.Managed || !found.Deletable {
+		t.Fatalf("expected auto-discovered polystrata engine to be managed and deletable: %+v", found)
+	}
+	info, err := s.InspectDeleteAsset("engine", found.Name)
+	if err != nil || info.Scope != "polystrata_engine" || info.TargetPath != installDir {
+		t.Fatalf("inspect = %+v, %+v", info, err)
+	}
+	if err := s.DeleteManagedAssetVerified("engine", found.Name, info.TargetPath, info.Fingerprint); err != nil {
+		t.Fatalf("delete auto-discovered polystrata failed: %+v", err)
+	}
+	if _, statErr := os.Stat(installDir); !os.IsNotExist(statErr) {
+		t.Fatalf("expected auto-discovered polystrata dir removed: %v", statErr)
 	}
 }

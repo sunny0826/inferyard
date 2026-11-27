@@ -22,6 +22,7 @@ type fakeTrayWindow struct {
 	showCalls   int
 	restoreCall int
 	focusCalls  int
+	onIsVisible func()
 }
 
 func (w *fakeTrayWindow) Hide()             { w.visible = false; w.hideCalls++ }
@@ -29,7 +30,12 @@ func (w *fakeTrayWindow) Show()             { w.visible = true; w.showCalls++ }
 func (w *fakeTrayWindow) Restore()          { w.minimized = false; w.restoreCall++ }
 func (w *fakeTrayWindow) Focus()            { w.focusCalls++ }
 func (w *fakeTrayWindow) IsMinimized() bool { return w.minimized }
-func (w *fakeTrayWindow) IsVisible() bool   { return w.visible }
+func (w *fakeTrayWindow) IsVisible() bool {
+	if w.onIsVisible != nil {
+		w.onIsVisible()
+	}
+	return w.visible
+}
 
 type fakeTrayIcon struct {
 	destroyed  int
@@ -378,5 +384,26 @@ func TestTrayStatusBridgeRefreshesOnEngineEvents(t *testing.T) {
 	}
 	if icon.titleCalls == before {
 		t.Fatal("services.state event did not refresh tray status")
+	}
+}
+
+func TestTrayControllerUpdateStatusDoesNotCallIsVisibleUnderLock(t *testing.T) {
+	h, hooks := newFakeTrayHarness()
+	c := newTrayController(hooks, false)
+	c.UpdateStatus(TrayEngineStatus{State: TrayEngineRunning, ActiveCount: 1})
+	if len(h.icons) != 1 {
+		t.Fatalf("expected temporary tray icon, got %d", len(h.icons))
+	}
+	reentered := false
+	h.win.onIsVisible = func() {
+		reentered = true
+		_ = h.shouldHide()
+	}
+	c.UpdateStatus(TrayEngineStatus{State: TrayEngineIdle})
+	if !reentered {
+		t.Fatal("expected IsVisible callback to run")
+	}
+	if h.icons[0].destroyed != 1 {
+		t.Fatalf("expected idle temporary tray to be destroyed, got %d", h.icons[0].destroyed)
 	}
 }

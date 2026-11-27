@@ -2,10 +2,12 @@ package core
 
 import (
 	"encoding/json"
+	"inferyard/studio/internal/l10n"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 )
 
 func (s *Service) deleteManagedLocalInstallationEngine(name string, eng EngineAsset, expectedTarget, expectedFP string) *ApiError {
@@ -16,6 +18,51 @@ func (s *Service) deleteManagedLocalInstallationEngine(name string, eng EngineAs
 		return s.deleteManagedVenvEngine(eng, expectedTarget, expectedFP)
 	}
 	return errAssetNotDeletable()
+}
+
+func managedVenvHasExternalDependents(installDir, selfCanonPath string, engines []registryEntry) bool {
+	if otherEngineSharesInstallDir(installDir, selfCanonPath, engines) {
+		return true
+	}
+	touchesInstallDir := func(raw string) bool {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" {
+			return false
+		}
+		if pathWithinDirSameFS(installDir, trimmed) {
+			return true
+		}
+		if canon, err := canonical(trimmed); err == nil && pathWithinDirSameFS(installDir, canon) {
+			return true
+		}
+		return false
+	}
+	for _, other := range engines {
+		if other.installation == "" || sameDirectoryEntry(other.path, selfCanonPath) {
+			continue
+		}
+		raw, err := installationBytes(other.installation)
+		if err != nil {
+			continue
+		}
+		var decl struct {
+			Executable       string   `json:"executable"`
+			WorkingDirectory string   `json:"working_directory"`
+			RuntimeRoots     []string `json:"runtime_roots"`
+		}
+		if json.Unmarshal(raw, &decl) != nil {
+			continue
+		}
+		if touchesInstallDir(decl.Executable) || touchesInstallDir(decl.WorkingDirectory) {
+			return true
+		}
+		for _, root := range decl.RuntimeRoots {
+			if touchesInstallDir(root) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func managedVenvInstallDir(rawInstPath, canonInstPath, wsEnginesRoot string, resultsRoot *string) (string, managedEngineReceipt, bool) {
@@ -75,7 +122,8 @@ func (s *Service) inspectManagedVenvEngineDelete(u UserSettings, paths *BoundPat
 	if !ok || verifyManagedVenvTreeSafe(installDir) != nil {
 		return AssetDeleteInfo{}, errAssetNotDeletable()
 	}
-	if otherEngineSharesInstallDir(installDir, eng.Path, s.registry().engines) {
+	if otherEngineSharesInstallDir(installDir, eng.Path, s.registry().engines) ||
+		managedVenvHasExternalDependents(installDir, eng.Path, s.registry().engines) {
 		return AssetDeleteInfo{}, errAssetNotDeletable()
 	}
 	return AssetDeleteInfo{
@@ -117,7 +165,7 @@ func (s *Service) runDeleteManagedVenvEngine(eng EngineAsset, expectedTarget, ex
 
 	wsEngines := workspaceEnginesRoot(u, paths)
 	installDir, _, ok := managedVenvInstallDir(rawPath, eng.Path, wsEngines, derivedResultsRoot(u, paths))
-	if !ok || otherEngineSharesInstallDir(installDir, eng.Path, s.registry().engines) || verifyManagedVenvTreeSafe(installDir) != nil {
+	if !ok || managedVenvHasExternalDependents(installDir, eng.Path, s.registry().engines) || verifyManagedVenvTreeSafe(installDir) != nil {
 		return errAssetNotDeletable()
 	}
 	if expectedTarget != "" && (!sameFileOrPath(installDir, expectedTarget) ||
@@ -143,13 +191,6 @@ func (s *Service) runDeleteManagedVenvEngine(eng EngineAsset, expectedTarget, ex
 		}
 	}
 	removeErr := removeStagedManagedEngineDir(stagedDir)
-	if removeErr != nil && !os.IsNotExist(removeErr) {
-		_ = os.Rename(stagedDir, installDir)
-		if len(removeRaw) > 0 {
-			_, _ = s.saveSettings(u)
-		}
-		return Err("internal_error")
-	}
 	s.mu.Lock()
 	s.pruneAssetSnapshotLocked("engine", installDir)
 	s.mu.Unlock()
@@ -165,5 +206,10 @@ func (s *Service) runDeleteManagedVenvEngine(eng EngineAsset, expectedTarget, ex
 		}
 	}
 	s.checkMu.Unlock()
+	if removeErr != nil && !os.IsNotExist(removeErr) {
+		apiErr := Err("internal_error")
+		apiErr.Message = l10n.TR("core.asset.err.polystrata_staged_cleanup_failed")
+		return apiErr
+	}
 	return nil
 }

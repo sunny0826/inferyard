@@ -29,6 +29,20 @@ func TestDefaultEngineCatalogDescriptionsAndManagedVenvSpecs(t *testing.T) {
 	if original.Releases[0].Builds[0].ManagedSpec.WheelURLs[0] == "changed" {
 		t.Fatal("managed spec was not deep-cloned")
 	}
+	vllm, ok := registry.FamilyByID("vllm")
+	if !ok {
+		t.Fatal("vllm missing")
+	}
+	for _, rel := range vllm.Releases {
+		for _, b := range rel.Builds {
+			if strings.HasPrefix(b.Platform, "linux/") && b.AcquireMode == EngineAcquireManagedVenv {
+				t.Fatalf("linux vllm build must not advertise managed venv install: %+v", b)
+			}
+			if b.Platform == "darwin/arm64" && b.AcquireMode != EngineAcquireManagedVenv {
+				t.Fatalf("darwin/arm64 vllm build should use managed venv install: %+v", b)
+			}
+		}
+	}
 }
 
 func TestCatalogEntriesAreUniqueAndComplete(t *testing.T) {

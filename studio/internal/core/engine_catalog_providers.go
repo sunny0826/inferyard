@@ -141,8 +141,7 @@ func vllmProvider() EngineCatalogProvider {
 							ID:          "engine-vllm-linux-x64",
 							Platform:    "linux/amd64",
 							Variant:     "CUDA / CPU",
-							AcquireMode: EngineAcquireManagedVenv,
-							ManagedSpec: &EngineManagedVenvSpec{Python: "3.12", Packages: []string{"vllm==0.31.0"}},
+							AcquireMode: EngineAcquireExternalPage,
 							Artifacts: []EngineArtifact{
 								{Role: "release_page", Label: l10n.TRf("core.engine_catalog.artifact.release_page", "version", "vLLM v0.31.0"), Version: "v0.31.0", URL: tagURL},
 							},
@@ -153,8 +152,7 @@ func vllmProvider() EngineCatalogProvider {
 							ID:          "engine-vllm-linux-arm64",
 							Platform:    "linux/arm64",
 							Variant:     "CUDA / CPU",
-							AcquireMode: EngineAcquireManagedVenv,
-							ManagedSpec: &EngineManagedVenvSpec{Python: "3.12", Packages: []string{"vllm==0.31.0"}},
+							AcquireMode: EngineAcquireExternalPage,
 							Artifacts: []EngineArtifact{
 								{Role: "release_page", Label: l10n.TRf("core.engine_catalog.artifact.release_page", "version", "vLLM v0.31.0"), Version: "v0.31.0", URL: tagURL},
 							},

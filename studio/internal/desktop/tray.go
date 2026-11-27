@@ -201,9 +201,10 @@ func (c *TrayController) SetEnabled(enabled bool) error {
 		return nil
 	}
 	c.enabled = enabled
-	restore := !enabled && c.tray != nil && c.hooks.win != nil && !c.hooks.win.IsVisible()
+	checkRestore := !enabled && c.tray != nil
+	win := c.hooks.win
 	c.mu.Unlock()
-	if restore {
+	if checkRestore && win != nil && !win.IsVisible() {
 		c.RestoreWindow()
 	}
 
@@ -285,14 +286,21 @@ func (c *TrayController) UpdateStatus(status TrayEngineStatus) {
 	}
 	c.status = status
 	needed := c.trayNeededLocked()
-	visible := c.hooks.win == nil || c.hooks.win.IsVisible()
-	var oldTray TrayIcon
-	if !needed && visible {
-		oldTray, c.tray = c.tray, nil
-	}
+	checkCleanup := c.tray != nil && !c.enabled && !c.status.HasActive()
+	win := c.hooks.win
 	c.mu.Unlock()
-	if oldTray != nil {
-		oldTray.Destroy()
+	if checkCleanup && (win == nil || win.IsVisible()) {
+		c.mu.Lock()
+		var oldTray TrayIcon
+		if !c.closed && !c.enabled && !c.status.HasActive() {
+			c.hiddenToTray = false
+			oldTray, c.tray = c.tray, nil
+		}
+		c.mu.Unlock()
+		if oldTray != nil {
+			oldTray.Destroy()
+		}
+		return
 	}
 	if needed && c.ensureTray() == nil {
 		c.renderTray()

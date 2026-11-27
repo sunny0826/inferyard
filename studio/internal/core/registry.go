@@ -322,6 +322,12 @@ func applyManagedEngineMetadata(entries []registryEntry, wsEnginesRoot string) {
 		if found {
 			entry.engine.Managed = true
 			entry.engine.InstallMode = receipt.InstallMode
+			if receipt.InstallMode == managedEngineVenvInstallMode {
+				if liveVer := readVenvPackageVersion(*entry, receipt.Family); liveVer != "" {
+					entry.engine.Version = liveVer
+					continue
+				}
+			}
 			if receipt.Version != "" {
 				entry.engine.Version = receipt.Version
 			}
@@ -332,11 +338,9 @@ func applyManagedEngineMetadata(entries []registryEntry, wsEnginesRoot string) {
 			entry.engine.InstallMode = "polystrata"
 			continue
 		}
-		if insideWorkspace(entry.path) {
+		if entry.engine.Kind != "local_installation" && insideWorkspace(entry.path) {
 			entry.engine.Managed = true
-			if entry.engine.Kind != "local_installation" {
-				entry.engine.InstallMode = "binary"
-			}
+			entry.engine.InstallMode = "binary"
 		}
 	}
 }

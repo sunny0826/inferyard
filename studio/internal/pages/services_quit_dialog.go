@@ -35,6 +35,14 @@ func (s *viewState) handleWindowClose(e *mygo.CloseEvent) {
 	}
 	s.quitDialog.open = true
 	if s.win != nil {
+		if s.win.IsMinimized() {
+			s.win.Restore()
+		}
+		if !s.win.IsVisible() {
+			s.win.Show()
+		}
+		s.win.Focus()
+		mygo.App.Focus()
 		s.win.Invalidate()
 	}
 }

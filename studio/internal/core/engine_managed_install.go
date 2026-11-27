@@ -224,6 +224,17 @@ func (s *Service) runManagedEngineInstall(ctx context.Context, cliPath string, d
 		s.finishManagedEngineInstall(ctx, d, "", Err("internal_error"))
 		return
 	}
+	cleanupPartial := func() {
+		if info, err := os.Lstat(d.Task.OutDir); err == nil && info.IsDir() && info.Mode()&os.ModeSymlink == 0 {
+			if enginesRoot := workspaceEnginesRoot(s.userSettings(), s.paths); enginesRoot != "" {
+				if canonOut, err := canonical(d.Task.OutDir); err == nil {
+					if _, ok := strictlyInsideAnyRoot(canonOut, []string{enginesRoot}); ok {
+						_ = os.RemoveAll(canonOut)
+					}
+				}
+			}
+		}
+	}
 	s.setManagedEngineStage(d, "creating_venv", 2, 25)
 	venvDir := filepath.Join(d.Task.OutDir, "venv")
 	python := build.ManagedSpec.Python
@@ -231,6 +242,7 @@ func (s *Service) runManagedEngineInstall(ctx context.Context, cliPath string, d
 		python = "3.12"
 	}
 	if failure := runManagedEngineCommand(ctx, uvPath, "venv", "--python", python, venvDir); failure != nil {
+		cleanupPartial()
 		s.finishManagedEngineInstall(ctx, d, "", failure)
 		return
 	}
@@ -242,6 +254,7 @@ func (s *Service) runManagedEngineInstall(ctx context.Context, cliPath string, d
 	failure := runManagedEngineCommand(installCtx, uvPath, args...)
 	cancel()
 	if failure != nil {
+		cleanupPartial()
 		s.finishManagedEngineInstall(ctx, d, "", failure)
 		return
 	}
@@ -252,11 +265,15 @@ func (s *Service) runManagedEngineInstall(ctx context.Context, cliPath string, d
 		SourceURL: sourceURL, InstalledAt: now(),
 	}
 	if failure := writeManagedEngineReceipt(d.Task.OutDir, receipt); failure != nil {
+		cleanupPartial()
 		s.finishManagedEngineInstall(ctx, d, "", failure)
 		return
 	}
 	s.setManagedEngineStage(d, "registering_engine", 4, 85)
 	installationPath, failure := s.initManagedEngineInstallation(ctx, cliPath, family.ID, d.Task.OutDir, venvDir)
+	if failure != nil && installationPath == "" {
+		cleanupPartial()
+	}
 	s.finishManagedEngineInstall(ctx, d, installationPath, failure)
 	if failure == nil {
 		s.VerifyEngines()
