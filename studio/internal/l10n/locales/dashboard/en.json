@@ -205,6 +205,8 @@
   "detail.case_drawer.copy_failed": "Copy failed",
   "detail.case_drawer.copy_prompt": "Copy Prompt",
   "detail.case_drawer.copy_response": "Copy Response",
+  "detail.case_drawer.next_case": "Next Case",
+  "detail.case_drawer.prev_case": "Previous Case",
   "detail.case_drawer.prompt_missing": "Prompt text is not available in this record.",
   "detail.case_drawer.prompt_title": "Prompt",
   "detail.case_drawer.prompt_unavailable": "This report does not contain prompt and answer text. Recreate the report from Run History to inspect them.",

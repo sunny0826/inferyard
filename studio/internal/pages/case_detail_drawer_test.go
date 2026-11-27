@@ -46,9 +46,12 @@ func TestDetailCaseClickShowsPromptAndOptionalAnswer(t *testing.T) {
 		t.Fatalf("unexpected response section when answer is missing: %v", tt.Texts())
 	}
 
-	// Switch to answered case: both prompt and response are shown.
-	s.detailCaseID = "case-answered"
+	// Switch to previous case using the in-drawer navigator: both prompt and response appear.
+	click(t, tt, tr(nil, "detail.case_drawer.prev_case"))
 	tt.Frame()
+	if s.detailCaseID != "case-answered" {
+		t.Fatalf("prev_case left detailCaseID=%q, want case-answered", s.detailCaseID)
+	}
 	if !tt.HasText("Prompt for answered case") || !tt.HasText("Model output for answered case") {
 		t.Fatalf("missing prompt or response for answered case: %v", tt.Texts())
 	}

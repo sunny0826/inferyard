@@ -205,6 +205,8 @@
   "detail.case_drawer.copy_failed": "复制失败",
   "detail.case_drawer.copy_prompt": "复制题目",
   "detail.case_drawer.copy_response": "复制回答",
+  "detail.case_drawer.next_case": "下一题",
+  "detail.case_drawer.prev_case": "上一题",
   "detail.case_drawer.prompt_missing": "当前记录未包含题目内容。",
   "detail.case_drawer.prompt_title": "题目",
   "detail.case_drawer.prompt_unavailable": "当前报告未记录题目与回答，可从历史运行重新生成报告。",
