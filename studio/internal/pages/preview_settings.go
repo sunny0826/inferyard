@@ -114,6 +114,11 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 			s.syncNativeThemeIfNeeded()
 			s.failurePage = s.selected
 		}
+		if _, hasAccent := patch["accent"]; hasAccent {
+			s.accentMode = core.NormalizeAccent(p.accentMode)
+			setActiveAccent(s.accentMode)
+			s.failurePage = s.selected
+		}
 		if _, hasLang := patch["language"]; hasLang {
 			s.languageMode = previewLanguageModeString(p.languageMode)
 			s.syncNativeLocaleIfNeeded()
@@ -132,6 +137,7 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		return
 	}
 	value.Theme = core.NormalizeTheme(value.Theme)
+	value.Accent = core.NormalizeAccent(value.Accent)
 	value.Language = core.NormalizeLanguage(value.Language)
 	var resultsRoot, modelsRoot, reportsRoot *string
 	if ws := emptyText(value.WorkspaceRoot); ws != "" {
@@ -149,6 +155,7 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		ExtraModelsRoots: slices.Clone(value.ExtraModelsRoots),
 		DownloadProxy:    value.DownloadProxy,
 		Theme:              value.Theme,
+		Accent:             value.Accent,
 		Language:           value.Language,
 		MinimizeToTray:     value.MinimizeToTray,
 		KeepServicesOnQuit: core.EffectiveKeepServicesOnQuitValue(value),
@@ -159,6 +166,11 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		s.themeMode = value.Theme
 		s.appliedThemeMode = value.Theme
 		p.syncNativeTheme()
+	}
+	if _, hasAccent := patch["accent"]; hasAccent {
+		p.accentMode = value.Accent
+		s.accentMode = value.Accent
+		setActiveAccent(value.Accent)
 	}
 	if _, hasLang := patch["language"]; hasLang {
 		p.languageMode = previewLanguageModeIndex(value.Language)

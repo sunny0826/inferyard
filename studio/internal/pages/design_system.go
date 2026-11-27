@@ -31,8 +31,103 @@ func configuredValue(value string) string {
 	return value
 }
 
+func applySecondaryButtonPalette(c *ui.Context, b ui.Element) ui.Element {
+	if c.Preferences().HighContrast {
+		return b
+	}
+	bp := paletteFor(c.Theme().Dark).buttons
+	if bp.secondaryBg.A == 0 {
+		return b
+	}
+	bg := bp.secondaryBg
+	border := bp.secondaryBorder
+	if !b.IsDisabled() {
+		switch {
+		case b.Pressed():
+			bg = bp.secondaryPressed
+			if bp.secondaryBorderHover.A > 0 {
+				border = bp.secondaryBorderHover
+			}
+		case b.Hovered():
+			bg = bp.secondaryHover
+			if bp.secondaryBorderHover.A > 0 {
+				border = bp.secondaryBorderHover
+			}
+		}
+	}
+	b.Background(bg).TextColor(c.Theme().Text).Border(1, border)
+	if !b.IsDisabled() {
+		applyShadow(b, tokens(c).Elevation.XS)
+	}
+	return b
+}
+
+type buttonIconSide int
+
+const (
+	buttonIconNone buttonIconSide = iota
+	buttonIconLeading
+	buttonIconTrailing
+)
+
+// applyButtonOpticalPadding preserves Control.SM/MD/LG vertical sizing while
+// tightening horizontal padding on the icon side to compensate for SVG viewBox
+// margin (detail.design: Visual Alignment for Buttons with Icon).
+func applyButtonOpticalPadding(b ui.Element, t designTokens, size controlSize, side buttonIconSide) ui.Element {
+	padY, padX, inset := t.Density.Tight, t.Density.Stack, float32(3)
+	switch size {
+	case sizeSM:
+		padY, padX, inset = t.Density.Hairline, t.Density.Row, 2
+	case sizeLG:
+		padY, padX, inset = t.Density.Row, t.Density.Section, 3
+	}
+	padIcon := max(4, padX-inset)
+	switch side {
+	case buttonIconLeading:
+		return b.Padding(padY, padX, padY, padIcon)
+	case buttonIconTrailing:
+		return b.Padding(padY, padIcon, padY, padX)
+	default:
+		return b.Padding(padY, padX)
+	}
+}
+
+func iconLabelButton(c *ui.Context, variant components.ButtonVariant, side buttonIconSide, icon func() *ui.SVG, label string) ui.Element {
+	t := tokens(c)
+	b := styleButtonSize(c, components.Button(c, "", variant), sizeMD).Label(label)
+	if variant == components.ButtonSecondary {
+		applySecondaryButtonPalette(c, b)
+	}
+	applyButtonOpticalPadding(b, t, sizeMD, side)
+	iconSlot := func() {
+		ui.Box(c).Size(14, 14).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+			components.Icon(c, icon).Size(14, 14).Role(ui.RoleNone)
+		})
+	}
+	b.Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
+			if side == buttonIconLeading {
+				iconSlot()
+			}
+			ui.Text(c, label).SingleLine()
+			if side == buttonIconTrailing {
+				iconSlot()
+			}
+		})
+	})
+	return b
+}
+
+func leadingIconButton(c *ui.Context, variant components.ButtonVariant, icon func() *ui.SVG, label string) ui.Element {
+	return iconLabelButton(c, variant, buttonIconLeading, icon, label)
+}
+
+func trailingIconButton(c *ui.Context, variant components.ButtonVariant, label string, icon func() *ui.SVG) ui.Element {
+	return iconLabelButton(c, variant, buttonIconTrailing, icon, label)
+}
+
 func button(c *ui.Context, label string) ui.Element {
-	return styleButtonSize(c, components.Button(c, label, components.ButtonSecondary), sizeMD)
+	return applySecondaryButtonPalette(c, styleButtonSize(c, components.Button(c, label, components.ButtonSecondary), sizeMD))
 }
 
 func primaryButton(c *ui.Context, label string) ui.Element {
@@ -44,6 +139,18 @@ func dangerButton(c *ui.Context, label string) ui.Element {
 	t := tokens(c)
 	danger := t.State.Danger
 	b := styleButtonSize(c, components.Button(c, label, components.ButtonOutline), sizeMD)
+	if bp := paletteFor(theme.Dark).buttons; bp.dangerBg.A > 0 && !c.Preferences().HighContrast {
+		bg := bp.dangerBg
+		if !b.IsDisabled() {
+			switch {
+			case b.Pressed():
+				bg = bp.dangerPressed
+			case b.Hovered():
+				bg = bp.dangerHover
+			}
+		}
+		return b.Background(bg).TextColor(bp.dangerFg).Border(1, bp.dangerBorder)
+	}
 	background := theme.Surface.Mix(danger, .10)
 	if !b.IsDisabled() {
 		switch {
@@ -60,23 +167,38 @@ func quietDangerButton(c *ui.Context, label string) ui.Element {
 	theme := c.Theme()
 	t := tokens(c)
 	danger := t.State.Danger
+	bp := paletteFor(theme.Dark).buttons
 	b := styleButtonSize(c, components.Button(c, label, components.ButtonOutline), sizeMD)
 	background := t.Color.Surface
 	border := t.Color.BorderDefault
+	fg := danger.Mix(theme.Text, .18)
+	if bp.dangerFg.A > 0 && !c.Preferences().HighContrast {
+		fg = bp.dangerFg
+	}
 	if c.Preferences().HighContrast {
 		border = danger
 	}
 	if !b.IsDisabled() {
 		switch {
 		case b.Pressed():
-			background = theme.Surface.Mix(danger, .20)
-			border = danger.Alpha(.70)
+			if bp.dangerPressed.A > 0 && !c.Preferences().HighContrast {
+				background = bp.dangerPressed
+				border = bp.dangerBorder
+			} else {
+				background = theme.Surface.Mix(danger, .20)
+				border = danger.Alpha(.70)
+			}
 		case b.Hovered():
-			background = theme.Surface.Mix(danger, .10)
-			border = danger.Alpha(.55)
+			if bp.dangerBg.A > 0 && !c.Preferences().HighContrast {
+				background = bp.dangerBg
+				border = bp.dangerBorder
+			} else {
+				background = theme.Surface.Mix(danger, .10)
+				border = danger.Alpha(.55)
+			}
 		}
 	}
-	return b.Background(background).TextColor(danger.Mix(theme.Text, .18)).Border(1, border)
+	return b.Background(background).TextColor(fg).Border(1, border)
 }
 
 func activitySpinner(c *ui.Context, label string) ui.Element {

@@ -84,6 +84,7 @@ var previewScenes = []struct {
 	{"preview.scene.update_downloading", previewUpdateDownloading},
 	{"preview.scene.update_ready", previewUpdateReadyToApply},
 	{"preview.scene.update_error", previewUpdateError},
+	{"preview.scene.design_system", previewDesignSystemScene},
 }
 
 func previewDenseResources(s *viewState) {

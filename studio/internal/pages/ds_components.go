@@ -104,7 +104,11 @@ func iconButton(c *ui.Context, icon func() *ui.SVG, label string, style componen
 }
 
 func sizedButton(c *ui.Context, variant components.ButtonVariant, size controlSize, label string) ui.Element {
-	return styleButtonSize(c, components.Button(c, label, variant), size)
+	b := styleButtonSize(c, components.Button(c, label, variant), size)
+	if variant == components.ButtonSecondary {
+		applySecondaryButtonPalette(c, b)
+	}
+	return b
 }
 
 func studioTextBox(c *ui.Context, value *string, opts ...components.TextBoxOptions) ui.Element {
@@ -179,6 +183,66 @@ func defaultStateIcon(kind stateKind) func() *ui.SVG {
 	}
 }
 
+func semanticAccentColor(c *ui.Context, scale stateColorScale) ui.Color {
+	if c.Preferences().HighContrast {
+		return tokens(c).Color.FgPrimary
+	}
+	if c.Theme().Dark {
+		return scale.Fg
+	}
+	return scale.Solid
+}
+
+func applyNeutralNoticeStrip(c *ui.Context, el ui.Element, scale stateColorScale, compact bool) ui.Element {
+	t := tokens(c)
+	padY, padX := t.Density.Stack, t.Density.Section
+	if compact {
+		padY, padX = t.Density.Row, t.Density.Stack
+	}
+	el.Padding(padY, padX).Radius(t.Radius.Inset)
+	if c.Preferences().HighContrast {
+		return el.Background(t.Color.Surface).Border(1.5, scale.Solid)
+	}
+	return el.Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle)
+}
+
+func isQuietInlineNotice(opts noticeBannerOptions) bool {
+	if opts.Actions != nil || opts.Details != nil {
+		return false
+	}
+	switch opts.Kind {
+	case stateWarning, stateDanger:
+		return false
+	default:
+		return true
+	}
+}
+
+func renderNoticeBodyText(c *ui.Context, opts noticeBannerOptions, compact, quietInfo bool) {
+	t := tokens(c)
+	if opts.Title != "" {
+		size := t.Type.Body
+		if compact {
+			size = t.Type.Caption
+		}
+		ui.Text(c, opts.Title).Bold().FontSize(size).TextColor(t.Color.FgPrimary)
+	}
+	if opts.Message != "" {
+		size := t.Type.Body
+		msgColor := t.Color.FgPrimary
+		if opts.Title != "" {
+			size = t.Type.Caption
+			msgColor = t.Color.FgSecondary
+		} else if quietInfo {
+			size = t.Type.Caption
+			msgColor = t.Color.FgSecondary
+		} else if compact {
+			size = t.Type.Caption
+		}
+		ui.Text(c, opts.Message).FontSize(size).Role(ui.RoleStatus).TextColor(msgColor)
+	}
+}
+
 func noticeBanner(c *ui.Context, opts noticeBannerOptions) {
 	if opts.Title == "" && opts.Message == "" && opts.Actions == nil && opts.Details == nil {
 		return
@@ -189,47 +253,72 @@ func noticeBanner(c *ui.Context, opts noticeBannerOptions) {
 	if icon == nil {
 		icon = defaultStateIcon(opts.Kind)
 	}
-	pad := t.Density.Stack
-	if opts.Size == bannerCompact {
-		pad = t.Density.Row
+	compact := opts.Size == bannerCompact
+
+	// Tier 1: Quiet frameless inline status line for low-severity informational/success notices.
+	if isQuietInlineNotice(opts) {
+		align := ui.Center
+		if opts.Title != "" {
+			align = ui.Start
+		}
+		ui.Row(c).FillWidth().AlignItems(align).Gap(t.Density.Row).Padding(2, 0).Children(func() {
+			if opts.Kind == stateSuccess || opts.Icon != nil {
+				topPad := float32(0)
+				if opts.Title != "" {
+					topPad = 2
+				}
+				ui.Box(c).Padding(topPad, 0, 0, 0).Shrink(0).Children(func() {
+					components.Icon(c, icon).Size(14, 14).TextColor(semanticAccentColor(c, scale))
+				})
+			} else {
+				topPad := float32(0)
+				if opts.Title != "" {
+					topPad = 5
+				}
+				ui.Box(c).Padding(topPad, 0, 0, 0).Shrink(0).Children(func() {
+					ui.Box(c).Size(7, 7).Radius(t.Radius.Full).Background(scale.Solid)
+				})
+			}
+			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+				renderNoticeBodyText(c, opts, compact, opts.Kind != stateSuccess)
+			})
+		})
+		return
 	}
-	banner := ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(pad).Radius(t.Radius.Inset)
-	if c.Preferences().HighContrast {
-		banner.Background(scale.SubtleBg).Border(1, scale.Border)
-	} else {
-		banner.Background(scale.SubtleBg).BorderWidth(0, 0, 0, 3).BorderColor(scale.Solid)
-	}
-	banner.Children(func() {
+
+	// Tier 3: Neutral sunken action strip for warnings, errors, or actionable notices.
+	strip := applyNeutralNoticeStrip(c, ui.Column(c).FillWidth().Gap(t.Density.Row), scale, compact)
+	strip.Children(func() {
+		singleLineCompact := compact && opts.Title == "" && opts.Details == nil
 		rowAlign := ui.Start
-		if opts.Size == bannerCompact && opts.Title == "" && opts.Actions == nil && opts.Details == nil {
+		if singleLineCompact || (opts.Actions != nil && opts.Details == nil) {
 			rowAlign = ui.Center
 		}
-		ui.Row(c).AlignItems(rowAlign).Gap(t.Density.Row).Children(func() {
-			iconSize := t.Type.Body
-			if opts.Size == bannerCompact {
-				iconSize = t.Type.Caption
+		gap := t.Density.Stack
+		if compact {
+			gap = t.Density.Row
+		}
+		inlineActions := opts.Actions != nil && opts.Details == nil
+		ui.Row(c).FillWidth().AlignItems(rowAlign).Wrap().Gap(gap).Children(func() {
+			iconTop := float32(0)
+			if rowAlign == ui.Start {
+				iconTop = 2
 			}
-			ui.Box(c).Children(func() {
-				components.Icon(c, icon).Size(iconSize, iconSize).TextColor(scale.Fg)
+			ui.Box(c).Padding(iconTop, 0, 0, 0).Shrink(0).Children(func() {
+				components.Icon(c, icon).Size(15, 15).TextColor(semanticAccentColor(c, scale))
 			})
-			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
-				if opts.Title != "" {
-					ui.Text(c, opts.Title).Bold().FontSize(t.Type.Body).TextColor(scale.Fg)
-				}
-				if opts.Message != "" {
-					size := t.Type.Body
-					if opts.Size == bannerCompact {
-						size = t.Type.Caption
-					}
-					ui.Text(c, opts.Message).FontSize(size).Role(ui.RoleStatus).TextColor(scale.Fg)
-				}
-				if opts.Actions != nil {
+			ui.Column(c).Grow(1).MinWidth(180).Gap(t.Density.Tight).Children(func() {
+				renderNoticeBodyText(c, opts, compact, false)
+				if !inlineActions && opts.Actions != nil {
 					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(opts.Actions)
 				}
 				if opts.Details != nil {
 					opts.Details()
 				}
 			})
+			if inlineActions {
+				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(opts.Actions)
+			}
 		})
 	})
 }

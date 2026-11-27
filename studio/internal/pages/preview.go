@@ -4,6 +4,7 @@ package pages
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -19,6 +20,7 @@ type previewSession struct {
 	state               *viewState
 	win                 *mygo.Window
 	scene               int
+	accentMode          string
 	themeMode           int
 	appliedThemeMode    int
 	languageMode        int
@@ -39,6 +41,9 @@ type previewSession struct {
 	speedMissingTiming  bool
 	local               *previewLocalTask
 	polystrataReqs      map[string]core.PolystrataSetupRequest
+	dsInput             string
+	dsSwitch            bool
+	dsCheck             bool
 }
 
 func NewPreview(ctx context.Context) {
@@ -66,6 +71,7 @@ func NewPreview(ctx context.Context) {
 		offHide()
 		offShow()
 		offClose()
+		setActiveAccent(core.AccentCobalt)
 		if p.state != nil {
 			p.state.closeOpenedReport()
 		}
@@ -75,7 +81,17 @@ func NewPreview(ctx context.Context) {
 }
 
 func newPreviewSession(ctx context.Context) *previewSession {
-	p := &previewSession{ctx: ctx}
+	p := &previewSession{
+		ctx:        ctx,
+		accentMode: core.AccentCobalt,
+		dsInput:    "http://127.0.0.1:48857",
+		dsSwitch:   true,
+		dsCheck:    true,
+	}
+	if os.Getenv("INFERYARD_DEBUG_SCENE") == "design_system" {
+		p.openDesignSystemScene()
+		return p
+	}
 	p.loadScene(0)
 	return p
 }
@@ -162,7 +178,25 @@ func (p *previewSession) syncNativeLanguage() {
 	syncNativeLocale(previewLanguageModeString(p.languageMode))
 }
 
+func (p *previewSession) syncStateAccent() {
+	accent := core.NormalizeAccent(p.accentMode)
+	p.accentMode = accent
+	setActiveAccent(accent)
+	if p.state == nil {
+		return
+	}
+	p.state.accentMode = accent
+	p.state.settings.Settings.Accent = accent
+	p.state.settings.Effective.Accent = accent
+}
+
+func (p *previewSession) selectAccent(accent string) {
+	p.accentMode = core.NormalizeAccent(accent)
+	p.syncStateAccent()
+}
+
 func (p *previewSession) themeFor(c *ui.Context) *ui.Theme {
+	p.syncStateAccent()
 	p.syncStateTheme()
 	p.syncNativeTheme()
 	p.syncStateLanguage()
@@ -201,6 +235,7 @@ func (p *previewSession) loadScene(index int) {
 	s.preview, s.win = p, p.win
 	p.state = s
 	previewScenes[index].apply(s)
+	p.syncStateAccent()
 	p.syncStateTheme()
 	p.syncStateLanguage()
 	p.activateScene()
@@ -230,6 +265,33 @@ func (p *previewSession) left(c *ui.Context) {
 					}
 				})
 				button(c, tr(c, "preview.scene.reset")).OnClick(func() { p.loadScene(p.scene) })
+				paletteFieldLabel := tr(c, "preview.palette.label")
+				accentIdx := 0
+				for i, spec := range studioAccentSpecs {
+					if spec.id == core.NormalizeAccent(p.accentMode) {
+						accentIdx = i
+						break
+					}
+				}
+				ui.Field(c, paletteFieldLabel, func() {
+					choice := studioSelect(c, &accentIdx)
+					currentPaletteLabel := tr(c, studioAccentSpecs[accentIdx].labelKey)
+					choice.Trigger.Label(paletteFieldLabel).Value(currentPaletteLabel).Children(func() { ui.Text(c, currentPaletteLabel).SingleLine() })
+					choice.Popup(func(ui.Element) {
+						components.ScrollView(c, components.ScrollViewOptions{}).Label(tr(c, "preview.palette.list_aria")).MaxHeight(220).Children(func() {
+							for i, spec := range studioAccentSpecs {
+								label := tr(c, spec.labelKey)
+								choice.Item(i).Label(label).Children(func() { ui.Text(c, label).SingleLine() })
+							}
+						})
+					})
+					if choice.Trigger.Changed() && accentIdx >= 0 && accentIdx < len(studioAccentSpecs) {
+						p.selectAccent(studioAccentSpecs[accentIdx].id)
+					}
+				})
+				if button(c, tr(c, "preview.ds.open_button")).Clicked() {
+					p.openDesignSystemScene()
+				}
 				prevTheme := p.themeMode
 				previewCompactSegmentedField(c, tr(c, "preview.theme.label"), &p.themeMode, []components.NativeSelectOption[int]{
 					{Label: tr(c, "preview.theme.system"), Value: 0},
@@ -265,6 +327,10 @@ func (p *previewSession) left(c *ui.Context) {
 }
 
 func (p *previewSession) content(c *ui.Context) {
+	if p.state != nil && p.state.selected == "design_system" {
+		ui.Column(c.Key(p.generation)).Fill().Children(func() { p.designSystemView(c) })
+		return
+	}
 	ui.Column(c.Key(p.generation)).Fill().Children(func() { p.state.contentView(c) })
 }
 func (p *previewSession) showNotice() {

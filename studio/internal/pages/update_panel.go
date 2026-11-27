@@ -52,7 +52,7 @@ func (s *viewState) updateHeaderBadge(c *ui.Context) {
 	t := tokens(c)
 	color := stateColor(c, kind)
 	b := components.Button(c, "", components.ButtonGhost).
-		Height(max(float32(32), theme.Rem(2))).Padding(0, t.Density.Row).Radius(t.Radius.Control).
+		Height(max(float32(32), theme.Rem(2))).Padding(0, t.Density.Row, 0, max(4, t.Density.Row-2)).Radius(t.Radius.Control).
 		Label(label)
 	b.Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
@@ -102,10 +102,13 @@ func (s *viewState) updateSettingsView(c *ui.Context) {
 func updateExternalButton(c *ui.Context, label string) ui.Element {
 	t := tokens(c)
 	b := styleButtonSize(c, components.Button(c, "", components.ButtonOutline), sizeMD).Label(label)
+	applyButtonOpticalPadding(b, t, sizeMD, buttonIconTrailing)
 	b.Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
 			ui.Text(c, label).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
-			components.Icon(c, lucide.ArrowUpRight).Size(13, 13).TextColor(t.Color.FgSecondary).Role(ui.RoleNone)
+			ui.Box(c).Size(14, 14).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+				components.Icon(c, lucide.ArrowUpRight).Size(13, 13).TextColor(t.Color.FgSecondary).Role(ui.RoleNone)
+			})
 		})
 	})
 	return b

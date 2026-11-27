@@ -28,6 +28,13 @@ type settingsViewState struct {
 	themeWorkerRunning                    bool
 	applyNativeTheme                      func(string)
 	persistTheme                          func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
+	accentMode                            string
+	accentSaving                          bool
+	accentMu                              sync.Mutex
+	accentWanted                          string
+	accentWantedSeq                       uint64
+	accentWorkerRunning                   bool
+	persistAccent                         func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
 	languageMode, appliedLanguageMode     string
 	languageSaving                        bool
 	languageMu                            sync.Mutex

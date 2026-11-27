@@ -265,7 +265,11 @@ func notificationCardButton(c *ui.Context, label string, primary bool) ui.Elemen
 	if primary {
 		variant = components.ButtonPrimary
 	}
-	return components.Button(c, label, variant).Height(32).Padding(0, t.Density.Stack).Radius(t.Radius.Control).FontSize(13)
+	b := components.Button(c, label, variant).Height(32).Padding(0, t.Density.Stack).Radius(t.Radius.Control).FontSize(13)
+	if !primary {
+		applySecondaryButtonPalette(c, b)
+	}
+	return b
 }
 
 func (s *viewState) notificationBell(c *ui.Context, maxCanvasWidth float32) {

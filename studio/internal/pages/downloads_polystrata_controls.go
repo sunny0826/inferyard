@@ -37,7 +37,7 @@ func (s *viewState) polystrataInstallHeaderAction(c *ui.Context, task core.Downl
 func polystrataInstallStatusButton(c *ui.Context, confirmOpen, disabled bool) ui.Element {
 	t := tokens(c)
 	theme := c.Theme()
-	b := ui.ButtonBase(c).MinWidth(100).MinHeight(t.Control.SM).Padding(0, theme.Space(3)).Radius(t.Radius.Full).Label(tr(c, "downloads.polystrata.cancel_install"))
+	b := ui.ButtonBase(c).MinWidth(100).MinHeight(t.Control.SM).Padding(0, theme.Space(3), 0, theme.Space(2.25)).Radius(t.Radius.Full).Label(tr(c, "downloads.polystrata.cancel_install"))
 	b.Disabled(disabled)
 
 	showCancel := !disabled && (b.Hovered() || b.Pressed() || confirmOpen)

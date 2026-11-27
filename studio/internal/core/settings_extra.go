@@ -83,6 +83,26 @@ func (s *Service) Theme() string {
 	return NormalizeTheme(s.userSettings().Theme)
 }
 
+func NormalizeAccent(accent string) string {
+	switch strings.TrimSpace(accent) {
+	case AccentIndigo:
+		return AccentIndigo
+	case AccentTeal:
+		return AccentTeal
+	case AccentTerracotta:
+		return AccentTerracotta
+	case AccentMono:
+		return AccentMono
+	default:
+		return AccentCobalt
+	}
+}
+
+// Accent returns the normalized persisted UI accent palette without probing the CLI.
+func (s *Service) Accent() string {
+	return NormalizeAccent(s.userSettings().Accent)
+}
+
 func NormalizeLanguage(mode string) string {
 	return l10n.NormalizeLanguage(mode)
 }
@@ -142,6 +162,25 @@ func (s *Service) applySettingsPatchExtra(u *UserSettings, key string, raw json.
 			u.Theme = ThemeSystem
 		case ThemeLight, ThemeDark:
 			u.Theme = trimmed
+		default:
+			return true, Err("invalid_request")
+		}
+		return true, nil
+	case "accent":
+		var accent *string
+		if json.Unmarshal(raw, &accent) != nil {
+			return true, Err("invalid_request")
+		}
+		if accent == nil {
+			u.Accent = AccentCobalt
+			return true, nil
+		}
+		trimmed := strings.TrimSpace(*accent)
+		switch trimmed {
+		case "", AccentCobalt:
+			u.Accent = AccentCobalt
+		case AccentIndigo, AccentTeal, AccentTerracotta, AccentMono:
+			u.Accent = trimmed
 		default:
 			return true, Err("invalid_request")
 		}

@@ -15,18 +15,13 @@ import (
 func stateBanner(c *ui.Context, kind stateKind, icon func() *ui.SVG, fn func(foreground ui.Color)) {
 	t := tokens(c)
 	scale := stateScale(c, kind)
-	banner := ui.Column(c).Gap(t.Density.Tight).Padding(t.Density.Stack).Radius(t.Radius.Inset)
-	if c.Preferences().HighContrast {
-		banner.Background(scale.SubtleBg).Border(1, scale.Border)
-	} else {
-		banner.Background(scale.SubtleBg).BorderWidth(0, 0, 0, 3).BorderColor(scale.Solid)
-	}
-	banner.Children(func() {
-		ui.Row(c).AlignItems(ui.Start).Gap(t.Density.Row).Children(func() {
-			ui.Box(c).Children(func() {
-				components.Icon(c, icon).Size(t.Type.Body, t.Type.Body).TextColor(scale.Fg)
+	strip := applyNeutralNoticeStrip(c, ui.Column(c).FillWidth().Gap(t.Density.Tight), scale, false)
+	strip.Children(func() {
+		ui.Row(c).AlignItems(ui.Start).Gap(t.Density.Stack).Children(func() {
+			ui.Box(c).Padding(2, 0, 0, 0).Shrink(0).Children(func() {
+				components.Icon(c, icon).Size(15, 15).TextColor(semanticAccentColor(c, scale))
 			})
-			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() { fn(scale.Fg) })
+			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() { fn(t.Color.FgPrimary) })
 		})
 	})
 }

@@ -47,11 +47,13 @@ func (s *viewState) syncNativeThemeIfNeeded() {
 }
 
 func (s *viewState) themeFor(c *ui.Context) *ui.Theme {
+	setActiveAccent(s.accentMode)
 	s.syncNativeThemeIfNeeded()
 	return resolveStudioTheme(c, s.themeMode)
 }
 
 func (s *viewState) loadThemeSettings(v core.SettingsResponse) {
+	s.loadAccentSettings(v)
 	if s.themeSaving {
 		return
 	}
@@ -94,6 +96,9 @@ func (s *viewState) appearanceSettingsView(c *ui.Context) {
 			if seg.Track.Changed() && idx >= 0 && idx < len(appearanceOptions) {
 				s.changeThemeMode(appearanceOptions[idx].value)
 			}
+
+			ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+			s.accentColorRow(c)
 		})
 }
 
@@ -169,27 +174,29 @@ func drawThemePreview(p *ui.Painter, r ui.Rect, mode string, frameBorder ui.Colo
 	inner := ui.Rect{X: r.X + 1, Y: r.Y + 1, W: r.W - 2, H: r.H - 2}
 	innerRadius := max(1, thumbRadius-1)
 
+	lightPal := paletteForAccent(activeAccent(), false)
+	darkPal := paletteForAccent(activeAccent(), true)
 	switch normalizeThemeMode(mode) {
 	case core.ThemeLight:
 		p.Clip(inner, innerRadius, func() {
-			drawStudioMockup(p, r, studioLightPalette)
+			drawStudioMockup(p, r, lightPal)
 		})
-		p.Stroke(r, studioLightPalette.border, thumbRadius, 1)
+		p.Stroke(r, lightPal.border, thumbRadius, 1)
 	case core.ThemeDark:
 		p.Clip(inner, innerRadius, func() {
-			drawStudioMockup(p, r, studioDarkPalette)
+			drawStudioMockup(p, r, darkPal)
 		})
-		p.Stroke(r, studioDarkPalette.border, thumbRadius, 1)
+		p.Stroke(r, darkPal.border, thumbRadius, 1)
 	default:
 		mid := r.W / 2
 		leftClip := ui.Rect{X: inner.X, Y: inner.Y, W: mid - 1, H: inner.H}
 		rightClip := ui.Rect{X: r.X + mid, Y: inner.Y, W: r.W - mid - 1, H: inner.H}
 		p.Clip(inner, innerRadius, func() {
 			p.Clip(leftClip, 0, func() {
-				drawStudioMockup(p, r, studioLightPalette)
+				drawStudioMockup(p, r, lightPal)
 			})
 			p.Clip(rightClip, 0, func() {
-				drawStudioMockup(p, r, studioDarkPalette)
+				drawStudioMockup(p, r, darkPal)
 			})
 			p.Fill(ui.Rect{X: r.X + mid - 0.5, Y: inner.Y, W: 1, H: inner.H}, frameBorder, 0)
 		})
