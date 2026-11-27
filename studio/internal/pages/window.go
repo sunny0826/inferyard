@@ -39,6 +39,7 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 	initialTheme := service.Theme()
 	initialAccent := service.Accent()
 	initialLanguage := service.Language()
+	initialReasoning := service.ReasoningEffort()
 	initialMinimizeToTray := service.MinimizeToTray()
 	initialKeepServices := service.EffectiveKeepServicesOnQuit()
 	syncNativeTheme(initialTheme)
@@ -57,13 +58,14 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 			accentMode:            initialAccent,
 			languageMode:          initialLanguage,
 			appliedLanguageMode:   initialLanguage,
+			reasoningEffort:       initialReasoning,
 			minimizeToTray:        initialMinimizeToTray,
 			appliedMinimizeToTray: false,
 		},
 		keepServicesOnQuit: initialKeepServices,
 		settings: core.SettingsResponse{
-			Settings:  core.UserSettings{Theme: initialTheme, Accent: initialAccent, Language: initialLanguage, MinimizeToTray: initialMinimizeToTray},
-			Effective: core.EffectiveSettings{Theme: initialTheme, Accent: initialAccent, Language: initialLanguage, MinimizeToTray: initialMinimizeToTray, KeepServicesOnQuit: initialKeepServices},
+			Settings:  core.UserSettings{Theme: initialTheme, Accent: initialAccent, Language: initialLanguage, ReasoningEffort: initialReasoning, MinimizeToTray: initialMinimizeToTray},
+			Effective: core.EffectiveSettings{Theme: initialTheme, Accent: initialAccent, Language: initialLanguage, ReasoningEffort: initialReasoning, MinimizeToTray: initialMinimizeToTray, KeepServicesOnQuit: initialKeepServices},
 		},
 	}
 	shell := sidebar.NewShell(s.shellOptions(title))

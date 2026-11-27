@@ -142,7 +142,11 @@ func launchSummaryLine(w *viewState) string {
 			return l10n.TRf("dashboard.exec.summary_lmstudio", "backend", localBackendLabel(e.Family))
 		}
 		if e.Family == "polystrata" {
-			return l10n.TRf("dashboard.exec.summary_polystrata", "backend", polystrataBackendLabel(w))
+			return l10n.TRf(
+				"dashboard.exec.summary_polystrata_thinking",
+				"backend", polystrataBackendLabel(w),
+				"thinking", reasoningSummaryLabel(w.effectiveReasoningEffort()),
+			)
 		}
 		return l10n.TRf("dashboard.exec.summary_local", "backend", localBackendLabel(e.Family))
 	}

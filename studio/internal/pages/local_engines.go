@@ -84,6 +84,9 @@ func (s *viewState) localCandidateRequest(bundles []string, reused *core.EngineS
 		return nil
 	}
 	request := &core.LocalCandidateRequest{ModelName: s.model, EngineName: s.engine, Bundles: bundles}
+	if e.Family == "polystrata" {
+		request.ReasoningEffort = s.effectiveReasoningEffort()
+	}
 	if e.Family == "lmstudio" {
 		request.ServicePID, _ = strconv.ParseInt(s.localPID, 10, 64)
 		request.Endpoint = s.localEndpoint
@@ -302,6 +305,7 @@ func (s *viewState) localServicePicker(c *ui.Context, pidLabel, endpointLabel st
 }
 
 func (s *viewState) localSelectionView(c *ui.Context) {
+	s.polystrataReasoningView(c)
 	if e := s.localEngine(); e != nil && e.Family == "lmstudio" {
 		ui.Text(c, tr(c, "engine.local.lmstudio_prompt"))
 		s.localServicePicker(c, tr(c, "engine.local.lmstudio_pid"), tr(c, "engine.local.lmstudio_endpoint"))

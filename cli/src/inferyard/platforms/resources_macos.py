@@ -188,7 +188,7 @@ class ResourceSampler(EnvironmentObserver):
     def collect(self, pid, ticks):
         self.external(pid, ticks)
         return [
-            *sample_memory(pid, ticks, self.phase, self.request_id),
+            *sample_memory(pid, ticks, self.phase, self.request_id, workers=self.workers),
             *self.counters(pid, ticks),
             *self.sensors.collect(self.phase, self.request_id),
         ]
@@ -196,7 +196,9 @@ class ResourceSampler(EnvironmentObserver):
     def idle_cycle_rss(self):
         endpoint = self.config["endpoint"]
         started = self.clock()
-        value, reason = read_rss(endpoint["server_pid"], endpoint["process_start_ticks"])
+        value, reason = read_rss(
+            endpoint["server_pid"], endpoint["process_start_ticks"], workers=self.workers
+        )
         self.store.sample(
             {
                 "phase": "residual",

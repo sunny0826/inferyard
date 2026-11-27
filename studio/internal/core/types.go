@@ -41,6 +41,11 @@ const (
 	LanguageSystem = "system"
 	LanguageEn     = "en"
 	LanguageZhHans = "zh-Hans"
+
+	ReasoningEffortNone   = "none"
+	ReasoningEffortLow    = "low"
+	ReasoningEffortMedium = "medium"
+	ReasoningEffortHigh   = "high"
 )
 
 type UserSettings struct {
@@ -49,6 +54,7 @@ type UserSettings struct {
 	Theme               string   `json:"theme,omitempty"`
 	Accent              string   `json:"accent,omitempty"`
 	Language            string   `json:"language,omitempty"`
+	ReasoningEffort     string   `json:"reasoning_effort,omitempty"`
 	MinimizeToTray      bool     `json:"minimize_to_tray,omitempty"`
 	KeepServicesOnQuit  *bool    `json:"keep_services_on_quit,omitempty"`
 	WorkspaceRoot       *string  `json:"workspace_root"`
@@ -68,6 +74,7 @@ type EffectiveSettings struct {
 	Theme              string   `json:"theme"`
 	Accent             string   `json:"accent"`
 	Language           string   `json:"language"`
+	ReasoningEffort    string   `json:"reasoning_effort"`
 	MinimizeToTray     bool     `json:"minimize_to_tray"`
 	KeepServicesOnQuit bool     `json:"keep_services_on_quit"`
 	ReportsRoot        *string  `json:"reports_root"`

@@ -17,6 +17,7 @@ from inferyard.provisioning.preparation_io import (
     sha256,
 )
 from inferyard.config.toml_writer import render
+from inferyard.contracts.engine_profiles import REASONING_EFFORT_LEVELS
 from inferyard.contracts.schemas_config import CONFIG_DEFAULTS
 from inferyard.contracts.validation import validate_document, json_bytes
 from inferyard.errors import PreflightError
@@ -209,6 +210,12 @@ def create(request):
         raise PreparationError("local_engine_explicit_model_and_results_required")
     installation = read_installation(request.installation)
     family = installation["family"]
+    raw_effort = getattr(request, "reasoning_effort", None)
+    if raw_effort is not None:
+        if raw_effort not in REASONING_EFFORT_LEVELS:
+            raise PreparationError("invalid_input")
+        if family != "polystrata":
+            raise PreparationError("reasoning_effort_unsupported")
     if family == "polystrata":
         system, _ = require_platform(("Darwin", "arm64"), ("Linux", "x64"), ("Windows", "x64"))
     else:
@@ -324,13 +331,25 @@ def create(request):
     if polystrata_config_path is not None:
         engine_section["polystrata_config_path"] = str(polystrata_config_path)
         engine_section["polystrata_config_sha256"] = polystrata_config_sha256
+    resolved_effort = (raw_effort or "none") if family == "polystrata" else None
+    if request.max_tokens is not None:
+        max_tokens = request.max_tokens
+    elif resolved_effort not in (None, "none"):
+        pelican = bundle["bundle_id"] == "zh-svg-pelican"
+        target_tokens = (
+            (4096 if resolved_effort == "low" else 8192)
+            if pelican
+            else (2048 if resolved_effort == "low" else 4096)
+        )
+        max_tokens = min(target_tokens, context)
+    else:
+        max_tokens = 4096 if bundle["bundle_id"] == "zh-svg-pelican" else 512
     generation_section = {
         "temperature": 0,
-        "max_tokens": request.max_tokens
-        or (4096 if bundle["bundle_id"] == "zh-svg-pelican" else 512),
+        "max_tokens": max_tokens,
     }
-    if family == "polystrata":
-        generation_section["reasoning_effort"] = "none"
+    if resolved_effort is not None:
+        generation_section["reasoning_effort"] = resolved_effort
 
     config = deepcopy(CONFIG_DEFAULTS)
     config.update(

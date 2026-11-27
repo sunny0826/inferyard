@@ -29,6 +29,8 @@ _SAFE_DERIVED_KEYS = (
     "engine", "exe", "args", "cwd", "tokenizer", "model_name", "display_name",
     "port", "parallel", "backend", "gpu", "gpus_asked", "hip_ordinal", "layer_split",
     "split_skip_if_fits", "lib_dirs", "cuda", "tool_call_recovery", "sampling", "vision", "env",
+    "reasoning_budget_tokens", "reasoning_close_retry", "reasoning_loop_recovery",
+    "effort_position", "anthropic_thinking",
 )
 UPSTREAM_DEFAULT_CONTEXT = 4096
 

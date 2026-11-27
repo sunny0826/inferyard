@@ -181,7 +181,7 @@ func (s *Service) refreshEngineTree(owner *engineOwner, path string) error {
 	if owner.StartTicks <= 0 {
 		return os.ErrInvalid
 	}
-	rows, err := engineProcessTable()
+	rows, err := engineProcessTableFunc()
 	if err != nil {
 		return err
 	}
@@ -197,7 +197,7 @@ func (s *Service) refreshEngineTree(owner *engineOwner, path string) error {
 	if !anchored {
 		for _, row := range rows {
 			expected, knownMember := known[row.pid]
-			if row.group != owner.ProcessGroup || !knownMember {
+			if !knownMember {
 				continue
 			}
 			ticks, err := s.processTicks(row.pid)
@@ -210,6 +210,10 @@ func (s *Service) refreshEngineTree(owner *engineOwner, path string) error {
 	next := *owner
 	var liveWorkers []engineProcessIdentity
 	liveKnown := map[int64]int64{owner.PID: owner.StartTicks}
+	liveParents := map[int64]int64{}
+	if rootErr == nil && rootTicks == owner.StartTicks {
+		liveParents[owner.PID] = owner.StartTicks
+	}
 	for _, w := range owner.Workers {
 		same, err := s.sameEngineProcess(w)
 		if err != nil {
@@ -218,42 +222,72 @@ func (s *Service) refreshEngineTree(owner *engineOwner, path string) error {
 		if same {
 			liveWorkers = append(liveWorkers, w)
 			liveKnown[w.PID] = w.StartTicks
+			liveParents[w.PID] = w.StartTicks
 		}
 	}
 	next.Workers = liveWorkers
-	for _, row := range rows {
-		if row.group != owner.ProcessGroup || row.pid == owner.PID {
-			continue
-		}
-		ticks, err := s.processTicks(row.pid)
-		if errors.Is(err, os.ErrNotExist) {
-			continue
-		}
-		if err != nil || ticks <= 0 {
-			return os.ErrPermission
-		}
-		if expected, exists := liveKnown[row.pid]; exists {
-			if expected != ticks {
-				return os.ErrInvalid
-			}
-			continue
-		}
-		if !anchored || rootErr == nil && rootTicks != owner.StartTicks || ticks < owner.StartTicks {
-			return os.ErrInvalid
-		}
-		if len(next.Workers) >= 128 {
-			return os.ErrInvalid
-		}
-		identity := engineProcessIdentity{row.pid, ticks}
-		if err := s.confirmEngineGroupMember(identity, owner.ProcessGroup); err != nil {
-			same, checkErr := s.sameEngineProcess(identity)
-			if checkErr == nil && !same {
+	for progress := true; progress; {
+		progress = false
+		for _, row := range rows {
+			if row.pid == owner.PID {
 				continue
 			}
-			return err
+			sameGroup := row.group == owner.ProcessGroup
+			parentTicks, childOfLive := liveParents[row.parent]
+			if !sameGroup && !childOfLive {
+				continue
+			}
+			ticks, err := s.processTicks(row.pid)
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			if err != nil || ticks <= 0 {
+				return os.ErrPermission
+			}
+			if expected, exists := liveKnown[row.pid]; exists {
+				if expected != ticks {
+					return os.ErrInvalid
+				}
+				continue
+			}
+			minTicks := owner.StartTicks
+			if !sameGroup && parentTicks > minTicks {
+				minTicks = parentTicks
+			}
+			if !anchored || (sameGroup && rootErr == nil && rootTicks != owner.StartTicks) || ticks < minTicks {
+				if !sameGroup {
+					continue
+				}
+				return os.ErrInvalid
+			}
+			if len(next.Workers) >= 128 {
+				return os.ErrInvalid
+			}
+			identity := engineProcessIdentity{row.pid, ticks}
+			var confirmErr error
+			if sameGroup {
+				confirmErr = s.confirmEngineGroupMember(identity, owner.ProcessGroup)
+			} else {
+				confirmErr = s.confirmEngineParentMember(identity, engineProcessIdentity{row.parent, parentTicks})
+			}
+			if confirmErr != nil {
+				same, checkErr := s.sameEngineProcess(identity)
+				if checkErr == nil && !same {
+					continue
+				}
+				if !sameGroup {
+					parentSame, pErr := s.sameEngineProcess(engineProcessIdentity{row.parent, parentTicks})
+					if pErr == nil && !parentSame {
+						continue
+					}
+				}
+				return confirmErr
+			}
+			next.Workers = append(next.Workers, identity)
+			liveKnown[identity.PID] = identity.StartTicks
+			liveParents[identity.PID] = identity.StartTicks
+			progress = true
 		}
-		next.Workers = append(next.Workers, identity)
-		liveKnown[identity.PID] = identity.StartTicks
 	}
 	if reflect.DeepEqual(next, *owner) {
 		return nil

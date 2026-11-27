@@ -124,6 +124,7 @@ class CommandRequest:
     results_root: Path | None = None
     reports_root: Path | None = None
     prompt_cache: str | None = None
+    reasoning_effort: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

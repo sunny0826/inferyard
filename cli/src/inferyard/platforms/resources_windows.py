@@ -79,11 +79,16 @@ class ResourceSampler(Sampler):
 
         try:
             if metric == "service_rss":
-                if self.process_lost or process_start_ticks(pid) != ticks:
-                    raise PreflightError("source_changed")
-                value = psutil.Process(pid).memory_info().rss
-                if process_start_ticks(pid) != ticks:
-                    raise PreflightError("source_changed")
+                value = 0
+                for target_pid, target_ticks in ((pid, ticks), *self.workers):
+                    if self.process_lost or process_start_ticks(target_pid) != target_ticks:
+                        raise PreflightError("source_changed")
+                    part = psutil.Process(target_pid).memory_info().rss
+                    if process_start_ticks(target_pid) != target_ticks:
+                        raise PreflightError("source_changed")
+                    if type(part) is not int or part < 0:
+                        return None, "invalid_memory_value"
+                    value += part
             else:
                 value = psutil.virtual_memory().available
             if type(value) is not int or value < 0:

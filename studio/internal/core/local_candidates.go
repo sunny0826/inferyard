@@ -20,6 +20,7 @@ type LocalCandidateRequest struct {
 	Bundles               []string
 	ServicePID            int64
 	Endpoint              string
+	ReasoningEffort       string
 }
 
 type CandidateRun struct {
@@ -38,6 +39,18 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 	results := s.resultsRoot(u)
 	if workspace == nil || results == nil || len(req.Bundles) < 1 || len(req.Bundles) > 2 {
 		return nil, Err("invalid_request")
+	}
+	rawEffort := strings.TrimSpace(req.ReasoningEffort)
+	if rawEffort == "" {
+		rawEffort = strings.TrimSpace(u.ReasoningEffort)
+	}
+	var normalizedEffort string
+	if rawEffort != "" {
+		var ok bool
+		normalizedEffort, ok = ParseReasoningEffort(rawEffort)
+		if !ok {
+			return nil, Err("invalid_request")
+		}
 	}
 	var selected *registryEntry
 	for _, entry := range s.registry().engines {
@@ -142,6 +155,9 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 		}
 		args := []string{"config", "create", "--installation", installation, "--model", model,
 			"--bundle", bundlePath, "--results", *results, "--port", port, "--out", output}
+		if family == "polystrata" && normalizedEffort != "" && normalizedEffort != ReasoningEffortNone {
+			args = append(args, "--reasoning-effort", normalizedEffort)
+		}
 		if req.ServicePID > 0 {
 			args = append(args, "--service-pid", strconv.FormatInt(req.ServicePID, 10))
 		}

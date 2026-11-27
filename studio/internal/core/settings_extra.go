@@ -112,6 +112,33 @@ func (s *Service) Language() string {
 	return NormalizeLanguage(s.userSettings().Language)
 }
 
+func ParseReasoningEffort(raw string) (string, bool) {
+	switch strings.TrimSpace(raw) {
+	case "", ReasoningEffortNone:
+		return ReasoningEffortNone, true
+	case ReasoningEffortLow:
+		return ReasoningEffortLow, true
+	case ReasoningEffortMedium:
+		return ReasoningEffortMedium, true
+	case ReasoningEffortHigh:
+		return ReasoningEffortHigh, true
+	default:
+		return "", false
+	}
+}
+
+func NormalizeReasoningEffort(raw string) string {
+	if normalized, ok := ParseReasoningEffort(raw); ok {
+		return normalized
+	}
+	return ReasoningEffortNone
+}
+
+// ReasoningEffort returns the normalized persisted benchmark reasoning effort without probing the CLI.
+func (s *Service) ReasoningEffort() string {
+	return NormalizeReasoningEffort(s.userSettings().ReasoningEffort)
+}
+
 // MinimizeToTray returns whether closing the window minimizes to the system tray.
 func (s *Service) MinimizeToTray() bool {
 	return s.userSettings().MinimizeToTray
@@ -199,6 +226,21 @@ func (s *Service) applySettingsPatchExtra(u *UserSettings, key string, raw json.
 			return true, Err("invalid_request")
 		}
 		u.Language = normalized
+		return true, nil
+	case "reasoning_effort":
+		var effort *string
+		if json.Unmarshal(raw, &effort) != nil {
+			return true, Err("invalid_request")
+		}
+		if effort == nil {
+			u.ReasoningEffort = ReasoningEffortNone
+			return true, nil
+		}
+		normalized, ok := ParseReasoningEffort(*effort)
+		if !ok {
+			return true, Err("invalid_request")
+		}
+		u.ReasoningEffort = normalized
 		return true, nil
 	case "minimize_to_tray":
 		var enabled *bool
