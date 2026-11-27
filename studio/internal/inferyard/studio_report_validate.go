@@ -86,7 +86,7 @@ func validateStudioRequest(raw json.RawMessage) error {
 		return err
 	}
 	required := []string{"case_id", "category_label", "state", "quality", "latency_ms"}
-	optional := []string{"prompt", "response"}
+	optional := []string{"prompt", "response", "reference_answer"}
 	if err := studioClosedOptional(request, required, optional); err != nil {
 		return err
 	}
@@ -115,6 +115,11 @@ func validateStudioRequest(raw json.RawMessage) error {
 	}
 	if rawResp, ok := request["response"]; ok {
 		if _, err := studioNullableString(rawResp); err != nil {
+			return err
+		}
+	}
+	if rawRef, ok := request["reference_answer"]; ok {
+		if _, err := studioNullableString(rawRef); err != nil {
 			return err
 		}
 	}

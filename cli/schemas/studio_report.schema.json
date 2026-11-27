@@ -651,6 +651,16 @@
                       "type": "null"
                     }
                   ]
+                },
+                "reference_answer": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [

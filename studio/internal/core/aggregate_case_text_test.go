@@ -18,8 +18,8 @@ func TestAggregatePopulatesCasePromptAndResponse(t *testing.T) {
 			"bundle": map[string]any{
 				"payload": map[string]any{
 					"cases": []map[string]any{
-						{"case_id": "case-answered", "prompt": "What is 2 + 2?"},
-						{"case_id": "case-pending", "prompt": "Explain KV cache briefly."},
+						{"case_id": "case-answered", "category": "math", "prompt": "What is 2 + 2?", "reference_answer": "4"},
+						{"case_id": "case-pending", "category": "qa", "prompt": "Explain KV cache briefly.", "reference_answer": "KV cache stores attention keys and values."},
 					},
 				},
 			},
@@ -32,10 +32,10 @@ func TestAggregatePopulatesCasePromptAndResponse(t *testing.T) {
 	if len(a.Progress.Cases) != 2 {
 		t.Fatalf("got %d cases, want 2", len(a.Progress.Cases))
 	}
-	if str(a.Progress.Cases[0].Prompt) != "What is 2 + 2?" || a.Progress.Cases[0].Response != nil {
+	if str(a.Progress.Cases[0].Prompt) != "What is 2 + 2?" || str(a.Progress.Cases[0].ReferenceAnswer) != "4" || a.Progress.Cases[0].Response != nil {
 		t.Fatalf("unexpected initial answered case: %+v", a.Progress.Cases[0])
 	}
-	if str(a.Progress.Cases[1].Prompt) != "Explain KV cache briefly." || a.Progress.Cases[1].Response != nil {
+	if str(a.Progress.Cases[1].Prompt) != "Explain KV cache briefly." || str(a.Progress.Cases[1].ReferenceAnswer) != "KV cache stores attention keys and values." || a.Progress.Cases[1].Response != nil {
 		t.Fatalf("unexpected initial pending case: %+v", a.Progress.Cases[1])
 	}
 
