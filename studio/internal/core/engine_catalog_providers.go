@@ -146,7 +146,6 @@ func vllmProvider() EngineCatalogProvider {
 								{Role: "release_page", Label: l10n.TRf("core.engine_catalog.artifact.release_page", "version", "vLLM v0.31.0"), Version: "v0.31.0", URL: tagURL},
 							},
 							InstallCommand: "uv venv ~/.venvs/vllm --python 3.12 && uv pip install --python ~/.venvs/vllm/bin/python vllm==0.31.0",
-							Note:           l10n.TR("core.engine_catalog.note.python_venv_register"),
 						},
 						{
 							ID:          "engine-vllm-linux-arm64",

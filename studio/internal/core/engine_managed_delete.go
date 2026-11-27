@@ -122,8 +122,7 @@ func (s *Service) inspectManagedVenvEngineDelete(u UserSettings, paths *BoundPat
 	if !ok || verifyManagedVenvTreeSafe(installDir) != nil {
 		return AssetDeleteInfo{}, errAssetNotDeletable()
 	}
-	if otherEngineSharesInstallDir(installDir, eng.Path, s.registry().engines) ||
-		managedVenvHasExternalDependents(installDir, eng.Path, s.registry().engines) {
+	if managedVenvHasExternalDependents(installDir, eng.Path, s.registry().engines) {
 		return AssetDeleteInfo{}, errAssetNotDeletable()
 	}
 	return AssetDeleteInfo{
