@@ -45,6 +45,12 @@ type settingsViewState struct {
 	languageWorkerRunning                 bool
 	applyNativeLocale                     func(string)
 	persistLanguage                       func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
+	reasoningEffort                       string
+	reasoningSaving                       bool
+	reasoningMu                           sync.Mutex
+	reasoningWanted                       string
+	reasoningWantedSeq                    uint64
+	reasoningWorkerRunning                bool
 	minimizeToTray, appliedMinimizeToTray bool
 	trayUnavailable                       bool
 	minimizeToTraySaving                  bool

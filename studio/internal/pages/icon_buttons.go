@@ -12,6 +12,7 @@ import (
 func outlineIconButton(c *ui.Context, icon func() *ui.SVG, label string) ui.Element {
 	t := tokens(c)
 	b := iconButton(c, icon, label, components.IconButtonPlain).
+		Size(t.Control.MD, t.Control.MD).
 		Border(1, t.Color.BorderDefault).
 		Background(t.Color.Surface).
 		TextColor(t.Color.FgPrimary)
@@ -31,6 +32,7 @@ func primaryIconButton(c *ui.Context, icon func() *ui.SVG, label string) ui.Elem
 	t := tokens(c)
 	accent := t.Color.Accent
 	b := iconButton(c, icon, label, components.IconButtonPlain).
+		Size(t.Control.MD, t.Control.MD).
 		Background(accent).
 		TextColor(c.Theme().Surface).
 		Border(1, accent)
@@ -56,6 +58,7 @@ func dangerIconButton(c *ui.Context, icon func() *ui.SVG, label string) ui.Eleme
 		border = danger
 	}
 	b := iconButton(c, icon, label, components.IconButtonPlain).
+		Size(t.Control.MD, t.Control.MD).
 		TextColor(danger.Mix(theme.Text, .18))
 	if !b.IsDisabled() {
 		switch {

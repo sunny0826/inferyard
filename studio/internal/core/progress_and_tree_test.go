@@ -90,3 +90,111 @@ func TestRefreshEngineTreePrunesExitedTransientWorkers(t *testing.T) {
 		t.Fatalf("expected nil Workers slice after all workers exit (for omitempty/DeepEqual), got %#v", owner.Workers)
 	}
 }
+
+func TestRefreshEngineTreeTracksSeparateProcessGroupChildren(t *testing.T) {
+	origTable := engineProcessTableFunc
+	origParent := engineProcessParentReader
+	t.Cleanup(func() {
+		engineProcessTableFunc = origTable
+		engineProcessParentReader = origParent
+	})
+
+	ticksByPID := map[int64]int64{
+		1000: 500, // server.py (pgid=1000)
+		1001: 520, // strata C++ engine spawned via setpgid (ppid=1000, pgid=1001)
+		1002: 530, // strata-vision helper spawned via setpgid (ppid=1000, pgid=1002)
+		1003: 540, // grandchild worker (ppid=1001, pgid=1001)
+		2000: 600, // unrelated process (ppid=1, pgid=2000)
+	}
+	parentsByPID := map[int64]int64{
+		1000: 1,
+		1001: 1000,
+		1002: 1000,
+		1003: 1001,
+		2000: 1,
+	}
+	engineProcessTableFunc = func() ([]engineProcessRow, error) {
+		return []engineProcessRow{
+			{pid: 1000, parent: 1, group: 1000},
+			{pid: 1003, parent: 1001, group: 1001}, // intentionally out-of-order before parent 1001
+			{pid: 1001, parent: 1000, group: 1001},
+			{pid: 1002, parent: 1000, group: 1002},
+			{pid: 2000, parent: 1, group: 2000},
+		}, nil
+	}
+	engineProcessParentReader = func(pid int64) (int64, error) {
+		if p, ok := parentsByPID[pid]; ok {
+			return p, nil
+		}
+		return 0, os.ErrNotExist
+	}
+	s := &Service{
+		identityReader: func(pid int64) (int64, error) {
+			if ticks, ok := ticksByPID[pid]; ok {
+				return ticks, nil
+			}
+			return 0, os.ErrNotExist
+		},
+	}
+	entry := &engineEntry{
+		owner: engineOwner{
+			PID:          1000,
+			StartTicks:   500,
+			ProcessGroup: 1000,
+			Local:        true,
+		},
+		state: EngineState{Pid: 1000, Local: true, State: "running"},
+	}
+	if err := s.refreshEntryTree(entry); err != nil {
+		t.Fatalf("refreshEntryTree failed: %v", err)
+	}
+	if len(entry.owner.Workers) != 3 {
+		t.Fatalf("expected 3 descendant workers across separate pgids, got %+v", entry.owner.Workers)
+	}
+	if len(entry.pidSnapshot) != 4 {
+		t.Fatalf("expected pidSnapshot to include root + 3 workers, got %v", entry.pidSnapshot)
+	}
+}
+
+func TestReasoningEffortSettingsPersistenceAndBoundPaths(t *testing.T) {
+	boundRoot, err := canonical(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	boundCLI := filepath.Join(boundRoot, "cli")
+	if err := os.WriteFile(boundCLI, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	s, err := New(context.Background(), Options{
+		Paths: &BoundPaths{
+			CLI:       boundCLI,
+			Workspace: filepath.Join(boundRoot, "ws"),
+			Results:   filepath.Join(boundRoot, "ws", "results"),
+			Models:    filepath.Join(boundRoot, "shared", "models"),
+			Engines:   filepath.Join(boundRoot, "shared", "engines"),
+			Settings:  filepath.Join(boundRoot, "settings.json"),
+		},
+		HostStatePath: filepath.Join(boundRoot, "host.json"),
+		Execute: func(context.Context, string, ...string) (inferyard.Execution, error) {
+			return inferyard.Execution{}, nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { s.Shutdown(context.Background()) })
+
+	if got := s.ReasoningEffort(); got != ReasoningEffortNone {
+		t.Fatalf("default ReasoningEffort = %q, want %q", got, ReasoningEffortNone)
+	}
+	resp, apiErr := s.UpdateSettings(map[string]json.RawMessage{"reasoning_effort": json.RawMessage(`"low"`)})
+	if apiErr != nil {
+		t.Fatalf("UpdateSettings(reasoning_effort=low) failed: %+v", apiErr)
+	}
+	if resp.Effective.ReasoningEffort != ReasoningEffortLow || s.ReasoningEffort() != ReasoningEffortLow {
+		t.Fatalf("expected effective reasoning_effort=low, got %+v", resp.Effective)
+	}
+	if _, apiErr := s.UpdateSettings(map[string]json.RawMessage{"reasoning_effort": json.RawMessage(`"ultra"`)}); apiErr == nil || apiErr.Code != "invalid_request" {
+		t.Fatalf("expected invalid_request for unsupported reasoning_effort, got %+v", apiErr)
+	}
+}

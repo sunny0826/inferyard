@@ -153,6 +153,22 @@ func TestPolystrataRealLifecycle(t *testing.T) {
 		t.Fatalf("TestServiceEndpoint failed or returned empty reply: %+v\nservice logs:\n%s", probeRes, strings.Join(logs, "\n"))
 	}
 
+	var measuredGB float64
+	memDeadline := time.Now().Add(12 * time.Second)
+	for time.Now().Before(memDeadline) {
+		st, ok := service.ManagedService(started.ServiceID)
+		if ok && st.RuntimeMemoryGB != nil {
+			measuredGB = *st.RuntimeMemoryGB
+			if measuredGB >= 1.0 {
+				break
+			}
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	if measuredGB < 1.0 {
+		t.Fatalf("expected live RuntimeMemoryGB >= 1.0 GiB across PolyStrata server + worker processes, got %.2f GiB", measuredGB)
+	}
+
 	ownerFile := filepath.Join(env.Workspace, "engine-owners", started.ServiceID+".json")
 	if _, err := os.Stat(ownerFile); err != nil {
 		t.Fatalf("expected standalone owner file at %s: %v", ownerFile, err)
@@ -218,7 +234,12 @@ func TestPolystrataRealLifecycle(t *testing.T) {
 	}
 	waitManagedServiceStopped(t, service, started.ServiceID, 45*time.Second)
 
-	// Stage 3: Studio Local Benchmark flow -> CreateReport -> ReportIndex.
+	// Stage 3: Studio Local Benchmark flow (with reasoning_effort=low) -> CreateReport -> ReportIndex.
+	if _, apiErr := service.UpdateSettings(map[string]json.RawMessage{
+		"reasoning_effort": mustJSON(core.ReasoningEffortLow),
+	}); apiErr != nil {
+		t.Fatalf("UpdateSettings(reasoning_effort): %+v", apiErr)
+	}
 	candidates, apiErr := service.PrepareLocalCandidates(ctx, core.LocalCandidateRequest{
 		ModelName:  modelAsset.Name,
 		EngineName: engineAsset.Name,

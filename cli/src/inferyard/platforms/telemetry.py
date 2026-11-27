@@ -13,7 +13,49 @@ from inferyard.platforms.environment_projection import periodic_environment
 from inferyard.platforms.identity import environment_snapshot, memory_available, process_start_ticks
 
 
-def read_rss(pid: int, start_ticks: int, proc_root=Path("/proc")) -> tuple[int | None, str | None]:
+def bound_workers(config: dict | None) -> tuple[tuple[int, int], ...]:
+    if not isinstance(config, dict):
+        return ()
+    endpoint = config.get("endpoint")
+    if not isinstance(endpoint, dict):
+        return ()
+    binding_path = endpoint.get("binding_path")
+    binding_sha = endpoint.get("binding_sha256")
+    if not binding_path or not binding_sha:
+        return ()
+    try:
+        from inferyard.platforms.local_engines.assets import bound_json
+
+        binding, _ = bound_json(binding_path, binding_sha)
+    except Exception:
+        return ()
+    service = binding.get("service") if isinstance(binding, dict) else None
+    raw_workers = service.get("workers") if isinstance(service, dict) else None
+    if not isinstance(raw_workers, list):
+        return ()
+    root_pid = endpoint.get("server_pid")
+    seen: set[int] = {root_pid} if type(root_pid) is int else set()
+    workers: list[tuple[int, int]] = []
+    for item in raw_workers:
+        if not isinstance(item, dict):
+            continue
+        wpid = item.get("pid")
+        wticks = item.get("start_ticks")
+        if (
+            type(wpid) is int
+            and wpid > 0
+            and type(wticks) is int
+            and wticks > 0
+            and wpid not in seen
+        ):
+            seen.add(wpid)
+            workers.append((wpid, wticks))
+    return tuple(workers)
+
+
+def _read_single_rss(
+    pid: int, start_ticks: int, proc_root: Path = Path("/proc")
+) -> tuple[int | None, str | None]:
     if (os.name == "nt" or platform.system() == "Darwin") and proc_root == Path("/proc"):
         import psutil
 
@@ -44,7 +86,33 @@ def read_rss(pid: int, start_ticks: int, proc_root=Path("/proc")) -> tuple[int |
         return None, "source_unavailable"
 
 
-def sample_memory(pid, start_ticks, phase, request_id, proc_root=Path("/proc")) -> list[dict]:
+def read_rss(
+    pid: int,
+    start_ticks: int,
+    proc_root=Path("/proc"),
+    *,
+    workers: tuple[tuple[int, int], ...] = (),
+) -> tuple[int | None, str | None]:
+    total, reason = _read_single_rss(pid, start_ticks, proc_root)
+    if reason is not None or total is None:
+        return None, reason
+    for wpid, wticks in workers:
+        wval, wreason = _read_single_rss(wpid, wticks, proc_root)
+        if wreason is not None or wval is None:
+            return None, wreason
+        total += wval
+    return total, None
+
+
+def sample_memory(
+    pid,
+    start_ticks,
+    phase,
+    request_id,
+    proc_root=Path("/proc"),
+    *,
+    workers: tuple[tuple[int, int], ...] = (),
+) -> list[dict]:
     samples = []
     windows = os.name == "nt" and proc_root == Path("/proc")
     macos = platform.system() == "Darwin" and proc_root == Path("/proc")
@@ -68,7 +136,7 @@ def sample_memory(pid, start_ticks, phase, request_id, proc_root=Path("/proc")) 
     ):
         started = time.monotonic_ns()
         if metric == "service_rss":
-            value, reason = read_rss(pid, start_ticks, proc_root)
+            value, reason = read_rss(pid, start_ticks, proc_root, workers=workers)
         else:
             try:
                 value, reason = memory_available(proc_root), None
@@ -97,6 +165,7 @@ class Sampler:
     def __init__(self, store, config):
         self.store = store
         self.config = config
+        self.workers = bound_workers(config)
         self.phase = "probe"
         self.request_id = None
         self.stopped = False
@@ -139,7 +208,7 @@ class Sampler:
         self.phase, self.request_id = phase, request_id
 
     def collect(self, pid, ticks):
-        return sample_memory(pid, ticks, self.phase, self.request_id)
+        return sample_memory(pid, ticks, self.phase, self.request_id, workers=self.workers)
 
     async def run(self):
         loop = asyncio.get_running_loop()

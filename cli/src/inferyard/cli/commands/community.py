@@ -61,6 +61,11 @@ def add_commands(commands):
         choices=("disabled",),
         help="llama-cpp only: freeze engine.tuning.prompt_cache and send cache_prompt=false",
     )
+    create.add_argument(
+        "--reasoning-effort",
+        choices=("none", "low", "medium", "high"),
+        help="polystrata only: freeze generation.reasoning_effort",
+    )
     create.add_argument("--service-pid", dest="server_pid", type=int)
     create.add_argument("--out", type=Path, required=True)
     create.add_argument("--port", type=int, default=48857)

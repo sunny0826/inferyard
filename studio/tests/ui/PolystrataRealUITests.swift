@@ -112,6 +112,10 @@ final class PolystrataRealUITests: XCTestCase {
 
         closeDrawer(closeLabel: "关闭调用示例", markerText: "连通性测试")
 
+        wait("Managed PolyStrata card reports real multi-GiB worker memory", timeout: 15) {
+            !self.anyTextContains("0.0 GiB") && !self.anyTextContains("0.1 GiB")
+        }
+
         click("停止", timeout: 15)
         click("确认停止", timeout: 15)
         wait("Managed PolyStrata service stops cleanly", timeout: 60) {
@@ -136,6 +140,16 @@ final class PolystrataRealUITests: XCTestCase {
         }
         wait("Benchmark configuration stage is ready", timeout: 60) {
             startBtn.exists && startBtn.isEnabled
+        }
+        let reasoningMenu = app.menuButtons["思考强度"].firstMatch
+        expectExists(reasoningMenu, timeout: 10)
+        revealIfNeeded(reasoningMenu)
+        reasoningMenu.click()
+        let lowOption = app.menuItems["低"].firstMatch
+        expectExists(lowOption, timeout: 5)
+        lowOption.click()
+        wait("Launch summary reflects selected thinking effort", timeout: 5) {
+            self.anyTextContains("思考强度：低")
         }
         let zhCore = app.checkBoxes["zh-core"].firstMatch
         let zhPelican = app.checkBoxes["zh-svg-pelican"].firstMatch

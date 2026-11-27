@@ -13,6 +13,7 @@ import (
 func (s *viewState) loadSettings(v core.SettingsResponse) {
 	s.loadThemeSettings(v)
 	s.loadLanguageSettings(v)
+	s.loadReasoningSettings(v)
 	s.loadTraySettings(v)
 	s.loadWorkspaceSettings(v)
 	s.loadProxySettings(v)

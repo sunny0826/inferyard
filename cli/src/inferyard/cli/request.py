@@ -92,6 +92,7 @@ def build_request(
                     "max_tokens",
                     "timeout_seconds",
                     "server_pid",
+                    "reasoning_effort",
                 )
             ):
                 raise ArgumentError("local model options require --installation")

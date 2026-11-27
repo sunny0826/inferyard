@@ -139,6 +139,7 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 	value.Theme = core.NormalizeTheme(value.Theme)
 	value.Accent = core.NormalizeAccent(value.Accent)
 	value.Language = core.NormalizeLanguage(value.Language)
+	value.ReasoningEffort = core.NormalizeReasoningEffort(value.ReasoningEffort)
 	var resultsRoot, modelsRoot, reportsRoot *string
 	if ws := emptyText(value.WorkspaceRoot); ws != "" {
 		resultsRoot = previewValue(filepath.Join(ws, "results"))
@@ -147,20 +148,24 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 	}
 	s.settings.Settings = value
 	s.settings.Effective = core.EffectiveSettings{
-		WorkspaceRoot:    value.WorkspaceRoot,
-		ResultsRoot:      resultsRoot,
-		ModelsRoot:       modelsRoot,
-		ReportsRoot:      reportsRoot,
-		InferyardPath:    value.InferyardPath,
-		ExtraModelsRoots: slices.Clone(value.ExtraModelsRoots),
-		DownloadProxy:    value.DownloadProxy,
+		WorkspaceRoot:      value.WorkspaceRoot,
+		ResultsRoot:        resultsRoot,
+		ModelsRoot:         modelsRoot,
+		ReportsRoot:        reportsRoot,
+		InferyardPath:      value.InferyardPath,
+		ExtraModelsRoots:   slices.Clone(value.ExtraModelsRoots),
+		DownloadProxy:      value.DownloadProxy,
 		Theme:              value.Theme,
 		Accent:             value.Accent,
 		Language:           value.Language,
+		ReasoningEffort:    value.ReasoningEffort,
 		MinimizeToTray:     value.MinimizeToTray,
 		KeepServicesOnQuit: core.EffectiveKeepServicesOnQuitValue(value),
 	}
 	s.syncSavedGroups(patch, s.settingsDraft(), s.settings)
+	if _, hasReasoning := patch["reasoning_effort"]; hasReasoning {
+		s.reasoningEffort = value.ReasoningEffort
+	}
 	if _, hasTheme := patch["theme"]; hasTheme {
 		p.themeMode = previewThemeModeIndex(value.Theme)
 		s.themeMode = value.Theme
