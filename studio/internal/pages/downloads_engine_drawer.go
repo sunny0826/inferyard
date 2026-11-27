@@ -8,6 +8,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
 )
@@ -44,6 +45,13 @@ func (s *viewState) downloadsEngineDrawer(c *ui.Context) {
 		t := tokens(c)
 		ui.Scroll(c.Key("downloads-engine-drawer-scroll")).FillWidth().Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
+				if family.Description != "" {
+					ui.Text(c, family.Description).FontSize(t.Type.Body).TextColor(t.Color.FgSecondary)
+				}
+				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+					inlineBadge(c, core.ModelFormatLabel(family.ModelFormat), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
+					ui.Text(c, trf(c, "downloads.platform.supported_line", "platforms", enginePlatformSummary(rel))).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				})
 				s.engineDrawerConfigSection(c, st, family, releases, rel, platforms, activePlatform, builds, build, hostPlatform, hasStable && hasNonStable)
 				s.engineDrawerArtifactsSection(c, build)
 				s.engineDrawerInstallSection(c, st, family, rel, build, hostPlatform)
@@ -192,15 +200,15 @@ func (s *viewState) engineDrawerArtifactsSection(c *ui.Context, build core.Engin
 			}
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 				indexStr := strconv.Itoa(index)
-				outlineButton(c, tr(c, "downloads.action.copy_url")).Label(trf(c, "downloads.engine_drawer.copy_url_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
+				outlineIconButton(c, lucide.Copy, trf(c, "downloads.engine_drawer.copy_url_label", "buildId", build.ID, "index", indexStr)).Label(trf(c, "downloads.engine_drawer.copy_url_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
 					s.copyDownloadText(c, tr(c, "downloads.engine_drawer.section.urls"), artifact.URL)
 				})
 				if sha := strings.TrimSpace(artifact.SHA256); sha != "" {
-					outlineButton(c, tr(c, "downloads.action.copy_sha256")).Label(trf(c, "downloads.engine_drawer.copy_sha256_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
+					outlineIconButton(c, lucide.Copy, trf(c, "downloads.engine_drawer.copy_sha256_label", "buildId", build.ID, "index", indexStr)).Label(trf(c, "downloads.engine_drawer.copy_sha256_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
 						s.copyDownloadText(c, "SHA-256", sha)
 					})
 				}
-				outlineButton(c, tr(c, "downloads.action.open_link")).Label(trf(c, "downloads.engine_drawer.open_link_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
+				outlineIconButton(c, lucide.ExternalLink, trf(c, "downloads.engine_drawer.open_link_label", "buildId", build.ID, "index", indexStr)).Label(trf(c, "downloads.engine_drawer.open_link_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
 					s.openDownloadURL(c, title, artifact.URL)
 				})
 			})
@@ -237,7 +245,7 @@ func (s *viewState) engineDrawerInstallSection(
 		if cmd != "" {
 			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Inset), materialInset).Children(func() {
 				ui.Text(c, cmd).Selectable().FontSize(t.Type.Caption)
-				outlineButton(c, tr(c, "downloads.action.copy_cmd")).OnClick(func() {
+				outlineIconButton(c, lucide.Copy, tr(c, "downloads.action.copy_cmd")).OnClick(func() {
 					s.copyDownloadText(c, tr(c, "downloads.copy_subject.install_cmd"), cmd)
 				})
 			})
@@ -248,13 +256,9 @@ func (s *viewState) engineDrawerInstallSection(
 		switch {
 		case build.AcquireMode == core.EngineAcquireManagedSetup && (build.Platform == hostPlatform || build.Platform == "any"):
 			if s.downloadActive("polystrata") {
-				button(c, tr(c, "downloads.action.installing")).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(true)
+				primaryIconButton(c, lucide.Download, trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(true)
 			} else {
-				confirmLabel := tr(c, "downloads.engine_drawer.install_polystrata")
-				if s.isEngineFamilyInstalled(family.ID) {
-					confirmLabel = tr(c, "downloads.engine_drawer.install_selected_model")
-				}
-				primaryButton(c, confirmLabel).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(s.busy || !hasPolystrataOpt).OnClick(func() {
+				primaryIconButton(c, lucide.Download, trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(s.busy || !hasPolystrataOpt).OnClick(func() {
 					if !hasPolystrataOpt {
 						return
 					}
@@ -263,27 +267,36 @@ func (s *viewState) engineDrawerInstallSection(
 					s.acquirePolystrataSetup(req)
 				})
 			}
+		case build.CanManagedVenvInstallOn(hostPlatform):
+			if s.isEngineFamilyDownloading(family) {
+				primaryIconButton(c, lucide.Download, trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(true)
+			} else {
+				primaryIconButton(c, lucide.Download, trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(s.busy).OnClick(func() {
+					st.engineDrawerOpen = false
+					s.acquireManagedEngine(family, rel, build)
+				})
+			}
 		case build.CanDirectDownloadOn(hostPlatform):
 			if s.isEngineSourceDownloading(build.PrimaryURL()) {
-				button(c, tr(c, "downloads.action.installing")).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(true)
+				primaryIconButton(c, lucide.Download, trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(true)
 			} else {
-				primaryButton(c, tr(c, "downloads.engine_drawer.install_version")).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(s.busy).OnClick(func() {
+				primaryIconButton(c, lucide.Download, trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(s.busy).OnClick(func() {
 					s.acquireEngine(build.PrimaryURL(), "")
 				})
 			}
 		case build.PrimaryURL() != "":
-			primaryButton(c, tr(c, "downloads.action.open_download_page")).Label(trf(c, "downloads.action.open_download_page_label", "id", family.ID)).OnClick(func() {
+			outlineIconButton(c, lucide.ExternalLink, trf(c, "downloads.action.open_download_page_label", "id", family.ID)).OnClick(func() {
 				s.openDownloadURL(c, family.Name, build.PrimaryURL())
 			})
 		}
 		if family.SupportsWizard {
-			outlineButton(c, tr(c, "downloads.engine_drawer.register_local")).Label(trf(c, "downloads.engine_drawer.register_local_label", "id", family.ID)).OnClick(func() {
+			outlineIconButton(c, lucide.Link, trf(c, "downloads.engine_drawer.register_local_label", "id", family.ID)).OnClick(func() {
 				st.engineDrawerOpen = false
 				s.openLocalEngineWizard(family.ID)
 			})
 		}
 		if relURL := engineReleaseLink(family, rel); relURL != "" && relURL != build.PrimaryURL() {
-			ghostButton(c, tr(c, "downloads.engine_drawer.open_release_page")).OnClick(func() {
+			outlineIconButton(c, lucide.ExternalLink, tr(c, "downloads.engine_drawer.open_release_page")).OnClick(func() {
 				s.openDownloadURL(c, family.Name+" "+rel.Version, relURL)
 			})
 		}

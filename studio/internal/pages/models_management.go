@@ -340,25 +340,39 @@ func (s *viewState) installedEngineRow(c *ui.Context, eng core.EngineAsset, pend
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, eng.Name).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
 				inlineBadge(c, badgeLabel, badgeKind, badgeOptions{Style: badgeDot, Size: sizeSM})
+				if eng.Managed {
+					inlineBadge(c, tr(c, "models.engine.badge.managed"), stateSuccess, badgeOptions{Style: badgeOutline, Size: sizeSM})
+				} else {
+					inlineBadge(c, tr(c, "models.engine.badge.linked"), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
+				}
+				if eng.Version != "" {
+					inlineBadge(c, eng.Version, stateNeutral, badgeOptions{Style: badgeSoft, Size: sizeSM})
+				}
 				s.renderEngineUpdateBadge(c, eng)
 			})
 			ui.Text(c, s.engineStateLine(eng)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		})
 		ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			s.renderEngineUpdateAction(c, eng)
+			if eng.Kind == "local_installation" && !eng.Managed {
+				outlineIconButton(c, lucide.Unlink, trf(c, "models.action.unlink_engine_label", "name", eng.Name)).Size(t.Control.MD, t.Control.MD).Disabled(s.busy).OnClick(func() {
+					s.removeInstallationWithUndo(eng.Path)
+				})
+			}
 			s.assetRowActions(c, "engine", eng.Name, eng.Path, "", eng.Family, nil, eng.Deletable, pending)
 		})
 	})
 }
 
 func (s *viewState) assetRowActions(c *ui.Context, kind, name, path, format, family string, sizeBytes *int64, deletable bool, pending *pendingAssetDelete) {
+	t := tokens(c)
 	if path != "" || s.preview != nil {
-		outlineButton(c, tr(c, "models.action.open_dir")).Label(trf(c, "models.action.open_dir_label", "name", name)).Disabled(s.busy).OnClick(func() {
+		outlineIconButton(c, lucide.FolderOpen, trf(c, "models.action.open_dir_label", "name", name)).Size(t.Control.MD, t.Control.MD).Disabled(s.busy).OnClick(func() {
 			s.revealAsset(kind, name)
 		})
 	}
 	if deletable {
-		if quietDangerButton(c, tr(c, "models.action.delete")).Label(trf(c, "models.action.delete_label", "name", name)).Disabled(s.busy || pending.inspecting).Clicked() {
+		if dangerIconButton(c, lucide.Trash, trf(c, "models.action.delete_label", "name", name)).Size(t.Control.MD, t.Control.MD).Disabled(s.busy || pending.inspecting).Clicked() {
 			s.openDeleteConfirm(pending, kind, name, path, format, family, sizeBytes)
 		}
 	}

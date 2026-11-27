@@ -8,6 +8,29 @@ import (
 
 var hexDigest = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
+func TestDefaultEngineCatalogDescriptionsAndManagedVenvSpecs(t *testing.T) {
+	registry := DefaultEngineCatalog()
+	for _, family := range registry.Families() {
+		if family.Description == "" {
+			t.Fatalf("%s has no description", family.ID)
+		}
+	}
+	family, ok := registry.FamilyByID("mlx-lm")
+	if !ok {
+		t.Fatal("mlx-lm missing")
+	}
+	build := family.Releases[0].Builds[0]
+	if build.AcquireMode != EngineAcquireManagedVenv || build.ManagedSpec == nil || len(build.ManagedSpec.WheelURLs) != 2 {
+		t.Fatalf("unexpected mlx-lm managed spec: %+v", build)
+	}
+	cloned, _ := registry.FamilyByID("mlx-lm")
+	cloned.Releases[0].Builds[0].ManagedSpec.WheelURLs[0] = "changed"
+	original, _ := registry.FamilyByID("mlx-lm")
+	if original.Releases[0].Builds[0].ManagedSpec.WheelURLs[0] == "changed" {
+		t.Fatal("managed spec was not deep-cloned")
+	}
+}
+
 func TestCatalogEntriesAreUniqueAndComplete(t *testing.T) {
 	seen := map[string]bool{}
 	for _, entry := range Catalog() {

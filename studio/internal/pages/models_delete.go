@@ -118,6 +118,8 @@ func (s *viewState) openDeleteConfirm(pending *pendingAssetDelete, kind, name, p
 	} else if kind == "model" && format == "strata_pack" {
 		scope = "polystrata_model"
 		initialSize = cloneBytesPtr(sizeBytes)
+	} else if kind == "engine" && strings.HasSuffix(path, "installation.json") {
+		scope = "managed_venv_engine"
 	} else {
 		initialSize = cloneBytesPtr(sizeBytes)
 	}
@@ -200,6 +202,8 @@ func assetDeleteConfirmMessage(p pendingAssetDelete) string {
 		pathClause = l10n.TRf("models.delete.clause.path", "path", p.path)
 	}
 	switch p.scope {
+	case "managed_venv_engine":
+		return l10n.TRf("models.delete.confirm.managed_venv_engine", "name", p.name, "pathClause", pathClause, "sizeClause", sizeClause)
 	case "polystrata_engine":
 		parts := []string{l10n.TRf("models.delete.confirm.polystrata_engine", "name", p.name, "pathClause", pathClause, "sizeClause", sizeClause)}
 		if p.keepsModelData {

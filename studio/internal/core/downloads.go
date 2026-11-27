@@ -420,6 +420,19 @@ func enginePrepareArgs(sourceURL, outDir string, resume bool) []string {
 
 func (s *Service) downloadEngine(ctx context.Context, binary string, d *downloadEntry) {
 	defer d.cancel()
+	if req, managed := managedEngineRequestFromTask(d.Task); managed {
+		family, release, build, failure := managedEngineBuild(req)
+		if failure != nil {
+			s.finishManagedEngineInstall(ctx, d, "", failure)
+			return
+		}
+		s.mu.Lock()
+		d.Task.TotalBytes, d.Task.DownloadedBytes, d.Task.ProgressReason = nil, 0, nil
+		s.mu.Unlock()
+		s.setManagedEngineStage(d, "preparing_uv", 1, 5)
+		s.runManagedEngineInstall(ctx, binary, d, family, release, build)
+		return
+	}
 	if d.Task.ProgressReason != nil {
 		s.Bus.Publish("download.progress", map[string]any{
 			"task_id": d.Task.TaskId, "downloaded_bytes": nil, "bytes_per_second": nil,
@@ -443,6 +456,9 @@ func (s *Service) downloadEngine(ctx context.Context, binary string, d *download
 			Sha256 string `json:"sha256"`
 		}
 		if err := json.Unmarshal(cr.Details, &details); err != nil || details.Engine == "" || details.Bytes < 0 || len(details.Sha256) != 64 {
+			return false
+		}
+		if writeManagedEngineReceipt(d.Task.OutDir, managedBinaryReceipt(d.Task.SourceUrl)) != nil {
 			return false
 		}
 		d.Task.Stage = ""

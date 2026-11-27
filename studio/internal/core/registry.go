@@ -40,6 +40,9 @@ type EngineAsset struct {
 	Family         string
 	Kind           string
 	Source         string
+	Managed        bool
+	InstallMode    string
+	Version        string
 	LatestDownload bool
 	Path           string
 	Deletable      bool
@@ -270,7 +273,9 @@ func (s *Service) registry() registryData {
 		}
 	}
 	data.models = deduplicatePolystrataModels(data.models, psScope)
-	data.engines = append(data.engines, installationEntries(u.EngineInstallations)...)
+	installations := append([]string{}, u.EngineInstallations...)
+	installations = append(installations, discoverManagedEngineInstallations(data.wsEngines)...)
+	data.engines = append(data.engines, installationEntries(installations)...)
 	sort.SliceStable(data.engines, func(i, j int) bool {
 		a, b := data.engines[i], data.engines[j]
 		if !a.downloaded.Equal(b.downloaded) {
@@ -280,11 +285,60 @@ func (s *Service) registry() registryData {
 	})
 	nameEntries(data.models, false)
 	nameEntries(data.engines, true)
+	applyManagedEngineMetadata(data.engines, data.wsEngines)
 	if len(data.engines) > 0 && !data.engines[0].downloaded.IsZero() {
 		data.engines[0].engine.LatestDownload = true
 	}
 	data.totalModelBytes, data.diskFreeBytes = registryStorageMetrics(u, s.paths, data.modelRoots, data.models, scanned)
 	return data
+}
+
+func applyManagedEngineMetadata(entries []registryEntry, wsEnginesRoot string) {
+	insideWorkspace := func(path string) bool {
+		if wsEnginesRoot == "" {
+			return false
+		}
+		root, err := canonical(wsEnginesRoot)
+		if err != nil {
+			return false
+		}
+		return withinCanonicalDir(root, path)
+	}
+	for i := range entries {
+		entry := &entries[i]
+		entry.engine.InstallMode = "external"
+		if entry.installation != "" {
+			entry.engine.Version = readInstallationVersion(entry.path)
+		} else {
+			entry.engine.Version = readLlamaPrepareSourceVersion(*entry)
+		}
+		var receipt managedEngineReceipt
+		var found bool
+		for _, dir := range []string{filepath.Dir(entry.path), filepath.Dir(filepath.Dir(entry.path))} {
+			if receipt, found = readManagedEngineReceipt(dir); found {
+				break
+			}
+		}
+		if found {
+			entry.engine.Managed = true
+			entry.engine.InstallMode = receipt.InstallMode
+			if receipt.Version != "" {
+				entry.engine.Version = receipt.Version
+			}
+			continue
+		}
+		if entry.installation != "" && hasPolystrataRuntimeReceipt(filepath.Dir(entry.path)) {
+			entry.engine.Managed = true
+			entry.engine.InstallMode = "polystrata"
+			continue
+		}
+		if insideWorkspace(entry.path) {
+			entry.engine.Managed = true
+			if entry.engine.Kind != "local_installation" {
+				entry.engine.InstallMode = "binary"
+			}
+		}
+	}
 }
 
 func (s *Service) Registry() Registry {

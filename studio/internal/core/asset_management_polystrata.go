@@ -232,7 +232,8 @@ func isEngineAssetDeletable(u UserSettings, paths *BoundPaths, rawPath, canonPat
 		return isEngineDeletable(rawPath, canonPath, kind, wsEnginesRoot, resultsRoot)
 	}
 	if family != "polystrata" {
-		return false
+		installDir, _, ok := managedVenvInstallDir(rawPath, canonPath, wsEnginesRoot, resultsRoot)
+		return ok && !otherEngineSharesInstallDir(installDir, canonPath, engines)
 	}
 	installDir, ok := managedPolystrataInstallDir(rawPath, canonPath, wsEnginesRoot, resultsRoot)
 	if !ok {
