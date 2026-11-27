@@ -46,10 +46,14 @@ const (
 	ReasoningEffortLow    = "low"
 	ReasoningEffortMedium = "medium"
 	ReasoningEffortHigh   = "high"
+
+	DownloadSourceModelScope  = "modelscope"
+	DownloadSourceHuggingFace = "huggingface"
 )
 
 type UserSettings struct {
 	EngineInstallations []string `json:"engine_installations,omitempty"`
+	DownloadSource      string   `json:"download_source,omitempty"`
 	DownloadProxy       *string  `json:"download_proxy,omitempty"`
 	Theme               string   `json:"theme,omitempty"`
 	Accent              string   `json:"accent,omitempty"`
@@ -70,6 +74,7 @@ type EffectiveSettings struct {
 	ResultsRoot        *string  `json:"results_root"`
 	ModelsRoot         *string  `json:"models_root"`
 	ExtraModelsRoots   []string `json:"extra_models_roots,omitempty"`
+	DownloadSource     string   `json:"download_source"`
 	DownloadProxy      *string  `json:"download_proxy,omitempty"`
 	Theme              string   `json:"theme"`
 	Accent             string   `json:"accent"`

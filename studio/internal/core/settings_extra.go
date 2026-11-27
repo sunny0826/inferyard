@@ -139,6 +139,29 @@ func (s *Service) ReasoningEffort() string {
 	return NormalizeReasoningEffort(s.userSettings().ReasoningEffort)
 }
 
+func ParseDownloadSource(raw string) (string, bool) {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "", DownloadSourceModelScope:
+		return DownloadSourceModelScope, true
+	case DownloadSourceHuggingFace:
+		return DownloadSourceHuggingFace, true
+	default:
+		return "", false
+	}
+}
+
+func NormalizeDownloadSource(raw string) string {
+	if normalized, ok := ParseDownloadSource(raw); ok {
+		return normalized
+	}
+	return DownloadSourceModelScope
+}
+
+// DownloadSource returns the normalized persisted default model download source without probing the CLI.
+func (s *Service) DownloadSource() string {
+	return NormalizeDownloadSource(s.userSettings().DownloadSource)
+}
+
 // MinimizeToTray returns whether closing the window minimizes to the system tray.
 func (s *Service) MinimizeToTray() bool {
 	return s.userSettings().MinimizeToTray
@@ -159,6 +182,21 @@ func (s *Service) EffectiveKeepServicesOnQuit() bool {
 
 func (s *Service) applySettingsPatchExtra(u *UserSettings, key string, raw json.RawMessage) (bool, *ApiError) {
 	switch key {
+	case "download_source":
+		var source *string
+		if json.Unmarshal(raw, &source) != nil {
+			return true, Err("invalid_request")
+		}
+		if source == nil {
+			u.DownloadSource = DownloadSourceModelScope
+			return true, nil
+		}
+		normalized, ok := ParseDownloadSource(*source)
+		if !ok {
+			return true, Err("invalid_request")
+		}
+		u.DownloadSource = normalized
+		return true, nil
 	case "download_proxy":
 		var proxy *string
 		if json.Unmarshal(raw, &proxy) != nil {

@@ -20,6 +20,13 @@ type settingsViewState struct {
 	settingsTab                           int
 	buildInfo                             func() core.BuildInfo
 	tokenEnv, downloadProxy               string
+	downloadSource                        string
+	downloadSourceSaving                  bool
+	downloadSourceMu                      sync.Mutex
+	downloadSourceWanted                  string
+	downloadSourceWantedSeq               uint64
+	downloadSourceWorkerRunning           bool
+	persistDownloadSource                 func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
 	settingsEpochMu                       sync.Mutex
 	settingsEpoch                         uint64
 	themeMode, appliedThemeMode           string
