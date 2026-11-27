@@ -28,6 +28,7 @@ var previewScenes = []struct {
 		s.history, s.downloads, s.reports = core.RunHistoryResponse{}, nil, nil
 	}},
 	{"preview.scene.task_running", previewRunning},
+	{"preview.scene.speed_running", previewSpeedRunning},
 	{"preview.scene.task_completed", previewCompleted},
 	{"preview.scene.task_failed", func(s *viewState) {
 		s.task = benchmarkTask{stage: "bind", start: startChainResult{candidate: "/preview/candidate"}, failure: core.Err("engine_start_failed")}
@@ -214,6 +215,41 @@ func previewRunning(s *viewState) {
 	}
 	s.tasks = []core.RunTask{{TaskId: "preview-run", State: "running", Bundle: previewValue(inferyard.DefaultBundleCore), RunPath: previewValue("/preview/results/preview-run"), StartedAt: previewValue("2026-10-16T23:59:08Z")}}
 	s.runProgress = &core.RunProgress{Done: 42, Total: previewValue(int64(120)), CurrentCaseId: previewValue("preview-case-043")}
+}
+
+func previewSpeedRunning(s *viewState) {
+	s.selected = "benchmarks"
+	s.benchFlowOpen = true
+	if s.speed == nil {
+		s.speed = &speedWorkspace{context: inferyard.ContextSpeed64K}
+	}
+	s.speed.selected = true
+	s.engineState = core.EngineState{
+		State:       "running",
+		Family:      "llama-cpp",
+		Executable:  "llama-server",
+		Model:       s.model,
+		ModelKind:   "gguf",
+		ContextSize: inferyard.ContextSpeed64K,
+		Pid:         42,
+		Endpoint:    "http://127.0.0.1:48857",
+	}
+	task := &speedTask{
+		id:              "preview-speed-live",
+		model:           s.model,
+		engine:          s.engine,
+		context:         inferyard.ContextSpeed64K,
+		stage:           speedMeasuring,
+		completed:       2,
+		budget:          300,
+		startedAt:       "2026-10-16T23:59:12Z",
+		selectionModel:  s.model,
+		selectionEngine: s.engine,
+	}
+	for i := range 2 {
+		task.samples = append(task.samples, previewSpeedSample(inferyard.ContextSpeed64K, i))
+	}
+	s.speed.current = task
 }
 
 func previewCompleted(s *viewState) {

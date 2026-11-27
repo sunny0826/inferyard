@@ -9,6 +9,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -210,5 +211,101 @@ func TestRunDetailButtonGivesPrimaryActionToHandoff(t *testing.T) {
 		if fill("primary") == fill("outline") || fill(detail) != fill(tc.style) {
 			t.Fatalf("waiting=%t: expected %s live-detail button", tc.waiting, tc.style)
 		}
+	}
+}
+
+func countProgressBars(tt *ui.Tester) int {
+	n := 0
+	for _, item := range tt.AccessAll() {
+		if item.Role == ui.RoleProgress {
+			n++
+		}
+	}
+	return n
+}
+
+func TestPipelineRailHasSingleProgressBarAndNoDuplicatePercent(t *testing.T) {
+	// 1. Standard running task: single live PipelineRail progress bar and single "25%" label.
+	s := readyState("benchmarks")
+	s.benchFlowOpen = true
+	s.progress = &inferyard.WorkspaceProgress{
+		NextAction: "run",
+		Bundles: []inferyard.BundleProgress{
+			{Bundle: "zh-core", Phase: "run_incomplete", NextAction: "run"},
+		},
+	}
+	s.task.stage = "run"
+	s.tasks = []core.RunTask{{TaskId: "task-1", Kind: "run", State: "running", Bundle: ptr("zh-core")}}
+	s.runProgress = &core.RunProgress{Phase: ptr("formal"), Done: 30, Total: ptr(int64(120)), CurrentCaseId: ptr("case-031")}
+
+	ttRun := ui.NewTester(func(c *ui.Context) { ui.Column(c).FillWidth().Children(func() { s.dashboardView(c) }) }, 1120, 1000)
+	ttRun.Frame()
+	if got := countProgressBars(ttRun); got != 1 {
+		t.Fatalf("expected exactly 1 progress bar on standard running task page, got %d", got)
+	}
+	pctCount := 0
+	for _, txt := range ttRun.Texts() {
+		if txt == "25%" {
+			pctCount++
+		}
+	}
+	if pctCount != 1 {
+		t.Fatalf("expected 25%% to render once (in PipelineRail), got %d occurrences: %v", pctCount, ttRun.Texts())
+	}
+
+	// 2. Context-speed running task: single live PipelineRail progress bar and single "40%" label.
+	s.speed = &speedWorkspace{
+		current: &speedTask{
+			id:        "speed-1",
+			model:     "Preview-Model-Q4.gguf",
+			engine:    "llama-server",
+			context:   inferyard.ContextSpeed64K,
+			stage:     speedMeasuring,
+			completed: 2,
+		},
+	}
+	ttSpeed := ui.NewTester(func(c *ui.Context) { ui.Column(c).FillWidth().Children(func() { s.dashboardView(c) }) }, 1120, 1000)
+	ttSpeed.Frame()
+	if got := countProgressBars(ttSpeed); got != 1 {
+		t.Fatalf("expected exactly 1 progress bar on context-speed task page, got %d", got)
+	}
+	speedPctCount := 0
+	for _, txt := range ttSpeed.Texts() {
+		if txt == "40%" {
+			speedPctCount++
+		}
+	}
+	if speedPctCount != 1 {
+		t.Fatalf("expected 40%% to render once (in PipelineRail), got %d occurrences: %v", speedPctCount, ttSpeed.Texts())
+	}
+
+	// 3. Config stage renders 0 progress bars and exposes mode tabs alongside the pipeline rail.
+	cfg := readyState("benchmarks")
+	cfg.benchFlowOpen = true
+	cfg.speed = &speedWorkspace{context: inferyard.ContextSpeed64K}
+	cfg.progress = &inferyard.WorkspaceProgress{
+		NextAction:      "prepare_candidate",
+		DevicePreflight: inferyard.ProgressPreflight{Status: "ok"},
+		Bundles: []inferyard.BundleProgress{
+			{Bundle: "zh-core", Phase: "candidate_missing", NextAction: "prepare_candidate"},
+		},
+	}
+	cfg.registry = core.Registry{
+		Models:  []core.ModelAsset{{Name: "Demo.gguf", Format: "gguf", Available: true}},
+		Engines: []core.EngineAsset{{Name: "llama-server", Family: "llama-cpp"}},
+	}
+	cfg.checks = core.EngineCheckOverview{
+		Supported: true,
+		Engines:   map[string]core.EngineEligibility{"llama-server": {State: core.EngineCheckEligible}},
+	}
+	cfg.model, cfg.engine = "Demo.gguf", "llama-server"
+
+	ttCfg := ui.NewTester(func(c *ui.Context) { ui.Column(c).FillWidth().Children(func() { cfg.dashboardView(c) }) }, 1120, 1000)
+	ttCfg.Frame()
+	if got := countProgressBars(ttCfg); got != 0 {
+		t.Fatalf("expected 0 progress bars during config stage, got %d", got)
+	}
+	if _, ok := ttCfg.AccessByRole(ui.RoleTab, l10n.TR("speed.tab.standard")); !ok {
+		t.Fatalf("missing standard benchmark tab")
 	}
 }

@@ -2,7 +2,6 @@ package pages
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
@@ -175,35 +174,6 @@ func (w *viewState) candidateFields(c *ui.Context) {
 	}
 }
 
-func macOSBatteryWarning(raw json.RawMessage) bool {
-	snapshot, err := parseDeviceSnapshot(raw)
-	if err != nil || snapshot == nil {
-		return false
-	}
-	hw := snapshot.object("hardware")
-	if hw == nil {
-		return false
-	}
-	platform, _ := hw["platform"].(string)
-	if platform != "Darwin" {
-		return false
-	}
-	online, ok := hw["ac_online"].(bool)
-	return ok && !online
-}
-
-func failureView(c *ui.Context, title string, e *core.ApiError, next string) {
-	ui.Text(c, title).Bold().TextColor(stateColor(c, stateDanger))
-	if e != nil {
-		errorView(c, e)
-	} else {
-		noticeBanner(c, noticeBannerOptions{Kind: stateDanger, Size: bannerCompact, Message: tr(c, "dashboard.failure.no_detail")})
-	}
-	if next != "" {
-		ui.Text(c, next).TextColor(tokens(c).Color.FgSecondary)
-	}
-}
-
 func (w *viewState) engineLogDiagnosticsView(c *ui.Context) {
 	t := tokens(c)
 	logPath := w.engineState.LogPath
@@ -254,6 +224,10 @@ func (w *viewState) engineLogDiagnosticsView(c *ui.Context) {
 }
 
 func (w *viewState) serviceView(c *ui.Context) {
+	w.serviceViewWithBar(c, true)
+}
+
+func (w *viewState) serviceViewWithBar(c *ui.Context, embedBar bool) {
 	heading(c, tr(c, "dashboard.service.heading"), 3)
 	if w.bindingStale {
 		noticeBanner(c, noticeBannerOptions{Kind: stateDanger, Size: bannerCompact, Message: tr(c, "dashboard.service.binding_stale")})
@@ -280,7 +254,9 @@ func (w *viewState) serviceView(c *ui.Context) {
 		host.Children(func() {
 			ui.Text(c, trf(c, "dashboard.service.starting", "pid", w.engineState.Pid))
 			if showBar {
-				progressBar(c, -1, tr(c, "dashboard.service.starting_progress"))
+				if embedBar {
+					progressBar(c, -1, tr(c, "dashboard.service.starting_progress"))
+				}
 				if elapsed >= loadingSlowThreshold {
 					ui.Text(c, tr(c, "dashboard.service.starting_slow")).TextColor(tokens(c).Color.FgSecondary)
 				}
@@ -357,6 +333,10 @@ func (w *viewState) serviceView(c *ui.Context) {
 	})
 }
 func (w *viewState) runView(c *ui.Context) {
+	w.runViewWithBar(c, true)
+}
+
+func (w *viewState) runViewWithBar(c *ui.Context, embedBar bool) {
 	t := tokens(c)
 	if w.stepFailed() && w.running() == nil && !w.serviceCardVisible() {
 		heading(c, tr(c, "dashboard.run.heading"), 3)
@@ -381,35 +361,33 @@ func (w *viewState) runView(c *ui.Context) {
 			}
 		}
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			heading(c, tr(c, "dashboard.run.heading"), 3).Grow(1)
-			if value >= 0 {
+			if w.model != "" {
+				modelIconBox(c, w.modelIconHint(w.model), 30, t.Radius.SM)
+			} else {
+				components.Icon(c, lucide.Play).Size(15, 15).TextColor(stateColor(c, stateActive))
+			}
+			if bundleName := emptyText(task.Bundle); bundleName != "" {
+				ui.Text(c, bundleName).Bold().FontSize(t.Type.Section).TextColor(t.Color.FgPrimary).SingleLine()
+			} else {
+				heading(c, tr(c, "dashboard.run.heading"), 3)
+			}
+			if w.model != "" {
+				ui.Text(c, w.model).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
+			}
+			if w.engine != "" {
+				w.enginePill(c, w.engine)
+			}
+			ui.Box(c).Grow(1)
+			if p != nil && p.CurrentCaseId != nil && *p.CurrentCaseId != "" {
+				inlineBadge(c, trf(c, "detail.current_case", "case_id", *p.CurrentCaseId), stateActive, badgeOptions{Size: sizeSM, Style: badgeSoft})
+			}
+			if embedBar && value >= 0 {
 				ui.Text(c, fmt.Sprintf("%.0f%%", value*100)).Bold().FontSize(t.Type.Section).FontFeatures("tnum").TextColor(stateColor(c, stateActive))
 			}
 		})
-		if bundleName := emptyText(task.Bundle); bundleName != "" || w.model != "" || w.engine != "" {
-			applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).
-				Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
-				if w.model != "" {
-					modelIconBox(c, w.modelIconHint(w.model), 28, t.Radius.SM)
-				} else {
-					components.Icon(c, lucide.Play).Size(15, 15).TextColor(stateColor(c, stateActive))
-				}
-				if bundleName != "" {
-					ui.Text(c, bundleName).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine()
-				}
-				if w.model != "" {
-					ui.Text(c, w.model).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
-				}
-				if w.engine != "" {
-					w.enginePill(c, w.engine)
-				}
-				ui.Box(c).Grow(1)
-				if p != nil && p.CurrentCaseId != nil && *p.CurrentCaseId != "" {
-					inlineBadge(c, trf(c, "detail.current_case", "case_id", *p.CurrentCaseId), stateActive, badgeOptions{Size: sizeSM, Style: badgeSoft})
-				}
-			})
+		if embedBar {
+			progressBar(c, value, tr(c, "dashboard.run.progress_bar_label"))
 		}
-		progressBar(c, value, tr(c, "dashboard.run.progress_bar_label"))
 		if task.State == "cancelling" {
 			ui.Text(c, tr(c, "dashboard.run.cancelling_notice")).FontSize(t.Type.Caption).TextColor(stateColor(c, stateWarning))
 		}

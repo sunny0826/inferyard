@@ -88,9 +88,14 @@ func newPreviewSession(ctx context.Context) *previewSession {
 		dsSwitch:   true,
 		dsCheck:    true,
 	}
-	if os.Getenv("INFERYARD_DEBUG_SCENE") == "design_system" {
-		p.openDesignSystemScene()
-		return p
+	if want := os.Getenv("INFERYARD_DEBUG_SCENE"); want != "" {
+		wantKey := "preview.scene." + want
+		for i, scene := range previewScenes {
+			if scene.labelKey == want || scene.labelKey == wantKey {
+				p.loadScene(i)
+				return p
+			}
+		}
 	}
 	p.loadScene(0)
 	return p

@@ -4,9 +4,46 @@ import (
 	"fmt"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
 )
+
+func speedSampleSlots(c *ui.Context, r *speedTask) {
+	t := tokens(c)
+	ui.Grid(c).FillWidth().Columns(5).Gap(t.Density.Row).Children(func() {
+		for idx := range 5 {
+			slotLabel := fmt.Sprintf("#%d", idx+1)
+			done := idx < r.completed
+			active := idx == r.completed && r.stage == speedMeasuring
+			bg := t.Color.Sunken
+			border := t.Color.BorderSubtle
+			fg := t.Color.FgTertiary
+			if done {
+				bg = t.Color.Success.SubtleBg
+				border = t.Color.Success.Border
+				fg = t.Color.Success.Fg
+			} else if active {
+				bg = t.Color.Active.SubtleBg
+				border = t.Color.Active.Border
+				fg = t.Color.Active.Fg
+			}
+			ui.Row(c).FillWidth().AlignItems(ui.Center).Justify(ui.Center).Gap(t.Density.Tight).
+				Padding(t.Density.Row).Radius(t.Radius.Control).Background(bg).Border(1, border).Children(func() {
+				if done {
+					components.Icon(c, lucide.Check).Size(12, 12).TextColor(fg)
+				} else if active {
+					ui.Box(c).Size(6, 6).Radius(t.Radius.Full).Background(t.Color.Active.Solid)
+				}
+				txt := ui.Text(c, slotLabel).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(fg).SingleLine()
+				if done || active {
+					txt.Bold()
+				}
+			})
+		}
+	})
+}
 
 func (s *viewState) speedResultView(c *ui.Context) {
 	w, r := s.speed, s.speed.opened

@@ -199,7 +199,6 @@ func (s *viewState) polystrataDownloadTaskCard(c *ui.Context, task core.Download
 						Labels:   polystrataPhaseLabels(c),
 						Current:  polystrataPhaseIndex(task),
 						RowLabel: tr(c, "downloads.polystrata.phase_row_label"),
-						HideBar:  true,
 					})
 					if hasPercent {
 						ratio := math.Max(0, math.Min(1, *task.Percent/100))

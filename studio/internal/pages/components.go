@@ -36,8 +36,7 @@ type phaseProgressOptions struct {
 	Labels   []string
 	Current  int
 	RowLabel string
-	BarLabel string
-	HideBar  bool
+	Failed   bool
 }
 
 func phaseProgress(c *ui.Context, o phaseProgressOptions) {
@@ -63,17 +62,21 @@ func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 					ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).SingleLine()
 				})
 			case i == o.Current:
+				scale := t.Color.Active
+				if o.Failed {
+					scale = t.Color.Danger
+				}
 				pill := ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).
 					Padding(3, t.Density.Row, 3, 4).Radius(t.Radius.Full).
-					Background(t.Color.Active.SubtleBg).Border(1, t.Color.Active.Border).
+					Background(scale.SubtleBg).Border(1, scale.Border).
 					Description(trf(c, "common.phase.current", "label", label))
 				pill.Children(func() {
 					ui.Box(c).Size(18, 18).Radius(t.Radius.Full).Shrink(0).
-						Background(t.Color.Active.Solid).
+						Background(scale.Solid).
 						AlignItems(ui.Center).Justify(ui.Center).Children(func() {
 						ui.Text(c, stepNum).Bold().FontSize(11).FontFeatures("tnum").TextColor(c.Theme().Surface).SingleLine()
 					})
-					ui.Text(c, label).Bold().FontSize(t.Type.Caption).TextColor(t.Color.Active.Fg).SingleLine()
+					ui.Text(c, label).Bold().FontSize(t.Type.Caption).TextColor(scale.Fg).SingleLine()
 				})
 			default:
 				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
@@ -87,14 +90,6 @@ func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 			}
 		}
 	})
-	if o.HideBar {
-		return
-	}
-	value := float64(0)
-	if len(o.Labels) > 0 {
-		value = min(1, float64(o.Current)/float64(len(o.Labels)))
-	}
-	progressBar(c, value, o.BarLabel).Height(6)
 }
 
 func metricCard(c *ui.Context, label, value, detail, note string) {
@@ -172,29 +167,6 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 		if options.actions != nil {
 			options.actions()
 		}
-	})
-}
-
-func stepTrack(c *ui.Context, number, title string, fn func()) {
-	t := tokens(c)
-	theme := c.Theme()
-	size := float32(26)
-	badgeBg := stateColor(c, stateActive)
-	if number == "✓" {
-		badgeBg = stateColor(c, stateSuccess)
-	}
-	applyMaterial(c, ui.Column(c).FillWidth().MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding).
-		Label(trf(c, "common.step.label", "number", number)), materialCard).Children(func() {
-		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			ui.Box(c).Label(trf(c, "common.step.number_label", "number", number)).
-				Size(size, size).Shrink(0).Radius(t.Radius.Full).Background(badgeBg).
-				AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-				ui.Text(c, number).Bold().FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(theme.Surface).SingleLine()
-			})
-			heading(c, title, 2)
-		})
-		ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
-		ui.Column(c).FillWidth().MinWidth(0).Gap(t.Density.CardGap).Children(fn)
 	})
 }
 
