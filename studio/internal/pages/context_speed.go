@@ -6,8 +6,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
 )
@@ -191,7 +191,7 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 	})
 	applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).
 		Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
-		components.Icon(c, lucide.Gauge).Size(14, 14).TextColor(t.Color.FgSecondary)
+		components.Icon(c, reicon.Gauge).Size(14, 14).TextColor(t.Color.FgSecondary)
 		ui.Text(c, trf(c, "speed.select.spec_summary", "bundle", inferyard.ContextSpeedBundleID, "samples", inferyard.ContextSpeedSamples)).
 			FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgPrimary)
 	})

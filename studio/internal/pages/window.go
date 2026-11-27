@@ -8,9 +8,9 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/inferyard"
 )
 
@@ -18,10 +18,10 @@ var navigation = []struct {
 	id, labelKey string
 	icon         func() *ui.SVG
 }{
-	{"benchmarks", "nav.benchmarks", lucide.Play},
-	{"services", "nav.services", lucide.Server},
-	{"library", "nav.library", lucide.Layers},
-	{"reports", "nav.reports", lucide.FileText},
+	{"benchmarks", "nav.benchmarks", reicon.Play},
+	{"services", "nav.services", reicon.Server},
+	{"library", "nav.library", reicon.Layers},
+	{"reports", "nav.reports", reicon.FileText},
 }
 
 type WindowHooks struct {

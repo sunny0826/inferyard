@@ -220,4 +220,3 @@ func TestResourceViewOmitsTemperatureSourceDropdownAndKeepsAllSourcesInTable(t *
 		t.Fatalf("fallback temperature plot missing in %v", ttFallback.Texts())
 	}
 }
-

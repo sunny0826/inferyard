@@ -6,8 +6,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 type reportViewState struct {
@@ -154,7 +154,7 @@ func (s *viewState) reportView(c *ui.Context) {
 	}
 	if len(report.index.Runs) == 0 {
 		emptyGuideCard(c, emptyGuideOptions{
-			Icon:    lucide.FileText,
+			Icon:    reicon.FileText,
 			Title:   tr(c, "reports.detail.empty_runs"),
 			Surface: emptyCard,
 		})
@@ -278,7 +278,7 @@ func reportSummaryGrid(c *ui.Context, cards ...func(*ui.Context)) {
 
 func reportSourceView(c *ui.Context, run core.ReportRun) {
 	t := tokens(c)
-	reportSectionCard(c, lucide.Server, tr(c, "reports.detail.source.title"), nil, func() {
+	reportSectionCard(c, reicon.Server, tr(c, "reports.detail.source.title"), nil, func() {
 		ui.Column(c).FillWidth().Gap(0).Children(func() {
 			reportKVRow(c, tr(c, "reports.detail.source.run"), reportText(run.Source.RunID), true, run.Source.RunID == "", false)
 			reportKVDivider(c)
@@ -376,7 +376,7 @@ func reportModel(run core.ReportRun) string {
 }
 
 func reportProfileView(c *ui.Context, run core.ReportRun) {
-	reportSectionCard(c, lucide.Cpu, tr(c, "reports.detail.profile.title"), nil, func() {
+	reportSectionCard(c, reicon.Cpu, tr(c, "reports.detail.profile.title"), nil, func() {
 		ui.Column(c).FillWidth().Gap(0).Children(func() {
 			reportKVRow(c, tr(c, "reports.detail.profile.model"), reportModel(run), false, false, true)
 			reportKVDivider(c)

@@ -319,4 +319,3 @@ func TestNotificationBellTopRightPlacementAndPopoverGeometry(t *testing.T) {
 		})
 	}
 }
-

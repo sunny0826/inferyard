@@ -3,8 +3,8 @@ package pages
 import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 func (s *viewState) starterOptionTile(c *ui.Context, st *downloadsUIState, idx int, opt starterOption, selected bool) {
@@ -53,7 +53,7 @@ func (s *viewState) starterOptionTile(c *ui.Context, st *downloadsUIState, idx i
 			checkCircle := ui.Box(c).Size(16, 16).Radius(t.Radius.Full).AlignItems(ui.Center).Justify(ui.Center).Shrink(0)
 			if selected {
 				checkCircle.Background(t.Color.Accent).Children(func() {
-					components.Icon(c, lucide.Check).Size(10, 10).TextColor(t.Color.FgOnAccent)
+					components.Icon(c, reicon.Check).Size(10, 10).TextColor(t.Color.FgOnAccent)
 				})
 			} else {
 				checkCircle.Border(1.5, t.Color.BorderStrong)

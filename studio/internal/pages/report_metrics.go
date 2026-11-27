@@ -7,8 +7,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 func reportNumber[T ~float64 | ~int64](value *T) string {
@@ -138,7 +138,7 @@ func reportMetrics(c *ui.Context, run core.ReportRun) {
 	available := reportScaled(d.SampledMinimumAvailableBytes, 1<<30, "GiB")
 	metrics := []reportMetricSpec{
 		{
-			icon:      lucide.CircleCheck,
+			icon:      reicon.CircleCheck,
 			label:     tr(c, "reports.metrics.answer_pass"),
 			value:     qualityValue,
 			detail:    qualityDetail,
@@ -149,7 +149,7 @@ func reportMetrics(c *ui.Context, run core.ReportRun) {
 			ratioKind: qualityRatioKind,
 		},
 		{
-			icon:     lucide.Activity,
+			icon:     reicon.Activity,
 			label:    tr(c, "reports.metrics.request_completion"),
 			value:    reportRate(run.Summary.CompletionRate),
 			detail:   tr(c, "reports.metrics.request_completion_detail"),
@@ -157,7 +157,7 @@ func reportMetrics(c *ui.Context, run core.ReportRun) {
 			noteKind: stateNeutral,
 		},
 		{
-			icon:  lucide.Clock,
+			icon:  reicon.Clock,
 			label: tr(c, "reports.metrics.median_latency"),
 			value: reportScaled(d.Latency.P50, 1000, "s"),
 			detail: func() string {
@@ -170,7 +170,7 @@ func reportMetrics(c *ui.Context, run core.ReportRun) {
 			noteKind: stateNeutral,
 		},
 		{
-			icon:     lucide.HardDrive,
+			icon:     reicon.HardDrive,
 			label:    tr(c, "reports.metrics.peak_rss"),
 			value:    reportScaled(d.SampledPeakRSSBytes, 1<<30, "GiB"),
 			detail:   trf(c, "reports.metrics.min_system_available_detail", "value", strings.ReplaceAll(available, " ", "\u00a0")),
@@ -232,7 +232,7 @@ func reportStatRow(c *ui.Context, label, value string, muted bool) {
 func reportThroughput(c *ui.Context, run core.ReportRun) {
 	t := tokens(c)
 	throughput := run.Dashboard.Throughput
-	reportSectionCard(c, lucide.Gauge, tr(c, "reports.throughput.title"), nil, func() {
+	reportSectionCard(c, reicon.Gauge, tr(c, "reports.throughput.title"), nil, func() {
 		if throughput == nil {
 			ui.Text(c, tr(c, "reports.metrics.not_measured")).FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary)
 			return
@@ -300,7 +300,7 @@ func reportThroughputReasonFor(c *ui.Context, reason *string) string {
 func reportOutputIntervals(c *ui.Context, run core.ReportRun) {
 	t := tokens(c)
 	intervals := run.Dashboard.OutputBlockIntervals
-	reportSectionCard(c, lucide.Clock, tr(c, "reports.intervals.title"), nil, func() {
+	reportSectionCard(c, reicon.Clock, tr(c, "reports.intervals.title"), nil, func() {
 		if intervals == nil {
 			ui.Text(c, tr(c, "reports.metrics.not_measured")).FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary)
 			return

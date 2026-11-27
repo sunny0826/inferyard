@@ -405,7 +405,7 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	s.applyServiceStateSnapshot(b.serviceSnap)
 	s.applyUpdateState(b.updateState)
 	s.applyCLIUpgradeState(b.cliUpgrade)
-	if mask&(refreshHistory|refreshReports) == (refreshHistory|refreshReports) {
+	if mask&(refreshHistory|refreshReports) == (refreshHistory | refreshReports) {
 		s.hydrating = false
 	}
 	s.loaded = true

@@ -6,8 +6,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 func (s *viewState) openBenchmarksFlow() {
@@ -21,10 +21,10 @@ func (s *viewState) flowHeader(c *ui.Context, title string) {
 		s.header(c, title)
 		if s.benchFlowOpen && !s.newTaskPending && !s.environmentMissing() {
 			ui.Box(c).Grow(1)
-			if outlineIconButton(c, lucide.ArrowLeft, tr(c, "benchmarks.action.back_list")).Clicked() {
+			if outlineIconButton(c, reicon.ArrowLeft, tr(c, "benchmarks.action.back_list")).Clicked() {
 				s.benchFlowOpen = false
 			}
-			if outlineIconButton(c, lucide.List, tr(c, "reports.tab.history")).Clicked() {
+			if outlineIconButton(c, reicon.List, tr(c, "reports.tab.history")).Clicked() {
 				s.benchFlowOpen = false
 				s.benchmarksTab = benchmarksTabHistory
 			}
@@ -69,7 +69,7 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 		s.header(c, tr(c, "benchmarks.page.title"))
 		ui.Box(c).Grow(1)
 		if s.hasActiveBenchmarkFlow() {
-			if outlineIconButton(c, lucide.Play, tr(c, "benchmarks.action.open_flow")).Clicked() {
+			if outlineIconButton(c, reicon.Play, tr(c, "benchmarks.action.open_flow")).Clicked() {
 				s.benchFlowOpen = true
 				s.benchmarksTab = benchmarksTabTasks
 			}
@@ -77,12 +77,12 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 		hint := s.newTaskEntryHintFor(contextLocale(c))
 		label := tr(c, "benchmarks.action.new")
 		if hint == "" {
-			if primaryIconButton(c, lucide.Plus, label).Clicked() {
+			if primaryIconButton(c, reicon.Plus, label).Clicked() {
 				s.newBenchmark()
 			}
 		} else {
 			iconButtonWithTooltip(c, hint, func() ui.Element {
-				return primaryIconButton(c, lucide.Plus, "").Label(label).Disabled(true)
+				return primaryIconButton(c, reicon.Plus, "").Label(label).Disabled(true)
 			})
 		}
 	})
@@ -124,7 +124,7 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 		if !found {
 			applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
 				Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
-				components.Icon(c, lucide.Play).Size(14, 14).TextColor(t.Color.FgTertiary)
+				components.Icon(c, reicon.Play).Size(14, 14).TextColor(t.Color.FgTertiary)
 				ui.Text(c, tr(c, "benchmarks.group.running_empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			})
 		}
@@ -146,7 +146,7 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 		if !found {
 			applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
 				Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
-				components.Icon(c, lucide.Clock).Size(14, 14).TextColor(t.Color.FgTertiary)
+				components.Icon(c, reicon.Clock).Size(14, 14).TextColor(t.Color.FgTertiary)
 				ui.Text(c, tr(c, "benchmarks.group.queued_empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			})
 		}
@@ -157,7 +157,7 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			heading(c, tr(c, "benchmarks.group.recent"), 3).Grow(1)
 			if len(historyRuns) > 0 {
-				if iconButton(c, lucide.List, tr(c, "benchmarks.recent.view_all_history"), components.IconButtonCompact).Clicked() {
+				if iconButton(c, reicon.List, tr(c, "benchmarks.recent.view_all_history"), components.IconButtonCompact).Clicked() {
 					s.benchmarksTab = benchmarksTabHistory
 				}
 			}
@@ -431,7 +431,7 @@ func (s *viewState) renderRecentReportRow(c *ui.Context, rep core.ReportSummary)
 				ui.Box(c).Size(32, 32).Radius(iconR).Shrink(0).AlignSelf(ui.Center).
 					Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).
 					AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-					components.Icon(c, lucide.FileText).Size(16, 16).TextColor(t.Color.FgSecondary)
+					components.Icon(c, reicon.FileText).Size(16, 16).TextColor(t.Color.FgSecondary)
 				})
 			},
 			Title:    reportHeadingFor(c, repCopy),

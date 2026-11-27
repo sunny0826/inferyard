@@ -8,8 +8,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -50,7 +50,7 @@ func (s *viewState) renderSingleExitedNoticeCard(c *ui.Context, notice core.Serv
 		Background(scale.SubtleBg).Border(1, scale.Border)
 	cardBox.Children(func() {
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			components.Icon(c, lucide.CircleAlert).Size(18, 18).TextColor(scale.Fg)
+			components.Icon(c, reicon.CircleAlert).Size(18, 18).TextColor(scale.Fg)
 			ui.Text(c, tr(c, "services.exited.title")).Bold().FontSize(t.Type.CardTitle).TextColor(scale.Fg).SingleLine()
 			if notice.WhileAway {
 				inlineBadge(c, tr(c, "services.exited.while_away_badge"), stateDanger, badgeOptions{Size: sizeSM})
@@ -82,7 +82,7 @@ func (s *viewState) renderSingleExitedNoticeCard(c *ui.Context, notice core.Serv
 			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).
 				Padding(t.Density.Tight, t.Density.Row).Radius(innerR).
 				Background(t.Color.Surface).Border(1, scale.Border).Children(func() {
-				components.Icon(c, lucide.Info).Size(14, 14).TextColor(scale.Fg)
+				components.Icon(c, reicon.Info).Size(14, 14).TextColor(scale.Fg)
 				ui.Text(c, hintText).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1)
 			})
 		}

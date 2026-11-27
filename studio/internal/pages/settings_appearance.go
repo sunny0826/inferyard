@@ -6,8 +6,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 type appearanceOption struct {
@@ -17,9 +17,9 @@ type appearanceOption struct {
 }
 
 var appearanceOptions = []appearanceOption{
-	{value: core.ThemeSystem, labelKey: "settings.appearance.system", icon: lucide.Monitor},
-	{value: core.ThemeLight, labelKey: "settings.appearance.light", icon: lucide.Sun},
-	{value: core.ThemeDark, labelKey: "settings.appearance.dark", icon: lucide.Moon},
+	{value: core.ThemeSystem, labelKey: "settings.appearance.system", icon: reicon.Monitor},
+	{value: core.ThemeLight, labelKey: "settings.appearance.light", icon: reicon.Sun},
+	{value: core.ThemeDark, labelKey: "settings.appearance.dark", icon: reicon.Moon},
 }
 
 func themeFromSettings(v core.SettingsResponse) string {
@@ -148,7 +148,7 @@ func (s *viewState) appearanceOptionTile(c *ui.Context, item ui.Element, opt app
 					AlignItems(ui.Center).Justify(ui.Center)
 				if active {
 					checkCircle.Background(t.Color.Accent).Children(func() {
-						components.Icon(c, lucide.Check).Size(10, 10).TextColor(t.Color.FgOnAccent)
+						components.Icon(c, reicon.Check).Size(10, 10).TextColor(t.Color.FgOnAccent)
 					})
 				} else {
 					checkCircle.Border(1.5, t.Color.BorderStrong)

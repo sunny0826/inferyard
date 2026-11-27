@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
 	"path/filepath"
@@ -368,7 +368,7 @@ func (w *viewState) runViewWithBar(c *ui.Context, embedBar bool) {
 			if w.model != "" {
 				modelIconBox(c, w.modelIconHint(w.model), 30, t.Radius.SM)
 			} else {
-				components.Icon(c, lucide.Play).Size(15, 15).TextColor(stateColor(c, stateActive))
+				components.Icon(c, reicon.Play).Size(15, 15).TextColor(stateColor(c, stateActive))
 			}
 			if bundleName := emptyText(task.Bundle); bundleName != "" {
 				ui.Text(c, bundleName).Bold().FontSize(t.Type.Section).TextColor(t.Color.FgPrimary).SingleLine()

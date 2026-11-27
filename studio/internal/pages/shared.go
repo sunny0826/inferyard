@@ -6,8 +6,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
 )
@@ -59,7 +59,7 @@ func warningBanner(c *ui.Context, message string) {
 	if message == "" {
 		return
 	}
-	stateBanner(c, stateWarning, lucide.TriangleAlert, func(foreground ui.Color) {
+	stateBanner(c, stateWarning, reicon.TriangleAlert, func(foreground ui.Color) {
 		ui.Text(c, message).Role(ui.RoleStatus).TextColor(foreground)
 	})
 }

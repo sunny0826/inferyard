@@ -55,16 +55,16 @@ type hoverCoordinator struct {
 	suppressedCount                int
 	prevSuppressedCount            int
 
-	prevShown                  bool
-	prevAnchorID, prevGroupID  uint64
-	prevRect                   ui.Rect
-	prevText                   string
-	lastShownAt                time.Time
-	lastShownGroupID           uint64
-	hoverID, hoverGroupID      uint64
-	hoverSince, focusSince     time.Time
-	focusID, dismissedID       uint64
-	touchID                    uint64
+	prevShown                 bool
+	prevAnchorID, prevGroupID uint64
+	prevRect                  ui.Rect
+	prevText                  string
+	lastShownAt               time.Time
+	lastShownGroupID          uint64
+	hoverID, hoverGroupID     uint64
+	hoverSince, focusSince    time.Time
+	focusID, dismissedID      uint64
+	touchID                   uint64
 }
 
 func frameNow(c *ui.Context) time.Time {

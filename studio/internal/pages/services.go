@@ -6,8 +6,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/inferyard"
 )
 
@@ -179,7 +179,7 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 				}
 				copyPill.Children(func() {
 					ui.Text(c, pillLabel).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
-					components.Icon(c, lucide.Copy).Size(12, 12).TextColor(t.Color.FgTertiary)
+					components.Icon(c, reicon.Copy).Size(12, 12).TextColor(t.Color.FgTertiary)
 				})
 			}
 		})
@@ -231,17 +231,17 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 		}
 
 		studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
-			if primaryIconButton(c, lucide.Gauge, tr(c, "services.card.action.benchmark")).Clicked() {
+			if primaryIconButton(c, reicon.Gauge, tr(c, "services.card.action.benchmark")).Clicked() {
 				s.startBenchmarkForManagedService(state)
 			}
 			if canOpen {
-				if outlineIconButton(c, lucide.ExternalLink, tr(c, "services.card.action.open_web")).Clicked() {
+				if outlineIconButton(c, reicon.ExternalLink, tr(c, "services.card.action.open_web")).Clicked() {
 					s.openEngineWebUI(c, uiURL)
 				}
 			}
 			if hasLocal {
 				usageLabel := tr(c, "services.card.action.usage")
-				usageBtn := outlineIconButton(c, lucide.Code, usageLabel)
+				usageBtn := outlineIconButton(c, reicon.Code, usageLabel)
 				if multi {
 					usageBtn.Label(usageLabel + " · " + modelName)
 				}
@@ -255,7 +255,7 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 			}
 			if state.Origin == core.EngineOriginStandalone || s.serveSupported || s.preview != nil {
 				paramsLabel := tr(c, "services.card.action.params")
-				paramsBtn := outlineIconButton(c, lucide.SlidersHorizontal, paramsLabel)
+				paramsBtn := outlineIconButton(c, reicon.SlidersHorizontal, paramsLabel)
 				if multi {
 					paramsBtn.Label(paramsLabel + " · " + modelName)
 				}
@@ -265,7 +265,7 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 			}
 			if state.LogPath != "" {
 				logLabel := tr(c, "services.card.action.log")
-				logBtn := outlineIconButton(c, lucide.FileText, logLabel)
+				logBtn := outlineIconButton(c, reicon.FileText, logLabel)
 				if multi {
 					logBtn.Label(logLabel + " · " + modelName)
 				}
@@ -285,7 +285,7 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 				if stopReason != "" {
 					tooltipLabel = ""
 				}
-				btn := dangerIconButton(c, lucide.Square, tooltipLabel).Label(stopLabel).Disabled(stopDisabled)
+				btn := dangerIconButton(c, reicon.Square, tooltipLabel).Label(stopLabel).Disabled(stopDisabled)
 				if multi {
 					btn.Label(stopLabel + " · " + modelName)
 				}
@@ -313,7 +313,7 @@ func (s *viewState) renderOrphanedServiceCard(c *ui.Context, state core.EngineSt
 	svcKey := serviceKey(state)
 	noticeBanner(c, noticeBannerOptions{
 		Kind:    stateWarning,
-		Icon:    lucide.CircleAlert,
+		Icon:    reicon.CircleAlert,
 		Title:   tr(c, "services.orphan.title"),
 		Message: tr(c, "engine.service.orphan_notice"),
 		Details: func() {
@@ -360,19 +360,19 @@ func (s *viewState) renderFailedManagedCard(c *ui.Context) {
 	state := s.engineState
 	noticeBanner(c, noticeBannerOptions{
 		Kind:  stateDanger,
-		Icon:  lucide.CircleAlert,
+		Icon:  reicon.CircleAlert,
 		Title: tr(c, "services.failed.title"),
 		Details: func() {
 			errorView(c, state.Error)
 		},
 		Actions: func() {
 			if s.canStartManagedEngine() {
-				if primaryIconButton(c, lucide.RotateCw, tr(c, "services.card.action.retry")).Clicked() {
+				if primaryIconButton(c, reicon.RotateCw, tr(c, "services.card.action.retry")).Clicked() {
 					s.startManagedEngine()
 				}
 			}
 			if state.LogPath != "" {
-				if outlineIconButton(c, lucide.FileText, tr(c, "services.card.action.log")).Clicked() {
+				if outlineIconButton(c, reicon.FileText, tr(c, "services.card.action.log")).Clicked() {
 					s.openEngineCardLog(state.LogPath)
 				}
 			}
@@ -383,7 +383,7 @@ func (s *viewState) renderFailedManagedCard(c *ui.Context) {
 func (s *viewState) renderIdleManagedCard(c *ui.Context) {
 	t := tokens(c)
 	emptyGuideCard(c, emptyGuideOptions{
-		Icon:        lucide.Server,
+		Icon:        reicon.Server,
 		Title:       tr(c, "services.empty.title"),
 		Description: tr(c, "services.empty.desc"),
 		Surface:     emptySunken,
@@ -458,10 +458,10 @@ func (s *viewState) renderDiscoveredServiceCard(c *ui.Context, service inferyard
 			})
 			studioTooltipGroup(c, ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row), func() {
 				if validURL, ok := validLoopbackURL(endpoint.URL); ok {
-					if outlineIconButton(c, lucide.Copy, tr(c, "services.discovered.copy_url")).Clicked() {
+					if outlineIconButton(c, reicon.Copy, tr(c, "services.discovered.copy_url")).Clicked() {
 						s.copyEngineEndpoint(c, validURL)
 					}
-					if outlineIconButton(c, lucide.Code, tr(c, "services.discovered.usage")).Clicked() {
+					if outlineIconButton(c, reicon.Code, tr(c, "services.discovered.usage")).Clicked() {
 						targetModel := name
 						if len(endpoint.Models) > 0 && strings.TrimSpace(endpoint.Models[0]) != "" {
 							targetModel = endpoint.Models[0]
@@ -469,7 +469,7 @@ func (s *viewState) renderDiscoveredServiceCard(c *ui.Context, service inferyard
 						s.openServiceUsageDrawer(validURL, targetModel, name)
 					}
 				}
-				if outlineIconButton(c, lucide.Gauge, tr(c, "services.discovered.benchmark")).Clicked() {
+				if outlineIconButton(c, reicon.Gauge, tr(c, "services.discovered.benchmark")).Clicked() {
 					s.startBenchmarkForDiscoveredService(service, endpoint)
 				}
 			})

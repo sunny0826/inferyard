@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/inferyard"
 )
 
@@ -95,22 +95,22 @@ func (s *viewState) managedServiceView(c *ui.Context) {
 	if s.managedServiceActive() {
 		studioTooltipGroup(c, ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row), func() {
 			if _, ok := validLoopbackURL(state.Endpoint); ok {
-				outlineIconButton(c, lucide.Copy, tr(c, "engine.action.copy_endpoint")).OnClick(func() {
+				outlineIconButton(c, reicon.Copy, tr(c, "engine.action.copy_endpoint")).OnClick(func() {
 					s.copyEngineEndpoint(c, state.Endpoint)
 				})
 			}
 			if _, canOpen, _ := engineWebUIInfo(state); canOpen {
-				outlineIconButton(c, lucide.ExternalLink, tr(c, "engine.action.open_webui")).OnClick(func() {
+				outlineIconButton(c, reicon.ExternalLink, tr(c, "engine.action.open_webui")).OnClick(func() {
 					s.openEngineWebUI(c, state.Endpoint)
 				})
 			}
 			if state.LogPath != "" {
-				outlineIconButton(c, lucide.FileText, tr(c, "engine.action.open_log")).OnClick(func() {
+				outlineIconButton(c, reicon.FileText, tr(c, "engine.action.open_log")).OnClick(func() {
 					s.openEngineCardLog(state.LogPath)
 				})
 			}
 			runActive := s.roundWorkActive()
-			dangerIconButton(c, lucide.Square, tr(c, "models.serve.action.stop")).Disabled(state.State == "stopping" || runActive || s.busy).OnClick(s.stopStandaloneService)
+			dangerIconButton(c, reicon.Square, tr(c, "models.serve.action.stop")).Disabled(state.State == "stopping" || runActive || s.busy).OnClick(s.stopStandaloneService)
 		})
 	}
 }

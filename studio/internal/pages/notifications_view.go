@@ -6,7 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -52,7 +52,7 @@ func (s *viewState) notificationBell(c *ui.Context, maxCanvasWidth float32) {
 				if unread > 0 || nc.bellOpen || anchor.Hovered() {
 					iconColor = t.Color.FgPrimary
 				}
-				components.Icon(c, lucide.Bell).Size(16, 16).TextColor(iconColor).Role(ui.RoleNone)
+				components.Icon(c, reicon.Bell).Size(16, 16).TextColor(iconColor).Role(ui.RoleNone)
 				if unread > 0 {
 					countText := fmt.Sprintf("%d", unread)
 					if unread > 99 {
@@ -108,7 +108,7 @@ func (s *viewState) notificationInboxPanel(c *ui.Context) {
 				Padding(t.Density.Page, t.Density.Section).Gap(t.Density.Row).Children(func() {
 				ui.Box(c).Size(36, 36).Radius(t.Radius.Full).Background(t.Color.Sunken).
 					AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-					components.Icon(c, lucide.Bell).Size(16, 16).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
+					components.Icon(c, reicon.Bell).Size(16, 16).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
 				})
 				ui.Text(c, tr(c, "notif.empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			})

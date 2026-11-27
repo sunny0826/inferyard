@@ -6,7 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 func card(c *ui.Context, title string, fn func()) {
@@ -57,7 +57,7 @@ func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 					ui.Box(c).Size(20, 20).Radius(t.Radius.Full).Shrink(0).
 						Background(t.Color.Success.SubtleBg).Border(1, t.Color.Success.Border).
 						AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-						components.Icon(c, lucide.Check).Size(12, 12).TextColor(t.Color.Success.Fg)
+						components.Icon(c, reicon.Check).Size(12, 12).TextColor(t.Color.Success.Fg)
 					})
 					ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).SingleLine()
 				})
@@ -376,7 +376,7 @@ func (s *viewState) subpageHeader(c *ui.Context, title, backLabel string, onBack
 			}
 		}
 		if backLabel != "" && onBack != nil {
-			if outlineIconButton(c, lucide.ArrowLeft, backLabel).Clicked() {
+			if outlineIconButton(c, reicon.ArrowLeft, backLabel).Clicked() {
 				onBack()
 			}
 		}

@@ -6,8 +6,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -165,7 +165,7 @@ func engineHeaderActionButton(c *ui.Context, opts engineHeaderActionOptions) ui.
 				case opts.action == "stop":
 					ui.Box(c).Size(8, 8).Radius(2).Background(iconFg)
 				default:
-					components.Icon(c, lucide.Play).Size(11, 11).TextColor(iconFg)
+					components.Icon(c, reicon.Play).Size(11, 11).TextColor(iconFg)
 				}
 				ui.Text(c, labelText).Bold().FontSize(t.Type.Caption).TextColor(fg).SingleLine()
 			})

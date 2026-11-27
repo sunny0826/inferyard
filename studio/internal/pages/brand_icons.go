@@ -6,7 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 func isBrandTokenRune(r rune) bool {
@@ -141,7 +141,7 @@ func renderBrandEngineIcon(c *ui.Context, engineName string, size float32, tint 
 	svg, colorImage := resolveBrandEngineIcon(engineName)
 	switch {
 	case svg == nil:
-		components.Icon(c, lucide.Server).Size(size, size).TextColor(tint)
+		components.Icon(c, reicon.Server).Size(size, size).TextColor(tint)
 	case colorImage:
 		ui.Image(c, svg).Size(size, size).TextColor(tint)
 	default:
@@ -262,9 +262,9 @@ func inlineDangerButton(c *ui.Context, label string) ui.Element {
 
 func chevronBox(c *ui.Context, expanded bool) {
 	t := tokens(c)
-	chev := lucide.ChevronRight
+	chev := reicon.ChevronRight
 	if expanded {
-		chev = lucide.ChevronDown
+		chev = reicon.ChevronDown
 	}
 	ui.Box(c).Size(20, 20).Shrink(0).AlignSelf(ui.Center).
 		AlignItems(ui.Center).Justify(ui.Center).Children(func() {

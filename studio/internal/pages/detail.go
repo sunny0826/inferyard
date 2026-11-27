@@ -5,8 +5,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -42,15 +42,15 @@ func runTaskStateKind(task core.RunTask) stateKind {
 func runTaskIcon(kind stateKind) func() *ui.SVG {
 	switch kind {
 	case stateActive:
-		return lucide.Activity
+		return reicon.Activity
 	case stateSuccess:
-		return lucide.CircleCheck
+		return reicon.CircleCheck
 	case stateDanger:
-		return lucide.CircleAlert
+		return reicon.CircleAlert
 	case stateWarning:
-		return lucide.TriangleAlert
+		return reicon.TriangleAlert
 	default:
-		return lucide.FileText
+		return reicon.FileText
 	}
 }
 
@@ -121,7 +121,7 @@ func (s *viewState) detailView(c *ui.Context) {
 		runPathRaw := emptyText(t.RunPath)
 		applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tok.Density.Row).
 			Padding(tok.Density.Row, tok.Density.Stack), materialSunken).Children(func() {
-			components.Icon(c, lucide.Folder).Size(14, 14).TextColor(tok.Color.FgSecondary).Shrink(0)
+			components.Icon(c, reicon.Folder).Size(14, 14).TextColor(tok.Color.FgSecondary).Shrink(0)
 			disp := trf(c, "detail.run_dir", "path", displayName(text(t.RunPath)))
 			pathEl := ui.Text(c, disp).
 				FontSize(tok.Type.Caption).TextColor(tok.Color.FgSecondary).Grow(1).MinWidth(0).SingleLine().TruncateMiddle().Selectable()
@@ -163,7 +163,7 @@ func (s *viewState) detailProgressCard(c *ui.Context, d *core.RunTaskDetail) {
 			if elapsed != "" {
 				applyMaterial(c, ui.Row(c).AlignItems(ui.Center).Gap(tok.Density.Tight).
 					Padding(tok.Density.Hairline, tok.Density.Row), materialSunken).Children(func() {
-					components.Icon(c, lucide.Clock).Size(12, 12).TextColor(tok.Color.FgSecondary)
+					components.Icon(c, reicon.Clock).Size(12, 12).TextColor(tok.Color.FgSecondary)
 					ui.Text(c, elapsed).FontSize(tok.Type.Caption).FontFeatures("tnum").TextColor(tok.Color.FgPrimary).SingleLine()
 				})
 			}
@@ -227,7 +227,7 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 		if isRunning {
 			ambientLifecycleDot(c, tok.Color.Active, true)
 		} else {
-			components.Icon(c, lucide.Play).Size(13, 13).TextColor(tok.Color.FgTertiary)
+			components.Icon(c, reicon.Play).Size(13, 13).TextColor(tok.Color.FgTertiary)
 		}
 		ui.Text(c, trf(c, "detail.current_case", "case_id", text(p.CurrentCaseId))).
 			FontSize(tok.Type.Caption).FontFeatures("tnum").TextColor(tok.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine()
@@ -249,10 +249,10 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 			ui.Text(c, trf(c, "detail.table.page_status", "page", s.casesTablePage+1, "totalPages", pages, "count", totalCases)).
 				FontSize(tok.Type.Caption).FontFeatures("tnum").TextColor(tok.Color.FgSecondary)
 			ui.Box(c).Grow(1)
-			if outlineIconButton(c, lucide.ArrowLeft, tr(c, "detail.table.prev_page")).Disabled(s.casesTablePage == 0).Clicked() {
+			if outlineIconButton(c, reicon.ArrowLeft, tr(c, "detail.table.prev_page")).Disabled(s.casesTablePage == 0).Clicked() {
 				s.casesTablePage--
 			}
-			if outlineIconButton(c, lucide.ArrowRight, tr(c, "detail.table.next_page")).Disabled(s.casesTablePage == pages-1).Clicked() {
+			if outlineIconButton(c, reicon.ArrowRight, tr(c, "detail.table.next_page")).Disabled(s.casesTablePage == pages-1).Clicked() {
 				s.casesTablePage++
 			}
 		})
@@ -316,7 +316,7 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 				}
 				ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tok.Density.Tight).Children(func() {
 					ui.Text(c, errText).TextColor(errColor).Grow(1).MinWidth(0).SingleLine().Selectable()
-					components.Icon(c, lucide.ChevronRight).Size(14, 14).TextColor(tok.Color.FgTertiary).Role(ui.RoleNone)
+					components.Icon(c, reicon.ChevronRight).Size(14, 14).TextColor(tok.Color.FgTertiary).Role(ui.RoleNone)
 				})
 				return
 			}

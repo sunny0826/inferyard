@@ -9,8 +9,8 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -234,7 +234,7 @@ func (s *viewState) modelStorageAndRootsView(c *ui.Context) {
 	t := tokens(c)
 	ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-			components.Icon(c, lucide.HardDrive).Size(14, 14).TextColor(t.Color.FgSecondary)
+			components.Icon(c, reicon.HardDrive).Size(14, 14).TextColor(t.Color.FgSecondary)
 			ui.Text(c, modelsStorageSummaryText(s.registry)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 		})
 		primaryRoot := emptyText(s.settings.Effective.ModelsRoot)
@@ -249,7 +249,7 @@ func (s *viewState) modelStorageAndRootsView(c *ui.Context) {
 					c.Key("model-root-" + dir)
 					ui.Row(c).FillWidth().MinHeight(t.Control.SM).AlignItems(ui.Center).Gap(t.Density.Row).
 						Padding(t.Density.Hairline, 0).Children(func() {
-						components.Icon(c, lucide.Folder).Size(14, 14).TextColor(t.Color.FgSecondary)
+						components.Icon(c, reicon.Folder).Size(14, 14).TextColor(t.Color.FgSecondary)
 						dirText := ui.Text(c, dir).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine().TruncateMiddle()
 						studioTooltipIfTruncated(c, dirText, dir, dir, t.Type.Caption, false)
 						if s.isExtraModelRootDir(dir, primaryRoot) {
@@ -334,7 +334,7 @@ func (s *viewState) installedEngineRow(c *ui.Context, eng core.EngineAsset, pend
 		studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			s.renderEngineUpdateAction(c, eng)
 			if eng.Kind == "local_installation" && !eng.Managed {
-				outlineIconButton(c, lucide.Unlink, trf(c, "models.action.unlink_engine_label", "name", eng.Name)).Size(t.Control.MD, t.Control.MD).Disabled(s.busy).OnClick(func() {
+				outlineIconButton(c, reicon.Unlink, trf(c, "models.action.unlink_engine_label", "name", eng.Name)).Size(t.Control.MD, t.Control.MD).Disabled(s.busy).OnClick(func() {
 					s.removeInstallationWithUndo(eng.Path)
 				})
 			}
@@ -346,12 +346,12 @@ func (s *viewState) installedEngineRow(c *ui.Context, eng core.EngineAsset, pend
 func (s *viewState) assetRowActions(c *ui.Context, kind, name, path, format, family string, sizeBytes *int64, deletable bool, pending *pendingAssetDelete) {
 	t := tokens(c)
 	if path != "" || s.preview != nil {
-		outlineIconButton(c, lucide.FolderOpen, trf(c, "models.action.open_dir_label", "name", name)).Size(t.Control.MD, t.Control.MD).Disabled(s.busy).OnClick(func() {
+		outlineIconButton(c, reicon.FolderOpen, trf(c, "models.action.open_dir_label", "name", name)).Size(t.Control.MD, t.Control.MD).Disabled(s.busy).OnClick(func() {
 			s.revealAsset(kind, name)
 		})
 	}
 	if deletable {
-		if dangerIconButton(c, lucide.Trash, trf(c, "models.action.delete_label", "name", name)).Size(t.Control.MD, t.Control.MD).Disabled(s.busy || pending.inspecting).Clicked() {
+		if dangerIconButton(c, reicon.Trash, trf(c, "models.action.delete_label", "name", name)).Size(t.Control.MD, t.Control.MD).Disabled(s.busy || pending.inspecting).Clicked() {
 			s.openDeleteConfirm(pending, kind, name, path, format, family, sizeBytes)
 		}
 	}

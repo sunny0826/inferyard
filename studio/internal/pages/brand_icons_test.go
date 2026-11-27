@@ -81,10 +81,10 @@ func TestBrandSVGsHaveNoUnsupportedFeaturesAndRenderPixels(t *testing.T) {
 
 func TestResolveBrandEngineIcon(t *testing.T) {
 	cases := []struct {
-		input      string
-		wantSVG    *ui.SVG
-		wantColor  bool
-		wantKind   stateKind
+		input     string
+		wantSVG   *ui.SVG
+		wantColor bool
+		wantKind  stateKind
 	}{
 		{"llama.cpp", svgBrandLlamaCpp, false, stateInfo},
 		{"llama-cpp", svgBrandLlamaCpp, false, stateInfo},

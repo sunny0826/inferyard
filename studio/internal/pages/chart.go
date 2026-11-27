@@ -11,8 +11,8 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/components/chart"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 type resourceSeries struct {
@@ -152,7 +152,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 		if len(series) == 0 {
 			applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
 				Padding(t.Density.Stack, t.Density.Section), materialSunken).Children(func() {
-				components.Icon(c, lucide.Activity).Size(14, 14).TextColor(t.Color.FgTertiary)
+				components.Icon(c, reicon.Activity).Size(14, 14).TextColor(t.Color.FgTertiary)
 				ui.Text(c, tr(c, "chart.resource.waiting")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			})
 			return
@@ -301,10 +301,10 @@ func (s *viewState) resourceTable(c *ui.Context, samples []core.ResourceSample) 
 			ui.Text(c, trf(c, "chart.table.page_status", "page", s.resourceTablePage+1, "totalPages", pages, "count", len(samples))).
 				FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 			ui.Box(c).Grow(1)
-			if outlineIconButton(c, lucide.ArrowLeft, tr(c, "chart.table.prev_page")).Disabled(s.resourceTablePage == 0).Clicked() {
+			if outlineIconButton(c, reicon.ArrowLeft, tr(c, "chart.table.prev_page")).Disabled(s.resourceTablePage == 0).Clicked() {
 				s.resourceTablePage--
 			}
-			if outlineIconButton(c, lucide.ArrowRight, tr(c, "chart.table.next_page")).Disabled(s.resourceTablePage == pages-1).Clicked() {
+			if outlineIconButton(c, reicon.ArrowRight, tr(c, "chart.table.next_page")).Disabled(s.resourceTablePage == pages-1).Clicked() {
 				s.resourceTablePage++
 			}
 		})

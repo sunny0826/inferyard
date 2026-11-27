@@ -8,9 +8,9 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 func previewDesignSystemScene(s *viewState) {
@@ -209,10 +209,10 @@ func (p *previewSession) dsButtonsCard(c *ui.Context, pal paletteColors) {
 		})
 
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			leadingIconButton(c, components.ButtonPrimary, lucide.Play, tr(c, "preview.ds.btn.icon_start"))
-			leadingIconButton(c, components.ButtonSecondary, lucide.RefreshCw, tr(c, "preview.ds.btn.icon_refresh"))
-			trailingIconButton(c, components.ButtonOutline, tr(c, "preview.ds.btn.icon_external"), lucide.ArrowUpRight)
-			trailingIconButton(c, components.ButtonGhost, tr(c, "preview.ds.btn.icon_next"), lucide.ChevronRight)
+			leadingIconButton(c, components.ButtonPrimary, reicon.Play, tr(c, "preview.ds.btn.icon_start"))
+			leadingIconButton(c, components.ButtonSecondary, reicon.RefreshCw, tr(c, "preview.ds.btn.icon_refresh"))
+			trailingIconButton(c, components.ButtonOutline, tr(c, "preview.ds.btn.icon_external"), reicon.ArrowUpRight)
+			trailingIconButton(c, components.ButtonGhost, tr(c, "preview.ds.btn.icon_next"), reicon.ChevronRight)
 		})
 
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {

@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -141,7 +141,7 @@ func (s *viewState) engineFamilyRow(c *ui.Context, fam core.EngineFamilyCatalog,
 			}
 		})
 		studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
-			outlineIconButton(c, lucide.Info, trf(c, "downloads.engines.versions_urls_label", "id", fam.ID)).Label(trf(c, "downloads.engines.versions_urls_label", "id", fam.ID)).OnClick(func() {
+			outlineIconButton(c, reicon.Info, trf(c, "downloads.engines.versions_urls_label", "id", fam.ID)).Label(trf(c, "downloads.engines.versions_urls_label", "id", fam.ID)).OnClick(func() {
 				if fam.ID == "polystrata" {
 					s.openPolystrataConfigDrawer(fam.ID, rel.ID, build.Platform, build.ID)
 					return
@@ -152,30 +152,30 @@ func (s *viewState) engineFamilyRow(c *ui.Context, fam core.EngineFamilyCatalog,
 			switch {
 			case build.AcquireMode == core.EngineAcquireManagedSetup && (build.Platform == hostPlatform || build.Platform == "any"):
 				if s.downloadActive("polystrata") || releaseInstalled {
-					primaryIconButton(c, lucide.Download, trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(true)
+					primaryIconButton(c, reicon.Download, trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(true)
 				} else {
-					primaryIconButton(c, lucide.Download, trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(s.busy).OnClick(func() {
+					primaryIconButton(c, reicon.Download, trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(s.busy).OnClick(func() {
 						s.openPolystrataConfigDrawer(fam.ID, rel.ID, build.Platform, build.ID)
 					})
 				}
 			case build.CanManagedVenvInstallOn(hostPlatform):
 				if s.isEngineFamilyDownloading(fam) || releaseInstalled {
-					primaryIconButton(c, lucide.Download, trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(true)
+					primaryIconButton(c, reicon.Download, trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(true)
 				} else {
-					primaryIconButton(c, lucide.Download, trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(s.busy).OnClick(func() {
+					primaryIconButton(c, reicon.Download, trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(s.busy).OnClick(func() {
 						s.acquireManagedEngine(fam, rel, build)
 					})
 				}
 			case build.CanDirectDownloadOn(hostPlatform):
 				if s.isEngineSourceDownloading(build.PrimaryURL()) || releaseInstalled {
-					primaryIconButton(c, lucide.Download, trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(true)
+					primaryIconButton(c, reicon.Download, trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(true)
 				} else {
-					primaryIconButton(c, lucide.Download, trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(s.busy).OnClick(func() {
+					primaryIconButton(c, reicon.Download, trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(s.busy).OnClick(func() {
 						s.acquireEngine(build.PrimaryURL(), "")
 					})
 				}
 			case build.PrimaryURL() != "":
-				outlineIconButton(c, lucide.ExternalLink, trf(c, "downloads.action.open_download_page_label", "id", fam.ID)).OnClick(func() {
+				outlineIconButton(c, reicon.ExternalLink, trf(c, "downloads.action.open_download_page_label", "id", fam.ID)).OnClick(func() {
 					s.openDownloadURL(c, fam.Name, build.PrimaryURL())
 				})
 			}
@@ -208,10 +208,10 @@ func (s *viewState) externalEngineAppRow(c *ui.Context, fam core.EngineFamilyCat
 			}
 		})
 		studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
-			outlineIconButton(c, lucide.ExternalLink, trf(c, "downloads.engines.open_website_label", "id", fam.ID)).OnClick(func() {
+			outlineIconButton(c, reicon.ExternalLink, trf(c, "downloads.engines.open_website_label", "id", fam.ID)).OnClick(func() {
 				s.openDownloadURL(c, fam.Name, build.PrimaryURL())
 			})
-			outlineIconButton(c, lucide.Link, trf(c, "downloads.engines.link_label", "id", fam.ID)).OnClick(func() {
+			outlineIconButton(c, reicon.Link, trf(c, "downloads.engines.link_label", "id", fam.ID)).OnClick(func() {
 				s.openLocalEngineWizard(fam.ID)
 			})
 		})
@@ -247,7 +247,7 @@ func (s *viewState) otherPlatformEngineRow(c *ui.Context, fam core.EngineFamilyC
 			}
 		})
 		ui.Row(c).Shrink(0).AlignItems(ui.Center).Children(func() {
-			outlineIconButton(c, lucide.Info, trf(c, "downloads.engines.versions_urls_label", "id", fam.ID)).Label(trf(c, "downloads.engines.versions_urls_label", "id", fam.ID)).OnClick(func() {
+			outlineIconButton(c, reicon.Info, trf(c, "downloads.engines.versions_urls_label", "id", fam.ID)).Label(trf(c, "downloads.engines.versions_urls_label", "id", fam.ID)).OnClick(func() {
 				st.openEngineDrawer(fam.ID, rel.ID, firstPlatform, firstBuild.ID)
 			})
 		})

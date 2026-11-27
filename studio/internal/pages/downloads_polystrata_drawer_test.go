@@ -20,7 +20,9 @@ func (p *drawerPreviewStub) report(string) (*core.ReportIndex, *core.ApiError) {
 func (p *drawerPreviewStub) detail(string) *core.RunTaskDetail                 { return nil }
 func (p *drawerPreviewStub) detectedEngines() []inferyard.DetectedEngine       { return nil }
 func (p *drawerPreviewStub) downloadLogTail(string) string                     { return "" }
-func (p *drawerPreviewStub) resolveModelURL(string) inferyard.ModelResolve     { return inferyard.ModelResolve{} }
+func (p *drawerPreviewStub) resolveModelURL(string) inferyard.ModelResolve {
+	return inferyard.ModelResolve{}
+}
 
 func TestPolystrataDrawerBlocksIncompatibleHardwareSnapshot(t *testing.T) {
 	s := testState()

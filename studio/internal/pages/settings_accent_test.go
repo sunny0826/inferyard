@@ -7,8 +7,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 func TestAccentSettingsDefaultPersistAndRejectInvalid(t *testing.T) {
@@ -53,8 +53,8 @@ func TestAccentSettingsDefaultPersistAndRejectInvalid(t *testing.T) {
 	iconTT := ui.NewTester(func(c *ui.Context) {
 		ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
 			primaryButton(c, "主按钮")
-			leadingIconButton(c, components.ButtonPrimary, lucide.Play, "左图标")
-			trailingIconButton(c, components.ButtonOutline, "右图标", lucide.ArrowUpRight)
+			leadingIconButton(c, components.ButtonPrimary, reicon.Play, "左图标")
+			trailingIconButton(c, components.ButtonOutline, "右图标", reicon.ArrowUpRight)
 			quietDangerButton(c, "静默危险")
 		})
 	}, 800, 200)
