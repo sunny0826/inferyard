@@ -81,6 +81,12 @@ func installedVersionFromRegistryEntry(entry registryEntry) string {
 		if ver := readInstallationVersion(entry.installation); ver != "" {
 			return ver
 		}
+	} else if entry.path != "" {
+		for _, dir := range uniqueCleanPaths([]string{filepath.Dir(entry.path), filepath.Dir(filepath.Dir(entry.path))}) {
+			if receipt, ok := readManagedEngineReceipt(dir); ok && strings.TrimSpace(receipt.Version) != "" {
+				return strings.TrimSpace(receipt.Version)
+			}
+		}
 	}
 	if entry.receipt != "" {
 		if raw, err := os.ReadFile(entry.receipt); err == nil {

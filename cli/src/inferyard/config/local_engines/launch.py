@@ -78,7 +78,7 @@ def startup(
         ], cwd
     if family == "mlx-lm":
         if standalone:
-            raise PreparationError("serve_family_unsupported")
+            return ["-m", "mlx_lm.server", "--model", str(model), *network], cwd
         entry = str(files("inferyard").joinpath("data/local_engine/mlx_server.py"))
         prefix = [entry]
         args = ["--model", str(model), "--max-model-len", str(context)]

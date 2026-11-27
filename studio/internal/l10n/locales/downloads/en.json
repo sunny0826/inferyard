@@ -64,6 +64,7 @@
   "downloads.engine_drawer.stable_only": "Stable only",
   "downloads.engine_drawer.title": "Engine Details",
   "downloads.engine_drawer.version_list": "Version list",
+  "downloads.engines.all_installed": "All catalog engines for this platform are installed.",
   "downloads.engines.configure_install": "Configure & Install",
   "downloads.engines.custom_url_fold": "Custom Engine URL",
   "downloads.engines.custom_url_label": "Engine Archive URL",

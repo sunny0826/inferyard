@@ -166,144 +166,146 @@ func pageID(page string) string {
 
 type viewState struct {
 	settingsViewState
-	speed                                                                               *speedWorkspace
-	preview                                                                             previewMode
-	lastEngineVerification                                                              time.Time
-	engineVerifyPending, skipAutoModelAdopt                                             bool
-	discoveryCLI                                                                        string
-	binding                                                                             bool
-	bindingBundle                                                                       string
-	discovery                                                                           inferyard.ServiceDiscovery
-	discoveryError                                                                      *core.ApiError
-	discovering, discoveryLoaded                                                        bool
-	registry                                                                            core.Registry
-	checks                                                                              core.EngineCheckOverview
-	serveSupported, serveProbing                                                        bool
-	standalone                                                                          standaloneServeState
-	recentServices                                                                      []core.ServicePreset
-	exitedNotice                                                                        *core.ServiceExitNotice
-	managedServices                                                                     []core.EngineState
-	exitedNotices                                                                       []core.ServiceExitNotice
-	dismissingNoticeIDs                                                                 map[string]bool
-	dismissingAllNotices                                                                bool
-	memorySummary                                                                       core.ServiceMemoryBudget
-	hwMemoryCache                                                                       uiHardwareMemoryCache
-	expandedServices                                                                    map[string]bool
-	serviceLogTargetID                                                                  string
-	serviceUsage                                                                        serviceUsageDrawerState
-	serviceParams                                                                       serviceParamsDrawerState
-	quitDialog                                                                          quitServiceDialogState
-	extCheckDialog                                                                      extConnCheckDialogState
-	pendingExclusivity                                                                  string
-	pendingExclusivityModel                                                             string
-	pendingExclusivityEngine                                                            string
-	pendingExclusivityMode                                                              string
-	modelEvidence                                                                       map[string]core.ModelEvidenceSummary
-	engineUpdates                                                                       map[string]core.EngineUpdateInfo
-	engineUpdateStatus                                                                  core.EngineUpdatesStatus
-	engineUpdateNotifiedSig                                                             string
-	engineUpdateCheckFn                                                                 func(context.Context) (core.EngineUpdatesStatus, *core.ApiError)
-	engineUpdateRunFn                                                                   func(string) (core.DownloadTask, *core.ApiError)
-	reportExclusivities                                                                 map[string]string
-	probeServiceConnFunc                                                                func(context.Context, string) core.ExternalConnProbe
-	probeEndpointConnFunc                                                               func(context.Context, string) core.ExternalConnProbe
-	installationPath, localPID, localEndpoint, localBindingTask                         string
-	wizardOpenRequested                                                                 bool
-	wizardPresetFamily                                                                  string
-	model                                                                               string
-	announcedPage, promptPage                                                           string
-	announcedErrors                                                                     map[string]bool
-	refreshing                                                                          bool
+	speed                                                                                                   *speedWorkspace
+	preview                                                                                                 previewMode
+	lastEngineVerification                                                                                  time.Time
+	engineVerifyPending, skipAutoModelAdopt                                                                 bool
+	discoveryCLI                                                                                            string
+	binding                                                                                                 bool
+	bindingBundle                                                                                           string
+	discovery                                                                                               inferyard.ServiceDiscovery
+	discoveryError                                                                                          *core.ApiError
+	discovering, discoveryLoaded                                                                            bool
+	registry                                                                                                core.Registry
+	checks                                                                                                  core.EngineCheckOverview
+	serveSupported, serveProbing                                                                            bool
+	standalone                                                                                              standaloneServeState
+	recentServices                                                                                          []core.ServicePreset
+	exitedNotice                                                                                            *core.ServiceExitNotice
+	managedServices                                                                                         []core.EngineState
+	exitedNotices                                                                                           []core.ServiceExitNotice
+	dismissingNoticeIDs                                                                                     map[string]bool
+	dismissingAllNotices                                                                                    bool
+	memorySummary                                                                                           core.ServiceMemoryBudget
+	hwMemoryCache                                                                                           uiHardwareMemoryCache
+	expandedServices                                                                                        map[string]bool
+	serviceLogTargetID                                                                                      string
+	serviceUsage                                                                                            serviceUsageDrawerState
+	serviceParams                                                                                           serviceParamsDrawerState
+	quitDialog                                                                                              quitServiceDialogState
+	extCheckDialog                                                                                          extConnCheckDialogState
+	pendingExclusivity                                                                                      string
+	pendingExclusivityModel                                                                                 string
+	pendingExclusivityEngine                                                                                string
+	pendingExclusivityMode                                                                                  string
+	modelEvidence                                                                                           map[string]core.ModelEvidenceSummary
+	engineUpdates                                                                                           map[string]core.EngineUpdateInfo
+	engineUpdateStatus                                                                                      core.EngineUpdatesStatus
+	engineUpdateNotifiedSig                                                                                 string
+	engineUpdateCheckFn                                                                                     func(context.Context) (core.EngineUpdatesStatus, *core.ApiError)
+	engineUpdateRunFn                                                                                       func(string) (core.DownloadTask, *core.ApiError)
+	reportExclusivities                                                                                     map[string]string
+	probeServiceConnFunc                                                                                    func(context.Context, string) core.ExternalConnProbe
+	probeEndpointConnFunc                                                                                   func(context.Context, string) core.ExternalConnProbe
+	installationPath, localPID, localEndpoint, localBindingTask                                             string
+	wizardOpenRequested                                                                                     bool
+	wizardPresetFamily                                                                                      string
+	model                                                                                                   string
+	lastCandidateModel, lastCandidateEngine                                                                 string
+	lastCandidateInit                                                                                       bool
+	announcedPage, promptPage                                                                               string
+	announcedErrors                                                                                         map[string]bool
+	refreshing                                                                                              bool
 	initDir, engine, process, bindEndpoint, candidate, cliInstallStatus, refreshFailure, refreshFailureCode string
-	openDialog                                                                          func(mygo.OpenDialogOptions) ([]string, error)
-	cancelRun                                                                           func(string) (core.RunTask, *core.ApiError)
-	stopEngineAPI                                                                       func() (core.EngineState, *core.ApiError)
-	cancelRound                                                                         func(string) (core.RunTask, *core.ApiError)
-	runTasks                                                                            func() []core.RunTask
-	updateWindow                                                                        func(func())
-	browseFailures                                                                      map[string]string
-	engineState                                                                         core.EngineState
-	startup                                                                             core.Startup
-	processes                                                                           []core.ProcessCandidate
-	runProgress                                                                         *core.RunProgress
-	ctx                                                                                 context.Context
-	service                                                                             *core.Service
-	win                                                                                 *mygo.Window
-	openedReport                                                                        *reportViewState
-	newSVGStage                                                                         func() (svgStageView, error)
-	benchmarksTab                                                                       int
-	reportsTab                                                                          int
-	refreshMu                                                                           sync.Mutex
-	bgRefresh                                                                           bgRefreshCache
-	detailMu                                                                            sync.Mutex
-	snapshotMu                                                                          sync.Mutex
-	snapshotSeq                                                                         uint64
-	appliedSnapshotSeq                                                                  uint64
-	requestedDetail                                                                     string
-	selected, detailID                                                                  string
-	libraryTab                                                                          int
-	libraryHwExpanded                                                                   bool
-	benchFlowOpen                                                                       bool
-	sidebarServiceOpen, sidebarQueueOpen, sidebarDownloadOpen                           bool
-	settings                                                                            core.SettingsResponse
-	ready                                                                               core.Readiness
-	progress                                                                            *inferyard.WorkspaceProgress
-	device                                                                              core.DeviceResponse
-	history                                                                             core.RunHistoryResponse
-	tasks                                                                               []core.RunTask
-	downloads                                                                           []core.DownloadTask
-	reports                                                                             []core.ReportSummary
-	detail                                                                              *core.RunTaskDetail
-	historyError, reportsError, detailError                                             *core.ApiError
-	loaded, hydrating, busy, settingsLoaded                                             bool
-	probingReuse                                                                        bool
-	busyAction                                                                          string
-	windowTitle                                                                         string
-	pendingToast                                                                        string
-	pendingToasts                                                                       []toastSpec
-	activeToastID                                                                       string
-	toastPhase                                                                          int
-	notifs                                                                              *notificationCenter
-	lastManualReportID                                                                  string
-	engineStartToastID                                                                  string
-	failure                                                                             *core.ApiError
-	failurePage                                                                         string
-	workspace                                                                           string
-	bindingStale                                                                        bool
-	task                                                                                benchmarkTask
-	selectedBundles                                                                     map[string]bool
-	focusedRun                                                                          string
-	taskCancel                                                                          context.CancelFunc
-	deviceChecked                                                                       string
-	newTaskPending                                                                      bool
-	pendingDestructive                                                                  destructiveRequest
-	resumeSource                                                                        *core.RunSummary
-	resumeDiscardConfirm                                                                bool
-	reportDialogOpen, reportDiscardConfirm                                              bool
-	pendingNavAction                                                                    func()
-	endpoint, pid                                                                       string
-	denied                                                                              map[string]bool
-	bindFailure                                                                         *core.ApiError
-	failedBundle                                                                        string
-	handoffFailure                                                                      *core.ApiError
-	engineFailureCleared                                                                string
-	localUsedPIDs                                                                       map[int64]bool
-	localPendingPIDs                                                                    map[string]int64
-	keepServicesOnQuit                                                                  bool
-	historyTable                                                                        pageTableState
-	historyQuery, historyStatusFilter, historyDetailPath                                string
-	downloadsUI                                                                         *downloadsUIState
-	engineCatalog                                                                       *core.EngineCatalogRegistry
-	pendingPolystrataSelection                                                          *polystrataSelectionTarget
-	reportChoices                                                                       ui.Selection[any]
-	scrolls                                                                             map[string]*ui.ScrollState
-	casesTable, samplesTable                                                            pageTableState
-	casesTablePage, resourceTablePage                                                   int
-	detailCaseID                                                                        string
-	resourceCache                                                                       resourceViewCache
-	reportLoadSeq                                                                       uint64
-	processesLoading                                                                    bool
-	processesLoadedAt                                                                   time.Time
+	openDialog                                                                                              func(mygo.OpenDialogOptions) ([]string, error)
+	cancelRun                                                                                               func(string) (core.RunTask, *core.ApiError)
+	stopEngineAPI                                                                                           func() (core.EngineState, *core.ApiError)
+	cancelRound                                                                                             func(string) (core.RunTask, *core.ApiError)
+	runTasks                                                                                                func() []core.RunTask
+	updateWindow                                                                                            func(func())
+	browseFailures                                                                                          map[string]string
+	engineState                                                                                             core.EngineState
+	startup                                                                                                 core.Startup
+	processes                                                                                               []core.ProcessCandidate
+	runProgress                                                                                             *core.RunProgress
+	ctx                                                                                                     context.Context
+	service                                                                                                 *core.Service
+	win                                                                                                     *mygo.Window
+	openedReport                                                                                            *reportViewState
+	newSVGStage                                                                                             func() (svgStageView, error)
+	benchmarksTab                                                                                           int
+	reportsTab                                                                                              int
+	refreshMu                                                                                               sync.Mutex
+	bgRefresh                                                                                               bgRefreshCache
+	detailMu                                                                                                sync.Mutex
+	snapshotMu                                                                                              sync.Mutex
+	snapshotSeq                                                                                             uint64
+	appliedSnapshotSeq                                                                                      uint64
+	requestedDetail                                                                                         string
+	selected, detailID                                                                                      string
+	libraryTab                                                                                              int
+	libraryHwExpanded                                                                                       bool
+	benchFlowOpen                                                                                           bool
+	sidebarServiceOpen, sidebarQueueOpen, sidebarDownloadOpen                                               bool
+	settings                                                                                                core.SettingsResponse
+	ready                                                                                                   core.Readiness
+	progress                                                                                                *inferyard.WorkspaceProgress
+	device                                                                                                  core.DeviceResponse
+	history                                                                                                 core.RunHistoryResponse
+	tasks                                                                                                   []core.RunTask
+	downloads                                                                                               []core.DownloadTask
+	reports                                                                                                 []core.ReportSummary
+	detail                                                                                                  *core.RunTaskDetail
+	historyError, reportsError, detailError                                                                 *core.ApiError
+	loaded, hydrating, busy, settingsLoaded                                                                 bool
+	probingReuse                                                                                            bool
+	busyAction                                                                                              string
+	windowTitle                                                                                             string
+	pendingToast                                                                                            string
+	pendingToasts                                                                                           []toastSpec
+	activeToastID                                                                                           string
+	toastPhase                                                                                              int
+	notifs                                                                                                  *notificationCenter
+	lastManualReportID                                                                                      string
+	engineStartToastID                                                                                      string
+	failure                                                                                                 *core.ApiError
+	failurePage                                                                                             string
+	workspace                                                                                               string
+	bindingStale                                                                                            bool
+	task                                                                                                    benchmarkTask
+	selectedBundles                                                                                         map[string]bool
+	focusedRun                                                                                              string
+	taskCancel                                                                                              context.CancelFunc
+	deviceChecked                                                                                           string
+	newTaskPending                                                                                          bool
+	pendingDestructive                                                                                      destructiveRequest
+	resumeSource                                                                                            *core.RunSummary
+	resumeDiscardConfirm                                                                                    bool
+	reportDialogOpen, reportDiscardConfirm                                                                  bool
+	pendingNavAction                                                                                        func()
+	endpoint, pid                                                                                           string
+	denied                                                                                                  map[string]bool
+	bindFailure                                                                                             *core.ApiError
+	failedBundle                                                                                            string
+	handoffFailure                                                                                          *core.ApiError
+	engineFailureCleared                                                                                    string
+	localUsedPIDs                                                                                           map[int64]bool
+	localPendingPIDs                                                                                        map[string]int64
+	keepServicesOnQuit                                                                                      bool
+	historyTable                                                                                            pageTableState
+	historyQuery, historyStatusFilter, historyDetailPath                                                    string
+	downloadsUI                                                                                             *downloadsUIState
+	engineCatalog                                                                                           *core.EngineCatalogRegistry
+	pendingPolystrataSelection                                                                              *polystrataSelectionTarget
+	reportChoices                                                                                           ui.Selection[any]
+	scrolls                                                                                                 map[string]*ui.ScrollState
+	casesTable, samplesTable                                                                                pageTableState
+	casesTablePage, resourceTablePage                                                                       int
+	detailCaseID                                                                                            string
+	resourceCache                                                                                           resourceViewCache
+	reportLoadSeq                                                                                           uint64
+	processesLoading                                                                                        bool
+	processesLoadedAt                                                                                       time.Time
 }
 
 func (s *viewState) work(fn func() (string, *core.ApiError)) {

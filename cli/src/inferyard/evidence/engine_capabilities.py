@@ -18,6 +18,7 @@ class EngineCapabilities:
 
 def bound_capabilities(root, manifest, *, reads=None):
     from inferyard.adapters.prism import BUILD
+    from inferyard.contracts.template_identity import matches_prism_build
 
     own_reads = reads is None
     reads = reads if reads is not None else TrialEvidence(root)
@@ -29,8 +30,19 @@ def bound_capabilities(root, manifest, *, reads=None):
         ):
             return EngineCapabilities(False, False)
         raise
+    build_info = props.get("build_info") if type(props) is dict else None
+    prism_ok = build_info == BUILD
+    if not prism_ok and isinstance(build_info, str):
+        try:
+            cfg = reads.input("config")
+        except EvidenceError:
+            cfg = None
+        if isinstance(cfg, dict):
+            eng = cfg.get("engine")
+            if isinstance(eng, dict) and eng.get("adapter") == "prism_llama_server_v1":
+                prism_ok = matches_prism_build(eng.get("release"), build_info)
     return EngineCapabilities(
-        type(props) is dict and props.get("build_info") == BUILD,
+        prism_ok,
         observation_sealed(reads, "service_properties", manifest),
     )
 

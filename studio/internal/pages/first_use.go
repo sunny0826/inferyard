@@ -84,6 +84,7 @@ func (s *viewState) adoptOnlyModel() {
 	}
 	if availCount == 1 {
 		s.model = name
+		s.reconcileEngineForModel(name)
 		return
 	}
 	if s.engine != "" {

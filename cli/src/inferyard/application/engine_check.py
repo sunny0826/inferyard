@@ -31,7 +31,11 @@ def _input_file(path, *, resolve):
 def _verify(request):
     from inferyard.config.community_assets import libraries
     from inferyard.provisioning import runtime_verification
-    from inferyard.provisioning.runtime_profiles import VERSION_PATTERN
+    from inferyard.provisioning.runtime_profiles import (
+        LLAMA_SERVER_VERSION_PATTERN,
+        VERSION_PATTERN,
+        resolve_llama_server_release,
+    )
 
     system, _ = require_platform(("Darwin", "arm64"), ("Windows", "x64"))
     if (
@@ -46,19 +50,21 @@ def _verify(request):
         library_map = libraries(engine_path, ("*.dylib",))
         if len(library_map) == 1:
             raise PreparationError("invalid_library_manifest")
+        version = runtime_verification.query_version(engine_path, LLAMA_SERVER_VERSION_PATTERN)
+        expected_release = resolve_llama_server_release(version)
+        modes = {"cpu": True, "metal": "libggml-metal.dylib" in library_map}
     else:
         profile, engine_path, _ = runtime_verification.verify_receipt(
             _input_file(request.runtime_receipt, resolve=False)
         )
         mode = profile["mode"]
-    version = runtime_verification.query_version(engine_path, VERSION_PATTERN)
-    if system == "Darwin":
-        modes = {"cpu": True, "metal": "libggml-metal.dylib" in library_map}
+        version = runtime_verification.query_version(engine_path, VERSION_PATTERN)
+        expected_release = profile["engine_release"]
     return {
         "eligible": True,
         "reason": None,
         "reported_version": _reported(version),
-        "expected_release": RELEASE,
+        "expected_release": expected_release,
         "modes": modes,
         "mode": mode,
     }

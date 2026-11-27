@@ -11,8 +11,10 @@ import jsonschema
 
 from inferyard import SCHEMA_VERSION
 from inferyard.cli import main
+from inferyard.config.local_engines.launch import startup
 from inferyard.contracts.schemas import export_schema
 from inferyard.contracts.validation import validate_document
+from inferyard.platforms.local_engines.installation import read_installation
 from inferyard.provisioning.runtime_profiles import RELEASE, load_profile, output_files
 
 
@@ -125,19 +127,8 @@ def test_serve_prepare_community_engine_and_overwrite(capsys, tmp_path):
     code, payload = _run_cli(
         capsys,
         [
-            "serve",
-            "prepare",
-            "--model",
-            str(model),
-            "--engine",
-            str(engine),
-            "--context-size",
-            "12000",
-            "--port",
-            "49001",
-            "--out",
-            str(out),
-            "--json",
+            "serve", "prepare", "--model", str(model), "--engine", str(engine),
+            "--context-size", "12000", "--port", "49001", "--out", str(out), "--json",
         ],
     )
     assert code == 0
@@ -162,19 +153,8 @@ def test_serve_prepare_community_engine_and_overwrite(capsys, tmp_path):
     code2, _ = _run_cli(
         capsys,
         [
-            "serve",
-            "prepare",
-            "--model",
-            str(model),
-            "--engine",
-            str(engine),
-            "--context-size",
-            "32768",
-            "--port",
-            "49002",
-            "--out",
-            str(out),
-            "--json",
+            "serve", "prepare", "--model", str(model), "--engine", str(engine),
+            "--context-size", "32768", "--port", "49002", "--out", str(out), "--json",
         ],
     )
     assert code2 == 0
@@ -195,19 +175,8 @@ def test_serve_prepare_runtime_receipt_validation(capsys, tmp_path):
     code, _ = _run_cli(
         capsys,
         [
-            "serve",
-            "prepare",
-            "--model",
-            str(model),
-            "--runtime-receipt",
-            str(receipt),
-            "--context-size",
-            "8192",
-            "--port",
-            "49010",
-            "--out",
-            str(out),
-            "--json",
+            "serve", "prepare", "--model", str(model), "--runtime-receipt", str(receipt),
+            "--context-size", "8192", "--port", "49010", "--out", str(out), "--json",
         ],
     )
     assert code == 0
@@ -225,16 +194,8 @@ def test_serve_prepare_runtime_receipt_validation(capsys, tmp_path):
     code_missing, res_missing = _run_cli(
         capsys,
         [
-            "serve",
-            "prepare",
-            "--model",
-            str(model),
-            "--runtime-receipt",
-            str(receipt),
-            "--context-size",
-            "8192",
-            "--out",
-            str(tmp_path / "out-missing-dll"),
+            "serve", "prepare", "--model", str(model), "--runtime-receipt", str(receipt),
+            "--context-size", "8192", "--out", str(tmp_path / "out-missing-dll"),
         ],
     )
     assert code_missing == 2
@@ -245,16 +206,8 @@ def test_serve_prepare_runtime_receipt_validation(capsys, tmp_path):
     code_trunc, res_trunc = _run_cli(
         capsys,
         [
-            "serve",
-            "prepare",
-            "--model",
-            str(model),
-            "--runtime-receipt",
-            str(receipt),
-            "--context-size",
-            "8192",
-            "--out",
-            str(tmp_path / "out-trunc-manifest"),
+            "serve", "prepare", "--model", str(model), "--runtime-receipt", str(receipt),
+            "--context-size", "8192", "--out", str(tmp_path / "out-trunc-manifest"),
         ],
     )
     assert code_trunc == 2
@@ -271,16 +224,8 @@ def test_serve_prepare_runtime_receipt_validation(capsys, tmp_path):
     code_bad, res_bad = _run_cli(
         capsys,
         [
-            "serve",
-            "prepare",
-            "--model",
-            str(model),
-            "--runtime-receipt",
-            str(bad_receipt),
-            "--context-size",
-            "8192",
-            "--out",
-            str(tmp_path / "out-bad-receipt"),
+            "serve", "prepare", "--model", str(model), "--runtime-receipt", str(bad_receipt),
+            "--context-size", "8192", "--out", str(tmp_path / "out-bad-receipt"),
         ],
     )
     assert code_bad == 2
@@ -299,19 +244,8 @@ def test_serve_prepare_installation_dir_and_llama_cpp(capsys, tmp_path):
     code, _ = _run_cli(
         capsys,
         [
-            "serve",
-            "prepare",
-            "--model",
-            str(model),
-            "--installation",
-            str(inst_dir),
-            "--context-size",
-            "8192",
-            "--port",
-            "49020",
-            "--out",
-            str(out),
-            "--json",
+            "serve", "prepare", "--model", str(model), "--installation", str(inst_dir),
+            "--context-size", "8192", "--port", "49020", "--out", str(out), "--json",
         ],
     )
     assert code == 0
@@ -337,19 +271,8 @@ def test_serve_prepare_sglang_vllm_and_unsupported_families(capsys, tmp_path):
     code, _ = _run_cli(
         capsys,
         [
-            "serve",
-            "prepare",
-            "--model",
-            str(model_dir),
-            "--installation",
-            str(sg_inst),
-            "--context-size",
-            "16384",
-            "--port",
-            "49030",
-            "--out",
-            str(sg_out),
-            "--json",
+            "serve", "prepare", "--model", str(model_dir), "--installation", str(sg_inst),
+            "--context-size", "16384", "--port", "49030", "--out", str(sg_out), "--json",
         ],
     )
     assert code == 0
@@ -368,18 +291,8 @@ def test_serve_prepare_sglang_vllm_and_unsupported_families(capsys, tmp_path):
     code, _ = _run_cli(
         capsys,
         [
-            "serve",
-            "prepare",
-            "--model",
-            str(model_dir),
-            "--installation",
-            str(vllm_inst),
-            "--context-size",
-            "8192",
-            "--port",
-            "49031",
-            "--out",
-            str(vllm_out),
+            "serve", "prepare", "--model", str(model_dir), "--installation", str(vllm_inst),
+            "--context-size", "8192", "--port", "49031", "--out", str(vllm_out),
         ],
     )
     assert code == 0
@@ -388,25 +301,30 @@ def test_serve_prepare_sglang_vllm_and_unsupported_families(capsys, tmp_path):
     assert "--max-num-seqs" not in vllm_plan["argv"]
     assert "--max-model-len" in vllm_plan["argv"] and "8192" in vllm_plan["argv"]
 
-    # mlx-lm: rejected (upstream mlx_lm.server lacks context limit control).
+    # mlx-lm: standalone plan launches upstream mlx_lm.server without unsupported flags.
     mlx_inst = _write_installation(tmp_path / "inst-mlx", family="mlx-lm", executable_name="python")
+    mlx_out = tmp_path / "out-mlx"
     code_mlx, res_mlx = _run_cli(
         capsys,
         [
-            "serve",
-            "prepare",
-            "--model",
-            str(model_dir),
-            "--installation",
-            str(mlx_inst),
-            "--context-size",
-            "8192",
-            "--out",
-            str(tmp_path / "out-mlx"),
+            "serve", "prepare", "--model", str(model_dir), "--installation", str(mlx_inst),
+            "--context-size", "8192", "--port", "49032", "--out", str(mlx_out), "--json",
         ],
     )
-    assert code_mlx == 2
-    assert res_mlx["limitations"] == ["serve_family_unsupported"]
+    assert code_mlx == 0
+    assert res_mlx["status"] == "prepared"
+    mlx_plan = json.loads((mlx_out / "serve-plan.json").read_text(encoding="utf-8"))
+    _assert_valid_serve_plan(mlx_plan)
+    assert mlx_plan["family"] == "mlx-lm"
+    assert mlx_plan["local"] is True
+    assert mlx_plan["model_kind"] == "directory"
+    assert mlx_plan["argv"][1:5] == ["-m", "mlx_lm.server", "--model", str(model_dir.resolve())]
+    assert "--served-model-name" not in mlx_plan["argv"]
+    assert "--max-model-len" not in mlx_plan["argv"]
+    bench_args, _ = startup(
+        read_installation(mlx_inst), model_dir, "hf-model", 8192, 49032, standalone=False
+    )
+    assert "--max-model-len" in bench_args and "--served-model-name" in bench_args
 
     # lmstudio: rejected.
     models_root = tmp_path / "lms-models"
@@ -424,16 +342,8 @@ def test_serve_prepare_sglang_vllm_and_unsupported_families(capsys, tmp_path):
     code_lms, lms_res = _run_cli(
         capsys,
         [
-            "serve",
-            "prepare",
-            "--model",
-            str(gguf),
-            "--installation",
-            str(lms_inst),
-            "--context-size",
-            "4096",
-            "--out",
-            str(tmp_path / "out-lms"),
+            "serve", "prepare", "--model", str(gguf), "--installation", str(lms_inst),
+            "--context-size", "4096", "--out", str(tmp_path / "out-lms"),
         ],
     )
     assert code_lms == 2
@@ -451,16 +361,8 @@ def test_serve_prepare_directory_context_limits(capsys, tmp_path):
     code, res = _run_cli(
         capsys,
         [
-            "serve",
-            "prepare",
-            "--model",
-            str(nested_dir),
-            "--installation",
-            str(vllm_inst),
-            "--context-size",
-            "65536",
-            "--out",
-            str(tmp_path / "out-nested-over"),
+            "serve", "prepare", "--model", str(nested_dir), "--installation", str(vllm_inst),
+            "--context-size", "65536", "--out", str(tmp_path / "out-nested-over"),
         ],
     )
     assert code == 2
@@ -469,16 +371,8 @@ def test_serve_prepare_directory_context_limits(capsys, tmp_path):
     code_ok, _ = _run_cli(
         capsys,
         [
-            "serve",
-            "prepare",
-            "--model",
-            str(nested_dir),
-            "--installation",
-            str(vllm_inst),
-            "--context-size",
-            "4096",
-            "--out",
-            str(tmp_path / "out-nested-ok"),
+            "serve", "prepare", "--model", str(nested_dir), "--installation", str(vllm_inst),
+            "--context-size", "4096", "--out", str(tmp_path / "out-nested-ok"),
         ],
     )
     assert code_ok == 0
@@ -488,16 +382,8 @@ def test_serve_prepare_directory_context_limits(capsys, tmp_path):
     code_miss, res_miss = _run_cli(
         capsys,
         [
-            "serve",
-            "prepare",
-            "--model",
-            str(missing_cfg),
-            "--installation",
-            str(vllm_inst),
-            "--context-size",
-            "4096",
-            "--out",
-            str(tmp_path / "out-miss"),
+            "serve", "prepare", "--model", str(missing_cfg), "--installation", str(vllm_inst),
+            "--context-size", "4096", "--out", str(tmp_path / "out-miss"),
         ],
     )
     assert code_miss == 2
@@ -516,16 +402,8 @@ def test_serve_prepare_rejects_context_overflow_and_bad_args(capsys, tmp_path):
     code, res = _run_cli(
         capsys,
         [
-            "serve",
-            "prepare",
-            "--model",
-            str(model),
-            "--engine",
-            str(engine),
-            "--context-size",
-            "8192",
-            "--out",
-            str(tmp_path / "out-over"),
+            "serve", "prepare", "--model", str(model), "--engine", str(engine),
+            "--context-size", "8192", "--out", str(tmp_path / "out-over"),
         ],
     )
     assert code == 2
@@ -540,15 +418,8 @@ def test_serve_prepare_rejects_context_overflow_and_bad_args(capsys, tmp_path):
         code, res = _run_cli(
             capsys,
             [
-                "serve",
-                "prepare",
-                "--model",
-                str(model),
-                "--engine",
-                str(engine),
-                *bad_args,
-                "--out",
-                str(tmp_path / "out-bad"),
+                "serve", "prepare", "--model", str(model), "--engine", str(engine),
+                *bad_args, "--out", str(tmp_path / "out-bad"),
             ],
         )
         assert code == 2

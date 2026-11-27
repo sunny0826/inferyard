@@ -17,6 +17,7 @@ func (s *viewState) downloadsEnginesTab(c *ui.Context) {
 	families := s.engineCatalogRegistry().Families()
 
 	var managed, externalApps, otherPlatform []core.EngineFamilyCatalog
+	hasSupportedManaged := false
 	for _, fam := range families {
 		hostReleases := fam.ReleasesForPlatform(hostPlatform, false)
 		switch {
@@ -25,7 +26,10 @@ func (s *viewState) downloadsEnginesTab(c *ui.Context) {
 		case fam.ExternalApp:
 			externalApps = append(externalApps, fam)
 		default:
-			managed = append(managed, fam)
+			hasSupportedManaged = true
+			if !s.isEngineFamilyInstalled(fam.ID) {
+				managed = append(managed, fam)
+			}
 		}
 	}
 
@@ -36,7 +40,11 @@ func (s *viewState) downloadsEnginesTab(c *ui.Context) {
 				outlineButton(c, tr(c, "downloads.engines.link_existing")).OnClick(func() { s.openLocalEngineWizard("") })
 			})
 			if len(managed) == 0 {
-				ui.Text(c, tr(c, "downloads.engines.none_available")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				emptyKey := "downloads.engines.none_available"
+				if hasSupportedManaged {
+					emptyKey = "downloads.engines.all_installed"
+				}
+				ui.Text(c, tr(c, emptyKey)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 				return
 			}
 			ui.Column(c).FillWidth().Children(func() {
@@ -140,9 +148,10 @@ func (s *viewState) engineFamilyRow(c *ui.Context, fam core.EngineFamilyCatalog,
 				}
 				st.openEngineDrawer(fam.ID, rel.ID, build.Platform, build.ID)
 			})
+			releaseInstalled := s.isCatalogEngineReleaseInstalled(fam.ID, rel)
 			switch {
 			case build.AcquireMode == core.EngineAcquireManagedSetup && (build.Platform == hostPlatform || build.Platform == "any"):
-				if s.downloadActive("polystrata") {
+				if s.downloadActive("polystrata") || releaseInstalled {
 					primaryIconButton(c, lucide.Download, trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(true)
 				} else {
 					primaryIconButton(c, lucide.Download, trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(s.busy).OnClick(func() {
@@ -150,7 +159,7 @@ func (s *viewState) engineFamilyRow(c *ui.Context, fam core.EngineFamilyCatalog,
 					})
 				}
 			case build.CanManagedVenvInstallOn(hostPlatform):
-				if s.isEngineFamilyDownloading(fam) {
+				if s.isEngineFamilyDownloading(fam) || releaseInstalled {
 					primaryIconButton(c, lucide.Download, trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(true)
 				} else {
 					primaryIconButton(c, lucide.Download, trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(s.busy).OnClick(func() {
@@ -158,7 +167,7 @@ func (s *viewState) engineFamilyRow(c *ui.Context, fam core.EngineFamilyCatalog,
 					})
 				}
 			case build.CanDirectDownloadOn(hostPlatform):
-				if s.isEngineSourceDownloading(build.PrimaryURL()) {
+				if s.isEngineSourceDownloading(build.PrimaryURL()) || releaseInstalled {
 					primaryIconButton(c, lucide.Download, trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(true)
 				} else {
 					primaryIconButton(c, lucide.Download, trf(c, "downloads.engines.install_label", "id", fam.ID)).Disabled(s.busy).OnClick(func() {
@@ -257,6 +266,39 @@ func (s *viewState) isEngineFamilyInstalled(familyID string) bool {
 	return false
 }
 
+func normalizeCatalogEngineVersion(raw string) string {
+	trimmed := strings.ToLower(strings.TrimSpace(raw))
+	return strings.TrimPrefix(trimmed, "v")
+}
+
+func (s *viewState) isCatalogEngineReleaseInstalled(famID string, rel core.EngineRelease) bool {
+	if !s.isEngineFamilyInstalled(famID) {
+		return false
+	}
+	wantVer := normalizeCatalogEngineVersion(rel.Version)
+	if wantVer == "" {
+		return true
+	}
+	for _, eng := range s.registry.Engines {
+		matchFam := eng.Family == famID || (famID == "llama-cpp" && eng.Family == "" && strings.Contains(strings.ToLower(eng.Name), "llama"))
+		if !matchFam {
+			continue
+		}
+		if normalizeCatalogEngineVersion(eng.Version) == wantVer {
+			return true
+		}
+		el := s.eligibility(eng.Name)
+		if normalizeCatalogEngineVersion(el.Version) == wantVer ||
+			(el.State == core.EngineCheckEligible && normalizeCatalogEngineVersion(el.Release) == wantVer) {
+			return true
+		}
+		if strings.Contains(strings.ToLower(eng.Name), wantVer) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *viewState) isEngineSourceDownloading(sourceURL string) bool {
 	if sourceURL == "" {
 		return false
@@ -280,7 +322,7 @@ func (s *viewState) isEngineFamilyDownloading(fam core.EngineFamilyCatalog) bool
 		if task.Kind != "engine" && task.Kind != "engine_install" || !s.downloadTaskInCurrentWorkspace(task) {
 			continue
 		}
-		if task.Kind == "engine_install" && strings.HasPrefix(task.RequestedSourceUrl, fam.ID+":") {
+		if strings.HasPrefix(task.RequestedSourceUrl, fam.ID+":") {
 			return true
 		}
 		for _, rel := range fam.Releases {

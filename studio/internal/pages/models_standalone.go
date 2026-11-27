@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -81,27 +80,6 @@ func engineOriginLabel(origin string) string {
 		return l10n.TR("engine.origin.context_speed")
 	default:
 		return l10n.TR("engine.origin.benchmark")
-	}
-}
-
-func compatibleStandaloneEngine(model core.ModelAsset, eng core.EngineAsset) bool {
-	switch eng.Family {
-	case "lmstudio", "mlx-lm":
-		return false
-	case "", "llama-cpp":
-		return model.Format == "gguf"
-	case "polystrata":
-		if model.Format == "strata_pack" {
-			return true
-		}
-		if model.Format != "gguf" {
-			return false
-		}
-		return model.Architecture == "" || slices.Contains(polystrataSupportedGGUFArchs, model.Architecture)
-	case "vllm", "sglang":
-		return model.Format == "directory"
-	default:
-		return false
 	}
 }
 
@@ -444,7 +422,7 @@ func (s *viewState) stopActiveServiceThen(after func()) {
 
 func (s *viewState) reusableStandaloneService(modelName, engineName string) (core.EngineState, bool) {
 	e := s.localEngine()
-	if e == nil || e.Family == "lmstudio" || modelName == "" || engineName == "" {
+	if e == nil || e.Family == "lmstudio" || e.Family == "mlx-lm" || modelName == "" || engineName == "" {
 		return core.EngineState{}, false
 	}
 	modelAsset, hasModel := s.findModelAsset(modelName)

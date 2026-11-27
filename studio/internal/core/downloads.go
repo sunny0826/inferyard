@@ -14,13 +14,14 @@ import (
 )
 
 type downloadEntry struct {
-	Task       DownloadTask
-	cancel     context.CancelFunc
-	tokenEnv   string
-	resume     bool
-	retryOf    string
-	polystrata *PolystrataSetupRequest
-	dataDir    string
+	Task           DownloadTask
+	cancel         context.CancelFunc
+	tokenEnv       string
+	resume         bool
+	retryOf        string
+	polystrata     *PolystrataSetupRequest
+	dataDir        string
+	replacedEngine *replacedEngineTarget
 }
 
 var outputName = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
@@ -338,10 +339,10 @@ func (s *Service) finishDownloadLocked(ctx context.Context, d *downloadEntry, ou
 }
 
 func (s *Service) CreateEngineDownload(source, outName string) (DownloadTask, *ApiError) {
-	return s.createEngineDownloadTask(source, outName, "", 0)
+	return s.createEngineDownloadTask(source, outName, "", 0, nil)
 }
 
-func (s *Service) createEngineDownloadTask(source, outName, displayName string, knownBytes int64) (DownloadTask, *ApiError) {
+func (s *Service) createEngineDownloadTask(source, outName, displayName string, knownBytes int64, replaced *replacedEngineTarget) (DownloadTask, *ApiError) {
 	if !validEngineSource(source) || (outName != "" && !ValidDownloadName(outName)) {
 		return DownloadTask{}, Err("invalid_request")
 	}
@@ -388,7 +389,7 @@ func (s *Service) createEngineDownloadTask(source, outName, displayName string, 
 		TotalBytes:     totalBytes,
 		StartedAt:      now(),
 		ProgressReason: ptr("engine_transfer_progress_unavailable"),
-	}, cancel: cancel}
+	}, cancel: cancel, replacedEngine: replaced}
 	s.downloads = append(s.downloads, d)
 	s.Bus.Publish("download.state", map[string]any{"task": d.Task})
 	go s.downloadEngine(ctx, *p.Path, d)
@@ -445,25 +446,25 @@ func (s *Service) downloadEngine(ctx context.Context, binary string, d *download
 		args = append(args, "--proxy-origin", proxy)
 	}
 	out, execErr := s.execStream(ctx, s.newStderrProgressHandler(d, &streamSeen), binary, args...)
+	var prepEng string
+	var prepBytes int64
+	var prepSHA string
+	var prepOK bool
+	if out.ExitCode == inferyard.ExitComplete && execErr == nil && ctx.Err() == nil {
+		cr, parseErr := inferyard.Parse(out.Stdout)
+		prepEng, prepBytes, prepSHA, prepOK = parsePreparedEngineDetails(cr, parseErr, d.Task.OutDir, d.Task.SourceUrl)
+		if prepOK {
+			s.cleanupReplacedManagedBinaryEngine(d.replacedEngine, d.Task.OutDir)
+		}
+	}
 	s.mu.Lock()
-	s.finishDownloadLocked(ctx, d, out, execErr, func(cr inferyard.CommandResult, parseErr error) bool {
-		if parseErr != nil {
-			return false
-		}
-		var details struct {
-			Engine string `json:"engine"`
-			Bytes  int64  `json:"bytes"`
-			Sha256 string `json:"sha256"`
-		}
-		if err := json.Unmarshal(cr.Details, &details); err != nil || details.Engine == "" || details.Bytes < 0 || len(details.Sha256) != 64 {
-			return false
-		}
-		if writeManagedEngineReceipt(d.Task.OutDir, managedBinaryReceipt(d.Task.SourceUrl)) != nil {
+	s.finishDownloadLocked(ctx, d, out, execErr, func(_ inferyard.CommandResult, _ error) bool {
+		if !prepOK {
 			return false
 		}
 		d.Task.Stage = ""
-		d.Task.EnginePath = ptr(details.Engine)
-		d.Task.Result = &DownloadResult{Bytes: details.Bytes, Sha256: details.Sha256}
+		d.Task.EnginePath = ptr(prepEng)
+		d.Task.Result = &DownloadResult{Bytes: prepBytes, Sha256: prepSHA}
 		return true
 	})
 	doneOK := d.Task.State == "done"

@@ -91,6 +91,7 @@ func installationEntries(paths []string) []registryEntry {
 		displayName := ""
 		var display struct {
 			Family           string `json:"family"`
+			Version          string `json:"version"`
 			WorkingDirectory string `json:"working_directory"`
 		}
 		if rawBytes, err := installationBytes(path); err == nil && json.Unmarshal(rawBytes, &display) == nil &&
@@ -98,7 +99,11 @@ func installationEntries(paths []string) []registryEntry {
 			family = display.Family
 			if family == "polystrata" {
 				displayName = polystrataInstallationDisplayName(path, display.WorkingDirectory)
+			} else if filepath.Base(path) == "installation.json" {
+				displayName = localInstallationDisplayName(path, family, display.Version, display.WorkingDirectory)
 			}
+		} else if filepath.Base(path) == "installation.json" {
+			displayName = localInstallationDisplayName(path, family, "", "")
 		}
 		entries = append(entries, registryEntry{
 			path:         path,
@@ -110,6 +115,55 @@ func installationEntries(paths []string) []registryEntry {
 		})
 	}
 	return entries
+}
+
+func installationFamilyDisplayName(family string) string {
+	switch family {
+	case "mlx-lm":
+		return "mlx-lm"
+	case "vllm":
+		return "vLLM"
+	case "sglang":
+		return "SGLang"
+	case "llama-cpp":
+		return "llama.cpp"
+	case "lmstudio":
+		return "LM Studio"
+	case "polystrata":
+		return "PolyStrata"
+	default:
+		return family
+	}
+}
+
+func localInstallationDisplayName(instPath, family, declVersion, workingDir string) string {
+	title := installationFamilyDisplayName(family)
+	roots := uniqueCleanPaths([]string{filepath.Dir(instPath), strings.TrimSpace(workingDir)})
+	for _, root := range roots {
+		if receipt, ok := readManagedEngineReceipt(root); ok && strings.TrimSpace(receipt.Version) != "" {
+			ver := strings.TrimSpace(receipt.Version)
+			if receipt.InstallMode == managedEngineVenvInstallMode {
+				if liveVer := readVenvPackageVersion(registryEntry{path: instPath, installation: instPath, family: family}, family); liveVer != "" {
+					ver = liveVer
+				}
+			}
+			return title + " · " + ver
+		}
+	}
+	if ver := strings.TrimSpace(declVersion); ver != "" {
+		return title + " · " + ver
+	}
+	dir := strings.TrimSpace(workingDir)
+	if dir == "" {
+		dir = filepath.Dir(instPath)
+	}
+	slug := filepath.Base(filepath.Clean(dir))
+	if slug != "" && slug != "." && slug != string(filepath.Separator) &&
+		!strings.EqualFold(slug, family) && !strings.EqualFold(slug, title) &&
+		!slices.Contains([]string{"engines", "engine", "bin", "venv"}, strings.ToLower(slug)) {
+		return title + " · " + slug
+	}
+	return title
 }
 
 func installationPath(path string) (string, *ApiError) {

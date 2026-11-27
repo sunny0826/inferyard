@@ -15,7 +15,11 @@ import (
 func sanitizeEngineUpdateOutName(prefix, version string) string {
 	var b strings.Builder
 	b.WriteString(prefix)
-	if trimmed := strings.TrimSpace(version); trimmed != "" {
+	trimmed := strings.TrimSpace(version)
+	if prefix == "llama-cpp-prism" && len(trimmed) >= len("prism-") && strings.EqualFold(trimmed[:len("prism-")], "prism-") {
+		trimmed = strings.TrimSpace(trimmed[len("prism-"):])
+	}
+	if trimmed != "" {
 		b.WriteByte('-')
 		for _, r := range trimmed {
 			switch {
@@ -210,9 +214,13 @@ func (s *Service) UpdateEngine(engineName string) (DownloadTask, *ApiError) {
 		if strings.EqualFold(info.Distribution, "PrismML") {
 			prefix = "llama-cpp-prism"
 		}
+		var replaced *replacedEngineTarget
+		if hasEntry && entry.installation == "" {
+			replaced = s.resolveReplacedManagedBinaryTarget(name, entry, reg.engines)
+		}
 		outName := sanitizeEngineUpdateOutName(prefix, info.LatestVersion)
 		displayName := fmt.Sprintf("%s · %s", engineUpdateDisplayTitle(info.Family, name), info.LatestVersion)
-		return s.createEngineDownloadTask(info.DownloadURL, outName, displayName, info.AssetBytes)
+		return s.createEngineDownloadTask(info.DownloadURL, outName, displayName, info.AssetBytes, replaced)
 
 	case EngineUpdateActionManaged:
 		if strings.TrimSpace(info.DownloadURL) == "" {
@@ -373,6 +381,15 @@ func (s *Service) runVenvEngineUpgrade(ctx context.Context, d *downloadEntry, en
 	s.mu.Unlock()
 
 	if doneOK {
+		if entry.installation != "" {
+			installDir := filepath.Dir(entry.installation)
+			if receipt, ok := readManagedEngineReceipt(installDir); ok && receipt.InstallMode == managedEngineVenvInstallMode {
+				if liveVer := readVenvPackageVersion(entry, info.Family); liveVer != "" {
+					receipt.Version = liveVer
+					_ = writeManagedEngineReceipt(installDir, receipt)
+				}
+			}
+		}
 		if s.engineUpdater != nil {
 			s.engineUpdater.clearBinaryVersion(resolveEngineExecutablePath(entry))
 		}

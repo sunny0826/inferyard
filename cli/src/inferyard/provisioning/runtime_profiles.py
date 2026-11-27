@@ -12,6 +12,29 @@ from inferyard.provisioning.runtime_archive import safe_member
 RELEASE = "prism-b10743-adfffbe"
 BASE_URL = f"https://github.com/PrismML-Eng/llama.cpp/releases/download/{RELEASE}/"
 VERSION_PATTERN = r"\b10743\b.*\badfffbe(?:41)?\b"
+_PRISM_RELEASE_RE = re.compile(r"\b(prism-b\d+-[0-9a-f]{7,40})\b")
+_UPSTREAM_VERSION_RE = re.compile(r"\bversion:\s*(\d+)\s*\(([0-9a-f]{7,40})\)")
+_BUILD_TAG_RE = re.compile(r"\b(b\d+-[0-9a-f]{7,40})\b")
+LLAMA_SERVER_VERSION_PATTERN = (
+    rf"(?:{VERSION_PATTERN}"
+    r"|\bprism-b\d+-[0-9a-f]{7,40}\b"
+    r"|\bversion:\s*\d+\s*\([0-9a-f]{7,40}\)"
+    r"|\bb\d+-[0-9a-f]{7,40}\b)"
+)
+
+
+def resolve_llama_server_release(version: dict) -> str:
+    raw_text = f"{version.get('stdout', '')}{version.get('stderr', '')}"
+    if re.search(VERSION_PATTERN, raw_text):
+        return RELEASE
+    text = f"{version.get('stdout', '')}\n{version.get('stderr', '')}"
+    if match := _PRISM_RELEASE_RE.search(text):
+        return match.group(1)
+    if match := _UPSTREAM_VERSION_RE.search(text):
+        return f"b{match.group(1)}-{match.group(2)}"
+    if match := _BUILD_TAG_RE.search(text):
+        return match.group(1)
+    raise PreparationError("unsupported_engine_build_requires_adapter_validation")
 ARCHIVES = {
     "cpu": (
         f"llama-{RELEASE}-bin-win-cpu-x64.zip",

@@ -18,7 +18,12 @@ from inferyard.provisioning.preparation_io import (
 from inferyard.provisioning.preparation_io import asset_identity as hash_file
 from inferyard.config.toml_writer import render
 from inferyard.contracts.validation import validate_document
-from inferyard.provisioning.runtime_profiles import RELEASE, VERSION_PATTERN
+from inferyard.provisioning.runtime_profiles import (
+    LLAMA_SERVER_VERSION_PATTERN,
+    RELEASE,
+    VERSION_PATTERN,
+    resolve_llama_server_release,
+)
 from inferyard.provisioning.runtime_verification import query_version, verify_receipt
 
 
@@ -111,12 +116,15 @@ def create(request):
         ):
             raise PreparationError("invalid_library_manifest")
         manifest_path = out / "engine-sha256.json"
+        version = query_version(engine_path, LLAMA_SERVER_VERSION_PATTERN)
+        engine_release = resolve_llama_server_release(version)
     else:
         profile, engine_path, manifest_path = verify_receipt(
             request.runtime_receipt, mode=selected["mode"]
         )
         library_map = profile["libraries"]
-    query_version(engine_path, VERSION_PATTERN)
+        query_version(engine_path, VERSION_PATTERN)
+        engine_release = RELEASE
     if system == "Windows":
         verify_receipt(request.runtime_receipt, mode=selected["mode"])
     elif library_map != libraries(engine_path, ("*.dylib",)):
@@ -144,7 +152,7 @@ def create(request):
             template_path,
             manifest_path,
             engine,
-            RELEASE,
+            engine_release,
             request.bundle_path.resolve(),
             bundle["version"],
             results,

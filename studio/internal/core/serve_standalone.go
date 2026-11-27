@@ -60,6 +60,10 @@ func servePlanToStartup(plan inferyard.ServePlan) Startup {
 	if len(plan.Argv) > 1 {
 		args = append(args, plan.Argv[1:]...)
 	}
+	servedModel := extractServedModelFromArgs(args)
+	if servedModel == "" && plan.Family == "mlx-lm" {
+		servedModel = "default_model"
+	}
 	result := Startup{
 		Kind:             "direct_process",
 		Path:             plan.Argv[0],
@@ -72,7 +76,7 @@ func servePlanToStartup(plan inferyard.ServePlan) Startup {
 		Endpoint:         plan.Endpoint,
 		ModelPath:        plan.ModelPath,
 		ModelKind:        plan.ModelKind,
-		ServedModel:      extractServedModelFromArgs(args),
+		ServedModel:      servedModel,
 		ContextSize:      plan.ContextSize,
 	}
 	for _, arg := range result.Args {
