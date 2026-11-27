@@ -47,12 +47,14 @@ func (s *viewState) syncNativeThemeIfNeeded() {
 
 func (s *viewState) themeFor(c *ui.Context) *ui.Theme {
 	setActiveAccent(s.accentMode)
+	setActiveFontSize(s.fontSizeMode)
 	s.syncNativeThemeIfNeeded()
 	return resolveStudioTheme(c, s.themeMode)
 }
 
 func (s *viewState) loadThemeSettings(v core.SettingsResponse) {
 	s.loadAccentSettings(v)
+	s.loadFontSizeSettings(v)
 	if s.themeSaving {
 		return
 	}
@@ -97,6 +99,7 @@ func (s *viewState) appearanceSettingsView(c *ui.Context) {
 			}
 
 			s.accentColorRow(c)
+			s.fontSizeRow(c)
 		})
 }
 

@@ -52,7 +52,7 @@ func studioThemeFor(c *ui.Context, dark bool) *ui.Theme {
 	applyPalette(t, paletteFor(dark))
 	t.Radius, t.Spacing = 8, 4
 	t.Font = geistFontFamily
-	t.FontSize = 14
+	t.FontSize = studioBaseFontSize()
 	t.TooltipDelay = labelOpenDelay
 	applyThemePreferences(t, c)
 	return t

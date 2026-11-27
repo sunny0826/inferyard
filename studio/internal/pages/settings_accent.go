@@ -35,7 +35,7 @@ func (s *viewState) accentColorRow(c *ui.Context) {
 	rim := t.Color.FgPrimary.Alpha(rimAlpha)
 
 	ui.Row(c).FillWidth().AlignItems(ui.Center).Wrap().Gap(t.Density.Row).Padding(t.Density.Tight, 0, 0, 0).Children(func() {
-		ui.Column(c).Grow(1).MinWidth(140).Gap(2).Children(func() {
+		ui.Column(c).Grow(1).MinWidth(140).Gap(t.Density.Hairline).Children(func() {
 			ui.Text(c, tr(c, "settings.appearance.accent_label")).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary)
 			ui.Text(c, tr(c, spec.labelKey)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		})

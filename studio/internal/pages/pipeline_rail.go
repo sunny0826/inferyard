@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"time"
+	"unicode/utf8"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
@@ -47,14 +48,15 @@ type pipelineAnimState struct {
 	lastAt      time.Time
 }
 
-func pipelineTargetWeights(n, current int) []float32 {
-	weights := make([]float32, n)
-	for i := range n {
+func pipelineTargetWeights(steps []workflowStepItem, current int) []float32 {
+	weights := make([]float32, len(steps))
+	for i, st := range steps {
+		runes := min(10, max(2, utf8.RuneCountInString(st.Label)))
+		w := float32(0.72) + float32(runes)*0.08
 		if i == current {
-			weights[i] = 1.45
-		} else {
-			weights[i] = 1.0
+			w += 0.42
 		}
+		weights[i] = w
 	}
 	return weights
 }
@@ -139,7 +141,7 @@ func pipelineRail(c *ui.Context, spec pipelineCardOptions) {
 	if n == 0 {
 		return
 	}
-	targetWeights := pipelineTargetWeights(n, spec.Current)
+	targetWeights := pipelineTargetWeights(spec.Steps, spec.Current)
 	activeScale := pipelineStepScale(c, spec.Failed)
 	reduced := c.Preferences().ReduceMotion
 	dark := c.Theme().Dark

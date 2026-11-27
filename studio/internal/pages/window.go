@@ -38,6 +38,7 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 	}
 	initialTheme := service.Theme()
 	initialAccent := service.Accent()
+	initialFontSize := service.FontSize()
 	initialLanguage := service.Language()
 	initialReasoning := service.ReasoningEffort()
 	initialDownloadSource := service.DownloadSource()
@@ -45,6 +46,7 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 	initialKeepServices := service.EffectiveKeepServicesOnQuit()
 	syncNativeTheme(initialTheme)
 	setActiveAccent(initialAccent)
+	setActiveFontSize(initialFontSize)
 	syncNativeLocale(initialLanguage)
 	s := &viewState{
 		ctx:         ctx,
@@ -58,6 +60,7 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 			themeMode:             initialTheme,
 			appliedThemeMode:      initialTheme,
 			accentMode:            initialAccent,
+			fontSizeMode:          initialFontSize,
 			languageMode:          initialLanguage,
 			appliedLanguageMode:   initialLanguage,
 			reasoningEffort:       initialReasoning,
@@ -66,8 +69,8 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 		},
 		keepServicesOnQuit: initialKeepServices,
 		settings: core.SettingsResponse{
-			Settings:  core.UserSettings{DownloadSource: initialDownloadSource, Theme: initialTheme, Accent: initialAccent, Language: initialLanguage, ReasoningEffort: initialReasoning, MinimizeToTray: initialMinimizeToTray},
-			Effective: core.EffectiveSettings{DownloadSource: initialDownloadSource, Theme: initialTheme, Accent: initialAccent, Language: initialLanguage, ReasoningEffort: initialReasoning, MinimizeToTray: initialMinimizeToTray, KeepServicesOnQuit: initialKeepServices},
+			Settings:  core.UserSettings{DownloadSource: initialDownloadSource, Theme: initialTheme, Accent: initialAccent, FontSize: initialFontSize, Language: initialLanguage, ReasoningEffort: initialReasoning, MinimizeToTray: initialMinimizeToTray},
+			Effective: core.EffectiveSettings{DownloadSource: initialDownloadSource, Theme: initialTheme, Accent: initialAccent, FontSize: initialFontSize, Language: initialLanguage, ReasoningEffort: initialReasoning, MinimizeToTray: initialMinimizeToTray, KeepServicesOnQuit: initialKeepServices},
 		},
 	}
 	shell := sidebar.NewShell(s.shellOptions(title))

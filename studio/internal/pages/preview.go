@@ -21,6 +21,7 @@ type previewSession struct {
 	win                 *mygo.Window
 	scene               int
 	accentMode          string
+	fontSizeMode        string
 	themeMode           int
 	appliedThemeMode    int
 	languageMode        int
@@ -72,6 +73,7 @@ func NewPreview(ctx context.Context) {
 		offShow()
 		offClose()
 		setActiveAccent(core.AccentCobalt)
+		setActiveFontSize(core.FontSizeDefault)
 		if p.state != nil {
 			p.state.closeOpenedReport()
 		}
@@ -82,9 +84,10 @@ func NewPreview(ctx context.Context) {
 
 func newPreviewSession(ctx context.Context) *previewSession {
 	p := &previewSession{
-		ctx:        ctx,
-		accentMode: core.AccentCobalt,
-		dsInput:    "http://127.0.0.1:48857",
+		ctx:          ctx,
+		accentMode:   core.AccentCobalt,
+		fontSizeMode: core.FontSizeDefault,
+		dsInput:      "http://127.0.0.1:48857",
 		dsSwitch:   true,
 		dsCheck:    true,
 	}
@@ -200,8 +203,21 @@ func (p *previewSession) selectAccent(accent string) {
 	p.syncStateAccent()
 }
 
+func (p *previewSession) syncStateFontSize() {
+	size := core.NormalizeFontSize(p.fontSizeMode)
+	p.fontSizeMode = size
+	setActiveFontSize(size)
+	if p.state == nil {
+		return
+	}
+	p.state.fontSizeMode = size
+	p.state.settings.Settings.FontSize = size
+	p.state.settings.Effective.FontSize = size
+}
+
 func (p *previewSession) themeFor(c *ui.Context) *ui.Theme {
 	p.syncStateAccent()
+	p.syncStateFontSize()
 	p.syncStateTheme()
 	p.syncNativeTheme()
 	p.syncStateLanguage()
@@ -241,6 +257,7 @@ func (p *previewSession) loadScene(index int) {
 	p.state = s
 	previewScenes[index].apply(s)
 	p.syncStateAccent()
+	p.syncStateFontSize()
 	p.syncStateTheme()
 	p.syncStateLanguage()
 	p.activateScene()
