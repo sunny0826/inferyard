@@ -143,6 +143,7 @@ def test_request_prompt_and_response_projected_with_null_for_empty(tmp_path):
     for case in data["bundle"]["cases"]:
         if case["case_id"] == case_id:
             case["prompt"] = "What is 6 * 7?"
+            case["reference_answer"] = "42"
     data["requests"][0]["content"] = "42"
     if len(data["requests"]) > 1:
         data["requests"][1]["content"] = ""
@@ -153,5 +154,6 @@ def test_request_prompt_and_response_projected_with_null_for_empty(tmp_path):
     req0 = report["runs"][0]["requests"][0]
     assert req0["prompt"] == "What is 6 * 7?"
     assert req0["response"] == "42"
+    assert req0["reference_answer"] == "42"
     if len(report["runs"][0]["requests"]) > 1:
         assert report["runs"][0]["requests"][1]["response"] is None

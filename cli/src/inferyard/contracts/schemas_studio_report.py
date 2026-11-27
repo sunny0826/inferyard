@@ -101,6 +101,7 @@ REQUEST = obj(
 )
 REQUEST["properties"]["prompt"] = TEXT
 REQUEST["properties"]["response"] = nullable(TEXT)
+REQUEST["properties"]["reference_answer"] = nullable(TEXT)
 def _svg_output_variant(status, svg_spec, bytes_spec):
     return obj(
         {
