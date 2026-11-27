@@ -145,6 +145,7 @@
   "sidebar.status.open_benchmarks": "Open Benchmarks",
   "sidebar.status.open_library": "Open Library",
   "library.page.title": "Library",
+  "library.tab.recommended": "Recommended",
   "library.tab.models": "Models",
   "library.tab.engines": "Engines",
   "library.hw.title": "This Machine",
