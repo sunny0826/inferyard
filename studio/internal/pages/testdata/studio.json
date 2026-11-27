@@ -48,9 +48,9 @@
         }
       },
       "requests": [
-        {"case_id": "null-case", "category_label": "数学计算", "state": "failed", "quality": null, "latency_ms": null},
-        {"case_id": "timed-case", "category_label": "知识问答", "state": "completed", "quality": "pass", "latency_ms": 842},
-        {"case_id": "failed-answer", "category_label": "知识问答", "state": "completed", "quality": "fail", "latency_ms": 1204}
+        {"case_id": "null-case", "category_label": "数学计算", "state": "failed", "quality": null, "latency_ms": null, "prompt": "计算 128 × 37 并只输出最终整数。", "response": null},
+        {"case_id": "timed-case", "category_label": "知识问答", "state": "completed", "quality": "pass", "latency_ms": 842, "prompt": "HTTP 状态码 429 表示什么含义？用一句话说明。", "response": "429 Too Many Requests 表示客户端在规定时间内发送了过多请求，触发了服务端限流。"},
+        {"case_id": "failed-answer", "category_label": "知识问答", "state": "completed", "quality": "fail", "latency_ms": 1204, "prompt": "太阳系中体积最大的行星是哪一颗？", "response": "土星是太阳系中体积最大的行星。"}
       ]
     }
   ]

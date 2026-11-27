@@ -56,7 +56,10 @@ func runTaskIcon(kind stateKind) func() *ui.SVG {
 
 func (s *viewState) detailView(c *ui.Context) {
 	tok := tokens(c)
-	s.subpageHeader(c, tr(c, "detail.title"), tr(c, "detail.back_dashboard"), func() { s.detailID = "" })
+	s.subpageHeader(c, tr(c, "detail.title"), tr(c, "detail.back_dashboard"), func() {
+		s.detailID = ""
+		s.detailCaseID = ""
+	})
 	errorView(c, s.detailError)
 	if s.detailError != nil {
 		refreshIconButton(c, tr(c, "detail.retry_load"), false).OnClick(func() { s.selectTask(s.detailID) })
@@ -143,6 +146,7 @@ func (s *viewState) detailView(c *ui.Context) {
 	}
 	s.detailProgressCard(c, d)
 	s.resourceView(c, d.Resources)
+	s.detailCaseDrawer(c, d)
 }
 
 func (s *viewState) detailProgressCard(c *ui.Context, d *core.RunTaskDetail) {
@@ -262,7 +266,7 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 		{Title: tr(c, "detail.col.duration"), MinWidth: 96},
 		{Title: tr(c, "detail.col.error_category"), MinWidth: 150},
 	}
-	s.casesTable.Key = func(i int) any { return visibleCases[i].CaseId }
+	selectableTable(&s.casesTable, func(i int) any { return visibleCases[i].CaseId }, func(i int) string { return visibleCases[i].CaseId })
 	tableLabel := tr(c, "detail.cases_table_label")
 	applyMaterial(c, ui.Box(c).FillWidth().MinWidth(0).Clip(), materialInset).Children(func() {
 		pageTable(c, &s.casesTable, tableLabel, columns, len(visibleCases), func(row, col int) {
@@ -309,11 +313,19 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 				if item.ErrorCategory != nil && *item.ErrorCategory != "" {
 					errColor = stateScale(c, stateDanger).Fg
 				}
-				ui.Text(c, errText).TextColor(errColor).SingleLine().Selectable()
+				ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tok.Density.Tight).Children(func() {
+					ui.Text(c, errText).TextColor(errColor).Grow(1).MinWidth(0).SingleLine().Selectable()
+					components.Icon(c, lucide.ChevronRight).Size(14, 14).TextColor(tok.Color.FgTertiary).Role(ui.RoleNone)
+				})
 				return
 			}
 		}).Height(detailCasesTableHeight(c.Theme(), len(visibleCases))).Label(tableLabel)
 	})
+	if s.casesTable.clicked || s.casesTable.submitted {
+		if idx := selectedRow(&s.casesTable, len(visibleCases)); idx >= 0 {
+			s.detailCaseID = visibleCases[idx].CaseId
+		}
+	}
 }
 
 // detailCasesTableMaxHeight caps the live-progress case table so long runs

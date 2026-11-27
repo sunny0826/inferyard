@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -39,19 +40,42 @@ func payload(raw []byte, name string) object {
 	return obj(obj(obj(document(raw)["documents"])[name])["payload"])
 }
 
+const maxLiveCaseResponseBytes = 512 * 1024
+
 type aggregate struct {
 	Progress          RunProgress
 	requests          map[string]int
+	casePrompts       map[string]string
+	partials          map[string]*strings.Builder
 	stop              *string
 	started, finished *string
 	cpuPrevious       map[ResourceSource]object
 	resourceGap       time.Duration
 }
 
+func bundleCasePrompts(raw []byte) map[string]string {
+	prompts := map[string]string{}
+	cases, _ := payload(raw, "bundle")["cases"].([]any)
+	for _, entry := range cases {
+		m := obj(entry)
+		id, _ := m["case_id"].(string)
+		prompt, _ := m["prompt"].(string)
+		if id != "" && prompt != "" {
+			prompts[id] = prompt
+		}
+	}
+	return prompts
+}
+
 func newAggregate(raw []byte) *aggregate {
+	prompts := bundleCasePrompts(raw)
 	a := &aggregate{
-		Progress: RunProgress{Cases: []CaseProgress{}}, requests: map[string]int{},
-		cpuPrevious: map[ResourceSource]object{}, resourceGap: 2 * time.Second,
+		Progress:    RunProgress{Cases: []CaseProgress{}},
+		requests:    map[string]int{},
+		casePrompts: prompts,
+		partials:    map[string]*strings.Builder{},
+		cpuPrevious: map[ResourceSource]object{},
+		resourceGap: 2 * time.Second,
 	}
 	if interval := number(obj(payload(raw, "config")["telemetry"])["interval_ms"]); interval != nil && *interval > 0 {
 		a.resourceGap = time.Duration(*interval * 2 * float64(time.Millisecond))
@@ -61,7 +85,11 @@ func newAggregate(raw []byte) *aggregate {
 		a.Progress.Total = ptr(int64(len(ids)))
 		for _, id := range ids {
 			if cid, ok := id.(string); ok {
-				a.Progress.Cases = append(a.Progress.Cases, CaseProgress{CaseId: cid, State: "pending"})
+				item := CaseProgress{CaseId: cid, State: "pending"}
+				if p := prompts[cid]; p != "" {
+					item.Prompt = ptr(p)
+				}
+				a.Progress.Cases = append(a.Progress.Cases, item)
 			}
 		}
 	}
@@ -98,11 +126,41 @@ func (a *aggregate) events(records []evidence.Record) {
 				a.Progress.Cases = append(a.Progress.Cases, CaseProgress{CaseId: id})
 			}
 			a.requests[request] = i
+			delete(a.partials, request)
 			c := &a.Progress.Cases[i]
 			c.State = "running"
 			c.StartedAt = utc
 			c.PlanIndex = integer(d["plan_index"])
+			if c.Prompt == nil {
+				if p := a.casePrompts[id]; p != "" {
+					c.Prompt = ptr(p)
+				}
+			}
 			a.Progress.CurrentCaseId = &c.CaseId
+		case "content":
+			i, ok := a.requests[request]
+			if !ok {
+				continue
+			}
+			chunk, _ := d["text"].(string)
+			if chunk == "" {
+				continue
+			}
+			buf := a.partials[request]
+			if buf == nil {
+				buf = &strings.Builder{}
+				a.partials[request] = buf
+			}
+			if buf.Len() < maxLiveCaseResponseBytes {
+				remain := maxLiveCaseResponseBytes - buf.Len()
+				if len(chunk) > remain {
+					chunk = chunk[:remain]
+				}
+				buf.WriteString(chunk)
+			}
+			if buf.Len() > 0 {
+				a.Progress.Cases[i].Response = ptr(buf.String())
+			}
 		case "request_finished":
 			i, ok := a.requests[request]
 			if !ok {
@@ -112,6 +170,14 @@ func (a *aggregate) events(records []evidence.Record) {
 			c.State = str(text(d["execution_state"]))
 			c.FinishedAt = utc
 			c.ErrorCategory = text(d["error_category"])
+			if content, ok := d["content"].(string); ok && content != "" {
+				c.Response = ptr(content)
+			} else if buf := a.partials[request]; buf != nil && buf.Len() > 0 {
+				c.Response = ptr(buf.String())
+			} else {
+				c.Response = nil
+			}
+			delete(a.partials, request)
 			start, end := number(d["t_send_ns"]), number(d["t_terminal_ns"])
 			if start != nil && end != nil && *end >= *start {
 				c.DurationMs = ptr((*end - *start) / 1e6)

@@ -2,6 +2,7 @@ package pages
 
 import (
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 )
@@ -146,10 +147,19 @@ func (r *reportViewState) requestView(c *ui.Context, run core.ReportRun) {
 					if request.LatencyMS == nil {
 						latColor = t.Color.FgTertiary
 					}
-					ui.Text(c, reportScaled(request.LatencyMS, 1000, "s")).FontFeatures("tnum").TextColor(latColor).SingleLine()
+					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+						ui.Text(c, reportScaled(request.LatencyMS, 1000, "s")).FontFeatures("tnum").TextColor(latColor).Grow(1).MinWidth(0).SingleLine()
+						components.Icon(c, lucide.ChevronRight).Size(14, 14).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
+					})
 				}
 			}).Height(c.Theme().Space(8)*float32(min(len(visible), 8)+1) + 2)
 		})
+		if r.requests.clicked || r.requests.submitted {
+			if idx := selectedRow(&r.requests, len(visible)); idx >= 0 {
+				r.detailCaseIndex = start + idx
+				r.detailCaseOpen = true
+			}
+		}
 	})
 }
 

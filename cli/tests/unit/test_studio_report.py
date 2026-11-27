@@ -135,3 +135,23 @@ def test_svg_outputs_exported_only_for_svg_cases_and_validated(tmp_path):
     (bad_path / "studio.json").write_text(json.dumps(tampered), encoding="utf-8")
     with pytest.raises(ContractError):
         read_studio_report(bad_path)
+
+
+def test_request_prompt_and_response_projected_with_null_for_empty(tmp_path):
+    data, source = loaded(tmp_path / "qa")
+    case_id = data["requests"][0]["case_id"]
+    for case in data["bundle"]["cases"]:
+        if case["case_id"] == case_id:
+            case["prompt"] = "What is 6 * 7?"
+    data["requests"][0]["content"] = "42"
+    if len(data["requests"]) > 1:
+        data["requests"][1]["content"] = ""
+
+    report = build(tmp_path, data, source)
+    schema = export_schema("studio_report")
+    Draft202012Validator(schema).validate(report)
+    req0 = report["runs"][0]["requests"][0]
+    assert req0["prompt"] == "What is 6 * 7?"
+    assert req0["response"] == "42"
+    if len(report["runs"][0]["requests"]) > 1:
+        assert report["runs"][0]["requests"][1]["response"] is None

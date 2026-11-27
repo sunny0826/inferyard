@@ -180,6 +180,8 @@ type CaseProgress struct {
 	FinishedAt    *string  `json:"finished_at"`
 	DurationMs    *float64 `json:"duration_ms"`
 	ErrorCategory *string  `json:"error_category"`
+	Prompt        *string  `json:"prompt,omitempty"`
+	Response      *string  `json:"response,omitempty"`
 }
 
 type RunProgress struct {

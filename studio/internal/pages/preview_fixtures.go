@@ -351,8 +351,22 @@ func previewDetailFixture(id string) *core.RunTaskDetail {
 	return &core.RunTaskDetail{
 		Task: core.RunTask{TaskId: id, Kind: "run", State: "running", Bundle: previewValue(inferyard.DefaultBundleCore), RunId: previewValue("preview-run"), RunPath: previewValue("/preview/results/preview-run"), StartedAt: previewValue("2026-10-16T23:59:08Z")},
 		Progress: &core.RunProgress{Done: 42, Total: previewValue(int64(120)), Phase: previewValue("formal"), CurrentCaseId: previewValue("preview-case-043"), Cases: []core.CaseProgress{
-			{CaseId: "preview-case-001", State: "completed", Category: previewValue(l10n.TR("preview.fixture.category")), QualityState: previewValue("pass"), DurationMs: previewValue(1240.0)},
-			{CaseId: "preview-case-002", State: "failed", Category: previewValue(l10n.TR("preview.fixture.category")), ErrorCategory: previewValue("preview_failure")},
+			{
+				CaseId:       "preview-case-001",
+				State:        "completed",
+				Category:     previewValue(l10n.TR("preview.fixture.category")),
+				QualityState: previewValue("pass"),
+				DurationMs:   previewValue(1240.0),
+				Prompt:       previewValue("Compute 24 * 17 and output only the final integer."),
+				Response:     previewValue("408"),
+			},
+			{
+				CaseId:        "preview-case-002",
+				State:         "failed",
+				Category:      previewValue(l10n.TR("preview.fixture.category")),
+				ErrorCategory: previewValue("preview_failure"),
+				Prompt:        previewValue("Summarize the key trade-offs between KV cache quantization and attention throughput in two sentences."),
+			},
 		}},
 		Resources: append(append(
 			previewResourceSamples(1, "2026-10-17T00:00:00Z", 10<<30, 2<<30, 120),

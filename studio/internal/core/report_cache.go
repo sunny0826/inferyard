@@ -102,6 +102,8 @@ func cloneRunProgress(p *RunProgress) *RunProgress {
 				FinishedAt:    cloneValPtr(c.FinishedAt),
 				DurationMs:    cloneValPtr(c.DurationMs),
 				ErrorCategory: cloneValPtr(c.ErrorCategory),
+				Prompt:        cloneValPtr(c.Prompt),
+				Response:      cloneValPtr(c.Response),
 			}
 		}
 	}
@@ -246,6 +248,8 @@ func cloneStudioReport(r inferyard.StudioReport) inferyard.StudioReport {
 					State:         req.State,
 					Quality:       cloneValPtr(req.Quality),
 					LatencyMS:     cloneValPtr(req.LatencyMS),
+					Prompt:        cloneValPtr(req.Prompt),
+					Response:      cloneValPtr(req.Response),
 				}
 			}
 		}

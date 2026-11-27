@@ -37,8 +37,25 @@ def _svg_outputs(data):
     return items
 
 
+def _request_view(request, prompts):
+    row = {
+        "case_id": request["case_id"],
+        "category_label": CATEGORIES.get(request["category"], request["category"]),
+        "state": request["execution_state"],
+        "quality": (request.get("score") or {}).get("quality_state"),
+        "latency_ms": request_timing(request)["L03"]["value"],
+    }
+    prompt = prompts.get(request["case_id"])
+    if isinstance(prompt, str) and prompt:
+        row["prompt"] = prompt
+    content = request.get("content")
+    row["response"] = content if isinstance(content, str) and content else None
+    return row
+
+
 def _run_view(data, source):
     config, summary = data["config"], data["summary"]
+    prompts = {case["case_id"]: case["prompt"] for case in data["bundle"]["cases"]}
     run = {
         "source": {"run_id": source["run_id"], "path": source["path"]},
         "model": config["model"]["display_name"],
@@ -56,16 +73,7 @@ def _run_view(data, source):
             "stop_reason": summary["stop_reason"],
         },
         "dashboard": dashboard_view(data, memory_view(data.get("samples") or [])),
-        "requests": [
-            {
-                "case_id": request["case_id"],
-                "category_label": CATEGORIES.get(request["category"], request["category"]),
-                "state": request["execution_state"],
-                "quality": (request.get("score") or {}).get("quality_state"),
-                "latency_ms": request_timing(request)["L03"]["value"],
-            }
-            for request in data["requests"]
-        ],
+        "requests": [_request_view(request, prompts) for request in data["requests"]],
     }
     svg_outputs = _svg_outputs(data)
     if svg_outputs:

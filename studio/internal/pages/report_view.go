@@ -23,6 +23,8 @@ type reportViewState struct {
 	svgLoadedKey         string
 	svgStageErr          bool
 	categories, requests pageTableState
+	detailCaseOpen       bool
+	detailCaseIndex      int
 }
 
 func (s *viewState) readReport(reference string) (*core.ReportIndex, *core.ApiError) {
@@ -190,6 +192,7 @@ func (s *viewState) reportView(c *ui.Context) {
 		func(c *ui.Context) { reportSourceView(c, run) },
 	)
 	report.requestView(c, run)
+	s.reportCaseDrawer(c, report, run)
 }
 
 func reportSectionCard(c *ui.Context, icon func() *ui.SVG, title string, trailing func(), body func()) {
@@ -354,6 +357,7 @@ func (r *reportViewState) runPicker(c *ui.Context) {
 		if selectRun.Trigger.Changed() {
 			r.categories, r.requests = pageTableState{}, pageTableState{}
 			r.requestsPage = 0
+			r.detailCaseOpen, r.detailCaseIndex = false, -1
 			r.svgIndex = 0
 			r.releaseSVGStage()
 		}
