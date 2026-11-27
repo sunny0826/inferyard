@@ -133,6 +133,7 @@
   "preview.scene.service_orphaned": "Services · Orphaned Service Recovery",
   "preview.scene.services_multi": "Services · Multi-Service, LAN & Discovery",
   "preview.scene.speed_history_results": "Reports · Long-Context Speed History",
+  "preview.scene.speed_running": "Benchmarks · Long-Context Speed Running",
   "preview.scene.task_completed": "Benchmarks · Completed",
   "preview.scene.task_failed": "Benchmarks · Failed",
   "preview.scene.task_preparation": "Benchmarks · Setup Required",

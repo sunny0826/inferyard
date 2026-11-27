@@ -83,10 +83,7 @@ func (s *viewState) dashboardView(c *ui.Context) {
 		s.taskAssetsView(c)
 		return
 	}
-	if s.speed == nil || !s.speed.selected {
-		s.conclusionView(c)
-	}
-	s.stageView(c)
+	s.workflowView(c)
 	s.awaitingLocalServiceView(c)
 	if len(s.task.start.localCandidates) > 0 && s.task.failure != nil && !s.busy {
 		noticeBanner(c, noticeBannerOptions{
@@ -107,97 +104,206 @@ func (s *viewState) environmentMissing() bool {
 	return s.ready.CLI.Status != "ok" || !s.ready.Workspace.Initialized || !s.ready.Results.Exists || !s.ready.Models.Exists
 }
 
-func (s *viewState) conclusionView(c *ui.Context) {
-	if s.progress == nil {
-		return
-	}
-	t := tokens(c)
+func (s *viewState) benchmarkWorkflowSteps(c *ui.Context) ([]workflowStepItem, int, bool, string, stateKind) {
 	step := s.step()
+	failed := s.stepFailed()
 	stepText := fmt.Sprintf("%d / 6", min(6, max(1, step+1)))
 	stepKind := stateActive
-	if step >= 6 {
+	switch {
+	case step >= 6:
 		stepText = "6 / 6"
 		stepKind = stateSuccess
+	case failed:
+		stepKind = stateDanger
 	}
-	applyMaterial(c, ui.Column(c.Key("workspace-progress-card")).FillWidth().MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
-		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			heading(c, tr(c, "dashboard.progress.title"), 2).Grow(1)
-			inlineBadge(c, stepText, stepKind, badgeOptions{Size: sizeSM})
-		})
-		phaseProgress(c, phaseProgressOptions{
-			Labels: []string{
-				tr(c, "dashboard.stage.prepare"),
-				tr(c, "dashboard.stage.device_check"),
-				tr(c, "dashboard.stage.configure"),
-				tr(c, "dashboard.stage.bind"),
-				tr(c, "dashboard.stage.run"),
-				tr(c, "dashboard.stage.report"),
-			},
-			Current:  step,
-			RowLabel: tr(c, "dashboard.progress.row_label"),
-			BarLabel: tr(c, "dashboard.progress.bar_label"),
-		})
-		bundles := s.taskBundles()
-		failed := s.failedBundles()
-		if len(bundles) > 0 {
-			applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Section).
-				Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
-				for _, b := range bundles {
-					if task := s.liveBundleTask(b.Bundle); task != nil {
-						kind := stateActive
-						if task.Queued && task.State == "starting" {
-							kind = stateNeutral
-						}
-						badge(c, b.Bundle+" · "+taskLabel(*task), kind, badgeOptions{Style: badgeDot})
-						continue
-					}
-					if failed[b.Bundle] {
-						badge(c, trf(c, "dashboard.bundle.failed_badge", "bundle", b.Bundle), stateDanger, badgeOptions{Style: badgeDot})
-						continue
-					}
-					kind := stateNeutral
-					switch b.Phase {
-					case "run_complete":
-						kind = stateSuccess
-					case "run_incomplete":
-						kind = stateWarning
-					}
-					badge(c, b.Bundle+" · "+stateLabel(b.Phase), kind, badgeOptions{Style: badgeDot})
-				}
-			})
+	configSummary := s.model
+	if s.model != "" && s.engine != "" {
+		configSummary = s.model + " · " + s.engine
+	} else if s.engine != "" {
+		configSummary = s.engine
+	}
+	bindSummary := ""
+	if s.engineState.Pid > 0 && s.engineState.Endpoint != "" {
+		bindSummary = fmt.Sprintf("PID %d · %s", s.engineState.Pid, s.engineState.Endpoint)
+	} else if s.engineState.Endpoint != "" {
+		bindSummary = s.engineState.Endpoint
+	}
+	items := []workflowStepItem{
+		{Label: tr(c, "dashboard.stage.prepare")},
+		{Label: tr(c, "dashboard.stage.device_check")},
+		{Label: tr(c, "dashboard.stage.configure"), Summary: configSummary},
+		{Label: tr(c, "dashboard.stage.bind"), Summary: bindSummary},
+		{Label: tr(c, "dashboard.stage.run")},
+		{Label: tr(c, "dashboard.stage.report")},
+	}
+	return items, step, failed, stepText, stepKind
+}
+
+func speedWorkflowSteps(c *ui.Context, current int, failed bool, r *speedTask) ([]workflowStepItem, string, stateKind) {
+	stepText := fmt.Sprintf("%d / 5", min(5, max(1, current+1)))
+	stepKind := stateActive
+	switch {
+	case current >= 5:
+		stepText = "5 / 5"
+		stepKind = stateSuccess
+	case failed:
+		stepKind = stateDanger
+	}
+	var configSummary, measureSummary string
+	if r != nil {
+		configSummary = fmt.Sprintf("%s · %s", r.model, speedContext(r.context))
+		if r.completed > 0 {
+			measureSummary = trf(c, "speed.task.completed_count", "completed", r.completed)
 		}
-		for _, b := range bundles {
-			if s.liveBundleTask(b.Bundle) != nil || failed[b.Bundle] {
+	}
+	items := []workflowStepItem{
+		{Label: tr(c, "speed.step.prepare"), Summary: configSummary},
+		{Label: tr(c, "speed.step.bind")},
+		{Label: tr(c, "speed.step.plan")},
+		{Label: tr(c, "speed.step.measure"), Summary: measureSummary},
+		{Label: tr(c, "speed.step.read")},
+	}
+	return items, stepText, stepKind
+}
+
+func (s *viewState) currentStageProgress(c *ui.Context, action string) workflowProgressInfo {
+	if s.isPreparingBenchmark() {
+		return workflowProgressInfo{
+			Active:    true,
+			Value:     -1,
+			AriaLabel: tr(c, "sidebar.status.queue_preparing"),
+		}
+	}
+	if action == "bind" && s.engineState.State == "starting" {
+		return workflowProgressInfo{
+			Active:    true,
+			Value:     -1,
+			AriaLabel: tr(c, "dashboard.service.starting_progress"),
+		}
+	}
+	if task := s.running(); task != nil && (action == "run" || action == "resume") {
+		val := -1.0
+		pct := ""
+		p := s.runProgress
+		if p != nil && p.Total != nil && *p.Total > 0 && (p.Done > 0 || p.CurrentCaseId != nil) {
+			val = progressValue(p.Done, p.Total)
+			if val >= 0 {
+				pct = fmt.Sprintf("%.0f%%", val*100)
+			}
+		}
+		return workflowProgressInfo{
+			Active:       true,
+			Value:        val,
+			PercentLabel: pct,
+			AriaLabel:    tr(c, "dashboard.run.progress_bar_label"),
+		}
+	}
+	return workflowProgressInfo{}
+}
+
+func (s *viewState) stageAction() string {
+	action := ""
+	if s.progress != nil {
+		action = s.progress.NextAction
+		if s.progress.DefaultScopeComplete {
+			action = "done"
+		}
+	}
+	if s.running() != nil {
+		action = "run"
+	}
+	if s.binding || s.bindingPhase() {
+		action = "bind"
+	}
+	if s.task.stage != "" {
+		action = s.task.stage
+		if action == "prepare_candidate" && s.localEngine() == nil && s.progress != nil && s.progress.DevicePreflight.Status == "missing" {
+			action = "device_check"
+		}
+	}
+	if action == "device_check" && s.hasLocalEngine() {
+		action = "prepare_candidate"
+	}
+	return action
+}
+
+func (s *viewState) stageHandlesFailure(action string) bool {
+	switch action {
+	case "prepare_candidate":
+		return s.task.failure != nil && !s.isPreparingBenchmark()
+	case "bind":
+		return s.stepFailed()
+	case "run", "resume":
+		return s.stepFailed() && (s.running() == nil || s.serviceCardVisible())
+	default:
+		return false
+	}
+}
+
+func (s *viewState) renderBundleStatusRow(c *ui.Context) {
+	bundles := s.taskBundles()
+	if len(bundles) == 0 {
+		return
+	}
+	failed := s.failedBundles()
+	for _, b := range bundles {
+		if task := s.liveBundleTask(b.Bundle); task != nil {
+			kind := stateActive
+			if task.Queued && task.State == "starting" {
+				kind = stateNeutral
+			}
+			badge(c, b.Bundle+" · "+taskLabel(*task), kind, badgeOptions{Style: badgeDot})
+			continue
+		}
+		if failed[b.Bundle] {
+			badge(c, trf(c, "dashboard.bundle.failed_badge", "bundle", b.Bundle), stateDanger, badgeOptions{Style: badgeDot})
+			continue
+		}
+		kind := stateNeutral
+		switch b.Phase {
+		case "run_complete":
+			kind = stateSuccess
+		case "run_incomplete":
+			kind = stateWarning
+		}
+		badge(c, b.Bundle+" · "+stateLabel(b.Phase), kind, badgeOptions{Style: badgeDot})
+	}
+}
+
+func (s *viewState) renderStageAlerts(c *ui.Context, action string) {
+	bundles := s.taskBundles()
+	failed := s.failedBundles()
+	for _, b := range bundles {
+		if s.liveBundleTask(b.Bundle) != nil || failed[b.Bundle] {
+			continue
+		}
+		if b.BlockedReason != nil {
+			if *b.BlockedReason == "no_local_model" && s.availableTaskAssets().model && s.preparingTask() {
 				continue
 			}
-			if b.BlockedReason != nil {
-				if *b.BlockedReason == "no_local_model" && s.availableTaskAssets().model && s.preparingTask() {
-					continue
-				}
-				bannerKind := stateDanger
-				if b.Phase == "run_incomplete" {
-					bannerKind = stateWarning
-				}
-				noticeBanner(c, noticeBannerOptions{
-					Kind:    bannerKind,
-					Size:    bannerCompact,
-					Message: human(*b.BlockedReason),
-				})
-			}
-		}
-		if s.task.failure != nil || s.bindFailure != nil {
-			cause, _ := s.stepDiagnosis()
-			code := ""
-			if cause != nil {
-				code = cause.Code
+			bannerKind := stateDanger
+			if b.Phase == "run_incomplete" {
+				bannerKind = stateWarning
 			}
 			noticeBanner(c, noticeBannerOptions{
-				Kind:    stateDanger,
+				Kind:    bannerKind,
 				Size:    bannerCompact,
-				Message: trf(c, "dashboard.task.aborted", "reason", human(code)),
+				Message: human(*b.BlockedReason),
 			})
 		}
-	})
+	}
+	if (s.task.failure != nil || s.bindFailure != nil) && !s.stageHandlesFailure(action) {
+		cause, _ := s.stepDiagnosis()
+		code := ""
+		if cause != nil {
+			code = cause.Code
+		}
+		noticeBanner(c, noticeBannerOptions{
+			Kind:    stateDanger,
+			Size:    bannerCompact,
+			Message: trf(c, "dashboard.task.aborted", "reason", human(code)),
+		})
+	}
 }
 
 func (s *viewState) serviceCardVisible() bool {
@@ -233,14 +339,6 @@ func (s *viewState) failedBundles() map[string]bool {
 	return failed
 }
 
-func (s *viewState) configStage(c *ui.Context, body func()) {
-	if s.speed != nil && s.speed.selected {
-		card(c, tr(c, "dashboard.stage.configure"), body)
-		return
-	}
-	stepTrack(c, "3", tr(c, "dashboard.stage.configure"), body)
-}
-
 func (s *viewState) isPreparingBenchmark() bool {
 	if s.task.failure != nil {
 		return false
@@ -251,7 +349,7 @@ func (s *viewState) isPreparingBenchmark() bool {
 	return s.busy && s.busyAction == "prepare-benchmark" && s.task.stage == "prepare_candidate"
 }
 
-func (s *viewState) renderPreparingBenchmarkView(c *ui.Context) {
+func (s *viewState) renderPreparingBenchmarkView(c *ui.Context, embedBar bool) {
 	t := tokens(c)
 	ui.Column(c.Key("preparing-benchmark-card")).FillWidth().Gap(t.Density.Row).Children(func() {
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
@@ -267,77 +365,106 @@ func (s *viewState) renderPreparingBenchmarkView(c *ui.Context) {
 			}
 			inlineBadge(c, tr(c, "benchmarks.badge.active_flow"), stateActive, badgeOptions{Size: sizeSM, Style: badgeDot})
 		})
-		progressBar(c, -1, tr(c, "sidebar.status.queue_preparing"))
+		if embedBar {
+			progressBar(c, -1, tr(c, "sidebar.status.queue_preparing"))
+		}
 	})
 }
 
-func (s *viewState) stageView(c *ui.Context) {
-	action := ""
-	if s.progress != nil {
-		action = s.progress.NextAction
-		if s.progress.DefaultScopeComplete {
-			action = "done"
+func (s *viewState) workflowView(c *ui.Context) {
+	action := s.stageAction()
+	configuring := action == "prepare_candidate" && !s.isPreparingBenchmark()
+	speedTabSelected := configuring && s.speed != nil && s.speed.selected
+
+	var steps []workflowStepItem
+	var current int
+	var failed bool
+	var stepCount string
+	var stepKind stateKind
+	rowLabel := tr(c, "dashboard.progress.row_label")
+	if speedTabSelected {
+		steps, stepCount, stepKind = speedWorkflowSteps(c, 0, false, nil)
+		rowLabel = tr(c, "speed.task.progress_card")
+	} else if s.progress != nil {
+		steps, current, failed, stepCount, stepKind = s.benchmarkWorkflowSteps(c)
+	}
+
+	var modeSwitch func()
+	if configuring && s.speed != nil {
+		modeSwitch = func() {
+			s.speedTypeSwitch(c)
 		}
 	}
-	if s.running() != nil {
-		action = "run"
-	}
-	if s.binding || s.bindingPhase() {
-		action = "bind"
-	}
-	if s.task.stage != "" {
-		action = s.task.stage
-		if action == "prepare_candidate" && s.localEngine() == nil && s.progress != nil && s.progress.DevicePreflight.Status == "missing" {
-			action = "device_check"
+
+	var subHeader func()
+	if !speedTabSelected && s.progress != nil {
+		bundles := s.taskBundles()
+		showBundles := len(bundles) > 1 || (len(bundles) == 1 && (s.running() == nil || action != "run"))
+		if showBundles {
+			subHeader = func() { s.renderBundleStatusRow(c) }
 		}
 	}
-	if action == "device_check" && s.hasLocalEngine() {
-		action = "prepare_candidate"
+
+	var prog workflowProgressInfo
+	if !speedTabSelected {
+		prog = s.currentStageProgress(c, action)
 	}
+
+	pipelineCard(c, pipelineCardOptions{
+		Key:        "workspace-progress-card",
+		ModeSwitch: modeSwitch,
+		Steps:      steps,
+		Current:    current,
+		Failed:     failed,
+		RowLabel:   rowLabel,
+		StepCount:  stepCount,
+		StepKind:   stepKind,
+		Progress:   prog,
+		SubHeader:  subHeader,
+		Body: func(embedBar bool) {
+			if !speedTabSelected && s.progress != nil {
+				s.renderStageAlerts(c, action)
+			}
+			s.renderStageBody(c, action, embedBar)
+		},
+	})
+}
+
+func (s *viewState) renderStageBody(c *ui.Context, action string, embedBar bool) {
 	switch action {
 	case "device_check":
-		stepTrack(c, "2", tr(c, "dashboard.stage.device_check"), func() {
-			ui.Text(c, tr(c, "dashboard.device_check.running"))
-			s.checkWorkspaceDevice()
-			button(c, tr(c, "dashboard.device_check.open_device")).OnClick(func() {
-				s.libraryHwExpanded = true
-				s.navigateTo("library", "")
-			})
+		ui.Text(c, tr(c, "dashboard.device_check.running"))
+		s.checkWorkspaceDevice()
+		button(c, tr(c, "dashboard.device_check.open_device")).OnClick(func() {
+			s.libraryHwExpanded = true
+			s.navigateTo("library", "")
 		})
 	case "prepare_candidate":
 		if s.isPreparingBenchmark() {
-			s.configStage(c, func() {
-				s.renderPreparingBenchmarkView(c)
-			})
-			break
+			s.renderPreparingBenchmarkView(c, embedBar)
+			return
 		}
-		ui.Column(c.Key("config-stage")).Gap(tokens(c).Density.CardGap).Children(func() {
-			s.speedTypeSwitch(c)
-			s.configStage(c, func() {
-				if s.task.failure != nil {
-					failureView(c, tr(c, "dashboard.stage.configure_failed"), s.task.failure, tr(c, "dashboard.retry.completed_kept"))
-				}
-				s.candidateFields(c)
-			})
-		})
+		if s.task.failure != nil && (s.speed == nil || !s.speed.selected) {
+			failureView(c, tr(c, "dashboard.stage.configure_failed"), s.task.failure, tr(c, "dashboard.retry.completed_kept"))
+		}
+		s.candidateFields(c)
 	case "bind":
-		stepTrack(c, "4", tr(c, "dashboard.stage.bind"), func() { s.serviceView(c) })
+		s.serviceViewWithBar(c, embedBar)
 	case "run", "resume":
 		if s.serviceCardVisible() {
-			card(c, tr(c, "dashboard.service.card_title"), func() { s.serviceView(c) })
+			s.serviceViewWithBar(c, embedBar)
+			ui.Box(c).FillWidth().Height(1).Background(tokens(c).Color.BorderSubtle)
 		}
-		stepTrack(c, "5", tr(c, "dashboard.stage.run"), func() { s.runView(c) })
+		s.runViewWithBar(c, embedBar)
 	case "report":
-		stepTrack(c, "6", tr(c, "dashboard.stage.report"), func() {
-			if s.task.stage != "" {
-				ui.Text(c, tr(c, "dashboard.report.generating"))
-			} else {
-				ui.Text(c, tr(c, "dashboard.report.open_hint"))
-				button(c, tr(c, "dashboard.completion.view_report")).OnClick(func() { s.selected = "reports" })
-			}
-		})
+		if s.task.stage != "" {
+			ui.Text(c, tr(c, "dashboard.report.generating"))
+		} else {
+			ui.Text(c, tr(c, "dashboard.report.open_hint"))
+			button(c, tr(c, "dashboard.completion.view_report")).OnClick(func() { s.selected = "reports" })
+		}
 	case "done":
-		stepTrack(c, "6", tr(c, "dashboard.stage.report"), func() { s.completionView(c) })
+		s.completionView(c)
 	default:
 		if s.progress == nil {
 			ui.Text(c, tr(c, "dashboard.progress.unreadable"))

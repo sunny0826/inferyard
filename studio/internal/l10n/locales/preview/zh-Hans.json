@@ -133,6 +133,7 @@
   "preview.scene.service_orphaned": "服务 · 孤儿进程恢复与锁清理",
   "preview.scene.services_multi": "服务 · 多服务并行与外部发现",
   "preview.scene.speed_history_results": "报告 · 长上下文专项",
+  "preview.scene.speed_running": "测评 · 长上下文速度运行中",
   "preview.scene.task_completed": "测评 · 已完成",
   "preview.scene.task_failed": "测评 · 启动失败",
   "preview.scene.task_preparation": "测评 · 环境未就绪",

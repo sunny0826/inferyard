@@ -70,7 +70,7 @@ func TestDashboardSelectedRunReportIgnoresUnfinishedPelican(t *testing.T) {
 	if strings.Contains(report.Command, "pelican") || strings.Contains(f.requests[0].Command, "pelican") {
 		t.Fatal(f.requests)
 	}
-	tt := ui.NewTester(s.stageView, 1120, 1000)
+	tt := ui.NewTester(s.workflowView, 1120, 1000)
 	if !tt.HasText("查看报告") || tt.HasText(s.task.report) || tt.HasText("已核验") || tt.HasText("missing") {
 		t.Fatal(tt.Texts())
 	}

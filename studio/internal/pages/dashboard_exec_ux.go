@@ -1,9 +1,41 @@
 package pages
 
 import (
+	"encoding/json"
+
+	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
 )
+
+func macOSBatteryWarning(raw json.RawMessage) bool {
+	snapshot, err := parseDeviceSnapshot(raw)
+	if err != nil || snapshot == nil {
+		return false
+	}
+	hw := snapshot.object("hardware")
+	if hw == nil {
+		return false
+	}
+	platform, _ := hw["platform"].(string)
+	if platform != "Darwin" {
+		return false
+	}
+	online, ok := hw["ac_online"].(bool)
+	return ok && !online
+}
+
+func failureView(c *ui.Context, title string, e *core.ApiError, next string) {
+	ui.Text(c, title).Bold().TextColor(stateColor(c, stateDanger))
+	if e != nil {
+		errorView(c, e)
+	} else {
+		noticeBanner(c, noticeBannerOptions{Kind: stateDanger, Size: bannerCompact, Message: tr(c, "dashboard.failure.no_detail")})
+	}
+	if next != "" {
+		ui.Text(c, next).TextColor(tokens(c).Color.FgSecondary)
+	}
+}
 
 func localBackendLabel(family string) string {
 	switch family {

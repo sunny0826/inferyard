@@ -86,7 +86,26 @@ func (p *previewSession) dsStatesCard(c *ui.Context) {
 			})
 		})
 
-		ui.Column(c).FillWidth().Gap(t.Density.Tight).Children(func() {
+		ui.Column(c).FillWidth().Gap(t.Density.Stack).Children(func() {
+			pipelineRail(c, pipelineCardOptions{
+				Key:      "ds-pipeline-active",
+				RowLabel: tr(c, "preview.ds.progress.active"),
+				Steps: []workflowStepItem{
+					{Label: tr(c, "dashboard.stage.prepare")},
+					{Label: tr(c, "dashboard.stage.device_check")},
+					{Label: tr(c, "dashboard.stage.configure")},
+					{Label: tr(c, "dashboard.stage.bind")},
+					{Label: tr(c, "dashboard.stage.run")},
+					{Label: tr(c, "dashboard.stage.report")},
+				},
+				Current: 4,
+				Progress: workflowProgressInfo{
+					Active:       true,
+					Value:        0.68,
+					PercentLabel: "68%",
+					AriaLabel:    tr(c, "preview.ds.progress.active"),
+				},
+			})
 			progressBar(c, 0.68, tr(c, "preview.ds.progress.active"))
 			progressBar(c, 1.0, tr(c, "preview.ds.progress.done"))
 		})
