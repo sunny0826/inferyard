@@ -26,6 +26,7 @@ var navigation = []struct {
 
 type WindowHooks struct {
 	BindTray        func(win *mygo.Window) func(bool) error
+	MinimizeToTray  func() error
 	OnLocaleChanged func(locale string)
 }
 
@@ -68,6 +69,9 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 	shell := sidebar.NewShell(s.shellOptions(title))
 	w := shell.Window()
 	s.win = w
+	if len(hooks) > 0 {
+		s.minimizeToTrayNow = hooks[0].MinimizeToTray
+	}
 	if len(hooks) > 0 && hooks[0].BindTray != nil {
 		s.applyMinimizeToTray = hooks[0].BindTray(w)
 		_ = s.syncMinimizeToTrayIfNeeded()
