@@ -36,10 +36,12 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 		title = paths.WindowTitle
 	}
 	initialTheme := service.Theme()
+	initialAccent := service.Accent()
 	initialLanguage := service.Language()
 	initialMinimizeToTray := service.MinimizeToTray()
 	initialKeepServices := service.EffectiveKeepServicesOnQuit()
 	syncNativeTheme(initialTheme)
+	setActiveAccent(initialAccent)
 	syncNativeLocale(initialLanguage)
 	s := &viewState{
 		ctx:         ctx,
@@ -51,6 +53,7 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 		settingsViewState: settingsViewState{
 			themeMode:             initialTheme,
 			appliedThemeMode:      initialTheme,
+			accentMode:            initialAccent,
 			languageMode:          initialLanguage,
 			appliedLanguageMode:   initialLanguage,
 			minimizeToTray:        initialMinimizeToTray,
@@ -58,8 +61,8 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 		},
 		keepServicesOnQuit: initialKeepServices,
 		settings: core.SettingsResponse{
-			Settings:  core.UserSettings{Theme: initialTheme, Language: initialLanguage, MinimizeToTray: initialMinimizeToTray},
-			Effective: core.EffectiveSettings{Theme: initialTheme, Language: initialLanguage, MinimizeToTray: initialMinimizeToTray, KeepServicesOnQuit: initialKeepServices},
+			Settings:  core.UserSettings{Theme: initialTheme, Accent: initialAccent, Language: initialLanguage, MinimizeToTray: initialMinimizeToTray},
+			Effective: core.EffectiveSettings{Theme: initialTheme, Accent: initialAccent, Language: initialLanguage, MinimizeToTray: initialMinimizeToTray, KeepServicesOnQuit: initialKeepServices},
 		},
 	}
 	shell := sidebar.NewShell(s.shellOptions(title))

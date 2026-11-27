@@ -277,6 +277,7 @@ func (s *Service) Settings() SettingsResponse {
 		ExtraModelsRoots:   append([]string(nil), u.ExtraModelsRoots...),
 		DownloadProxy:      u.DownloadProxy,
 		Theme:              NormalizeTheme(u.Theme),
+		Accent:             NormalizeAccent(u.Accent),
 		Language:           NormalizeLanguage(u.Language),
 		MinimizeToTray:     u.MinimizeToTray,
 		KeepServicesOnQuit: EffectiveKeepServicesOnQuitValue(u),
@@ -287,13 +288,13 @@ func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResp
 	s.settingsMu.Lock()
 	defer s.settingsMu.Unlock()
 	for k := range patch {
-		if k != "inferyard_path" && k != "workspace_root" && k != "download_proxy" && k != "theme" && k != "language" && k != "minimize_to_tray" && k != "keep_services_on_quit" && k != "extra_models_roots" {
+		if k != "inferyard_path" && k != "workspace_root" && k != "download_proxy" && k != "theme" && k != "accent" && k != "language" && k != "minimize_to_tray" && k != "keep_services_on_quit" && k != "extra_models_roots" {
 			return SettingsResponse{}, Err("invalid_request")
 		}
 	}
 	if s.paths != nil {
 		for k := range patch {
-			if k != "download_proxy" && k != "theme" && k != "language" && k != "minimize_to_tray" && k != "keep_services_on_quit" {
+			if k != "download_proxy" && k != "theme" && k != "accent" && k != "language" && k != "minimize_to_tray" && k != "keep_services_on_quit" {
 				return SettingsResponse{}, Conflict("paths_bound")
 			}
 		}
@@ -314,7 +315,7 @@ func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResp
 			u.InferyardPath = p
 		}
 	}
-	for _, k := range []string{"extra_models_roots", "download_proxy", "theme", "language", "minimize_to_tray", "keep_services_on_quit"} {
+	for _, k := range []string{"extra_models_roots", "download_proxy", "theme", "accent", "language", "minimize_to_tray", "keep_services_on_quit"} {
 		v, ok := patch[k]
 		if !ok {
 			continue

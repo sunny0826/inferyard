@@ -7,6 +7,14 @@ import (
 	"inferyard/studio/internal/core"
 )
 
+type buttonPalette struct {
+	secondaryBg, secondaryHover, secondaryPressed, secondaryBorder, secondaryBorderHover ui.Color
+	dangerBg, dangerHover, dangerPressed, dangerBorder, dangerFg                         ui.Color
+	dangerSolid, dangerSolidHover, dangerSolidPressed                                    ui.Color
+	engineRunning, engineRunningPressed                                                  ui.Color
+	selectionBg, focusRing                                                               ui.Color
+}
+
 type paletteColors struct {
 	background, sunken, surface, surfaceHover, surfacePressed, elevated ui.Color
 	borderSubtle, border, borderStrong                                  ui.Color
@@ -14,6 +22,7 @@ type paletteColors struct {
 	accent, accentHover, accentPressed, accentText                      ui.Color
 	info, success, warning, danger                                      ui.Color
 	chart                                                               [6]ui.Color
+	buttons                                                             buttonPalette
 }
 
 type stateColorScale struct {
@@ -32,74 +41,8 @@ type colorTokens struct {
 	Chart                                                                     [6]ui.Color
 }
 
-var (
-	studioLightPalette = paletteColors{
-		background:     ui.Hex("#fafafa"),
-		sunken:         ui.Hex("#f4f4f4"),
-		surface:        ui.Hex("#ffffff"),
-		surfaceHover:   ui.Hex("#f4f4f4"),
-		surfacePressed: ui.Hex("#ebebeb"),
-		elevated:       ui.Hex("#ffffff"),
-		borderSubtle:   ui.Hex("#efefef"),
-		border:         ui.Hex("#e5e5e5"),
-		borderStrong:   ui.Hex("#cfcfcf"),
-		text:           ui.Hex("#171717"),
-		muted:          ui.Hex("#666666"),
-		tertiary:       ui.Hex("#999999"),
-		accent:         ui.Hex("#171717"),
-		accentHover:    ui.Hex("#2e2e2e"),
-		accentPressed:  ui.Hex("#454545"),
-		accentText:     ui.Hex("#ffffff"),
-		info:           ui.Hex("#255b98"),
-		success:        ui.Hex("#16794b"),
-		warning:        ui.Hex("#8f5a0b"),
-		danger:         ui.Hex("#be2436"),
-		chart: [6]ui.Color{
-			ui.Hex("#255b98"),
-			ui.Hex("#16794b"),
-			ui.Hex("#8f5a0b"),
-			ui.Hex("#6d4aa6"),
-			ui.Hex("#be2436"),
-			ui.Hex("#737373"),
-		},
-	}
-	studioDarkPalette = paletteColors{
-		background:     ui.Hex("#212121"),
-		sunken:         ui.Hex("#1a1a1a"),
-		surface:        ui.Hex("#2a2a2a"),
-		surfaceHover:   ui.Hex("#333333"),
-		surfacePressed: ui.Hex("#3d3d3d"),
-		elevated:       ui.Hex("#303030"),
-		borderSubtle:   ui.Hex("#353535"),
-		border:         ui.Hex("#424242"),
-		borderStrong:   ui.Hex("#5a5a5a"),
-		text:           ui.Hex("#f5f5f5"),
-		muted:          ui.Hex("#b4b4b4"),
-		tertiary:       ui.Hex("#808080"),
-		accent:         ui.Hex("#ffffff"),
-		accentHover:    ui.Hex("#e8e8e8"),
-		accentPressed:  ui.Hex("#d6d6d6"),
-		accentText:     ui.Hex("#171717"),
-		info:           ui.Hex("#7cb3f0"),
-		success:        ui.Hex("#5cd198"),
-		warning:        ui.Hex("#edb84d"),
-		danger:         ui.Hex("#f78c94"),
-		chart: [6]ui.Color{
-			ui.Hex("#7cb3f0"),
-			ui.Hex("#5cd198"),
-			ui.Hex("#edb84d"),
-			ui.Hex("#b59be8"),
-			ui.Hex("#f78c94"),
-			ui.Hex("#a8a8a8"),
-		},
-	}
-)
-
 func paletteFor(dark bool) paletteColors {
-	if dark {
-		return studioDarkPalette
-	}
-	return studioLightPalette
+	return paletteForAccent(activeAccent(), dark)
 }
 
 func studioThemeFor(c *ui.Context, dark bool) *ui.Theme {
@@ -154,10 +97,16 @@ func applyPalette(t *ui.Theme, p paletteColors) {
 	t.AccentHover, t.AccentPressed = p.accentHover, p.accentPressed
 	if t.Dark {
 		t.Selection, t.Focus = p.accent.Alpha(.14), p.accent.Alpha(.75)
-		t.Scrollbar = p.text.Alpha(.28)
+		t.Scrollbar = p.text.Alpha(.24)
 	} else {
 		t.Selection, t.Focus = p.accent.Alpha(.08), p.accent.Alpha(.65)
-		t.Scrollbar = p.text.Alpha(.24)
+		t.Scrollbar = p.text.Alpha(.20)
+	}
+	if p.buttons.selectionBg.A > 0 {
+		t.Selection = p.buttons.selectionBg
+	}
+	if p.buttons.focusRing.A > 0 {
+		t.Focus = p.buttons.focusRing
 	}
 	t.Success, t.Warning, t.Danger = p.success, p.warning, p.danger
 }

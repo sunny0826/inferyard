@@ -21,8 +21,15 @@ type engineHeaderActionOptions struct {
 }
 
 func enginePillSolidFill(dark, pressed bool, kind stateKind) ui.Color {
+	bp := paletteFor(dark).buttons
 	switch kind {
 	case stateDanger:
+		if pressed && bp.dangerSolidPressed.A > 0 {
+			return bp.dangerSolidPressed
+		}
+		if !pressed && bp.dangerSolid.A > 0 {
+			return bp.dangerSolid
+		}
 		if dark {
 			if pressed {
 				return ui.Hex("#b02c3b")
@@ -39,6 +46,12 @@ func enginePillSolidFill(dark, pressed bool, kind stateKind) ui.Color {
 		}
 		return ui.Hex("#255b98")
 	default:
+		if pressed && bp.engineRunningPressed.A > 0 {
+			return bp.engineRunningPressed
+		}
+		if !pressed && bp.engineRunning.A > 0 {
+			return bp.engineRunning
+		}
 		if dark {
 			if pressed {
 				return ui.Hex("#197449")
@@ -56,7 +69,7 @@ func engineHeaderActionButton(c *ui.Context, opts engineHeaderActionOptions) ui.
 	t := tokens(c)
 	theme := c.Theme()
 	scale := stateScale(c, opts.kind)
-	b := ui.ButtonBase(c).MinWidth(86).MinHeight(t.Control.SM).Padding(0, theme.Space(3)).Radius(t.Radius.Full).Label(opts.actionLabel)
+	b := ui.ButtonBase(c).MinWidth(86).MinHeight(t.Control.SM).Padding(0, theme.Space(3), 0, theme.Space(2.25)).Radius(t.Radius.Full).Label(opts.actionLabel)
 	b.Disabled(opts.disabled)
 
 	showSpinner := opts.busy

@@ -70,8 +70,9 @@ type spinIconState struct {
 }
 
 func refreshButton(c *ui.Context, label string, active bool) ui.Element {
-	theme := c.Theme()
-	b := styleButtonSize(c, components.Button(c, "", components.ButtonSecondary), sizeMD).Label(label)
+	t := tokens(c)
+	b := applySecondaryButtonPalette(c, styleButtonSize(c, components.Button(c, "", components.ButtonSecondary), sizeMD).Label(label))
+	applyButtonOpticalPadding(b, t, sizeMD, buttonIconLeading)
 	state := ui.Local(b, "refresh-spin", func() spinIconState { return spinIconState{} })
 	now := c.Now()
 	if active {
@@ -112,11 +113,13 @@ func refreshButton(c *ui.Context, label string, active bool) ui.Element {
 		}
 	}
 	b.Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Gap(theme.Space(1.5)).Children(func() {
-			icon := components.Icon(c, lucide.RefreshCw).Size(14, 14)
-			if angle != 0 {
-				icon.Rotate(angle)
-			}
+		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
+			ui.Box(c).Size(14, 14).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+				icon := components.Icon(c, lucide.RefreshCw).Size(14, 14)
+				if angle != 0 {
+					icon.Rotate(angle)
+				}
+			})
 			ui.Text(c, label).SingleLine()
 		})
 	})
@@ -124,11 +127,19 @@ func refreshButton(c *ui.Context, label string, active bool) ui.Element {
 }
 
 func actionButton(c *ui.Context, variant components.ButtonVariant, label string, active bool) ui.Element {
-	theme := c.Theme()
+	t := tokens(c)
 	b := styleButtonSize(c, components.Button(c, "", variant), sizeMD).Label(label)
+	if variant == components.ButtonSecondary {
+		applySecondaryButtonPalette(c, b)
+	}
 	showSpinner := delayedVisible(c, b, "btn-spinner", active)
+	side := buttonIconNone
+	if showSpinner {
+		side = buttonIconLeading
+	}
+	applyButtonOpticalPadding(b, t, sizeMD, side)
 	b.Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Gap(theme.Space(1.5)).Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
 			if showSpinner {
 				components.Spinner(c, components.SpinnerRing).Size(14, 14).Label(trf(c, "common.loading.action_busy", "label", label))
 			}

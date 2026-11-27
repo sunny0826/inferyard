@@ -32,6 +32,12 @@ const (
 	ThemeLight  = "light"
 	ThemeDark   = "dark"
 
+	AccentCobalt     = "cobalt"
+	AccentIndigo     = "indigo"
+	AccentTeal       = "teal"
+	AccentTerracotta = "terracotta"
+	AccentMono       = "mono"
+
 	LanguageSystem = "system"
 	LanguageEn     = "en"
 	LanguageZhHans = "zh-Hans"
@@ -41,6 +47,7 @@ type UserSettings struct {
 	EngineInstallations []string `json:"engine_installations,omitempty"`
 	DownloadProxy       *string  `json:"download_proxy,omitempty"`
 	Theme               string   `json:"theme,omitempty"`
+	Accent              string   `json:"accent,omitempty"`
 	Language            string   `json:"language,omitempty"`
 	MinimizeToTray      bool     `json:"minimize_to_tray,omitempty"`
 	KeepServicesOnQuit  *bool    `json:"keep_services_on_quit,omitempty"`
@@ -59,6 +66,7 @@ type EffectiveSettings struct {
 	ExtraModelsRoots   []string `json:"extra_models_roots,omitempty"`
 	DownloadProxy      *string  `json:"download_proxy,omitempty"`
 	Theme              string   `json:"theme"`
+	Accent             string   `json:"accent"`
 	Language           string   `json:"language"`
 	MinimizeToTray     bool     `json:"minimize_to_tray"`
 	KeepServicesOnQuit bool     `json:"keep_services_on_quit"`
