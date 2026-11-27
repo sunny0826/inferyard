@@ -1,4 +1,4 @@
-"""Export reviewed corpora and pinned archive-derived profiles; never download or execute assets."""
+"""Export pinned archive-derived runtime profiles and platform templates; never download or execute assets."""
 
 import argparse
 import hashlib

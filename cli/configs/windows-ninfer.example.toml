@@ -31,7 +31,7 @@ min_available_memory_bytes = 1073741824
 root = "D:\\lab\\results"
 
 [bundle]
-path = "../bundles/zh-smoke.json"
+path = "../../benchmarks/bundles/zh-smoke.json"
 version = "1.0.0-draft"
 
 [device]

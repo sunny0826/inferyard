@@ -74,7 +74,7 @@ func readConfigWithEndpoint(path string) (string, string, string, int64, int64, 
 	}
 	bundleName := strings.TrimSuffix(filepath.Base(bundle), ".json")
 	if bundleName == "" || bundleName == filepath.Base(bundle) {
-		bundleName = frozenBundle.ID
+		bundleName = inferyard.CanonicalBundleName(frozenBundle.ID)
 	}
-	return path, root, inferyard.CanonicalBundleName(bundleName), pid, ticks, nil
+	return path, root, bundleName, pid, ticks, nil
 }
