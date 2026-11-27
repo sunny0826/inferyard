@@ -16,8 +16,8 @@ from inferyard.errors import PreflightError
 from local_engine_helpers import local_config  # noqa: F401
 
 
-def _polystrata_config(local_config, *, context_size: int = 32768, effort: str | None = "none"):
-    cfg = deepcopy(local_config)
+def _polystrata_config(base_config, *, context_size: int = 32768, effort: str | None = "none"):
+    cfg = deepcopy(base_config)
     cfg["model"]["kind"] = "gguf"
     cfg["model"]["local_path"] = "/models/qwen36.gguf"
     cfg["engine"].update(
@@ -57,7 +57,7 @@ def _fake_start_ticks(pid):
 
 
 def test_polystrata_status_fallback_sanitizes_tail_and_rejects_missing_queued(
-    local_config,
+    local_config,  # noqa: F811
 ) -> None:
     cfg = _polystrata_config(local_config, context_size=32768)
     status_calls = 0

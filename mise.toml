@@ -57,8 +57,20 @@ env = { GOTOOLCHAIN = "go1.27.3", GOPROXY = "https://goproxy.cn,direct", CGO_ENA
 run = "go test -v -timeout 45m ./tests/e2e/ -run TestPolystrataRealLifecycle -count=1"
 
 [tasks.lint]
+description = "Run CLI and repo-wide Python static/type lint"
 dir = "cli"
-run = "uv run --frozen ruff check src tests scripts"
+run = "uv run --frozen ruff check src tests scripts ../tools ../studio/scripts ../studio/tests/ui && uv run --frozen ty check"
+
+[tasks."lint:studio"]
+description = "Run fast Studio Go vet, i18n/release gates, and test compilation check"
+dir = "studio"
+env = { GOTOOLCHAIN = "go1.27.3", GOPROXY = "https://goproxy.cn,direct", CGO_ENABLED = "0" }
+run = "go vet ./... && go test ./internal/l10n -count=1 && go test -tags ui_debug,release . -count=1 && go test -run '^$' . ./internal/... && go test -tags ui_debug -run '^$' . ./internal/pages && go test -c ./tests/e2e -o /dev/null"
+
+[tasks."check:fast"]
+description = "Run PR-equivalent fast compile, lint, schema, and file-length checks"
+depends = ["lint", "schemas", "lint:studio"]
+run = "python tools/check_file_length.py --base origin/main"
 
 [tasks.schemas]
 dir = "cli"

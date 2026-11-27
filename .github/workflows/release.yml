@@ -181,9 +181,15 @@ jobs:
           key: go-${{ runner.os }}-${{ hashFiles('studio/go.sum') }}
           restore-keys: |
             go-${{ runner.os }}-
-      - name: Check release packaging and debug exclusion
+      - name: Check Studio unit tests (Unix), release packaging, and debug exclusion
         shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
         run: |
+          if [ "$TARGET" != "windows-amd64" ]; then
+            mise exec -- go test . ./internal/... -count=1
+            mise exec -- go test -tags ui_debug . ./internal/pages -count=1
+          fi
           mise exec -- go test -tags ui_debug,release . -count=1
           mise exec -- python -m unittest discover -s scripts -p 'test_*.py'
       - name: Build native release binary

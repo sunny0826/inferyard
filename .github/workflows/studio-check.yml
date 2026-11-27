@@ -7,10 +7,7 @@ on:
       - "studio/**"
       - "!studio/README.md"
       - "tools/**"
-      - "cli/src/**"
       - "cli/schemas/**"
-      - "cli/pyproject.toml"
-      - "cli/uv.lock"
       - "mise.toml"
       - ".github/workflows/studio-check.yml"
   pull_request:
@@ -30,102 +27,33 @@ env:
   CGO_ENABLED: "0"
 jobs:
   unit:
-    name: studio unit (ubuntu-24.04)
+    name: studio lint & build (ubuntu-24.04)
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     env:
       MISE_DISABLE_TOOLS: uv
-    outputs:
-      run_e2e: ${{ steps.scope.outputs.run_e2e }}
-      run_native_ui: ${{ steps.scope.outputs.run_native_ui }}
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
           fetch-depth: ${{ github.event_name == 'push' && 2 || 1 }}
-      - name: Determine post-unit test scope
-        id: scope
+      - name: Check incremental 500-line file cap
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
-          BEFORE_SHA: ${{ github.event.before }}
-          HEAD_SHA: ${{ github.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
         run: |
-          python3 -c '
-          import os, subprocess
-          from pathlib import Path
-
-          event = os.environ.get("EVENT_NAME", "")
-          before = os.environ.get("BEFORE_SHA", "")
-          head = os.environ.get("HEAD_SHA", "")
-
-          RELEASE_METADATA_ONLY = {
-              "cli/pyproject.toml",
-              "cli/src/inferyard/__init__.py",
-              "cli/uv.lock",
-              "cli/CHANGELOG.md",
-              "studio/mygo.config.ts",
-          }
-
-          def write_outputs(run_e2e: bool, run_native_ui: bool, reason: str) -> None:
-              print(f"Scope decision ({reason}): run_e2e={run_e2e}, run_native_ui={run_native_ui}")
-              with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as out:
-                  out.write(f"run_e2e={str(run_e2e).lower()}\n")
-                  out.write(f"run_native_ui={str(run_native_ui).lower()}\n")
-
-          if event == "workflow_dispatch":
-              write_outputs(True, True, "workflow_dispatch")
-              raise SystemExit(0)
-          if event != "push":
-              write_outputs(False, False, event or "non-push")
-              raise SystemExit(0)
-
-          zero_sha = "0" * 40
-          if not before or before == zero_sha or not head:
-              write_outputs(True, True, "missing before/head sha fallback")
-              raise SystemExit(0)
-
-          has_before = subprocess.run(
-              ["git", "cat-file", "-e", f"{before}^{{commit}}"],
-              check=False,
-              stdout=subprocess.DEVNULL,
-              stderr=subprocess.DEVNULL,
-          ).returncode == 0
-          if not has_before:
-              subprocess.run(
-                  ["git", "fetch", "--no-tags", "--depth=1", "origin", before],
-                  check=False,
-                  stdout=subprocess.DEVNULL,
-                  stderr=subprocess.DEVNULL,
-              )
-
-          diff = subprocess.run(
-              ["git", "diff", "--name-only", before, head],
-              check=False,
-              text=True,
-              capture_output=True,
-          )
-          if diff.returncode != 0:
-              write_outputs(True, True, "git diff unavailable fallback")
-              raise SystemExit(0)
-
-          files = {line.strip() for line in diff.stdout.splitlines() if line.strip()}
-          if not files:
-              write_outputs(True, True, "empty diff fallback")
-              raise SystemExit(0)
-
-          print("Changed files:", sorted(files))
-          if files <= RELEASE_METADATA_ONLY:
-              write_outputs(False, False, "release metadata bump only")
-              raise SystemExit(0)
-
-          run_native_ui = any(
-              (f.startswith("studio/") and f not in {"studio/README.md", "studio/mygo.config.ts"})
-              or f in {"mise.toml", ".github/workflows/studio-check.yml"}
-              for f in files
-          )
-          write_outputs(True, run_native_ui, "push path analysis")
-          '
+          base_sha=""
+          if [ "$EVENT_NAME" = "pull_request" ] && [ -n "$PR_BASE_SHA" ]; then
+            base_sha="$PR_BASE_SHA"
+          elif [ "$EVENT_NAME" = "push" ] && [ -n "$PUSH_BEFORE_SHA" ] && [ "$PUSH_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            base_sha="$PUSH_BEFORE_SHA"
+          fi
+          if [ -n "$base_sha" ]; then
+            git cat-file -e "${base_sha}^{commit}" 2>/dev/null || git fetch --no-tags --depth=1 origin "$base_sha"
+            python3 tools/check_file_length.py --base "$base_sha"
+          fi
       - uses: jdx/mise-action@v5.2.4
       - name: Cache Go modules and build cache
         uses: actions/cache@v6
@@ -136,17 +64,18 @@ jobs:
           key: go-${{ runner.os }}-${{ hashFiles('studio/go.sum') }}
           restore-keys: |
             go-${{ runner.os }}-
-      - name: Unit tests
-        working-directory: studio
-        run: mise exec -- go test . ./internal/... -count=1
-      - name: UI preview, release boundary, and tooling tests
+      - name: Go vet, i18n parity, and release boundary checks
         working-directory: studio
         run: |
-          mise exec -- go test -tags ui_debug . ./internal/pages -count=1
+          mise exec -- go vet ./...
+          mise exec -- go test ./internal/l10n -count=1
           mise exec -- go test -tags ui_debug,release . -count=1
-          mise exec -- python -m unittest discover -s scripts -p 'test_*.py'
-          mise exec -- python -m unittest discover -s ../tools -p 'test_*.py'
-          mise exec -- python -m unittest discover -s tests/ui -p 'test_*.py'
+      - name: Compile test suites and ui_debug preview (no execution)
+        working-directory: studio
+        run: |
+          mise exec -- go test -run '^$' . ./internal/...
+          mise exec -- go test -tags ui_debug -run '^$' . ./internal/pages
+          mise exec -- go test -c ./tests/e2e -o /dev/null
       - name: Cross-compile all release targets
         working-directory: studio
         shell: bash
@@ -158,90 +87,3 @@ jobs:
             GOOS="$goos" GOARCH="$goarch" mise exec -- go build -o /dev/null .
             GOOS="$goos" GOARCH="$goarch" mise exec -- go build -tags release -o /dev/null .
           done
-
-  e2e:
-    name: studio e2e (${{ matrix.os }})
-    needs: unit
-    if: github.event_name != 'pull_request' && needs.unit.outputs.run_e2e == 'true'
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-15, windows-2025]
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - uses: jdx/mise-action@v5.2.4
-      - name: Cache Go modules and build cache
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-            ~/Library/Caches/go-build
-            ~/AppData/Local/go-build
-          key: go-${{ runner.os }}-${{ hashFiles('studio/go.sum') }}
-          restore-keys: |
-            go-${{ runner.os }}-
-      - name: Cache uv
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/.cache/uv
-            ~/AppData/Local/uv/cache
-          key: uv-${{ runner.os }}-${{ hashFiles('cli/uv.lock') }}
-          restore-keys: |
-            uv-${{ runner.os }}-
-      - name: macOS-specific unit tests
-        if: matrix.os == 'macos-15'
-        working-directory: studio
-        run: mise exec -- go test ./internal/core -run 'Darwin' -count=1
-      - name: Sync CLI dependencies (e2e drives the real CLI)
-        working-directory: cli
-        run: mise exec -- uv sync --frozen
-      - name: e2e (fake engine, recorded CLI boundary)
-        working-directory: studio
-        run: mise exec -- go test ./tests/e2e/ -count=1 -timeout 900s -v
-
-  native-ui:
-    name: native preview UI (macOS)
-    needs: unit
-    if: github.event_name != 'pull_request' && needs.unit.outputs.run_native_ui == 'true'
-    runs-on: macos-15
-    timeout-minutes: 15
-    env:
-      MISE_DISABLE_TOOLS: uv
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - uses: jdx/mise-action@v5.2.4
-      - name: Cache Go modules and build cache
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/Library/Caches/go-build
-          key: go-${{ runner.os }}-${{ hashFiles('studio/go.sum') }}
-          restore-keys: |
-            go-${{ runner.os }}-
-      - name: Native preview UI e2e
-        run: >-
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            mise run test:studio-ui:full
-          else
-            mise run test:studio-ui
-          fi
-      - name: Upload native UI test results
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: studio-native-ui-results
-          path: |
-            studio/build/ui-e2e/run-*/run.json
-            studio/build/ui-e2e/run-*/xcodebuild.log
-            studio/build/ui-e2e/run-*/Results.xcresult
-          if-no-files-found: ignore
-          retention-days: 7

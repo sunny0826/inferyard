@@ -8,9 +8,10 @@ Run CLI commands from `cli/` using the `mise`-pinned Python and `uv` environment
 
 ```bash
 mise exec -- uv sync --frozen
-mise exec -- uv run --frozen pytest -n auto -q
-mise exec -- uv run --frozen ruff check src tests scripts
+mise exec -- uv run --frozen ruff check src tests scripts ../tools ../studio/scripts ../studio/tests/ui
+mise exec -- uv run --frozen ty check
 mise exec -- uv run --frozen python scripts/export_schemas.py --check
+mise exec -- uv run --frozen pytest -n auto -q
 ```
 
 Re-run `scripts/export_schemas.py` (without `--check`) when changing any of the 6 exported external/cross-process schemas (`bundle`, `config_input`, `context_speed_result`, `engine_check`, `manifest`, `studio_report`) in `src/inferyard/contracts/`. Catalogues in `src/inferyard/data/methods.json` and `src/inferyard/data/metrics.json` and community resources in `src/inferyard/data/community/` are maintained directly in-package.

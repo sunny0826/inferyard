@@ -136,7 +136,14 @@ def run_local_checks(root: Path) -> None:
     """Run fast local checks before committing or opening the release PR."""
     cli_dir = root / "cli"
     _run(["uv", "lock", "--check"], cwd=cli_dir)
-    _run(["uv", "run", "--frozen", "ruff", "check", "src", "tests", "scripts"], cwd=cli_dir)
+    _run(
+        [
+            "uv", "run", "--frozen", "ruff", "check",
+            "src", "tests", "scripts", "../tools", "../studio/scripts", "../studio/tests/ui",
+        ],
+        cwd=cli_dir,
+    )
+    _run(["uv", "run", "--frozen", "ty", "check"], cwd=cli_dir)
     _run(["uv", "run", "--frozen", "python", "scripts/export_schemas.py", "--check"], cwd=cli_dir)
     _run(
         [sys.executable, "-m", "unittest", "discover", "-s", "scripts", "-p", "test_*.py"],
