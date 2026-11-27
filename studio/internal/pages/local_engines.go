@@ -7,6 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
 )
@@ -276,7 +277,7 @@ func (s *viewState) handoffDisabledReason(c *ui.Context, pid int64, reused bool)
 func (s *viewState) localServicePicker(c *ui.Context, pidLabel, endpointLabel string) {
 	t := tokens(c)
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		refreshButton(c, tr(c, "engine.discovery.refresh"), s.discovering).Disabled(s.discovering).OnClick(s.refreshDiscovery)
+		refreshIconButton(c, tr(c, "engine.discovery.refresh"), s.discovering).Disabled(s.discovering).OnClick(s.refreshDiscovery)
 	})
 	if choices := s.localServiceChoices(); len(choices) > 0 {
 		ui.Text(c, tr(c, "engine.local.discovered_hint")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
@@ -330,7 +331,7 @@ func (s *viewState) localInstallationsView(c *ui.Context) {
 			ui.Row(c.Key(path)).FillWidth().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 				pathText := ui.Text(c, path).Grow(1).MinWidth(0).SingleLine().TruncateMiddle().Selectable()
 				components.Tooltip(c, pathText, path)
-				if dangerButton(c, tr(c, "engine.local.remove_registration")).AlignSelf(ui.Center).Shrink(0).Disabled(s.busy).Clicked() {
+				if dangerIconButton(c, lucide.Unlink, tr(c, "engine.local.remove_registration")).AlignSelf(ui.Center).Shrink(0).Disabled(s.busy).Clicked() {
 					s.removeInstallationWithUndo(path)
 				}
 			})

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
 )
@@ -94,22 +95,22 @@ func (s *viewState) managedServiceView(c *ui.Context) {
 	if s.managedServiceActive() {
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 			if _, ok := validLoopbackURL(state.Endpoint); ok {
-				outlineButton(c, tr(c, "engine.action.copy_endpoint")).OnClick(func() {
+				outlineIconButton(c, lucide.Copy, tr(c, "engine.action.copy_endpoint")).OnClick(func() {
 					s.copyEngineEndpoint(c, state.Endpoint)
 				})
 			}
 			if _, canOpen, _ := engineWebUIInfo(state); canOpen {
-				outlineButton(c, tr(c, "engine.action.open_webui")).OnClick(func() {
+				outlineIconButton(c, lucide.ExternalLink, tr(c, "engine.action.open_webui")).OnClick(func() {
 					s.openEngineWebUI(c, state.Endpoint)
 				})
 			}
 			if state.LogPath != "" {
-				outlineButton(c, tr(c, "engine.action.open_log")).OnClick(func() {
+				outlineIconButton(c, lucide.FileText, tr(c, "engine.action.open_log")).OnClick(func() {
 					s.openEngineCardLog(state.LogPath)
 				})
 			}
 			runActive := s.roundWorkActive()
-			dangerButton(c, tr(c, "models.serve.action.stop")).Disabled(state.State == "stopping" || runActive || s.busy).OnClick(s.stopStandaloneService)
+			dangerIconButton(c, lucide.Square, tr(c, "models.serve.action.stop")).Disabled(state.State == "stopping" || runActive || s.busy).OnClick(s.stopStandaloneService)
 		})
 	}
 }
@@ -123,7 +124,7 @@ func (s *viewState) discoveryView(c *ui.Context, bindable bool) {
 
 func (s *viewState) discoveryBody(c *ui.Context, bindable bool) {
 	s.managedServiceView(c)
-	refreshButton(c, tr(c, "engine.discovery.refresh"), s.discovering).Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)
+	refreshIconButton(c, tr(c, "engine.discovery.refresh"), s.discovering).Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)
 	errorView(c, s.discoveryError)
 	if s.discoveryError == nil {
 		for _, code := range s.discovery.Limitations {

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
@@ -28,11 +27,11 @@ func (s *viewState) modelsView(c *ui.Context) {
 	}
 	host.Children(func() {
 		s.header(c, tr(c, "models.page.title"))
-		s.modelsPageActions(c, wizardOpen)
+		s.modelsIconPageActions(c, wizardOpen)
 		if *wizardOpen {
 			card(c, tr(c, "models.wizard.card_title"), func() {
 				s.localEngineWizardView(c)
-				button(c, tr(c, "models.action.collapse")).OnClick(func() { *wizardOpen = false })
+				outlineIconButton(c, lucide.ChevronUp, tr(c, "models.action.collapse")).OnClick(func() { *wizardOpen = false })
 			})
 		}
 		card(c, tr(c, "models.section.installed_models"), func() {
@@ -103,6 +102,29 @@ func (s *viewState) modelsView(c *ui.Context) {
 	s.assetDeleteDialog(c, pending)
 }
 
+func (s *viewState) modelsIconPageActions(c *ui.Context, wizardOpen *bool) {
+	t := tokens(c)
+	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
+		outlineIconButton(c, lucide.Download, tr(c, "models.action.download_more")).OnClick(func() {
+			s.libraryTab = 0
+			s.navigateTo("library", "")
+		})
+		outlineIconButton(c, lucide.FolderPlus, tr(c, "models.action.add_model_dir")).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
+			s.pickExtraModelsRoot(emptyText(s.settings.Effective.ModelsRoot))
+		})
+		engineLabel := tr(c, "engine.wizard.title")
+		engineIcon := lucide.Link
+		if *wizardOpen {
+			engineLabel = tr(c, "models.action.collapse_add_engine")
+			engineIcon = lucide.ChevronUp
+		}
+		outlineIconButton(c, engineIcon, engineLabel).OnClick(func() { *wizardOpen = !*wizardOpen })
+		refreshIconButton(c, tr(c, "models.action.refresh"), s.registry.Refreshing || s.refreshing).
+			Disabled(s.registry.Refreshing || s.busy).
+			OnClick(s.refreshAssetsAction)
+	})
+}
+
 func modelTaskAction(c *ui.Context, s *viewState, model core.ModelAsset) {
 	if !model.Available {
 		return
@@ -117,23 +139,31 @@ func modelTaskAction(c *ui.Context, s *viewState, model core.ModelAsset) {
 	case s.roundWorkActive():
 		reason = tr(c, "models.action.benchmark_blocked_hint")
 	}
-	if modelRowButtonClicked(c, outlineButton, label, model.Name, reason) {
+	if modelRowButtonClicked(c, outlineIconButton, lucide.Gauge, label, model.Name, reason) {
 		s.model = model.Name
 		s.newBenchmark()
 	}
 }
 
-func modelRowButtonClicked(c *ui.Context, render func(*ui.Context, string) ui.Element, label, modelName, reason string) bool {
+func modelRowButtonClicked(c *ui.Context, render func(*ui.Context, func() *ui.SVG, string) ui.Element, icon func() *ui.SVG, label, modelName, reason string) bool {
 	name := label + " · " + modelName
-	if reason == "" {
-		return render(c, label).Label(name).Clicked()
+	renderButton := func() ui.Element {
+		return render(c, icon, "").Label(name).Size(tokens(c).Control.MD, tokens(c).Control.MD)
 	}
-	wrap := ui.Box(c)
-	wrap.Children(func() {
-		render(c, label).Label(name).Disabled(true).Description(reason)
+	if reason != "" {
+		iconButtonWithTooltip(c, reason, func() ui.Element {
+			return renderButton().Disabled(true).Description(reason)
+		})
+		return false
+	}
+	btn := renderButton()
+	t := tokens(c)
+	ui.TooltipBase(c, btn, func(tip ui.Element) {
+		tip.MaxWidth(c.Theme().Space(80)).Padding(t.Density.Tight, t.Density.Row).
+			Radius(t.Radius.Control).Background(t.Color.FgPrimary).TextColor(t.Color.Surface)
+		tip.Children(func() { ui.Text(c, label).FontSize(t.Type.Caption) })
 	})
-	components.Tooltip(c, wrap, reason)
-	return false
+	return btn.Clicked()
 }
 
 func modelDetails(model core.ModelAsset) string {

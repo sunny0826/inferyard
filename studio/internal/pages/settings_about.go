@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
 )
@@ -105,7 +106,7 @@ func (s *viewState) aboutSettingsView(c *ui.Context) {
 			keyValueRow(c, row.label, row.value, true)
 		}
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Tight, 0, 0, 0).Children(func() {
-			if outlineButton(c, tr(c, "settings.about.copy")).Clicked() {
+			if outlineIconButton(c, lucide.Copy, tr(c, "settings.about.copy")).Clicked() {
 				s.copyAboutInfo(c, info)
 			}
 		})

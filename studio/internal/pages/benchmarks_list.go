@@ -21,10 +21,10 @@ func (s *viewState) flowHeader(c *ui.Context, title string) {
 		s.header(c, title)
 		if s.benchFlowOpen && !s.newTaskPending && !s.environmentMissing() {
 			ui.Box(c).Grow(1)
-			if outlineButton(c, tr(c, "benchmarks.action.back_list")).Clicked() {
+			if outlineIconButton(c, lucide.ArrowLeft, tr(c, "benchmarks.action.back_list")).Clicked() {
 				s.benchFlowOpen = false
 			}
-			if outlineButton(c, tr(c, "reports.tab.history")).Clicked() {
+			if outlineIconButton(c, lucide.List, tr(c, "reports.tab.history")).Clicked() {
 				s.benchFlowOpen = false
 				s.benchmarksTab = benchmarksTabHistory
 			}
@@ -69,22 +69,21 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 		s.header(c, tr(c, "benchmarks.page.title"))
 		ui.Box(c).Grow(1)
 		if s.hasActiveBenchmarkFlow() {
-			if outlineButton(c, tr(c, "benchmarks.action.open_flow")).Clicked() {
+			if outlineIconButton(c, lucide.Play, tr(c, "benchmarks.action.open_flow")).Clicked() {
 				s.benchFlowOpen = true
 				s.benchmarksTab = benchmarksTabTasks
 			}
 		}
 		hint := s.newTaskEntryHintFor(contextLocale(c))
+		label := tr(c, "benchmarks.action.new")
 		if hint == "" {
-			if primaryButton(c, tr(c, "benchmarks.action.new")).Clicked() {
+			if primaryIconButton(c, lucide.Plus, label).Clicked() {
 				s.newBenchmark()
 			}
 		} else {
-			wrap := ui.Box(c)
-			wrap.Children(func() {
-				primaryButton(c, tr(c, "benchmarks.action.new")).Disabled(true).Description(hint)
+			iconButtonWithTooltip(c, hint, func() ui.Element {
+				return primaryIconButton(c, lucide.Plus, "").Label(label).Disabled(true).Description(hint)
 			})
-			components.Tooltip(c, wrap, hint)
 		}
 	})
 
@@ -158,7 +157,7 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			heading(c, tr(c, "benchmarks.group.recent"), 3).Grow(1)
 			if len(historyRuns) > 0 {
-				if inlineButton(c, components.ButtonGhost, tr(c, "benchmarks.recent.view_all_history")).Clicked() {
+				if iconButton(c, lucide.List, tr(c, "benchmarks.recent.view_all_history"), components.IconButtonCompact).Clicked() {
 					s.benchmarksTab = benchmarksTabHistory
 				}
 			}

@@ -24,9 +24,9 @@ func (s *viewState) libraryView(c *ui.Context) {
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			s.header(c, tr(c, "library.page.title"))
 			ui.Box(c).Grow(1)
-			refreshButton(c, tr(c, "models.action.rescan"), s.registry.Refreshing).
+			refreshIconButton(c, tr(c, "models.action.rescan"), s.registry.Refreshing).
 				Disabled(s.busy || s.registry.Refreshing).OnClick(s.refreshAssetsAction)
-			button(c, tr(c, "downloads.page.settings")).OnClick(func() { s.openGeneralSettings() })
+			outlineIconButton(c, lucide.Settings, tr(c, "downloads.page.settings")).OnClick(func() { s.openGeneralSettings() })
 		})
 
 		s.downloadTaskGuide(c)
@@ -74,10 +74,12 @@ func (s *viewState) libraryHardwareCard(c *ui.Context) {
 			}
 			ui.Box(c).Grow(1)
 			btnLabel := tr(c, "library.hw.expand")
+			btnIcon := lucide.ChevronDown
 			if s.libraryHwExpanded {
 				btnLabel = tr(c, "library.hw.collapse")
+				btnIcon = lucide.ChevronUp
 			}
-			if inlineButton(c, components.ButtonGhost, btnLabel).Clicked() {
+			if iconButton(c, btnIcon, btnLabel, components.IconButtonCompact).Clicked() {
 				s.libraryHwExpanded = !s.libraryHwExpanded
 			}
 		})
@@ -114,7 +116,7 @@ func (s *viewState) hardwareCompactSummary(c *ui.Context, snapshot deviceObject,
 func (s *viewState) libraryHardwareDetails(c *ui.Context, snapshot deviceObject, parseError error) {
 	t := tokens(c)
 	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		s.deviceRefreshButton(c, tr(c, "device.action.refresh"))
+		s.libraryDeviceRefreshButton(c, tr(c, "device.action.refresh"))
 	})
 	if snapshot != nil && parseError == nil {
 		deviceHardware(c, snapshot.object("hardware"))
@@ -124,7 +126,7 @@ func (s *viewState) libraryHardwareDetails(c *ui.Context, snapshot deviceObject,
 		deviceErr = nil
 	}
 	errorRecoveryBanner(c, deviceErr, func() {
-		s.deviceRefreshButton(c, tr(c, "device.action.retry"))
+		s.libraryDeviceRefreshButton(c, tr(c, "device.action.retry"))
 		if button(c, tr(c, "device.action.open_settings")).Clicked() {
 			s.openGeneralSettings()
 		}
@@ -134,7 +136,7 @@ func (s *viewState) libraryHardwareDetails(c *ui.Context, snapshot deviceObject,
 			Kind:    stateDanger,
 			Message: tr(c, "device.error.unreadable_snapshot"),
 			Actions: func() {
-				s.deviceRefreshButton(c, tr(c, "device.action.recollect"))
+				s.libraryDeviceRefreshButton(c, tr(c, "device.action.recollect"))
 				button(c, tr(c, "device.action.check_settings")).OnClick(func() { s.openGeneralSettings() })
 			},
 		})
@@ -143,6 +145,10 @@ func (s *viewState) libraryHardwareDetails(c *ui.Context, snapshot deviceObject,
 	if snapshot == nil && s.device.LastError == nil && !s.device.Refreshing {
 		ui.Text(c, tr(c, "library.hw.summary_uncollected")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 	}
+}
+
+func (s *viewState) libraryDeviceRefreshButton(c *ui.Context, label string) {
+	refreshIconButton(c, label, s.device.Refreshing || s.actionBusy("refresh-device")).Disabled(s.deviceCollectionBlocked()).OnClick(s.refreshDevice)
 }
 
 func (s *viewState) libraryTabBar(c *ui.Context) {
@@ -211,7 +217,7 @@ func (s *viewState) libraryModelsTab(c *ui.Context, pending *pendingAssetDelete)
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			heading(c, tr(c, "models.section.installed_models"), 2)
 			ui.Box(c).Grow(1)
-			outlineButton(c, tr(c, "models.action.add_model_dir")).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
+			outlineIconButton(c, lucide.FolderPlus, tr(c, "models.action.add_model_dir")).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
 				s.pickExtraModelsRoot(emptyText(s.settings.Effective.ModelsRoot))
 			})
 		})
@@ -255,17 +261,19 @@ func (s *viewState) libraryEnginesTab(c *ui.Context, pending *pendingAssetDelete
 			}
 			ui.Box(c).Grow(1)
 			btnLabel := tr(c, "models.action.register_local_engine")
+			btnIcon := lucide.Link
 			if *wizardOpen {
 				btnLabel = tr(c, "models.action.collapse_local_engine")
+				btnIcon = lucide.ChevronUp
 			}
-			outlineButton(c, btnLabel).OnClick(func() { *wizardOpen = !*wizardOpen })
+			outlineIconButton(c, btnIcon, btnLabel).OnClick(func() { *wizardOpen = !*wizardOpen })
 			s.renderEngineUpdateCheckButton(c)
 		})
 		if *wizardOpen {
 			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialInset).Children(func() {
 				heading(c, tr(c, "models.wizard.card_title"), 3)
 				s.localEngineWizardView(c)
-				outlineButton(c, tr(c, "models.action.collapse")).OnClick(func() { *wizardOpen = false })
+				outlineIconButton(c, lucide.ChevronUp, tr(c, "models.action.collapse")).OnClick(func() { *wizardOpen = false })
 			})
 		}
 		if len(s.registry.Engines) == 0 {

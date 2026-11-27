@@ -7,6 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 )
 
@@ -212,34 +213,40 @@ func (s *viewState) renderEngineUpdateAction(c *ui.Context, eng core.EngineAsset
 		return
 	}
 	if s.engineUpdateTaskActive(eng, upd) {
-		outlineButton(c, tr(c, "models.engine.action.updating")).
-			Label(trf(c, "models.engine.action.update_label", "name", eng.Name)).
-			Disabled(true)
+		ui.Box(c).Label(tr(c, "models.engine.action.updating")).Children(func() {
+			outlineIconButton(c, lucide.CircleArrowUp, tr(c, "models.engine.action.updating")).
+				Label(trf(c, "models.engine.action.update_label", "name", eng.Name)).
+				Disabled(true)
+		})
 		return
 	}
 	if upd.CanOneClickUpdate() {
-		btn := primaryButton(c, tr(c, "models.engine.action.one_click_update")).
+		ui.Box(c).Label(tr(c, "models.engine.action.one_click_update")).Children(func() {
+			btn := primaryIconButton(c, lucide.CircleArrowUp, tr(c, "models.engine.action.one_click_update")).
+				Label(trf(c, "models.engine.action.update_label", "name", eng.Name)).
+				Disabled(s.busy)
+			if btn.Clicked() {
+				s.startOneClickEngineUpdate(eng, upd)
+			}
+		})
+		return
+	}
+	ui.Box(c).Label(tr(c, "models.engine.action.update")).Children(func() {
+		btn := outlineIconButton(c, lucide.ExternalLink, tr(c, "models.engine.action.update")).
 			Label(trf(c, "models.engine.action.update_label", "name", eng.Name)).
 			Disabled(s.busy)
 		if btn.Clicked() {
-			s.startOneClickEngineUpdate(eng, upd)
+			if strings.TrimSpace(upd.HintCommand) != "" {
+				s.copyDownloadText(c, tr(c, "downloads.copy_subject.install_cmd"), upd.HintCommand)
+				return
+			}
+			if (upd.Action == core.EngineUpdateActionExternal || (upd.Source == "remote" && strings.TrimSpace(upd.ReleaseID) == "")) && strings.TrimSpace(upd.ReleaseURL) != "" {
+				s.openDownloadURL(c, eng.Name, upd.ReleaseURL)
+				return
+			}
+			s.triggerEngineUpdate(eng, upd)
 		}
-		return
-	}
-	btn := outlineButton(c, tr(c, "models.engine.action.update")).
-		Label(trf(c, "models.engine.action.update_label", "name", eng.Name)).
-		Disabled(s.busy)
-	if btn.Clicked() {
-		if strings.TrimSpace(upd.HintCommand) != "" {
-			s.copyDownloadText(c, tr(c, "downloads.copy_subject.install_cmd"), upd.HintCommand)
-			return
-		}
-		if (upd.Action == core.EngineUpdateActionExternal || (upd.Source == "remote" && strings.TrimSpace(upd.ReleaseID) == "")) && strings.TrimSpace(upd.ReleaseURL) != "" {
-			s.openDownloadURL(c, eng.Name, upd.ReleaseURL)
-			return
-		}
-		s.triggerEngineUpdate(eng, upd)
-	}
+	})
 }
 
 func pickUpdateCatalogRelease(upd core.EngineUpdateInfo, preferred, all []core.EngineRelease) (core.EngineRelease, bool) {

@@ -15,7 +15,7 @@ func (s *viewState) detailView(c *ui.Context) {
 	s.subpageHeader(c, tr(c, "detail.title"), tr(c, "detail.back_dashboard"), func() { s.detailID = "" })
 	errorView(c, s.detailError)
 	if s.detailError != nil {
-		button(c, tr(c, "detail.retry_load")).OnClick(func() { s.selectTask(s.detailID) })
+		refreshIconButton(c, tr(c, "detail.retry_load"), false).OnClick(func() { s.selectTask(s.detailID) })
 		if s.detail == nil {
 			return
 		}
@@ -153,11 +153,11 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 	s.casesTablePage = min(max(0, s.casesTablePage), pages-1)
 	if pages > 1 {
 		ui.Row(c).AlignItems(ui.Center).Gap(tok.Density.Row).Children(func() {
-			if outlineButton(c, tr(c, "detail.table.prev_page")).Disabled(s.casesTablePage == 0).Clicked() {
+			if outlineIconButton(c, lucide.ArrowLeft, tr(c, "detail.table.prev_page")).Disabled(s.casesTablePage == 0).Clicked() {
 				s.casesTablePage--
 			}
 			ui.Text(c, trf(c, "detail.table.page_status", "page", s.casesTablePage+1, "totalPages", pages, "count", totalCases)).FontSize(tok.Type.Caption).FontFeatures("tnum")
-			if outlineButton(c, tr(c, "detail.table.next_page")).Disabled(s.casesTablePage == pages-1).Clicked() {
+			if outlineIconButton(c, lucide.ArrowRight, tr(c, "detail.table.next_page")).Disabled(s.casesTablePage == pages-1).Clicked() {
 				s.casesTablePage++
 			}
 		})

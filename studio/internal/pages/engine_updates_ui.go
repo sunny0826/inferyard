@@ -183,7 +183,7 @@ func (s *viewState) startOneClickEngineUpdate(eng core.EngineAsset, upd core.Eng
 
 func (s *viewState) renderEngineUpdateCheckButton(c *ui.Context) {
 	checking := s.engineUpdateChecking()
-	refreshButton(c, tr(c, "models.engine.action.check_updates"), checking).
+	refreshIconButton(c, tr(c, "models.engine.action.check_updates"), checking).
 		Disabled(s.busy || checking).
 		OnClick(s.checkEngineUpdatesAction)
 }

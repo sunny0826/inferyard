@@ -277,7 +277,7 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 		switch state.State {
 		case "starting", "running", "stopping":
 			if state.Origin == core.EngineOriginStandalone && state.LogPath != "" {
-				outlineButton(c, tr(c, "engine.action.open_log")).FillWidth().OnClick(func() {
+				outlineIconButton(c, lucide.FileText, tr(c, "engine.action.open_log")).OnClick(func() {
 					s.openEngineCardLog(state.LogPath)
 				})
 			}
@@ -297,7 +297,7 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 		default:
 			errorView(c, state.Error)
 			if state.State == "failed" && state.LogPath != "" {
-				outlineButton(c, tr(c, "engine.action.open_log")).FillWidth().OnClick(func() {
+				outlineIconButton(c, lucide.FileText, tr(c, "engine.action.open_log")).OnClick(func() {
 					s.openEngineCardLog(state.LogPath)
 				})
 			}

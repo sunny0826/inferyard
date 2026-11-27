@@ -9,7 +9,7 @@ import (
 func (s *viewState) reportsTableView(c *ui.Context) {
 	if s.reportsError != nil {
 		errorRecoveryBanner(c, s.reportsError, func() {
-			button(c, tr(c, "reports.list.retry_load")).OnClick(s.refreshAction)
+			refreshIconButton(c, tr(c, "reports.list.retry_load"), false).OnClick(s.refreshAction)
 		})
 		return
 	}
@@ -61,7 +61,7 @@ func reportCard(c *ui.Context, report core.ReportSummary, modelHint, exclusivity
 				ui.Text(c, reportRunLineFor(c, report, run)).Selectable()
 			}
 		}
-		primaryButton(c, tr(c, "reports.list.open")).Label(trf(c, "reports.list.open_aria", "id", report.ReportId)).OnClick(open)
+		primaryIconButton(c, lucide.Eye, tr(c, "reports.list.open")).Label(trf(c, "reports.list.open_aria", "id", report.ReportId)).OnClick(open)
 	})
 }
 
