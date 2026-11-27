@@ -133,9 +133,17 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 			s.keepServicesOnQuit = s.settings.Effective.KeepServicesOnQuit
 			s.failurePage = s.selected
 		}
+		if _, hasSource := patch["download_source"]; hasSource {
+			s.downloadSource = downloadSourceFromSettings(s.settings)
+			if s.downloadsUI != nil && !s.downloadsUI.sourceCustomized {
+				s.downloadsUI.applyDefaultModelSource(s.downloadSource)
+			}
+			s.failurePage = s.selected
+		}
 		s.failure = &core.ApiError{Code: "preview_save_failed", Message: l10n.TR("preview.error.save_failed")}
 		return
 	}
+	value.DownloadSource = core.NormalizeDownloadSource(value.DownloadSource)
 	value.Theme = core.NormalizeTheme(value.Theme)
 	value.Accent = core.NormalizeAccent(value.Accent)
 	value.Language = core.NormalizeLanguage(value.Language)
@@ -154,6 +162,7 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		ReportsRoot:        reportsRoot,
 		InferyardPath:      value.InferyardPath,
 		ExtraModelsRoots:   slices.Clone(value.ExtraModelsRoots),
+		DownloadSource:     value.DownloadSource,
 		DownloadProxy:      value.DownloadProxy,
 		Theme:              value.Theme,
 		Accent:             value.Accent,
@@ -163,6 +172,12 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		KeepServicesOnQuit: core.EffectiveKeepServicesOnQuitValue(value),
 	}
 	s.syncSavedGroups(patch, s.settingsDraft(), s.settings)
+	if _, hasSource := patch["download_source"]; hasSource {
+		s.downloadSource = value.DownloadSource
+		if s.downloadsUI != nil {
+			s.downloadsUI.applyDefaultModelSource(value.DownloadSource)
+		}
+	}
 	if _, hasReasoning := patch["reasoning_effort"]; hasReasoning {
 		s.reasoningEffort = value.ReasoningEffort
 	}

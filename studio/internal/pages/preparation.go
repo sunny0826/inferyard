@@ -16,6 +16,7 @@ func (s *viewState) loadSettings(v core.SettingsResponse) {
 	s.loadReasoningSettings(v)
 	s.loadTraySettings(v)
 	s.loadWorkspaceSettings(v)
+	s.loadDownloadSourceSettings(v)
 	s.loadProxySettings(v)
 }
 
@@ -120,6 +121,7 @@ func (s *viewState) generalSettingsView(c *ui.Context) {
 			})
 		})
 		s.localInstallationsView(c)
+		s.downloadSourceSettingsView(c)
 		s.proxySettingsView(c)
 		s.updateSettingsView(c)
 		return
@@ -151,6 +153,7 @@ func (s *viewState) generalSettingsView(c *ui.Context) {
 		},
 	})
 	s.localInstallationsView(c)
+	s.downloadSourceSettingsView(c)
 	s.proxySettingsView(c)
 	s.updateSettingsView(c)
 }
@@ -216,6 +219,7 @@ func (s *viewState) applySettings(value core.SettingsResponse) {
 		s.loadThemeSettings(value)
 		s.loadLanguageSettings(value)
 		s.loadTraySettings(value)
+		s.loadDownloadSourceSettings(value)
 	}
 }
 

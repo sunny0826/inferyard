@@ -107,6 +107,9 @@ func (s *Service) CreatePolystrataSetup(req PolystrataSetupRequest) (DownloadTas
 		return DownloadTask{}, failure
 	}
 	u := s.userSettings()
+	if strings.TrimSpace(req.ModelSource) == "" {
+		req.ModelSource = NormalizeDownloadSource(u.DownloadSource)
+	}
 	root, apiErr := s.downloadRoot("engine", u)
 	if apiErr != nil {
 		return DownloadTask{}, apiErr

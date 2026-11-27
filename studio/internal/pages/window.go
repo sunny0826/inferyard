@@ -40,6 +40,7 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 	initialAccent := service.Accent()
 	initialLanguage := service.Language()
 	initialReasoning := service.ReasoningEffort()
+	initialDownloadSource := service.DownloadSource()
 	initialMinimizeToTray := service.MinimizeToTray()
 	initialKeepServices := service.EffectiveKeepServicesOnQuit()
 	syncNativeTheme(initialTheme)
@@ -53,6 +54,7 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 		denied:      map[string]bool{},
 		speed:       &speedWorkspace{context: inferyard.ContextSpeed64K},
 		settingsViewState: settingsViewState{
+			downloadSource:        initialDownloadSource,
 			themeMode:             initialTheme,
 			appliedThemeMode:      initialTheme,
 			accentMode:            initialAccent,
@@ -64,8 +66,8 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 		},
 		keepServicesOnQuit: initialKeepServices,
 		settings: core.SettingsResponse{
-			Settings:  core.UserSettings{Theme: initialTheme, Accent: initialAccent, Language: initialLanguage, ReasoningEffort: initialReasoning, MinimizeToTray: initialMinimizeToTray},
-			Effective: core.EffectiveSettings{Theme: initialTheme, Accent: initialAccent, Language: initialLanguage, ReasoningEffort: initialReasoning, MinimizeToTray: initialMinimizeToTray, KeepServicesOnQuit: initialKeepServices},
+			Settings:  core.UserSettings{DownloadSource: initialDownloadSource, Theme: initialTheme, Accent: initialAccent, Language: initialLanguage, ReasoningEffort: initialReasoning, MinimizeToTray: initialMinimizeToTray},
+			Effective: core.EffectiveSettings{DownloadSource: initialDownloadSource, Theme: initialTheme, Accent: initialAccent, Language: initialLanguage, ReasoningEffort: initialReasoning, MinimizeToTray: initialMinimizeToTray, KeepServicesOnQuit: initialKeepServices},
 		},
 	}
 	shell := sidebar.NewShell(s.shellOptions(title))

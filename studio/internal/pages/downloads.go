@@ -22,6 +22,7 @@ type downloadsUIState struct {
 	polystrataDrawerModelID string
 	modelSource             string
 	polystrataModelSource   string
+	sourceCustomized        bool
 	starterChoice           int
 	starterAltOpen          bool
 	starterExpandedOverride *bool
@@ -33,8 +34,12 @@ type downloadsUIState struct {
 }
 
 func (s *viewState) ensureDownloadsUI() *downloadsUIState {
+	defaultSource := s.effectiveDownloadSource()
 	if s.downloadsUI == nil {
-		s.downloadsUI = &downloadsUIState{modelSource: "huggingface", polystrataModelSource: "auto"}
+		s.downloadsUI = &downloadsUIState{
+			modelSource:           defaultSource,
+			polystrataModelSource: defaultSource,
+		}
 	}
 	st := s.downloadsUI
 	if st.selectedRelease == nil {
@@ -46,11 +51,11 @@ func (s *viewState) ensureDownloadsUI() *downloadsUIState {
 	if st.selectedBuild == nil {
 		st.selectedBuild = map[string]string{}
 	}
-	if st.modelSource != "modelscope" {
-		st.modelSource = "huggingface"
+	if st.modelSource != core.DownloadSourceModelScope && st.modelSource != core.DownloadSourceHuggingFace {
+		st.modelSource = defaultSource
 	}
-	if st.polystrataModelSource != "modelscope" && st.polystrataModelSource != "huggingface" {
-		st.polystrataModelSource = "auto"
+	if st.polystrataModelSource != core.DownloadSourceModelScope && st.polystrataModelSource != core.DownloadSourceHuggingFace && st.polystrataModelSource != "auto" {
+		st.polystrataModelSource = defaultSource
 	}
 	if st.customModelResolve == nil {
 		st.customModelResolve = &modelResolveState{mailbox: &modelResolveMailbox{}}
@@ -96,22 +101,29 @@ func (st *downloadsUIState) openModelDrawer(entryID string) {
 	st.modelDrawerID = entryID
 }
 
+func (st *downloadsUIState) applyDefaultModelSource(source string) {
+	normalized := core.NormalizeDownloadSource(source)
+	st.modelSource = normalized
+	st.polystrataModelSource = normalized
+	st.sourceCustomized = false
+}
+
 func (st *downloadsUIState) setDirectModelSource(source string) {
-	if source != "modelscope" {
-		source = "huggingface"
-	}
+	source = core.NormalizeDownloadSource(source)
 	st.modelSource = source
 	st.polystrataModelSource = source
+	st.sourceCustomized = true
 }
 
 func (st *downloadsUIState) setPolystrataModelSource(source string) {
-	if source != "modelscope" && source != "huggingface" {
+	if source != core.DownloadSourceModelScope && source != core.DownloadSourceHuggingFace {
 		source = "auto"
 	}
 	st.polystrataModelSource = source
-	if source == "modelscope" || source == "huggingface" {
+	if source == core.DownloadSourceModelScope || source == core.DownloadSourceHuggingFace {
 		st.modelSource = source
 	}
+	st.sourceCustomized = true
 }
 
 func (s *viewState) downloadsPageView(c *ui.Context) {

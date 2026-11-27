@@ -122,6 +122,7 @@ func previewBase(ctx context.Context) *viewState {
 		windowTitle: l10n.TR("app.title.preview"),
 		speed:       &speedWorkspace{context: inferyard.ContextSpeed64K},
 		settingsViewState: settingsViewState{
+			downloadSource: core.DownloadSourceModelScope,
 			buildInfo: func() core.BuildInfo {
 				return core.BuildInfo{
 					Version:   previewAppVersion,
@@ -141,7 +142,7 @@ func previewBase(ctx context.Context) *viewState {
 		},
 		settings: core.SettingsResponse{Settings: settings, Effective: core.EffectiveSettings{
 			WorkspaceRoot: settings.WorkspaceRoot, ResultsRoot: resultsRoot, ModelsRoot: modelsRoot, ReportsRoot: reportsRoot,
-			Theme: core.ThemeSystem, KeepServicesOnQuit: true,
+			DownloadSource: core.DownloadSourceModelScope, Theme: core.ThemeSystem, KeepServicesOnQuit: true,
 		}},
 		keepServicesOnQuit: true,
 		recentServices:     seedPreviewRecentServices(model, engine),
