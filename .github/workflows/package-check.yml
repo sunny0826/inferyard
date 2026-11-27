@@ -11,6 +11,9 @@ on:
       - "cli/schemas/**"
       - "cli/pyproject.toml"
       - "cli/uv.lock"
+      - "tools/**"
+      - "studio/scripts/**"
+      - "studio/tests/ui/**"
       - "LICENSE"
       - "mise.toml"
       - ".github/workflows/package-check.yml"
@@ -24,6 +27,9 @@ on:
       - "cli/schemas/**"
       - "cli/pyproject.toml"
       - "cli/uv.lock"
+      - "tools/**"
+      - "studio/scripts/**"
+      - "studio/tests/ui/**"
       - "LICENSE"
       - "mise.toml"
       - ".github/workflows/package-check.yml"
@@ -41,11 +47,30 @@ defaults:
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+          fetch-depth: ${{ github.event_name == 'push' && 2 || 1 }}
+      - name: Check incremental 500-line file cap
+        working-directory: .
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          base_sha=""
+          if [ "$EVENT_NAME" = "pull_request" ] && [ -n "$PR_BASE_SHA" ]; then
+            base_sha="$PR_BASE_SHA"
+          elif [ "$EVENT_NAME" = "push" ] && [ -n "$PUSH_BEFORE_SHA" ] && [ "$PUSH_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            base_sha="$PUSH_BEFORE_SHA"
+          fi
+          if [ -n "$base_sha" ]; then
+            git cat-file -e "${base_sha}^{commit}" 2>/dev/null || git fetch --no-tags --depth=1 origin "$base_sha"
+            python3 tools/check_file_length.py --base "$base_sha"
+          fi
       - uses: jdx/mise-action@v5.2.4
       - name: Cache uv
         uses: actions/cache@v6
@@ -54,7 +79,12 @@ jobs:
           key: uv-${{ runner.os }}-${{ hashFiles('cli/uv.lock') }}
           restore-keys: |
             uv-${{ runner.os }}-
+      - run: mise exec -- uv lock --check
       - run: mise exec -- uv sync --frozen
-      - run: mise exec -- uv run --frozen ruff check src tests scripts
-      - run: mise exec -- uv run --frozen python scripts/export_schemas.py --check
-      - run: mise exec -- uv run --frozen pytest -n auto -q
+      - name: Lint and fatal type/import checks
+        run: |
+          mise exec -- uv run --frozen ruff check src tests scripts ../tools ../studio/scripts ../studio/tests/ui
+          mise exec -- uv run --frozen ty check
+          mise exec -- uv run --frozen python -m compileall -q src tests scripts ../tools ../studio/scripts ../studio/tests/ui
+      - name: Verify exported schemas
+        run: mise exec -- uv run --frozen python scripts/export_schemas.py --check

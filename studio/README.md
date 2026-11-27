@@ -74,6 +74,8 @@ Use the sidebar scenario selector to jump to a starting state, switch UI languag
 Preferred root-level `mise` tasks (run from the repository root):
 
 ```sh
+mise run check:fast                  # Fast PR gate: CLI/Studio lint, compile, schemas, 500-line cap
+mise run lint:studio                 # Studio Go vet, i18n/release gates, and test compilation check
 mise run test:studio                 # Studio Go unit tests (macOS)
 mise run test:studio:preview         # UI debug preview Go tests (macOS)
 mise run test:studio:e2e             # Boundary E2E with synced CLI (cross-platform)

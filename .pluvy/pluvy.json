@@ -9,7 +9,6 @@
     "structure.guarded_projection": {"enabled": false},
     "function_size": {"enabled": false},
     "test.integrity": {"enabled": false},
-    "test.deletion": {"enabled": false},
     "flow.handling": {"enabled": false},
     "type.contract": {"enabled": false},
     "type.annotation": {"enabled": false},

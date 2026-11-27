@@ -37,7 +37,7 @@ Check and update the corresponding docs whenever a PR changes user-visible behav
 
 ### 3. Pre-PR Verification Steps
 
-1. Run the relevant test and lint tasks (`mise run test:unit`, `mise run lint`, `mise run test:studio`, `mise run test:studio:preview`, `mise run schemas`).
+1. Run the fast PR gate (`mise run check:fast`, covering `lint`, `schemas`, `lint:studio`, and the incremental 500-line code file cap), plus targeted unit/preview tests (`mise run test:unit`, `mise run test:studio`, `mise run test:studio:preview`) when touching behavioral or i18n logic. Full CLI/Studio suites and cross-platform E2E run in [nightly.yml](.github/workflows/nightly.yml) and [release.yml](.github/workflows/release.yml).
 2. Verify that any updated Studio UI labels match the exact text in `en.json` (for English docs) and `zh-Hans.json` (for Chinese docs).
 3. Verify that all relative links and anchors in edited Markdown files resolve to existing files.
 4. Complete the **Copy (i18n) & Documentation Checklist** in the PR description before requesting review or merging.

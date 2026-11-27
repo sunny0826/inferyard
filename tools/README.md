@@ -43,3 +43,12 @@ mise run release 0.1.0 --prepare-only  # commit release prep on chore/release-v0
 ```
 
 Use `patch`, `minor`, `major`, or an explicit `X.Y.Z` version. Pass `--notes "..."` to override generated commit bullets, `--no-check` to skip local preflight checks, `--wait-pr-checks` to wait for PR workflows before merging, or `--no-watch` to return immediately after pushing the tag.
+
+## Fast PR gate
+
+```sh
+mise run check:fast
+python tools/check_file_length.py --base origin/main
+```
+
+`check_file_length.py` blocks new code files over 500 lines, existing code files crossing 500 lines, and net line growth on legacy >500-line code files (configuration files are excluded).

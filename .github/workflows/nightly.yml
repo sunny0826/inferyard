@@ -1,0 +1,297 @@
+name: Nightly CI
+on:
+  schedule:
+    # 18:00 UTC = 02:00 BJT (next day)
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+    inputs:
+      force_all:
+        description: Run full Nightly suite even if main had no commits in the last 26 hours
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  gate:
+    name: nightly scope gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 5
+      - name: Check recent activity or weekly full sweep
+        id: check
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          FORCE_ALL: ${{ inputs.force_all }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$FORCE_ALL" = "true" ]; then
+            echo "Manual dispatch (force_all=true): running full Nightly suite."
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Force weekly full run on Sunday 02:00 BJT (Saturday 18:00 UTC, day 6)
+          if [ "$(date -u +%u)" = "6" ]; then
+            echo "Weekly scheduled sweep: running full Nightly suite."
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          recent="$(git log --since='26 hours ago' -n 1 --oneline)"
+          if [ -n "$recent" ]; then
+            echo "Recent commit detected ($recent): running full Nightly suite."
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No commits on main in the last 26 hours: skipping heavy Nightly jobs."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  cli-tests:
+    name: cli suite (${{ matrix.os }})
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      MISE_DISABLE_TOOLS: go
+    defaults:
+      run:
+        working-directory: cli
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v5.2.4
+      - name: Cache uv
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('cli/uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
+      - run: mise exec -- uv sync --frozen
+      - name: Run full CLI pytest suite
+        run: mise exec -- uv run --frozen pytest -n auto -q
+      - name: Build and smoke-test wheel (Linux)
+        if: matrix.os == 'ubuntu-24.04'
+        shell: bash
+        run: |
+          mise exec -- uv build --out-dir dist/cli
+          smoke_venv="$RUNNER_TEMP/inferyard-nightly-smoke"
+          mise exec -- uv venv "$smoke_venv"
+          mise exec -- uv pip install --python "$smoke_venv/bin/python" dist/cli/*.whl
+          "$smoke_venv/bin/inferyard" --help > /dev/null
+          "$smoke_venv/bin/inferyard" --versions > /dev/null
+          "$smoke_venv/bin/inferyard" --schema studio_report > /dev/null
+
+  studio-tests:
+    name: studio unit & preview (${{ matrix.os }})
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      CGO_ENABLED: "0"
+      MISE_DISABLE_TOOLS: uv
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v5.2.4
+      - name: Cache Go modules and build cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/Library/Caches/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('studio/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-
+      - name: Studio unit, preview, and Python tooling tests
+        working-directory: studio
+        run: |
+          mise exec -- go test . ./internal/... -count=1
+          mise exec -- go test -tags ui_debug . ./internal/pages -count=1
+          mise exec -- go test -tags ui_debug,release . -count=1
+          mise exec -- python -m unittest discover -s scripts -p 'test_*.py'
+          mise exec -- python -m unittest discover -s ../tools -p 'test_*.py'
+          mise exec -- python -m unittest discover -s tests/ui -p 'test_*.py'
+
+  studio-e2e:
+    name: studio e2e (${{ matrix.os }})
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      CGO_ENABLED: "0"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-2025]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v5.2.4
+      - name: Cache Go modules and build cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/Library/Caches/go-build
+            ~/AppData/Local/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('studio/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-
+      - name: Cache uv
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/uv
+            ~/AppData/Local/uv/cache
+          key: uv-${{ runner.os }}-${{ hashFiles('cli/uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
+      - name: Sync CLI dependencies
+        working-directory: cli
+        run: mise exec -- uv sync --frozen
+      - name: Run Studio boundary e2e
+        working-directory: studio
+        run: mise exec -- go test ./tests/e2e/ -count=1 -timeout 900s -v
+
+  studio-native-ui:
+    name: native preview UI (macOS full)
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
+    runs-on: macos-15
+    timeout-minutes: 20
+    env:
+      CGO_ENABLED: "0"
+      MISE_DISABLE_TOOLS: uv
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v5.2.4
+      - name: Cache Go modules and build cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/Library/Caches/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('studio/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-
+      - name: Run full 8-workflow macOS native UI suite
+        run: mise run test:studio-ui:full
+      - name: Upload native UI test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: studio-native-ui-results
+          path: |
+            studio/build/ui-e2e/run-*/run.json
+            studio/build/ui-e2e/run-*/xcodebuild.log
+            studio/build/ui-e2e/run-*/Results.xcresult
+          if-no-files-found: ignore
+          retention-days: 7
+
+  model-e2e:
+    name: model e2e (${{ matrix.os }})
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    env:
+      MISE_DISABLE_TOOLS: go
+      MODEL_URL: https://huggingface.co/unsloth/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf
+      ENGINE_BASE: https://github.com/PrismML-Eng/llama.cpp/releases/download/prism-b10743-adfffbe
+    defaults:
+      run:
+        working-directory: cli
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2025, macos-15]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v5.2.4
+      - name: Cache uv
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/uv
+            ~/AppData/Local/uv/cache
+          key: uv-${{ runner.os }}-${{ hashFiles('cli/uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
+      - run: mise exec -- uv sync --frozen
+      - name: Select engine archive
+        shell: bash
+        run: |
+          case "${{ matrix.os }}" in
+            windows-2025) name=llama-prism-b10743-adfffbe-bin-win-cpu-x64.zip ;;
+            macos-15) name=llama-prism-b10743-adfffbe-bin-macos-arm64.tar.gz ;;
+          esac
+          echo "ENGINE_NAME=$name" >> "$GITHUB_ENV"
+          echo "ENGINE_EXT=${name##*.}" >> "$GITHUB_ENV"
+      - name: Cache downloaded assets
+        uses: actions/cache@v6
+        with:
+          path: cli/e2e-assets
+          key: model-e2e-${{ matrix.os }}-${{ env.ENGINE_NAME }}-${{ env.MODEL_URL }}
+      - name: Download assets
+        shell: bash
+        run: |
+          mkdir -p e2e-assets
+          if [ ! -f "e2e-assets/model.gguf" ]; then
+            curl -sSL --fail -o e2e-assets/model.gguf "$MODEL_URL"
+          fi
+          if [ ! -f "e2e-assets/engine.$ENGINE_EXT" ]; then
+            curl -sSL --fail -o "e2e-assets/engine.$ENGINE_EXT" "$ENGINE_BASE/$ENGINE_NAME"
+          fi
+      - name: Run model e2e
+        shell: bash
+        run: |
+          mise exec -- uv run --frozen python tests/packaging/ci_model_e2e.py \
+            --model e2e-assets/model.gguf \
+            --engine-archive "e2e-assets/engine.$ENGINE_EXT" \
+            --out "$RUNNER_TEMP/inferyard-e2e"
+      - name: Collect e2e output
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p e2e-output
+          if [ -d "$RUNNER_TEMP/inferyard-e2e/bench-work/report" ]; then
+            cp -r "$RUNNER_TEMP/inferyard-e2e/bench-work/report" e2e-output/report
+          fi
+          if [ -f "$RUNNER_TEMP/inferyard-e2e/server.log" ]; then
+            cp "$RUNNER_TEMP/inferyard-e2e/server.log" e2e-output/
+          fi
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: model-e2e-${{ matrix.os }}
+          path: cli/e2e-output
+          if-no-files-found: warn
+          retention-days: 7
