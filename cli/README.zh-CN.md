@@ -27,7 +27,8 @@ uv tool upgrade inferyard
 
 | 命令 | 用途 |
 | --- | --- |
-| `inferyard init --out DIR` | 初始化工作区并导出冻结题包（默认 `zh-core` + `zh-svg-pelican`，可通过 `--bundle` 选择 `zh-smoke` 或 `zh-context-speed`） |
+| `inferyard init --out DIR` | 初始化工作区并导出题包（默认导出 `benchmarks/catalog.json` 中的默认题包，也可重复传 `--bundle <名称\|本地JSON路径>`） |
+| `inferyard bundles list\|verify` | 列出 `benchmarks/` 已注册题包，或校验内置题集/本地自定义题集 JSON |
 | `inferyard device-check --json` | 只读设备预检并输出硬件感知首装推荐（PolyStrata 或 `llama.cpp`） |
 | `inferyard engine prepare-polystrata` | 自动准备本地 PolyStrata（预检、独立 Python 3.10–3.13 `.venv`、运行时、模型下载与 `installation.json`） |
 | `inferyard engine prepare` / `engine check` | 下载校验并解包固定版本引擎归档，或只读核验本机引擎与 `installation.json` |

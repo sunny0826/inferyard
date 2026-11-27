@@ -66,7 +66,7 @@ Results stay on your machine. Frozen rules score the quality tasks.
 | `zh-context-speed` | 3 fixed prompts for 64K / 128K / 256K context settings that measure prefill and decode speed without a quality score |
 
 A standard benchmark runs `zh-core` and `zh-svg-pelican` separately. Every task
-set is reviewed by a person before release; see [task sets](cli/bundles/README.md).
+set is reviewed by a person before release; see [task sets](benchmarks/README.md).
 
 ## Supported platforms
 
@@ -97,7 +97,7 @@ The table describes implementation scope. Automated native desktop UI verificati
 | Studio pages, i18n, and builds | [Studio guide](studio/README.md) |
 | CLI subproject and terminal workflow | [CLI guide](cli/README.md) |
 | CLI installation and candidate setup (Chinese) | [Installation guide](cli/docs/installation.md) |
-| Frozen task sets | [Task sets](cli/bundles/README.md) |
+| Frozen task sets | [Task sets](benchmarks/README.md) |
 | Local monorepo development | [Development commands](tools/README.md) |
 | Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Release history | [Changelog](cli/CHANGELOG.md) |

@@ -34,17 +34,10 @@ def _write_gguf(path: Path, metadata: dict[str, str | int]) -> Path:
 
 
 def _write_bundle(path: Path, name: str = "zh-smoke.json") -> Path:
-    source = (
-        Path(__file__).resolve().parents[2]
-        / "src"
-        / "inferyard"
-        / "data"
-        / "community"
-        / "bundles"
-        / name
-    )
+    from inferyard.bundles.registry import bundle_bytes
+
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(source.read_bytes())
+    path.write_bytes(bundle_bytes(name.removesuffix(".json")))
     return path
 
 

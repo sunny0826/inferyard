@@ -61,7 +61,7 @@ def candidate_request(tmp_path, model, *, receipt=None, engine=None, system="Win
     return CommandRequest(
         "config create",
         preflight=preflight,
-        bundle_path=ROOT / "bundles/zh-smoke.json",
+        bundle_path=ROOT.parent / "benchmarks/bundles/zh-smoke.json",
         output_root=tmp_path / "results",
         out=tmp_path / "candidate",
         runtime_receipt=receipt,

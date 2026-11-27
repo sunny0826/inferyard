@@ -51,8 +51,8 @@ def create(preflight, out):
         template_path,
         engine,
         receipt,
-        ROOT / "bundles/zh-smoke.json",
-        read_json(ROOT / "bundles/zh-smoke.json")["version"],
+        ROOT.parent / "benchmarks/bundles/zh-smoke.json",
+        read_json(ROOT.parent / "benchmarks/bundles/zh-smoke.json")["version"],
         ROOT / "results",
     )
     validate_document("config", config)

@@ -4,10 +4,10 @@ import os
 import stat
 from pathlib import Path
 
+from inferyard.bundles.registry import default_bundles, resolve_bundle_spec
 from inferyard.config.bundle import require_review
-from inferyard.contracts.bundle import DEFAULT_BUNDLES
 from inferyard.platforms.output_tree import anchored
-from inferyard.provisioning.community_resources import BUNDLES, resource_bytes
+from inferyard.provisioning.community_resources import resource_bytes
 from inferyard.provisioning.preparation_io import (
     NewDirectory,
     PreparationError,
@@ -17,7 +17,6 @@ from inferyard.provisioning.preparation_io import (
     require_platform,
     sha256,
 )
-from inferyard.contracts.validation import strict_json_loads
 from inferyard.errors import ContractError
 
 _MANAGED_WORKSPACE_SUBDIRS = frozenset({"models", "engines", "results", "reports"})
@@ -47,25 +46,38 @@ def _prepare_workspace_output(raw_out):
     return output
 
 
-def _load_bundle(name):
-    if name not in BUNDLES:
-        raise PreparationError("invalid_input")
-    raw = resource_bytes(f"bundles/{name}.json")
-    try:
-        require_review(strict_json_loads(raw.decode()))
-    except ContractError as error:
-        if error.path == "bundle.review_records" and error.reason == "human_corpus_review_required":
-            raise PreparationError("human_corpus_review_required", 4) from None
-        raise PreparationError("package_resource_invalid", 4) from None
-    except ValueError:
-        raise PreparationError("package_resource_invalid", 4) from None
-    return raw
+def _load_bundles(specs):
+    bundles = {}
+    for spec in specs:
+        name, raw, doc = resolve_bundle_spec(spec)
+        if name in bundles:
+            raise PreparationError("invalid_input")
+        try:
+            require_review(doc)
+        except ContractError as error:
+            if (
+                error.path == "bundle.review_records"
+                and error.reason == "human_corpus_review_required"
+            ):
+                raise PreparationError("human_corpus_review_required", 4) from None
+            raise PreparationError("package_resource_invalid", 4) from None
+        except ValueError:
+            raise PreparationError("package_resource_invalid", 4) from None
+        bundles[name] = raw
+    return bundles
 
 
 def initialize(request):
     require_platform(("Linux", "x64"), ("Windows", "x64"), ("Darwin", "arm64"))
-    names = (request.community_bundle,) if request.community_bundle else DEFAULT_BUNDLES
-    bundles = {name: _load_bundle(name) for name in names}
+    multi = getattr(request, "community_bundles", None)
+    single = getattr(request, "community_bundle", None)
+    if multi:
+        specs = tuple(multi)
+    elif single:
+        specs = (single,)
+    else:
+        specs = default_bundles()
+    bundles = _load_bundles(specs)
     templates = {
         p: resource_bytes(f"configs/{p}.example.toml") for p in ("linux", "macos", "windows")
     }

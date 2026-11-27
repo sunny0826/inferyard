@@ -18,7 +18,7 @@ from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import atomic_bytes, read_json, sha256_file
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "bundles/zh-core.json"
+SOURCE = ROOT.parent / "benchmarks/bundles/zh-core.json"
 OUTPUT = ROOT / "bundles/zh-core-clarified.json"
 SCOPE = ROOT / "bundles/zh-core-clarified.review.json"
 REVIEW = ROOT / "bundles/STRUCTURED-CLARITY-REVIEW.md"

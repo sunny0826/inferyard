@@ -41,7 +41,6 @@ include = [
   "src/inferyard/data/*.json",
   "src/inferyard/data/community/README.md",
   "src/inferyard/data/community/configs/*.example.toml",
-  "src/inferyard/data/community/bundles/*.json",
   "src/inferyard/data/community/profile/*.json",
 ]
 exclude = ["**/__pycache__", "**/*.pyc", "**/*.pyo"]
@@ -49,19 +48,21 @@ exclude = ["**/__pycache__", "**/*.pyc", "**/*.pyo"]
 [tool.hatch.build.targets.sdist]
 # Explicit build inputs only; no real device configurations, evidence, caches or model assets.
 only-include = [
-  "pyproject.toml", "uv.lock", "LICENSE", "README.md", ".gitignore",
+  "pyproject.toml", "uv.lock", "LICENSE", "README.md", ".gitignore", "hatch_build.py",
   "src/inferyard",
 ]
 include = [
-  "/pyproject.toml", "/uv.lock", "/LICENSE", "/README.md", "/.gitignore",
+  "/pyproject.toml", "/uv.lock", "/LICENSE", "/README.md", "/.gitignore", "/hatch_build.py",
   "src/inferyard/**/*.py",
   "src/inferyard/data/*.json",
   "src/inferyard/data/community/README.md",
   "src/inferyard/data/community/configs/*.example.toml",
-  "src/inferyard/data/community/bundles/*.json",
   "src/inferyard/data/community/profile/*.json",
 ]
 exclude = ["**/__pycache__", "**/*.pyc", "**/*.pyo"]
+
+[tool.hatch.build.hooks.custom]
+path = "hatch_build.py"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

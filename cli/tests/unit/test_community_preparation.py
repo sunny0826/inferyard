@@ -23,7 +23,7 @@ def test_init_preserves_authoritative_bytes_and_review(tmp_path, capsys, name):
     code, result = invoke(capsys, ["init", "--out", str(out), "--bundle", name])
     assert code == 0 and result["status"] == "prepared"
     assert result["evidence_dir"] is None and result["run_id"] is None
-    source = (ROOT / f"bundles/{name}.json").read_bytes()
+    source = (ROOT.parent / f"benchmarks/bundles/{name}.json").read_bytes()
     assert (out / f"bundles/{name}.json").read_bytes() == source
     assert result["details"]["bundle_sha256"] == hashlib.sha256(source).hexdigest()
     assert result["details"]["bundles"] == [

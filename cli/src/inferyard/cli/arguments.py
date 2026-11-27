@@ -4,6 +4,7 @@ import argparse
 
 from inferyard.cli.commands import (
     assets,
+    bundles,
     candidates,
     community,
     comparison,
@@ -57,6 +58,7 @@ def parser() -> Parser:
         help="export the active JSON Schema",
     )
     commands = result.add_subparsers(dest="command", title="commands")
+    bundles.add_commands(commands)
     community.add_commands(commands)
     context_speed.add_commands(commands)
     discovery.add_commands(commands)

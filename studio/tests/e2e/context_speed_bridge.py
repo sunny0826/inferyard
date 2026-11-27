@@ -24,7 +24,7 @@ def test_studio_context_speed_bridge(speed_service, monkeypatch, capsys):
     accepted = speed_service["root"] / "draft-accepted"
     with monkeypatch.context() as draft:
         draft.setattr(
-            "inferyard.config.community_workspace.resource_bytes", lambda _: outputs()[BUNDLE_NAME]
+            "inferyard.bundles.registry.bundle_bytes", lambda _: outputs()[BUNDLE_NAME]
         )
         code, response = invoke(capsys, "init", "--bundle", "zh-context-speed", "--out", accepted)
     assert code == 0 and accepted.exists() and response["status"] == "prepared"
@@ -33,7 +33,7 @@ def test_studio_context_speed_bridge(speed_service, monkeypatch, capsys):
     broken["cases"] = []
     with monkeypatch.context() as invalid:
         invalid.setattr(
-            "inferyard.config.community_workspace.resource_bytes",
+            "inferyard.bundles.registry.bundle_bytes",
             lambda _: json.dumps(broken).encode("utf-8"),
         )
         code, response = invoke(capsys, "init", "--bundle", "zh-context-speed", "--out", refused)

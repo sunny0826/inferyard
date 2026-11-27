@@ -96,17 +96,10 @@ shard.write_bytes(b"".join(gguf_parts))
 
 
 def _write_bundle(path: Path) -> Path:
-    source = (
-        Path(__file__).resolve().parents[2]
-        / "src"
-        / "inferyard"
-        / "data"
-        / "community"
-        / "bundles"
-        / "zh-smoke.json"
-    )
+    from inferyard.bundles.registry import bundle_bytes
+
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(source.read_bytes())
+    path.write_bytes(bundle_bytes("zh-smoke"))
     return path
 
 

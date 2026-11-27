@@ -29,8 +29,11 @@ func (w *viewState) modelMetadata(name string) string {
 	return ""
 }
 
-func bundleDescription(bundle string) string {
-	switch bundle {
+func bundleDescription(bundle inferyard.BundleProgress) string {
+	if text := inferyard.ResolveLocalizedText(bundle.Description, l10n.CurrentLocale()); text != "" {
+		return text
+	}
+	switch bundle.Bundle {
 	case inferyard.DefaultBundleCore:
 		return l10n.TR("dashboard.bundle.desc_core")
 	case inferyard.DefaultBundlePelican:
@@ -79,7 +82,7 @@ func (s *viewState) bundleSelection(c *ui.Context) {
 						cbChanged = true
 						s.selectedBundles[bundle.Bundle] = checked
 					}
-					if description := bundleDescription(bundle.Bundle); description != "" {
+					if description := bundleDescription(bundle); description != "" {
 						ui.Text(c, "· "+description).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
 					}
 					ui.Box(c).Grow(1)

@@ -2,7 +2,7 @@
 # Asset hashes below are placeholders. This is not a frozen real run.
 schema_version = 3
 [bundle]
-path = "../bundles/zh-smoke.json"
+path = "../../benchmarks/bundles/zh-smoke.json"
 version = "1.0.0-draft"
 
 [conditions]

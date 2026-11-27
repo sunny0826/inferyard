@@ -30,7 +30,8 @@ uv tool upgrade inferyard
 
 | Command | Purpose |
 | --- | --- |
-| `inferyard init --out DIR` | Export a starter workspace and frozen task bundles (`zh-core` + `zh-svg-pelican` by default, or `--bundle zh-smoke\|zh-context-speed`) |
+| `inferyard init --out DIR` | Export a starter workspace and task bundles (default catalog bundles, or repeatable `--bundle <name\|path>` for registered or local JSON bundles) |
+| `inferyard bundles list\|verify` | List registered bundles in `benchmarks/` or verify a local bundle JSON file/directory |
 | `inferyard device-check --json` | Read-only hardware preflight and hardware-aware starter recommendation (PolyStrata vs. `llama.cpp`) |
 | `inferyard engine prepare-polystrata` | Automated local PolyStrata setup (preflight, isolated Python 3.10–3.13 `.venv`, runtime, model, `installation.json`) |
 | `inferyard engine prepare` / `engine check` | Download, verify, and unpack a pinned engine archive, or verify a local engine / `installation.json` read-only |

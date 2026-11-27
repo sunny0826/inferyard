@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "bundles": [
+    {
+      "name": "zh-core",
+      "file": "bundles/zh-core.json",
+      "default": true,
+      "display_name": {
+        "zh-Hans": "中文综合能力",
+        "en": "Chinese Core"
+      },
+      "description": {
+        "zh-Hans": "指令遵循、信息抽取、问答、数学、分类与结构化输出",
+        "en": "Instruction following, extraction, QA, math, classification, and structured output"
+      },
+      "tags": ["quality", "default"],
+      "execution_hints": {
+        "default_max_tokens": 512,
+        "reasoning_max_tokens": {
+          "low": 2048,
+          "medium": 4096,
+          "high": 4096
+        }
+      }
+    },
+    {
+      "name": "zh-svg-pelican",
+      "file": "bundles/zh-svg-pelican.json",
+      "default": true,
+      "display_name": {
+        "zh-Hans": "SVG 鹈鹕骑车",
+        "en": "SVG Pelican"
+      },
+      "description": {
+        "zh-Hans": "生成骑自行车的鹈鹕动态 SVG（仅展示结果，不计质量分）",
+        "en": "Generate an animated SVG of a pelican riding a bicycle (visual preview, unscored)"
+      },
+      "tags": ["visual", "svg", "default"],
+      "execution_hints": {
+        "default_max_tokens": 4096,
+        "reasoning_max_tokens": {
+          "low": 4096,
+          "medium": 8192,
+          "high": 8192
+        }
+      }
+    },
+    {
+      "name": "zh-context-speed",
+      "file": "bundles/zh-context-speed.json",
+      "default": false,
+      "display_name": {
+        "zh-Hans": "长上下文速度",
+        "en": "Long-Context Speed"
+      },
+      "description": {
+        "zh-Hans": "64k / 128k / 256k 固定档位的预填充与解码速度测评",
+        "en": "Prefill and decode speed benchmark at fixed 64k / 128k / 256k contexts"
+      },
+      "tags": ["performance", "context-speed"],
+      "execution_hints": {
+        "profile": "context-speed.v1",
+        "default_max_tokens": 256
+      }
+    },
+    {
+      "name": "zh-smoke",
+      "file": "bundles/zh-smoke.json",
+      "default": false,
+      "display_name": {
+        "zh-Hans": "中文冒烟测试",
+        "en": "Chinese Smoke"
+      },
+      "description": {
+        "zh-Hans": "用于快速验证执行链路与评分器的轻量题集",
+        "en": "Lightweight bundle for fast pipeline and scorer smoke checks"
+      },
+      "tags": ["quality", "smoke"],
+      "execution_hints": {
+        "default_max_tokens": 512
+      }
+    }
+  ]
+}

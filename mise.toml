@@ -67,9 +67,14 @@ dir = "studio"
 env = { GOTOOLCHAIN = "go1.27.3", GOPROXY = "https://goproxy.cn,direct", CGO_ENABLED = "0" }
 run = "go vet ./... && go test ./internal/l10n -count=1 && go test -tags ui_debug,release . -count=1 && go test -run '^$' . ./internal/... && go test -tags ui_debug -run '^$' . ./internal/pages && go test -c ./tests/e2e -o /dev/null"
 
+[tasks."check:benchmarks"]
+description = "Verify root benchmarks/ catalog and all bundle schemas/semantics"
+dir = "cli"
+run = "uv run --frozen inferyard bundles verify"
+
 [tasks."check:fast"]
-description = "Run PR-equivalent fast compile, lint, schema, and file-length checks"
-depends = ["lint", "schemas", "lint:studio"]
+description = "Run PR-equivalent fast compile, lint, schema, benchmark, and file-length checks"
+depends = ["lint", "schemas", "check:benchmarks", "lint:studio"]
 run = "python tools/check_file_length.py --base origin/main"
 
 [tasks.schemas]
