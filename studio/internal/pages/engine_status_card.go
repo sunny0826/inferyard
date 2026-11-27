@@ -413,7 +413,7 @@ func (s *viewState) engineEndpointBar(c *ui.Context, state core.EngineState) {
 					})
 				})
 			})
-			components.Tooltip(c, linkBtn, tr(c, "engine.tooltip.open_webui"))
+			studioTooltip(c, linkBtn, tr(c, "engine.tooltip.open_webui"))
 			if linkBtn.Clicked() {
 				s.openEngineWebUI(c, uiURL)
 			}

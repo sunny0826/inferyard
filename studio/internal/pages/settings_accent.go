@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 )
 
@@ -41,7 +40,7 @@ func (s *viewState) accentColorRow(c *ui.Context) {
 			ui.Text(c, tr(c, spec.labelKey)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		})
 
-		ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
+		studioTooltipGroup(c, ui.Row(c).AlignItems(ui.Center).Gap(6), func() {
 			for _, candidate := range studioAccentSpecs {
 				candidate := candidate
 				active := candidate.id == selected
@@ -68,7 +67,7 @@ func (s *viewState) accentColorRow(c *ui.Context) {
 				ring.Children(func() {
 					ui.Box(c).Size(22, 22).Radius(t.Radius.Full).Background(swatchColor).Border(1, rim)
 				})
-				components.Tooltip(c, ring, label)
+				studioTooltip(c, ring, label)
 			}
 		})
 	})

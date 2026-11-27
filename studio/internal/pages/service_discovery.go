@@ -93,7 +93,7 @@ func (s *viewState) managedServiceView(c *ui.Context) {
 		keyValueRow(c, tr(c, "engine.service.endpoint_label"), loopbackEndpoint(state.Endpoint), false)
 	}
 	if s.managedServiceActive() {
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+		studioTooltipGroup(c, ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row), func() {
 			if _, ok := validLoopbackURL(state.Endpoint); ok {
 				outlineIconButton(c, lucide.Copy, tr(c, "engine.action.copy_endpoint")).OnClick(func() {
 					s.copyEngineEndpoint(c, state.Endpoint)

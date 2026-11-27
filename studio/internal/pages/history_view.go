@@ -326,10 +326,11 @@ func (s *viewState) renderHistoryMetadataFooter(c *ui.Context) {
 	t := tokens(c)
 	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 		if resultsRoot != "" {
-			pathTxt := ui.Text(c, trf(c, "dashboard.history.results_root", "path", resultsRoot)).
+			disp := trf(c, "dashboard.history.results_root", "path", resultsRoot)
+			pathTxt := ui.Text(c, disp).
 				FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary).
 				MaxWidth(460).SingleLine().TruncateMiddle().Selectable()
-			components.Tooltip(c, pathTxt, resultsRoot)
+			studioTooltipIfTruncated(c, pathTxt, disp, resultsRoot, t.Type.Caption, false)
 		}
 		if resultsRoot != "" && scannedAt != "" {
 			ui.Text(c, "·").FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary)
@@ -390,7 +391,7 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 					})
 				})
 
-				ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
 					if repID := s.findReportForRun(run); repID != "" {
 						if primaryIconButton(c, lucide.Eye, tr(c, "dashboard.completion.view_report")).Clicked() {
 							s.historyDetailPath = ""
@@ -427,7 +428,7 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 						}
 					} else {
 						iconButtonWithTooltip(c, rerunBlocked, func() ui.Element {
-							return outlineIconButton(c, lucide.RotateCw, "").Label(tr(c, "dashboard.history.rerun_same")).Disabled(true).Description(rerunBlocked)
+							return outlineIconButton(c, lucide.RotateCw, "").Label(tr(c, "dashboard.history.rerun_same")).Disabled(true)
 						})
 					}
 					if s.canResumeHistoryRun(run) {
@@ -442,7 +443,7 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 					} else if run.BatchId != nil && run.Status != "complete" && run.Status != "completed" {
 						reason := tr(c, "dashboard.history.not_resumable")
 						iconButtonWithTooltip(c, reason, func() ui.Element {
-							return outlineIconButton(c, lucide.Play, "").Label(tr(c, "dashboard.history.resume_button")).Disabled(true).Description(reason)
+							return outlineIconButton(c, lucide.Play, "").Label(tr(c, "dashboard.history.resume_button")).Disabled(true)
 						})
 					}
 				})

@@ -90,7 +90,7 @@ func (r *reportViewState) requestView(c *ui.Context, run core.ReportRun) {
 	var trailing func()
 	if totalCount > 0 {
 		trailing = func() {
-			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			studioTooltipGroup(c, ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
 				inlineBadge(c, trf(c, "reports.tables.requests.total", "count", totalCount), stateNeutral, badgeOptions{Size: sizeSM, Style: badgeSoft})
 				if pages > 1 {
 					ui.Text(c, trf(c, "chart.table.page_status", "page", r.requestsPage+1, "totalPages", pages, "count", totalCount)).

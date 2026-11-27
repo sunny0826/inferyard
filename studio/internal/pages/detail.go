@@ -122,10 +122,11 @@ func (s *viewState) detailView(c *ui.Context) {
 		applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tok.Density.Row).
 			Padding(tok.Density.Row, tok.Density.Stack), materialSunken).Children(func() {
 			components.Icon(c, lucide.Folder).Size(14, 14).TextColor(tok.Color.FgSecondary).Shrink(0)
-			pathEl := ui.Text(c, trf(c, "detail.run_dir", "path", displayName(text(t.RunPath)))).
+			disp := trf(c, "detail.run_dir", "path", displayName(text(t.RunPath)))
+			pathEl := ui.Text(c, disp).
 				FontSize(tok.Type.Caption).TextColor(tok.Color.FgSecondary).Grow(1).MinWidth(0).SingleLine().TruncateMiddle().Selectable()
 			if runPathRaw != "" {
-				components.Tooltip(c, pathEl, runPathRaw)
+				studioTooltipIfTruncated(c, pathEl, disp, runPathRaw, tok.Type.Caption, false)
 			}
 		})
 		errorView(c, t.Error)
@@ -244,7 +245,7 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 	pages := max(1, (totalCases+detailCasePageSize-1)/detailCasePageSize)
 	s.casesTablePage = min(max(0, s.casesTablePage), pages-1)
 	if pages > 1 {
-		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(tok.Density.Row).Children(func() {
+		studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(tok.Density.Row), func() {
 			ui.Text(c, trf(c, "detail.table.page_status", "page", s.casesTablePage+1, "totalPages", pages, "count", totalCases)).
 				FontSize(tok.Type.Caption).FontFeatures("tnum").TextColor(tok.Color.FgSecondary)
 			ui.Box(c).Grow(1)

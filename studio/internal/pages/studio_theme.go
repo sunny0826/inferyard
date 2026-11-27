@@ -51,6 +51,7 @@ func studioThemeFor(c *ui.Context, dark bool) *ui.Theme {
 	applyPalette(t, paletteFor(dark))
 	t.Radius, t.Spacing = 8, 4
 	t.FontSize *= 0.96
+	t.TooltipDelay = labelOpenDelay
 	applyThemePreferences(t, c)
 	return t
 }

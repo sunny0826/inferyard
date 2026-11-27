@@ -385,10 +385,28 @@ func (s *viewState) subpageHeader(c *ui.Context, title, backLabel string, onBack
 
 func studioPopover(c *ui.Context, anchor ui.Element, open *bool, build func(panel ui.Element)) ui.Element {
 	t := tokens(c)
+	if open != nil && *open {
+		suppressTooltipFor(c, anchor)
+	}
+	reduced := c.Preferences().ReduceMotion
+	enter := &ui.Motion{Opacity: 0, Y: -4, Flip: true}
+	exit := &ui.Motion{Opacity: 0, Y: -4, Flip: true}
+	if reduced {
+		enter = &ui.Motion{Opacity: 0}
+		exit = &ui.Motion{Opacity: 0}
+	}
+	tr := ui.ElementTransition{
+		Duration:     cardEnterDuration,
+		ExitDuration: cardExitDuration,
+		Colors:       reduced,
+		Enter:        enter,
+		Exit:         exit,
+	}
 	return ui.PopoverBase(c, anchor, open, func(panel ui.Element) {
 		applyMaterial(c, panel.Column().Padding(t.Card.Padding).Gap(t.Density.Stack).
 			Margin(t.Density.Row, 0, 0, 0).TextColor(t.Color.FgPrimary).Clip().
-			AttachEdgeMargin(t.Density.Stack), materialFloating)
+			AttachEdgeMargin(t.Density.Stack), materialFloating).
+			Transition(tr)
 		if build != nil {
 			build(panel)
 		}

@@ -159,6 +159,13 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 		}
 		theme := c.Theme()
 		metrics := resourceMetrics(c, theme)
+		cols := 2
+		if compactLayout(c) {
+			cols = 1
+		}
+		grid := ui.Grid(c).Columns(cols).Gap(t.Density.Stack)
+		grp := ui.Local(grid, "resource-hover-group", func() resourceHoverGroupState { return resourceHoverGroupState{} })
+		grp.anyOverInPass = false
 		draw := func(metric resourceMetric) {
 			c.Key(metric.id)
 			var options []resourceSeries
@@ -211,28 +218,30 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 					})
 					return
 				}
-				chart.Line(c, &state.chart, data, chart.Options{
-					HideLegend: true, Label: trf(c, "chart.resource.curve_label", "metric", metric.label), PlotHeight: 140, AnimationDuration: -1,
-					Description: tr(c, "chart.resource.curve_description"),
-					Detail: func(c *ui.Context, selection chart.Selection) {
+				resourceLinePlot(c, grp, &state.chart, data, resourcePlotOptions{
+					id:          metric.id,
+					label:       trf(c, "chart.resource.curve_label", "metric", metric.label),
+					description: tr(c, "chart.resource.curve_description"),
+					height:      140,
+					detail: func(c *ui.Context, index int) {
 						ui.Column(c).Children(func() {
-							if selection.Index >= 0 && selection.Index < len(chosen.points) {
-								ui.Text(c, formatResourceDetail(c, chosen.points[selection.Index])).FontSize(t.Type.Caption).FontFeatures("tnum").Selectable()
+							if index >= 0 && index < len(chosen.points) {
+								ui.Text(c, formatResourceDetail(c, chosen.points[index])).FontSize(t.Type.Caption).FontFeatures("tnum").Selectable()
 							}
 						})
 					},
 				})
 			})
 		}
-		cols := 2
-		if compactLayout(c) {
-			cols = 1
-		}
-		ui.Grid(c).Columns(cols).Gap(t.Density.Stack).Children(func() {
+		grid.Children(func() {
 			for _, metric := range metrics {
 				draw(metric)
 			}
 		})
+		if !grp.anyOverInPass {
+			grp.hoverChartID = 0
+			grp.pointerActive = false
+		}
 		s.resourceSampleFold(c, selected)
 	})
 }
@@ -288,7 +297,7 @@ func (s *viewState) resourceTable(c *ui.Context, samples []core.ResourceSample) 
 	pages := max(1, (len(samples)+pageSize-1)/pageSize)
 	s.resourceTablePage = min(max(0, s.resourceTablePage), pages-1)
 	ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
-		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			ui.Text(c, trf(c, "chart.table.page_status", "page", s.resourceTablePage+1, "totalPages", pages, "count", len(samples))).
 				FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 			ui.Box(c).Grow(1)

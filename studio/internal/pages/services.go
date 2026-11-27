@@ -23,13 +23,16 @@ func (s *viewState) servicesView(c *ui.Context) {
 			return
 		}
 		canOpenLauncher := s.serveSupported || s.preview != nil
-		startModelBtn := primaryActionButton(c, tr(c, "services.page.action.start_model"), false).
-			Disabled(!canOpenLauncher || s.serveProbing || s.busy)
+		blockedTip := ""
+		if !canOpenLauncher && !s.serveProbing {
+			blockedTip = tr(c, "models.serve.blocked.cli_outdated")
+		}
+		startModelBtn := withDisabledTooltip(c, blockedTip, func() ui.Element {
+			return primaryActionButton(c, tr(c, "services.page.action.start_model"), false).
+				Disabled(!canOpenLauncher || s.serveProbing || s.busy)
+		})
 		if startModelBtn.Clicked() {
 			s.openServiceParamsDrawerForNew()
-		}
-		if !canOpenLauncher && !s.serveProbing {
-			components.Tooltip(c, startModelBtn, tr(c, "models.serve.blocked.cli_outdated"))
 		}
 	})
 
@@ -227,7 +230,7 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 			progressBar(c, -1, tr(c, "engine.status.transitioning"))
 		}
 
-		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			if primaryIconButton(c, lucide.Gauge, tr(c, "services.card.action.benchmark")).Clicked() {
 				s.startBenchmarkForManagedService(state)
 			}
@@ -285,9 +288,6 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 				btn := dangerIconButton(c, lucide.Square, tooltipLabel).Label(stopLabel).Disabled(stopDisabled)
 				if multi {
 					btn.Label(stopLabel + " · " + modelName)
-				}
-				if stopReason != "" {
-					btn.Description(stopReason)
 				}
 				return btn
 			}
@@ -456,7 +456,7 @@ func (s *viewState) renderDiscoveredServiceCard(c *ui.Context, service inferyard
 				ui.Text(c, fmt.Sprintf("PID %d · %s", service.PID, endpoint.URL)).
 					FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 			})
-			ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			studioTooltipGroup(c, ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row), func() {
 				if validURL, ok := validLoopbackURL(endpoint.URL); ok {
 					if outlineIconButton(c, lucide.Copy, tr(c, "services.discovered.copy_url")).Clicked() {
 						s.copyEngineEndpoint(c, validURL)
