@@ -1,10 +1,15 @@
 package core
 
 import (
+	"context"
 	"math"
 	"os"
+	"os/exec"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"github.com/ebitengine/purego"
@@ -19,6 +24,40 @@ var loadProcessInfo = sync.OnceValues(func() (func(int32, int32, uint64, unsafe.
 	purego.RegisterLibFunc(&query, handle, "proc_pidinfo")
 	return query, nil
 })
+
+func classifyDarwinPSState(raw string) (deadOrZombie bool, exiting bool) {
+	state := strings.TrimSpace(raw)
+	if state == "" || strings.HasPrefix(state, "Z") {
+		return true, false
+	}
+	if strings.Contains(state, "E") {
+		return false, true
+	}
+	return false, false
+}
+
+func isZombieOrExitedDarwinPID(pid int64) bool {
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		out, err := exec.CommandContext(ctx, "/bin/ps", "-p", strconv.FormatInt(pid, 10), "-o", "state=").Output()
+		cancel()
+		if err != nil {
+			return syscall.Kill(int(pid), 0) == syscall.ESRCH
+		}
+		dead, exiting := classifyDarwinPSState(string(out))
+		if dead {
+			return true
+		}
+		if !exiting {
+			return false
+		}
+		if time.Now().After(deadline) {
+			return true
+		}
+		time.Sleep(15 * time.Millisecond)
+	}
+}
 
 func processStartTicks(pid int64) (int64, error) {
 	if pid <= 0 || pid > math.MaxInt32 {
@@ -38,7 +77,11 @@ func processStartTicks(pid int64) (int64, error) {
 	}
 	size := int32(unsafe.Sizeof(info))
 	if query(int32(pid), 3, 0, unsafe.Pointer(&info), size) != size {
-		if syscall.Kill(int(pid), 0) == syscall.ESRCH {
+		killErr := syscall.Kill(int(pid), 0)
+		if killErr == syscall.ESRCH {
+			return 0, os.ErrNotExist
+		}
+		if killErr == nil && isZombieOrExitedDarwinPID(pid) {
 			return 0, os.ErrNotExist
 		}
 		return 0, os.ErrPermission

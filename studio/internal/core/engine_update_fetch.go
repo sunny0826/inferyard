@@ -133,7 +133,16 @@ func (m *engineUpdateManager) fetchUpstreamRelease(ctx context.Context, client *
 			rel.DownloadURL = "https://github.com/simplexai-labs/PolyStrata/archive/refs/tags/" + tag + ".tar.gz"
 		}
 		return rel, nil
-	case "mlx-lm", "vllm", "sglang":
+	case "vllm":
+		platform := m.opts.Platform
+		if strings.TrimSpace(platform) == "" {
+			platform = CurrentPlatform()
+		}
+		if platform == "darwin/arm64" {
+			return m.fetchDarwinVLLMRelease(ctx, client, target.key)
+		}
+		return m.fetchPyPIRelease(ctx, client, target.key, target.family, venvPackageInstallName(target.family))
+	case "mlx-lm", "sglang":
 		return m.fetchPyPIRelease(ctx, client, target.key, target.family, venvPackageInstallName(target.family))
 	default:
 		return remoteEngineRelease{}, fmt.Errorf("unsupported engine family: %s", target.family)
@@ -146,35 +155,49 @@ func (m *engineUpdateManager) fetchGitHubRelease(ctx context.Context, client *ht
 	payload, status, err := m.getGitHubReleasePayload(ctx, client, latestURL)
 	if err != nil && status == http.StatusNotFound && allowPrereleaseFallback {
 		listURL := base + "/repos/" + repo + "/releases?per_page=5"
-		payload, err = m.getFirstNonDraftGitHubRelease(ctx, client, listURL)
+		payload, err = m.getFirstNonDraftGitHubRelease(ctx, client, listURL, false)
+	}
+	if err != nil && isGitHubRateLimitStatus(status) && m.isDefaultGitHubAPI() {
+		return m.fallbackGitHubReleaseViaWeb(ctx, client, key, family, dist, repo)
 	}
 	if err != nil {
 		return remoteEngineRelease{}, err
 	}
-	tag := strings.TrimSpace(payload.TagName)
-	if tag == "" {
+	buildRelease := func(p githubReleasePayload) remoteEngineRelease {
+		assets := make([]remoteReleaseAsset, 0, len(p.Assets))
+		for _, a := range p.Assets {
+			dl := strings.TrimSpace(a.BrowserDownloadURL)
+			if dl == "" || (!validEngineSource(dl) && !m.opts.AllowInsecureHTTP) {
+				continue
+			}
+			assets = append(assets, remoteReleaseAsset{
+				Name:  strings.TrimSpace(a.Name),
+				URL:   dl,
+				Bytes: a.Size,
+			})
+		}
+		return remoteEngineRelease{
+			Key:          key,
+			Family:       family,
+			Distribution: dist,
+			Version:      strings.TrimSpace(p.TagName),
+			ReleaseURL:   strings.TrimSpace(p.HTMLURL),
+			Assets:       assets,
+		}
+	}
+	rel := buildRelease(payload)
+	if family == "llama-cpp" && !hasArchiveReleaseAsset(rel.Assets) {
+		listURL := base + "/repos/" + repo + "/releases?per_page=5"
+		if alt, altErr := m.getFirstNonDraftGitHubRelease(ctx, client, listURL, true); altErr == nil {
+			if altRel := buildRelease(alt); altRel.Version != "" && hasArchiveReleaseAsset(altRel.Assets) {
+				rel = altRel
+			}
+		}
+	}
+	if rel.Version == "" {
 		return remoteEngineRelease{}, fmt.Errorf("empty tag_name for %s", repo)
 	}
-	assets := make([]remoteReleaseAsset, 0, len(payload.Assets))
-	for _, a := range payload.Assets {
-		dl := strings.TrimSpace(a.BrowserDownloadURL)
-		if dl == "" || (!validEngineSource(dl) && !m.opts.AllowInsecureHTTP) {
-			continue
-		}
-		assets = append(assets, remoteReleaseAsset{
-			Name:  strings.TrimSpace(a.Name),
-			URL:   dl,
-			Bytes: a.Size,
-		})
-	}
-	return remoteEngineRelease{
-		Key:          key,
-		Family:       family,
-		Distribution: dist,
-		Version:      tag,
-		ReleaseURL:   strings.TrimSpace(payload.HTMLURL),
-		Assets:       assets,
-	}, nil
+	return rel, nil
 }
 
 func (m *engineUpdateManager) getGitHubReleasePayload(ctx context.Context, client *http.Client, rawURL string) (githubReleasePayload, int, error) {
@@ -206,7 +229,7 @@ func (m *engineUpdateManager) getGitHubReleasePayload(ctx context.Context, clien
 	return payload, resp.StatusCode, nil
 }
 
-func (m *engineUpdateManager) getFirstNonDraftGitHubRelease(ctx context.Context, client *http.Client, rawURL string) (githubReleasePayload, error) {
+func (m *engineUpdateManager) getFirstNonDraftGitHubRelease(ctx context.Context, client *http.Client, rawURL string, requireArchiveAsset bool) (githubReleasePayload, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return githubReleasePayload{}, err
@@ -230,9 +253,23 @@ func (m *engineUpdateManager) getFirstNonDraftGitHubRelease(ctx context.Context,
 		return githubReleasePayload{}, err
 	}
 	for _, rel := range releases {
-		if !rel.Draft && strings.TrimSpace(rel.TagName) != "" {
-			return rel, nil
+		if rel.Draft || strings.TrimSpace(rel.TagName) == "" {
+			continue
 		}
+		if requireArchiveAsset {
+			hasArchive := false
+			for _, a := range rel.Assets {
+				lower := strings.ToLower(strings.TrimSpace(a.Name))
+				if strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tgz") || strings.HasSuffix(lower, ".zip") {
+					hasArchive = true
+					break
+				}
+			}
+			if !hasArchive {
+				continue
+			}
+		}
+		return rel, nil
 	}
 	return githubReleasePayload{}, fmt.Errorf("no usable release")
 }
@@ -313,7 +350,10 @@ func matchLlamaReleaseAsset(assets []remoteReleaseAsset, platform string, wantCU
 
 	switch platform {
 	case "darwin/arm64":
-		return pick(func(n string) bool { return strings.Contains(n, "macos-arm64") })
+		return pick(
+			func(n string) bool { return strings.Contains(n, "macos-arm64") && !strings.Contains(n, "kleidiai") },
+			func(n string) bool { return strings.Contains(n, "macos-arm64") },
+		)
 	case "darwin/amd64":
 		return pick(func(n string) bool { return strings.Contains(n, "macos-x64") || strings.Contains(n, "macos-amd64") })
 	case "windows/amd64":

@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
 	"sync"
 	"syscall"
@@ -139,6 +140,7 @@ func TestConfigureEngineProcessInheritsHostEnvAndStripsLoaderInjection(t *testin
 	t.Setenv("HTTPS_PROXY", "http://user:pa,ss;1'2@proxy.example.com:8080")
 	t.Setenv("DYLD_INSERT_LIBRARIES", "/tmp/evil.dylib")
 	t.Setenv("LD_PRELOAD", "/tmp/evil.so")
+	t.Setenv("TMPDIR", "/var/folders/b6/bw1r91nj0qsgngw4gmnhtc940000gn/T/com.apple.testmanagerd")
 
 	cmd := exec.Command("/bin/echo")
 	err := configureEngineProcess(cmd, Startup{
@@ -163,6 +165,9 @@ func TestConfigureEngineProcessInheritsHostEnvAndStripsLoaderInjection(t *testin
 	}
 	if !slices.Contains(cmd.Env, "CUDA_VISIBLE_DEVICES=0") {
 		t.Fatalf("expected CUDA_VISIBLE_DEVICES in cmd.Env, got %v", cmd.Env)
+	}
+	if runtime.GOOS != "windows" && !slices.Contains(cmd.Env, "TMPDIR=/tmp") {
+		t.Fatalf("expected long TMPDIR clamped to /tmp for Unix domain sockets, got %v", cmd.Env)
 	}
 	for _, entry := range cmd.Env {
 		if entry == "DYLD_INSERT_LIBRARIES=/tmp/evil.dylib" ||

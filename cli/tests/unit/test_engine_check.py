@@ -36,6 +36,10 @@ def test_contract_golden_samples_match_the_schema():
     "version_output,expected_release",
     [
         ("version: 12232 (f70247691)\nbuilt with Apple clang", "b12232-f70247691"),
+        (
+            "version: 0.7.0-dev (build 12232, commit f70247610)\nbuilt with AppleClang",
+            "b12232-f70247610",
+        ),
         ("llama-server prism-b12232-f702476\n", "prism-b12232-f702476"),
         ("version: 10743 (adfffbe41)\n", RELEASE),
     ],
