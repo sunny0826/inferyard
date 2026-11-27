@@ -137,7 +137,7 @@ func TestCorePageIconButtons(t *testing.T) {
 
 		opened := 0
 		cardTester := ui.NewTester(func(c *ui.Context) {
-			reportCard(c, s.reports[0], core.ExclusivityUnknown, func() { opened++ })
+			reportCard(c, s.reports[0], core.ExclusivityUnknown, "", func() { opened++ })
 		}, 1000, 600)
 		cardTester.Frame()
 		openLabel := trf(nil, "reports.list.open_aria", "id", "report-1")
