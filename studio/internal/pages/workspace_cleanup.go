@@ -78,7 +78,8 @@ func (s *viewState) clearCleanedWorkspaceState() {
 	s.failurePage = ""
 	s.refreshFailure = ""
 	s.refreshFailureCode = ""
-	s.bgRefresh = bgRefreshCache{}
+	s.cleanArtifactsSeq.Add(1)
+	s.bumpSettingsEpoch()
 	s.progress = nil
 	s.candidate = ""
 	s.bindingStale = false

@@ -295,9 +295,11 @@ def test_progress_handles_active_unsealed_local_engine_run(
                 },
             },
         )
-        # Simulate a half-flushed JSONL line written while streaming is in progress.
+        # Simulate half-flushed JSONL tails written while streaming/sampling is in progress.
         with (store.path / "events.jsonl").open("ab") as partial_stream:
             partial_stream.write(b'{"schema_version": 3, "partial": ')
+        with (store.path / "memory.jsonl").open("ab") as partial_mem:
+            partial_mem.write(b'{"schema_version": 3, "partial_sample": ')
 
         state = inspect_workspace(workspace)
         core = next(b for b in state["bundles"] if b["bundle"] == "zh-core")
@@ -310,6 +312,12 @@ def test_progress_handles_active_unsealed_local_engine_run(
         assert code == 0
         payload = json.loads(capsys.readouterr().out)
         assert payload["kind"] == "progress"
+
+        # A newline-terminated corrupt record in memory.jsonl must still fail progress.
+        (store.path / "memory.jsonl").write_bytes(b"{corrupt_complete_line}\n")
+        assert main(["progress", "--workspace", str(workspace)]) == 2
+        blocked = json.loads(capsys.readouterr().out)
+        assert blocked["limitations"] == ["workspace_artifact_unreadable"]
     finally:
         for stream in store._logs.values():
             stream.close()

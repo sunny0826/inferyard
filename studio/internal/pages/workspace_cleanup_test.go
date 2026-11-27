@@ -20,7 +20,8 @@ func TestWorkspaceCleanupButtonShownInSettingsAndConfirms(t *testing.T) {
 	s := settingsState()
 	s.ctx = context.Background()
 	called := make(chan struct{}, 1)
-	s.updateWindow = func(fn func()) { fn() }
+	updates := make(chan func(), 4)
+	s.updateWindow = func(fn func()) { updates <- fn }
 	s.cleanWorkspaceArtifactsFn = func() (core.WorkspaceCleanupResult, *core.ApiError) {
 		called <- struct{}{}
 		return core.WorkspaceCleanupResult{Removed: []string{"/workspace/results"}}, nil
@@ -50,10 +51,20 @@ func TestWorkspaceCleanupButtonShownInSettingsAndConfirms(t *testing.T) {
 		t.Fatalf("failed to click %q: %v", confirmLabel, err)
 	}
 
+	timer := time.NewTimer(2 * time.Second)
+	defer timer.Stop()
 	select {
 	case <-called:
-	case <-time.After(2 * time.Second):
+	case <-timer.C:
 		t.Fatal("expected cleanWorkspaceArtifactsFn to be called after confirmation")
+	}
+	for s.busy {
+		select {
+		case fn := <-updates:
+			fn()
+		case <-timer.C:
+			t.Fatal("timed out draining workspace cleanup UI updates")
+		}
 	}
 }
 
@@ -126,12 +137,14 @@ func TestWorkspaceCleanupDisabledWhenWorkspaceUninitialized(t *testing.T) {
 func TestWorkspaceCleanupClearsCachedRefreshAndErrors(t *testing.T) {
 	s := settingsState()
 	s.ctx = context.Background()
-	s.updateWindow = func(fn func()) { fn() }
-	done := make(chan struct{}, 1)
+	s.service = settingsTestService(t, t.TempDir())
+	updates := make(chan func(), 4)
+	s.updateWindow = func(fn func()) { updates <- fn }
 	s.cleanWorkspaceArtifactsFn = func() (core.WorkspaceCleanupResult, *core.ApiError) {
 		return core.WorkspaceCleanupResult{Removed: []string{"/workspace/results"}}, nil
 	}
 
+	staleEpoch := s.settingsSequence()
 	s.failure = core.Err("workspace_artifact_unreadable")
 	s.refreshFailure = human("workspace_artifact_unreadable")
 	s.refreshFailureCode = "workspace_artifact_unreadable"
@@ -139,7 +152,8 @@ func TestWorkspaceCleanupClearsCachedRefreshAndErrors(t *testing.T) {
 	s.reportsError = core.Err("report_unreadable")
 	s.detailError = core.Err("not_found")
 	s.bgRefresh = bgRefreshCache{
-		rootsKey:    "/workspace|/workspace/results|/workspace/reports",
+		rootsKey:    refreshRootsKey(s.service.Settings().Effective),
+		cleanSeq:    s.cleanArtifactsSeq.Load(),
 		initialized: true,
 		reports:     []core.ReportSummary{{ReportId: "summary-1"}},
 	}
@@ -154,20 +168,15 @@ func TestWorkspaceCleanupClearsCachedRefreshAndErrors(t *testing.T) {
 	if err := tt.Click(l10n.TR("settings.workspace.cleanup.confirm")); err != nil {
 		t.Fatalf("click cleanup confirm: %v", err)
 	}
-	go func() {
-		deadline := time.Now().Add(2 * time.Second)
-		for time.Now().Before(deadline) {
-			if !s.busy && s.refreshFailureCode == "" && !s.bgRefresh.initialized {
-				done <- struct{}{}
-				return
-			}
-			time.Sleep(10 * time.Millisecond)
+	timer := time.NewTimer(2 * time.Second)
+	defer timer.Stop()
+	for s.busy {
+		select {
+		case fn := <-updates:
+			fn()
+		case <-timer.C:
+			t.Fatal("timed out waiting for workspace cleanup completion")
 		}
-	}()
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("timed out waiting for workspace cleanup state reset")
 	}
 	if s.failure != nil || s.refreshFailure != "" || s.refreshFailureCode != "" {
 		t.Fatalf("expected failure banners cleared, got failure=%+v refreshFailure=%q code=%q", s.failure, s.refreshFailure, s.refreshFailureCode)
@@ -175,8 +184,20 @@ func TestWorkspaceCleanupClearsCachedRefreshAndErrors(t *testing.T) {
 	if s.historyError != nil || s.reportsError != nil || s.detailError != nil {
 		t.Fatalf("expected history/reports/detail errors cleared, got hist=%+v rep=%+v det=%+v", s.historyError, s.reportsError, s.detailError)
 	}
-	if s.bgRefresh.initialized || len(s.bgRefresh.reports) != 0 || s.bgRefresh.progress != nil {
-		t.Fatalf("expected bgRefresh cache cleared, got %+v", s.bgRefresh)
+	if s.applyRefreshBatch(refreshBatch{
+		epoch:         staleEpoch,
+		mask:          refreshCore | refreshProgress,
+		progressError: core.Err("workspace_artifact_unreadable"),
+	}) {
+		t.Fatal("expected pre-cleanup refresh batch to be rejected")
+	}
+	if s.refreshFailureCode != "" {
+		t.Fatalf("expected stale refresh batch not to restore banner, got %q", s.refreshFailureCode)
+	}
+	s.updateWindow = func(fn func()) { fn() }
+	s.refreshMask(refreshCore)
+	if len(s.bgRefresh.reports) != 0 || s.bgRefresh.progress != nil {
+		t.Fatalf("expected refreshMask to invalidate pre-cleanup bgRefresh, got %+v", s.bgRefresh)
 	}
 }
 

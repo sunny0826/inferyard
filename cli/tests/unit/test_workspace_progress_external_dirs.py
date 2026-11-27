@@ -380,7 +380,15 @@ def test_context_speed_preset_plan_and_batch_scoped_to_workspace(
 
     live_batch = results / "speed-batch-2"
     shutil.copytree(plan_dir, live_batch / "frozen-plan")
-    _write_json(live_batch / "batch.json", {"kind": "batch"})
+    _write_json(
+        live_batch / "batch.json",
+        {
+            "schema_version": 3,
+            "plan_sha256": plan_doc["plan_sha256"],
+            "diagnostic": False,
+            "tool_source_sha256": "0" * 64,
+        },
+    )
     frozen_plan, frozen_loaded = read_frozen_plan(live_batch / "frozen-plan" / "plan.json")
     first_loaded = next(iter(frozen_loaded.values()))
     live_store = TrialJournal(
@@ -401,3 +409,21 @@ def test_context_speed_preset_plan_and_batch_scoped_to_workspace(
     shutil.rmtree(batch_dir)
     live_state = inspect_workspace(ws_a, results_root=results, reports_root=reports)
     assert live_state["bundles"][0]["phase"] == "run_missing"
+
+    # Malformed batch.json on an unsealed batch must still be rejected by progress.
+    _write_json(live_batch / "batch.json", {"kind": "batch"})
+    assert (
+        main(
+            [
+                "progress",
+                "--workspace",
+                str(ws_a),
+                "--results",
+                str(results),
+                "--reports",
+                str(reports),
+            ]
+        )
+        == 2
+    )
+    capsys.readouterr()

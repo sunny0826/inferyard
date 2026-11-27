@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"sync"
+	"sync/atomic"
 
 	"inferyard/studio/internal/core"
 )
@@ -13,6 +14,7 @@ import (
 // embedded anonymously in viewState so the whole package keeps using s.<field>.
 type settingsViewState struct {
 	cleanArtifactsConfirm                 bool
+	cleanArtifactsSeq                     atomic.Uint64
 	cleanWorkspaceArtifactsFn             func() (core.WorkspaceCleanupResult, *core.ApiError)
 	settingsLeaveConfirm                  bool
 	settingsTab                           int
