@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 
@@ -278,6 +279,11 @@ func (s *viewState) polystrataDrawerSetupSection(c *ui.Context, st *downloadsUIS
 			Kind:    stateWarning,
 			Size:    bannerCompact,
 			Message: msg,
+			Actions: func() {
+				outlineButton(c, tr(c, "downloads.starter.redetect")).Disabled(s.deviceCollectionBlocked()).OnClick(func() {
+					s.refreshDevice()
+				})
+			},
 		})
 		return starterOption{}, false
 	}
@@ -287,46 +293,65 @@ func (s *viewState) polystrataDrawerSetupSection(c *ui.Context, st *downloadsUIS
 	}
 
 	chosenID := selected.ModelID
-	ui.Box(c.Key("polystrata-drawer-model-select")).Children(func() {
-		sel := studioSelect(c, &chosenID)
-		sel.Trigger.Label(tr(c, "downloads.polystrata.drawer.select_model")).Value(polystrataDrawerOptionSummary(selected)).Children(func() {
-			ui.Text(c, polystrataDrawerOptionSummary(selected)).SingleLine()
-		})
-		sel.Popup(func(ui.Element) {
-			components.ScrollView(c, components.ScrollViewOptions{}).Label(tr(c, "downloads.polystrata.drawer.model_list")).MaxHeight(240).Children(func() {
-				for _, candidate := range options {
-					itemLabel := polystrataDrawerOptionSummary(candidate)
-					sel.Item(candidate.ModelID).Label(itemLabel).Children(func() {
-						ui.Text(c, itemLabel).SingleLine()
-					})
-				}
+	ui.Field(c, tr(c, "downloads.polystrata.drawer.field.model"), func() {
+		ui.Box(c.Key("polystrata-drawer-model-select")).FillWidth().Children(func() {
+			sel := studioSelect(c, &chosenID)
+			sel.Trigger.Label(tr(c, "downloads.polystrata.drawer.select_model")).Value(polystrataDrawerOptionSummary(selected)).Children(func() {
+				ui.Text(c, polystrataDrawerOptionSummary(selected)).FontFeatures("tnum").SingleLine()
 			})
+			sel.Popup(func(ui.Element) {
+				components.ScrollView(c, components.ScrollViewOptions{}).Label(tr(c, "downloads.polystrata.drawer.model_list")).MaxHeight(240).Children(func() {
+					for _, candidate := range options {
+						itemLabel := polystrataDrawerOptionSummary(candidate)
+						sel.Item(candidate.ModelID).Label(itemLabel).Children(func() {
+							ui.Text(c, itemLabel).FontFeatures("tnum").SingleLine()
+						})
+					}
+				})
+			})
+			if sel.Trigger.Changed() {
+				st.polystrataDrawerModelID = chosenID
+				selected, options = s.resolvePolystrataDrawerOption(hostPlatform)
+			}
 		})
-		if sel.Trigger.Changed() {
-			st.polystrataDrawerModelID = chosenID
-			selected, options = s.resolvePolystrataDrawerOption(hostPlatform)
-		}
 	})
 
-	applyMaterial(c, ui.Column(c.Key("polystrata-drawer-selection-summary")).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Inset), materialInset).Children(func() {
-		ui.Text(c, starterOptionTitle(selected)).Bold()
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-			if selected.Backend != "" && selected.Backend != "auto" {
-				badge(c, deviceLabel(selected.Backend), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
-			}
-			if selected.FitLevel != "" {
-				badge(c, deviceLabel(selected.FitLevel), starterFitState(selected.FitLevel), badgeOptions{Style: badgeOutline, Size: sizeSM})
-			}
-			if ctx := starterContextLabel(selected.RecommendedContext); ctx != "" {
-				badge(c, ctx, stateNeutral, badgeOptions{Style: badgeSoft, Size: sizeSM})
-			}
-			if selected.EstimatedDownloadBytes > 0 {
-				badge(c, trf(c, "downloads.starter.est_download_badge", "size", formatDownloadBytes(selected.EstimatedDownloadBytes)), stateNeutral, badgeOptions{Style: badgeSoft, Size: sizeSM})
-			}
-			if selected.EstimatedRAMBytes > 0 {
-				badge(c, trf(c, "downloads.starter.est_ram_badge", "size", formatDownloadBytes(selected.EstimatedRAMBytes)), stateNeutral, badgeOptions{Style: badgeSoft, Size: sizeSM})
-			}
+	cardPad := t.Density.Stack
+	cardRadius := t.Radius.Floating
+	iconRadius := concentricRadius(cardRadius, cardPad)
+	applyMaterial(c, ui.Column(c.Key("polystrata-drawer-selection-summary")).FillWidth().Gap(t.Density.Row).Padding(cardPad), materialSunken).
+		Radius(cardRadius).Border(1, t.Color.BorderSubtle).Children(func() {
+		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			modelIconBox(c, selected.ModelTitle+" "+selected.Family+" "+selected.ModelID, 32, iconRadius)
+			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
+				ui.Text(c, starterOptionTitle(selected)).Bold().SingleLine()
+				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+					if selected.Backend != "" && selected.Backend != "auto" {
+						badge(c, deviceLabel(selected.Backend), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
+					}
+					if selected.FitLevel != "" {
+						badge(c, deviceLabel(selected.FitLevel), starterFitState(selected.FitLevel), badgeOptions{Style: badgeOutline, Size: sizeSM})
+					}
+					if s.isStarterOptionInstalled(selected) {
+						badge(c, tr(c, "downloads.badge.installed"), stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
+					}
+				})
+			})
 		})
+		if selected.EstimatedDownloadBytes > 0 || selected.EstimatedRAMBytes > 0 || selected.RecommendedContext > 0 {
+			ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+			ui.Row(c).FillWidth().Wrap().Gap(t.Density.Section).Children(func() {
+				if selected.EstimatedDownloadBytes > 0 {
+					starterTileMetric(c, tr(c, "downloads.starter.metric.download"), formatDownloadBytes(selected.EstimatedDownloadBytes))
+				}
+				if selected.EstimatedRAMBytes > 0 {
+					starterTileMetric(c, tr(c, "downloads.starter.metric.ram"), formatDownloadBytes(selected.EstimatedRAMBytes))
+				}
+				if selected.RecommendedContext > 0 {
+					starterTileMetric(c, tr(c, "downloads.starter.metric.context"), starterContextShort(selected.RecommendedContext))
+				}
+			})
+		}
 	})
 
 	ui.Row(c.Key("polystrata-drawer-source-row")).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
@@ -342,6 +367,16 @@ func (s *viewState) polystrataDrawerSetupSection(c *ui.Context, st *downloadsUIS
 		}
 	})
 
-	ui.Text(c, tr(c, "downloads.polystrata.drawer.gguf_reuse_hint")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+	if slices.Contains(rec.Notes, "xcode_clt_missing") {
+		applyMaterial(c, ui.Row(c.Key("polystrata-drawer-xcode-clt-hint")).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Padding(t.Density.Inset), materialInset).Children(func() {
+			badge(c, tr(c, "downloads.starter.xcode_badge"), stateWarning, badgeOptions{Style: badgeSoft, Size: sizeSM})
+			ui.Text(c, tr(c, "downloads.starter.xcode_desc")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			ui.Text(c, "xcode-select --install").Selectable().FontSize(t.Type.Caption)
+			outlineButton(c, tr(c, "downloads.action.copy_cmd")).Label(tr(c, "downloads.starter.copy_xcode_cmd_label")).OnClick(func() {
+				s.copyDownloadText(c, tr(c, "downloads.copy_subject.install_cmd"), "xcode-select --install")
+			})
+		})
+	}
+
 	return selected, true
 }

@@ -284,11 +284,24 @@
       "quality_rank": 66
     }
   ],
+  "mlx_models": [
+    {
+      "id": "model-qwen3-0.6b-mlx",
+      "engine": "mlx-lm",
+      "title": "Qwen3-0.6B-4bit (MLX)",
+      "model_format": "directory",
+      "download_bytes": 420000000,
+      "min_ram_bytes": 2147483648,
+      "min_disk_bytes": 1610612736,
+      "recommended_context": 8192,
+      "quality_rank": 25
+    }
+  ],
   "fallback_models": [
     {
       "id": "model-qwen3-4b-q4km",
       "engine": "llama-cpp",
-      "title": "Qwen3-4B-Q4_K_M（GGUF）",
+      "title": "Qwen3-4B-Q4_K_M (GGUF)",
       "model_format": "gguf",
       "download_bytes": 2497280256,
       "min_ram_bytes": 6442450944,
@@ -299,7 +312,7 @@
     {
       "id": "model-qwen3-0.6b-q8",
       "engine": "llama-cpp",
-      "title": "Qwen3-0.6B-Q8_0（GGUF）",
+      "title": "Qwen3-0.6B-Q8_0 (GGUF)",
       "model_format": "gguf",
       "download_bytes": 639446688,
       "min_ram_bytes": 2147483648,
@@ -310,7 +323,7 @@
     {
       "id": "model-smollm2-135m",
       "engine": "llama-cpp",
-      "title": "SmolLM2-135M-Instruct-Q4_K_M（GGUF）",
+      "title": "SmolLM2-135M-Instruct-Q4_K_M (GGUF)",
       "model_format": "gguf",
       "download_bytes": 105454144,
       "min_ram_bytes": 1073741824,

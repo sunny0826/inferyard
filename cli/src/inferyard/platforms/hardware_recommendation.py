@@ -11,9 +11,9 @@ from inferyard.platforms.polystrata_sizing import (
     load_starter_catalog,
     polystrata_total_disk_bytes,
 )
+from inferyard.platforms.starter_mlx import evaluate_fallback_models, evaluate_mlx_models
 from inferyard.platforms.starter_ranking import (
     assign_polystrata_tiers,
-    fallback_fit_level,
     polystrata_fit_level,
     select_polystrata_alternatives,
 )
@@ -341,51 +341,6 @@ def _evaluate_polystrata(
     return fitting, list(dict.fromkeys(rejection_reasons))
 
 
-def _evaluate_fallbacks(
-    hardware: dict,
-    catalog: dict,
-    ram_capacity: int,
-    disk_free: int,
-    ram_available: int | None = None,
-) -> tuple[list[dict], list[str], dict | None]:
-    backend, fb_gpu = _fallback_accelerator(hardware)
-    fitting: list[dict] = []
-    reasons: list[str] = []
-    for model in catalog["fallback_models"]:
-        if ram_capacity < model["min_ram_bytes"]:
-            reasons.append("insufficient_ram")
-            continue
-        if disk_free < model["min_disk_bytes"]:
-            reasons.append("insufficient_disk")
-            continue
-        fit_level = fallback_fit_level(
-            ram_capacity=ram_capacity,
-            ram_available=ram_available,
-            min_ram_bytes=model["min_ram_bytes"],
-            disk_free=disk_free,
-            min_disk_bytes=model["min_disk_bytes"],
-        )
-        fitting.append(
-            {
-                "engine": model["engine"],
-                "backend": backend,
-                "model_id": model["id"],
-                "model_title": model["title"],
-                "family": "llama-cpp",
-                "size": None,
-                "engine_core": None,
-                "model_format": model["model_format"],
-                "fit_level": fit_level,
-                "recommended_context": model["recommended_context"],
-                "estimated_download_bytes": model["download_bytes"],
-                "estimated_ram_bytes": model["min_ram_bytes"],
-                "quality_rank": model["quality_rank"],
-            }
-        )
-    fitting.sort(key=lambda item: item["quality_rank"], reverse=True)
-    return fitting, list(dict.fromkeys(reasons)), fb_gpu
-
-
 def _public_item(item: dict, *, tier: str | None = None) -> dict:
     out = {k: v for k, v in item.items() if k != "quality_rank" and not k.startswith("_")}
     if tier is not None:
@@ -447,8 +402,14 @@ def recommend_starter(
     elif accelerators and ram_total is None:
         notes.append("total_memory_unverified")
 
-    fallback_fits, fallback_rejects, fb_gpu = _evaluate_fallbacks(
-        hardware, cat, ram_capacity, disk_free, ram_available=ram_available
+    mlx_fits, mlx_rejects, mlx_gpu = evaluate_mlx_models(
+        hardware, cat, ram_capacity, disk_free,
+        ram_available=ram_available, min_macos_metal=_MIN_MACOS_METAL,
+        parse_version=_parse_version, valid_bytes=_valid_bytes,
+    )
+    fallback_fits, fallback_rejects, fb_gpu = evaluate_fallback_models(
+        hardware, cat, ram_capacity, disk_free,
+        ram_available=ram_available, fallback_accelerator=_fallback_accelerator,
     )
 
     if poly_fits:
@@ -468,11 +429,13 @@ def recommend_starter(
         if ram_available is not None and ram_available < int(chosen["estimated_ram_bytes"] * 0.6):
             notes.append("host_available_memory_tight")
 
-        poly_alts = select_polystrata_alternatives(
-            chosen, poly_fits[1:], limit=2 if fallback_fits else 3
-        )
+        extra_slots = (1 if mlx_fits else 0) + (1 if fallback_fits else 0)
+        poly_limit = max(1, 3 - extra_slots)
+        poly_alts = select_polystrata_alternatives(chosen, poly_fits[1:], limit=poly_limit)
         tiers = assign_polystrata_tiers(chosen, poly_alts)
         alternatives = [_public_item(item, tier=tiers[item["model_id"]]) for item in poly_alts]
+        if mlx_fits:
+            alternatives.append(_public_item(mlx_fits[0], tier="lightweight"))
         if fallback_fits:
             alternatives.append(_public_item(fallback_fits[0], tier="fallback"))
         polystrata_models = [
@@ -490,8 +453,13 @@ def recommend_starter(
             "polystrata_models": polystrata_models,
         }
 
-    if fallback_fits:
-        chosen = fallback_fits[0]
+    non_poly_fits = sorted(
+        [*mlx_fits, *fallback_fits],
+        key=lambda item: item["quality_rank"],
+        reverse=True,
+    )
+    if non_poly_fits:
+        chosen = non_poly_fits[0]
         if ram_available is not None and ram_available < int(chosen["estimated_ram_bytes"] * 0.6):
             notes.append("host_available_memory_tight")
         if "insufficient_disk" in poly_rejects:
@@ -505,7 +473,7 @@ def recommend_starter(
         fb_tiers = ("lightweight", "fallback")
         alternatives = [
             _public_item(item, tier=fb_tiers[min(idx, len(fb_tiers) - 1)])
-            for idx, item in enumerate(fallback_fits[1:3])
+            for idx, item in enumerate(non_poly_fits[1:3])
         ]
         return {
             "definition": STARTER_DEFINITION,
@@ -513,14 +481,15 @@ def recommend_starter(
             **_public_item(chosen, tier="best"),
             "disk_free_bytes": disk_free,
             "reason": reason,
-            "gpu": fb_gpu,
+            "gpu": mlx_gpu if chosen["engine"] == "mlx-lm" else fb_gpu,
             "notes": list(dict.fromkeys(notes)),
             "alternatives": alternatives,
         }
 
+    all_rejects = [*mlx_rejects, *fallback_rejects]
     block_reason = (
         "insufficient_disk_space"
-        if "insufficient_disk" in fallback_rejects
+        if "insufficient_disk" in all_rejects
         else "insufficient_host_memory"
     )
     return _blocked_result(block_reason, disk_free, notes)

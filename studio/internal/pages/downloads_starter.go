@@ -3,9 +3,6 @@ package pages
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
-	"path"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -170,6 +167,8 @@ func starterEngineLabel(engine string) string {
 	switch engine {
 	case "polystrata":
 		return "PolyStrata"
+	case "mlx-lm":
+		return "mlx-lm"
 	case "llama-cpp":
 		return "llama.cpp"
 	default:
@@ -270,144 +269,6 @@ func (s *viewState) starterHardwareSummary(rec core.StarterRecommendation) strin
 		parts = append(parts, l10n.TRf("downloads.starter.hw.disk_free", "size", formatDownloadBytes(*rec.DiskFreeBytes)))
 	}
 	return joinParts(parts)
-}
-
-func (s *viewState) isStarterEngineInstalled(opt starterOption) bool {
-	if opt.Engine == "polystrata" {
-		return s.isEngineFamilyInstalled("polystrata")
-	}
-	wantBackend := strings.ToLower(strings.TrimSpace(opt.Backend))
-	for _, eng := range s.registry.Engines {
-		isLlama := eng.Family == "llama-cpp" || (eng.Family == "" && strings.Contains(strings.ToLower(eng.Name), "llama"))
-		if !isLlama {
-			continue
-		}
-		check, checked := s.checks.Engines[eng.Name]
-		if checked && check.State == core.EngineCheckIneligible {
-			continue
-		}
-		if wantBackend == "" || wantBackend == "cpu" {
-			return true
-		}
-		if checked && check.State == core.EngineCheckEligible {
-			if strings.EqualFold(strings.TrimSpace(check.Mode), wantBackend) || check.Modes[wantBackend] {
-				return true
-			}
-			if strings.TrimSpace(check.Mode) != "" || len(check.Modes) > 0 {
-				continue
-			}
-		}
-		if wantBackend == "cuda" {
-			hay := strings.ToLower(eng.Name + " " + eng.Path)
-			if strings.Contains(hay, "cuda") {
-				return true
-			}
-			continue
-		}
-		return true
-	}
-	return false
-}
-
-func strataAssetPrimaryText(asset core.ModelAsset) string {
-	if len(asset.CoveredPaths) > 0 {
-		return strings.ToLower(asset.Name + " " + strings.Join(asset.CoveredPaths, " "))
-	}
-	return strings.ToLower(asset.Name + " " + asset.Path)
-}
-
-func strataAssetConflictsWithSize(asset core.ModelAsset, wantSize string) bool {
-	hay := strataAssetPrimaryText(asset)
-	if strings.Contains(hay, wantSize) {
-		return false
-	}
-	for _, preset := range polystrataCatalogPresets {
-		other := strings.ToLower(strings.TrimSpace(preset.size))
-		if other != "" && other != wantSize && strings.Contains(hay, other) {
-			return true
-		}
-	}
-	return false
-}
-
-func (s *viewState) isStarterOptionInstalled(opt starterOption) bool {
-	if opt.Engine == "polystrata" {
-		if !s.isEngineFamilyInstalled("polystrata") {
-			return false
-		}
-		fam := strings.ToLower(strings.TrimSpace(opt.Family))
-		size := strings.ToLower(strings.TrimSpace(opt.Size))
-		availableStrata := map[string]core.ModelAsset{}
-		for _, m := range s.registry.Models {
-			if !m.Available || m.Format != "strata_pack" {
-				continue
-			}
-			if cleaned := cleanMatchPath(m.Path); cleaned != "" {
-				availableStrata[cleaned] = m
-			}
-			hay := strataAssetPrimaryText(m)
-			if fam != "" && size != "" && strings.Contains(hay, fam) && strings.Contains(hay, size) {
-				return true
-			}
-		}
-		if len(availableStrata) == 0 {
-			return false
-		}
-		seenCfg := map[string]bool{}
-		for _, task := range s.downloads {
-			if task.Kind != "polystrata" || task.State != "done" || task.ModelConfigPath == nil {
-				continue
-			}
-			cfgPath := cleanMatchPath(*task.ModelConfigPath)
-			if cfgPath == "" || seenCfg[cfgPath] {
-				continue
-			}
-			seenCfg[cfgPath] = true
-			asset, ok := availableStrata[cfgPath]
-			if !ok || (size != "" && strataAssetConflictsWithSize(asset, size)) {
-				continue
-			}
-			hay := strings.ToLower(task.DisplayName)
-			if fam != "" && size != "" && strings.Contains(hay, fam) && strings.Contains(hay, size) {
-				return true
-			}
-		}
-		return false
-	}
-	return s.isStarterEngineInstalled(opt) && s.isStarterModelInstalled(opt)
-}
-
-func (s *viewState) isStarterModelInstalled(opt starterOption) bool {
-	if opt.Engine == "polystrata" {
-		return s.isStarterOptionInstalled(opt)
-	}
-	entry, ok := core.CatalogEntryByID(opt.ModelID)
-	if !ok {
-		return false
-	}
-	if s.isModelEntryDownloaded(entry) {
-		return true
-	}
-	wantFile := ""
-	if u, err := url.Parse(strings.TrimSpace(entry.URL)); err == nil {
-		base := strings.TrimSpace(path.Base(u.Path))
-		if strings.HasSuffix(strings.ToLower(base), ".gguf") {
-			wantFile = strings.ToLower(base)
-		}
-	}
-	if wantFile == "" {
-		return false
-	}
-	for _, m := range s.registry.Models {
-		if !m.Available {
-			continue
-		}
-		if strings.EqualFold(strings.TrimSpace(m.Name), wantFile) ||
-			strings.EqualFold(filepath.Base(strings.TrimSpace(m.Path)), wantFile) {
-			return true
-		}
-	}
-	return false
 }
 
 func starterCardNotes(notes []string, excludeXcodeCLT bool) []string {
@@ -557,6 +418,7 @@ func (s *viewState) starterCardVisible() bool {
 
 func (s *viewState) openDownloadsWithStarterExpanded() {
 	s.setStarterPanelExpanded(true)
+	s.libraryTab = libraryTabRecommended
 	s.selected = "library"
 }
 
@@ -569,6 +431,8 @@ func (s *viewState) startStarterOption(opt starterOption, navigateToDownloads bo
 			s.selected = "library"
 		}
 		s.acquirePolystrataSetup(polystrataRequestForOption(opt, st.polystrataModelSource))
+	case "mlx-lm":
+		s.startStarterMlxOption(opt, navigateToDownloads)
 	default:
 		engineInstalled := s.isStarterEngineInstalled(opt)
 		modelInstalled := s.isStarterModelInstalled(opt)

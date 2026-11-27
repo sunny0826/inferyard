@@ -35,13 +35,13 @@ func previewRecRTX5090FirstUse(s *viewState) {
 }
 
 func previewRecRTX4070Tight(s *viewState) {
-	s.libraryTab = 0
+	s.libraryTab = libraryTabRecommended
 	previewRecEmptyHost(s, "library", "windows/amd64", previewSnapshotRTX4070)
 }
 
 func previewRecExistingAssetsCollapsed(s *viewState) {
 	s.selected = "library"
-	s.libraryTab = 1
+	s.libraryTab = libraryTabRecommended
 	s.downloads = nil
 	s.device.Snapshot = json.RawMessage(previewSnapshotMac48)
 	st := s.ensureDownloadsUI()
@@ -55,7 +55,7 @@ func previewRecCPUFallback(s *viewState) {
 }
 
 func previewRecBlockedDisk(s *viewState) {
-	s.libraryTab = 0
+	s.libraryTab = libraryTabRecommended
 	previewRecEmptyHost(s, "library", "darwin/arm64", previewSnapshotBlockedDisk)
 }
 
@@ -138,18 +138,18 @@ const previewSnapshotMac48 = `{
 				"tier": "balanced"
 			},
 			{
-				"engine": "polystrata",
+				"engine": "mlx-lm",
 				"backend": "metal",
-				"model_id": "polystrata-lfm25-ud-q3-k-xl",
-				"model_title": "LFM2.5-24B-A2B (UD-Q3_K_XL)",
-				"family": "lfm25",
-				"size": "UD-Q3_K_XL",
-				"engine_core": "strata-poly",
-				"model_format": "gguf",
+				"model_id": "model-qwen3-0.6b-mlx",
+				"model_title": "Qwen3-0.6B-4bit (MLX)",
+				"family": "mlx-lm",
+				"size": null,
+				"engine_core": null,
+				"model_format": "directory",
 				"fit_level": "fits",
-				"recommended_context": 32768,
-				"estimated_download_bytes": 10947100928,
-				"estimated_ram_bytes": 17000000000,
+				"recommended_context": 8192,
+				"estimated_download_bytes": 420000000,
+				"estimated_ram_bytes": 2147483648,
 				"tier": "lightweight"
 			},
 			{

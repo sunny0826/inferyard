@@ -8,7 +8,6 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
 )
@@ -43,20 +42,66 @@ func (s *viewState) downloadsEngineDrawer(c *ui.Context) {
 		Width: c.Theme().Space(145),
 	}, func(ui.Element) {
 		t := tokens(c)
+		isPolystrataManaged := family.ID == "polystrata" && build.AcquireMode == core.EngineAcquireManagedSetup && (build.Platform == hostPlatform || build.Platform == "any")
+		var polystrataSelected starterOption
+		var hasPolystrataOpt bool
+
 		ui.Scroll(c.Key("downloads-engine-drawer-scroll")).FillWidth().Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
 				if family.Description != "" {
 					ui.Text(c, family.Description).FontSize(t.Type.Body).TextColor(t.Color.FgSecondary)
 				}
-				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 					inlineBadge(c, core.ModelFormatLabel(family.ModelFormat), stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
-					ui.Text(c, trf(c, "downloads.platform.supported_line", "platforms", enginePlatformSummary(rel))).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+					if rel.Version != "" {
+						inlineBadge(c, rel.Version, stateNeutral, badgeOptions{Style: badgeSoft, Size: sizeSM})
+					}
+					inlineBadge(c, core.ChannelLabel(rel.Channel), engineChannelState(rel.Channel), badgeOptions{Style: badgeSoft, Size: sizeSM})
+					if build.Variant != "" {
+						inlineBadge(c, build.Variant, stateNeutral, badgeOptions{Style: badgeOutline, Size: sizeSM})
+					}
 				})
+
+				if isPolystrataManaged {
+					polystrataSelected, hasPolystrataOpt = s.polystrataDrawerSetupSection(c, st, hostPlatform)
+					cmd := ""
+					if hasPolystrataOpt {
+						cmd = polystrataCLICommand(build, polystrataRequestForOption(polystrataSelected, st.polystrataModelSource))
+					}
+					note := strings.TrimSpace(build.Note)
+					componentFoldKeyed(c, "polystrata-drawer-cli-fold", tr(c, "downloads.engine_drawer.fold.cli_instructions"), func() {
+						ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
+							ui.Text(c, tr(c, "downloads.polystrata.drawer.gguf_reuse_hint")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+							if note != "" {
+								ui.Text(c, note).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+							}
+							if cmd != "" {
+								applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Inset), materialInset).Children(func() {
+									ui.Text(c, cmd).Selectable().FontSize(t.Type.Caption)
+									outlineButton(c, tr(c, "downloads.action.copy_cmd")).OnClick(func() {
+										s.copyDownloadText(c, tr(c, "downloads.copy_subject.install_cmd"), cmd)
+									})
+								})
+							}
+						})
+					})
+					componentFoldKeyed(c, "polystrata-drawer-meta-fold", tr(c, "downloads.engine_drawer.fold.release_and_files"), func() {
+						ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
+							s.engineDrawerConfigSection(c, st, family, releases, rel, platforms, activePlatform, builds, build, hostPlatform, hasStable && hasNonStable)
+							s.engineDrawerArtifactsSection(c, build)
+						})
+					})
+					return
+				}
+
+				ui.Text(c, trf(c, "downloads.platform.supported_line", "platforms", enginePlatformSummary(rel))).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 				s.engineDrawerConfigSection(c, st, family, releases, rel, platforms, activePlatform, builds, build, hostPlatform, hasStable && hasNonStable)
 				s.engineDrawerArtifactsSection(c, build)
-				s.engineDrawerInstallSection(c, st, family, rel, build, hostPlatform)
+				s.engineDrawerInstructionsBlock(c, strings.TrimSpace(build.Note), strings.TrimSpace(build.InstallCommand))
 			})
 		})
+
+		s.engineDrawerFooter(c, st, family, rel, build, hostPlatform, polystrataSelected, hasPolystrataOpt)
 	})
 }
 
@@ -196,19 +241,19 @@ func (s *viewState) engineDrawerArtifactsSection(c *ui.Context, build core.Engin
 				if sha := strings.TrimSpace(artifact.SHA256); sha != "" {
 					shaLine = trf(c, "downloads.engine_drawer.sha256_value", "sha256", sha)
 				}
-				ui.Text(c, shaLine).Selectable().FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				ui.Text(c, shaLine).Selectable().FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 			}
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 				indexStr := strconv.Itoa(index)
-				outlineIconButton(c, lucide.Copy, trf(c, "downloads.engine_drawer.copy_url_label", "buildId", build.ID, "index", indexStr)).Label(trf(c, "downloads.engine_drawer.copy_url_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
+				outlineButton(c, tr(c, "downloads.engine_drawer.btn.copy_url")).Label(trf(c, "downloads.engine_drawer.copy_url_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
 					s.copyDownloadText(c, tr(c, "downloads.engine_drawer.section.urls"), artifact.URL)
 				})
 				if sha := strings.TrimSpace(artifact.SHA256); sha != "" {
-					outlineIconButton(c, lucide.Copy, trf(c, "downloads.engine_drawer.copy_sha256_label", "buildId", build.ID, "index", indexStr)).Label(trf(c, "downloads.engine_drawer.copy_sha256_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
+					outlineButton(c, tr(c, "downloads.engine_drawer.btn.copy_sha256")).Label(trf(c, "downloads.engine_drawer.copy_sha256_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
 						s.copyDownloadText(c, "SHA-256", sha)
 					})
 				}
-				outlineIconButton(c, lucide.ExternalLink, trf(c, "downloads.engine_drawer.open_link_label", "buildId", build.ID, "index", indexStr)).Label(trf(c, "downloads.engine_drawer.open_link_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
+				outlineButton(c, tr(c, "downloads.engine_drawer.btn.open_link")).Label(trf(c, "downloads.engine_drawer.open_link_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
 					s.openDownloadURL(c, title, artifact.URL)
 				})
 			})
@@ -216,90 +261,96 @@ func (s *viewState) engineDrawerArtifactsSection(c *ui.Context, build core.Engin
 	}
 }
 
-func (s *viewState) engineDrawerInstallSection(
+func (s *viewState) engineDrawerInstructionsBlock(c *ui.Context, note, cmd string) {
+	if note == "" && cmd == "" {
+		return
+	}
+	t := tokens(c)
+	heading(c, tr(c, "downloads.engine_drawer.section.instructions"), 3)
+	if note != "" {
+		ui.Text(c, note).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+	}
+	if cmd != "" {
+		applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Inset), materialInset).Children(func() {
+			ui.Text(c, cmd).Selectable().FontSize(t.Type.Caption)
+			outlineButton(c, tr(c, "downloads.action.copy_cmd")).OnClick(func() {
+				s.copyDownloadText(c, tr(c, "downloads.copy_subject.install_cmd"), cmd)
+			})
+		})
+	}
+}
+
+func (s *viewState) engineDrawerFooter(
 	c *ui.Context,
 	st *downloadsUIState,
 	family core.EngineFamilyCatalog,
 	rel core.EngineRelease,
 	build core.EnginePlatformBuild,
 	hostPlatform string,
+	polystrataSelected starterOption,
+	hasPolystrataOpt bool,
 ) {
 	t := tokens(c)
-	var polystrataSelected starterOption
-	var hasPolystrataOpt bool
-	note := strings.TrimSpace(build.Note)
-	cmd := strings.TrimSpace(build.InstallCommand)
-	if family.ID == "polystrata" && build.AcquireMode == core.EngineAcquireManagedSetup && (build.Platform == hostPlatform || build.Platform == "any") {
-		polystrataSelected, hasPolystrataOpt = s.polystrataDrawerSetupSection(c, st, hostPlatform)
-		if hasPolystrataOpt {
-			cmd = polystrataCLICommand(build, polystrataRequestForOption(polystrataSelected, st.polystrataModelSource))
-		} else {
-			cmd = ""
-		}
-	}
-	if note != "" || cmd != "" {
-		heading(c, tr(c, "downloads.engine_drawer.section.instructions"), 3)
-		if note != "" {
-			ui.Text(c, note).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-		}
-		if cmd != "" {
-			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Inset), materialInset).Children(func() {
-				ui.Text(c, cmd).Selectable().FontSize(t.Type.Caption)
-				outlineIconButton(c, lucide.Copy, tr(c, "downloads.action.copy_cmd")).OnClick(func() {
-					s.copyDownloadText(c, tr(c, "downloads.copy_subject.install_cmd"), cmd)
-				})
+	ui.Column(c.Key("downloads-engine-drawer-footer")).FillWidth().Shrink(0).Gap(t.Density.Row).Children(func() {
+		ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+				if family.SupportsWizard {
+					outlineButton(c, tr(c, "downloads.engine_drawer.register_local")).Label(trf(c, "downloads.engine_drawer.register_local_label", "id", family.ID)).OnClick(func() {
+						st.engineDrawerOpen = false
+						s.openLocalEngineWizard(family.ID)
+					})
+				}
+				if relURL := engineReleaseLink(family, rel); relURL != "" && relURL != build.PrimaryURL() {
+					ghostButton(c, tr(c, "downloads.engine_drawer.open_release_page")).OnClick(func() {
+						s.openDownloadURL(c, family.Name+" "+rel.Version, relURL)
+					})
+				}
 			})
-		}
-	}
-
-	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		switch {
-		case build.AcquireMode == core.EngineAcquireManagedSetup && (build.Platform == hostPlatform || build.Platform == "any"):
-			if s.downloadActive("polystrata") {
-				primaryIconButton(c, lucide.Download, trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(true)
-			} else {
-				primaryIconButton(c, lucide.Download, trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(s.busy || !hasPolystrataOpt).OnClick(func() {
-					if !hasPolystrataOpt {
-						return
-					}
-					req := polystrataRequestForOption(polystrataSelected, st.polystrataModelSource)
-					st.engineDrawerOpen = false
-					s.acquirePolystrataSetup(req)
+			ui.Box(c).Grow(1)
+			switch {
+			case build.AcquireMode == core.EngineAcquireManagedSetup && (build.Platform == hostPlatform || build.Platform == "any"):
+				ctaLabel := tr(c, "downloads.engine_drawer.install_polystrata")
+				if s.isEngineFamilyInstalled("polystrata") {
+					ctaLabel = tr(c, "downloads.engine_drawer.install_selected_model")
+				}
+				if s.downloadActive("polystrata") {
+					primaryButton(c, tr(c, "downloads.action.installing")).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(true)
+				} else if hasPolystrataOpt && s.isStarterOptionInstalled(polystrataSelected) {
+					button(c, tr(c, "downloads.starter.cta.ready")).Disabled(true)
+				} else {
+					primaryButton(c, ctaLabel).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(s.busy || !hasPolystrataOpt).OnClick(func() {
+						if !hasPolystrataOpt {
+							return
+						}
+						req := polystrataRequestForOption(polystrataSelected, st.polystrataModelSource)
+						st.engineDrawerOpen = false
+						s.acquirePolystrataSetup(req)
+					})
+				}
+			case build.CanManagedVenvInstallOn(hostPlatform):
+				if s.isEngineFamilyDownloading(family) {
+					primaryButton(c, tr(c, "downloads.action.installing")).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(true)
+				} else {
+					primaryButton(c, tr(c, "downloads.engine_drawer.install_version")).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(s.busy).OnClick(func() {
+						st.engineDrawerOpen = false
+						s.acquireManagedEngine(family, rel, build)
+					})
+				}
+			case build.CanDirectDownloadOn(hostPlatform):
+				if s.isEngineSourceDownloading(build.PrimaryURL()) {
+					primaryButton(c, tr(c, "downloads.action.downloading")).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(true)
+				} else {
+					primaryButton(c, tr(c, "downloads.engine_drawer.install_version")).Label(trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(s.busy).OnClick(func() {
+						s.acquireEngine(build.PrimaryURL(), "")
+					})
+				}
+			case build.PrimaryURL() != "":
+				outlineButton(c, tr(c, "downloads.action.open_download_page")).Label(trf(c, "downloads.action.open_download_page_label", "id", family.ID)).OnClick(func() {
+					s.openDownloadURL(c, family.Name, build.PrimaryURL())
 				})
 			}
-		case build.CanManagedVenvInstallOn(hostPlatform):
-			if s.isEngineFamilyDownloading(family) {
-				primaryIconButton(c, lucide.Download, trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(true)
-			} else {
-				primaryIconButton(c, lucide.Download, trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(s.busy).OnClick(func() {
-					st.engineDrawerOpen = false
-					s.acquireManagedEngine(family, rel, build)
-				})
-			}
-		case build.CanDirectDownloadOn(hostPlatform):
-			if s.isEngineSourceDownloading(build.PrimaryURL()) {
-				primaryIconButton(c, lucide.Download, trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(true)
-			} else {
-				primaryIconButton(c, lucide.Download, trf(c, "downloads.engine_drawer.install_version_label", "id", family.ID)).Disabled(s.busy).OnClick(func() {
-					s.acquireEngine(build.PrimaryURL(), "")
-				})
-			}
-		case build.PrimaryURL() != "":
-			outlineIconButton(c, lucide.ExternalLink, trf(c, "downloads.action.open_download_page_label", "id", family.ID)).OnClick(func() {
-				s.openDownloadURL(c, family.Name, build.PrimaryURL())
-			})
-		}
-		if family.SupportsWizard {
-			outlineIconButton(c, lucide.Link, trf(c, "downloads.engine_drawer.register_local_label", "id", family.ID)).OnClick(func() {
-				st.engineDrawerOpen = false
-				s.openLocalEngineWizard(family.ID)
-			})
-		}
-		if relURL := engineReleaseLink(family, rel); relURL != "" && relURL != build.PrimaryURL() {
-			outlineIconButton(c, lucide.ExternalLink, tr(c, "downloads.engine_drawer.open_release_page")).OnClick(func() {
-				s.openDownloadURL(c, family.Name+" "+rel.Version, relURL)
-			})
-		}
+		})
 	})
 }
 

@@ -9,6 +9,12 @@ import (
 	"github.com/oneo-me/onevra/source/icons/lucide"
 )
 
+const (
+	libraryTabModels      = 0
+	libraryTabEngines     = 1
+	libraryTabRecommended = 2
+)
+
 func (s *viewState) libraryView(c *ui.Context) {
 	t := tokens(c)
 	host := ui.Column(c.Key("library-page-host")).FillWidth().Gap(t.Density.Section)
@@ -38,9 +44,12 @@ func (s *viewState) libraryView(c *ui.Context) {
 
 		s.libraryTabBar(c)
 
-		if s.libraryTab == 1 {
+		switch s.libraryTab {
+		case libraryTabRecommended:
+			s.renderStarterRecommendationPanel(c, "library")
+		case libraryTabEngines:
 			s.libraryEnginesTab(c, pending, wizardOpen)
-		} else {
+		default:
 			s.libraryModelsTab(c, pending)
 		}
 	})
@@ -88,10 +97,6 @@ func (s *viewState) libraryHardwareCard(c *ui.Context) {
 			s.libraryHardwareDetails(c, snapshot, parseError)
 		}
 	})
-
-	if missingAssets || s.starterCardVisible() {
-		s.downloadsStarterCardInContext(c, "library")
-	}
 }
 
 func (s *viewState) hardwareCompactSummary(c *ui.Context, snapshot deviceObject, parseError error) string {
@@ -153,23 +158,36 @@ func (s *viewState) libraryDeviceRefreshButton(c *ui.Context, label string) {
 
 func (s *viewState) libraryTabBar(c *ui.Context) {
 	t := tokens(c)
+	recCount := len(starterOptions(s.starterRecommendation()))
 	tabs := []struct {
 		idx   int
 		label string
 		count int
 		icon  func() *ui.SVG
 	}{
-		{0, tr(c, "library.tab.models"), len(s.registry.Models), lucide.Box},
-		{1, tr(c, "library.tab.engines"), len(s.registry.Engines), lucide.Cpu},
+		{libraryTabRecommended, tr(c, "library.tab.recommended"), recCount, lucide.Star},
+		{libraryTabModels, tr(c, "library.tab.models"), len(s.registry.Models), lucide.Box},
+		{libraryTabEngines, tr(c, "library.tab.engines"), len(s.registry.Engines), lucide.Cpu},
+	}
+
+	tabPos := 1
+	for i, tab := range tabs {
+		if tab.idx == s.libraryTab {
+			tabPos = i
+			break
+		}
 	}
 
 	ui.Column(c.Key("library-tabbar")).FillWidth().Children(func() {
-		bar := ui.TabsBase(c, &s.libraryTab, len(tabs))
+		bar := ui.TabsBase(c, &tabPos, len(tabs))
 		bar.List.FillWidth().AlignItems(ui.End).Gap(t.Density.Section).
 			BorderWidth(0, 0, 1, 0).BorderColor(t.Color.BorderDefault).Children(func() {
 			for i, tab := range tabs {
 				active := s.libraryTab == tab.idx
 				item := bar.Tab(i).Column().AlignItems(ui.Center).Label(tab.label)
+				if active && item.Clicked() {
+					s.pageScroll().ScrollTo(0, 0, ui.Animation{})
+				}
 				fg := t.Color.FgSecondary
 				if active {
 					fg = t.Color.FgPrimary
@@ -208,6 +226,9 @@ func (s *viewState) libraryTabBar(c *ui.Context) {
 			}
 			ui.Box(c).Grow(1)
 		})
+		if tabPos >= 0 && tabPos < len(tabs) && tabs[tabPos].idx != s.libraryTab {
+			s.libraryTab = tabs[tabPos].idx
+		}
 	})
 }
 
