@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -75,6 +76,11 @@ func configureEngineProcess(cmd *exec.Cmd, startup Startup) error {
 		}
 		environment[key] = value
 	}
+	if runtime.GOOS != "windows" && len(environment["TMPDIR"]) > 60 {
+		if info, err := os.Stat("/tmp"); err == nil && info.IsDir() {
+			environment["TMPDIR"] = "/tmp"
+		}
+	}
 	for key, value := range startup.Environment {
 		if isBlockedEngineEnv(key, value) {
 			continue
@@ -133,17 +139,24 @@ func engineProcessTable() ([]engineProcessRow, error) {
 	return rows, nil
 }
 
-func (s *Service) confirmEngineGroupMember(p engineProcessIdentity, group int64) error {
+var engineProcessGroupReader = func(pid int64) (int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "/bin/ps", "-p", strconv.FormatInt(p.PID, 10), "-o", "pgid=")
+	cmd := exec.CommandContext(ctx, "/bin/ps", "-p", strconv.FormatInt(pid, 10), "-o", "pgid=")
 	var output boundedProcessOutput
 	cmd.Stdout = &output
 	if err := cmd.Run(); err != nil {
-		return err
+		return 0, err
 	}
-	actual, err := strconv.ParseInt(strings.TrimSpace(output.String()), 10, 64)
+	return strconv.ParseInt(strings.TrimSpace(output.String()), 10, 64)
+}
+
+func (s *Service) confirmEngineGroupMember(p engineProcessIdentity, group int64) error {
+	actual, err := engineProcessGroupReader(p.PID)
 	if err != nil || actual != group {
+		if err != nil {
+			return err
+		}
 		return os.ErrInvalid
 	}
 	same, err := s.sameEngineProcess(p)
@@ -175,6 +188,10 @@ func ownerProcesses(owner engineOwner) []engineProcessIdentity {
 }
 
 func (s *Service) refreshEngineTree(owner *engineOwner, path string) error {
+	return s.refreshEngineTreeMode(owner, path, false)
+}
+
+func (s *Service) refreshEngineTreeMode(owner *engineOwner, path string, allowExitedRootGroup bool) error {
 	if !owner.Local {
 		return nil
 	}
@@ -193,7 +210,8 @@ func (s *Service) refreshEngineTree(owner *engineOwner, path string) error {
 	for _, p := range ownerProcesses(*owner) {
 		known[p.PID] = p.StartTicks
 	}
-	anchored := rootErr == nil && rootTicks == owner.StartTicks
+	anchored := (rootErr == nil && rootTicks == owner.StartTicks) ||
+		(allowExitedRootGroup && owner.ProcessGroup > 0 && errors.Is(rootErr, os.ErrNotExist))
 	if !anchored {
 		for _, row := range rows {
 			expected, knownMember := known[row.pid]
@@ -339,7 +357,11 @@ func replaceEngineOwner(path string, expected, next engineOwner) error {
 }
 
 func (s *Service) ownedTreeAlive(owner *engineOwner, path string) (bool, error) {
-	if err := s.refreshEngineTree(owner, path); err != nil {
+	return s.ownedTreeAliveMode(owner, path, false)
+}
+
+func (s *Service) ownedTreeAliveMode(owner *engineOwner, path string, allowExitedRootGroup bool) (bool, error) {
+	if err := s.refreshEngineTreeMode(owner, path, allowExitedRootGroup); err != nil {
 		return false, err
 	}
 	alive := false
@@ -354,7 +376,11 @@ func (s *Service) ownedTreeAlive(owner *engineOwner, path string) (bool, error) 
 }
 
 func (s *Service) signalEngineTree(owner *engineOwner, path string, sig os.Signal) error {
-	if err := s.refreshEngineTree(owner, path); err != nil {
+	return s.signalEngineTreeMode(owner, path, sig, false)
+}
+
+func (s *Service) signalEngineTreeMode(owner *engineOwner, path string, sig os.Signal, allowExitedRootGroup bool) error {
+	if err := s.refreshEngineTreeMode(owner, path, allowExitedRootGroup); err != nil {
 		return err
 	}
 	for _, p := range ownerProcesses(*owner) {
@@ -381,17 +407,23 @@ func (s *Service) signalEngineTree(owner *engineOwner, path string, sig os.Signa
 }
 
 func (s *Service) terminateOwnedTree(owner *engineOwner, path string) *ApiError {
+	return s.terminateOwnedTreeMode(owner, path, false)
+}
+
+func (s *Service) terminateOwnedTreeMode(owner *engineOwner, path string, liveSession bool) *ApiError {
 	timeout := 10 * time.Second
 	if s.orphanStopTimeout > 0 {
 		timeout = s.orphanStopTimeout
 	}
+	groupVerified := liveSession
 	for _, sig := range []os.Signal{syscall.SIGTERM, os.Kill} {
-		if err := s.signalEngineTree(owner, path, sig); err != nil {
+		if err := s.signalEngineTreeMode(owner, path, sig, groupVerified); err != nil {
 			return orphanIdentityError()
 		}
+		groupVerified = true
 		deadline := time.Now().Add(timeout)
 		for {
-			alive, err := s.ownedTreeAlive(owner, path)
+			alive, err := s.ownedTreeAliveMode(owner, path, groupVerified)
 			if err != nil {
 				return orphanIdentityError()
 			}
@@ -449,5 +481,5 @@ func (s *Service) finishEngineTree(e *engineEntry) *ApiError {
 	if !e.state.Local {
 		return nil
 	}
-	return s.terminateOwnedTree(&e.owner, e.ownerPath)
+	return s.terminateOwnedTreeMode(&e.owner, e.ownerPath, true)
 }

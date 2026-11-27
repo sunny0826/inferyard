@@ -16,6 +16,7 @@ import (
 
 var (
 	llamaServerVersionLinePattern = regexp.MustCompile(`(?i)\bversion:\s*(\d{3,})\b`)
+	llamaServerBuildNumberPattern = regexp.MustCompile(`(?i)\bbuild\s+(\d{3,})\b`)
 	urlReleaseTagPattern          = regexp.MustCompile(`/releases/download/([^/]+)/`)
 )
 
@@ -324,6 +325,9 @@ func parseLlamaServerVersionOutput(output string) string {
 			}
 		}
 		if m := llamaServerVersionLinePattern.FindStringSubmatch(trimmed); len(m) >= 2 {
+			return "b" + m[1]
+		}
+		if m := llamaServerBuildNumberPattern.FindStringSubmatch(trimmed); len(m) >= 2 {
 			return "b" + m[1]
 		}
 		for _, field := range strings.Fields(trimmed) {

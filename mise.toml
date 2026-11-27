@@ -92,6 +92,18 @@ depends = ["cli:sync"]
 dir = "studio"
 run = "python tests/ui/run_polystrata.py"
 
+[tasks."test:studio-ui:engines"]
+description = "Run real macOS window UI e2e verifying one-click upgrade and execution across all local engines"
+depends = ["cli:sync"]
+dir = "studio"
+run = "python tests/ui/run_engines.py"
+
+[tasks."test:studio-ui:engines:ci"]
+description = "Run lightweight 3-engine (llama-cpp, mlx-lm, vllm) real macOS window UI e2e with SmolLM2-135M"
+depends = ["cli:sync"]
+dir = "studio"
+run = "python tests/ui/run_engines.py --lightweight"
+
 [tasks.release]
 description = "Fast release: bump version, open/merge release PR, push tag, and watch release CI"
 run = "python tools/release.py"

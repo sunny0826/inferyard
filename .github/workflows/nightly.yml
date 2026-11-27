@@ -214,6 +214,56 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  studio-engines-ui:
+    name: real engines upgrade & run UI (macOS lightweight)
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
+    runs-on: macos-15
+    timeout-minutes: 35
+    env:
+      CGO_ENABLED: "0"
+      GOPROXY: "https://proxy.golang.org,direct"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v5.2.4
+      - name: Cache Go modules and build cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/Library/Caches/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('studio/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-
+      - name: Cache uv
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('cli/uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
+      - name: Cache baseline engines and SmolLM2-135M models
+        uses: actions/cache@v6
+        with:
+          path: studio/build/engines-ui-cache
+          key: engines-ui-cache-${{ runner.os }}-${{ hashFiles('studio/tests/ui/engines_stage.py') }}
+      - name: Run lightweight 3-engine real upgrade & run UI E2E
+        run: mise run test:studio-ui:engines:ci
+      - name: Upload real engines UI E2E results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: studio-engines-ui-results
+          path: |
+            studio/build/engines-ui-e2e/run-*/run.json
+            studio/build/engines-ui-e2e/run-*/xcodebuild.log
+            studio/build/engines-ui-e2e/run-*/studio.json
+            studio/build/engines-ui-e2e/run-*/Results.xcresult
+          if-no-files-found: ignore
+          retention-days: 7
+
   model-e2e:
     name: model e2e (${{ matrix.os }})
     needs: gate

@@ -323,7 +323,7 @@ func (s *Service) terminateEngine(e *engineEntry, waitCh <-chan error) {
 		_ = unloadPolystrata(endpoint)
 	}
 	if e.state.Local {
-		if s.terminateOwnedTree(&e.owner, e.ownerPath) == nil {
+		if s.terminateOwnedTreeMode(&e.owner, e.ownerPath, true) == nil {
 			<-waitCh
 		}
 		return

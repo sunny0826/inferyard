@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func sanitizeEngineUpdateOutName(prefix, version string) string {
@@ -262,7 +263,7 @@ func (s *Service) UpdateEngine(engineName string) (DownloadTask, *ApiError) {
 		}
 		venvPython := venvPythonPath(entry)
 		pkg := venvPackageInstallName(info.Family)
-		if venvPython == "" || pkg == "" {
+		if venvPython == "" || (pkg == "" && len(info.WheelURLs) == 0) {
 			return DownloadTask{}, &ApiError{
 				Code:    "engine_update_manual_required",
 				Message: l10n.TR("core.engine_update.err.manual_required"),
@@ -335,14 +336,20 @@ func (s *Service) startVenvEngineUpgrade(engineName string, entry registryEntry,
 
 func (s *Service) runVenvEngineUpgrade(ctx context.Context, d *downloadEntry, entry registryEntry, info EngineUpdateInfo, venvPython, pkg string) {
 	defer d.cancel()
-	targetSpec := pkg
-	if ver := strings.TrimPrefix(strings.TrimSpace(info.LatestVersion), "v"); ver != "" {
-		if _, ok := parseSemverVersion(ver); ok {
-			targetSpec = pkg + "==" + ver
+	var targetSpecs []string
+	if len(info.WheelURLs) > 0 {
+		targetSpecs = append(targetSpecs, info.WheelURLs...)
+	} else {
+		targetSpec := pkg
+		if ver := strings.TrimPrefix(strings.TrimSpace(info.LatestVersion), "v"); ver != "" {
+			if _, ok := parseSemverVersion(ver); ok {
+				targetSpec = pkg + "==" + ver
+			}
 		}
+		targetSpecs = []string{targetSpec}
 	}
 
-	out, execErr := s.executeVenvUpgrade(ctx, venvPython, targetSpec)
+	out, execErr := s.executeVenvUpgrade(ctx, venvPython, targetSpecs...)
 
 	s.mu.Lock()
 	d.Task.FinishedAt = ptr(now())
@@ -386,8 +393,10 @@ func (s *Service) runVenvEngineUpgrade(ctx context.Context, d *downloadEntry, en
 			if receipt, ok := readManagedEngineReceipt(installDir); ok && receipt.InstallMode == managedEngineVenvInstallMode {
 				if liveVer := readVenvPackageVersion(entry, info.Family); liveVer != "" {
 					receipt.Version = liveVer
-					_ = writeManagedEngineReceipt(installDir, receipt)
+				} else if strings.TrimSpace(info.LatestVersion) != "" {
+					receipt.Version = strings.TrimSpace(info.LatestVersion)
 				}
+				_ = writeManagedEngineReceipt(installDir, receipt)
 			}
 		}
 		if s.engineUpdater != nil {
@@ -400,22 +409,35 @@ func (s *Service) runVenvEngineUpgrade(ctx context.Context, d *downloadEntry, en
 	s.Bus.Publish("download.state", map[string]any{"task": taskSnap})
 }
 
-func (s *Service) executeVenvUpgrade(ctx context.Context, venvPython, targetSpec string) (inferyard.Execution, error) {
+func venvHasPip(ctx context.Context, venvPython string) bool {
+	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(probeCtx, venvPython, "-m", "pip", "--version")
+	return cmd.Run() == nil
+}
+
+func (s *Service) executeVenvUpgrade(ctx context.Context, venvPython string, targetSpecs ...string) (inferyard.Execution, error) {
 	toolsDir := ""
 	if strings.TrimSpace(s.settingsPath) != "" {
 		toolsDir = filepath.Join(filepath.Dir(s.settingsPath), "tools")
 	}
+	hasMockExec := s.engineUpdater != nil && s.engineUpdater.opts.ExecUpgrade != nil
 	uvPath := FindUV(toolsDir)
+	if uvPath == "" && !hasMockExec && toolsDir != "" && !venvHasPip(ctx, venvPython) {
+		if dlUV, failure := managedEngineDownloadUV(withInstallProxy(ctx, s.downloadProxy()), toolsDir); failure == nil {
+			uvPath = dlUV
+		}
+	}
 	var cmdName string
 	var args []string
 	if uvPath != "" {
 		cmdName = uvPath
-		args = []string{"pip", "install", "--python", venvPython, "--upgrade", targetSpec}
+		args = append([]string{"pip", "install", "--python", venvPython, "--upgrade"}, targetSpecs...)
 	} else {
 		cmdName = venvPython
-		args = []string{"-m", "pip", "install", "--upgrade", targetSpec}
+		args = append([]string{"-m", "pip", "install", "--upgrade"}, targetSpecs...)
 	}
-	if s.engineUpdater != nil && s.engineUpdater.opts.ExecUpgrade != nil {
+	if hasMockExec {
 		return s.engineUpdater.opts.ExecUpgrade(ctx, cmdName, args...)
 	}
 	cmd := exec.CommandContext(ctx, cmdName, args...)

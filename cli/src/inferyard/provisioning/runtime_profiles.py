@@ -14,11 +14,13 @@ BASE_URL = f"https://github.com/PrismML-Eng/llama.cpp/releases/download/{RELEASE
 VERSION_PATTERN = r"\b10743\b.*\badfffbe(?:41)?\b"
 _PRISM_RELEASE_RE = re.compile(r"\b(prism-b\d+-[0-9a-f]{7,40})\b")
 _UPSTREAM_VERSION_RE = re.compile(r"\bversion:\s*(\d+)\s*\(([0-9a-f]{7,40})\)")
+_BUILD_COMMIT_RE = re.compile(r"\(\s*build\s+(\d+)\s*,\s*commit\s+([0-9a-f]{7,40})\s*\)")
 _BUILD_TAG_RE = re.compile(r"\b(b\d+-[0-9a-f]{7,40})\b")
 LLAMA_SERVER_VERSION_PATTERN = (
     rf"(?:{VERSION_PATTERN}"
     r"|\bprism-b\d+-[0-9a-f]{7,40}\b"
     r"|\bversion:\s*\d+\s*\([0-9a-f]{7,40}\)"
+    r"|\(\s*build\s+\d+\s*,\s*commit\s+[0-9a-f]{7,40}\s*\)"
     r"|\bb\d+-[0-9a-f]{7,40}\b)"
 )
 
@@ -31,6 +33,8 @@ def resolve_llama_server_release(version: dict) -> str:
     if match := _PRISM_RELEASE_RE.search(text):
         return match.group(1)
     if match := _UPSTREAM_VERSION_RE.search(text):
+        return f"b{match.group(1)}-{match.group(2)}"
+    if match := _BUILD_COMMIT_RE.search(text):
         return f"b{match.group(1)}-{match.group(2)}"
     if match := _BUILD_TAG_RE.search(text):
         return match.group(1)

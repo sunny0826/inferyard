@@ -83,6 +83,8 @@ mise run test:studio:e2e:polystrata  # Real-machine PolyStrata lifecycle E2E (op
 mise run test:studio-ui              # macOS native UI E2E: daily 4 workflows
 mise run test:studio-ui:full         # macOS native UI E2E: all 8 workflows
 mise run test:studio-ui:polystrata   # Local-only real-window PolyStrata UI E2E (not run in CI)
+mise run test:studio-ui:engines      # Local real-window 4-engine one-click upgrade & run UI E2E
+mise run test:studio-ui:engines:ci   # Lightweight 3-engine real-window UI E2E (run in Nightly CI)
 ```
 
 Additional direct checks from `studio/`:

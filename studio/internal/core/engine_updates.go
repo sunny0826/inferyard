@@ -28,6 +28,7 @@ type EngineUpdateInfo struct {
 	ReleaseVersion   string             `json:"release_version,omitempty"`
 	ReleaseURL       string             `json:"release_url,omitempty"`
 	DownloadURL      string             `json:"download_url,omitempty"`
+	WheelURLs        []string           `json:"wheel_urls,omitempty"`
 	AssetName        string             `json:"asset_name,omitempty"`
 	AssetBytes       int64              `json:"asset_bytes,omitempty"`
 	Distribution     string             `json:"distribution,omitempty"`
@@ -312,9 +313,13 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 		source := "catalog"
 		wantCUDA := hasEntry && isCUDAEngineEntry(entry)
 		downloadURL, assetName, assetBytes, releaseURL := catalogDirectArtifactFor(family, releaseID, platform, wantCUDA)
+		var wheelURLs []string
+		if hasUpdate && familyID == "vllm" {
+			wheelURLs = catalogManagedWheelURLs(family, releaseID, platform)
+		}
 
 		// 2. Overlay remote upstream release when available and comparable.
-		if rem, ok := remote[remoteKey]; ok && strings.TrimSpace(rem.Version) != "" {
+		if rem, ok := remote[remoteKey]; ok && strings.TrimSpace(rem.Version) != "" && !(familyID == "vllm" && platform == "darwin/arm64" && len(rem.WheelURLs) == 0) {
 			remVer := strings.TrimSpace(rem.Version)
 			for _, cand := range candidates {
 				if cand == "" {
@@ -341,6 +346,9 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 					}
 					if strings.TrimSpace(rem.Distribution) != "" {
 						dist = strings.TrimSpace(rem.Distribution)
+					}
+					if len(rem.WheelURLs) > 0 {
+						wheelURLs = append([]string(nil), rem.WheelURLs...)
 					}
 					if familyID == "llama-cpp" {
 						if asset, okAsset := matchLlamaReleaseAsset(rem.Assets, platform, wantCUDA); okAsset {
@@ -369,6 +377,7 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 			ReleaseVersion:   latest,
 			ReleaseURL:       releaseURL,
 			DownloadURL:      downloadURL,
+			WheelURLs:        wheelURLs,
 			AssetName:        assetName,
 			AssetBytes:       assetBytes,
 			Distribution:     dist,
@@ -466,8 +475,10 @@ func resolveEngineUpdateAction(info EngineUpdateInfo, entry registryEntry, hasEn
 		}
 		return EngineUpdateActionDrawer, ""
 	case "mlx-lm", "vllm", "sglang":
-		if hasEntry && venvUpgradeSupported(info.Family, platform) && venvPythonPath(entry) != "" {
-			return EngineUpdateActionVenv, ""
+		if hasEntry && venvPythonPath(entry) != "" {
+			if venvUpgradeSupported(info.Family, platform) || (info.Family == "vllm" && platform == "darwin/arm64" && len(info.WheelURLs) > 0) {
+				return EngineUpdateActionVenv, ""
+			}
 		}
 		return EngineUpdateActionDrawer, ""
 	case "lmstudio":

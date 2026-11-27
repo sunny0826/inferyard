@@ -198,3 +198,59 @@ func TestReasoningEffortSettingsPersistenceAndBoundPaths(t *testing.T) {
 		t.Fatalf("expected invalid_request for unsupported reasoning_effort, got %+v", apiErr)
 	}
 }
+
+func TestFinishEngineTreeCleansLateSameGroupShutdownHelperAfterRootExits(t *testing.T) {
+	origTable := engineProcessTableFunc
+	origGroup := engineProcessGroupReader
+	t.Cleanup(func() {
+		engineProcessTableFunc = origTable
+		engineProcessGroupReader = origGroup
+	})
+
+	// Simulate vLLM shutdown: root PID 2000 and EngineCore 2001 already exited,
+	// while Python's multiprocessing.resource_tracker (PID 2002, pgid=2000) is still cleaning up.
+	ticksByPID := map[int64]int64{2002: 610}
+	engineProcessTableFunc = func() ([]engineProcessRow, error) {
+		if _, alive := ticksByPID[2002]; alive {
+			return []engineProcessRow{{pid: 2002, parent: 1, group: 2000}}, nil
+		}
+		return nil, nil
+	}
+	engineProcessGroupReader = func(pid int64) (int64, error) {
+		if pid == 2002 {
+			return 2000, nil
+		}
+		return 0, os.ErrNotExist
+	}
+
+	var signaled []int64
+	s := &Service{
+		identityReader: func(pid int64) (int64, error) {
+			if ticks, ok := ticksByPID[pid]; ok {
+				return ticks, nil
+			}
+			return 0, os.ErrNotExist
+		},
+		processSignal: func(pid int64, _ os.Signal) error {
+			signaled = append(signaled, pid)
+			delete(ticksByPID, pid)
+			return nil
+		},
+	}
+	entry := &engineEntry{
+		owner: engineOwner{
+			PID:          2000,
+			StartTicks:   600,
+			ProcessGroup: 2000,
+			Local:        true,
+			Workers:      []engineProcessIdentity{{PID: 2001, StartTicks: 605}},
+		},
+		state: EngineState{Pid: 2000, Local: true, State: "stopping"},
+	}
+	if apiErr := s.finishEngineTree(entry); apiErr != nil {
+		t.Fatalf("expected finishEngineTree to terminate late same-group helper cleanly, got %+v", apiErr)
+	}
+	if len(signaled) != 1 || signaled[0] != 2002 {
+		t.Fatalf("expected late helper PID 2002 to be signaled, got %v", signaled)
+	}
+}

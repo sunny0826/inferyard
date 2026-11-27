@@ -5,6 +5,7 @@ import (
 	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -62,6 +63,7 @@ type remoteEngineRelease struct {
 	Version      string               `json:"version"`
 	ReleaseURL   string               `json:"release_url,omitempty"`
 	DownloadURL  string               `json:"download_url,omitempty"`
+	WheelURLs    []string             `json:"wheel_urls,omitempty"`
 	Assets       []remoteReleaseAsset `json:"assets,omitempty"`
 	FetchedAt    time.Time            `json:"fetched_at"`
 }
@@ -88,10 +90,23 @@ type engineUpdateManager struct {
 
 func newEngineUpdateManager(s *Service, opts EngineUpdateOptions) *engineUpdateManager {
 	if strings.TrimSpace(opts.GitHubAPIBase) == "" {
-		opts.GitHubAPIBase = defaultGitHubAPIBase
+		if envGH := strings.TrimSpace(os.Getenv("INFERYARD_ENGINE_UPDATE_GITHUB_API")); envGH != "" {
+			opts.GitHubAPIBase = envGH
+		} else {
+			opts.GitHubAPIBase = defaultGitHubAPIBase
+		}
 	}
 	if strings.TrimSpace(opts.PyPIAPIBase) == "" {
-		opts.PyPIAPIBase = defaultPyPIAPIBase
+		if envPyPI := strings.TrimSpace(os.Getenv("INFERYARD_ENGINE_UPDATE_PYPI_API")); envPyPI != "" {
+			opts.PyPIAPIBase = envPyPI
+		} else {
+			opts.PyPIAPIBase = defaultPyPIAPIBase
+		}
+	}
+	for _, base := range []string{opts.GitHubAPIBase, opts.PyPIAPIBase} {
+		if strings.HasPrefix(base, "http://127.0.0.1:") || strings.HasPrefix(base, "http://localhost:") {
+			opts.AllowInsecureHTTP = true
+		}
 	}
 	if opts.StartupDelay <= 0 {
 		opts.StartupDelay = defaultEngineUpdateStartupDelay
