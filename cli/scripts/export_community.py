@@ -6,10 +6,8 @@ import json
 import zipfile
 from pathlib import Path
 
-from inferyard.config.bundle import require_review
-from inferyard.provisioning.community_resources import BUNDLES
 from inferyard.provisioning.preparation_io import json_bytes
-from inferyard.contracts.validation import strict_json_loads, validate_document
+from inferyard.contracts.validation import strict_json_loads
 from inferyard.provisioning.runtime_archive import member_records
 from inferyard.provisioning.runtime_profiles import (
     PROFILES,
@@ -24,14 +22,6 @@ TARGET = ROOT / "src/inferyard/data/community"
 
 def generated(archives):
     outputs = {}
-    for name in BUNDLES:
-        raw = (ROOT / f"bundles/{name}.json").read_bytes()
-        bundle = strict_json_loads(raw.decode())
-        if name == "zh-context-speed":
-            validate_document("bundle", bundle)
-        else:
-            require_review(bundle)
-        outputs[f"bundles/{name}.json"] = raw
     for name in PROFILES:
         profile = profile_header(name)
         if archives is None:

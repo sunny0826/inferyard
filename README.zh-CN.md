@@ -48,7 +48,7 @@
 | `zh-smoke` | 40 道题（指令遵循和信息抽取），用于快速检查 |
 | `zh-context-speed` | 3 段固定提示词，分别对应 64K / 128K / 256K 上下文容量，测量长上下文预填充与解码速度，不评质量分 |
 
-常规测评分别运行 `zh-core` 和 `zh-svg-pelican`。每个题包发布前都经过人工审核，详见[题包说明](cli/bundles/README.md)。
+常规测评分别运行 `zh-core` 和 `zh-svg-pelican`。每个题包发布前都经过人工审核，详见[题包说明](benchmarks/README.md)。
 
 ## 支持平台
 
@@ -74,7 +74,7 @@
 | Studio 各页面说明、多语言与构建方式 | [Studio 说明](studio/README.md) |
 | CLI 子项目与命令行用法 | [CLI 说明](cli/README.zh-CN.md) |
 | CLI 安装与候选准备 | [安装指南](cli/docs/installation.md) |
-| 冻结题包说明 | [题包说明](cli/bundles/README.md) |
+| 冻结题包说明 | [题包说明](benchmarks/README.md) |
 | 本地源码开发与调试命令 | [本地开发命令](tools/README.md) |
 | 参与贡献 | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | 版本变更记录 | [变更记录](cli/CHANGELOG.md) |

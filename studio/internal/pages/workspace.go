@@ -69,8 +69,14 @@ func (s *viewState) checkedBundles() []string {
 	}
 	if s.selectedBundles == nil {
 		s.selectedBundles = map[string]bool{}
+		selectedCount := 0
 		for _, b := range s.progress.Bundles {
-			s.selectedBundles[b.Bundle] = b.Bundle != ""
+			if b.Bundle != "" && selectedCount < 2 {
+				s.selectedBundles[b.Bundle] = true
+				selectedCount++
+			} else {
+				s.selectedBundles[b.Bundle] = false
+			}
 		}
 	}
 	for _, b := range s.progress.Bundles {

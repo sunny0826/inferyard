@@ -189,8 +189,10 @@ def build_request(
     )
     if args.command == "config create" and options.get("workspace") is not None:
         bundle = options["bundle_path"]
-        if not bundle.is_absolute() and bundle.parent == Path(".") and not bundle.suffix:
-            options["bundle_path"] = options["workspace"] / "bundles" / (bundle.name + ".json")
+        if not bundle.is_absolute() and bundle.parent == Path("."):
+            candidate_bundle = options["workspace"] / "bundles" / (bundle.name + ".json")
+            if not bundle.suffix or candidate_bundle.is_file():
+                options["bundle_path"] = candidate_bundle
     for key, value in options.items():
         if isinstance(value, Path):
             options[key] = value.absolute() if preserve_links else value.resolve()

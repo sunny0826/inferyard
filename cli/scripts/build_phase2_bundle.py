@@ -149,7 +149,7 @@ def boundary_examples(task):
 
 
 def build():
-    original = json.loads((ROOT / "bundles/zh-smoke.json").read_text())
+    original = json.loads((ROOT.parent / "benchmarks/bundles/zh-smoke.json").read_text())
     bundle = copy.deepcopy(original)
     bundle.pop("review_provenance", None)
     bundle.update(

@@ -8,9 +8,15 @@ from importlib.resources import files
 from pathlib import Path, PurePosixPath
 
 from inferyard.contracts.bundle import content_hash, validate_bundle
-from inferyard.contracts.context_speed_profile import CASES as CONTEXT_SPEED_CASES
-from inferyard.contracts.context_speed_profile import PROFILE as CONTEXT_SPEED_PROFILE
-from inferyard.contracts.validation import strict_json_loads
+from inferyard.contracts.context_speed_profile import (
+    BUNDLE_CONTENT_SHA256 as CONTEXT_SPEED_CONTENT_SHA256,
+    BUNDLE_ID as CONTEXT_SPEED_BUNDLE_ID,
+    BUNDLE_VERSION as CONTEXT_SPEED_BUNDLE_VERSION,
+    CASES as CONTEXT_SPEED_CASES,
+    PROFILE as CONTEXT_SPEED_PROFILE,
+)
+from inferyard.contracts.schemas_tasks import EXECUTION_HINTS
+from inferyard.contracts.validation import strict_json_loads, validate_value
 from inferyard.errors import ContractError
 from inferyard.provisioning.preparation_io import PreparationError
 
@@ -80,7 +86,18 @@ def catalog() -> dict:
             or not isinstance(rel, str)
         ):
             raise PreparationError("package_resource_invalid", 4)
-        _safe_rel_path(rel)
+        rel_path = _safe_rel_path(rel)
+        if (
+            len(rel_path.parts) != 2
+            or rel_path.parts[0] != "bundles"
+            or not rel_path.parts[1].endswith(".json")
+        ):
+            raise PreparationError("package_resource_invalid", 4)
+        if "execution_hints" in item:
+            try:
+                validate_value(item["execution_hints"], EXECUTION_HINTS, "catalog.execution_hints")
+            except ContractError as exc:
+                raise PreparationError("package_resource_invalid", 4) from exc
         seen.add(name)
     return doc
 
@@ -213,6 +230,18 @@ def _verify_one(name: str, raw: bytes, source: str, entry: dict | None = None) -
     categories = sorted({case["category"] for case in cases})
     meta = effective_metadata(doc, name)
     hints = effective_execution_hints(doc, name)
+    digest = content_hash(doc)
+    if hints.get("profile") == CONTEXT_SPEED_PROFILE:
+        if (
+            doc["task_protocol"] != "performance"
+            or doc["bundle_id"] != CONTEXT_SPEED_BUNDLE_ID
+            or doc["version"] != CONTEXT_SPEED_BUNDLE_VERSION
+            or digest != CONTEXT_SPEED_CONTENT_SHA256
+        ):
+            raise ContractError(
+                f"bundle.{name}.execution_hints.profile",
+                "context-speed.v1 profile requires the frozen zh-context-speed bundle identity",
+            )
     return {
         "name": name,
         "bundle_id": doc["bundle_id"],
@@ -226,7 +255,7 @@ def _verify_one(name: str, raw: bytes, source: str, entry: dict | None = None) -
         "description": meta.get("description"),
         "tags": meta.get("tags", []),
         "execution_hints": hints,
-        "content_sha256": content_hash(doc),
+        "content_sha256": digest,
         "file_sha256": hashlib.sha256(raw).hexdigest(),
         "source": source,
     }

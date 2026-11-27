@@ -348,9 +348,10 @@ def create(request):
                 if has_svg
                 else (2048 if resolved_effort == "low" else 4096)
             )
-        max_tokens = min(target_tokens, context)
+        max_tokens = min(target_tokens, context, 8192)
     else:
-        max_tokens = hints.get("default_max_tokens") or (4096 if has_svg else 512)
+        default_tokens = hints.get("default_max_tokens") or (4096 if has_svg else 512)
+        max_tokens = min(default_tokens, context, 8192)
     generation_section = {
         "temperature": 0,
         "max_tokens": max_tokens,

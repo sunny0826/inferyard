@@ -115,3 +115,57 @@ def test_effective_hints_and_metadata_merge_inline_over_catalog() -> None:
     assert hints["reasoning_max_tokens"]["medium"] == 3072
     meta = effective_metadata(custom)
     assert meta["display_name"]["en"] == "Custom English Pack"
+
+
+def test_dotted_custom_bundle_resolves_in_config_create_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from inferyard.cli.arguments import parser
+    from inferyard.cli.request import build_request
+
+    monkeypatch.setattr("platform.system", lambda: "Darwin")
+    monkeypatch.setattr("platform.machine", lambda: "arm64")
+
+    dotted = tmp_path / "qa.v2.json"
+    dotted.write_text(json.dumps(_custom_bundle("en-qa-v2"), ensure_ascii=False), encoding="utf-8")
+    ws = tmp_path / "ws"
+    assert main(["init", "--out", str(ws), "--bundle", str(dotted)]) == 0
+    assert (ws / "bundles" / "qa.v2.json").is_file()
+
+    args = parser().parse_args(
+        [
+            "config",
+            "create",
+            "--workspace",
+            str(ws),
+            "--bundle",
+            "qa.v2",
+            "--engine",
+            str(tmp_path / "engine"),
+            "--out",
+            str(ws / "candidates" / "qa.v2-1"),
+        ]
+    )
+    req = build_request(args)
+    assert req.bundle_path == (ws / "bundles" / "qa.v2.json").absolute()
+
+
+def test_verify_rejects_mismatched_context_speed_profile(tmp_path: Path) -> None:
+    from inferyard.errors import ContractError
+
+    bad = _custom_bundle("fake-speed")
+    bad["task_protocol"] = "performance"
+    bad["execution_hints"] = {"profile": "context-speed.v1"}
+    bad["cases"] = [
+        {
+            "case_id": "perf-01",
+            "category": "performance",
+            "prompt": "hello",
+            "reference_answer": "",
+            "rules": {"output_target_tokens": 256},
+        }
+    ]
+    path = tmp_path / "fake-speed.json"
+    path.write_text(json.dumps(bad, ensure_ascii=False), encoding="utf-8")
+    with pytest.raises(ContractError):
+        verify_bundles(path)
