@@ -385,7 +385,7 @@ func serviceMetricTile(c *ui.Context, _ float32, label, value, sub string, tabul
 	t := tokens(c)
 	ui.Column(c).FillWidth().Padding(t.Density.Tight, 0).Gap(t.Density.Hairline).Children(func() {
 		ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
-		v := ui.Text(c, value).FontWeight(600).FontSize(c.Theme().Rem(16.0 / 14.0)).TextColor(t.Color.FgPrimary).SingleLine()
+		v := ui.Text(c, value).FontWeight(600).FontSize(t.Type.Primary).TextColor(t.Color.FgPrimary).SingleLine()
 		if tabular {
 			v.FontFeatures("tnum")
 		}

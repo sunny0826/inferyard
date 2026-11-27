@@ -10,19 +10,28 @@ import (
 	"inferyard/studio/internal/icons/reicon"
 )
 
+const (
+	// mainFontSizeFactor preserves the main-branch base font size (t.FontSize * 0.96,
+	// i.e. 12.48px on macOS where MyGo's defaultFontSize is 13px).
+	mainFontSizeFactor = float32(0.96)
+	// fontSizeStepScale spaces the 5 presets evenly so Default matches main (12.48px
+	// on macOS) and Larger (+2 steps) lands at 14.0px.
+	fontSizeStepScale = (14.0/(13.0*mainFontSizeFactor) - 1.0) / 2.0
+)
+
 type studioFontSizeSpec struct {
 	id       string
 	labelKey string
-	px       float32
+	scale    float32
 }
 
 var (
 	studioFontSizeSpecs = []studioFontSizeSpec{
-		{id: core.FontSizeSmaller, labelKey: "settings.appearance.font_size.smaller", px: 12},
-		{id: core.FontSizeSmall, labelKey: "settings.appearance.font_size.small", px: 13},
-		{id: core.FontSizeDefault, labelKey: "settings.appearance.font_size.default", px: 14},
-		{id: core.FontSizeLarge, labelKey: "settings.appearance.font_size.large", px: 15},
-		{id: core.FontSizeLarger, labelKey: "settings.appearance.font_size.larger", px: 16},
+		{id: core.FontSizeSmaller, labelKey: "settings.appearance.font_size.smaller", scale: 1 - 2*fontSizeStepScale},
+		{id: core.FontSizeSmall, labelKey: "settings.appearance.font_size.small", scale: 1 - fontSizeStepScale},
+		{id: core.FontSizeDefault, labelKey: "settings.appearance.font_size.default", scale: 1},
+		{id: core.FontSizeLarge, labelKey: "settings.appearance.font_size.large", scale: 1 + fontSizeStepScale},
+		{id: core.FontSizeLarger, labelKey: "settings.appearance.font_size.larger", scale: 1 + 2*fontSizeStepScale},
 	}
 
 	activeFontSizeMu sync.RWMutex
@@ -53,8 +62,8 @@ func studioFontSizeSpecFor(id string) studioFontSizeSpec {
 	return studioFontSizeSpecs[2]
 }
 
-func studioBaseFontSize() float32 {
-	return studioFontSizeSpecFor(activeFontSize()).px
+func applyStudioFontSize(paletteFontSize float32) float32 {
+	return paletteFontSize * mainFontSizeFactor * studioFontSizeSpecFor(activeFontSize()).scale
 }
 
 func fontSizeFromSettings(v core.SettingsResponse) string {

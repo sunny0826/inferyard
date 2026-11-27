@@ -3,9 +3,11 @@ package pages
 import (
 	"encoding/json"
 	"math"
+	"runtime"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/theme"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
 )
@@ -23,14 +25,11 @@ func TestFontSizeSettingsDefaultPersistScaleAndUI(t *testing.T) {
 		t.Fatalf("default Effective.FontSize = %q, want %q", got, core.FontSizeDefault)
 	}
 
-	wantPx := map[string]float32{
-		core.FontSizeSmaller: 12,
-		core.FontSizeSmall:   13,
-		core.FontSizeDefault: 14,
-		core.FontSizeLarge:   15,
-		core.FontSizeLarger:  16,
-	}
-	for _, tier := range []string{core.FontSizeSmaller, core.FontSizeSmall, core.FontSizeDefault, core.FontSizeLarge, core.FontSizeLarger} {
+	paletteBase := theme.Palette(false).FontSize
+	mainDefault := paletteBase * 0.96
+	tiers := []string{core.FontSizeSmaller, core.FontSizeSmall, core.FontSizeDefault, core.FontSizeLarge, core.FontSizeLarger}
+	gotBases := make([]float32, len(tiers))
+	for i, tier := range tiers {
 		raw, _ := json.Marshal(tier)
 		resp, apiErr := service.UpdateSettings(map[string]json.RawMessage{"font_size": raw})
 		if apiErr != nil {
@@ -48,12 +47,25 @@ func TestFontSizeSettingsDefaultPersistScaleAndUI(t *testing.T) {
 			gotHeading = typeTokensFor(th).PageTitle
 		}, 400, 120)
 		tt.Frame()
-		if math.Abs(float64(gotBase-wantPx[tier])) > 0.01 {
-			t.Fatalf("tier %q base FontSize = %.2f, want %.2f", tier, gotBase, wantPx[tier])
-		}
-		wantHeading := wantPx[tier] * (18.0 / 14.0)
+		gotBases[i] = gotBase
+		wantHeading := gotBase * (18.0 / 14.0)
 		if math.Abs(float64(gotHeading-wantHeading)) > 0.05 {
 			t.Fatalf("tier %q PageTitle = %.2f, want %.2f", tier, gotHeading, wantHeading)
+		}
+	}
+	if math.Abs(float64(gotBases[2]-mainDefault)) > 0.01 {
+		t.Fatalf("Default tier FontSize = %.2f, want main-branch size %.2f", gotBases[2], mainDefault)
+	}
+	if runtime.GOOS == "darwin" && math.Abs(float64(gotBases[4]-14.0)) > 0.01 {
+		t.Fatalf("Larger tier FontSize on darwin = %.2f, want 14.00", gotBases[4])
+	}
+	step := gotBases[1] - gotBases[0]
+	if step <= 0 {
+		t.Fatalf("expected positive step between tiers, got %.4f (%v)", step, gotBases)
+	}
+	for i := 1; i < len(gotBases); i++ {
+		if diff := gotBases[i] - gotBases[i-1]; math.Abs(float64(diff-step)) > 0.01 {
+			t.Fatalf("non-uniform step between tier %d and %d: got %.4f, want %.4f (%v)", i-1, i, diff, step, gotBases)
 		}
 	}
 
