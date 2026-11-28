@@ -122,7 +122,6 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 	}
 	seen := map[string]bool{}
 	candidates := []CandidateRun{}
-	var sharedInstallation string
 	for _, bundle := range req.Bundles {
 		if ctx.Err() != nil {
 			return nil, Err("cancelled")
@@ -138,15 +137,11 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 		if info, statErr := os.Stat(bundlePath); statErr != nil || info.IsDir() {
 			return nil, Err("invalid_request")
 		}
-		if sharedInstallation == "" {
-			sharedInstallation = selected.installation
-		}
-		installation := sharedInstallation
 		output, failure := NextOutput(*workspace, "candidates", bundle)
 		if failure != nil {
 			return nil, failure
 		}
-		args := []string{"config", "create", "--installation", installation, "--model", model,
+		args := []string{"config", "create", "--installation", selected.installation, "--model", model,
 			"--bundle", bundlePath, "--results", *results, "--port", port, "--out", output}
 		if family == "polystrata" && normalizedEffort != "" && normalizedEffort != ReasoningEffortNone {
 			args = append(args, "--reasoning-effort", normalizedEffort)

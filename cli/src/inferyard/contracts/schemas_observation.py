@@ -53,7 +53,6 @@ LOCAL_ENGINE_OBSERVATION["properties"].update(
             for path in (
                 *PATHS,
                 "/version",
-                "/get_server_info",
                 "/v1/status",
                 "/metrics/prometheus",
                 "/status",
