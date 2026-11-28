@@ -306,9 +306,9 @@ func (s *viewState) notificationCardInner(c *ui.Context, item *studioNotificatio
 		})
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
 			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				ui.Text(c, item.Title).Bold().FontSize(14).FixedLineHeight(20).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine()
+				ui.Text(c, item.Title).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine()
 				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Shrink(0).Children(func() {
-					ui.Text(c, relativeNotificationTimeFor(contextLocale(c), item.CreatedAt)).FontSize(12).TextColor(t.Color.FgTertiary).SingleLine().Shrink(0)
+					ui.Text(c, relativeNotificationTimeFor(contextLocale(c), item.CreatedAt)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgTertiary).SingleLine().Shrink(0)
 					if onScreen {
 						closeBtn := components.Button(c, "", components.ButtonGhost).
 							Size(24, 24).Padding(0).Radius(t.Radius.Full).Shrink(0).
@@ -324,7 +324,7 @@ func (s *viewState) notificationCardInner(c *ui.Context, item *studioNotificatio
 				})
 			})
 			if item.Body != "" {
-				ui.Text(c, item.Body).FontSize(13).FixedLineHeight(20).TextColor(t.Color.FgSecondary).MaxLines(3)
+				ui.Text(c, item.Body).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).MaxLines(3)
 			}
 			if item.Secondary != nil || item.Primary != nil {
 				ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Tight, 0, 0, 0).Children(func() {
@@ -356,14 +356,9 @@ func (s *viewState) notificationCardInner(c *ui.Context, item *studioNotificatio
 }
 
 func notificationCardButton(c *ui.Context, label string, primary bool) ui.Element {
-	t := tokens(c)
 	variant := components.ButtonSecondary
 	if primary {
 		variant = components.ButtonPrimary
 	}
-	b := components.Button(c, label, variant).Height(32).Padding(0, t.Density.Stack).Radius(t.Radius.Control).FontSize(13)
-	if !primary {
-		applySecondaryButtonPalette(c, b)
-	}
-	return b
+	return sizedButton(c, variant, sizeSM, label)
 }

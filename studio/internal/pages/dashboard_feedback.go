@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
@@ -181,7 +180,7 @@ func (s *viewState) feedback(c *ui.Context) {
 				if s.failure.Code == "workspace_artifact_unreadable" {
 					s.cleanWorkspaceArtifactsButton(c)
 				}
-				if iconButton(c, reicon.X, tr(c, "dashboard.feedback.close"), components.IconButtonCompact).Clicked() {
+				if outlineIconButton(c, reicon.X, tr(c, "dashboard.feedback.close")).Clicked() {
 					s.failure = nil
 					s.failurePage = ""
 				}
@@ -198,7 +197,7 @@ func (s *viewState) feedback(c *ui.Context) {
 					s.cleanWorkspaceArtifactsButton(c)
 				}
 				refreshIconButton(c, tr(c, "dashboard.feedback.retry"), s.refreshing).OnClick(s.refreshAction)
-				if iconButton(c, reicon.X, tr(c, "dashboard.feedback.close"), components.IconButtonCompact).Clicked() {
+				if outlineIconButton(c, reicon.X, tr(c, "dashboard.feedback.close")).Clicked() {
 					s.refreshFailure = ""
 					s.refreshFailureCode = ""
 				}

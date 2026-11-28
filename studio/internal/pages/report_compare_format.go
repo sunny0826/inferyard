@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 )
 
@@ -91,14 +92,18 @@ func formatCompareBytes(value *float64) string {
 }
 
 func compareRequestSummary(request *core.ReportRequest) string {
+	return compareRequestSummaryFor(nil, request)
+}
+
+func compareRequestSummaryFor(c *ui.Context, request *core.ReportRequest) string {
 	if request == nil {
 		return compareMissing
 	}
 	parts := []string{}
 	if request.Quality != nil && strings.TrimSpace(*request.Quality) != "" {
-		parts = append(parts, *request.Quality)
+		parts = append(parts, reportQualityFor(c, request.Quality))
 	} else if request.State != "" {
-		parts = append(parts, request.State)
+		parts = append(parts, stateLabelFor(contextLocale(c), request.State))
 	}
 	if request.LatencyMS != nil {
 		parts = append(parts, fmt.Sprintf("%.0f ms", *request.LatencyMS))

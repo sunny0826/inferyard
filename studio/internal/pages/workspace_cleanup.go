@@ -88,11 +88,13 @@ func (s *viewState) clearCleanedWorkspaceState() {
 	s.tasks = nil
 	s.reports = nil
 	s.reportsError = nil
+	s.dropLocalUnifiedReports()
 	s.detail = nil
 	s.detailError = nil
 	s.detailID = ""
 	s.detailMu.Lock()
 	s.requestedDetail = ""
 	s.detailMu.Unlock()
+	s.resetReportCompare()
 	s.closeOpenedReport()
 }

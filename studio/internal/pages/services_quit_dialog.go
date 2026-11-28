@@ -79,19 +79,23 @@ func (s *viewState) quitServiceDialog(c *ui.Context) {
 		msg = trf(c, "services.quit_dialog.message", "model", s.serviceModelTitle(c, active[0]))
 	}
 	studioDialog(c.Key("quit-service-confirm-dialog"), &s.quitDialog.open, components.DialogOptions{Label: title}, func(panel ui.Element) {
-		panel.Role(ui.RoleAlertDialog)
-		components.Text(c, title).Bold()
-		components.Text(c, msg).TextColor(t.Color.FgSecondary)
-		ui.Row(c).FillWidth().Wrap().Justify(ui.End).Gap(t.Density.Row).Children(func() {
-			if button(c, tr(c, "services.quit_dialog.cancel")).Clicked() {
-				s.quitDialog.open = false
-			}
-			if dangerButton(c, tr(c, "services.quit_dialog.stop_all_and_quit")).Clicked() {
-				s.confirmQuitWithServicePolicy(false)
-			}
-			if primaryButton(c, tr(c, "services.quit_dialog.keep_and_quit")).Clicked() {
-				s.confirmQuitWithServicePolicy(true)
-			}
+		panel.Role(ui.RoleAlertDialog).Width(c.Theme().Space(135)).MaxWidthPercent(92).Children(func() {
+			ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
+				heading(c, title, 2)
+				components.Text(c, msg).TextColor(t.Color.FgSecondary)
+				ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+				ui.Row(c).FillWidth().Wrap().Justify(ui.End).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+					if button(c, tr(c, "services.quit_dialog.cancel")).Clicked() {
+						s.quitDialog.open = false
+					}
+					if dangerButton(c, tr(c, "services.quit_dialog.stop_all_and_quit")).Clicked() {
+						s.confirmQuitWithServicePolicy(false)
+					}
+					if primaryButton(c, tr(c, "services.quit_dialog.keep_and_quit")).Clicked() {
+						s.confirmQuitWithServicePolicy(true)
+					}
+				})
+			})
 		})
 	})
 }

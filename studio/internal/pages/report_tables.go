@@ -57,7 +57,7 @@ func (r *reportViewState) categoryView(c *ui.Context, run core.ReportRun) {
 					}
 					ui.Text(c, exclText).FontFeatures("tnum").TextColor(exclColor).SingleLine()
 				}
-			}).Height(c.Theme().Space(8)*float32(min(len(categories), 8)+1) + 2)
+			}).MaxHeight(c.Theme().Space(10)*8 + c.Theme().Space(9))
 		})
 	})
 }
@@ -134,7 +134,7 @@ func (r *reportViewState) requestView(c *ui.Context, run core.ReportRun) {
 					}
 					ui.Text(c, reportText(request.CategoryLabel)).TextColor(catColor).SingleLine()
 				case 2:
-					inlineBadge(c, reportText(stateLabel(request.State)), caseStateKind(request.State), badgeOptions{Size: sizeSM, Style: badgeDot})
+					inlineBadge(c, reportText(stateLabelFor(contextLocale(c), request.State)), caseStateKind(request.State), badgeOptions{Size: sizeSM, Style: badgeDot})
 				case 3:
 					qText := reportQualityFor(c, request.Quality)
 					if kind, ok := reportQualityBadgeKind(request.Quality); ok {
@@ -149,10 +149,10 @@ func (r *reportViewState) requestView(c *ui.Context, run core.ReportRun) {
 					}
 					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 						ui.Text(c, reportScaled(request.LatencyMS, 1000, "s")).FontFeatures("tnum").TextColor(latColor).Grow(1).MinWidth(0).SingleLine()
-						components.Icon(c, reicon.ChevronRight).Size(14, 14).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
+						components.Icon(c, reicon.ChevronRight).Size(14, 14).Shrink(0).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
 					})
 				}
-			}).Height(c.Theme().Space(8)*float32(min(len(visible), 8)+1) + 2)
+			}).MaxHeight(c.Theme().Space(10)*10 + c.Theme().Space(9))
 		})
 		if r.requests.clicked || r.requests.submitted {
 			if idx := selectedRow(&r.requests, len(visible)); idx >= 0 {

@@ -284,10 +284,10 @@ func (s *viewState) historyView(c *ui.Context) {
 				case 4:
 					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 						ui.Text(c, historyStarted(r)).FontFeatures("tnum").TextColor(t.Color.FgSecondary).Grow(1).MinWidth(0).SingleLine()
-						components.Icon(c, reicon.ChevronRight).Size(14, 14).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
+						components.Icon(c, reicon.ChevronRight).Size(14, 14).Shrink(0).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
 					})
 				}
-			}).Height(c.Theme().Space(8)*float32(min(len(filtered), 10)+1) + 2).Label(tableLabel)
+			}).MaxHeight(c.Theme().Space(10)*10 + c.Theme().Space(9)).Label(tableLabel)
 			if s.historyTable.clicked || s.historyTable.submitted {
 				if idx := selectedRow(&s.historyTable, len(filtered)); idx >= 0 {
 					s.openHistoryRunDetail(filtered[idx].Path)
@@ -408,7 +408,7 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 					}
 					if run.StopReason != nil && strings.TrimSpace(*run.StopReason) != "" {
 						reportKVDivider(c)
-						keyValueRow(c, tr(c, "dashboard.history.stop_reason_label"), stopReasonLabel(*run.StopReason), false)
+						keyValueRow(c, tr(c, "dashboard.history.stop_reason_label"), stopReasonLabelFor(c, *run.StopReason), false)
 					}
 					reportKVDivider(c)
 					pathKeyValueRow(c, tr(c, "dashboard.history.run_path_label"), run.Path)

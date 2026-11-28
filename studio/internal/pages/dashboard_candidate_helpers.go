@@ -83,7 +83,7 @@ func (s *viewState) bundleSelection(c *ui.Context) {
 						s.selectedBundles[bundle.Bundle] = checked
 					}
 					if description := bundleDescription(bundle); description != "" {
-						ui.Text(c, "· "+description).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
+						ui.Text(c, "· "+description).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).MinWidth(0).SingleLine()
 					}
 					ui.Box(c).Grow(1)
 					phaseKind := stateNeutral

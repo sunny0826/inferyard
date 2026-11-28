@@ -76,13 +76,15 @@ func caseModalIconButton(c *ui.Context, variant components.ButtonVariant, icon f
 			if disabled {
 				bg = t.Color.Sunken
 				iconColor = t.Color.FgTertiary
+			} else if b.Pressed() {
+				bg = t.Color.SurfacePressed
 			} else if b.Hovered() {
 				bg = t.Color.SurfaceHover
 			}
 			b.Background(bg).Border(1, t.Color.BorderDefault)
 		} else if disabled {
 			iconColor = t.Color.FgTertiary
-		} else if b.Hovered() {
+		} else if b.Pressed() || b.Hovered() {
 			iconColor = t.Color.FgPrimary
 		}
 		b.Children(func() {
@@ -126,10 +128,7 @@ func (s *viewState) caseDetailDrawer(c *ui.Context, modalKey string, open *bool,
 		headerTitle = ariaTitle
 	}
 	reduceMotion := c.Preferences().ReduceMotion
-	scrim := ui.RGBA(0, 0, 0, .24)
-	if c.Theme().Dark {
-		scrim = ui.RGBA(0, 0, 0, .48)
-	}
+	scrim := t.Color.Backdrop
 
 	ui.Overlay(c, func() {
 		ui.Box(c).Absolute().Left(0).Top(0).Right(0).Bottom(0).Background(scrim).
@@ -185,7 +184,7 @@ func (s *viewState) caseModalHeader(c *ui.Context, headerTitle string, item case
 		Background(t.Color.Elevated).Children(func() {
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight + 2).Children(func() {
 			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				ui.Text(c, headerTitle).Bold().FontSize(t.Type.CardTitle + 2).FontFeatures("tnum").
+				ui.Text(c, headerTitle).Bold().FontSize(c.Theme().Rem(1.25)).FontFeatures("tnum").
 					TextColor(t.Color.FgPrimary).SingleLine().Selectable()
 				if item.StateLabel != "" {
 					inlineBadge(c, item.StateLabel, item.StateKind, badgeOptions{Size: sizeSM, Style: badgeDot})

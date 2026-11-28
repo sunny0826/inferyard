@@ -8,43 +8,57 @@ import (
 	"inferyard/studio/internal/icons/reicon"
 )
 
+// studioSquareIconButton builds a Control.MD square icon button with deferred hover/press
+// face resolution so chained .Disabled(true) calls never trigger hover tinting.
+func studioSquareIconButton(
+	c *ui.Context,
+	icon func() *ui.SVG,
+	label string,
+	bg, hoverBg, pressedBg, border, hoverBorder, pressedBorder, fg ui.Color,
+) ui.Element {
+	t := tokens(c)
+	rad := t.Radius.Control
+	b := ui.ButtonBase(c).
+		Size(t.Control.MD, t.Control.MD).
+		Shrink(0).
+		Radius(rad).
+		AlignSelf(ui.Start).
+		AlignItems(ui.Center).
+		Justify(ui.Center).
+		Background(bg).
+		Border(1, border).
+		TextColor(fg)
+	if label != "" {
+		b.Label(label)
+		studioTooltip(c, b, label)
+	}
+	applyDeferredButtonFace(b, rad, hoverBg, pressedBg, hoverBorder, pressedBorder)
+	b.Children(func() {
+		components.Icon(c, icon).Size(15, 15).TextColor(fg).Role(ui.RoleNone)
+	})
+	return b
+}
+
 // outlineIconButton renders a bordered icon-only button with an accessible label and hover tooltip.
 func outlineIconButton(c *ui.Context, icon func() *ui.SVG, label string) ui.Element {
 	t := tokens(c)
-	b := iconButton(c, icon, label, components.IconButtonPlain).
-		Size(t.Control.MD, t.Control.MD).
-		Border(1, t.Color.BorderDefault).
-		Background(t.Color.Surface).
-		TextColor(t.Color.FgPrimary)
-	if !b.IsDisabled() {
-		switch {
-		case b.Pressed():
-			b.Background(t.Color.SurfacePressed)
-		case b.Hovered():
-			b.Background(t.Color.SurfaceHover)
-		}
-	}
-	return b
+	return studioSquareIconButton(
+		c, icon, label,
+		t.Color.Surface, t.Color.SurfaceHover, t.Color.SurfacePressed,
+		t.Color.BorderDefault, t.Color.BorderStrong, t.Color.BorderStrong,
+		t.Color.FgPrimary,
+	)
 }
 
 // primaryIconButton renders an accent-tinted icon-only button with an accessible label and hover tooltip.
 func primaryIconButton(c *ui.Context, icon func() *ui.SVG, label string) ui.Element {
 	t := tokens(c)
-	accent := t.Color.Accent
-	b := iconButton(c, icon, label, components.IconButtonPlain).
-		Size(t.Control.MD, t.Control.MD).
-		Background(accent).
-		TextColor(c.Theme().Surface).
-		Border(1, accent)
-	if !b.IsDisabled() {
-		switch {
-		case b.Pressed():
-			b.Background(accent.Mix(c.Theme().Text, .18))
-		case b.Hovered():
-			b.Background(accent.Mix(c.Theme().Surface, .12))
-		}
-	}
-	return b
+	return studioSquareIconButton(
+		c, icon, label,
+		t.Color.Accent, t.Color.AccentHover, t.Color.AccentPressed,
+		t.Color.Accent, t.Color.AccentHover, t.Color.AccentPressed,
+		t.Color.FgOnAccent,
+	)
 }
 
 // dangerIconButton renders a danger-tinted icon-only button with an accessible label and hover tooltip.
@@ -52,34 +66,48 @@ func dangerIconButton(c *ui.Context, icon func() *ui.SVG, label string) ui.Eleme
 	theme := c.Theme()
 	t := tokens(c)
 	danger := t.State.Danger
-	background := t.Color.Surface
+	bp := paletteFor(theme.Dark).buttons
 	border := t.Color.BorderDefault
-	if c.Preferences().HighContrast {
-		border = danger
-	}
-	b := iconButton(c, icon, label, components.IconButtonPlain).
-		Size(t.Control.MD, t.Control.MD).
-		TextColor(danger.Mix(theme.Text, .18))
-	if !b.IsDisabled() {
-		switch {
-		case b.Pressed():
-			background = theme.Surface.Mix(danger, .22)
-			border = danger.Alpha(.72)
-		case b.Hovered():
-			background = theme.Surface.Mix(danger, .12)
-			border = danger.Alpha(.55)
+	fg := danger.Mix(theme.Text, .18)
+	hoverBg := theme.Surface.Mix(danger, .12)
+	pressedBg := theme.Surface.Mix(danger, .22)
+	hoverBorder := danger.Alpha(.55)
+	pressedBorder := danger.Alpha(.72)
+	if bp.dangerFg.A > 0 && !c.Preferences().HighContrast {
+		fg = bp.dangerFg
+		if bp.dangerBg.A > 0 {
+			hoverBg = bp.dangerBg
+		}
+		if bp.dangerPressed.A > 0 {
+			pressedBg = bp.dangerPressed
+		}
+		if bp.dangerBorder.A > 0 {
+			hoverBorder = bp.dangerBorder
+			pressedBorder = bp.dangerBorder
 		}
 	}
-	return b.Background(background).Border(1, border)
+	if c.Preferences().HighContrast {
+		border = danger
+		hoverBorder = danger
+		pressedBorder = danger
+	}
+	return studioSquareIconButton(
+		c, icon, label,
+		t.Color.Surface, hoverBg, pressedBg,
+		border, hoverBorder, pressedBorder,
+		fg,
+	)
 }
 
 // refreshIconButton renders an icon-only refresh button with spinning RefreshCw feedback,
 // accessible label, and hover tooltip.
 func refreshIconButton(c *ui.Context, label string, active bool) ui.Element {
 	t := tokens(c)
+	rad := t.Radius.Control
 	b := ui.ButtonBase(c).
 		Size(t.Control.MD, t.Control.MD).
-		Radius(t.Radius.Control).
+		Shrink(0).
+		Radius(rad).
 		AlignSelf(ui.Start).
 		AlignItems(ui.Center).
 		Justify(ui.Center).
@@ -87,14 +115,7 @@ func refreshIconButton(c *ui.Context, label string, active bool) ui.Element {
 		Background(t.Color.Surface).
 		TextColor(t.Color.FgPrimary).
 		Label(label)
-	if !b.IsDisabled() {
-		switch {
-		case b.Pressed():
-			b.Background(t.Color.SurfacePressed)
-		case b.Hovered():
-			b.Background(t.Color.SurfaceHover)
-		}
-	}
+	applyDeferredButtonFace(b, rad, t.Color.SurfaceHover, t.Color.SurfacePressed, t.Color.BorderStrong, t.Color.BorderStrong)
 	state := ui.Local(b, "refresh-icon-spin", func() spinIconState { return spinIconState{} })
 	now := c.Now()
 	if active {

@@ -86,7 +86,7 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 	})
 
 	ui.Column(c.Key("benchmarks-tabs")).FillWidth().Gap(t.Density.Section).Children(func() {
-		components.Tabs(c, &s.benchmarksTab, components.TabsUnderline, tr(c, "benchmarks.tab.tasks"), tr(c, "reports.tab.history"))
+		studioUnderlineTabs(c, &s.benchmarksTab, tr(c, "benchmarks.tab.tasks"), tr(c, "reports.tab.history"))
 		if s.benchmarksTab != benchmarksTabHistory {
 			s.historyFromFlow = false
 		}

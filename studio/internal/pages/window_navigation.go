@@ -99,6 +99,7 @@ func (s *viewState) resetActivePage(resolved string) {
 		}
 	case "reports":
 		s.historyDetailPath = ""
+		s.nodes.compareOpen = false
 		if s.openedReport != nil {
 			s.closeOpenedReport()
 			s.reportsTab = reportsTabList

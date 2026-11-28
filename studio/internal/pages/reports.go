@@ -43,7 +43,7 @@ func (s *viewState) reportsView(c *ui.Context) {
 		}
 	})
 	ui.Column(c.Key("reports-tabs")).FillWidth().Gap(t.Density.Stack).Children(func() {
-		components.Tabs(c, &s.reportsTab, components.TabsUnderline, tr(c, "reports.tab.reports"), tr(c, "reports.tab.context_speed"))
+		studioUnderlineTabs(c, &s.reportsTab, tr(c, "reports.tab.reports"), tr(c, "reports.tab.context_speed"))
 		if s.reportsTab == reportsTabSpeed {
 			s.speedReportsTabView(c)
 		} else {
@@ -121,6 +121,7 @@ func (s *viewState) reportSourcesDialog(c *ui.Context) {
 					Label(tr(c, "reports.dialog.sources_list_aria")).Children(func() {
 					ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Row).Children(func() {
 						for _, r := range runs {
+							r := r
 							checked := s.reportChoices.Has(r.Path)
 							row := ui.Column(c.Key(r.Path)).FillWidth().Gap(2).
 								Padding(t.Density.Row, t.Density.Stack).Radius(itemRadius)
@@ -129,8 +130,10 @@ func (s *viewState) reportSourcesDialog(c *ui.Context) {
 							} else if row.Hovered() {
 								row.Background(t.Color.SurfaceHover)
 							}
+							var cbChanged bool
 							row.Children(func() {
 								if components.Checkbox(c, &checked, r.RunId).Disabled(s.busy).Changed() {
+									cbChanged = true
 									if checked {
 										s.reportChoices.Add(r.Path)
 									} else {
@@ -140,6 +143,13 @@ func (s *viewState) reportSourcesDialog(c *ui.Context) {
 								meta := historyModel(r) + " · " + historyBundleDisplay(r) + " · " + runScore(r)
 								ui.Text(c, meta).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
 							})
+							if !s.busy && !cbChanged && row.Clicked() {
+								if checked {
+									s.reportChoices.Remove(r.Path)
+								} else {
+									s.reportChoices.Add(r.Path)
+								}
+							}
 						}
 					})
 				})
@@ -149,7 +159,7 @@ func (s *viewState) reportSourcesDialog(c *ui.Context) {
 			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, trf(c, "reports.dialog.selected_count", "count", count)).
 					FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).Grow(1)
-				if outlineButton(c, tr(c, "reports.dialog.close")).Clicked() {
+				if button(c, tr(c, "reports.dialog.close")).Clicked() {
 					if s.reportChoices.Len() > 0 {
 						s.reportDiscardConfirm = true
 					} else {

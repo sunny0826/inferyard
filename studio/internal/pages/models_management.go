@@ -253,7 +253,8 @@ func (s *viewState) modelStorageAndRootsView(c *ui.Context) {
 						dirText := ui.Text(c, dir).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine().TruncateMiddle()
 						studioTooltipIfTruncated(c, dirText, dir, dir, t.Type.Caption, false)
 						if s.isExtraModelRootDir(dir, primaryRoot) {
-							sizedButton(c, components.ButtonGhost, sizeSM, tr(c, "models.roots.remove")).
+							sizedButton(c, components.ButtonOutline, sizeSM, tr(c, "models.roots.remove")).
+								Shrink(0).
 								Label(trf(c, "models.roots.remove_label", "dir", dir)).
 								Disabled(s.busy).
 								OnClick(func() { s.removeExtraModelsRoot(dir) })
@@ -289,7 +290,7 @@ func (s *viewState) installedModelRow(c *ui.Context, m core.ModelAsset, pending 
 		modelIconBox(c, titleText+" "+s.modelIconHint(m.Name), 36, t.Radius.Control)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
 			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				titleEl := ui.Text(c, titleText).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).SingleLine().TruncateMiddle()
+				titleEl := ui.Text(c, titleText).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).MinWidth(0).SingleLine().TruncateMiddle()
 				studioTooltipIfTruncated(c, titleEl, titleText, titleText, t.Type.Body, true)
 				s.renderModelStandaloneBadge(c, m)
 			})

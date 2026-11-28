@@ -133,7 +133,7 @@ func renderResourcePlotBody(
 	if width <= 0 {
 		width = 240
 	}
-	axisSize := theme.FontSize - 2
+	axisSize := tok.Type.ShellLabel
 	tickWidth := theme.Space(11)
 	for _, label := range data.Labels {
 		w, _ := c.MeasureText(0, ui.Span{Text: label, Size: axisSize})
@@ -146,7 +146,7 @@ func renderResourcePlotBody(
 		ticks = append(ticks, base.Tick{At: xs[i], Label: data.Labels[i]})
 	}
 	axes := base.Axes{Left: y.Ticks(4), Bottom: ticks, Label: func(side base.Side, tick base.Tick) {
-		lbl := components.Text(c, tick.Label).NoWrap().FontSize(axisSize).TextColor(theme.TextMuted)
+		lbl := components.Text(c, tick.Label).NoWrap().FontSize(axisSize).FontFeatures("tnum").TextColor(theme.TextMuted)
 		if side == base.Bottom {
 			lbl.MaxWidth(max(24, tickWidth-8)).Ellipsis("…")
 		}

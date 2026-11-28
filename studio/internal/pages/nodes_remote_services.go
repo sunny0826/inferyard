@@ -50,62 +50,72 @@ func (s *viewState) remoteServiceCard(c *ui.Context, node core.NodeSnapshot, ser
 	model := s.serviceModelTitle(c, service)
 	tunnel := s.tunnelForService(node.Record.NodeID, service.ServiceID)
 	runActive := remoteNodeHasActiveJob(node)
+	cols := 3
+	if compactLayout(c) {
+		cols = 1
+	}
 	applyMaterial(c, ui.Column(c.Key("remote-service-"+service.ServiceID)).FillWidth().Gap(t.Density.Stack).
 		Padding(t.Card.Padding), materialCard).Children(func() {
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			modelIconBox(c, s.modelIconHint(model), 30, t.Radius.Inset)
-			ui.Text(c, model).Bold().FontSize(t.Type.CardTitle)
+			ui.Text(c, model).Bold().FontSize(t.Type.CardTitle).MinWidth(0).SingleLine()
 			inlineBadge(c, serviceEngineTitle(service), stateNeutral, badgeOptions{Size: sizeSM})
 			inlineBadge(c, stateLabelFor(contextLocale(c), service.State), engineStateKind(service.State), badgeOptions{Size: sizeSM, Style: badgeDot})
 			ui.Box(c).Grow(1)
-			if node.Online {
-				if outlineIconButton(c, reicon.FileText, tr(c, "nodes.remote.logs")).Clicked() {
-					s.openRemoteServiceLog(node.Record.NodeID, service)
+			studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
+				usageLabel := tr(c, "services.card.action.usage")
+				var usage ui.Element
+				if tunnel == nil {
+					usage = iconButtonWithTooltip(c, tr(c, "nodes.remote.usage_requires_tunnel"), func() ui.Element {
+						return outlineIconButton(c, reicon.Code, "").Label(usageLabel).Disabled(true)
+					})
+				} else {
+					usage = outlineIconButton(c, reicon.Code, usageLabel)
 				}
-				if dangerIconButton(c, reicon.Square, tr(c, "nodes.remote.stop")).Disabled(s.busy || service.State != "running" || runActive).Clicked() {
-					s.stopRemoteService(node.Record.NodeID, service.ServiceID)
+				if usage.Clicked() && tunnel != nil {
+					apiModel := strings.TrimSpace(service.ServedModel)
+					if apiModel == "" {
+						apiModel = model
+					}
+					s.openServiceUsageDrawer(tunnel.LocalURL, apiModel, serviceEngineTitle(service))
 				}
-			}
+				if node.Online {
+					if outlineIconButton(c, reicon.FileText, tr(c, "nodes.remote.logs")).Clicked() {
+						s.openRemoteServiceLog(node.Record.NodeID, service)
+					}
+					if dangerIconButton(c, reicon.Square, tr(c, "nodes.remote.stop")).Disabled(s.busy || service.State != "running" || runActive).Clicked() {
+						s.stopRemoteService(node.Record.NodeID, service.ServiceID)
+					}
+				}
+			})
 		})
-		ui.Grid(c).Columns(3).Gap(t.Density.Row).Children(func() {
+		ui.Grid(c).Columns(cols).Gap(t.Density.Row).Children(func() {
 			serviceMetricTile(c, t.Radius.Inset, tr(c, "nodes.remote.remote_port"), fmt.Sprintf("127.0.0.1:%d", service.Port), "", true)
 			serviceMetricTile(c, t.Radius.Inset, tr(c, "services.card.metric.memory"), serviceMemoryDisplay(c, service), "", true)
 			serviceMetricTile(c, t.Radius.Inset, tr(c, "services.card.metric.status"), stateLabelFor(contextLocale(c), service.State), nodeDisplayName(node), false)
 		})
 		s.remoteTunnelBar(c, node.Record.NodeID, service.ServiceID, service.Port)
-		studioTooltipGroup(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row), func() {
-			usageLabel := tr(c, "services.card.action.usage")
-			usage := outlineIconButton(c, reicon.Code, usageLabel).Disabled(tunnel == nil)
-			if tunnel == nil {
-				usage = iconButtonWithTooltip(c, tr(c, "nodes.remote.usage_requires_tunnel"), func() ui.Element {
-					return outlineIconButton(c, reicon.Code, "").Label(usageLabel).Disabled(true)
-				})
-			}
-			if usage.Clicked() && tunnel != nil {
-				apiModel := strings.TrimSpace(service.ServedModel)
-				if apiModel == "" {
-					apiModel = model
-				}
-				s.openServiceUsageDrawer(tunnel.LocalURL, apiModel, serviceEngineTitle(service))
-			}
-		})
 	})
 }
 
 func (s *viewState) remoteExitNoticeCard(c *ui.Context, notice core.ServiceExitNotice) {
 	t := tokens(c)
 	scale := stateScale(c, stateDanger)
+	innerR := concentricRadius(t.Radius.Surface, t.Card.Padding)
 	ui.Column(c).FillWidth().Gap(t.Density.Row).Padding(t.Card.Padding).Radius(t.Radius.Surface).
 		Background(scale.SubtleBg).Border(1, scale.Border).Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			components.Icon(c, reicon.CircleAlert).Size(16, 16).TextColor(scale.Fg)
+			components.Icon(c, reicon.CircleAlert).Size(16, 16).Shrink(0).TextColor(scale.Fg)
 			ui.Text(c, tr(c, "nodes.remote.exit_title")).Bold().TextColor(scale.Fg)
 		})
 		if notice.ExitCode != nil {
-			ui.Text(c, trf(c, "nodes.remote.exit_code", "code", *notice.ExitCode)).FontFeatures("tnum").TextColor(scale.Fg)
+			ui.Text(c, trf(c, "nodes.remote.exit_code", "code", *notice.ExitCode)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(scale.Fg)
 		}
 		if len(notice.LogTail) > 0 {
-			ui.Text(c, strings.Join(notice.LogTail, "\n")).FontSize(t.Type.Caption).Selectable()
+			ui.Column(c).FillWidth().Padding(t.Density.Row).Radius(innerR).
+				Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).Children(func() {
+				ui.Text(c, strings.Join(notice.LogTail, "\n")).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Selectable()
+			})
 		}
 	})
 }

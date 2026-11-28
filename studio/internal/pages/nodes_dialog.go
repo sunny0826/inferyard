@@ -20,10 +20,10 @@ func (s *viewState) nodesDialogs(c *ui.Context) {
 func (s *viewState) addNodeDialog(c *ui.Context) {
 	t := tokens(c)
 	studioDialog(c.Key("add-node-dialog"), &s.nodes.addOpen, components.DialogOptions{Label: tr(c, "nodes.dialog.title")}, func(panel ui.Element) {
-		panel.Width(c.Theme().Space(150)).Children(func() {
+		panel.Width(c.Theme().Space(150)).MaxWidthPercent(92).Children(func() {
 			ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
 				heading(c, tr(c, "nodes.dialog.title"), 2)
-				components.Tabs(c, &s.nodes.addMode, components.TabsUnderline, tr(c, "nodes.dialog.pair_tab"), tr(c, "nodes.dialog.ssh_tab"))
+				studioUnderlineTabs(c, &s.nodes.addMode, tr(c, "nodes.dialog.pair_tab"), tr(c, "nodes.dialog.ssh_tab"))
 				if s.nodes.addMode == 1 {
 					s.sshNodeForm(c)
 				} else {
@@ -51,8 +51,15 @@ func (s *viewState) pairingNodeForm(c *ui.Context) {
 			command = session.UnixCommand
 		}
 	}
-	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		ui.Text(c, command).FontSize(t.Type.Caption).FontFeatures("tnum").Selectable().Grow(1).MinWidth(0)
+	applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
+		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.Control), materialSunken).Children(func() {
+		cmdDisplay := command
+		cmdColor := t.Color.FgPrimary
+		if cmdDisplay == "" {
+			cmdDisplay = "—"
+			cmdColor = t.Color.FgTertiary
+		}
+		ui.Text(c, cmdDisplay).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(cmdColor).Selectable().Grow(1).MinWidth(0)
 		if outlineIconButton(c, reicon.Copy, tr(c, "nodes.pairing.copy")).Disabled(command == "").Clicked() {
 			s.copyNodeText(c, command)
 		}
@@ -60,11 +67,17 @@ func (s *viewState) pairingNodeForm(c *ui.Context) {
 	errorView(c, s.nodes.pairingErr)
 	if session := s.nodes.pairing; session != nil {
 		applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
-			Padding(t.Density.Stack).Radius(t.Radius.Control), materialSunken).Children(func() {
-			components.Icon(c, reicon.Activity).Size(15, 15).TextColor(stateColor(c, stateActive))
-			ui.Text(c, trf(c, "nodes.pairing.waiting", "code", session.FormattedCode)).FontSize(t.Type.Caption).Grow(1)
+			Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.Control), materialSunken).Children(func() {
+			components.Icon(c, reicon.Activity).Size(15, 15).Shrink(0).TextColor(stateColor(c, stateActive))
+			ui.Text(c, trf(c, "nodes.pairing.waiting", "code", session.FormattedCode)).FontSize(t.Type.Caption).FontFeatures("tnum").Grow(1).MinWidth(0)
 		})
 	}
+	ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+	ui.Row(c).FillWidth().Justify(ui.End).Gap(t.Density.Row).Children(func() {
+		if button(c, tr(c, "common.close")).Clicked() {
+			s.nodes.addOpen = false
+		}
+	})
 }
 
 func (s *viewState) pairingConfirmationCard(c *ui.Context, request remote.PairingRequest) {
@@ -72,13 +85,14 @@ func (s *viewState) pairingConfirmationCard(c *ui.Context, request remote.Pairin
 	applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Row).Padding(t.Density.Stack).
 		Radius(t.Radius.Control).Border(1, stateColor(c, stateSuccess)), materialSunken).Children(func() {
 		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			components.Icon(c, reicon.Monitor).Size(18, 18).TextColor(stateColor(c, stateSuccess))
-			ui.Text(c, request.Hostname).Bold().FontSize(t.Type.CardTitle).Grow(1)
+			components.Icon(c, reicon.Monitor).Size(18, 18).Shrink(0).TextColor(stateColor(c, stateSuccess))
+			ui.Text(c, request.Hostname).Bold().FontSize(t.Type.CardTitle).Grow(1).MinWidth(0).SingleLine()
 			inlineBadge(c, request.FormattedCode, stateInfo, badgeOptions{Size: sizeSM})
 		})
 		ui.Text(c, request.OS+" "+request.Arch+" · "+request.HardwareSummary).FontSize(t.Type.Caption)
-		ui.Text(c, trf(c, "nodes.pairing.source", "ip", request.SourceIP, "network", request.SourceHint)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		ui.Text(c, trf(c, "nodes.pairing.source", "ip", request.SourceIP, "network", request.SourceHint)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 	})
+	ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
 	ui.Row(c).FillWidth().Justify(ui.End).Gap(t.Density.Row).Children(func() {
 		if dangerButton(c, tr(c, "nodes.pairing.reject")).Clicked() {
 			s.submitPairingDecision(request, remote.PairingReject)
@@ -101,7 +115,11 @@ func (s *viewState) sshNodeForm(c *ui.Context) {
 	ui.Field(c, tr(c, "nodes.ssh.password_label"), func() {
 		studioTextBox(c, &s.nodes.sshPassword).FillWidth().Password().Label(tr(c, "nodes.ssh.password_label")).Placeholder(tr(c, "nodes.ssh.password_placeholder"))
 	})
+	ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
 	ui.Row(c).FillWidth().Justify(ui.End).Gap(t.Density.Row).Children(func() {
+		if button(c, tr(c, "common.cancel")).Clicked() {
+			s.nodes.addOpen = false
+		}
 		if primaryActionButton(c, tr(c, "nodes.ssh.connect"), s.actionBusy("connect-ssh-node")).
 			Disabled(s.busy || s.nodes.sshParsed == nil).Clicked() {
 			s.connectSSHNode()
@@ -115,35 +133,58 @@ func (s *viewState) hostKeyDialog(c *ui.Context) {
 	}
 	request := s.nodes.hostKeyRequests[0]
 	open := true
-	studioDialog(c.Key("hostkey-dialog"), &open, components.DialogOptions{Label: tr(c, "nodes.hostkey.title")}, func(panel ui.Element) {
+	studioDialog(c.Key("hostkey-dialog"), &open, components.DialogOptions{
+		Label:                tr(c, "nodes.hostkey.title"),
+		DisableBackdropClose: true,
+		DisableEscapeClose:   true,
+	}, func(panel ui.Element) {
 		t := tokens(c)
-		panel.Width(c.Theme().Space(130)).Children(func() {
+		panel.Width(c.Theme().Space(135)).MaxWidthPercent(92).Children(func() {
 			ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
 				heading(c, tr(c, "nodes.hostkey.title"), 2)
-				keyValueRow(c, tr(c, "nodes.hostkey.host_port"), fmt.Sprintf("%s:%d", request.Host, request.Port), true)
-				keyValueRow(c, tr(c, "nodes.hostkey.key_type"), request.KeyType, true)
-				keyValueRow(c, tr(c, "nodes.hostkey.fingerprint"), request.FingerprintSHA256, true)
-				if primaryButton(c, tr(c, "nodes.hostkey.trust_save")).Clicked() {
-					s.submitHostKeyDecision(request, remote.HostKeyTrustAndSave)
-				}
-				if button(c, tr(c, "nodes.hostkey.trust_once")).Clicked() {
-					s.submitHostKeyDecision(request, remote.HostKeyTrustOnce)
-				}
-				if dangerButton(c, tr(c, "nodes.hostkey.reject")).Clicked() {
-					s.submitHostKeyDecision(request, remote.HostKeyReject)
-				}
+				applyMaterial(c, ui.Column(c).FillWidth().Gap(0).Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.Inset), materialSunken).Children(func() {
+					keyValueRow(c, tr(c, "nodes.hostkey.host_port"), fmt.Sprintf("%s:%d", request.Host, request.Port), true)
+					reportKVDivider(c)
+					keyValueRow(c, tr(c, "nodes.hostkey.key_type"), request.KeyType, true)
+					reportKVDivider(c)
+					keyValueRow(c, tr(c, "nodes.hostkey.fingerprint"), request.FingerprintSHA256, true)
+				})
+				ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+				ui.Row(c).FillWidth().Wrap().Justify(ui.End).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+					if dangerButton(c, tr(c, "nodes.hostkey.reject")).Clicked() {
+						s.submitHostKeyDecision(request, remote.HostKeyReject)
+					}
+					if button(c, tr(c, "nodes.hostkey.trust_once")).Clicked() {
+						s.submitHostKeyDecision(request, remote.HostKeyTrustOnce)
+					}
+					if primaryButton(c, tr(c, "nodes.hostkey.trust_save")).Clicked() {
+						s.submitHostKeyDecision(request, remote.HostKeyTrustAndSave)
+					}
+				})
 			})
 		})
 	})
 }
 
 func (s *viewState) remoteLogDialog(c *ui.Context) {
+	t := tokens(c)
 	studioDialog(c.Key("remote-log-dialog"), &s.nodes.logOpen, components.DialogOptions{Label: s.nodes.logTitle}, func(panel ui.Element) {
-		panel.Width(c.Theme().Space(150)).Children(func() {
-			ui.Column(c).Gap(tokens(c).Density.Stack).Children(func() {
+		panel.Width(c.Theme().Space(150)).MaxWidthPercent(92).Children(func() {
+			ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
 				heading(c, s.nodes.logTitle, 2)
-				ui.Scroll(c).MaxHeight(360).Children(func() {
-					ui.Text(c, s.nodes.logText).FontSize(tokens(c).Type.Caption).Selectable()
+				applyMaterial(c, ui.Scroll(c).FillWidth().MaxHeight(360), materialSunken).Children(func() {
+					ui.Column(c).FillWidth().Padding(t.Density.Stack).Children(func() {
+						ui.Text(c, s.nodes.logText).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Selectable()
+					})
+				})
+				ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+				ui.Row(c).FillWidth().Justify(ui.End).Gap(t.Density.Row).Children(func() {
+					if outlineButton(c, tr(c, "services.usage.copy")).Disabled(s.nodes.logText == "").Clicked() {
+						s.copyNodeText(c, s.nodes.logText)
+					}
+					if button(c, tr(c, "common.close")).Clicked() {
+						s.nodes.logOpen = false
+					}
 				})
 			})
 		})

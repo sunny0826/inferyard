@@ -82,7 +82,9 @@ func (s *viewState) pageScroll() *ui.ScrollState {
 	if key == "benchmarks" && s.detailID != "" {
 		key = "detail"
 	}
-	if key == "reports" && s.openedReport != nil {
+	if key == "reports" && s.nodes.compareOpen {
+		key = "reports/compare"
+	} else if key == "reports" && s.openedReport != nil {
 		key = "report/" + s.openedReport.reference
 	}
 	if key == "settings" && s.settingsTab == settingsTabAbout {

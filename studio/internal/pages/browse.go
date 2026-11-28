@@ -32,9 +32,9 @@ var (
 
 func (s *viewState) pathField(c *ui.Context, label string, value *string, spec browseSpec) ui.Element {
 	return ui.Field(c, label, func() {
-		ui.Row(c).AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-			studioTextBox(c, value).Grow(1)
-			button(c, tr(c, "browse.button")).Label(trf(c, "browse.button_label", "label", label)).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
+		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+			studioTextBox(c, value).Grow(1).MinWidth(0)
+			button(c, tr(c, "browse.button")).Shrink(0).Label(trf(c, "browse.button_label", "label", label)).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
 				s.browsePath(value, spec)
 			})
 		})

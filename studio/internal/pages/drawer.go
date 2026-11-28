@@ -65,7 +65,7 @@ func drawer(c *ui.Context, open *bool, options drawerOptions, build func(panel u
 	reduceMotion := c.Preferences().ReduceMotion
 	ui.Overlay(c, func() {
 		ui.Box(c).Absolute().Left(0).Top(0).Right(0).Bottom(0).
-			Background(ui.RGBA(0, 0, 0, .18)).
+			Background(t.Color.Backdrop).
 			Transition(drawerFade)
 		back := ui.Row(c).Absolute().Left(0).Top(0).Right(0).Bottom(0).
 			Justify(ui.End).Modal()
@@ -94,9 +94,9 @@ func drawer(c *ui.Context, open *bool, options drawerOptions, build func(panel u
 			panel.Children(func() {
 				if options.Title != "" {
 					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-						heading(c, options.Title, 2).Grow(1)
+						heading(c, options.Title, 2).Grow(1).MinWidth(0)
 						closeBtn := components.Button(c, "", components.ButtonGhost).
-							Size(28, 28).Padding(0).Radius(t.Radius.Control).
+							Size(28, 28).Shrink(0).Padding(0).Radius(t.Radius.Control).
 							Label(trf(c, "common.drawer.close_title", "title", options.Title))
 						closeBtn.Children(func() {
 							components.Icon(c, reicon.X).Size(16, 16).TextColor(t.Color.FgSecondary).Role(ui.RoleNone)

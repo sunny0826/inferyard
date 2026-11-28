@@ -92,9 +92,9 @@ func (s *viewState) downloadsEnginesTab(c *ui.Context) {
 			ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
 				field(c, tr(c, "downloads.engines.custom_url_label"), &st.customEngineURL).
 					Error(downloadURLError(st.customEngineURL))
-				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				ui.Row(c).FillWidth().Wrap().Justify(ui.End).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 					trimmed := strings.TrimSpace(st.customEngineURL)
-					button(c, tr(c, "downloads.engines.download_verify")).Disabled(s.busy || trimmed == "" || downloadURLError(trimmed) != "").OnClick(func() {
+					primaryButton(c, tr(c, "downloads.engines.download_verify")).Disabled(s.busy || trimmed == "" || downloadURLError(trimmed) != "").OnClick(func() {
 						s.acquireEngine(trimmed, "")
 					})
 				})

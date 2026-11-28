@@ -133,7 +133,12 @@ func parseDeviceSnapshot(raw json.RawMessage) (deviceObject, error) {
 
 func deviceHardware(c *ui.Context, hw deviceObject) {
 	card(c, tr(c, "device.hardware.title"), func() {
-		deviceRow(c, tr(c, "device.hardware.cpu"), trf(c, "device.hardware.cpu_value", "model", deviceMeasurementFor(c, hw, "cpu_model", false), "cores", deviceMeasurementFor(c, hw, "logical_cpus", false)))
+		deviceHardwareRows(c, hw)
+	})
+}
+
+func deviceHardwareRows(c *ui.Context, hw deviceObject) {
+	deviceRow(c, tr(c, "device.hardware.cpu"), trf(c, "device.hardware.cpu_value", "model", deviceMeasurementFor(c, hw, "cpu_model", false), "cores", deviceMeasurementFor(c, hw, "logical_cpus", false)))
 		memory := trf(c, "device.hardware.memory_value", "total", deviceMeasurementFor(c, hw, "memory_total_bytes", true), "available", deviceMeasurementFor(c, hw, "memory_available_bytes", true))
 		deviceRow(c, tr(c, "device.hardware.memory"), memory)
 		gpu := hw.object("gpu")
@@ -193,5 +198,4 @@ func deviceHardware(c *ui.Context, hw deviceObject) {
 			architecture = trf(c, "device.hardware.architecture_apple_silicon", "arch", architecture)
 		}
 		deviceRow(c, tr(c, "device.hardware.architecture"), architecture)
-	})
 }

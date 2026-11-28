@@ -31,33 +31,48 @@ func configuredValue(value string) string {
 	return value
 }
 
+func applyDeferredButtonFace(b ui.Element, rad float32, hoverBg, pressedBg, hoverBorder, pressedBorder ui.Color) {
+	var faceBg, faceBorder ui.Color
+	resolved := false
+	b.Draw(func(p *ui.Painter, r ui.Rect) {
+		if !resolved {
+			resolved = true
+			if b.Valid() && !b.IsDisabled() {
+				switch {
+				case b.Pressed():
+					faceBg, faceBorder = pressedBg, pressedBorder
+				case b.Hovered():
+					faceBg, faceBorder = hoverBg, hoverBorder
+				}
+			}
+		}
+		if faceBg.A > 0 {
+			p.Fill(r, faceBg, rad)
+		}
+		if faceBorder.A > 0 {
+			inset := ui.Rect{X: r.X + 0.5, Y: r.Y + 0.5, W: max(0, r.W-1), H: max(0, r.H-1)}
+			p.Stroke(inset, faceBorder, max(0, rad-0.5), 1)
+		}
+	})
+}
+
 func applySecondaryButtonPalette(c *ui.Context, b ui.Element) ui.Element {
 	if c.Preferences().HighContrast {
 		return b
 	}
+	t := tokens(c)
 	bp := paletteFor(c.Theme().Dark).buttons
 	if bp.secondaryBg.A == 0 {
 		return b
 	}
-	bg := bp.secondaryBg
-	border := bp.secondaryBorder
-	if !b.IsDisabled() {
-		switch {
-		case b.Pressed():
-			bg = bp.secondaryPressed
-			if bp.secondaryBorderHover.A > 0 {
-				border = bp.secondaryBorderHover
-			}
-		case b.Hovered():
-			bg = bp.secondaryHover
-			if bp.secondaryBorderHover.A > 0 {
-				border = bp.secondaryBorderHover
-			}
-		}
+	hovBorder := bp.secondaryBorder
+	if bp.secondaryBorderHover.A > 0 {
+		hovBorder = bp.secondaryBorderHover
 	}
-	b.Background(bg).TextColor(c.Theme().Text).Border(1, border)
+	b.Background(bp.secondaryBg).TextColor(c.Theme().Text).Border(1, bp.secondaryBorder)
+	applyDeferredButtonFace(b, t.Radius.Control, bp.secondaryHover, bp.secondaryPressed, hovBorder, hovBorder)
 	if !b.IsDisabled() {
-		applyShadow(b, tokens(c).Elevation.XS)
+		applyShadow(b, t.Elevation.XS)
 	}
 	return b
 }
@@ -140,27 +155,17 @@ func dangerButton(c *ui.Context, label string) ui.Element {
 	danger := t.State.Danger
 	b := styleButtonSize(c, components.Button(c, label, components.ButtonOutline), sizeMD)
 	if bp := paletteFor(theme.Dark).buttons; bp.dangerBg.A > 0 && !c.Preferences().HighContrast {
-		bg := bp.dangerBg
-		if !b.IsDisabled() {
-			switch {
-			case b.Pressed():
-				bg = bp.dangerPressed
-			case b.Hovered():
-				bg = bp.dangerHover
-			}
-		}
-		return b.Background(bg).TextColor(bp.dangerFg).Border(1, bp.dangerBorder)
+		b.Background(bp.dangerBg).TextColor(bp.dangerFg).Border(1, bp.dangerBorder)
+		applyDeferredButtonFace(b, t.Radius.Control, bp.dangerHover, bp.dangerPressed, bp.dangerBorder, bp.dangerBorder)
+		return b
 	}
-	background := theme.Surface.Mix(danger, .10)
-	if !b.IsDisabled() {
-		switch {
-		case b.Pressed():
-			background = theme.Surface.Mix(danger, .28)
-		case b.Hovered():
-			background = theme.Surface.Mix(danger, .18)
-		}
-	}
-	return b.Background(background).TextColor(danger.Mix(theme.Text, .2)).Border(1, danger.Alpha(.7))
+	baseBg := theme.Surface.Mix(danger, .10)
+	hovBg := theme.Surface.Mix(danger, .18)
+	prsBg := theme.Surface.Mix(danger, .28)
+	bdr := danger.Alpha(.7)
+	b.Background(baseBg).TextColor(danger.Mix(theme.Text, .2)).Border(1, bdr)
+	applyDeferredButtonFace(b, t.Radius.Control, hovBg, prsBg, bdr, bdr)
+	return b
 }
 
 func quietDangerButton(c *ui.Context, label string) ui.Element {
@@ -178,27 +183,21 @@ func quietDangerButton(c *ui.Context, label string) ui.Element {
 	if c.Preferences().HighContrast {
 		border = danger
 	}
-	if !b.IsDisabled() {
-		switch {
-		case b.Pressed():
-			if bp.dangerPressed.A > 0 && !c.Preferences().HighContrast {
-				background = bp.dangerPressed
-				border = bp.dangerBorder
-			} else {
-				background = theme.Surface.Mix(danger, .20)
-				border = danger.Alpha(.70)
-			}
-		case b.Hovered():
-			if bp.dangerBg.A > 0 && !c.Preferences().HighContrast {
-				background = bp.dangerBg
-				border = bp.dangerBorder
-			} else {
-				background = theme.Surface.Mix(danger, .10)
-				border = danger.Alpha(.55)
-			}
-		}
+	hovBg := theme.Surface.Mix(danger, .10)
+	prsBg := theme.Surface.Mix(danger, .20)
+	hovBorder := danger.Alpha(.55)
+	prsBorder := danger.Alpha(.70)
+	if bp.dangerBg.A > 0 && !c.Preferences().HighContrast {
+		hovBg = bp.dangerBg
+		hovBorder = bp.dangerBorder
 	}
-	return b.Background(background).TextColor(fg).Border(1, border)
+	if bp.dangerPressed.A > 0 && !c.Preferences().HighContrast {
+		prsBg = bp.dangerPressed
+		prsBorder = bp.dangerBorder
+	}
+	b.Background(background).TextColor(fg).Border(1, border)
+	applyDeferredButtonFace(b, t.Radius.Control, hovBg, prsBg, hovBorder, prsBorder)
+	return b
 }
 
 func activitySpinner(c *ui.Context, label string) ui.Element {

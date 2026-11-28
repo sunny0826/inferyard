@@ -43,7 +43,7 @@
   "services.recent.port_fixed": "Port {port}",
   "services.recent.memory_insufficient": "Insufficient memory (needs {est} GiB, {remaining} GiB left)",
   "services.recent.action.params": "Params",
-  "services.recent.action.start": "▶ Start",
+  "services.recent.action.start": "Start",
   "services.discovered.external_badge": "External",
   "services.discovered.models_count": "{count, plural, one {{count} model} other {{count} models}}",
   "services.discovered.copy_url": "Copy URL",

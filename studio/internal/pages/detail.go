@@ -92,15 +92,20 @@ func (s *viewState) detailView(c *ui.Context) {
 			ui.Column(c).Grow(1).MinWidth(180).Gap(2).Children(func() {
 				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tok.Density.Row).Children(func() {
 					heading(c, text(t.Bundle), 2)
+					locLabel := taskLabelFor(contextLocale(c), t)
 					if active {
-						ui.Row(c).AlignItems(ui.Center).Gap(tok.Density.Tight).
+						pill := ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(tok.Density.Tight).
 							Padding(tok.Density.Tight, tok.Density.Row).Radius(tok.Radius.Full).
-							Background(scale.SubtleBg).Label(taskLabel(t)).Children(func() {
+							Background(scale.SubtleBg).Label(locLabel)
+						if c.Preferences().HighContrast {
+							pill.Background(tok.Color.Surface).Border(1, scale.Border)
+						}
+						pill.Children(func() {
 							ambientLifecycleDot(c, scale, true)
-							ui.Text(c, taskLabel(t)).FontSize(max(11, tok.Type.ShellLabel)).TextColor(scale.Fg).SingleLine()
+							ui.Text(c, locLabel).FontSize(c.Theme().Rem(.86)).FontFeatures("tnum").TextColor(scale.Fg).SingleLine()
 						})
 					} else {
-						inlineBadge(c, taskLabel(t), kind, badgeOptions{Size: sizeSM, Style: badgeSoft})
+						inlineBadge(c, locLabel, kind, badgeOptions{Size: sizeSM, Style: badgeSoft})
 					}
 				})
 				ui.Text(c, t.TaskId).FontSize(tok.Type.Caption).FontFeatures("tnum").TextColor(tok.Color.FgSecondary).SingleLine().Selectable()
@@ -193,10 +198,10 @@ func (s *viewState) inlineDetailCasesCard(c *ui.Context, d *core.RunTaskDetail) 
 				passCount, failCount := countCaseOutcomes(d.Progress.Cases)
 				if passCount > 0 {
 					passKey := "pass"
-					inlineBadge(c, fmt.Sprintf("%s %d", reportQuality(&passKey), passCount), stateSuccess, badgeOptions{Size: sizeSM, Style: badgeSoft})
+					inlineBadge(c, fmt.Sprintf("%s %d", reportQualityFor(c, &passKey), passCount), stateSuccess, badgeOptions{Size: sizeSM, Style: badgeSoft})
 				}
 				if failCount > 0 {
-					inlineBadge(c, fmt.Sprintf("%s %d", stateLabel("failed"), failCount), stateDanger, badgeOptions{Size: sizeSM, Style: badgeSoft})
+					inlineBadge(c, fmt.Sprintf("%s %d", stateLabelFor(contextLocale(c), "failed"), failCount), stateDanger, badgeOptions{Size: sizeSM, Style: badgeSoft})
 				}
 			}
 		})
@@ -297,10 +302,10 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 			FontSize(tok.Type.Caption).FontFeatures("tnum").TextColor(tok.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine()
 		if passCount > 0 {
 			passKey := "pass"
-			inlineBadge(c, fmt.Sprintf("%s %d", reportQuality(&passKey), passCount), stateSuccess, badgeOptions{Size: sizeSM, Style: badgeSoft})
+			inlineBadge(c, fmt.Sprintf("%s %d", reportQualityFor(c, &passKey), passCount), stateSuccess, badgeOptions{Size: sizeSM, Style: badgeSoft})
 		}
 		if failCount > 0 {
-			inlineBadge(c, fmt.Sprintf("%s %d", stateLabel("failed"), failCount), stateDanger, badgeOptions{Size: sizeSM, Style: badgeSoft})
+			inlineBadge(c, fmt.Sprintf("%s %d", stateLabelFor(contextLocale(c), "failed"), failCount), stateDanger, badgeOptions{Size: sizeSM, Style: badgeSoft})
 		}
 	})
 
@@ -340,27 +345,28 @@ func (s *viewState) detailCasesTable(c *ui.Context, p *core.RunProgress) {
 	start := s.casesTablePage * detailCasePageSize
 	visibleCases := p.Cases[start:min(start+detailCasePageSize, totalCases)]
 	columns := []ui.TableColumn{
-		{Title: tr(c, "detail.col.case"), MinWidth: 180},
-		{Title: tr(c, "detail.col.status"), MinWidth: 120},
-		{Title: tr(c, "detail.col.category"), MinWidth: 100},
-		{Title: tr(c, "detail.col.quality"), MinWidth: 96},
-		{Title: tr(c, "detail.col.duration"), MinWidth: 96},
-		{Title: tr(c, "detail.col.error_category"), MinWidth: 150},
+		{Title: tr(c, "detail.col.case"), MinWidth: 160},
+		{Title: tr(c, "detail.col.status"), MinWidth: 108},
+		{Title: tr(c, "detail.col.category"), MinWidth: 96},
+		{Title: tr(c, "detail.col.quality"), MinWidth: 88},
+		{Title: tr(c, "detail.col.duration"), MinWidth: 88},
+		{Title: tr(c, "detail.col.error_category"), MinWidth: 132},
 	}
 	selectableTable(&s.casesTable, func(i int) any { return visibleCases[i].CaseId }, func(i int) string { return visibleCases[i].CaseId })
 	tableLabel := tr(c, "detail.cases_table_label")
+	loc := contextLocale(c)
 	applyMaterial(c, ui.Box(c).FillWidth().MinWidth(0).Clip(), materialInset).Children(func() {
-		pageTable(c, &s.casesTable, tableLabel, columns, len(visibleCases), func(row, col int) {
+		tbl := pageTable(c, &s.casesTable, tableLabel, columns, len(visibleCases), func(row, col int) {
 			item := visibleCases[row]
 			switch col {
 			case 0:
 				ui.Text(c, item.CaseId).FontFeatures("tnum").SingleLine().Selectable()
 				return
 			case 1:
-				inlineBadge(c, stateLabel(item.State), caseStateKind(item.State), badgeOptions{Size: sizeSM, Style: badgeDot})
+				inlineBadge(c, stateLabelFor(loc, item.State), caseStateKind(item.State), badgeOptions{Size: sizeSM, Style: badgeDot})
 				return
 			case 2:
-				catText := optionalText(item.Category)
+				catText := optionalTextFor(c, item.Category)
 				catColor := tok.Color.FgSecondary
 				if item.Category == nil || *item.Category == "" {
 					catColor = tok.Color.FgTertiary
@@ -368,7 +374,7 @@ func (s *viewState) detailCasesTable(c *ui.Context, p *core.RunProgress) {
 				ui.Text(c, catText).TextColor(catColor).SingleLine().Selectable()
 				return
 			case 3:
-				qText := caseQuality(item)
+				qText := caseQualityFor(c, item)
 				switch emptyText(item.QualityState) {
 				case "pass", "passed":
 					inlineBadge(c, qText, stateSuccess, badgeOptions{Size: sizeSM, Style: badgeSoft})
@@ -389,18 +395,23 @@ func (s *viewState) detailCasesTable(c *ui.Context, p *core.RunProgress) {
 				ui.Text(c, durText).FontFeatures("tnum").TextColor(durColor).SingleLine().Selectable()
 				return
 			case 5:
-				errText := caseErrorCategory(item)
+				errText := caseErrorCategoryFor(c, item)
 				errColor := tok.Color.FgTertiary
 				if item.ErrorCategory != nil && *item.ErrorCategory != "" {
 					errColor = stateScale(c, stateDanger).Fg
 				}
 				ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tok.Density.Tight).Children(func() {
 					ui.Text(c, errText).TextColor(errColor).Grow(1).MinWidth(0).SingleLine().Selectable()
-					components.Icon(c, reicon.ChevronRight).Size(14, 14).TextColor(tok.Color.FgTertiary).Role(ui.RoleNone)
+					components.Icon(c, reicon.ChevronRight).Size(14, 14).Shrink(0).TextColor(tok.Color.FgTertiary).Role(ui.RoleNone)
 				})
 				return
 			}
-		}).Height(detailCasesTableHeight(c.Theme(), len(visibleCases))).Label(tableLabel)
+		}).Label(tableLabel)
+		if len(visibleCases) == 0 {
+			tbl.Height(detailCasesTableHeight(c.Theme(), 0))
+		} else {
+			tbl.MaxHeight(detailCasesTableMaxHeight)
+		}
 	})
 	if s.casesTable.clicked || s.casesTable.submitted {
 		if idx := selectedRow(&s.casesTable, len(visibleCases)); idx >= 0 {
@@ -432,25 +443,37 @@ func progressHeadline(p *core.RunProgress) string {
 }
 
 func caseQuality(item core.CaseProgress) string {
+	return caseQualityFor(nil, item)
+}
+
+func caseQualityFor(c *ui.Context, item core.CaseProgress) string {
 	if item.QualityState == nil || *item.QualityState == "" {
-		return l10n.TR("detail.missing_value")
+		return tr(c, "detail.missing_value")
 	}
-	return reportQuality(item.QualityState)
+	return reportQualityFor(c, item.QualityState)
 }
 
 func caseErrorCategory(item core.CaseProgress) string {
+	return caseErrorCategoryFor(nil, item)
+}
+
+func caseErrorCategoryFor(c *ui.Context, item core.CaseProgress) string {
 	if item.ErrorCategory != nil && *item.ErrorCategory != "" {
 		return *item.ErrorCategory
 	}
 	if item.State == "failed" {
-		return l10n.TR("detail.missing_value")
+		return tr(c, "detail.missing_value")
 	}
 	return "—"
 }
 
 func optionalText(value *string) string {
+	return optionalTextFor(nil, value)
+}
+
+func optionalTextFor(c *ui.Context, value *string) string {
 	if value == nil || *value == "" {
-		return l10n.TR("detail.missing_value")
+		return tr(c, "detail.missing_value")
 	}
 	return *value
 }

@@ -296,7 +296,7 @@ func (s *viewState) polystrataDrawerSetupSection(c *ui.Context, st *downloadsUIS
 	ui.Field(c, tr(c, "downloads.polystrata.drawer.field.model"), func() {
 		ui.Box(c.Key("polystrata-drawer-model-select")).FillWidth().Children(func() {
 			sel := studioSelect(c, &chosenID)
-			sel.Trigger.Label(tr(c, "downloads.polystrata.drawer.select_model")).Value(polystrataDrawerOptionSummary(selected)).Children(func() {
+			sel.Trigger.FillWidth().MinWidth(0).Label(tr(c, "downloads.polystrata.drawer.select_model")).Value(polystrataDrawerOptionSummary(selected)).Children(func() {
 				ui.Text(c, polystrataDrawerOptionSummary(selected)).FontFeatures("tnum").SingleLine()
 			})
 			sel.Popup(func(ui.Element) {

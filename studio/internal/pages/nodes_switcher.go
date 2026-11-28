@@ -51,19 +51,20 @@ func (s *viewState) nodeSwitcher(c *ui.Context) {
 	if !active.Online {
 		kind = stateNeutral
 	}
-	choice.Trigger.Label(tr(c, "nodes.switcher.label")).Padding(t.Density.Row).Children(func() {
-		ui.Column(c).FillWidth().Gap(2).Children(func() {
-			ui.Text(c, tr(c, "nodes.switcher.label")).FontSize(t.Type.ShellLabel).TextColor(t.Color.FgTertiary).SingleLine()
-			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-				ui.Box(c).Size(7, 7).Radius(t.Radius.Full).Background(stateColor(c, kind))
-				ui.Text(c, nodeDisplayName(active)).Bold().FontSize(t.Type.Body).Grow(1).MinWidth(0).SingleLine()
-				components.Icon(c, reicon.ChevronDown).Size(13, 13).TextColor(t.Color.FgSecondary)
+	choice.Trigger.FillWidth().MinWidth(0).Label(tr(c, "nodes.switcher.label")).
+		Padding(t.Density.Row, c.Theme().Space(6), t.Density.Row, t.Density.Stack).
+		Children(func() {
+			ui.Column(c).FillWidth().MinWidth(0).Gap(2).Children(func() {
+				ui.Text(c, tr(c, "nodes.switcher.label")).FontSize(t.Type.ShellLabel).TextColor(t.Color.FgTertiary).SingleLine()
+				ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+					ui.Box(c).Size(7, 7).Shrink(0).Radius(t.Radius.Full).Background(stateColor(c, kind))
+					ui.Text(c, nodeDisplayName(active)).Bold().FontSize(t.Type.Body).Grow(1).MinWidth(0).SingleLine()
+				})
+				if label := nodePlatformLabel(active); label != "" {
+					ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).MinWidth(0).SingleLine()
+				}
 			})
-			if label := nodePlatformLabel(active); label != "" {
-				ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
-			}
 		})
-	})
 	choice.Popup(func(ui.Element) {
 		components.ScrollView(c, components.ScrollViewOptions{}).Label(tr(c, "nodes.switcher.list_aria")).MaxHeight(260).Children(func() {
 			for i, node := range nodes {
@@ -78,7 +79,7 @@ func (s *viewState) nodeSwitcher(c *ui.Context) {
 						if !node.Online {
 							dotKind = stateNeutral
 						}
-						ui.Box(c).Size(7, 7).Radius(t.Radius.Full).Background(stateColor(c, dotKind))
+						ui.Box(c).Size(7, 7).Shrink(0).Radius(t.Radius.Full).Background(stateColor(c, dotKind))
 						ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
 							ui.Text(c, name).FontSize(t.Type.Body).SingleLine()
 							ui.Text(c, nodePlatformLabel(node)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()

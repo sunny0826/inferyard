@@ -207,11 +207,15 @@ func enginePillWithHint(c *ui.Context, label, hint string) {
 		hint = label
 	}
 	scale := stateScale(c, engineIconKind(hint))
-	ui.Row(c).AlignSelf(ui.Center).AlignItems(ui.Center).MinHeight(22).Gap(t.Density.Tight).
+	pill := ui.Row(c).Shrink(0).AlignSelf(ui.Center).AlignItems(ui.Center).MinHeight(22).Gap(t.Density.Tight).
 		Padding(t.Density.Tight, t.Density.Row).Radius(t.Radius.Full).
-		Background(scale.SubtleBg).Children(func() {
+		Background(scale.SubtleBg)
+	if c.Preferences().HighContrast {
+		pill.Border(1, scale.Border)
+	}
+	pill.Children(func() {
 		renderBrandEngineIcon(c, hint, 12, scale.Fg)
-		ui.Text(c, label).FontSize(max(11, t.Type.ShellLabel)).TextColor(scale.Fg).SingleLine()
+		ui.Text(c, label).FontSize(c.Theme().Rem(.86)).FontFeatures("tnum").TextColor(scale.Fg).SingleLine()
 	})
 }
 

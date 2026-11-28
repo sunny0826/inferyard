@@ -178,7 +178,7 @@ func (s *viewState) customModelURLFold(c *ui.Context, st *downloadsUIState) {
 			tokenOK := tokenNameError(s.tokenEnv) == ""
 			urlValid := trimmed != "" && customModelURLError(trimmed) == "" && tokenOK
 			canResolve := !s.busy && !resState.resolving && trimmed != "" && core.IsResolvableModelURL(trimmed) && tokenOK
-			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			ui.Row(c).FillWidth().Wrap().Justify(ui.End).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				outlineButton(c, tr(c, "downloads.models.resolve_url")).Disabled(!canResolve).OnClick(func() {
 					s.triggerModelResolve(resState, trimmed, tokenEnv)
 				})

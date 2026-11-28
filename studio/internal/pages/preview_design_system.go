@@ -99,12 +99,31 @@ func (p *previewSession) dsHeaderCard(c *ui.Context, spec studioAccentSpec) {
 				heading(c, tr(c, "preview.ds.title"), 1)
 				ui.Text(c, tr(c, spec.descKey)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			})
-			ui.Row(c).AlignItems(ui.End).Gap(t.Density.Row).Children(func() {
+			ui.Row(c).Wrap().AlignItems(ui.End).Gap(t.Density.Row).Children(func() {
+				prevFont := p.fontSizeMode
+				fontOpts := make([]components.NativeSelectOption[string], 0, len(studioFontSizeSpecs))
+				for _, fspec := range studioFontSizeSpecs {
+					fontOpts = append(fontOpts, components.NativeSelectOption[string]{
+						Label: tr(c, fspec.labelKey),
+						Value: fspec.id,
+					})
+				}
+				ui.Box(c).MinWidth(296).Children(func() {
+					previewCompactSegmentedField(c, tr(c, "settings.appearance.font_size_label"), &p.fontSizeMode, fontOpts)
+				})
+				if p.fontSizeMode != prevFont {
+					p.syncStateFontSize()
+					if p.win != nil {
+						p.win.Invalidate()
+					}
+				}
 				prevTheme := p.themeMode
-				previewCompactSegmentedField(c, tr(c, "preview.theme.label"), &p.themeMode, []components.NativeSelectOption[int]{
-					{Label: tr(c, "preview.theme.system"), Value: 0},
-					{Label: tr(c, "preview.theme.light"), Value: 1},
-					{Label: tr(c, "preview.theme.dark"), Value: 2},
+				ui.Box(c).MinWidth(184).Children(func() {
+					previewCompactSegmentedField(c, tr(c, "preview.theme.label"), &p.themeMode, []components.NativeSelectOption[int]{
+						{Label: tr(c, "preview.theme.system"), Value: 0},
+						{Label: tr(c, "preview.theme.light"), Value: 1},
+						{Label: tr(c, "preview.theme.dark"), Value: 2},
+					})
 				})
 				if p.themeMode != prevTheme {
 					p.syncStateTheme()
@@ -162,6 +181,9 @@ func (p *previewSession) dsHeaderCard(c *ui.Context, spec studioAccentSpec) {
 			if inlineButton(c, components.ButtonOutline, tr(c, "nav.library")).Clicked() {
 				p.state.selectPage("library")
 			}
+			if inlineButton(c, components.ButtonOutline, tr(c, "nav.reports")).Clicked() {
+				p.state.selectPage("reports")
+			}
 			if inlineButton(c, components.ButtonOutline, tr(c, "nav.settings")).Clicked() {
 				p.state.selectPage("settings")
 			}
@@ -208,11 +230,15 @@ func (p *previewSession) dsButtonsCard(c *ui.Context, pal paletteColors) {
 			dsSolidDangerButton(c, tr(c, "preview.ds.btn.danger_solid"), pal)
 		})
 
-		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			leadingIconButton(c, components.ButtonPrimary, reicon.Play, tr(c, "preview.ds.btn.icon_start"))
 			leadingIconButton(c, components.ButtonSecondary, reicon.RefreshCw, tr(c, "preview.ds.btn.icon_refresh"))
 			trailingIconButton(c, components.ButtonOutline, tr(c, "preview.ds.btn.icon_external"), reicon.ArrowUpRight)
 			trailingIconButton(c, components.ButtonGhost, tr(c, "preview.ds.btn.icon_next"), reicon.ChevronRight)
+			primaryIconButton(c, reicon.Play, tr(c, "preview.ds.btn.primary"))
+			outlineIconButton(c, reicon.SlidersHorizontal, tr(c, "preview.ds.btn.outline"))
+			dangerIconButton(c, reicon.Trash, tr(c, "preview.ds.btn.danger_soft"))
+			refreshIconButton(c, tr(c, "preview.ds.btn.icon_refresh"), false)
 		})
 
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {

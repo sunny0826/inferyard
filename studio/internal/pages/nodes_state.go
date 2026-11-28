@@ -156,6 +156,31 @@ func (s *viewState) onlineRemoteNodes() []core.NodeSnapshot {
 	return out
 }
 
+func (s *viewState) hasCachedRemoteReports() bool {
+	for _, report := range s.nodes.unifiedReports {
+		if report.IsRemote {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *viewState) resetReportCompare() {
+	s.nodes.compareOpen, s.nodes.comparePickerOpen, s.nodes.compareLoading = false, false, false
+	s.nodes.comparison, s.nodes.compareErr = nil, nil
+	s.nodes.compareLeftRef, s.nodes.compareRightRef = "", ""
+}
+
+func (s *viewState) dropLocalUnifiedReports() {
+	kept := s.nodes.unifiedReports[:0]
+	for _, report := range s.nodes.unifiedReports {
+		if report.IsRemote {
+			kept = append(kept, report)
+		}
+	}
+	s.nodes.unifiedReports = kept
+}
+
 func (s *viewState) syncCachedRemoteReportStates() {
 	online := map[string]bool{}
 	for _, node := range s.nodes.snapshots {

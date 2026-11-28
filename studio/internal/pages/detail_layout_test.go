@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -8,35 +9,67 @@ import (
 	"inferyard/studio/internal/l10n"
 )
 
+func renderDetailCasesBounds(t *testing.T, rows int) (viewport, table ui.Rect) {
+	t.Helper()
+	cases := make([]core.CaseProgress, rows)
+	for i := range cases {
+		cases[i] = core.CaseProgress{CaseId: fmt.Sprintf("case-%03d", i+1), State: "done", QualityState: ptr("pass")}
+	}
+	s := readyState("benchmarks")
+	s.detailID = "task-1"
+	s.detail = &core.RunTaskDetail{
+		Task:     core.RunTask{TaskId: "task-1", State: "running", Bundle: ptr("zh-core")},
+		Progress: &core.RunProgress{Done: int64(rows), Total: ptr(int64(max(1, rows))), Cases: cases},
+	}
+	tt := ui.NewTester(s.view, 1120, 900)
+	tt.Frame()
+	label := l10n.TR("detail.cases_table_label")
+	var hasViewport, hasTable bool
+	for _, item := range tt.AccessAll() {
+		if item.Name != label {
+			continue
+		}
+		if item.Role == ui.RoleTable {
+			table, hasTable = item.Bounds, true
+		} else {
+			viewport, hasViewport = item.Bounds, true
+		}
+	}
+	if !hasViewport || !hasTable {
+		t.Fatalf("cases viewport/table missing (viewport=%v table=%v): %v", hasViewport, hasTable, tt.Texts())
+	}
+	return viewport, table
+}
+
 func TestDetailCasesTableHeightCompactForFewRows(t *testing.T) {
-	theme := ui.LightTheme()
-	const rows = 2
-	got := detailCasesTableHeight(theme, rows)
-	need := theme.Space(8) + 1 + float32(rows)*theme.Space(8)
-	if got < need {
-		t.Fatalf("2-row table height %.1f clips its rows, want at least %.1f", got, need)
+	viewport, table := renderDetailCasesBounds(t, 2)
+	if viewport.H < 80 || viewport.H < table.H {
+		t.Fatalf("2-row viewport height %.1f clips table height %.1f", viewport.H, table.H)
 	}
-	if got >= detailCasesTableMaxHeight {
-		t.Fatalf("2-row table height %.1f should stay well below the %.0f cap", got, detailCasesTableMaxHeight)
-	}
-	if got > 160 {
-		t.Fatalf("2-row table height %.1f leaves too much blank space", got)
+	if viewport.H >= detailCasesTableMaxHeight || viewport.H > 160 {
+		t.Fatalf("2-row viewport height %.1f should shrink-wrap well below %.0f", viewport.H, detailCasesTableMaxHeight)
 	}
 }
 
 func TestDetailCasesTableHeightKeepsOneRowWhenEmpty(t *testing.T) {
 	theme := ui.LightTheme()
-	if got, want := detailCasesTableHeight(theme, 0), theme.Space(8)+1+theme.Space(8); got != want {
+	want := theme.Space(8) + 1 + theme.Space(8)
+	if got := detailCasesTableHeight(theme, 0); got != want {
 		t.Fatalf("empty table height %.1f, want one row plus header %.1f", got, want)
+	}
+	viewport, _ := renderDetailCasesBounds(t, 0)
+	if viewport.H < want-0.5 {
+		t.Fatalf("empty rendered viewport height %.1f collapsed below single-row placeholder %.1f", viewport.H, want)
 	}
 }
 
 func TestDetailCasesTableHeightCapsLongRuns(t *testing.T) {
-	theme := ui.LightTheme()
-	for _, rows := range []int{20, 50} {
-		if got := detailCasesTableHeight(theme, rows); got != detailCasesTableMaxHeight {
-			t.Fatalf("%d-row table height %.1f, want the %.0f cap", rows, got, detailCasesTableMaxHeight)
-		}
+	viewport, table := renderDetailCasesBounds(t, 20)
+	if viewport.H > detailCasesTableMaxHeight {
+		t.Fatalf("20-row viewport height %.1f exceeded %.0f cap", viewport.H, detailCasesTableMaxHeight)
+	}
+	if viewport.H < detailCasesTableMaxHeight-4 || table.H <= viewport.H {
+		t.Fatalf("20-row viewport %.1f / table %.1f did not cap and scroll at %.0f", viewport.H, table.H, detailCasesTableMaxHeight)
 	}
 }
 

@@ -56,7 +56,7 @@ func (s *viewState) remoteLibraryView(c *ui.Context) {
 func (s *viewState) remoteEngineBuildRow(c *ui.Context, node core.NodeSnapshot, family core.EngineFamilyCatalog, release core.EngineRelease, build core.EnginePlatformBuild, platform string) {
 	t := tokens(c)
 	ui.Row(c.Key("remote-engine-build-" + build.ID)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		ui.Text(c, build.Platform+" · "+build.Variant).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).Grow(1)
+		ui.Text(c, build.Platform+" · "+build.Variant).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).Grow(1).MinWidth(0).SingleLine()
 		installable := build.CanManagedVenvInstallOn(platform) || build.CanDirectDownloadOn(platform)
 		if installable && outlineIconButton(c, reicon.Download, tr(c, "nodes.remote.install_engine")).Disabled(s.busy || !node.Online).Clicked() {
 			s.installRemoteEngine(node, family, release, build)
@@ -78,11 +78,11 @@ func (s *viewState) remoteBenchmarksView(c *ui.Context) {
 		applyMaterial(c, ui.Row(c.Key("remote-job-"+task.TaskId)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
 			Padding(t.Card.Padding), materialCard).Children(func() {
 			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
-				ui.Text(c, task.TaskId).Bold().SingleLine()
+				ui.Text(c, task.TaskId).Bold().FontFeatures("tnum").SingleLine()
 				ui.Text(c, taskLabelFor(contextLocale(c), task)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			})
 			if job.Progress != nil {
-				ui.Text(c, fmt.Sprintf("%d / %d", job.Progress.Done, valueOrZero(job.Progress.Total))).FontFeatures("tnum")
+				ui.Text(c, fmt.Sprintf("%d / %d", job.Progress.Done, valueOrZero(job.Progress.Total))).FontFeatures("tnum").Shrink(0)
 			}
 			if !terminal(task.State) && node.Online {
 				if dangerIconButton(c, reicon.Square, tr(c, "nodes.remote.cancel_job")).Clicked() {
@@ -129,7 +129,6 @@ func (s *viewState) sidebarRemoteServiceRow(c *ui.Context) {
 		key: "sidebar-remote-engine-status", label: label, ariaLabel: label, kind: kind, progress: -1,
 		onClick: func() { s.navigateTo("services", "") },
 		leading: func() { components.Icon(c, reicon.Server).Size(14, 14).TextColor(stateColor(c, kind)) },
-		open:    new(bool), pop: func(func()) {},
 	})
 }
 
@@ -167,7 +166,7 @@ func (s *viewState) sidebarRemoteQueueRow(c *ui.Context) {
 			t := tokens(c)
 			ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
 				ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-					heading(c, tr(c, "shell.header.task_queue"), 3).Grow(1)
+					heading(c, tr(c, "shell.header.task_queue"), 3).Grow(1).MinWidth(0)
 					inlineBadge(c, label, stateActive, badgeOptions{Size: sizeSM})
 				})
 				for _, job := range activeJobs {
@@ -178,7 +177,7 @@ func (s *viewState) sidebarRemoteQueueRow(c *ui.Context) {
 					applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
 						Padding(t.Density.Inset, t.Density.Row), materialSunken).Children(func() {
 						ui.Box(c).Size(6, 6).Radius(t.Radius.Full).Shrink(0).Background(stateColor(c, dotKind))
-						ui.Text(c, job.Task.TaskId+" · "+taskLabelFor(contextLocale(c), job.Task)).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).SingleLine()
+						ui.Text(c, job.Task.TaskId+" · "+taskLabelFor(contextLocale(c), job.Task)).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine()
 					})
 				}
 				outlineButton(c, tr(c, "sidebar.status.open_benchmarks")).AlignSelf(ui.Start).OnClick(func() {

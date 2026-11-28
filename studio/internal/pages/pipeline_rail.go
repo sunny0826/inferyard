@@ -178,17 +178,17 @@ func pipelineRail(c *ui.Context, spec pipelineCardOptions) {
 				ui.Row(c).Grow(targetWeights[i]).MinWidth(0).AlignItems(ui.Center).Gap(4).Children(func() {
 					switch {
 					case i < spec.Current:
-						components.Icon(c, reicon.Check).Size(12, 12).TextColor(t.Color.Success.Fg)
-						ui.Text(c, st.Label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
+						components.Icon(c, reicon.Check).Size(12, 12).Shrink(0).TextColor(t.Color.Success.Fg)
+						ui.Text(c, st.Label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).MinWidth(0).SingleLine()
 					case i == spec.Current:
 						ambientLifecycleDot(c, activeScale, spec.Progress.Active && !spec.Failed)
-						ui.Text(c, st.Label).Bold().FontSize(t.Type.Caption).TextColor(activeScale.Fg).SingleLine()
+						ui.Text(c, st.Label).Bold().FontSize(t.Type.Caption).TextColor(activeScale.Fg).MinWidth(0).SingleLine()
 						if spec.Progress.PercentLabel != "" {
-							ui.Text(c, spec.Progress.PercentLabel).Bold().FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(activeScale.Fg).SingleLine()
+							ui.Text(c, spec.Progress.PercentLabel).Bold().FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(activeScale.Fg).Shrink(0).SingleLine()
 						}
 					default:
-						ui.Text(c, fmt.Sprintf("%d", i+1)).FontSize(t.Type.ShellDetail).FontFeatures("tnum").TextColor(t.Color.FgTertiary).SingleLine()
-						ui.Text(c, st.Label).FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary).SingleLine()
+						ui.Text(c, fmt.Sprintf("%d", i+1)).FontSize(t.Type.ShellDetail).FontFeatures("tnum").TextColor(t.Color.FgTertiary).Shrink(0).SingleLine()
+						ui.Text(c, st.Label).FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary).MinWidth(0).SingleLine()
 					}
 				})
 			}

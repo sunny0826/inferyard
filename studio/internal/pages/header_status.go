@@ -279,7 +279,7 @@ func (s *viewState) sidebarQueueRow(c *ui.Context) {
 							applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
 								Padding(t.Density.Inset, t.Density.Row), materialSunken).Children(func() {
 								ui.Box(c).Size(6, 6).Radius(t.Radius.Full).Shrink(0).Background(stateColor(c, dotKind))
-								ui.Text(c, name+" · "+taskLabelFor(contextLocale(c), task)).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).SingleLine()
+								ui.Text(c, name+" · "+taskLabelFor(contextLocale(c), task)).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine()
 							})
 						}
 					}
@@ -358,18 +358,19 @@ func (s *viewState) sidebarStatusRow(c *ui.Context, sp sidebarStatusSpec) {
 	if aria == "" {
 		aria = sp.label
 	}
+	isOpen := sp.open != nil && *sp.open
 	anchor := ui.Column(c.Key(sp.key)).FillWidth().Gap(4).
 		Padding(t.Density.Tight+1, t.Density.Row).Radius(t.Radius.Control).
 		Role(ui.RoleButton).Focusable().Label(aria)
 	if sp.highlight {
 		anchor.Background(scale.SubtleBg)
-	} else if anchor.Hovered() || *sp.open {
+	} else if anchor.Hovered() || isOpen {
 		anchor.Background(t.Color.SurfaceHover)
 	}
 	if anchor.Clicked() {
 		if sp.onClick != nil {
 			sp.onClick()
-		} else {
+		} else if sp.open != nil && sp.pop != nil {
 			*sp.open = !*sp.open
 		}
 	}
@@ -379,10 +380,10 @@ func (s *viewState) sidebarStatusRow(c *ui.Context, sp sidebarStatusSpec) {
 			txtColor := t.Color.FgSecondary
 			if sp.highlight {
 				txtColor = scale.Fg
-			} else if anchor.Hovered() || *sp.open {
+			} else if anchor.Hovered() || isOpen {
 				txtColor = t.Color.FgPrimary
 			}
-			txt := ui.Text(c, sp.label).FontSize(t.Type.Caption).TextColor(txtColor).SingleLine().Grow(1)
+			txt := ui.Text(c, sp.label).FontSize(t.Type.Caption).TextColor(txtColor).SingleLine().Grow(1).MinWidth(0)
 			if sp.highlight {
 				txt.Bold()
 			}
@@ -391,7 +392,7 @@ func (s *viewState) sidebarStatusRow(c *ui.Context, sp sidebarStatusSpec) {
 				if sp.highlight {
 					valColor = scale.Fg
 				}
-				ui.Text(c, sp.badgeText).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(valColor).SingleLine()
+				ui.Text(c, sp.badgeText).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(valColor).SingleLine().Shrink(0)
 			}
 		})
 		if sp.progress >= 0 {
@@ -400,17 +401,19 @@ func (s *viewState) sidebarStatusRow(c *ui.Context, sp sidebarStatusSpec) {
 			})
 		}
 	})
-	studioPopover(c, anchor, sp.open, func(panel ui.Element) {
-		width := sp.popWidth
-		if width <= 0 {
-			width = c.Theme().Space(78)
-		}
-		panel.AttachTo(anchor, ui.AnchorTopRight, ui.AnchorBottomLeft).
-			Margin(0, 0, 0, t.Density.Stack).
-			Width(width).MaxWidthPercent(100).
-			Label(trf(c, "shell.header.status_panel_label", "label", aria))
-		panel.Children(func() { sp.pop(func() { *sp.open = false }) })
-	})
+	if sp.open != nil && sp.pop != nil {
+		studioPopover(c, anchor, sp.open, func(panel ui.Element) {
+			width := sp.popWidth
+			if width <= 0 {
+				width = c.Theme().Space(78)
+			}
+			panel.AttachTo(anchor, ui.AnchorTopRight, ui.AnchorBottomLeft).
+				Margin(0, 0, 0, t.Density.Stack).
+				Width(width).MaxWidthPercent(100).
+				Label(trf(c, "shell.header.status_panel_label", "label", aria))
+			panel.Children(func() { sp.pop(func() { *sp.open = false }) })
+		})
+	}
 }
 
 func (s *viewState) closeEngineStatusPanel() {

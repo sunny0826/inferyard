@@ -35,9 +35,10 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 		})
 		return
 	}
+	multiSource := len(s.nodes.snapshots) > 1 || s.hasCachedRemoteReports()
 	ui.Column(c).FillWidth().Gap(t.Density.Stack).Children(func() {
 		for _, report := range reports {
-			s.unifiedReportCard(c, report)
+			s.unifiedReportCard(c, report, multiSource)
 		}
 	})
 }
@@ -64,8 +65,20 @@ func reportRatioBar(c *ui.Context, ratio float64, width, height float32, color u
 }
 
 func reportCard(c *ui.Context, report core.ReportSummary, modelHint, exclusivity string, open func()) {
+	renderReportCard(c, report, report.ReportId, modelHint, exclusivity, nil, nil, "", open)
+}
+
+func renderReportCard(
+	c *ui.Context,
+	report core.ReportSummary,
+	cardKey, modelHint, exclusivity string,
+	headerBadges func(),
+	extraActions func(),
+	footerNotice string,
+	open func(),
+) {
 	t := tokens(c)
-	applyMaterial(c, ui.Column(c.Key(report.ReportId)).FillWidth().MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
+	applyMaterial(c, ui.Column(c.Key(cardKey)).FillWidth().MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Stack).Children(func() {
 			if report.Unreadable {
 				scale := t.Color.Danger
@@ -78,18 +91,29 @@ func reportCard(c *ui.Context, report core.ReportSummary, modelHint, exclusivity
 				modelIconBox(c, modelHint, 36, t.Radius.Inset)
 			}
 			ui.Column(c).Grow(1).MinWidth(180).Gap(2).Children(func() {
-				ui.Text(c, reportHeadingFor(c, report)).Bold().FontSize(t.Type.CardTitle).TextColor(t.Color.FgPrimary).SingleLine()
+				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+					ui.Text(c, reportHeadingFor(c, report)).Bold().FontSize(t.Type.CardTitle).TextColor(t.Color.FgPrimary).MinWidth(0).SingleLine()
+					if headerBadges != nil {
+						headerBadges()
+					}
+				})
 				ui.Text(c, reportSubheadingFor(c, report)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
 			})
-			ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
 				if !report.Unreadable {
 					exclusivityBadge(c, exclusivity)
+				}
+				if extraActions != nil {
+					extraActions()
 				}
 				outlineIconButton(c, reicon.Eye, tr(c, "reports.list.open")).
 					Label(trf(c, "reports.list.open_aria", "id", report.ReportId)).
 					OnClick(open)
 			})
 		})
+		if footerNotice != "" {
+			ui.Text(c, footerNotice).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		}
 		if report.Unreadable {
 			applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
 				Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {

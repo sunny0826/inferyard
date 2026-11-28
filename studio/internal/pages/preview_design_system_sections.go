@@ -68,7 +68,7 @@ func (p *previewSession) dsStatesCard(c *ui.Context) {
 					components.Icon(c, reicon.CircleCheck).Size(14, 14).TextColor(semanticAccentColor(c, t.Color.Success))
 					ui.Text(c, tr(c, "preview.ds.banner.success")).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).SingleLine()
 				})
-				if inlineButton(c, components.ButtonGhost, tr(c, "preview.ds.alt.c.try_toast")).Clicked() {
+				if inlineButton(c, components.ButtonOutline, tr(c, "preview.ds.alt.c.try_toast")).Clicked() {
 					p.state.enqueueStatusToast(tr(c, "preview.ds.banner.success"))
 				}
 			})
