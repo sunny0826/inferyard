@@ -55,16 +55,17 @@ func (s *viewState) resumeDialog(c *ui.Context) {
 				endpointError, pidError := resumeErrors(s.endpoint, s.pid)
 				field(c, tr(c, "dashboard.resume.endpoint_label"), &s.endpoint).Description(tr(c, "dashboard.resume.endpoint_desc")).Error(endpointError)
 				field(c, tr(c, "dashboard.resume.pid_label"), &s.pid).Description(tr(c, "dashboard.resume.pid_desc")).Error(pidError)
-				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.CardGap).Children(func() {
-					if primaryActionButton(c, tr(c, "dashboard.resume.confirm_button"), s.actionBusy("resume-run")).AlignSelf(ui.Start).Disabled(s.busy || s.denied[s.resumeSource.Path]).Clicked() {
-						s.resume()
-					}
-					if button(c, tr(c, "dashboard.resume.close_button")).AlignSelf(ui.Start).Clicked() {
+				ui.Box(c).FillWidth().Height(1).Background(tokens(c).Color.BorderSubtle)
+				ui.Row(c).FillWidth().Justify(ui.End).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.CardGap).Children(func() {
+					if outlineButton(c, tr(c, "dashboard.resume.close_button")).Clicked() {
 						if s.resumeDirty() {
 							s.resumeDiscardConfirm = true
 						} else {
 							dialogOpen = false
 						}
+					}
+					if primaryActionButton(c, tr(c, "dashboard.resume.confirm_button"), s.actionBusy("resume-run")).Disabled(s.busy || s.denied[s.resumeSource.Path]).Clicked() {
+						s.resume()
 					}
 				})
 			})

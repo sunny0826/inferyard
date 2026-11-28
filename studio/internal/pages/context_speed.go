@@ -209,9 +209,11 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 		noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: reason})
 	}
 	ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
-	if primaryButton(c, tr(c, "speed.action.start")).Disabled(reason != "").AlignSelf(ui.Start).Clicked() {
-		s.startSpeed()
-	}
+	ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Children(func() {
+		if primaryButton(c, tr(c, "speed.action.start")).Disabled(reason != "").Clicked() {
+			s.startSpeed()
+		}
+	})
 	return true
 }
 

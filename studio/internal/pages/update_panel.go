@@ -170,12 +170,7 @@ func (s *viewState) updateDialog(c *ui.Context) {
 
 				workloads := s.effectiveUpdateWorkloads()
 				if workloads.Any() && (st.State == core.UpdateAvailable || st.State == core.UpdateDownloading || st.State == core.UpdateVerifying || st.State == core.UpdateReadyToApply) {
-					noticeBanner(c, noticeBannerOptions{
-						Kind:    stateWarning,
-						Size:    bannerCompact,
-						Icon:    reicon.TriangleAlert,
-						Message: formatUpdateWorkloadWarningFor(loc, workloads),
-					})
+					noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Icon: reicon.TriangleAlert, Message: formatUpdateWorkloadWarningFor(loc, workloads)})
 				}
 
 				switch st.State {
@@ -185,71 +180,72 @@ func (s *viewState) updateDialog(c *ui.Context) {
 						msg = tr(c, "update.dialog.up_to_date_msg")
 					}
 					ui.Text(c, msg).TextColor(t.Color.FgSecondary)
-					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-						if primaryButton(c, tr(c, "update.action.check")).Clicked() {
-							s.triggerUpdateCheck()
+					updateDialogActions(c, func() {
+						if button(c, tr(c, "common.close")).Clicked() {
+							s.updateDialogOpen = false
 						}
 						if updateExternalButton(c, tr(c, "update.prompt.view_changelog")).Clicked() {
 							s.openUpdateURL(c, core.DefaultReleasesURL)
 						}
-						if button(c, tr(c, "common.close")).Clicked() {
-							s.updateDialogOpen = false
+					}, func() {
+						if primaryButton(c, tr(c, "update.action.check")).Clicked() {
+							s.triggerUpdateCheck()
 						}
 					})
 				case core.UpdateChecking:
 					progressBar(c, -1, tr(c, "update.progress.checking"))
 					ui.Text(c, tr(c, "update.dialog.checking_msg")).TextColor(t.Color.FgSecondary)
-					if button(c, tr(c, "common.close")).Clicked() {
-						s.updateDialogOpen = false
-					}
+					updateDialogActions(c, func() {
+						if button(c, tr(c, "common.close")).Clicked() {
+							s.updateDialogOpen = false
+						}
+					}, nil)
 				case core.UpdateAvailable:
 					if !st.CanSelfUpdate && st.SelfUpdateBlock != "" {
-						noticeBanner(c, noticeBannerOptions{
-							Kind:    stateInfo,
-							Size:    bannerCompact,
-							Message: st.SelfUpdateBlock,
-						})
+						noticeBanner(c, noticeBannerOptions{Kind: stateInfo, Size: bannerCompact, Message: st.SelfUpdateBlock})
 					}
-					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+					updateDialogActions(c, func() {
+						if button(c, tr(c, "common.close")).Clicked() {
+							s.updateDialogOpen = false
+						}
+					}, func() {
 						if st.CanSelfUpdate && st.Release != nil && st.Release.AssetURL != "" && st.Release.ChecksumsURL != "" {
 							if primaryButton(c, tr(c, "update.action.update_now")).Clicked() {
 								s.triggerUpdateStart()
 							}
 						}
-						if button(c, tr(c, "common.close")).Clicked() {
-							s.updateDialogOpen = false
-						}
 					})
 				case core.UpdateDownloading:
 					progressBar(c, progressValue(st.DownloadedBytes, st.TotalBytes), tr(c, "update.progress.downloading"))
 					ui.Text(c, formatUpdateProgress(st)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
-					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+					updateDialogActions(c, func() {
 						if button(c, tr(c, "update.action.cancel_download")).Clicked() {
 							s.triggerUpdateCancel()
 						}
 						if button(c, tr(c, "common.close")).Clicked() {
 							s.updateDialogOpen = false
 						}
-					})
+					}, nil)
 				case core.UpdateVerifying:
 					progressBar(c, -1, tr(c, "update.progress.verifying"))
 					ui.Text(c, tr(c, "update.dialog.verifying_msg")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-					if button(c, tr(c, "common.cancel")).Clicked() {
-						s.triggerUpdateCancel()
-					}
+					updateDialogActions(c, func() {
+						if button(c, tr(c, "common.cancel")).Clicked() {
+							s.triggerUpdateCancel()
+						}
+					}, nil)
 				case core.UpdateReadyToApply:
-					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+					updateDialogActions(c, func() {
+						if button(c, tr(c, "update.action.later")).Clicked() {
+							s.dismissUpdateReadyPrompt(st)
+						}
+					}, func() {
 						if workloads.Any() {
 							if dangerButton(c, tr(c, "update.action.stop_and_install")).Clicked() {
 								s.triggerUpdateApply(true)
 							}
-						} else {
-							if primaryButton(c, tr(c, "update.action.update_and_restart")).Clicked() {
-								s.triggerUpdateApply(false)
-							}
-						}
-						if button(c, tr(c, "update.action.later")).Clicked() {
-							s.dismissUpdateReadyPrompt(st)
+						} else if primaryButton(c, tr(c, "update.action.update_and_restart")).Clicked() {
+							s.triggerUpdateApply(false)
 						}
 					})
 				case core.UpdateApplying:
@@ -260,16 +256,8 @@ func (s *viewState) updateDialog(c *ui.Context) {
 					if errMsg == "" {
 						errMsg = tr(c, "update.dialog.error_fallback")
 					}
-					noticeBanner(c, noticeBannerOptions{
-						Kind:    stateDanger,
-						Size:    bannerCompact,
-						Icon:    reicon.CircleAlert,
-						Message: errMsg,
-					})
-					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-						if primaryButton(c, tr(c, "common.retry")).Clicked() {
-							s.triggerUpdateRetry()
-						}
+					noticeBanner(c, noticeBannerOptions{Kind: stateDanger, Size: bannerCompact, Icon: reicon.CircleAlert, Message: errMsg})
+					updateDialogActions(c, func() {
 						if st.FallbackPath != "" {
 							if outlineButton(c, tr(c, "update.action.open_package")).Clicked() {
 								s.openUpdatePath(st.FallbackPath)
@@ -278,10 +266,27 @@ func (s *viewState) updateDialog(c *ui.Context) {
 						if button(c, tr(c, "common.close")).Clicked() {
 							s.updateDialogOpen = false
 						}
+					}, func() {
+						if primaryButton(c, tr(c, "common.retry")).Clicked() {
+							s.triggerUpdateRetry()
+						}
 					})
 				}
 			})
 		})
+	})
+}
+
+func updateDialogActions(c *ui.Context, secondary, primary func()) {
+	t := tokens(c)
+	ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+	ui.Row(c).FillWidth().Wrap().Justify(ui.End).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		if secondary != nil {
+			secondary()
+		}
+		if primary != nil {
+			primary()
+		}
 	})
 }
 

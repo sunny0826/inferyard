@@ -130,8 +130,8 @@ func (s *viewState) renderStarterRecommendationPanel(c *ui.Context, contextMode 
 				heading(c, tr(c, "downloads.starter.heading"), 3)
 				badge(c, trf(c, "downloads.starter.options_count_badge", "count", strconv.Itoa(len(opts))), stateNeutral, badgeOptions{Style: badgeSoft, Size: sizeSM})
 			})
-			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-				ghostButton(c, tr(c, "downloads.starter.redetect")).Disabled(s.deviceCollectionBlocked()).OnClick(func() { s.refreshDevice() })
+			studioTooltipGroup(c, ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight), func() {
+				refreshIconButton(c, tr(c, "downloads.starter.redetect"), s.device.Refreshing || s.actionBusy("refresh-device")).Disabled(s.deviceCollectionBlocked()).OnClick(func() { s.refreshDevice() })
 				if showCollapse {
 					outlineButton(c, tr(c, "downloads.starter.collapse")).OnClick(func() { s.setStarterPanelExpanded(false) })
 				}

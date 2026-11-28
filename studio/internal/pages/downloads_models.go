@@ -204,9 +204,11 @@ func (s *viewState) customModelURLFold(c *ui.Context, st *downloadsUIState) {
 				applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Inset), materialInset).Children(func() {
 					ui.Text(c, trf(c, "downloads.models.resolved_revision", "revision", resState.resolved.Revision)).Selectable().FontSize(t.Type.Caption)
 					ui.Text(c, trf(c, "downloads.models.resolved_file", "filename", resState.resolved.Filename, "size", sizeText)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-					ui.Text(c, trf(c, "downloads.models.resolved_pinned_url", "url", resState.resolved.PinnedURL)).Selectable().FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-					outlineIconButton(c, reicon.Copy, tr(c, "downloads.models.copy_pinned_url")).OnClick(func() {
-						s.copyDownloadText(c, tr(c, "downloads.copy_subject.pinned_url"), resState.resolved.PinnedURL)
+					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+						ui.Text(c, trf(c, "downloads.models.resolved_pinned_url", "url", resState.resolved.PinnedURL)).Grow(1).MinWidth(0).Selectable().FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+						outlineIconButton(c, reicon.Copy, tr(c, "downloads.models.copy_pinned_url")).Shrink(0).OnClick(func() {
+							s.copyDownloadText(c, tr(c, "downloads.copy_subject.pinned_url"), resState.resolved.PinnedURL)
+						})
 					})
 				})
 			}
@@ -299,20 +301,24 @@ func (s *viewState) downloadsModelDrawer(c *ui.Context) {
 					})
 				})
 
-				studioTooltipGroup(c, ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
-					if s.isModelEntryDownloading(entry) {
-						outlineIconButton(c, reicon.Download, tr(c, "downloads.action.downloading")).Label(trf(c, "downloads.model_drawer.download_this_label", "id", entry.ID)).Disabled(true)
-					} else {
-						primaryIconButton(c, reicon.Download, tr(c, "downloads.model_drawer.download_this")).Label(trf(c, "downloads.model_drawer.download_this_label", "id", entry.ID)).Disabled(s.busy).OnClick(func() {
-							s.acquireModelSource(activeURL, "")
-						})
-					}
-					if repoURL := modelCatalogRepoURL(activeURL); repoURL != "" && repoURL != activeURL {
-						outlineIconButton(c, reicon.ExternalLink, tr(c, "downloads.model_drawer.open_repo")).OnClick(func() {
-							s.openDownloadURL(c, modelCatalogTitle(entry), repoURL)
-						})
-					}
-				})
+			})
+		})
+		ui.Column(c.Key("downloads-model-drawer-footer")).FillWidth().Shrink(0).Gap(t.Density.Row).Children(func() {
+			ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				if repoURL := modelCatalogRepoURL(activeURL); repoURL != "" && repoURL != activeURL {
+					outlineButton(c, tr(c, "downloads.model_drawer.open_repo")).OnClick(func() {
+						s.openDownloadURL(c, modelCatalogTitle(entry), repoURL)
+					})
+				}
+				ui.Box(c).Grow(1)
+				if s.isModelEntryDownloading(entry) {
+					button(c, tr(c, "downloads.action.downloading")).Label(trf(c, "downloads.model_drawer.download_this_label", "id", entry.ID)).Disabled(true)
+				} else {
+					primaryButton(c, tr(c, "downloads.model_drawer.download_this")).Label(trf(c, "downloads.model_drawer.download_this_label", "id", entry.ID)).Disabled(s.busy).OnClick(func() {
+						s.acquireModelSource(activeURL, "")
+					})
+				}
 			})
 		})
 	})

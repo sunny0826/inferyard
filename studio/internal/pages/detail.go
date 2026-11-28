@@ -57,9 +57,10 @@ func runTaskIcon(kind stateKind) func() *ui.SVG {
 func (s *viewState) detailView(c *ui.Context) {
 	tok := tokens(c)
 	s.subpageHeader(c, tr(c, "detail.title"))
-	errorView(c, s.detailError)
 	if s.detailError != nil {
-		refreshIconButton(c, tr(c, "detail.retry_load"), false).OnClick(func() { s.selectTask(s.detailID) })
+		errorRecoveryBanner(c, s.detailError, func() {
+			refreshIconButton(c, tr(c, "detail.retry_load"), false).OnClick(func() { s.selectTask(s.detailID) })
+		})
 		if s.detail == nil {
 			return
 		}

@@ -149,7 +149,7 @@ func (w *viewState) candidateFields(c *ui.Context) {
 						w.libraryTab = 1
 						w.navigateTo("library", "")
 					})
-					button(c, tr(c, "dashboard.candidate.register_engine")).OnClick(func() { w.openGeneralSettings() })
+					button(c, tr(c, "dashboard.candidate.register_engine")).OnClick(func() { w.openLocalEngineWizard("") })
 				})
 			}
 		}
@@ -173,9 +173,11 @@ func (w *viewState) candidateFields(c *ui.Context) {
 		})
 	}
 	ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
-	if primaryButton(c, tr(c, "dashboard.candidate.start")).AlignSelf(ui.Start).Disabled(createDisabled).Clicked() {
-		w.startBenchmark()
-	}
+	ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Children(func() {
+		if primaryButton(c, tr(c, "dashboard.candidate.start")).Disabled(createDisabled).Clicked() {
+			w.startBenchmark()
+		}
+	})
 }
 
 func (w *viewState) engineLogDiagnosticsView(c *ui.Context) {

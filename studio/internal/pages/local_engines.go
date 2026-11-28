@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
@@ -262,11 +263,16 @@ func (s *viewState) handoffDisabledReason(c *ui.Context, pid int64, reused bool)
 
 func (s *viewState) localServicePicker(c *ui.Context, pidLabel, endpointLabel string) {
 	t := tokens(c)
-	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+	choices := s.localServiceChoices()
+	studioTooltipGroup(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row), func() {
+		if len(choices) > 0 {
+			ui.Text(c, tr(c, "engine.local.discovered_hint")).Grow(1).MinWidth(0).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		} else {
+			ui.Box(c).Grow(1)
+		}
 		refreshIconButton(c, tr(c, "engine.discovery.refresh"), s.discovering).Disabled(s.discovering).OnClick(s.refreshDiscovery)
 	})
-	if choices := s.localServiceChoices(); len(choices) > 0 {
-		ui.Text(c, tr(c, "engine.local.discovered_hint")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+	if len(choices) > 0 {
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			for _, choice := range choices {
 				label := trf(c, "engine.local.service_choice", "pid", strconv.FormatInt(choice.pid, 10), "endpoint", choice.endpoint, "count", choice.models)
@@ -306,19 +312,28 @@ func (s *viewState) localEngineRegistrationView(c *ui.Context) {
 		})
 		s.pathField(c, tr(c, "engine.local.json_path_label"), &s.installationPath, browseInstallation).
 			Error(s.browseError(browseInstallation.key, pathError(s.installationPath)))
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+		ui.Row(c).FillWidth().Justify(ui.End).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 			if primaryActionButton(c, tr(c, "engine.local.import_register"), s.actionBusy("install-register")).Disabled(s.busy || s.installationPath == "" || pathError(s.installationPath) != "").Clicked() {
 				s.changeInstallation("register", s.installationPath)
 			}
 		})
 	})
-	for _, path := range s.settings.Settings.EngineInstallations {
-		path := path
-		ui.Row(c.Key(path)).FillWidth().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-			pathText := ui.Text(c, path).Grow(1).MinWidth(0).SingleLine().TruncateMiddle().Selectable()
-			studioTooltipIfTruncated(c, pathText, path, path, c.Theme().FontSize, false)
-			if dangerIconButton(c, reicon.Unlink, tr(c, "engine.local.remove_registration")).AlignSelf(ui.Center).Shrink(0).Disabled(s.busy).Clicked() {
-				s.removeInstallationWithUndo(path)
+	if len(s.settings.Settings.EngineInstallations) > 0 {
+		t := tokens(c)
+		applyMaterial(c, ui.Column(c).FillWidth().BorderWidth(1).BorderColor(t.Color.BorderSubtle).Padding(t.Density.Tight).Gap(t.Density.Tight), materialSunken).Children(func() {
+			for i, path := range s.settings.Settings.EngineInstallations {
+				path := path
+				if i > 0 {
+					ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+				}
+				ui.Row(c.Key(path)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Tight).Children(func() {
+					components.Icon(c, reicon.FileText).Size(15, 15).TextColor(t.Color.FgSecondary).Shrink(0)
+					pathText := ui.Text(c, path).Grow(1).MinWidth(0).SingleLine().TruncateMiddle().Selectable()
+					studioTooltipIfTruncated(c, pathText, path, path, c.Theme().FontSize, false)
+					if outlineIconButton(c, reicon.Unlink, tr(c, "engine.local.remove_registration")).AlignSelf(ui.Center).Shrink(0).Disabled(s.busy).Clicked() {
+						s.removeInstallationWithUndo(path)
+					}
+				})
 			}
 		})
 	}

@@ -74,7 +74,6 @@
   "downloads.engines.install_label": "安装 · {id}",
   "downloads.engines.install_new_model": "安装新模型",
   "downloads.engines.link": "关联",
-  "downloads.engines.link_existing": "注册本地引擎",
   "downloads.engines.link_label": "关联 · {id}",
   "downloads.engines.none_available": "当前平台暂无可用引擎。",
   "downloads.engines.open_website": "打开官网",

@@ -225,7 +225,14 @@ func (s *viewState) taskAssetsView(c *ui.Context) {
 			} else if !hasStarter {
 				primaryButton(c, tr(c, "onboarding.assets.go_downloads")).OnClick(func() { s.navigateTo("library", "") })
 			}
-			button(c, tr(c, "onboarding.assets.use_existing")).OnClick(func() { s.openGeneralSettings() })
+			button(c, tr(c, "onboarding.assets.use_existing")).OnClick(func() {
+				if len(s.registry.Engines) == 0 && len(s.registry.Models) > 0 {
+					s.openLocalEngineWizard("")
+					return
+				}
+				s.libraryTab = libraryTabModels
+				s.navigateTo("library", "")
+			})
 		})
 	})
 	if hasStarter && s.activeDownloadCount() == 0 {

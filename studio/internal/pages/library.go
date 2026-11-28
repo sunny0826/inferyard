@@ -73,7 +73,7 @@ func (s *viewState) libraryHardwareCard(c *ui.Context) {
 		outerR = t.Radius.Surface
 	}
 	applyMaterial(c, ui.Column(c.Key("library-hw-card")).FillWidth().Padding(t.Card.Padding).Gap(t.Density.Row), materialCard).Radius(outerR).Children(func() {
-		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			components.Icon(c, reicon.Cpu).Size(16, 16).TextColor(stateColor(c, stateActive))
 			ui.Text(c, summary).Bold().FontSize(t.Type.Body).SingleLine()
 			if missingAssets {
@@ -82,6 +82,9 @@ func (s *viewState) libraryHardwareCard(c *ui.Context) {
 				inlineBadge(c, tr(c, "library.hw.ready"), stateSuccess, badgeOptions{Size: sizeSM})
 			}
 			ui.Box(c).Grow(1)
+			if s.libraryHwExpanded {
+				s.libraryDeviceRefreshButton(c, tr(c, "device.action.refresh"))
+			}
 			btnLabel := tr(c, "library.hw.expand")
 			btnIcon := reicon.ChevronDown
 			if s.libraryHwExpanded {
@@ -119,10 +122,6 @@ func (s *viewState) hardwareCompactSummary(c *ui.Context, snapshot deviceObject,
 }
 
 func (s *viewState) libraryHardwareDetails(c *ui.Context, snapshot deviceObject, parseError error) {
-	t := tokens(c)
-	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		s.libraryDeviceRefreshButton(c, tr(c, "device.action.refresh"))
-	})
 	if snapshot != nil && parseError == nil {
 		deviceHardware(c, snapshot.object("hardware"))
 	}
@@ -148,6 +147,7 @@ func (s *viewState) libraryHardwareDetails(c *ui.Context, snapshot deviceObject,
 		return
 	}
 	if snapshot == nil && s.device.LastError == nil && !s.device.Refreshing {
+		t := tokens(c)
 		ui.Text(c, tr(c, "library.hw.summary_uncollected")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 	}
 }
@@ -281,6 +281,7 @@ func (s *viewState) libraryEnginesTab(c *ui.Context, pending *pendingAssetDelete
 				ui.Text(c, s.engineFit()).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 			}
 			ui.Box(c).Grow(1)
+			s.renderEngineUpdateCheckButton(c)
 			btnLabel := tr(c, "models.action.register_local_engine")
 			btnIcon := reicon.Link
 			if *wizardOpen {
@@ -288,13 +289,18 @@ func (s *viewState) libraryEnginesTab(c *ui.Context, pending *pendingAssetDelete
 				btnIcon = reicon.ChevronUp
 			}
 			outlineIconButton(c, btnIcon, btnLabel).OnClick(func() { *wizardOpen = !*wizardOpen })
-			s.renderEngineUpdateCheckButton(c)
 		})
 		if *wizardOpen {
 			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialInset).Children(func() {
-				heading(c, tr(c, "models.wizard.card_title"), 3)
+				studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
+					ui.Row(c).Grow(1).MinWidth(0).Children(func() {
+						heading(c, tr(c, "models.wizard.card_title"), 3)
+					})
+					if iconButton(c, reicon.ChevronUp, tr(c, "models.action.collapse"), components.IconButtonCompact).Clicked() {
+						*wizardOpen = false
+					}
+				})
 				s.localEngineRegistrationView(c)
-				outlineIconButton(c, reicon.ChevronUp, tr(c, "models.action.collapse")).OnClick(func() { *wizardOpen = false })
 			})
 		}
 		if len(s.registry.Engines) == 0 {
