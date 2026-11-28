@@ -3,6 +3,7 @@ on:
   push:
     branches: [main]
     paths:
+      - "benchmarks/**"
       - "cli/src/**"
       - "cli/tests/**"
       - "cli/scripts/**"
@@ -19,6 +20,7 @@ on:
       - ".github/workflows/package-check.yml"
   pull_request:
     paths:
+      - "benchmarks/**"
       - "cli/src/**"
       - "cli/tests/**"
       - "cli/scripts/**"
@@ -88,3 +90,5 @@ jobs:
           mise exec -- uv run --frozen python -m compileall -q src tests scripts ../tools ../studio/scripts ../studio/tests/ui
       - name: Verify exported schemas
         run: mise exec -- uv run --frozen python scripts/export_schemas.py --check
+      - name: Verify benchmark bundles
+        run: mise exec -- uv run --frozen inferyard bundles verify

@@ -46,6 +46,7 @@ type aggregate struct {
 	Progress          RunProgress
 	requests          map[string]int
 	casePrompts       map[string]string
+	caseRefAnswers    map[string]string
 	partials          map[string]*strings.Builder
 	stop              *string
 	started, finished *string
@@ -53,29 +54,39 @@ type aggregate struct {
 	resourceGap       time.Duration
 }
 
-func bundleCasePrompts(raw []byte) map[string]string {
+func bundleCaseMetadata(raw []byte) (map[string]string, map[string]string) {
 	prompts := map[string]string{}
+	refAnswers := map[string]string{}
 	cases, _ := payload(raw, "bundle")["cases"].([]any)
 	for _, entry := range cases {
 		m := obj(entry)
 		id, _ := m["case_id"].(string)
-		prompt, _ := m["prompt"].(string)
-		if id != "" && prompt != "" {
+		if id == "" {
+			continue
+		}
+		if prompt, _ := m["prompt"].(string); prompt != "" {
 			prompts[id] = prompt
 		}
+		cat, _ := m["category"].(string)
+		if cat != "performance" && cat != "svg" {
+			if ref, _ := m["reference_answer"].(string); ref != "" {
+				refAnswers[id] = ref
+			}
+		}
 	}
-	return prompts
+	return prompts, refAnswers
 }
 
 func newAggregate(raw []byte) *aggregate {
-	prompts := bundleCasePrompts(raw)
+	prompts, refAnswers := bundleCaseMetadata(raw)
 	a := &aggregate{
-		Progress:    RunProgress{Cases: []CaseProgress{}},
-		requests:    map[string]int{},
-		casePrompts: prompts,
-		partials:    map[string]*strings.Builder{},
-		cpuPrevious: map[ResourceSource]object{},
-		resourceGap: 2 * time.Second,
+		Progress:       RunProgress{Cases: []CaseProgress{}},
+		requests:       map[string]int{},
+		casePrompts:    prompts,
+		caseRefAnswers: refAnswers,
+		partials:       map[string]*strings.Builder{},
+		cpuPrevious:    map[ResourceSource]object{},
+		resourceGap:    2 * time.Second,
 	}
 	if interval := number(obj(payload(raw, "config")["telemetry"])["interval_ms"]); interval != nil && *interval > 0 {
 		a.resourceGap = time.Duration(*interval * 2 * float64(time.Millisecond))
@@ -88,6 +99,9 @@ func newAggregate(raw []byte) *aggregate {
 				item := CaseProgress{CaseId: cid, State: "pending"}
 				if p := prompts[cid]; p != "" {
 					item.Prompt = ptr(p)
+				}
+				if ref := refAnswers[cid]; ref != "" {
+					item.ReferenceAnswer = ptr(ref)
 				}
 				a.Progress.Cases = append(a.Progress.Cases, item)
 			}
@@ -134,6 +148,11 @@ func (a *aggregate) events(records []evidence.Record) {
 			if c.Prompt == nil {
 				if p := a.casePrompts[id]; p != "" {
 					c.Prompt = ptr(p)
+				}
+			}
+			if c.ReferenceAnswer == nil {
+				if ref := a.caseRefAnswers[id]; ref != "" {
+					c.ReferenceAnswer = ptr(ref)
 				}
 			}
 			a.Progress.CurrentCaseId = &c.CaseId

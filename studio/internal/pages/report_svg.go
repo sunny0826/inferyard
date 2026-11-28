@@ -246,12 +246,8 @@ func (s *viewState) createSVGStage() (svgStageView, error) {
 }
 
 func runHasSVGCases(run core.ReportRun) bool {
-	bundleID, _, _ := strings.Cut(run.Facets.BundleLabel, " · ")
-	if strings.TrimSpace(bundleID) == inferyard.DefaultBundlePelican {
-		return true
-	}
 	for _, req := range run.Requests {
-		if req.CategoryLabel == svgCategoryLabel {
+		if req.CategoryLabel == svgCategoryLabel || strings.EqualFold(strings.TrimSpace(req.CategoryLabel), "svg") {
 			return true
 		}
 	}

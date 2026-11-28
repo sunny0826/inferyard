@@ -7,8 +7,9 @@ import pytest
 
 from inferyard.analysis.quality import summarize_quality
 from inferyard.analysis.scoring import score_case
+from inferyard.bundles.registry import bundle_bytes
 
-BUNDLE = json.loads(Path("bundles/zh-smoke.json").read_text())
+BUNDLE = json.loads(bundle_bytes("zh-smoke").decode("utf-8"))
 POLICY = BUNDLE["answer_policy"]
 
 

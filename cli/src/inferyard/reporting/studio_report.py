@@ -37,7 +37,7 @@ def _svg_outputs(data):
     return items
 
 
-def _request_view(request, prompts):
+def _request_view(request, prompts, reference_answers):
     row = {
         "case_id": request["case_id"],
         "category_label": CATEGORIES.get(request["category"], request["category"]),
@@ -50,12 +50,20 @@ def _request_view(request, prompts):
         row["prompt"] = prompt
     content = request.get("content")
     row["response"] = content if isinstance(content, str) and content else None
+    reference_answer = reference_answers.get(request["case_id"])
+    if isinstance(reference_answer, str) and reference_answer:
+        row["reference_answer"] = reference_answer
     return row
 
 
 def _run_view(data, source):
     config, summary = data["config"], data["summary"]
     prompts = {case["case_id"]: case["prompt"] for case in data["bundle"]["cases"]}
+    reference_answers = {
+        case["case_id"]: case.get("reference_answer")
+        for case in data["bundle"]["cases"]
+        if case.get("category") not in ("performance", "svg")
+    }
     run = {
         "source": {"run_id": source["run_id"], "path": source["path"]},
         "model": config["model"]["display_name"],
@@ -73,7 +81,9 @@ def _run_view(data, source):
             "stop_reason": summary["stop_reason"],
         },
         "dashboard": dashboard_view(data, memory_view(data.get("samples") or [])),
-        "requests": [_request_view(request, prompts) for request in data["requests"]],
+        "requests": [
+            _request_view(request, prompts, reference_answers) for request in data["requests"]
+        ],
     }
     svg_outputs = _svg_outputs(data)
     if svg_outputs:

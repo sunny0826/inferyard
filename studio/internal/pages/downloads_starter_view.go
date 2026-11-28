@@ -243,7 +243,7 @@ func (s *viewState) renderStarterRecommendationPanel(c *ui.Context, contextMode 
 				}
 				if contextMode == "dashboard" {
 					outlineButton(c, tr(c, "downloads.starter.go_downloads")).OnClick(func() {
-						s.selected = "library"
+						s.openDownloadsWithStarterExpanded()
 					})
 				}
 				s.starterPrimaryCTA(c, st, chosen, contextMode == "dashboard")

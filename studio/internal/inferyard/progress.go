@@ -30,14 +30,44 @@ type ProgressRun struct {
 	Sealed   bool   `json:"sealed"`
 }
 type BundleProgress struct {
-	Bundle        string        `json:"bundle"`
-	Phase         string        `json:"phase"`
-	CandidatePath *string       `json:"candidate_path"`
-	BoundPath     *string       `json:"bound_path"`
-	Runs          []ProgressRun `json:"runs"`
-	NextAction    string        `json:"next_action"`
-	NextCommand   *string       `json:"next_command"`
-	BlockedReason *string       `json:"blocked_reason"`
+	Bundle        string          `json:"bundle"`
+	DisplayName   json.RawMessage `json:"display_name,omitempty"`
+	Description   json.RawMessage `json:"description,omitempty"`
+	Phase         string          `json:"phase"`
+	CandidatePath *string         `json:"candidate_path"`
+	BoundPath     *string         `json:"bound_path"`
+	Runs          []ProgressRun   `json:"runs"`
+	NextAction    string          `json:"next_action"`
+	NextCommand   *string         `json:"next_command"`
+	BlockedReason *string         `json:"blocked_reason"`
+}
+
+// ResolveLocalizedText extracts a display string from a JSON string or locale map.
+func ResolveLocalizedText(raw json.RawMessage, lang string) string {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return ""
+	}
+	var plain string
+	if err := json.Unmarshal(trimmed, &plain); err == nil {
+		return plain
+	}
+	var localized map[string]string
+	if err := json.Unmarshal(trimmed, &localized); err != nil || len(localized) == 0 {
+		return ""
+	}
+	if v := localized[lang]; v != "" {
+		return v
+	}
+	if v := localized["en"]; v != "" {
+		return v
+	}
+	for _, v := range localized {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
 type ProgressReport struct {
 	Status string   `json:"status"`

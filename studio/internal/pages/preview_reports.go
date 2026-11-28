@@ -284,13 +284,14 @@ func applyPreviewProgress(run *core.ReportRun, detail *core.RunTaskDetail, bundl
 			completed++
 		}
 		run.Requests = append(run.Requests, core.ReportRequest{
-			CaseID:        item.CaseId,
-			CategoryLabel: emptyText(item.Category),
-			State:         item.State,
-			Quality:       item.QualityState,
-			LatencyMS:     item.DurationMs,
-			Prompt:        item.Prompt,
-			Response:      item.Response,
+			CaseID:          item.CaseId,
+			CategoryLabel:   emptyText(item.Category),
+			State:           item.State,
+			Quality:         item.QualityState,
+			LatencyMS:       item.DurationMs,
+			Prompt:          item.Prompt,
+			Response:        item.Response,
+			ReferenceAnswer: item.ReferenceAnswer,
 		})
 	}
 	total := p.Done

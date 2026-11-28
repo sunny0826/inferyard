@@ -80,11 +80,74 @@ func TestReportCaseClickShowsPromptAndOptionalAnswer(t *testing.T) {
 		t.Fatalf("unexpected response section for null-case: %v", tt.Texts())
 	}
 
-	// timed-case has both prompt and response -> both should render.
+	// timed-case has both prompt and response and passed -> expected answer should NOT render.
 	s.openedReport.detailCaseIndex = 1
 	s.openedReport.detailCaseOpen = true
 	tt.Frame()
 	if !tt.HasText("HTTP 状态码 429 表示什么含义？用一句话说明。") || !tt.HasText("429 Too Many Requests 表示客户端在规定时间内发送了过多请求，触发了服务端限流。") {
 		t.Fatalf("missing prompt or response for timed-case: %v", tt.Texts())
+	}
+	if tt.HasText(tr(nil, "detail.case_drawer.expected_title")) {
+		t.Fatalf("unexpected expected-answer section for passed case: %v", tt.Texts())
+	}
+
+	// failed-answer has quality=fail and reference_answer -> both model response and expected answer should render.
+	s.openedReport.detailCaseIndex = 2
+	s.openedReport.detailCaseOpen = true
+	tt.Frame()
+	if !tt.HasText("太阳系中体积最大的行星是哪一颗？") || !tt.HasText("土星是太阳系中体积最大的行星。") {
+		t.Fatalf("missing prompt or response for failed-answer: %v", tt.Texts())
+	}
+	if !tt.HasText(tr(nil, "detail.case_drawer.expected_title")) || !tt.HasText("木星") {
+		t.Fatalf("missing expected answer for failed-answer: %v", tt.Texts())
+	}
+}
+
+func TestDetailCaseClickShowsExpectedAnswerOnlyWhenFailed(t *testing.T) {
+	s := readyState("benchmarks")
+	s.detailID = "task-2"
+	s.detail = &core.RunTaskDetail{
+		Task: core.RunTask{TaskId: "task-2", State: "done", Bundle: ptr("zh-core")},
+		Progress: &core.RunProgress{
+			Done:  2,
+			Total: ptr(int64(2)),
+			Cases: []core.CaseProgress{
+				{
+					CaseId:          "case-pass",
+					State:           "completed",
+					QualityState:    ptr("pass"),
+					Prompt:          ptr("2 + 2 = ?"),
+					Response:        ptr("4"),
+					ReferenceAnswer: ptr("4"),
+				},
+				{
+					CaseId:          "case-fail",
+					State:           "completed",
+					QualityState:    ptr("fail"),
+					Prompt:          ptr("3 + 5 = ?"),
+					Response:        ptr("9"),
+					ReferenceAnswer: ptr("8"),
+				},
+			},
+		},
+	}
+	tt := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).FillWidth().Children(func() { s.detailView(c) })
+	}, 1120, 960)
+	tt.Frame()
+
+	click(t, tt, "case-pass")
+	tt.Frame()
+	if tt.HasText(tr(nil, "detail.case_drawer.expected_title")) {
+		t.Fatalf("unexpected expected-answer section for passed detail case: %v", tt.Texts())
+	}
+
+	click(t, tt, tr(nil, "detail.case_drawer.next_case"))
+	tt.Frame()
+	if !tt.HasText("3 + 5 = ?") || !tt.HasText("9") {
+		t.Fatalf("missing prompt or response for failed detail case: %v", tt.Texts())
+	}
+	if !tt.HasText(tr(nil, "detail.case_drawer.expected_title")) || !tt.HasText("8") {
+		t.Fatalf("missing expected answer for failed detail case: %v", tt.Texts())
 	}
 }

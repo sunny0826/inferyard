@@ -172,7 +172,7 @@ def speed_service(scenario, tmp_path, monkeypatch):
         files,
     )
     deps.adapter = PrismAdapter
-    bundle = Path(__file__).resolve().parents[2] / "bundles/zh-context-speed.json"
+    bundle = Path(__file__).resolve().parents[3] / "benchmarks/bundles/zh-context-speed.json"
     (tmp_path / "bundle.json").write_bytes(bundle.read_bytes())
     path = tmp_path / "speed.toml"
 

@@ -6,6 +6,7 @@
 
 | 目录 | 职责 |
 | --- | --- |
+| `benchmarks/` | 独立测评题集目录（唯一真相源），包含 `catalog.json` 与 `bundles/*.json`，打包时自动映射进 CLI 包内 |
 | `cli/` | Python CLI（`inferyard`），负责测评执行、原始证据落盘、离线核验与 `studio.json` 报告生成（`schema_version = 3`） |
 | `studio/` | MyGo 原生桌面应用（Go，独立 module `inferyard/studio`），消费 `core.Service` 与 `studio.json`，无前端构建步骤 |
 

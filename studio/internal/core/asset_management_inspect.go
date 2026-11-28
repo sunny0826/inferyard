@@ -368,7 +368,8 @@ func (s *Service) inspectDeleteEngineAsset(u UserSettings, paths *BoundPaths, re
 				return AssetDeleteInfo{}, errAssetNotDeletable()
 			}
 			declWorkDir, declDataDir := readPolystrataInstallDirs(eng.Path)
-			migPlans, migErr := snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir, defaultManagedPolystrataDataDirs(u, paths, wsEngines))
+			surviving := survivingInstallsExcluding(u, wsEngines, eng.Path, installDir)
+			migPlans, migErr := snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir, defaultManagedPolystrataDataDirs(u, paths, wsEngines), surviving, false)
 			if migErr != nil {
 				if apiErr, ok := polystrataCredentialApiError(migErr); ok {
 					return AssetDeleteInfo{}, apiErr

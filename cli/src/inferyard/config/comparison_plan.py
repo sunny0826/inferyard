@@ -16,11 +16,10 @@ from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
 from inferyard import SCHEMA_VERSION
-from inferyard.contracts.bundle import DEFAULT_BUNDLES
+from inferyard.bundles.registry import bundle_bytes, bundle_names, default_bundles
 from inferyard.contracts.comparison_types import JSONRecord, JSONValue
 from inferyard.contracts.engine_comparison import config_pair_blockers
 from inferyard.contracts.scoring_version import SCORER_VERSION
-from inferyard.provisioning.community_resources import BUNDLES, resource_bytes
 from inferyard.config.loader import load_config, read_document
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.config.comparison_plan_safety import (
@@ -226,11 +225,12 @@ def is_comparison_plan(plan: JSONValue) -> bool:
 
 def _bundle_documents(specs: tuple[str, ...]) -> dict[str, tuple[bytes, JSONRecord]]:
     if not specs:
-        specs = DEFAULT_BUNDLES
+        specs = default_bundles()
+    known_bundles = set(bundle_names())
     documents = {}
     for spec in specs:
-        if spec in BUNDLES:
-            raw = resource_bytes(f"bundles/{spec}.json")
+        if spec in known_bundles:
+            raw = bundle_bytes(spec)
         else:
             raw = read_document(Path(spec).expanduser().resolve())
         try:

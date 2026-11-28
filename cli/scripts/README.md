@@ -6,7 +6,7 @@ Run all commands below from `cli/` (`mise exec -- uv run --frozen python scripts
 
 ```bash
 mise exec -- uv run --frozen python scripts/export_schemas.py        # --check to verify the 6 exported boundary schemas
-mise exec -- uv run --frozen python scripts/export_community.py      # optional helper to sync bundles or refresh Windows ZIP profiles (--archives DIR)
+mise exec -- uv run --frozen python scripts/export_community.py      # optional helper to check templates or refresh Windows ZIP profiles (--archives DIR)
 ```
 
 ## Corpus & external patches

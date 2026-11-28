@@ -149,7 +149,7 @@ def boundary_examples(task):
 
 
 def build():
-    original = json.loads((ROOT / "bundles/zh-smoke.json").read_text())
+    original = json.loads((ROOT.parent / "benchmarks/bundles/zh-smoke.json").read_text())
     bundle = copy.deepcopy(original)
     bundle.pop("review_provenance", None)
     bundle.update(
@@ -208,21 +208,20 @@ def main():
     args = parser.parse_args()
     bundle, boundaries = build()
     outputs = {
-        "bundles/zh-core.json": dumps(bundle),
-        "bundles/zh-core-v2.boundaries.json": dumps(boundaries),
-        "bundles/zh-core-review.html": render(bundle, boundaries),
+        ROOT.parent / "benchmarks/bundles/zh-core.json": dumps(bundle),
+        ROOT / "bundles/zh-core-v2.boundaries.json": dumps(boundaries),
+        ROOT / "bundles/zh-core-review.html": render(bundle, boundaries),
     }
-    for name, text in outputs.items():
-        path = ROOT / name
+    for path, text in outputs.items():
         if args.check:
-            if name.endswith("zh-core.json"):
+            if path.name == "zh-core.json":
                 existing = json.loads(path.read_text())
                 existing["review_records"] = []
-                assert existing == bundle, name
+                assert existing == bundle, str(path)
             else:
-                assert path.read_text() == text, name
+                assert path.read_text() == text, str(path)
         else:
-            if name.endswith("zh-core.json") and path.exists():
+            if path.name == "zh-core.json" and path.exists():
                 existing = json.loads(path.read_text())
                 if existing.get("review_records"):
                     raise SystemExit(

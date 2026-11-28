@@ -3,9 +3,10 @@
 from importlib.resources import files
 from pathlib import PurePosixPath
 
+from inferyard.bundles.registry import bundle_bytes, bundle_names
 from inferyard.provisioning.preparation_io import PreparationError
 
-BUNDLES = ("zh-smoke", "zh-core", "zh-svg-pelican", "zh-context-speed")
+BUNDLES = bundle_names()
 
 
 def resource_bytes(name):
@@ -19,6 +20,8 @@ def resource_bytes(name):
         or rel.as_posix() != name
     ):
         raise PreparationError("package_resource_invalid", 4)
+    if len(rel.parts) == 2 and rel.parts[0] == "bundles" and rel.parts[1].endswith(".json"):
+        return bundle_bytes(rel.parts[1].removesuffix(".json"))
     root = files("inferyard").joinpath("data/community")
     try:
         return root.joinpath(*rel.parts).read_bytes()

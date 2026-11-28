@@ -1,8 +1,8 @@
 name: Nightly CI
 on:
   schedule:
-    # 18:00 UTC = 02:00 BJT (next day)
-    - cron: "0 18 * * *"
+    # 16:37 UTC = 00:37 BJT (next day); off-peak UTC window + prime minute
+    - cron: "37 16 * * *"
   workflow_dispatch:
     inputs:
       force_all:
@@ -38,7 +38,7 @@ jobs:
             echo "should_run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # Force weekly full run on Sunday 02:00 BJT (Saturday 18:00 UTC, day 6)
+          # Force weekly full run on Sunday 00:37 BJT (Saturday 16:37 UTC, day 6)
           if [ "$(date -u +%u)" = "6" ]; then
             echo "Weekly scheduled sweep: running full Nightly suite."
             echo "should_run=true" >> "$GITHUB_OUTPUT"

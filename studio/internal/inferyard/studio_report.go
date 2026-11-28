@@ -114,13 +114,14 @@ type StudioDashboard struct {
 	OutputBlockIntervals         *StudioOutputBlockIntervals `json:"output_block_intervals"`
 }
 type StudioRequest struct {
-	CaseID        string   `json:"case_id"`
-	CategoryLabel string   `json:"category_label"`
-	State         string   `json:"state"`
-	Quality       *string  `json:"quality"`
-	LatencyMS     *float64 `json:"latency_ms"`
-	Prompt        *string  `json:"prompt,omitempty"`
-	Response      *string  `json:"response,omitempty"`
+	CaseID          string   `json:"case_id"`
+	CategoryLabel   string   `json:"category_label"`
+	State           string   `json:"state"`
+	Quality         *string  `json:"quality"`
+	LatencyMS       *float64 `json:"latency_ms"`
+	Prompt          *string  `json:"prompt,omitempty"`
+	Response        *string  `json:"response,omitempty"`
+	ReferenceAnswer *string  `json:"reference_answer,omitempty"`
 }
 type StudioSVGOutput struct {
 	CaseID string  `json:"case_id"`
