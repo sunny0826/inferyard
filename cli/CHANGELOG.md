@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.23
+
+- feat(cli,studio): upgrade PrismML llama.cpp to b12232 and onboard Bonsai 2.5 27B (#286)
+- fix(studio): require engine selection before choosing benchmark model (#285)
+- refactor: remove SGLang engine support until macOS upstream matures (#284)
+- fix(studio): hide ready task guide banner on library page (#283)
+- docs(release): document auto-fix and tag reuse on unpublished release CI failure (#282)
+
 ## 0.0.22
 
 - style(studio): standardize page button placement and adopt icon-only tool actions (#279)
