@@ -31,6 +31,16 @@ mise run test:studio-ui:polystrata
 
 `tests/ui/run_polystrata.py` (`PolystrataRealUITests`) auto-discovers `~/.inferyard/engines/polystrata*/installation.json`, Studio `settings.json`, or `~/PolyStrata/installation.json` (override via `--installation` or `INFERYARD_POLYSTRATA_INSTALLATION`), clones local PolyStrata assets via APFS copy-on-write into an isolated temporary workspace and `HOME`, verifies **Library**, **Services** (standalone launch, live `/v1/chat/completions` probe, multi-process memory reporting, clean stop), and **Benchmarks** (**Thinking Effort** selection and `zh-svg-pelican` through `studio.json` **View Report**), and asserts that the host `~/.inferyard` directory remains untouched. This task is intentionally excluded from CI workflows; `PolystrataRealUITests` skips automatically during `test:studio-ui` and `test:studio-ui:full`.
 
+## Local real-machine Bonsai 2.5 27B UI E2E (not in CI)
+
+To drive a real production `InferYard Studio.app` window (without `--debug-ui`) end-to-end against an existing local PrismML `llama.cpp` (`>= b12232`) runtime and local Ternary Bonsai 2.5 27B (`PTQ1_0` / `PQ2_0`) GGUF weights without downloading assets or mutating `~/.inferyard`, run from the repository root on an unlocked macOS desktop:
+
+```sh
+mise run test:studio-ui:bonsai
+```
+
+`tests/ui/run_bonsai.py` (`BonsaiRealUITests`) auto-discovers PrismML `llama-cpp` (`b12232+`) and local Bonsai 2.5 27B GGUF weights under `~/.inferyard` or Studio `settings.json` (override via `--engine` / `--model` or `INFERYARD_BONSAI_ENGINE` / `INFERYARD_BONSAI_MODEL`), stages them via APFS copy-on-write into an isolated temporary workspace and `HOME`, verifies **Library**, **Services** (standalone launch, live `/v1/chat/completions` probe, real multi-GiB memory reporting, clean stop), and **Benchmarks** (`zh-svg-pelican` -> `studio.json` **View Report**), and asserts that host asset directories and `~/.inferyard` remain untouched. `BonsaiRealUITests` skips automatically during `test:studio-ui` and `test:studio-ui:full`.
+
 ## Real-machine multi-engine one-click upgrade & run UI E2E
 
 To verify that all Studio-managed engine families on Apple Silicon detect upstream updates, complete one-click upgrades (`UpdateEngine`), re-verify (`engine check`), and run real inference in a production `InferYard Studio.app` window (without `--debug-ui`), run from the repository root on an unlocked macOS desktop:
