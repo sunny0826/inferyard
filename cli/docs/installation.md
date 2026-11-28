@@ -230,3 +230,26 @@ inferyard --schema serve_plan
 ```
 
 退出码约定：`0` 完成、`2` 输入或身份预检阻断、`3` 运行不完整、`4` IO 或工具错误、`130` 取消。
+
+## 5. 接入远端算力节点（`join` / `agent`）
+
+如需将另一台 Windows、Linux 或 macOS 算力机接入本地 [InferYard Studio](../../studio/README.md) 进行远端保真测评与本地端口映射，可在 Studio 左栏点击「添加新机器」复制一行短命令，或在远端普通用户终端手动配对：
+
+```bash
+# 使用一次性 6 位配对码与 Studio CA 公钥 SPKI SHA-256 指纹配对（支持重复 --hub 传入多候选地址）
+inferyard join \
+  --hub 100.84.1.2:48860 \
+  --code 839-204 \
+  --ca-sha256 <STUDIO_CA_SPKI_SHA256>
+
+# 手动在前台运行常驻 mTLS 1.3 代理（可选 --hub 临时覆盖连接地址，如 SSH -R 反向端口）
+inferyard agent run
+
+# 单独安装或卸载用户态静默自启（Windows pythonw.exe / macOS LaunchAgent / Linux systemd --user 或守护脚本）
+inferyard agent install-autostart
+inferyard agent uninstall-autostart
+```
+
+- 凭据与客户端证书仅保存在用户受限状态目录（默认 `~/.inferyard/node`，可通过 `--state-dir` 或 `INFERYARD_NODE_STATE_DIR` 指定；POSIX 权限 `0700`/`0600`，Windows 为当前用户 SID 独占 ACL），无需引入额外 Python 加密依赖。
+- 远端测评流量全程走源节点本机 `127.0.0.1` 回环并复用 `HostLock`；引擎崩溃后只留退出码与日志尾收据，从不自动重启。
+- 报告导出明确区分来源：由远端原始运行目录生成时标记 `verified_from_raw: true`（`raw_evidence`），直接导出既有 `studio.json` 时仅做 Schema 校验并标记 `verified_from_raw: false`（`schema_only`）。

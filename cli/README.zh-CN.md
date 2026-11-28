@@ -37,6 +37,8 @@ uv tool upgrade inferyard
 | `inferyard assets scan` | 只读扫描本地模型与引擎目录 |
 | `inferyard serve prepare` | 生成回环 `serve-plan.json`（`serve_plan` schema），无需创建测评任务即可启动本地 OpenAI 兼容模型服务（`--model`、`--installation \| --engine \| --runtime-receipt`、`--context-size`、`--port`、`--out`、`--json`） |
 | `inferyard service discover` | 只读发现本机回环地址上正在运行的推理服务（`/health`、`/v1/models`） |
+| `inferyard join` | 使用一次性 6 位配对码与 Studio 根 CA SPKI SHA-256 指纹将本机主动配对接入 InferYard Studio mTLS 1.3 Hub（`--hub`、`--code`、`--ca-sha256`、`--state-dir`、`--no-autostart`、`--source-hint`） |
+| `inferyard agent run\|install-autostart\|uninstall-autostart` | 运行常驻 stdlib `ssl` mTLS 1.3 节点代理（控制流 RPC、协作式 `cancel.json` 远端测评、崩溃不自动重启服务监管与按需回环隧道）或安装/卸载用户态静默自启 |
 | `inferyard plan` | 预览（`--dry-run`）或冻结离线实验计划（支持 `--preset context-speed` 用于长上下文速度测试） |
 | `inferyard probe` / `run` / `resume` | 探测已绑定服务、执行单次/计划测评，或断点续跑未执行用例 |
 | `inferyard verify` / `report` / `speed-results` | 离线核验封存 run、合并生成 `studio.json` 报告，或读取已核验的长上下文速度批次结果 |
