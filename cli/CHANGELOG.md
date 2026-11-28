@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.0.24
+
+- feat(studio,cli): add multi-node remote benchmarking, one-line join pairing, and mTLS tunnels (#291)
+- fix(cli): honor bundle max_tokens hints in community candidate configs (#290)
+- feat(studio): merge live run details into running benchmark task page (#289)
+- fix(studio): unblock binary engine benchmarks when local engine skips device_check (#288)
+
 ## 0.0.23
 
 - feat(cli,studio): upgrade PrismML llama.cpp to b12232 and onboard Bonsai 2.5 27B (#286)
