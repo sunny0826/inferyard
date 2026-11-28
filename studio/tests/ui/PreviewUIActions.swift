@@ -89,8 +89,21 @@ extension PreviewUITests {
         }
     }
 
-    /// chooseModel picks one entry from the task page's 测评模型 dropdown, the
-    /// only place the pair is chosen. The dropdown lists installed models.
+    /// chooseEngine picks one entry from the task page's 引擎 dropdown, which
+    /// unlocks and filters 测评模型 to compatible models.
+    func chooseEngine(_ label: String) {
+        let trigger = app.menuButtons["引擎"].firstMatch
+        expectExists(trigger, timeout: 10)
+        revealInContent(trigger)
+        trigger.click()
+        let item = app.menuItems[label].firstMatch
+        expectExists(item, timeout: 5)
+        item.click()
+        wait("engine selection closes", timeout: 5) { !item.exists }
+    }
+
+    /// chooseModel picks one entry from the task page's 测评模型 dropdown.
+    /// Requires a usable engine to be selected first.
     func chooseModel(_ label: String) {
         let trigger = app.menuButtons["测评模型"].firstMatch
         expectExists(trigger, timeout: 10)

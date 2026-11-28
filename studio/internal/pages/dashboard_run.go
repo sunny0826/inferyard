@@ -11,7 +11,7 @@ import (
 	"inferyard/studio/internal/l10n"
 )
 
-func (w *viewState) engineChoices() ([]components.NativeSelectOption[string], bool, bool) {
+func (w *viewState) engineChoices(c *ui.Context) ([]components.NativeSelectOption[string], bool, bool) {
 	eligible := []string{}
 	for _, e := range w.registry.Engines {
 		el := w.eligibility(e.Name)
@@ -20,6 +20,9 @@ func (w *viewState) engineChoices() ([]components.NativeSelectOption[string], bo
 		}
 	}
 	options := []components.NativeSelectOption[string]{}
+	if len(eligible) > 0 || w.engine != "" {
+		options = append(options, components.NativeSelectOption[string]{Value: "", Label: tr(c, "dashboard.candidate.select_engine")})
+	}
 	listed := false
 	for _, name := range eligible {
 		options = append(options, components.NativeSelectOption[string]{Value: name, Label: name})
@@ -30,9 +33,9 @@ func (w *viewState) engineChoices() ([]components.NativeSelectOption[string], bo
 	revoked := false
 	if w.engine != "" && !listed {
 		el := w.eligibility(w.engine)
-		suffix := l10n.TR("dashboard.engine.checking_suffix")
+		suffix := tr(c, "dashboard.engine.checking_suffix")
 		if el.State == core.EngineCheckIneligible {
-			suffix = l10n.TR("dashboard.engine.ineligible_suffix")
+			suffix = tr(c, "dashboard.engine.ineligible_suffix")
 			revoked = true
 		}
 		options = append(options, components.NativeSelectOption[string]{Value: w.engine, Label: w.engine + suffix, Disabled: true})
@@ -47,19 +50,10 @@ func (w *viewState) candidateView(c *ui.Context) {
 
 func (w *viewState) candidateFields(c *ui.Context) {
 	w.verifyTaskEngines()
-	w.adoptDownloadedEngine()
-	w.adoptOnlyModel()
-	w.reconcileCandidateBeforeRender()
-
-	modelOptions := []components.NativeSelectOption[string]{{Value: "", Label: tr(c, "dashboard.candidate.select_model")}}
-	for _, m := range w.registry.Models {
-		if m.Available {
-			modelOptions = append(modelOptions, components.NativeSelectOption[string]{Value: m.Name, Label: modelLabel(m) + w.candidateModelSuffix(m)})
-		}
-	}
+	w.reconcileCandidateSelection()
 
 	t := tokens(c)
-	engineOptions, revoked, hasEligible := w.engineChoices()
+	engineOptions, revoked, hasEligible := w.engineChoices(c)
 	engineHint := ""
 	if !w.checks.Supported {
 		engineHint = tr(c, "dashboard.candidate.cli_outdated_hint")
@@ -68,12 +62,36 @@ func (w *viewState) candidateFields(c *ui.Context) {
 	if compactLayout(c) {
 		cols = 1
 	}
-	prevModel, prevEngine := w.model, w.engine
+	var engineReady bool
+	var compatModels []core.ModelAsset
 	ui.Grid(c).FillWidth().Columns(cols).Gap(t.Density.Stack).Children(func() {
-		selectField(c, tr(c, "dashboard.candidate.engine"), engineHint, &w.engine, engineOptions)
-		selectField(c, tr(c, "dashboard.candidate.model"), "", &w.model, modelOptions)
+		prevEngine := w.engine
+		if len(engineOptions) == 0 {
+			disabledSelectField(c, tr(c, "dashboard.candidate.engine"), engineHint, tr(c, "dashboard.candidate.select_engine"))
+		} else {
+			selectField(c, tr(c, "dashboard.candidate.engine"), engineHint, &w.engine, engineOptions)
+		}
+		if w.engine != prevEngine {
+			w.skipAutoModelAdopt = false
+			w.reconcileModelOnEngineChange(prevEngine)
+			engineOptions, revoked, hasEligible = w.engineChoices(c)
+		}
+		engineReady = w.hasSelectedUsableEngine()
+		compatModels = w.compatibleModelsForSelectedEngine()
+		switch {
+		case !engineReady:
+			disabledSelectField(c, tr(c, "dashboard.candidate.model"), "", tr(c, "dashboard.candidate.select_engine_first"))
+		case len(compatModels) == 0:
+			disabledSelectField(c, tr(c, "dashboard.candidate.model"), "", tr(c, "dashboard.candidate.no_compatible_models"))
+		default:
+			modelOptions := make([]components.NativeSelectOption[string], 0, len(compatModels)+1)
+			modelOptions = append(modelOptions, components.NativeSelectOption[string]{Value: "", Label: tr(c, "dashboard.candidate.select_model")})
+			for _, m := range compatModels {
+				modelOptions = append(modelOptions, components.NativeSelectOption[string]{Value: m.Name, Label: modelLabel(m)})
+			}
+			selectField(c, tr(c, "dashboard.candidate.model"), "", &w.model, modelOptions)
+		}
 	})
-	w.applyCandidateSelectionDiff(prevModel, prevEngine)
 	w.recordCandidateSelection()
 	if w.checks.Checking > 0 {
 		ui.Text(c, trf(c, "dashboard.candidate.verifying_engines", "count", w.checks.Checking)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
@@ -115,7 +133,7 @@ func (w *viewState) candidateFields(c *ui.Context) {
 			Message: notice,
 		})
 	}
-	createDisabled := w.environmentMissing() || !w.preflightReady() || w.busy || w.engine == "" || w.model == "" || revoked || len(w.checkedBundles()) == 0 || w.engineState.State == "orphaned" || w.localSelectionError() != ""
+	createDisabled := w.environmentMissing() || !w.preflightReady() || w.busy || !engineReady || w.model == "" || len(compatModels) == 0 || revoked || len(w.checkedBundles()) == 0 || w.engineState.State == "orphaned" || w.localSelectionError() != ""
 	if revoked {
 		el := w.eligibility(w.engine)
 		applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).
@@ -159,11 +177,11 @@ func (w *viewState) candidateFields(c *ui.Context) {
 		}
 		createDisabled = true
 	}
-	if w.model == "" && len(modelOptions) == 1 {
+	if engineReady && len(compatModels) == 0 {
 		applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).
 			Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
 			components.Icon(c, reicon.Box).Size(14, 14).TextColor(t.Color.FgSecondary)
-			ui.Text(c, tr(c, "dashboard.candidate.no_models")).Grow(1).MinWidth(160)
+			ui.Text(c, tr(c, "dashboard.candidate.no_compatible_models_hint")).Grow(1).MinWidth(160)
 			outlineIconButton(c, reicon.Download, tr(c, "dashboard.candidate.download_model")).OnClick(func() {
 				w.libraryTab = 0
 				w.navigateTo("library", "")
@@ -273,7 +291,7 @@ func (w *viewState) runViewWithBar(c *ui.Context, embedBar bool) {
 		})
 		if cancelConfirmed {
 			if w.task.stage != "" {
-				w.newBenchmark()
+				w.newBenchmarkWithSelection(w.engine, w.model)
 				return
 			}
 			if w.simulate(previewCancelRun{id: id}) {

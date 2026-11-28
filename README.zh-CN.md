@@ -36,7 +36,7 @@
   xattr -dr com.apple.quarantine /Applications/InferYard\ Studio.app
   ```
 
-  启动后在「服务」页选择「准备环境」，再按 [Studio 首次使用说明](studio/README.md#pages-and-first-launch) 选择模型、引擎和题包。
+  启动后在「服务」页选择「准备环境」，再按 [Studio 首次使用说明](studio/README.md#pages-and-first-launch) 依次选择引擎、兼容模型和题包。
 - **终端测评**　从[安装与候选准备](cli/docs/installation.md)或 [CLI 说明](cli/README.zh-CN.md)开始。按候选参数启动服务，绑定实际 PID 和端点，分别运行题包并生成汇总报告。
 
 ## 现有题包

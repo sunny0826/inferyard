@@ -35,7 +35,6 @@ type serviceParamsDrawerState struct {
 
 func (s *viewState) openServiceParamsDrawerForNew() {
 	s.verifyTaskEngines()
-	s.adoptDownloadedEngine()
 	modelName := s.defaultServiceModelName()
 	engineName := s.defaultServiceEngineForModel(modelName)
 	s.serviceParams = serviceParamsDrawerState{

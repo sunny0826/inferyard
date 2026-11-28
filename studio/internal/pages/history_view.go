@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"path/filepath"
 	"slices"
 	"strings"
 
@@ -183,24 +182,9 @@ func (s *viewState) createReportFromPaths(c *ui.Context, paths []string) {
 
 func (s *viewState) rerunFromHistoryRun(r core.RunSummary) {
 	s.historyDetailPath = ""
-	if wantModel := strings.TrimSpace(emptyText(r.ModelName)); wantModel != "" {
-		for _, m := range s.registry.Models {
-			if m.Name == wantModel || filepath.Base(m.Path) == wantModel {
-				s.model = m.Name
-				break
-			}
-		}
-	}
-	if wantEngine := strings.TrimSpace(emptyText(r.Engine)); wantEngine != "" {
-		for _, e := range s.registry.Engines {
-			if e.Name == wantEngine || e.Family == wantEngine || filepath.Base(e.Path) == filepath.Base(wantEngine) {
-				s.engine = e.Name
-				break
-			}
-		}
-	}
+	eng, mod := s.resolveHistoryRerunSelection(r)
 	wantBundle := strings.TrimSpace(emptyText(r.Bundle))
-	s.newBenchmark()
+	s.newBenchmarkWithSelection(eng, mod)
 	if wantBundle != "" && s.progress != nil {
 		hasBundle := false
 		for _, b := range s.progress.Bundles {

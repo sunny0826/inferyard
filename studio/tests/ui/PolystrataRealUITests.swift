@@ -138,6 +138,20 @@ final class PolystrataRealUITests: XCTestCase {
         if newBenchBtn.exists {
             click("新建测评", timeout: 15)
         }
+        let engineTrigger = app.menuButtons["引擎"].firstMatch
+        wait("Engine dropdown is ready", timeout: 60) {
+            engineTrigger.exists && engineTrigger.isEnabled
+        }
+        let modelTrigger = app.menuButtons["测评模型"].firstMatch
+        if modelTrigger.exists {
+            XCTAssertFalse(modelTrigger.isEnabled, "Model dropdown must stay disabled until an engine is selected")
+        }
+        engineTrigger.click()
+        let polyItem = app.menuItems.matching(
+            NSPredicate(format: "title CONTAINS[c] %@ OR label CONTAINS[c] %@", "PolyStrata", "PolyStrata")
+        ).firstMatch
+        wait("PolyStrata engine menu item appears", timeout: 10) { polyItem.exists }
+        polyItem.click()
         wait("Benchmark configuration stage is ready", timeout: 60) {
             startBtn.exists && startBtn.isEnabled
         }

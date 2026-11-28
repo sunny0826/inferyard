@@ -122,7 +122,7 @@ func (s *viewState) probeReusableStandaloneBeforeStart(svc core.EngineState, nam
 
 func (s *viewState) startBenchmark() {
 	names := s.checkedBundles()
-	if s.environmentMissing() || !s.preflightReady() || s.busy || s.probingReuse || len(names) == 0 || s.model == "" || s.engine == "" || s.engineState.State == "orphaned" || s.localSelectionError() != "" {
+	if s.environmentMissing() || !s.preflightReady() || s.busy || s.probingReuse || len(names) == 0 || s.model == "" || !s.hasSelectedUsableEngine() || s.engineState.State == "orphaned" || s.localSelectionError() != "" {
 		return
 	}
 	matchesPending := s.pendingExclusivityMatchesTarget()

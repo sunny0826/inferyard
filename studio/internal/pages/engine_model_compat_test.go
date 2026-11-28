@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -72,16 +73,26 @@ func TestMlxLMStandalonePairingAndContextReuse(t *testing.T) {
 	}
 }
 
+func hasTextSub(texts []string, sub string) bool {
+	for _, t := range texts {
+		if strings.Contains(t, sub) {
+			return true
+		}
+	}
+	return false
+}
+
 func TestModelRowBenchmarkAndAdoptReconcilesEngine(t *testing.T) {
 	dirModel := core.ModelAsset{Name: "Qwen3-MLX-Dir", Path: "/models/Qwen3-MLX-Dir", Format: "directory", Available: true}
 	ggufModel := core.ModelAsset{Name: "Qwen3.gguf", Path: "/models/Qwen3.gguf", Format: "gguf", Available: true}
+	strataModel := core.ModelAsset{Name: "unmatched-pack", Path: "/models/pack", Format: "strata_pack", Available: true}
 	llamaEng := core.EngineAsset{Name: "llama-prism", Family: "llama-cpp", Path: "/ws/engines/llama/llama-server"}
 	mlxEng := core.EngineAsset{Name: "mlx-lm · 0.32.2", Family: "mlx-lm", Kind: "local_installation", Path: "/ws/engines/mlx/installation.json"}
 
 	s := readyState("library")
 	s.engine = llamaEng.Name
 	s.registry = core.Registry{
-		Models:        []core.ModelAsset{ggufModel, dirModel},
+		Models:        []core.ModelAsset{ggufModel, dirModel, strataModel},
 		Engines:       []core.EngineAsset{llamaEng, mlxEng},
 		DefaultEngine: llamaEng.Name,
 	}
@@ -95,6 +106,7 @@ func TestModelRowBenchmarkAndAdoptReconcilesEngine(t *testing.T) {
 
 	tt := ui.NewTester(func(c *ui.Context) {
 		modelTaskAction(c, s, dirModel)
+		modelTaskAction(c, s, strataModel)
 	}, 800, 200)
 	tt.Frame()
 	benchLabel := l10n.TR("models.action.benchmark_with_model") + " · " + dirModel.Name
@@ -103,65 +115,168 @@ func TestModelRowBenchmarkAndAdoptReconcilesEngine(t *testing.T) {
 		t.Fatalf("clicking benchmark on directory model must switch engine to %q, got model=%q engine=%q", mlxEng.Name, s.model, s.engine)
 	}
 
-	// adoptDownloadedEngine prefers engine compatible with s.model when s.engine is empty.
-	s.engine = ""
-	s.model = dirModel.Name
-	s.adoptDownloadedEngine()
-	if s.engine != mlxEng.Name {
-		t.Fatalf("adoptDownloadedEngine with directory s.model got %q, want %q", s.engine, mlxEng.Name)
+	if got := s.resolveCompatibleEngineForModel(dirModel.Name); got != mlxEng.Name {
+		t.Fatalf("resolveCompatibleEngineForModel(%q) = %q, want %q", dirModel.Name, got, mlxEng.Name)
+	}
+	if got := s.resolveCompatibleEngineForModel(strataModel.Name); got != "" {
+		t.Fatalf("resolveCompatibleEngineForModel(%q) without polystrata = %q, want empty", strataModel.Name, got)
+	}
+
+	strataBtn := l10n.TR("models.action.benchmark_with_model") + " · " + strataModel.Name
+	click(t, tt, strataBtn)
+	if s.engine != "" || s.model != "" {
+		t.Fatalf("clicking benchmark on incompatible strata_pack without matching engine must reset pair, got engine=%q model=%q", s.engine, s.model)
 	}
 }
 
-func TestCandidateFieldsUnlocksModelDropdownAndSyncsEngine(t *testing.T) {
-	st := testState()
-	s := &st
+func TestCandidateFieldsEngineFirstAndCompatibleModelFiltering(t *testing.T) {
+	s := readyState("benchmarks")
+	preflight := "/tmp/device-preflight.json"
+	s.progress = &inferyard.WorkspaceProgress{
+		Workspace:       "/tmp/ws",
+		NextAction:      "prepare_candidate",
+		DevicePreflight: inferyard.ProgressPreflight{Status: "ok", Path: &preflight},
+		Bundles:         []inferyard.BundleProgress{{Bundle: "zh-core"}},
+	}
 	ggufModel := core.ModelAsset{Name: "qwen.gguf", Path: "/models/qwen.gguf", Format: "gguf", Available: true}
+	ggufModel2 := core.ModelAsset{Name: "llama.gguf", Path: "/models/llama.gguf", Format: "gguf", Available: true}
 	dirModel := core.ModelAsset{Name: "qwen-mlx", Path: "/models/qwen-mlx", Format: "directory", Available: true}
 	strataModel := core.ModelAsset{Name: "unmatched-pack", Path: "/models/pack", Format: "strata_pack", Available: true}
 	llamaEng := core.EngineAsset{Name: "llama-prism", Family: "llama-cpp", Path: "/ws/engines/llama/llama-server"}
 	mlxEng := core.EngineAsset{Name: "mlx-lm · 0.32.2", Family: "mlx-lm", Kind: "local_installation", Path: "/ws/engines/mlx/installation.json"}
+	vllmEng := core.EngineAsset{Name: "vllm-metal", Family: "vllm", Path: "/ws/engines/vllm/vllm"}
 
-	s.engine = llamaEng.Name
-	s.model = ggufModel.Name
 	s.registry = core.Registry{
-		Models:  []core.ModelAsset{ggufModel, dirModel, strataModel},
-		Engines: []core.EngineAsset{llamaEng, mlxEng},
+		Models:  []core.ModelAsset{ggufModel, ggufModel2, dirModel, strataModel},
+		Engines: []core.EngineAsset{llamaEng, mlxEng, vllmEng},
 	}
 	s.checks = core.EngineCheckOverview{
 		Supported: true,
 		Engines: map[string]core.EngineEligibility{
 			llamaEng.Name: {State: core.EngineCheckEligible, Family: "llama-cpp"},
 			mlxEng.Name:   {State: core.EngineCheckEligible, Family: "mlx-lm"},
+			vllmEng.Name:  {State: core.EngineCheckEligible, Family: "vllm"},
 		},
-	}
-
-	if got := s.candidateModelSuffix(dirModel); got != "" {
-		t.Fatalf("directory model with eligible mlx-lm should have no incompatible suffix, got %q", got)
-	}
-	if got := s.candidateModelSuffix(strataModel); got == "" {
-		t.Fatal("strata_pack model without eligible polystrata should retain incompatible suffix")
 	}
 
 	tt := ui.NewTester(func(c *ui.Context) {
 		s.candidateFields(c)
 	}, 1024, 900)
-	tt.Frame()
 
-	// Switching model to directory model automatically reconciles engine to mlx-lm without format_mismatch error.
+	// 1. Blank engine clears dangling model and disables Model dropdown with select_engine_first.
+	s.engine = ""
 	s.model = dirModel.Name
 	tt.Frame()
-	if s.engine != mlxEng.Name {
-		t.Fatalf("switching candidate model to %q should reconcile engine to %q, got %q", dirModel.Name, mlxEng.Name, s.engine)
+	if s.model != "" {
+		t.Fatalf("blank engine must clear dangling model, got %q", s.model)
 	}
-	if errMsg := s.localSelectionError(); errMsg != "" {
-		t.Fatalf("expected empty localSelectionError after engine auto-reconcile, got %q", errMsg)
+	texts := tt.Texts()
+	if !hasTextSub(texts, l10n.TR("dashboard.candidate.select_engine")) {
+		t.Fatalf("expected %q placeholder when engine blank, got %v", l10n.TR("dashboard.candidate.select_engine"), texts)
+	}
+	if !hasTextSub(texts, l10n.TR("dashboard.candidate.select_engine_first")) {
+		t.Fatalf("expected %q placeholder when engine blank, got %v", l10n.TR("dashboard.candidate.select_engine_first"), texts)
+	}
+	if got := s.speedStartBlockReason(); got != l10n.TR("speed.block.no_engine") {
+		t.Fatalf("speedStartBlockReason() with blank engine = %q, want %q", got, l10n.TR("speed.block.no_engine"))
 	}
 
-	// Manually switching engine back to llama-cpp when only 1 compatible GGUF model exists auto-switches model.
+	// 2. Selecting mlx-lm with 1 compatible directory model unlocks & auto-selects dirModel.
+	s.engine = mlxEng.Name
+	tt.Frame()
+	if s.model != dirModel.Name {
+		t.Fatalf("selecting %q with single compatible model should auto-select %q, got %q", mlxEng.Name, dirModel.Name, s.model)
+	}
+	if errMsg := s.localSelectionError(); errMsg != "" {
+		t.Fatalf("expected empty localSelectionError after valid selection, got %q", errMsg)
+	}
+
+	// 3. Switching to llama-cpp (2 compatible GGUF models) resets incompatible model to "" ("请选择模型")
+	// and Model menu lists only compatible GGUF models.
 	s.engine = llamaEng.Name
 	tt.Frame()
+	if s.model != "" {
+		t.Fatalf("switching to engine with 2 compatible models must reset model, got %q", s.model)
+	}
+	if !hasTextSub(tt.Texts(), l10n.TR("dashboard.candidate.select_model")) {
+		t.Fatalf("expected %q placeholder with multiple compatible models, got %v", l10n.TR("dashboard.candidate.select_model"), tt.Texts())
+	}
+	compat := s.compatibleModelsForSelectedEngine()
+	if len(compat) != 2 || compat[0].Name != ggufModel.Name || compat[1].Name != ggufModel2.Name {
+		t.Fatalf("compatibleModelsForSelectedEngine() for llama-cpp = %+v, want [qwen.gguf llama.gguf]", compat)
+	}
+	tt.Click(l10n.TR("dashboard.candidate.model"))
+	menuItems := tt.Menu()
+	if !hasTextSub(menuItems, ggufModel.Name) || !hasTextSub(menuItems, ggufModel2.Name) ||
+		hasTextSub(menuItems, dirModel.Name) || hasTextSub(menuItems, strataModel.Name) {
+		t.Fatalf("Model menu under llama-cpp should contain only GGUF models, got %v", menuItems)
+	}
+	tt.ChooseMenuItem(modelLabel(ggufModel))
+	tt.Frame()
 	if s.model != ggufModel.Name {
-		t.Fatalf("switching engine to %q with single compatible GGUF model should select %q, got %q", llamaEng.Name, ggufModel.Name, s.model)
+		t.Fatalf("choosing %q from Model menu set s.model=%q", ggufModel.Name, s.model)
+	}
+
+	// Check format_mismatch detection on speedStartBlockReason before render reconciliation.
+	s.model = dirModel.Name
+	if got := s.speedStartBlockReason(); got != l10n.TR("engine.local.error.format_mismatch") {
+		t.Fatalf("speedStartBlockReason() on format mismatch = %q, want %q", got, l10n.TR("engine.local.error.format_mismatch"))
+	}
+
+	// 4. Switching to engine with 0 compatible models clears s.model and disables Model dropdown with hint.
+	s.registry.Models = []core.ModelAsset{ggufModel, ggufModel2, strataModel}
+	s.model = ggufModel.Name
+	s.engine = vllmEng.Name
+	tt.Frame()
+	if s.model != "" {
+		t.Fatalf("switching to engine with 0 compatible models must clear model, got %q", s.model)
+	}
+	vllmTexts := tt.Texts()
+	if !hasTextSub(vllmTexts, l10n.TR("dashboard.candidate.no_compatible_models")) ||
+		!hasTextSub(vllmTexts, l10n.TR("dashboard.candidate.no_compatible_models_hint")) {
+		t.Fatalf("expected no_compatible_models and hint for vllm, got %v", vllmTexts)
+	}
+	if got := s.speedStartBlockReason(); got != l10n.TR("dashboard.candidate.no_compatible_models_hint") {
+		t.Fatalf("speedStartBlockReason() with 0 compatible models = %q, want %q", got, l10n.TR("dashboard.candidate.no_compatible_models_hint"))
+	}
+	s.registry.Models = []core.ModelAsset{ggufModel, ggufModel2, dirModel, strataModel}
+
+	// 5. Switching Engine back to "" clears model and re-disables Model dropdown; newBenchmark clears both.
+	s.engine = llamaEng.Name
+	s.model = ggufModel.Name
+	tt.Frame()
+	s.engine = ""
+	tt.Frame()
+	if s.model != "" || !hasTextSub(tt.Texts(), l10n.TR("dashboard.candidate.select_engine_first")) {
+		t.Fatalf("switching engine back to empty must clear model (%q) and disable model dropdown", s.model)
+	}
+
+	s.engine = mlxEng.Name
+	s.model = dirModel.Name
+	s.newBenchmark()
+	if s.engine != "" || s.model != "" {
+		t.Fatalf("newBenchmark() must clear engine & model, got engine=%q model=%q", s.engine, s.model)
+	}
+
+	// 6. startBenchmark rejects blank, ineligible, or model-incompatible engine.
+	s.task = benchmarkTask{}
+	s.selectedBundles = map[string]bool{"zh-core": true}
+	s.engine = ""
+	s.model = ggufModel.Name
+	s.startBenchmark()
+	if s.task.stage != "" || s.busy {
+		t.Fatalf("startBenchmark() with blank engine must not start task, got stage=%q busy=%v", s.task.stage, s.busy)
+	}
+	s.engine = "missing-engine"
+	s.startBenchmark()
+	if s.task.stage != "" || s.busy {
+		t.Fatalf("startBenchmark() with ineligible engine must not start task, got stage=%q busy=%v", s.task.stage, s.busy)
+	}
+	s.engine = llamaEng.Name
+	s.model = dirModel.Name
+	s.startBenchmark()
+	if s.task.stage != "" || s.busy {
+		t.Fatalf("startBenchmark() with incompatible (engine, model) must not start task, got stage=%q busy=%v", s.task.stage, s.busy)
 	}
 }
 

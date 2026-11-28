@@ -29,8 +29,6 @@ func (s *viewState) ingestCoreEvents(events []core.Event) {
 	}
 	if syncChecks && s.preview == nil && s.service != nil {
 		s.checks = s.service.EngineChecks()
-		s.adoptDownloadedEngine()
-		s.adoptOnlyModel()
 	}
 }
 

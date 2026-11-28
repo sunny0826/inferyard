@@ -88,6 +88,10 @@ func (s *viewState) checkedBundles() []string {
 }
 
 func (s *viewState) newBenchmark() {
+	s.newBenchmarkWithSelection("", "")
+}
+
+func (s *viewState) newBenchmarkWithSelection(engine, model string) {
 	s.pendingDestructive = destructiveRequest{}
 	s.benchmarksTab = benchmarksTabTasks
 	s.historyDetailPath = ""
@@ -95,7 +99,7 @@ func (s *viewState) newBenchmark() {
 		s.speed.selected = false
 	}
 	if s.preview != nil {
-		s.preview.resetTask(s.model, s.engine)
+		s.preview.resetTask(model, engine)
 		return
 	}
 	if s.newTaskPending {
@@ -107,6 +111,7 @@ func (s *viewState) newBenchmark() {
 	s.newTaskPending = true
 	finish := func() {
 		s.clearBenchmark()
+		s.engine, s.model = engine, model
 		if s.speed != nil {
 			s.speed.current, s.speed.opened = nil, nil
 		}

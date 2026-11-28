@@ -1,7 +1,9 @@
 package pages
 
 import (
+	"path/filepath"
 	"slices"
+	"strings"
 
 	"inferyard/studio/internal/core"
 )
@@ -74,74 +76,152 @@ func (s *viewState) hasCompatibleUsableBenchmarkEngine(model core.ModelAsset) bo
 	return false
 }
 
-func (s *viewState) candidateModelSuffix(model core.ModelAsset) string {
-	if s == nil || s.engine == "" || s.compatibleModel(model) {
-		return ""
+func (s *viewState) hasSelectedUsableEngine() bool {
+	if s == nil || s.engine == "" {
+		return false
 	}
-	if s.hasCompatibleUsableBenchmarkEngine(model) {
-		return ""
+	if _, ok := s.findEngineAsset(s.engine); !ok {
+		return false
 	}
-	return s.incompatibleModelSuffix(model)
+	return s.isBenchmarkEngineUsable(s.engine)
 }
 
-func (s *viewState) reconcileEngineForModel(modelName string) {
+func (s *viewState) compatibleModelsForSelectedEngine() []core.ModelAsset {
+	if !s.hasSelectedUsableEngine() {
+		return nil
+	}
+	models := make([]core.ModelAsset, 0, len(s.registry.Models))
+	for _, m := range s.registry.Models {
+		if m.Available && s.compatibleModel(m) {
+			models = append(models, m)
+		}
+	}
+	return models
+}
+
+func (s *viewState) resolveCompatibleEngineForModel(modelName string) string {
 	if s == nil || modelName == "" {
-		return
+		return ""
 	}
 	model, ok := s.findModelAsset(modelName)
 	if !ok || !model.Available {
-		return
+		return ""
 	}
 	if s.engine != "" {
 		if currentEng, exists := s.findEngineAsset(s.engine); exists &&
 			s.isBenchmarkEngineUsable(currentEng.Name) &&
 			compatibleBenchmarkEngine(model, currentEng) {
-			return
+			return currentEng.Name
 		}
 	}
 	for _, eng := range s.registry.Engines {
 		if s.isBenchmarkEngineUsable(eng.Name) && compatibleBenchmarkEngine(model, eng) {
-			s.engine = eng.Name
-			return
+			return eng.Name
+		}
+	}
+	return ""
+}
+
+func (s *viewState) reconcileCandidateSelection() {
+	if s == nil {
+		return
+	}
+	if s.engine != "" {
+		if _, ok := s.findEngineAsset(s.engine); !ok {
+			s.engine = ""
+		}
+	}
+	if !s.hasSelectedUsableEngine() {
+		if s.engine == "" || s.eligibility(s.engine).State == core.EngineCheckIneligible {
+			s.model = ""
+		} else if s.model != "" {
+			if m, ok := s.findModelAsset(s.model); !ok || !m.Available || !s.compatibleModel(m) {
+				s.model = ""
+			}
+		}
+		return
+	}
+	if s.lastCandidateInit && s.engine != s.lastCandidateEngine {
+		s.reconcileModelOnEngineChange(s.lastCandidateEngine)
+		return
+	}
+	if s.model != "" {
+		if m, ok := s.findModelAsset(s.model); !ok || !m.Available || !s.compatibleModel(m) {
+			s.model = ""
 		}
 	}
 }
 
-func (s *viewState) reconcileCandidateBeforeRender() {
-	if s == nil {
+func (s *viewState) reconcileModelOnEngineChange(prevEngine string) {
+	if s == nil || s.engine == prevEngine {
 		return
 	}
-	if !s.lastCandidateInit {
-		s.recordCandidateSelection()
+	if !s.hasSelectedUsableEngine() {
+		if s.engine == "" || s.eligibility(s.engine).State == core.EngineCheckIneligible {
+			s.model = ""
+		}
 		return
 	}
-	s.applyCandidateSelectionDiff(s.lastCandidateModel, s.lastCandidateEngine)
-	s.recordCandidateSelection()
+	compat := s.compatibleModelsForSelectedEngine()
+	if s.model != "" {
+		matched := false
+		for _, m := range compat {
+			if m.Name == s.model {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			s.model = ""
+		}
+	}
+	if s.model == "" && !s.skipAutoModelAdopt && len(compat) == 1 {
+		s.model = compat[0].Name
+	}
 }
 
-func (s *viewState) applyCandidateSelectionDiff(prevModel, prevEngine string) {
+func (s *viewState) resolveHistoryRerunSelection(r core.RunSummary) (string, string) {
 	if s == nil {
-		return
+		return "", ""
 	}
-	if s.model != prevModel && s.model != "" {
-		s.reconcileEngineForModel(s.model)
-		return
-	}
-	if s.engine != prevEngine && s.engine != "" && s.model != "" {
-		if m, ok := s.findModelAsset(s.model); ok && !s.compatibleModel(m) {
-			compat := ""
-			compatCount := 0
-			for _, cand := range s.registry.Models {
-				if cand.Available && s.compatibleModel(cand) {
-					compat = cand.Name
-					compatCount++
-				}
+	var matchedModel *core.ModelAsset
+	if wantModel := strings.TrimSpace(emptyText(r.ModelName)); wantModel != "" {
+		for i := range s.registry.Models {
+			m := &s.registry.Models[i]
+			if !m.Available {
+				continue
 			}
-			if compatCount == 1 {
-				s.model = compat
+			if m.Name == wantModel || (m.Path != "" && filepath.Base(m.Path) == wantModel) {
+				matchedModel = m
+				break
 			}
 		}
 	}
+	var matchedEngine *core.EngineAsset
+	if wantEngine := strings.TrimSpace(emptyText(r.Engine)); wantEngine != "" {
+		for i := range s.registry.Engines {
+			e := &s.registry.Engines[i]
+			if !s.isBenchmarkEngineUsable(e.Name) {
+				continue
+			}
+			if e.Name == wantEngine || e.Family == wantEngine || (e.Path != "" && filepath.Base(e.Path) == filepath.Base(wantEngine)) {
+				matchedEngine = e
+				break
+			}
+		}
+	}
+	if matchedEngine != nil {
+		if matchedModel != nil && compatibleBenchmarkEngine(*matchedModel, *matchedEngine) {
+			return matchedEngine.Name, matchedModel.Name
+		}
+		return matchedEngine.Name, ""
+	}
+	if matchedModel != nil {
+		if eng := s.resolveCompatibleEngineForModel(matchedModel.Name); eng != "" {
+			return eng, matchedModel.Name
+		}
+	}
+	return "", ""
 }
 
 func (s *viewState) recordCandidateSelection() {

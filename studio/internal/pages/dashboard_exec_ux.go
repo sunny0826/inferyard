@@ -151,28 +151,6 @@ func launchSummaryLine(w *viewState) string {
 	return l10n.TRf("dashboard.exec.summary_prism", "backend", prismBackendLabel(w), "context", prismContextSize(w.selectedModel()))
 }
 
-func (w *viewState) incompatibleModelSuffix(model core.ModelAsset) string {
-	if w == nil || w.engine == "" || w.compatibleModel(model) {
-		return ""
-	}
-	if e := w.localEngine(); e != nil {
-		switch e.Family {
-		case "mlx-lm", "vllm":
-			return l10n.TR("dashboard.exec.compat_dir")
-		case "polystrata":
-			if model.Format == "gguf" && model.Architecture != "" {
-				return l10n.TR("dashboard.exec.compat_polystrata_arch")
-			}
-			return l10n.TR("dashboard.exec.compat_polystrata_format")
-		case "llama-cpp", "lmstudio":
-			return l10n.TR("dashboard.exec.compat_gguf")
-		default:
-			return ""
-		}
-	}
-	return l10n.TR("dashboard.exec.compat_gguf")
-}
-
 func lmStudioHandoffNotice(w *viewState) string {
 	if w == nil {
 		return ""

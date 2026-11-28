@@ -162,11 +162,20 @@ func TestBenchmarksPromotesRunHistoryAndDrawerInteractions(t *testing.T) {
 		{Name: "Qwen-7B.gguf", Path: "/models/Qwen-7B.gguf", Format: "gguf", Available: true},
 		{Name: "Llama-8B.gguf", Path: "/models/Llama-8B.gguf", Format: "gguf", Available: true},
 	}
+	s.registry.Engines = []core.EngineAsset{
+		{Name: "llama-server", Family: "llama-cpp", Path: "/ws/engines/llama/llama-server"},
+	}
+	s.checks = core.EngineCheckOverview{
+		Supported: true,
+		Engines: map[string]core.EngineEligibility{
+			"llama-server": {State: core.EngineCheckEligible, Family: "llama-cpp"},
+		},
+	}
 	rate := 7.0 / 13.0
 	batchID := "batch-01"
 	runComplete := core.RunSummary{
 		RunId: "run-complete", Path: "/results/run-complete",
-		ModelName: ptr("Qwen-7B.gguf"), Bundle: ptr("zh-core"),
+		Engine: ptr("llama-server"), ModelName: ptr("Qwen-7B.gguf"), Bundle: ptr("zh-core"),
 		Status: "complete", Sealed: true, Completeness: ptr("complete"),
 		StartedAt: ptr("2026-10-16T23:55:00Z"), FinishedAt: ptr("2026-10-16T23:58:12Z"),
 		Score: &core.RunScore{Passed: 7, Valid: 13, Rate: &rate},
@@ -258,9 +267,9 @@ func TestBenchmarksPromotesRunHistoryAndDrawerInteractions(t *testing.T) {
 	}
 	click(t, tt, "同配置再测")
 	tt.Frame()
-	if !s.benchFlowOpen || s.benchmarksTab != benchmarksTabTasks || s.model != "Qwen-7B.gguf" {
-		t.Fatalf("expected 同配置再测 to open benchmark setup with preset model, got flow=%v tab=%d model=%q",
-			s.benchFlowOpen, s.benchmarksTab, s.model)
+	if !s.benchFlowOpen || s.benchmarksTab != benchmarksTabTasks || s.engine != "llama-server" || s.model != "Qwen-7B.gguf" {
+		t.Fatalf("expected 同配置再测 to open benchmark setup with preset engine & model, got flow=%v tab=%d engine=%q model=%q",
+			s.benchFlowOpen, s.benchmarksTab, s.engine, s.model)
 	}
 
 	// 7. While inside benchmark flow, top-right "运行历史" button jumps straight back to Run History tab.

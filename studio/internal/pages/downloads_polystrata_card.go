@@ -354,25 +354,31 @@ func (s *viewState) applyPolystrataSelection(wantInst, wantModel string) (bool, 
 
 	selectedModel := ""
 	fallbackPack := ""
+	var selectedAsset, fallbackAsset core.ModelAsset
 	for _, m := range s.registry.Models {
 		if !m.Available {
 			continue
 		}
 		if wantModel != "" && cleanMatchPath(m.Path) == wantModel {
 			selectedModel = m.Name
+			selectedAsset = m
 			modelMatched = true
 			break
 		}
 		if m.Format == "strata_pack" && fallbackPack == "" {
 			fallbackPack = m.Name
+			fallbackAsset = m
 		}
 	}
 	if selectedModel == "" && wantModel == "" && fallbackPack != "" {
 		selectedModel = fallbackPack
+		selectedAsset = fallbackAsset
 		modelMatched = true
 	}
-	if selectedModel != "" {
+	if selectedModel != "" && s.engine != "" && s.compatibleModel(selectedAsset) {
 		s.model = selectedModel
+	} else if s.engine == "" {
+		s.model = ""
 	}
 	return engineMatched, modelMatched
 }
