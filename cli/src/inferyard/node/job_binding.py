@@ -31,16 +31,19 @@ def validate_frozen_plan(plan_path: Path, expected: dict | None) -> None:
 def prepare_rerun_binding(
     job_dir: Path, from_run: Path, endpoint: dict, write_json
 ) -> Path | None:
-    inputs_path = from_run / "inputs.json"
-    if not inputs_path.is_file():
+    if not from_run.is_dir():
         return None
     from inferyard.contracts.engine_profiles import is_local
+    from inferyard.errors import EvidenceError, UnsupportedFormat
+    from inferyard.evidence.trial_evidence import TrialEvidence
     from inferyard.platforms.identity import process_start_ticks
     from inferyard.platforms.local_engines.service import bind_service
     from inferyard.platforms.startup_arguments import replace_arguments
 
-    payload = json.loads(inputs_path.read_text(encoding="utf-8"))
-    config = payload.get("config")
+    try:
+        config = TrialEvidence(from_run, projection=True).input("config")
+    except (OSError, EvidenceError, UnsupportedFormat, KeyError, ValueError):
+        return None
     if not isinstance(config, dict) or not is_local(config):
         return None
     cfg = json.loads(json.dumps(config))

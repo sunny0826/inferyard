@@ -155,6 +155,106 @@ def test_legacy_string_error_receipt_is_migrated_on_load(tmp_path):
     assert isinstance(loaded["error"], dict) and loaded["error"]["message"] == "RuntimeError"
 
 
+def test_rerun_prepares_service_binding_from_trial_evidence_inputs_layout(
+    tmp_path, config_path, monkeypatch
+):
+    from inferyard.analysis.scoring import ScoringContext
+    from inferyard.config.single_plan import compile_single_plan
+    from inferyard.evidence.journal import TrialJournal
+
+    loaded = load_config(str(config_path))
+    config = loaded.config.to_dict()
+    bundle = loaded.bundle.to_dict()
+    config["definition"] = "local-engine-config.v1"
+    config["model"] = {
+        "display_name": "Local model",
+        "repo": "local",
+        "revision": "frozen",
+        "kind": "directory",
+        "local_path": "model",
+        "packing": "4bit",
+        "template_path": "template.jinja",
+        "template_sha256": "3" * 64,
+    }
+    config["engine"] = {
+        "adapter": "local_openai_v1",
+        "family": "mlx-lm",
+        "backend": "metal",
+        "installation_path": "runtime.json",
+        "installation_sha256": "4" * 64,
+        "startup_args": [
+            "-I",
+            "-B",
+            "/installed/mlx_server.py",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "48850",
+        ],
+        "working_directory": "/runtime",
+        "environment": {"PYTHONDONTWRITEBYTECODE": "1"},
+        "served_model": "formal-local",
+    }
+    config["endpoint"].update(url="http://127.0.0.1:48850", server_pid=100)
+    config["generation"] = {"temperature": 0, "max_tokens": 512}
+    for field in ("threads", "threads_batch", "slots"):
+        config["conditions"].pop(field, None)
+    config["conditions"].update(cache_policy="unknown", ac_online=True, model_loaded=True)
+    config["safety"] = {"interval_seconds": 0.5, "check_environment": True}
+    results_root = tmp_path / "results"
+    config["output"]["root"] = str(results_root)
+    plan = compile_single_plan(config, bundle)
+    store = TrialJournal(
+        results_root,
+        plan,
+        plan["trials"][0]["trial_id"],
+        config,
+        bundle,
+        execution_mode="single",
+        scoring_context=ScoringContext(),
+    )
+    from_run = store.path
+    store.close()
+    assert (from_run / "inputs.json").is_file()
+
+    bound_configs = []
+    monkeypatch.setattr(
+        "inferyard.platforms.local_engines.service.bind_service",
+        lambda cfg: bound_configs.append(cfg) or {"definition": "local-engine-binding.v1"},
+    )
+    monkeypatch.setattr("inferyard.platforms.identity.process_start_ticks", lambda pid: 999)
+
+    seen = []
+
+    async def executor(request):
+        seen.append(request)
+        return 0, CommandResult("run", "finished")
+
+    class ActiveSupervisor:
+        def list(self):
+            return [{"service_id": "svc-1", "status": "running"}]
+
+        def endpoint(self, service_id):
+            return {"url": "http://127.0.0.1:48857", "server_pid": 4321, "process_start_ticks": 999}
+
+    async def scenario():
+        runner = JobRunner(tmp_path, ActiveSupervisor(), executor=executor)
+        await runner.start_request({"action": "rerun", "remote_run_paths": [str(from_run)]})
+        await asyncio.gather(*runner.tasks.values())
+        assert len(bound_configs) == 1
+        assert bound_configs[0]["endpoint"]["server_pid"] == 4321
+        assert bound_configs[0]["engine"]["startup_args"][-4:] == [
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "48857",
+        ]
+        assert seen[0].service_binding_path is not None and seen[0].service_binding_path.is_file()
+        await runner.close()
+
+    asyncio.run(scenario())
+
+
 def test_go_resume_and_rerun_requests(tmp_path):
     requests = []
 

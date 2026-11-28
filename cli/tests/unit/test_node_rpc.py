@@ -104,9 +104,11 @@ def test_report_export_by_batch_job_id_resolves_nested_runs(tmp_path):
 
 
 def test_find_uv_discovers_private_inferyard_install_dir(tmp_path, monkeypatch):
+    import os
+
     uv_dir = tmp_path / "private-uv"
     uv_dir.mkdir()
-    uv_bin = uv_dir / "uv"
+    uv_bin = uv_dir / ("uv.exe" if os.name == "nt" else "uv")
     uv_bin.write_text("#!/bin/sh\n")
     uv_bin.chmod(0o755)
     monkeypatch.setenv("INFERYARD_UV_DIR", str(uv_dir))
