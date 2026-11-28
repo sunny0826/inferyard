@@ -22,6 +22,7 @@ def build_config(
     repo="local",
     revision=None,
     port=48857,
+    max_tokens=512,
 ):
     mode = selected["mode"]
     config = deepcopy(CONFIG_DEFAULTS)
@@ -53,7 +54,7 @@ def build_config(
         warmup_prompt="请只回答：准备就绪",
     )
     config["generation"].update(
-        max_tokens=512,
+        max_tokens=max_tokens,
         seed=42,
         seed_support="supported",
         reasoning_mode="off",

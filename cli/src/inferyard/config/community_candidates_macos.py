@@ -25,6 +25,7 @@ def build_config(
     repo="local",
     revision=None,
     port=48857,
+    max_tokens=512,
 ):
     port = 48857 if port is None else port
     if type(port) is not int or not 1 <= port <= 65535:
@@ -59,7 +60,7 @@ def build_config(
             "template_sha256": hashlib.sha256(template.encode()).hexdigest(),
         },
         generation={
-            "max_tokens": 512,
+            "max_tokens": max_tokens,
             "seed": 42,
             "seed_support": "supported",
             "reasoning_mode": "off",
