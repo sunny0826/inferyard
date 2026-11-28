@@ -137,6 +137,8 @@ type RunSummary struct {
 	ModelName    *string   `json:"model_name"`
 	ModelPath    *string   `json:"model_path"`
 	Engine       *string   `json:"engine"`
+	EngineFamily *string   `json:"engine_family,omitempty"`
+	ServedModel  *string   `json:"served_model,omitempty"`
 	Bundle       *string   `json:"bundle"`
 	Score        *RunScore `json:"score"`
 	Relation     *string   `json:"relation"`

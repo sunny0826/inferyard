@@ -411,17 +411,41 @@ func TestExplicitHandoffsAndHistoryRerunValidation(t *testing.T) {
 		},
 	}
 
-	// 1. History rerun resolves ModelPath + CLI adapter (prism_llama_server_v1 / local_openai_v1).
+	// 1. History rerun resolves ModelPath + CLI adapter, EngineFamily disambiguation, and PolyStrata packs.
 	fooDisplay, fooPath, prismAdapter := "foo", "/models/foo.gguf", "prism_llama_server_v1"
 	eng, mod := s.resolveHistoryRerunSelection(core.RunSummary{ModelName: &fooDisplay, ModelPath: &fooPath, Engine: &prismAdapter})
 	if eng != llamaEng.Name || mod != fooModel.Name {
 		t.Fatalf("history rerun (foo/prism) got (%q, %q), want (%q, %q)", eng, mod, llamaEng.Name, fooModel.Name)
 	}
-	mlxDisplay, mlxPath, localAdapter := "Qwen3 MLX", "/models/qwen-mlx", "local_openai_v1"
-	eng, mod = s.resolveHistoryRerunSelection(core.RunSummary{ModelName: &mlxDisplay, ModelPath: &mlxPath, Engine: &localAdapter})
+	mlxDisplay, mlxPath, localAdapter, mlxFam := "Qwen3 MLX", "/models/qwen-mlx", "local_openai_v1", "mlx-lm"
+	vllmElig := core.EngineAsset{Name: "vllm-good", Family: "vllm", Path: "/ws/engines/vllm/vllm-good"}
+	s.registry.Engines = append(s.registry.Engines, vllmElig)
+	s.checks.Engines[vllmElig.Name] = core.EngineEligibility{State: core.EngineCheckEligible, Family: "vllm"}
+	s.engine = vllmElig.Name // must NOT leak into mlx-lm or ambiguous legacy rerun
+	eng, mod = s.resolveHistoryRerunSelection(core.RunSummary{ModelName: &mlxDisplay, ModelPath: &mlxPath, Engine: &localAdapter, EngineFamily: &mlxFam})
 	if eng != mlxEng.Name || mod != mlxModel.Name {
-		t.Fatalf("history rerun (mlx/local_openai_v1) got (%q, %q), want (%q, %q)", eng, mod, mlxEng.Name, mlxModel.Name)
+		t.Fatalf("history rerun (mlx/EngineFamily) got (%q, %q), want (%q, %q)", eng, mod, mlxEng.Name, mlxModel.Name)
 	}
+	eng, mod = s.resolveHistoryRerunSelection(core.RunSummary{ModelName: &mlxDisplay, ModelPath: &mlxPath, Engine: &localAdapter})
+	if eng != "" || mod != "" {
+		t.Fatalf("legacy local_openai_v1 rerun with 2 compatible engines must stay empty, got (%q, %q)", eng, mod)
+	}
+	strataMod := core.ModelAsset{Name: "qwen3.8-flash-next-iq2_xs", Format: "strata_pack", Path: "/ws/data/strata-iq2_xs.json", CoveredPaths: []string{"/tmp/packs/iq2_xs/weights.bin"}, Available: true}
+	polyEng := core.EngineAsset{Name: "PolyStrata · v0.2.20", Family: "polystrata", Kind: "local_installation", Path: "/ws/engines/poly/installation.json"}
+	s.registry.Models = append(s.registry.Models, strataMod)
+	s.registry.Engines = append(s.registry.Engines, polyEng)
+	s.checks.Engines[polyEng.Name] = core.EngineEligibility{State: core.EngineCheckEligible, Family: "polystrata"}
+	packDisp, packPath, polyFam, servedName := "iq2_xs", "/tmp/packs/iq2_xs", "polystrata", "qwen3.8-flash-next-iq2_xs"
+	eng, mod = s.resolveHistoryRerunSelection(core.RunSummary{ModelName: &packDisp, ModelPath: &packPath, Engine: &localAdapter, EngineFamily: &polyFam})
+	if eng != polyEng.Name || mod != strataMod.Name {
+		t.Fatalf("polystrata pack rerun via CoveredPaths got (%q, %q), want (%q, %q)", eng, mod, polyEng.Name, strataMod.Name)
+	}
+	eng, mod = s.resolveHistoryRerunSelection(core.RunSummary{ServedModel: &servedName, EngineFamily: &polyFam})
+	if eng != polyEng.Name || mod != strataMod.Name {
+		t.Fatalf("polystrata pack rerun via ServedModel got (%q, %q), want (%q, %q)", eng, mod, polyEng.Name, strataMod.Name)
+	}
+	s.registry.Models = []core.ModelAsset{fooModel, mlxModel}
+	s.registry.Engines = []core.EngineAsset{llamaEng, mlxEng, vllmInel}
 
 	// 2. applyPolystrataSelection atomically clears stale pair when no PolyStrata engine exists.
 	s.engine, s.model = llamaEng.Name, fooModel.Name

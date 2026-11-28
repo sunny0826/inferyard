@@ -190,12 +190,20 @@ func historyEngineMatches(e core.EngineAsset, wantEngine string) bool {
 	return false
 }
 
+func pathEqualsOrContains(dirOrFile, target string) bool {
+	if dirOrFile == "" || target == "" {
+		return false
+	}
+	return target == dirOrFile || strings.HasPrefix(target, dirOrFile+string(filepath.Separator))
+}
+
 func (s *viewState) resolveHistoryRerunSelection(r core.RunSummary) (string, string) {
 	if s == nil {
 		return "", ""
 	}
 	var matchedModel *core.ModelAsset
-	if wantPath := cleanMatchPath(emptyText(r.ModelPath)); wantPath != "" {
+	wantPath := cleanMatchPath(emptyText(r.ModelPath))
+	if wantPath != "" {
 		for i := range s.registry.Models {
 			m := &s.registry.Models[i]
 			if m.Available && m.Path != "" && cleanMatchPath(m.Path) == wantPath {
@@ -204,27 +212,56 @@ func (s *viewState) resolveHistoryRerunSelection(r core.RunSummary) (string, str
 			}
 		}
 	}
-	if matchedModel == nil {
-		if wantModel := strings.TrimSpace(emptyText(r.ModelName)); wantModel != "" {
-			for i := range s.registry.Models {
-				m := &s.registry.Models[i]
-				if !m.Available {
-					continue
-				}
-				if m.Name == wantModel || (m.Path != "" && filepath.Base(m.Path) == wantModel) {
+	wantModel := strings.TrimSpace(emptyText(r.ModelName))
+	wantServed := strings.TrimSpace(emptyText(r.ServedModel))
+	if matchedModel == nil && (wantModel != "" || wantServed != "") {
+		for i := range s.registry.Models {
+			m := &s.registry.Models[i]
+			if !m.Available {
+				continue
+			}
+			if (wantModel != "" && (m.Name == wantModel || (m.Path != "" && filepath.Base(m.Path) == wantModel))) ||
+				(wantServed != "" && m.Name == wantServed) {
+				matchedModel = m
+				break
+			}
+		}
+	}
+	if matchedModel == nil && wantPath != "" {
+		for i := range s.registry.Models {
+			m := &s.registry.Models[i]
+			if !m.Available || m.Format != "strata_pack" {
+				continue
+			}
+			for _, cp := range m.CoveredPaths {
+				if pathEqualsOrContains(wantPath, cleanMatchPath(cp)) {
 					matchedModel = m
 					break
 				}
 			}
+			if matchedModel != nil {
+				break
+			}
 		}
 	}
 	var matchedEngine *core.EngineAsset
-	if wantEngine := strings.TrimSpace(emptyText(r.Engine)); wantEngine != "" {
+	if wantFamily := strings.TrimSpace(emptyText(r.EngineFamily)); wantFamily != "" {
 		for i := range s.registry.Engines {
 			e := &s.registry.Engines[i]
-			if s.isBenchmarkEngineUsable(e.Name) && historyEngineMatches(*e, wantEngine) {
+			if s.isBenchmarkEngineUsable(e.Name) && e.Family == wantFamily {
 				matchedEngine = e
 				break
+			}
+		}
+	}
+	if matchedEngine == nil {
+		if wantEngine := strings.TrimSpace(emptyText(r.Engine)); wantEngine != "" {
+			for i := range s.registry.Engines {
+				e := &s.registry.Engines[i]
+				if s.isBenchmarkEngineUsable(e.Name) && historyEngineMatches(*e, wantEngine) {
+					matchedEngine = e
+					break
+				}
 			}
 		}
 	}
@@ -235,8 +272,14 @@ func (s *viewState) resolveHistoryRerunSelection(r core.RunSummary) (string, str
 		return matchedEngine.Name, ""
 	}
 	if matchedModel != nil {
-		if eng := s.resolveCompatibleEngineForModel(matchedModel.Name); eng != "" {
-			return eng, matchedModel.Name
+		var compat []core.EngineAsset
+		for _, eng := range s.registry.Engines {
+			if s.isBenchmarkEngineUsable(eng.Name) && compatibleBenchmarkEngine(*matchedModel, eng) {
+				compat = append(compat, eng)
+			}
+		}
+		if len(compat) == 1 {
+			return compat[0].Name, matchedModel.Name
 		}
 	}
 	return "", ""
