@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
@@ -26,12 +27,23 @@ func (s *viewState) modelsView(c *ui.Context) {
 		s.wizardOpenRequested = false
 	}
 	host.Children(func() {
-		s.header(c, tr(c, "models.page.title"))
-		s.modelsIconPageActions(c, wizardOpen)
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+			s.header(c, tr(c, "models.page.title"))
+			ui.Box(c).Grow(1)
+			s.modelsIconPageActions(c, wizardOpen)
+		})
 		if *wizardOpen {
-			card(c, tr(c, "models.wizard.card_title"), func() {
+			mt := tokens(c)
+			applyMaterial(c, ui.Column(c).FillWidth().Gap(mt.Density.CardGap).Padding(mt.Card.Padding), materialCard).Children(func() {
+				studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(mt.Density.Row), func() {
+					ui.Row(c).Grow(1).MinWidth(0).Children(func() {
+						heading(c, tr(c, "models.wizard.card_title"), 2)
+					})
+					if iconButton(c, reicon.ChevronUp, tr(c, "models.action.collapse"), components.IconButtonCompact).Clicked() {
+						*wizardOpen = false
+					}
+				})
 				s.localEngineRegistrationView(c)
-				outlineIconButton(c, reicon.ChevronUp, tr(c, "models.action.collapse")).OnClick(func() { *wizardOpen = false })
 			})
 		}
 		card(c, tr(c, "models.section.installed_models"), func() {

@@ -56,58 +56,58 @@ func (s *viewState) localEngineWizardView(c *ui.Context) {
 		w.family = "llama-cpp"
 	}
 	container.Children(func() {
-		section(c, tr(c, "engine.wizard.title"), func() {
-			segmentedField(c, tr(c, "engine.wizard.family_label"), "", &w.family, localEngineFamilyOptions)
-			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				if secondaryActionButton(c, tr(c, "engine.wizard.detect_button"), w.detecting).Disabled(s.busy || w.detecting).Clicked() {
-					s.detectWizardEngines(w)
-				}
-			})
-			if w.detectError != nil {
-				errorView(c, w.detectError)
-			} else if w.detectedLoaded && len(w.candidates) == 0 {
-				ui.Text(c, tr(c, "engine.wizard.detect_empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			ui.Text(c, tr(c, "engine.wizard.family_label")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).Grow(1).MinWidth(0)
+			if secondaryActionButton(c, tr(c, "engine.wizard.detect_button"), w.detecting).Disabled(s.busy || w.detecting).Clicked() {
+				s.detectWizardEngines(w)
 			}
-			if len(w.candidates) > 0 {
-				ui.Text(c, tr(c, "engine.wizard.detect_found")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-					for _, cand := range w.candidates {
-						cand := cand
-						selected := w.family == cand.Family && strings.TrimSpace(w.executable) == cand.Executable
-						var b ui.Element
-						if selected {
-							b = primaryButton(c, cand.Label)
-						} else {
-							b = outlineButton(c, cand.Label)
-						}
-						if b.Disabled(s.busy).Clicked() {
-							applyDetectedEngine(w, cand)
-						}
+		})
+		segmentedControl(c, tr(c, "engine.wizard.family_label"), &w.family, localEngineFamilyOptions).AlignSelf(ui.Start)
+		if w.detectError != nil {
+			errorView(c, w.detectError)
+		} else if w.detectedLoaded && len(w.candidates) == 0 {
+			ui.Text(c, tr(c, "engine.wizard.detect_empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		}
+		if len(w.candidates) > 0 {
+			ui.Text(c, tr(c, "engine.wizard.detect_found")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				for _, cand := range w.candidates {
+					cand := cand
+					selected := w.family == cand.Family && strings.TrimSpace(w.executable) == cand.Executable
+					var b ui.Element
+					if selected {
+						b = primaryButton(c, cand.Label)
+					} else {
+						b = outlineButton(c, cand.Label)
 					}
-				})
-			}
-			execLabel, execDesc := wizardExecutableLabels(w.family)
-			execField := s.pathField(c, execLabel, &w.executable, browseExecutable).
-				Error(s.browseError(browseExecutable.key, pathError(w.executable)))
-			if execDesc != "" {
-				execField.Description(execDesc)
-			}
-			if w.family == "lmstudio" {
-				s.pathField(c, tr(c, "engine.wizard.lmstudio_models_root"), &w.modelsRoot, browseModelsRootDir).
-					Error(s.browseError(browseModelsRootDir.key, pathError(w.modelsRoot)))
-			}
-			if w.family == "polystrata" {
-				monoField(c, tr(c, "engine.wizard.polystrata_data_dir"), tr(c, "engine.wizard.polystrata_data_dir_desc"), "", pathError(w.dataDir), &w.dataDir)
-			}
-			monoField(c, tr(c, "engine.wizard.working_dir"), tr(c, "engine.wizard.working_dir_desc"), "", pathError(w.workingDir), &w.workingDir)
-			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				if wizardActionButton(c, tr(c, "engine.wizard.submit_visible"), tr(c, "engine.wizard.submit_accessible"), s.actionBusy("install-init")).Disabled(s.busy || !wizardCanSubmit(w)).Clicked() {
-					s.initAndRegisterWizardEngine(w)
-				}
-				if secondaryActionButton(c, tr(c, "engine.wizard.recheck"), s.actionBusy("install-recheck")).Disabled(s.busy).Clicked() {
-					s.changeInstallation("recheck", "")
+					if b.Disabled(s.busy).Clicked() {
+						applyDetectedEngine(w, cand)
+					}
 				}
 			})
+		}
+		execLabel, execDesc := wizardExecutableLabels(w.family)
+		execField := s.pathField(c, execLabel, &w.executable, browseExecutable).
+			Error(s.browseError(browseExecutable.key, pathError(w.executable)))
+		if execDesc != "" {
+			execField.Description(execDesc)
+		}
+		if w.family == "lmstudio" {
+			s.pathField(c, tr(c, "engine.wizard.lmstudio_models_root"), &w.modelsRoot, browseModelsRootDir).
+				Error(s.browseError(browseModelsRootDir.key, pathError(w.modelsRoot)))
+		}
+		if w.family == "polystrata" {
+			monoField(c, tr(c, "engine.wizard.polystrata_data_dir"), tr(c, "engine.wizard.polystrata_data_dir_desc"), "", pathError(w.dataDir), &w.dataDir)
+		}
+		monoField(c, tr(c, "engine.wizard.working_dir"), tr(c, "engine.wizard.working_dir_desc"), "", pathError(w.workingDir), &w.workingDir)
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			if secondaryActionButton(c, tr(c, "engine.wizard.recheck"), s.actionBusy("install-recheck")).Disabled(s.busy).Clicked() {
+				s.changeInstallation("recheck", "")
+			}
+			ui.Box(c).Grow(1)
+			if wizardActionButton(c, tr(c, "engine.wizard.submit_visible"), tr(c, "engine.wizard.submit_accessible"), s.actionBusy("install-init")).Disabled(s.busy || !wizardCanSubmit(w)).Clicked() {
+				s.initAndRegisterWizardEngine(w)
+			}
 		})
 	})
 }

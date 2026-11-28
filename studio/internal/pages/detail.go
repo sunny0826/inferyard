@@ -57,9 +57,10 @@ func runTaskIcon(kind stateKind) func() *ui.SVG {
 func (s *viewState) detailView(c *ui.Context) {
 	tok := tokens(c)
 	s.subpageHeader(c, tr(c, "detail.title"))
-	errorView(c, s.detailError)
 	if s.detailError != nil {
-		refreshIconButton(c, tr(c, "detail.retry_load"), false).OnClick(func() { s.selectTask(s.detailID) })
+		errorRecoveryBanner(c, s.detailError, func() {
+			refreshIconButton(c, tr(c, "detail.retry_load"), false).OnClick(func() { s.selectTask(s.detailID) })
+		})
 		if s.detail == nil {
 			return
 		}
@@ -110,9 +111,9 @@ func (s *viewState) detailView(c *ui.Context) {
 				disabled: (s.busy && s.task.stage == "") || terminal(t.State) || t.State == "cancelling",
 			}
 			if wholeRound {
-				cancelConfirmed = s.quietDestructiveDialog(c, cancelOption)
+				cancelConfirmed = s.dangerIconDestructiveDialog(c, reicon.Square, cancelOption)
 			} else {
-				cancelConfirmed = s.quietDestructiveAction(c, cancelOption)
+				cancelConfirmed = s.dangerIconDestructiveAction(c, reicon.Square, cancelOption)
 			}
 		})
 		runPathRaw := emptyText(t.RunPath)

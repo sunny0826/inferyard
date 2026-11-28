@@ -74,7 +74,6 @@
   "downloads.engines.install_label": "Install · {id}",
   "downloads.engines.install_new_model": "Install New Model",
   "downloads.engines.link": "Link",
-  "downloads.engines.link_existing": "Register Local Engine",
   "downloads.engines.link_label": "Link · {id}",
   "downloads.engines.none_available": "No engines available for this platform.",
   "downloads.engines.open_website": "Open Website",

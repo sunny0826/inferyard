@@ -124,7 +124,10 @@ func (s *viewState) discoveryView(c *ui.Context, bindable bool) {
 
 func (s *viewState) discoveryBody(c *ui.Context, bindable bool) {
 	s.managedServiceView(c)
-	refreshIconButton(c, tr(c, "engine.discovery.refresh"), s.discovering).Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)
+	t := tokens(c)
+	refreshBtn := func() {
+		refreshIconButton(c, tr(c, "engine.discovery.refresh"), s.discovering).Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)
+	}
 	errorView(c, s.discoveryError)
 	compatible := 0
 	for _, service := range s.discovery.Services {
@@ -135,6 +138,10 @@ func (s *viewState) discoveryBody(c *ui.Context, bindable bool) {
 		}
 	}
 	if compatible > 0 {
+		studioTooltipGroup(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row), func() {
+			ui.Box(c).Grow(1)
+			refreshBtn()
+		})
 		componentFold(c, tr(c, "engine.discovery.compatible_fold"), func() {
 			for _, service := range s.discovery.Services {
 				for _, endpoint := range service.Endpoints {
@@ -144,15 +151,23 @@ func (s *viewState) discoveryBody(c *ui.Context, bindable bool) {
 				}
 			}
 		})
-	} else if s.discoveryError == nil && !s.discovering {
-		message := tr(c, "engine.discovery.not_loaded")
-		if s.discoveryLoaded {
-			message = tr(c, "engine.discovery.none_found")
-			if s.managedServiceActive() {
-				message = tr(c, "engine.discovery.none_other_found")
+	} else {
+		studioTooltipGroup(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row), func() {
+			slot := ui.Box(c).Grow(1).MinWidth(0)
+			if s.discoveryError == nil && !s.discovering {
+				message := tr(c, "engine.discovery.not_loaded")
+				if s.discoveryLoaded {
+					message = tr(c, "engine.discovery.none_found")
+					if s.managedServiceActive() {
+						message = tr(c, "engine.discovery.none_other_found")
+					}
+				}
+				slot.Children(func() {
+					ui.Text(c, message).TextColor(t.Color.FgSecondary)
+				})
 			}
-		}
-		ui.Text(c, message)
+			refreshBtn()
+		})
 	}
 }
 

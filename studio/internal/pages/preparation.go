@@ -116,7 +116,7 @@ func (s *viewState) generalSettingsView(c *ui.Context) {
 			pathKeyValueRow(c, tr(c, "settings.dev_paths.results"), p.Results)
 			pathKeyValueRow(c, tr(c, "settings.dev_paths.models"), p.Models)
 			pathKeyValueRow(c, tr(c, "settings.dev_paths.engines"), p.Engines)
-			ui.Row(c).Gap(tokens(c).Density.Row).Children(func() {
+			ui.Row(c).FillWidth().Justify(ui.End).Gap(tokens(c).Density.Row).Children(func() {
 				s.cleanWorkspaceArtifactsButton(c)
 			})
 		})
@@ -148,6 +148,7 @@ func (s *viewState) generalSettingsView(c *ui.Context) {
 				savedMsg := tr(c, "settings.workspace.saved")
 				s.workAs("save-workspace", func() (string, *core.ApiError) { return s.persistSettings(patch, submitted, savedMsg) })
 			}
+			ui.Box(c).Grow(1)
 			s.cleanWorkspaceArtifactsButton(c)
 		},
 	})

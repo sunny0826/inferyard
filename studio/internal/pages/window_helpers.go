@@ -107,6 +107,7 @@ func (s *viewState) openLocalEngineWizard(family string) {
 	s.wizardPresetFamily = family
 	s.libraryTab = 1
 	s.navigateTo("library", "")
+	s.pageScroll().ScrollTo(0, 0, ui.Animation{})
 }
 
 func (s *viewState) contentView(c *ui.Context) {

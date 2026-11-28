@@ -101,14 +101,15 @@ func (s *viewState) aboutSettingsView(c *ui.Context) {
 	info := s.aboutBuildInfo()
 	rows := aboutInfoRows(contextLocale(c), info)
 	t := tokens(c)
-	card(c, tr(c, "settings.about.title"), func() {
-		for _, row := range rows {
-			keyValueRow(c, row.label, row.value, true)
-		}
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Tight, 0, 0, 0).Children(func() {
+	applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
+		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			heading(c, tr(c, "settings.about.title"), 2).Grow(1)
 			if outlineIconButton(c, reicon.Copy, tr(c, "settings.about.copy")).Clicked() {
 				s.copyAboutInfo(c, info)
 			}
 		})
+		for _, row := range rows {
+			keyValueRow(c, row.label, row.value, true)
+		}
 	})
 }

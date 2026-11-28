@@ -174,7 +174,7 @@ func filterableTable(c *ui.Context, opts filterableTableOptions) {
 					opts.Filters()
 				}
 				if activeFilter && opts.OnClearFilters != nil {
-					ghostButton(c, tr(c, "common.table.clear_filters")).OnClick(opts.OnClearFilters)
+					outlineIconButton(c, reicon.X, tr(c, "common.table.clear_filters")).OnClick(opts.OnClearFilters)
 				}
 				if opts.Actions != nil {
 					opts.Actions()

@@ -20,23 +20,22 @@ func (s *viewState) reportsView(c *ui.Context) {
 		s.reportView(c)
 		return
 	}
-	s.header(c, tr(c, "reports.title"))
 	if s.reportsTab < reportsTabList || s.reportsTab > reportsTabSpeed {
 		s.reportsTab = reportsTabList
 	}
 	t := tokens(c)
-	ui.Column(c.Key("reports-tabs")).FillWidth().Gap(t.Density.Stack).Children(func() {
-		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			ui.Box(c).Grow(1).MinWidth(0).Children(func() {
-				components.Tabs(c, &s.reportsTab, components.TabsUnderline, tr(c, "reports.tab.reports"), tr(c, "reports.tab.context_speed"))
+	studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
+		s.header(c, tr(c, "reports.title"))
+		ui.Box(c).Grow(1)
+		if s.reportsTab == reportsTabList {
+			outlineIconButton(c, reicon.Plus, tr(c, "reports.action.create_from_history")).OnClick(func() {
+				s.reportDialogOpen = true
+				s.reportDiscardConfirm = false
 			})
-			if s.reportsTab == reportsTabList {
-				outlineIconButton(c, reicon.Plus, tr(c, "reports.action.create_from_history")).OnClick(func() {
-					s.reportDialogOpen = true
-					s.reportDiscardConfirm = false
-				})
-			}
-		})
+		}
+	})
+	ui.Column(c.Key("reports-tabs")).FillWidth().Gap(t.Density.Stack).Children(func() {
+		components.Tabs(c, &s.reportsTab, components.TabsUnderline, tr(c, "reports.tab.reports"), tr(c, "reports.tab.context_speed"))
 		if s.reportsTab == reportsTabSpeed {
 			s.speedReportsTabView(c)
 		} else {
@@ -73,11 +72,12 @@ func (s *viewState) reportSourcesDialog(c *ui.Context) {
 	}, func(panel ui.Element) {
 		t := tokens(c)
 		ui.Column(c).FillWidth().Grow(1).MinHeight(0).Gap(t.Density.Stack).Children(func() {
-			errorView(c, s.historyError)
 			ui.Text(c, tr(c, "reports.dialog.select_runs")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			runs := s.historyRuns()
 			if s.historyError != nil {
-				button(c, tr(c, "reports.dialog.retry_load")).AlignSelf(ui.Start).OnClick(s.refreshAction)
+				errorRecoveryBanner(c, s.historyError, func() {
+					refreshIconButton(c, tr(c, "reports.dialog.retry_load"), false).OnClick(s.refreshAction)
+				})
 			} else if !s.loaded || s.hydrating {
 				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 					activitySpinner(c, tr(c, "reports.dialog.loading"))

@@ -196,22 +196,26 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 			FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgPrimary)
 	})
 	reason := s.speedStartBlockReason()
+	var stopAction func()
 	if engineLocked(s.engineState.State) {
-		if s.destructiveDialog(c, destructiveOption{
-			kind: destructiveStopEngine, label: tr(c, "speed.stop_engine.label"), confirmLabel: tr(c, "speed.stop_engine.confirm"),
-			prompt:   tr(c, "speed.stop_engine.prompt"),
-			disabled: s.busy || s.engineState.State == "stopping",
-		}) {
-			s.stopEngine()
+		stopAction = func() {
+			if s.dangerIconDestructiveDialog(c, reicon.Square, destructiveOption{
+				kind: destructiveStopEngine, label: tr(c, "speed.stop_engine.label"), confirmLabel: tr(c, "speed.stop_engine.confirm"),
+				prompt: tr(c, "speed.stop_engine.prompt"), disabled: s.busy || s.engineState.State == "stopping",
+			}) {
+				s.stopEngine()
+			}
 		}
 	}
-	if reason != "" {
-		noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: reason})
+	if reason != "" || stopAction != nil {
+		noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: reason, Actions: stopAction})
 	}
 	ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
-	if primaryButton(c, tr(c, "speed.action.start")).Disabled(reason != "").AlignSelf(ui.Start).Clicked() {
-		s.startSpeed()
-	}
+	ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Children(func() {
+		if primaryButton(c, tr(c, "speed.action.start")).Disabled(reason != "").Clicked() {
+			s.startSpeed()
+		}
+	})
 	return true
 }
 
@@ -347,7 +351,19 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 						}
 					})
 				})
-				inlineBadge(c, stepCount, stepKind, badgeOptions{Size: sizeSM})
+				ui.Box(c).Grow(1)
+				ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+					inlineBadge(c, stepCount, stepKind, badgeOptions{Size: sizeSM})
+					if r.active() {
+						if s.dangerIconDestructiveAction(c, reicon.Square, destructiveOption{
+							kind: destructiveCancelRun, id: r.id, label: tr(c, "speed.cancel.label"), confirmLabel: tr(c, "speed.cancel.confirm"),
+							prompt:   tr(c, "speed.cancel.prompt"),
+							disabled: r.stage == speedCancelling,
+						}) {
+							s.cancelSpeed()
+						}
+					}
+				})
 			})
 		},
 		Steps:     steps,
@@ -380,25 +396,19 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 			if r.reason != "" {
 				noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: r.reason})
 			}
-			s.speedTaskActions(c, r)
+			if !r.active() {
+				s.speedTaskActions(c, r)
+			}
 		},
 	})
 }
 
 func (s *viewState) speedTaskActions(c *ui.Context, r *speedTask) {
-	if r.active() {
-		if s.quietDestructiveAction(c, destructiveOption{
-			kind: destructiveCancelRun, id: r.id, label: tr(c, "speed.cancel.label"), confirmLabel: tr(c, "speed.cancel.confirm"),
-			prompt:   tr(c, "speed.cancel.prompt"),
-			disabled: r.stage == speedCancelling,
-		}) {
-			s.cancelSpeed()
-		}
-		return
-	}
-	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-		primaryButton(c, tr(c, "speed.action.view_result")).OnClick(func() { s.openSpeed(r.id) })
-		outlineButton(c, tr(c, "speed.action.new_with_combo")).Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
+	t := tokens(c)
+	ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+	studioTooltipGroup(c, ui.Row(c).FillWidth().Justify(ui.End).Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
+		outlineIconButton(c, reicon.RotateCw, tr(c, "speed.action.new_with_combo")).Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
+		primaryIconButton(c, reicon.Eye, tr(c, "speed.action.view_result")).OnClick(func() { s.openSpeed(r.id) })
 	})
 }
 

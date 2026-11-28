@@ -9,11 +9,7 @@ import (
 	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
-	"path/filepath"
-	"strings"
 )
-
-var openLogPathFunc = core.OpenPathInOS
 
 func (w *viewState) engineChoices() ([]components.NativeSelectOption[string], bool, bool) {
 	eligible := []string{}
@@ -122,44 +118,56 @@ func (w *viewState) candidateFields(c *ui.Context) {
 	createDisabled := w.environmentMissing() || !w.preflightReady() || w.busy || w.engine == "" || w.model == "" || revoked || len(w.checkedBundles()) == 0 || w.engineState.State == "orphaned" || w.localSelectionError() != ""
 	if revoked {
 		el := w.eligibility(w.engine)
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+		applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).
+			Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
 			statusBadge(c, tr(c, "dashboard.candidate.revoked_badge"), stateColor(c, stateWarning))
-			ui.Text(c, trf(c, "dashboard.candidate.revoked_reason", "engine", w.engine, "reason", human(el.Reason)))
-		})
-		button(c, tr(c, "dashboard.candidate.view_engines")).AlignSelf(ui.Start).OnClick(func() {
-			w.libraryTab = 1
-			w.navigateTo("library", "")
+			ui.Text(c, trf(c, "dashboard.candidate.revoked_reason", "engine", w.engine, "reason", human(el.Reason))).Grow(1).MinWidth(160)
+			outlineIconButton(c, reicon.Cpu, tr(c, "dashboard.candidate.view_engines")).OnClick(func() {
+				w.libraryTab = 1
+				w.navigateTo("library", "")
+			})
 		})
 		createDisabled = true
 	} else if !hasEligible {
 		if w.checks.Checking == 0 && !w.engineVerifyPending {
 			if badName, badEl, ok := w.firstIneligibleEngine(); ok {
-				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+				applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).
+					Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
 					statusBadge(c, tr(c, "engine.badge.ineligible"), stateColor(c, stateWarning))
-					ui.Text(c, badName+" · "+human(badEl.Reason))
-				})
-				button(c, tr(c, "dashboard.candidate.view_engines")).AlignSelf(ui.Start).OnClick(func() {
-					w.libraryTab = 1
-					w.navigateTo("library", "")
-				})
-			} else {
-				ui.Text(c, tr(c, "dashboard.candidate.no_engines"))
-				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-					button(c, tr(c, "onboarding.assets.go_downloads")).OnClick(func() {
+					ui.Text(c, badName+" · "+human(badEl.Reason)).Grow(1).MinWidth(160)
+					outlineIconButton(c, reicon.Cpu, tr(c, "dashboard.candidate.view_engines")).OnClick(func() {
 						w.libraryTab = 1
 						w.navigateTo("library", "")
 					})
-					button(c, tr(c, "dashboard.candidate.register_engine")).OnClick(func() { w.openGeneralSettings() })
+				})
+			} else {
+				applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).
+					Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
+					components.Icon(c, reicon.Cpu).Size(14, 14).TextColor(t.Color.FgSecondary)
+					ui.Text(c, tr(c, "dashboard.candidate.no_engines")).Grow(1).MinWidth(160)
+					studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
+						outlineIconButton(c, reicon.Download, tr(c, "onboarding.assets.go_downloads")).OnClick(func() {
+							w.libraryTab = 1
+							w.navigateTo("library", "")
+						})
+						outlineIconButton(c, reicon.Link, tr(c, "dashboard.candidate.register_engine")).OnClick(func() {
+							w.openLocalEngineWizard("")
+						})
+					})
 				})
 			}
 		}
 		createDisabled = true
 	}
 	if w.model == "" && len(modelOptions) == 1 {
-		ui.Text(c, tr(c, "dashboard.candidate.no_models"))
-		button(c, tr(c, "dashboard.candidate.download_model")).OnClick(func() {
-			w.libraryTab = 0
-			w.navigateTo("library", "")
+		applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).
+			Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
+			components.Icon(c, reicon.Box).Size(14, 14).TextColor(t.Color.FgSecondary)
+			ui.Text(c, tr(c, "dashboard.candidate.no_models")).Grow(1).MinWidth(160)
+			outlineIconButton(c, reicon.Download, tr(c, "dashboard.candidate.download_model")).OnClick(func() {
+				w.libraryTab = 0
+				w.navigateTo("library", "")
+			})
 		})
 	}
 	if w.engineState.State == "orphaned" {
@@ -173,169 +181,13 @@ func (w *viewState) candidateFields(c *ui.Context) {
 		})
 	}
 	ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
-	if primaryButton(c, tr(c, "dashboard.candidate.start")).AlignSelf(ui.Start).Disabled(createDisabled).Clicked() {
-		w.startBenchmark()
-	}
-}
-
-func (w *viewState) engineLogDiagnosticsView(c *ui.Context) {
-	t := tokens(c)
-	logPath := w.engineState.LogPath
-	ui.Column(c.Key("engine-log-diagnostics")).FillWidth().Gap(t.Density.Tight).Children(func() {
-		componentFoldKeyed(c, "engine-log-tail", tr(c, "dashboard.engine_log.tail_fold"), func() {
-			if w.preview != nil {
-				ui.Text(c, tr(c, "dashboard.engine_log.preview_none")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-				return
-			}
-			var tail string
-			var err error
-			if w.service != nil {
-				tail, err = w.service.EngineLogTail(logPath, 20)
-			} else {
-				tail, err = core.ReadLogTail(logPath, 20)
-			}
-			if err != nil {
-				ui.Text(c, trf(c, "dashboard.engine_log.read_failed", "error", err.Error())).FontSize(t.Type.Caption).TextColor(stateColor(c, stateDanger))
-				return
-			}
-			if tail == "" {
-				ui.Text(c, tr(c, "dashboard.engine_log.empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-				return
-			}
-			applyMaterial(c, ui.Scroll(c.Key("engine-log-tail-scroll")).FillWidth().MaxHeight(260), materialSunken).
-				Label(tr(c, "dashboard.engine_log.tail_label")).Children(func() {
-				ui.Column(c).FillWidth().Padding(t.Density.Inset).Children(func() {
-					ui.Text(c, tail).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Selectable()
-				})
-			})
-		})
-		outlineButton(c, tr(c, "dashboard.engine_log.open_button")).OnClick(func() {
-			if w.preview != nil {
-				return
-			}
-			target := logPath
-			if w.service != nil && !filepath.IsAbs(target) {
-				if resolved, err := w.service.ResolveEngineLogPath(target); err == nil {
-					target = resolved
-				}
-			}
-			if err := openLogPathFunc(target); err != nil {
-				w.failure = &core.ApiError{Code: "io_error", Message: l10n.TRf("dashboard.engine_log.open_failed", "error", err.Error())}
-				w.failurePage = w.selected
-			}
-		})
-	})
-}
-
-func (w *viewState) serviceView(c *ui.Context) {
-	w.serviceViewWithBar(c, true)
-}
-
-func (w *viewState) serviceViewWithBar(c *ui.Context, embedBar bool) {
-	heading(c, tr(c, "dashboard.service.heading"), 3)
-	if w.bindingStale {
-		noticeBanner(c, noticeBannerOptions{Kind: stateDanger, Size: bannerCompact, Message: tr(c, "dashboard.service.binding_stale")})
-	}
-	if w.stepFailed() {
-		title := tr(c, "dashboard.service.failed_title")
-		if w.step() == 3 {
-			title = tr(c, "dashboard.service.bind_failed_title")
-		}
-		failureView(c, title, w.activeTaskFailure(),
-			tr(c, "dashboard.service.failed_hint"))
-	}
-	if (w.stepFailed() || w.engineState.State == "failed") && w.engineState.LogPath != "" {
-		w.engineLogDiagnosticsView(c)
-	}
-	switch w.engineState.State {
-	case "orphaned":
-		noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: tr(c, "dashboard.service.orphaned_notice")})
-		errorView(c, w.engineState.Error)
-		w.stopOrphanButton(c)
-	case "starting":
-		host := ui.Column(c.Key("engine-starting")).FillWidth().Gap(tokens(c).Density.Tight)
-		showBar, elapsed := delayedElapsed(c, host, "engine-starting", true)
-		host.Children(func() {
-			ui.Text(c, trf(c, "dashboard.service.starting", "pid", w.engineState.Pid))
-			if showBar {
-				if embedBar {
-					progressBar(c, -1, tr(c, "dashboard.service.starting_progress"))
-				}
-				if elapsed >= loadingSlowThreshold {
-					ui.Text(c, tr(c, "dashboard.service.starting_slow")).TextColor(tokens(c).Color.FgSecondary)
-				}
-			}
-		})
-	case "running":
-		badge(c, trf(c, "dashboard.service.running_badge", "pid", w.engineState.Pid, "endpoint", w.engineState.Endpoint), stateSuccess, badgeOptions{Style: badgeDot})
-	case "stopping":
-		badge(c, tr(c, "dashboard.service.stopping_badge"), stateWarning, badgeOptions{Style: badgeDot})
-	}
-	candidateReady := w.candidate != "" || w.task.start.candidate != ""
-	if !candidateReady {
-		ui.Text(c, tr(c, "dashboard.service.need_candidate"))
-	}
-	if w.running() != nil {
-		ui.Text(c, tr(c, "dashboard.service.locked_during_run"))
-	}
-	startable := w.engineState.State == "" || w.engineState.State == "stopped" || w.engineState.State == "failed"
-	ui.Row(c).Wrap().Gap(tokens(c).Density.CardGap).Children(func() {
-		startButton := button
-		if startable {
-			startButton = primaryButton
-		}
-		label := tr(c, "dashboard.service.start_button")
-		if startButton(c, label).AlignSelf(ui.Start).Disabled(w.busy || !candidateReady || !startable || w.running() != nil).Clicked() {
-			w.startEngine()
-		}
-		if w.engineState.State == "running" && w.failure != nil {
-			label := tr(c, "dashboard.service.rebind_failed_button")
-			if b := w.bindTarget(); b != nil && b.BoundPath != nil {
-				label = tr(c, "dashboard.service.rebind_button")
-			}
-			if primaryButton(c, label).AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil).Clicked() {
-				if w.task.stage == "bind" {
-					w.retryBenchmark()
-				} else if w.bindingPhase() {
-					w.bindDiscovered(w.engineState.Pid, w.engineState.Endpoint)
-				} else {
-					target := w.bindTargetBundle()
-					command, e := w.managedBindCommand()
-					w.executeBindingFor(target, command, e)
-				}
-			}
-		}
-		if w.engineState.State == "starting" || w.engineState.State == "running" {
-			if w.stopEngineGate(c) {
-				w.stopEngine()
-			}
-		}
-	})
-
-	if w.binding {
-		ui.Text(c, trf(c, "dashboard.service.binding_bundle", "bundle", displayName(w.bindingBundle)))
-	}
-	componentFoldKeyed(c, "bind-discovered-services", tr(c, "dashboard.service.connect_existing_fold"), func() { w.discoveryBody(c, true) })
-	componentFold(c, tr(c, "dashboard.service.manual_fold"), func() {
-		w.ensureManualProcesses()
-		heading(c, tr(c, "dashboard.service.manual_heading"), 3)
-		options := []string{}
-		for _, p := range w.processes {
-			options = append(options, fmt.Sprintf("%d · %s", p.PID, p.Name))
-		}
-		searchableSelectField(c, tr(c, "dashboard.service.manual_process"), "", tr(c, "dashboard.service.manual_process_placeholder"), tr(c, "dashboard.service.manual_process_empty"), &w.process, options)
-		field(c, tr(c, "dashboard.service.manual_endpoint"), &w.bindEndpoint).Description(tr(c, "dashboard.service.manual_endpoint_desc")).Error(urlError(w.bindEndpoint))
-		if secondaryActionButton(c, tr(c, "dashboard.service.manual_connect_button"), w.binding).AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
-			if urlError(w.bindEndpoint) != "" {
-				return
-			}
-			pid, _, _ := strings.Cut(w.process, " · ")
-			target := w.bindTargetBundle()
-			command, e := w.bindCommand(pid, w.bindEndpoint)
-			w.executeBindingFor(target, command, e)
+	ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Children(func() {
+		if primaryButton(c, tr(c, "dashboard.candidate.start")).Disabled(createDisabled).Clicked() {
+			w.startBenchmark()
 		}
 	})
 }
+
 func (w *viewState) runView(c *ui.Context) {
 	w.runViewWithBar(c, true)
 }
@@ -364,22 +216,52 @@ func (w *viewState) runViewWithBar(c *ui.Context, embedBar bool) {
 				label += " · " + stateLabelFor(contextLocale(c), phase)
 			}
 		}
+		id := task.TaskId
+		var cancelConfirmed bool
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			if w.model != "" {
-				modelIconBox(c, w.modelIconHint(w.model), 30, t.Radius.SM)
-			} else {
-				components.Icon(c, reicon.Play).Size(15, 15).TextColor(stateColor(c, stateActive))
-			}
-			if bundleName := emptyText(task.Bundle); bundleName != "" {
-				ui.Text(c, bundleName).Bold().FontSize(t.Type.Section).TextColor(t.Color.FgPrimary).SingleLine()
-			} else {
-				heading(c, tr(c, "dashboard.run.heading"), 3)
-			}
-			if w.model != "" {
-				ui.Text(c, w.model).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
-			}
-			if w.engine != "" {
-				w.enginePill(c, w.engine)
+			ui.Row(c).Grow(1).MinWidth(180).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				if w.model != "" {
+					modelIconBox(c, w.modelIconHint(w.model), 30, t.Radius.SM)
+				} else {
+					components.Icon(c, reicon.Play).Size(15, 15).TextColor(stateColor(c, stateActive))
+				}
+				if bundleName := emptyText(task.Bundle); bundleName != "" {
+					ui.Text(c, bundleName).Bold().FontSize(t.Type.Section).TextColor(t.Color.FgPrimary).SingleLine()
+				} else {
+					heading(c, tr(c, "dashboard.run.heading"), 3)
+				}
+				if w.model != "" {
+					ui.Text(c, w.model).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
+				}
+				if w.engine != "" {
+					w.enginePill(c, w.engine)
+				}
+			})
+			studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
+				detailIconBtn := primaryIconButton
+				if task.AwaitingService {
+					detailIconBtn = outlineIconButton
+				}
+				detailIconBtn(c, reicon.Eye, tr(c, "dashboard.run.view_live_detail")).OnClick(func() { w.selectTask(id) })
+				cancelConfirmed = w.cancelRunGate(c, id, task.State)
+			})
+		})
+		if embedBar {
+			progressBar(c, value, tr(c, "dashboard.run.progress_bar_label"))
+		}
+		if task.State == "cancelling" {
+			ui.Text(c, tr(c, "dashboard.run.cancelling_notice")).FontSize(t.Type.Caption).TextColor(stateColor(c, stateWarning))
+		}
+		elapsed := ""
+		if task.State != "cancelling" && !task.AwaitingService {
+			elapsed = w.formatTaskElapsed(c, emptyText(task.StartedAt))
+		}
+		applyMaterial(c, ui.Row(c.Key("run-elapsed-"+task.TaskId)).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).
+			Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
+			ambientLifecycleDot(c, t.Color.Active, task.State != "cancelling" && !task.AwaitingService)
+			ui.Text(c, label).FontFeatures("tnum")
+			if elapsed != "" {
+				ui.Text(c, "· "+elapsed).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 			}
 			ui.Box(c).Grow(1)
 			if p != nil && p.CurrentCaseId != nil && *p.CurrentCaseId != "" {
@@ -388,33 +270,6 @@ func (w *viewState) runViewWithBar(c *ui.Context, embedBar bool) {
 			if embedBar && value >= 0 {
 				ui.Text(c, fmt.Sprintf("%.0f%%", value*100)).Bold().FontSize(t.Type.Section).FontFeatures("tnum").TextColor(stateColor(c, stateActive))
 			}
-		})
-		if embedBar {
-			progressBar(c, value, tr(c, "dashboard.run.progress_bar_label"))
-		}
-		if task.State == "cancelling" {
-			ui.Text(c, tr(c, "dashboard.run.cancelling_notice")).FontSize(t.Type.Caption).TextColor(stateColor(c, stateWarning))
-		}
-		row := ui.Row(c.Key("run-elapsed-" + task.TaskId)).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row)
-		elapsed := ""
-		if task.State != "cancelling" && !task.AwaitingService {
-			elapsed = w.formatTaskElapsed(c, emptyText(task.StartedAt))
-		}
-		row.Children(func() {
-			ui.Text(c, label).FontFeatures("tnum")
-			if elapsed != "" {
-				ui.Text(c, "· "+elapsed).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
-			}
-		})
-		id := task.TaskId
-		var cancelConfirmed bool
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			detailButton := primaryButton
-			if task.AwaitingService {
-				detailButton = outlineButton
-			}
-			detailButton(c, tr(c, "dashboard.run.view_live_detail")).AlignSelf(ui.Start).OnClick(func() { w.selectTask(id) })
-			cancelConfirmed = w.cancelRunGate(c, id, task.State)
 		})
 		if cancelConfirmed {
 			if w.task.stage != "" {
@@ -454,21 +309,23 @@ func (w *viewState) runViewWithBar(c *ui.Context, embedBar bool) {
 	if b.NextAction == "resume" {
 		label = tr(c, "dashboard.run.resume_button")
 	}
-	if primaryButton(c, label).AlignSelf(ui.Start).Disabled(w.busy || !w.runServiceReady(*b)).Clicked() {
-		if w.simulate(previewStartRun{bundle: b.Bundle}) {
-			return
+	ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+	ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Children(func() {
+		if primaryButton(c, label).Disabled(w.busy || !w.runServiceReady(*b)).Clicked() {
+			if w.simulate(previewStartRun{bundle: b.Bundle}) {
+				return
+			}
+			bundle := *b
+			ctx, cancel := context.WithCancel(w.ctx)
+			w.taskCancel = cancel
+			state, workspace := w.engineState, w.progress.Workspace
+			w.guideWork(func() (string, *core.ApiError) {
+				defer cancel()
+				e := executeExistingBundle(ctx, bundle, workspace, state, w.service.WizardExecute)
+				return l10n.TR("dashboard.toast.run_queued"), e
+			})
 		}
-		bundle := *b
-		ctx, cancel := context.WithCancel(w.ctx)
-		w.taskCancel = cancel
-		state, workspace := w.engineState, w.progress.Workspace
-		w.guideWork(func() (string, *core.ApiError) {
-			defer cancel()
-			e := executeExistingBundle(ctx, bundle, workspace, state, w.service.WizardExecute)
-			return l10n.TR("dashboard.toast.run_queued"), e
-		})
-	}
-
+	})
 }
 
 func (w *viewState) runServiceReady(b inferyard.BundleProgress) bool {

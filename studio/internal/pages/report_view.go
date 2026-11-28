@@ -145,7 +145,7 @@ func (s *viewState) reportView(c *ui.Context) {
 	}
 	if report.failure != nil {
 		errorRecoveryBanner(c, report.failure, func() {
-			button(c, tr(c, "reports.detail.retry_read")).OnClick(func() { s.openReport(report.reference) })
+			refreshIconButton(c, tr(c, "reports.detail.retry_read"), false).OnClick(func() { s.openReport(report.reference) })
 		})
 		return
 	}

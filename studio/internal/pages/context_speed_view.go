@@ -64,7 +64,9 @@ func (s *viewState) speedResultView(c *ui.Context) {
 	t := tokens(c)
 	w, r := s.speed, s.speed.opened
 	s.subpageHeader(c, tr(c, "speed.result.title"), func() {
-		outlineButton(c, tr(c, "speed.action.new_with_combo")).Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
+		studioTooltipGroup(c, ui.Row(c).AlignItems(ui.Center), func() {
+			outlineIconButton(c, reicon.RotateCw, tr(c, "speed.action.new_with_combo")).Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
+		})
 	})
 	stageKind := speedStageKind(r.stage)
 	metaText := r.id + " · " + tr(c, speedStageKeys[r.stage])
@@ -96,7 +98,7 @@ func (s *viewState) speedResultView(c *ui.Context) {
 			Kind:    stateDanger,
 			Message: w.readError,
 			Actions: func() {
-				primaryButton(c, tr(c, "speed.action.retry_read")).OnClick(func() { s.openSpeed(r.id) })
+				refreshIconButton(c, tr(c, "speed.action.retry_read"), false).OnClick(func() { s.openSpeed(r.id) })
 			},
 		})
 		return
@@ -233,7 +235,17 @@ func (s *viewState) speedHistoryView(c *ui.Context) {
 		return
 	}
 	w := s.speed
-	reportSectionCard(c, reicon.Gauge, tr(c, "speed.history.card_title"), nil, func() {
+	sel := selectedRow(&w.historyTable, len(w.history))
+	var trailing func()
+	if sel >= 0 {
+		selectedID := w.history[sel].id
+		trailing = func() {
+			primaryIconButton(c, reicon.Eye, tr(c, "speed.history.open_result")).OnClick(func() {
+				s.openSpeed(selectedID)
+			})
+		}
+	}
+	reportSectionCard(c, reicon.Gauge, tr(c, "speed.history.card_title"), trailing, func() {
 		selectableTable(&w.historyTable, func(i int) any { return w.history[i].id }, func(i int) string { return w.history[i].id })
 		applyMaterial(c, ui.Box(c).FillWidth().MinWidth(0).Clip(), materialInset).Children(func() {
 			pageTable(c.Key("speed-history"), &w.historyTable, tr(c, "speed.history.table_label"), []ui.TableColumn{
@@ -253,10 +265,8 @@ func (s *viewState) speedHistoryView(c *ui.Context) {
 				}
 			}).Height(c.Theme().Rem(4)*float32(min(len(w.history), 5)+1) + 2)
 		})
-		if i := selectedRow(&w.historyTable, len(w.history)); i >= 0 {
-			if primaryButton(c, tr(c, "speed.history.open_result")).Clicked() || w.historyTable.submitted {
-				s.openSpeed(w.history[i].id)
-			}
+		if i := selectedRow(&w.historyTable, len(w.history)); i >= 0 && w.historyTable.submitted {
+			s.openSpeed(w.history[i].id)
 		}
 	})
 }

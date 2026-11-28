@@ -391,63 +391,6 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 					})
 				})
 
-				studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
-					if repID := s.findReportForRun(run); repID != "" {
-						if primaryIconButton(c, reicon.Eye, tr(c, "dashboard.completion.view_report")).Clicked() {
-							s.historyDetailPath = ""
-							s.openReport(repID)
-							return
-						}
-					} else {
-						if primaryActionButton(c, tr(c, "reports.dialog.create"), s.actionBusy("create-report")).Disabled(s.busy).Clicked() {
-							targetPath := run.Path
-							s.historyDetailPath = ""
-							s.createReportFromPaths(c, []string{targetPath})
-							return
-						}
-					}
-					if task := s.findTaskForHistoryRun(run); task != nil {
-						taskID := task.TaskId
-						if outlineIconButton(c, reicon.Info, tr(c, "dashboard.history.live_detail")).Clicked() {
-							s.historyDetailPath = ""
-							s.selectTask(taskID)
-							s.selected = "benchmarks"
-							return
-						}
-					}
-					rerunBlocked := ""
-					if s.environmentMissing() {
-						rerunBlocked = l10n.T(loc, "shell.nav.new_task_hint.env_missing")
-					} else if s.roundWorkActive() {
-						rerunBlocked = l10n.T(loc, "shell.nav.new_task_hint.round_active")
-					}
-					if rerunBlocked == "" {
-						if outlineIconButton(c, reicon.RotateCw, tr(c, "dashboard.history.rerun_same")).Clicked() {
-							s.rerunFromHistoryRun(run)
-							return
-						}
-					} else {
-						iconButtonWithTooltip(c, rerunBlocked, func() ui.Element {
-							return outlineIconButton(c, reicon.RotateCw, "").Label(tr(c, "dashboard.history.rerun_same")).Disabled(true)
-						})
-					}
-					if s.canResumeHistoryRun(run) {
-						if outlineIconButton(c, reicon.Play, tr(c, "dashboard.history.resume_button")).Disabled(s.busy).Clicked() {
-							source := run
-							s.historyDetailPath = ""
-							s.resumeSource = &source
-							s.resumeDiscardConfirm = false
-							s.endpoint = ""
-							s.pid = ""
-						}
-					} else if run.BatchId != nil && run.Status != "complete" && run.Status != "completed" {
-						reason := tr(c, "dashboard.history.not_resumable")
-						iconButtonWithTooltip(c, reason, func() ui.Element {
-							return outlineIconButton(c, reicon.Play, "").Label(tr(c, "dashboard.history.resume_button")).Disabled(true)
-						})
-					}
-				})
-
 				cols := 2
 				if compactLayout(c) {
 					cols = 1
@@ -487,6 +430,59 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 					pathKeyValueRow(c, tr(c, "dashboard.history.run_path_label"), run.Path)
 				})
 			})
+		})
+		ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+		studioTooltipGroup(c, ui.Row(c).FillWidth().Shrink(0).Wrap().Justify(ui.End).AlignItems(ui.Center).Gap(t.Density.Row), func() {
+			if task := s.findTaskForHistoryRun(run); task != nil {
+				taskID := task.TaskId
+				if outlineIconButton(c, reicon.Info, tr(c, "dashboard.history.live_detail")).Clicked() {
+					s.historyDetailPath = ""
+					s.selectTask(taskID)
+					s.selected = "benchmarks"
+					return
+				}
+			}
+			rerunBlocked := ""
+			if s.environmentMissing() {
+				rerunBlocked = l10n.T(loc, "shell.nav.new_task_hint.env_missing")
+			} else if s.roundWorkActive() {
+				rerunBlocked = l10n.T(loc, "shell.nav.new_task_hint.round_active")
+			}
+			if rerunBlocked == "" {
+				if outlineIconButton(c, reicon.RotateCw, tr(c, "dashboard.history.rerun_same")).Clicked() {
+					s.rerunFromHistoryRun(run)
+					return
+				}
+			} else {
+				iconButtonWithTooltip(c, rerunBlocked, func() ui.Element {
+					return outlineIconButton(c, reicon.RotateCw, "").Label(tr(c, "dashboard.history.rerun_same")).Disabled(true)
+				})
+			}
+			if s.canResumeHistoryRun(run) {
+				if outlineIconButton(c, reicon.Play, tr(c, "dashboard.history.resume_button")).Disabled(s.busy).Clicked() {
+					source := run
+					s.historyDetailPath = ""
+					s.resumeSource = &source
+					s.resumeDiscardConfirm = false
+					s.endpoint = ""
+					s.pid = ""
+				}
+			} else if run.BatchId != nil && run.Status != "complete" && run.Status != "completed" {
+				iconButtonWithTooltip(c, tr(c, "dashboard.history.not_resumable"), func() ui.Element {
+					return outlineIconButton(c, reicon.Play, "").Label(tr(c, "dashboard.history.resume_button")).Disabled(true)
+				})
+			}
+			if repID := s.findReportForRun(run); repID != "" {
+				if primaryIconButton(c, reicon.Eye, tr(c, "dashboard.completion.view_report")).Clicked() {
+					s.historyDetailPath = ""
+					s.openReport(repID)
+					return
+				}
+			} else if primaryIconButton(c, reicon.FileText, tr(c, "reports.dialog.create")).Disabled(s.busy || s.actionBusy("create-report")).Clicked() {
+				s.historyDetailPath = ""
+				s.createReportFromPaths(c, []string{run.Path})
+				return
+			}
 		})
 	})
 	if !open {

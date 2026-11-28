@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/egoist/mygo/ui"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 func (w *viewState) step() int {
@@ -90,7 +91,7 @@ func (s *viewState) dashboardView(c *ui.Context) {
 			Kind:    stateWarning,
 			Message: tr(c, "dashboard.retry.completed_kept"),
 			Actions: func() {
-				button(c, tr(c, "dashboard.retry.button")).OnClick(s.retryBenchmark)
+				primaryIconButton(c, reicon.RotateCw, tr(c, "dashboard.retry.button")).OnClick(s.retryBenchmark)
 			},
 		})
 	}
@@ -433,11 +434,13 @@ func (s *viewState) workflowView(c *ui.Context) {
 func (s *viewState) renderStageBody(c *ui.Context, action string, embedBar bool) {
 	switch action {
 	case "device_check":
-		ui.Text(c, tr(c, "dashboard.device_check.running"))
 		s.checkWorkspaceDevice()
-		button(c, tr(c, "dashboard.device_check.open_device")).OnClick(func() {
-			s.libraryHwExpanded = true
-			s.navigateTo("library", "")
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+			ui.Text(c, tr(c, "dashboard.device_check.running")).Grow(1).MinWidth(0)
+			outlineIconButton(c, reicon.Cpu, tr(c, "dashboard.device_check.open_device")).OnClick(func() {
+				s.libraryHwExpanded = true
+				s.navigateTo("library", "")
+			})
 		})
 	case "prepare_candidate":
 		if s.isPreparingBenchmark() {
@@ -460,8 +463,10 @@ func (s *viewState) renderStageBody(c *ui.Context, action string, embedBar bool)
 		if s.task.stage != "" {
 			ui.Text(c, tr(c, "dashboard.report.generating"))
 		} else {
-			ui.Text(c, tr(c, "dashboard.report.open_hint"))
-			button(c, tr(c, "dashboard.completion.view_report")).OnClick(func() { s.selected = "reports" })
+			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+				ui.Text(c, tr(c, "dashboard.report.open_hint")).Grow(1).MinWidth(0)
+				primaryIconButton(c, reicon.Eye, tr(c, "dashboard.completion.view_report")).OnClick(func() { s.selected = "reports" })
+			})
 		}
 	case "done":
 		s.completionView(c)

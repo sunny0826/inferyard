@@ -5,6 +5,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -219,13 +220,21 @@ func (s *viewState) taskAssetsView(c *ui.Context) {
 		if s.engineState.State == "orphaned" {
 			s.stopOrphanButton(c)
 		}
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+		studioTooltipGroup(c, ui.Row(c).FillWidth().Justify(ui.End).Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
+			outlineIconButton(c, reicon.FolderOpen, tr(c, "onboarding.assets.use_existing")).OnClick(func() {
+				if len(s.registry.Engines) == 0 && len(s.registry.Models) > 0 {
+					s.openLocalEngineWizard("")
+					return
+				}
+				s.libraryTab = libraryTabModels
+				s.navigateTo("library", "")
+			})
 			if s.activeDownloadCount() > 0 {
 				primaryButton(c, tr(c, "onboarding.assets.view_install")).OnClick(func() { s.navigateTo("library", "") })
 			} else if !hasStarter {
 				primaryButton(c, tr(c, "onboarding.assets.go_downloads")).OnClick(func() { s.navigateTo("library", "") })
 			}
-			button(c, tr(c, "onboarding.assets.use_existing")).OnClick(func() { s.openGeneralSettings() })
 		})
 	})
 	if hasStarter && s.activeDownloadCount() == 0 {
@@ -285,7 +294,7 @@ func (s *viewState) downloadTaskGuide(c *ui.Context) {
 		Padding(t.Density.Stack, t.Card.Padding), materialCard).
 		Children(func() {
 			ui.Text(c, s.downloadGuideStatus()).Grow(1).MinWidth(0).TextColor(t.Color.FgSecondary)
-			button(c, tr(c, "onboarding.guide.back_dashboard")).Shrink(0).OnClick(func() { s.openBenchmarksFlow() })
+			outlineIconButton(c, reicon.ArrowLeft, tr(c, "onboarding.guide.back_dashboard")).Shrink(0).OnClick(func() { s.openBenchmarksFlow() })
 		})
 }
 

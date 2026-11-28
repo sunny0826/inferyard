@@ -35,10 +35,7 @@ func (s *viewState) downloadsEnginesTab(c *ui.Context) {
 
 	ui.Column(c.Key("downloads-engines-tab")).FillWidth().Gap(t.Density.Section).Children(func() {
 		applyMaterial(c, ui.Column(c).MinWidth(0).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
-			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				ui.Row(c).Grow(1).MinWidth(0).Children(func() { heading(c, tr(c, "library.section.catalog_engines"), 2) })
-				outlineButton(c, tr(c, "downloads.engines.link_existing")).OnClick(func() { s.openLocalEngineWizard("") })
-			})
+			heading(c, tr(c, "library.section.catalog_engines"), 2)
 			if len(managed) == 0 {
 				emptyKey := "downloads.engines.none_available"
 				if hasSupportedManaged {
