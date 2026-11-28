@@ -99,6 +99,7 @@ func (s *viewState) dashboardView(c *ui.Context) {
 		ui.Text(c, taskLabel(task))
 		errorView(c, task.Error)
 	}
+	s.inlineRunDetailView(c)
 }
 
 func (s *viewState) environmentMissing() bool {

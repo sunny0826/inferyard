@@ -232,6 +232,7 @@ type viewState struct {
 	startup                                                                                                 core.Startup
 	processes                                                                                               []core.ProcessCandidate
 	runProgress                                                                                             *core.RunProgress
+	activeRunDetail                                                                                         *core.RunTaskDetail
 	ctx                                                                                                     context.Context
 	service                                                                                                 *core.Service
 	shell                                                                                                   *sidebar.Shell
@@ -366,6 +367,27 @@ func (s *viewState) finishWork(message string, e *core.ApiError) {
 	}
 }
 func (s *viewState) selectTask(id string) {
+	if active := s.running(); active != nil && active.TaskId == id {
+		s.selected = "benchmarks"
+		s.benchFlowOpen = true
+		s.detailID = ""
+		s.detailCaseID = ""
+		if s.activeRunDetail == nil || s.activeRunDetail.Task.TaskId != id {
+			s.casesTablePage = 0
+			s.resourceTablePage = 0
+		}
+		if s.preview != nil {
+			s.activeRunDetail = s.preview.detail(id)
+			return
+		}
+		if s.service != nil {
+			if d, e := s.service.RunDetail(id); e == nil {
+				s.activeRunDetail = &d
+				s.runProgress = d.Progress
+			}
+		}
+		return
+	}
 	if s.detailID != id {
 		s.casesTablePage = 0
 		s.resourceTablePage = 0

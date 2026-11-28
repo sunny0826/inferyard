@@ -173,7 +173,6 @@ func TestCorePageIconButtons(t *testing.T) {
 		s.tasks = []core.RunTask{{TaskId: "t1", Kind: "run", State: "running", Bundle: ptr("zh-core")}}
 		runTT := ui.NewTester(s.runView, 1120, 700)
 		runTT.Frame()
-		requireIconButton(t, runTT, tr(nil, "dashboard.run.view_live_detail"))
 		requireIconButton(t, runTT, tr(nil, "common.confirm.cancel_run.label"))
 
 		sf := readyState("benchmarks")

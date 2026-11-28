@@ -208,6 +208,7 @@ func (p *previewSession) activateScene() {
 			detail.Progress.Cases = append(detail.Progress.Cases, previewSimulatedCase(emptyText(task.Bundle), i+1))
 		}
 		p.details[task.TaskId] = detail
+		s.activeRunDetail = detail
 		if s.detailID == task.TaskId {
 			s.detail = detail
 		}

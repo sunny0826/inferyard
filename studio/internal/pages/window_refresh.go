@@ -164,8 +164,13 @@ func (s *viewState) refreshMask(mask refreshMask) {
 		}
 	}
 	var runProgress *core.RunProgress
+	var activeRunDetail *core.RunTaskDetail
 	if active := activeRunTask(tasks); active != nil {
-		if d, e := s.service.RunDetail(active.TaskId); e == nil {
+		if active.TaskId == id && detail != nil {
+			activeRunDetail = detail
+			runProgress = detail.Progress
+		} else if d, e := s.service.RunDetail(active.TaskId); e == nil {
+			activeRunDetail = &d
 			runProgress = d.Progress
 		}
 	}
@@ -255,7 +260,7 @@ func (s *viewState) refreshMask(mask refreshMask) {
 		s.refreshing = false
 		batch := refreshBatch{
 			epoch: settingsEpoch, mask: mask, device: device, tasks: tasks, downloads: downloads,
-			speedTasks: speedTasks, speedHistoryError: speedHistoryError, runProgress: runProgress,
+			speedTasks: speedTasks, speedHistoryError: speedHistoryError, runProgress: runProgress, activeRunDetail: activeRunDetail,
 			id: id, detail: detail, detailError: de, settings: settings,
 			history: history, reports: reports, historyError: he, reportsError: re,
 			ready: ready, progress: progress, progressError: pe, dashboard: dashboard, registry: registry,
@@ -301,6 +306,7 @@ type refreshBatch struct {
 	speedTasks                 []core.RunTask
 	speedHistoryError          *core.ApiError
 	runProgress                *core.RunProgress
+	activeRunDetail            *core.RunTaskDetail
 	id                         string
 	detail                     *core.RunTaskDetail
 	detailError                *core.ApiError
@@ -334,7 +340,17 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	}
 	s.device, s.tasks, s.downloads = b.device, b.tasks, b.downloads
 	s.reconcileLocalPIDs(b.tasks)
+	prevActiveID := ""
+	if s.activeRunDetail != nil {
+		prevActiveID = s.activeRunDetail.Task.TaskId
+	}
 	s.runProgress = b.runProgress
+	s.activeRunDetail = b.activeRunDetail
+	if b.activeRunDetail != nil && b.activeRunDetail.Task.TaskId != prevActiveID && s.detailID == "" {
+		s.casesTablePage = 0
+		s.resourceTablePage = 0
+		s.detailCaseID = ""
+	}
 	if s.detailID == b.id {
 		if b.detailError == nil {
 			s.detail = b.detail

@@ -5,6 +5,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func TestDetailCasesTableHeightCompactForFewRows(t *testing.T) {
@@ -61,5 +62,61 @@ func TestDetailViewBackButtonClearsDetail(t *testing.T) {
 	tt.Frame()
 	if s.detailID != "" {
 		t.Fatalf("back button left detailID = %q, want empty", s.detailID)
+	}
+}
+
+func TestRunningDashboardMergesCasesAndResourcesInline(t *testing.T) {
+	s := readyState("benchmarks")
+	s.benchFlowOpen = true
+	s.task.stage = "run"
+	task := core.RunTask{
+		TaskId:  "task-live",
+		Kind:    "run",
+		State:   "running",
+		Bundle:  ptr("zh-core"),
+		RunPath: ptr("/tmp/results/task-live"),
+	}
+	s.tasks = []core.RunTask{task}
+	s.runProgress = &core.RunProgress{
+		Phase:         ptr("formal"),
+		Done:          1,
+		Total:         ptr(int64(4)),
+		CurrentCaseId: ptr("case-002"),
+		Cases: []core.CaseProgress{
+			{
+				CaseId:       "case-001",
+				State:        "completed",
+				Category:     ptr("math"),
+				QualityState: ptr("pass"),
+				DurationMs:   ptr(1240.0),
+				Prompt:       ptr("Compute 1+1"),
+				Response:     ptr("2"),
+			},
+		},
+	}
+	s.activeRunDetail = &core.RunTaskDetail{
+		Task:     task,
+		Progress: s.runProgress,
+	}
+
+	tt := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).FillWidth().Children(func() { s.dashboardView(c) })
+	}, 1120, 1200)
+	tt.Frame()
+
+	for _, want := range []string{"case-001", "math", l10n.TR("chart.resource.title")} {
+		if !tt.HasText(want) {
+			t.Fatalf("expected merged task view to display %q inline, got %v", want, tt.Texts())
+		}
+	}
+	if got := countProgressBars(tt); got != 1 {
+		t.Fatalf("expected exactly 1 progress bar on merged running task page, got %d", got)
+	}
+
+	// Selecting the currently running task routes directly to the merged flow view instead of a separate detail page.
+	s.benchFlowOpen = false
+	s.selectTask("task-live")
+	if !s.benchFlowOpen || s.detailID != "" {
+		t.Fatalf("expected selectTask on active run to open merged flow view, got benchFlowOpen=%v detailID=%q", s.benchFlowOpen, s.detailID)
 	}
 }

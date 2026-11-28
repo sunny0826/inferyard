@@ -99,6 +99,7 @@ func (p *previewSession) startRun(bundleIndex int, op previewBenchmark, ids []st
 	total := previewBundleTotal(bundle)
 	s.runProgress = &core.RunProgress{Phase: previewValue("formal"), Total: previewValue(total), CurrentCaseId: previewValue(previewSimulatedCase(bundle, 1).CaseId)}
 	p.details[id] = &core.RunTaskDetail{Task: task, Progress: s.runProgress}
+	s.activeRunDetail = p.details[id]
 	s.history.StandaloneRuns = append(s.history.StandaloneRuns, core.RunSummary{RunId: id, Path: path, ModelName: previewValue(op.model), Engine: previewValue(op.engine), Bundle: previewValue(bundle), Status: "partial", StartedAt: task.StartedAt})
 	for i := range s.progress.Bundles {
 		b := &s.progress.Bundles[i]
@@ -345,7 +346,7 @@ func (p *previewSession) resetTask(model, engine string) {
 		s.failure, s.busy, s.busyAction = nil, false, ""
 		s.selected, s.detailID, s.focusedRun = "benchmarks", "", ""
 		s.benchFlowOpen = true
-		s.detail, s.resumeSource, s.runProgress = nil, nil, nil
+		s.detail, s.resumeSource, s.runProgress, s.activeRunDetail = nil, nil, nil, nil
 		s.closeOpenedReport()
 		s.model, s.engine = model, engine
 		if stopLocalService || s.engineState.State == "starting" || s.engineState.State == "stopping" {

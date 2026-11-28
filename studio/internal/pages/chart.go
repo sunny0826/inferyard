@@ -34,13 +34,13 @@ type resourceViewCache struct {
 	sorted  []core.ResourceSample
 }
 
-func (s *viewState) cachedResourceSeries(samples []core.ResourceSample) ([]resourceSeries, []core.ResourceSample) {
+func (s *viewState) cachedResourceSeries(taskID string, samples []core.ResourceSample) ([]resourceSeries, []core.ResourceSample) {
 	if len(samples) == 0 {
 		return nil, nil
 	}
 	var lastSeq int64
 	lastSeq = samples[len(samples)-1].Seq
-	if s.resourceCache.taskID == s.detailID && s.resourceCache.count == len(samples) && s.resourceCache.lastSeq == lastSeq && s.resourceCache.series != nil {
+	if s.resourceCache.taskID == taskID && s.resourceCache.count == len(samples) && s.resourceCache.lastSeq == lastSeq && s.resourceCache.series != nil {
 		return s.resourceCache.series, s.resourceCache.sorted
 	}
 	series := resourceSeriesData(samples)
@@ -58,7 +58,7 @@ func (s *viewState) cachedResourceSeries(samples []core.ResourceSample) ([]resou
 	}
 	sort.SliceStable(selected, func(i, j int) bool { return selected[i].Seq < selected[j].Seq })
 	s.resourceCache = resourceViewCache{
-		taskID:  s.detailID,
+		taskID:  taskID,
 		count:   len(samples),
 		lastSeq: lastSeq,
 		series:  series,
@@ -141,9 +141,13 @@ func latestResourceReading(c *ui.Context, series resourceSeries) string {
 }
 
 func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
+	s.resourceViewFor(c, s.detailID, samples)
+}
+
+func (s *viewState) resourceViewFor(c *ui.Context, taskID string, samples []core.ResourceSample) {
 	t := tokens(c)
 	applyMaterial(c, ui.Column(c.Key("detail-resource-card")).FillWidth().MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
-		series, selected := s.cachedResourceSeries(samples)
+		series, selected := s.cachedResourceSeries(taskID, samples)
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			heading(c, tr(c, "chart.resource.title"), 2)
 			ui.Box(c).Grow(1)

@@ -162,17 +162,16 @@ func TestBenchmarkTaskButtonsPlacement(t *testing.T) {
 	tt.Frame()
 
 	bundleRect, okTitle := tt.Find("zh-core")
-	detailBtn, okDetail := tt.AccessByRole(ui.RoleButton, tr(nil, "dashboard.run.view_live_detail"))
 	cancelBtn, okCancel := tt.AccessByRole(ui.RoleButton, tr(nil, "common.confirm.cancel_run.label"))
 	statusRect, okStatus := tt.Find(trf(nil, "dashboard.run.cases_progress", "done", 30, "total", 120))
-	if !okTitle || !okDetail || !okCancel || !okStatus {
-		t.Fatalf("missing run elements: title=%v detail=%v cancel=%v status=%v texts=%v", okTitle, okDetail, okCancel, okStatus, tt.Texts())
+	if !okTitle || !okCancel || !okStatus {
+		t.Fatalf("missing run elements: title=%v cancel=%v status=%v texts=%v", okTitle, okCancel, okStatus, tt.Texts())
 	}
-	if detailBtn.Bounds.X < bundleRect.X+bundleRect.W || detailBtn.Bounds.X+detailBtn.Bounds.W > cancelBtn.Bounds.X {
-		t.Fatalf("run action icons should sit right of title with cancel rightmost: title=%+v detail=%+v cancel=%+v", bundleRect, detailBtn.Bounds, cancelBtn.Bounds)
+	if cancelBtn.Bounds.X < bundleRect.X+bundleRect.W {
+		t.Fatalf("run cancel action should sit right of title: title=%+v cancel=%+v", bundleRect, cancelBtn.Bounds)
 	}
-	if math.Abs(float64(detailBtn.Bounds.Y-cancelBtn.Bounds.Y)) > 2 || detailBtn.Bounds.Y+detailBtn.Bounds.H > statusRect.Y {
-		t.Fatalf("run action icons should sit on header row above status strip: detail=%+v cancel=%+v status=%+v", detailBtn.Bounds, cancelBtn.Bounds, statusRect)
+	if cancelBtn.Bounds.Y+cancelBtn.Bounds.H > statusRect.Y {
+		t.Fatalf("run cancel action should sit on header row above status strip: cancel=%+v status=%+v", cancelBtn.Bounds, statusRect)
 	}
 
 	sc := readyState("benchmarks")
