@@ -52,50 +52,137 @@ func sourceHint(host string) string {
 }
 
 func isTailscaleIP(ip net.IP) bool {
-	_, network, _ := net.ParseCIDR("100.64.0.0/10")
-	return ip != nil && network.Contains(ip)
+	ip4 := ip.To4()
+	return ip4 != nil && ip4[0] == 100 && ip4[1] >= 64 && ip4[1] <= 127
 }
 
-func (h *hub) candidateHosts() []string {
-	if len(h.cfg.CandidateHosts) > 0 {
-		var hosts []string
-		for _, host := range h.cfg.CandidateHosts {
-			host = strings.TrimSpace(host)
-			if parsedHost, _, err := net.SplitHostPort(host); err == nil {
-				host = parsedHost
-			}
-			if net.ParseIP(strings.Trim(host, "[]")) != nil || validDNSName(host) {
-				hosts = append(hosts, strings.Trim(host, "[]"))
-			}
-		}
-		return hosts
+func isFilteredCandidateIPv4(ip4 net.IP) bool {
+	if ip4 == nil || ip4.IsLoopback() || ip4.IsUnspecified() || ip4.IsMulticast() ||
+		ip4.IsLinkLocalUnicast() || ip4.IsLinkLocalMulticast() || ip4.Equal(net.IPv4bcast) {
+		return true
 	}
-	var tailscale, lan []string
-	interfaces, _ := net.Interfaces()
+	// RFC 2544 benchmarking subnet (198.18.0.0/15), widely used by TUN proxies (e.g. 198.18.0.1 Fake-IP).
+	if ip4[0] == 198 && (ip4[1]&0xfe) == 18 {
+		return true
+	}
+	// RFC 5737 documentation subnets (192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24).
+	if (ip4[0] == 192 && ip4[1] == 0 && ip4[2] == 2) ||
+		(ip4[0] == 198 && ip4[1] == 51 && ip4[2] == 100) ||
+		(ip4[0] == 203 && ip4[1] == 0 && ip4[2] == 113) {
+		return true
+	}
+	return false
+}
+
+func candidateHostname(raw string) string {
+	host := strings.TrimRight(strings.TrimSpace(raw), ".")
+	if host == "" || net.ParseIP(host) != nil {
+		return ""
+	}
+	if strings.HasSuffix(strings.ToLower(host), ".local") {
+		if validDNSName(host) {
+			return host
+		}
+		return ""
+	}
+	if !strings.Contains(host, ".") {
+		candidate := host + ".local"
+		if validDNSName(candidate) {
+			return candidate
+		}
+		return ""
+	}
+	if validDNSName(host) {
+		return host
+	}
+	return ""
+}
+
+type candidateInterface struct {
+	flags net.Flags
+	addrs []string
+}
+
+func collectCandidateHosts(interfaces []candidateInterface, hostname string) []string {
+	var tailscale, privateLAN, global []string
 	for _, iface := range interfaces {
-		addresses, _ := iface.Addrs()
-		for _, address := range addresses {
-			ip, _, err := net.ParseCIDR(address.String())
-			if err != nil || ip.To4() == nil || ip.IsLoopback() {
+		if iface.flags&net.FlagUp == 0 || iface.flags&net.FlagLoopback != 0 {
+			continue
+		}
+		for _, rawAddr := range iface.addrs {
+			ip, _, err := net.ParseCIDR(rawAddr)
+			if err != nil {
+				ip = net.ParseIP(rawAddr)
+			}
+			ip4 := ip.To4()
+			if isFilteredCandidateIPv4(ip4) {
 				continue
 			}
-			if isTailscaleIP(ip) {
-				tailscale = append(tailscale, ip.String())
-			} else {
-				lan = append(lan, ip.String())
+			switch {
+			case isTailscaleIP(ip4):
+				tailscale = append(tailscale, ip4.String())
+			case ip4.IsPrivate():
+				privateLAN = append(privateLAN, ip4.String())
+			default:
+				global = append(global, ip4.String())
 			}
 		}
 	}
 	slices.Sort(tailscale)
-	slices.Sort(lan)
-	hosts := append(tailscale, lan...)
-	if hostname, err := os.Hostname(); err == nil {
-		hosts = append(hosts, hostname+".local")
+	slices.Sort(privateLAN)
+	slices.Sort(global)
+	ordered := make([]string, 0, len(tailscale)+len(privateLAN)+len(global)+1)
+	seen := make(map[string]bool)
+	appendUnique := func(values ...string) {
+		for _, value := range values {
+			if value != "" && !seen[value] {
+				seen[value] = true
+				ordered = append(ordered, value)
+			}
+		}
 	}
-	if len(hosts) == 0 {
-		hosts = append(hosts, "127.0.0.1")
+	appendUnique(tailscale...)
+	appendUnique(privateLAN...)
+	appendUnique(global...)
+	appendUnique(candidateHostname(hostname))
+	if len(ordered) == 0 {
+		ordered = append(ordered, "127.0.0.1")
 	}
-	return hosts
+	return ordered
+}
+
+func (h *hub) candidateHosts() []string {
+	h.mu.RLock()
+	configured := slices.Clone(h.cfg.CandidateHosts)
+	h.mu.RUnlock()
+	if len(configured) > 0 {
+		var hosts []string
+		seen := make(map[string]bool)
+		for _, host := range configured {
+			host = strings.TrimSpace(host)
+			if parsedHost, _, err := net.SplitHostPort(host); err == nil {
+				host = parsedHost
+			}
+			trimmed := strings.Trim(host, "[]")
+			if (net.ParseIP(trimmed) != nil || validDNSName(host)) && !seen[trimmed] {
+				seen[trimmed] = true
+				hosts = append(hosts, trimmed)
+			}
+		}
+		return hosts
+	}
+	rawIfaces, _ := net.Interfaces()
+	ifaces := make([]candidateInterface, 0, len(rawIfaces))
+	for _, iface := range rawIfaces {
+		addresses, _ := iface.Addrs()
+		cidrs := make([]string, 0, len(addresses))
+		for _, address := range addresses {
+			cidrs = append(cidrs, address.String())
+		}
+		ifaces = append(ifaces, candidateInterface{flags: iface.Flags, addrs: cidrs})
+	}
+	hostname, _ := os.Hostname()
+	return collectCandidateHosts(ifaces, hostname)
 }
 
 func (h *hub) candidateAddresses(port int) []string {

@@ -37,7 +37,10 @@ def test_crash_records_exit_and_never_restarts(tmp_path):
         assert record["endpoint_url"] == record["endpoint"] == "http://127.0.0.1:48857"
         assert record["model"] == "model.gguf"
         assert record["engine"] == "llama-cpp"
-        await asyncio.sleep(.4)
+        for _ in range(100):
+            if supervisor._record("crash")["status"] == "exited":
+                break
+            await asyncio.sleep(0.05)
         saved = supervisor._record("crash")
         assert saved["state"] == saved["status"] == "exited"
         assert saved["exit_code"] == 0

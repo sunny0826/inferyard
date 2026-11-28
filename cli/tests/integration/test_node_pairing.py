@@ -1,4 +1,5 @@
 import json
+import os
 import shutil
 import socket
 import ssl
@@ -89,26 +90,35 @@ def test_pairing_approval_persists_restricted_credentials(tmp_path, monkeypatch)
     def serve():
         for index in range(3):
             raw, _ = listener.accept()
-            context = server_context(paths)
-            if index == 2:
-                context.verify_mode = ssl.CERT_REQUIRED
-                context.load_verify_locations(cafile=str(paths["ca"]))
-            with context.wrap_socket(raw, server_side=True) as tls:
-                stream = tls.makefile("rb")
-                line = optional_line(stream)
-                observed.append(line)
-                if line == b"INFERYARD_PAIR 1\n":
-                    hello = json.loads(stream.readline())
-                    assert hello["code"] == "839204"
-                    response = response_for(paths, "approve_pair")
-                    response["hub_addrs"] = [f"127.0.0.1:{port}"]
-                    tls.sendall((json.dumps(response) + "\n").encode())
-                elif line == b"INFERYARD_CONTROL 1\n":
-                    hello = json.loads(stream.readline())
-                    assert hello["event"] == "hello"
-                    assert hello["data"]["hardware_summary"]
-                    assert json.loads(stream.readline())["event"] == "ping"
-                    tls.sendall(b'{"event":"pong","data":{}}\n')
+            with raw:
+                context = server_context(paths)
+                if index == 2:
+                    context.verify_mode = ssl.CERT_REQUIRED
+                    context.load_verify_locations(cafile=str(paths["ca"]))
+                try:
+                    with context.wrap_socket(raw, server_side=True) as tls:
+                        stream = tls.makefile("rb")
+                        line = optional_line(stream)
+                        observed.append(line)
+                        if line == b"INFERYARD_PAIR 1\n":
+                            hello = json.loads(stream.readline())
+                            assert hello["code"] == "839204"
+                            response = response_for(paths, "approve_pair")
+                            response["hub_addrs"] = [f"127.0.0.1:{port}"]
+                            tls.sendall((json.dumps(response) + "\n").encode())
+                        elif line == b"INFERYARD_CONTROL 1\n":
+                            hello = json.loads(stream.readline())
+                            assert hello["event"] == "hello"
+                            assert hello["data"]["hardware_summary"]
+                            assert json.loads(stream.readline())["event"] == "ping"
+                            tls.sendall(b'{"event":"pong","data":{}}\n')
+                        try:
+                            tls.unwrap()
+                        except (OSError, ssl.SSLError):
+                            pass
+                except (ConnectionError, ssl.SSLError, OSError):
+                    if len(observed) <= index:
+                        observed.append(b"")
         listener.close()
 
     thread = threading.Thread(target=serve, daemon=True)
@@ -124,8 +134,22 @@ def test_pairing_approval_persists_restricted_credentials(tmp_path, monkeypatch)
     assert observed == [b"", b"INFERYARD_PAIR 1\n", b"INFERYARD_CONTROL 1\n"]
     assert (state / "agent_config.json").is_file()
     assert "client_key_pem" not in (state / "agent_config.json").read_text()
-    assert (state / "client.key").stat().st_mode & 0o777 == 0o600
-    assert state.stat().st_mode & 0o777 == 0o700
+    if os.name != "nt":
+        assert (state / "client.key").stat().st_mode & 0o777 == 0o600
+        assert state.stat().st_mode & 0o777 == 0o700
+    else:
+        assert (state / "client.key").read_text()
+        acl_out = subprocess.run(
+            ["icacls", str(state / "client.key")],
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="mbcs",
+            errors="replace",
+        ).stdout
+        assert "(F)" in acl_out
+        assert "Everyone" not in acl_out
+        assert "BUILTIN\\Users" not in acl_out
 
 
 def test_pairing_rejection_never_writes_credentials(tmp_path, monkeypatch):
@@ -138,12 +162,20 @@ def test_pairing_rejection_never_writes_credentials(tmp_path, monkeypatch):
     def serve():
         for _ in range(2):
             raw, _ = listener.accept()
-            with server_context(paths).wrap_socket(raw, server_side=True) as tls:
-                stream = tls.makefile("rb")
-                if optional_line(stream) == b"INFERYARD_PAIR 1\n":
-                    stream.readline()
-                    response = response_for(paths, "reject_pair")
-                    tls.sendall((json.dumps(response) + "\n").encode())
+            with raw:
+                try:
+                    with server_context(paths).wrap_socket(raw, server_side=True) as tls:
+                        stream = tls.makefile("rb")
+                        if optional_line(stream) == b"INFERYARD_PAIR 1\n":
+                            stream.readline()
+                            response = response_for(paths, "reject_pair")
+                            tls.sendall((json.dumps(response) + "\n").encode())
+                        try:
+                            tls.unwrap()
+                        except (OSError, ssl.SSLError):
+                            pass
+                except (ConnectionError, ssl.SSLError, OSError):
+                    pass
         listener.close()
 
     thread = threading.Thread(target=serve, daemon=True)

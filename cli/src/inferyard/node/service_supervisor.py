@@ -38,7 +38,7 @@ def log_tail(path: Path, limit: int = 65536) -> str:
             stream.seek(0, os.SEEK_END)
             size = stream.tell()
             stream.seek(max(0, size - limit))
-            return stream.read().decode("utf-8", errors="replace")
+            return stream.read().decode("utf-8", errors="replace").replace("\r\n", "\n")
     except FileNotFoundError:
         return ""
 

@@ -19,15 +19,17 @@ def default_state_dir() -> Path:
     return Path(configured).expanduser() if configured else Path.home() / ".inferyard" / "node"
 
 
-def windows_acl_command(path: Path, sid: str) -> list[str]:
+def windows_acl_command(path: Path, sid: str, *, is_dir: bool | None = None) -> list[str]:
     if not sid or any(character in sid for character in "\r\n\x00"):
         raise ValueError("invalid Windows user SID")
+    directory = path.is_dir() if is_dir is None else is_dir
+    grant = f"*{sid}:(OI)(CI)F" if directory else f"*{sid}:F"
     return [
         "icacls",
         str(path),
         "/inheritance:r",
         "/grant:r",
-        f"*{sid}:(OI)(CI)F",
+        grant,
     ]
 
 
@@ -37,6 +39,8 @@ def current_windows_sid(*, runner=subprocess.run) -> str:
         check=True,
         capture_output=True,
         text=True,
+        encoding="mbcs" if os.name == "nt" else "utf-8",
+        errors="replace",
         timeout=10,
     )
     first = completed.stdout.splitlines()[0]

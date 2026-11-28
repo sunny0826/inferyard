@@ -35,6 +35,28 @@ type hub struct {
 	pendingStreams map[string]*pendingTunnelStream
 	hostRequests   map[string]*pendingHostKey
 	sshSessions    map[string]*sshBridgeSession
+
+	certMu       sync.Mutex
+	certHostsKey string
+	serverCert   tls.Certificate
+}
+
+func (h *hub) currentServerCertificate() (*tls.Certificate, error) {
+	hosts := h.candidateHosts()
+	key := strings.Join(hosts, "\x00")
+	h.certMu.Lock()
+	defer h.certMu.Unlock()
+	if key == h.certHostsKey && len(h.serverCert.Certificate) > 0 {
+		cert := h.serverCert
+		return &cert, nil
+	}
+	certificate, err := h.ca.serverCertificate(hosts)
+	if err != nil {
+		return nil, err
+	}
+	h.certHostsKey = key
+	h.serverCert = certificate
+	return &certificate, nil
 }
 
 func (h *hub) Start(ctx context.Context) error {
@@ -51,12 +73,14 @@ func (h *hub) Start(ctx context.Context) error {
 		return nil
 	}
 	h.ctx, h.cancel = context.WithCancel(ctx)
-	hosts := h.candidateHosts()
-	certificate, err := h.ca.serverCertificate(hosts)
-	if err != nil {
+	h.mu.Unlock()
+	if _, err := h.currentServerCertificate(); err != nil {
+		h.mu.Lock()
+		h.cancel()
 		h.mu.Unlock()
 		return err
 	}
+	h.mu.Lock()
 	baseListener, err := listenHub(h.cfg.ListenAddr)
 	if err != nil {
 		h.cancel()
@@ -64,8 +88,9 @@ func (h *hub) Start(ctx context.Context) error {
 		return fmt.Errorf("listen for remote hub: %w", err)
 	}
 	tlsConfig := &tls.Config{
-		MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{certificate},
-		ClientAuth: tls.RequestClientCert,
+		MinVersion:     tls.VersionTLS13,
+		GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) { return h.currentServerCertificate() },
+		ClientAuth:     tls.RequestClientCert,
 	}
 	h.listener = tls.NewListener(baseListener, tlsConfig)
 	httpLn, err := net.Listen("tcp", h.cfg.HTTPJoinAddr)

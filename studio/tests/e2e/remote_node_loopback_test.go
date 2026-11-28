@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -51,16 +52,12 @@ func TestRemoteNodeGoHubPythonAgentLoopback(t *testing.T) {
 		_ = svc.Shutdown(ctx)
 	}()
 
-	// 1. Start pairing session and verify HTTP join script delivery.
+	// 1. Start pairing session and verify HTTP join script delivery + native shell/PowerShell syntax.
 	session, apiErr := svc.StartNodePairing(context.Background(), remote.PairingSessionOptions{})
 	if apiErr != nil {
 		t.Fatalf("StartNodePairing: %+v", apiErr)
 	}
-	resp, err := http.Get(fmt.Sprintf("http://%s/join/%s", hub.HTTPJoinAddr(), session.Code))
-	if err != nil || resp.StatusCode != http.StatusOK {
-		t.Fatalf("GET /join/%s failed: resp=%v err=%v", session.Code, resp, err)
-	}
-	_ = resp.Body.Close()
+	verifyJoinScripts(t, hub.HTTPJoinAddr(), session.Code)
 
 	// 2. Run real Python `inferyard join` against Go Hub and approve via explicit option.
 	joinDone := make(chan error, 1)
@@ -183,6 +180,44 @@ func TestRemoteNodeGoHubPythonAgentLoopback(t *testing.T) {
 	}
 	if got := strings.Join(lines, "|"); got != "data: hello|data: world" {
 		t.Fatalf("unexpected tunneled SSE payload: %q", got)
+	}
+}
+
+func verifyJoinScripts(t *testing.T, httpJoinAddr, code string) {
+	t.Helper()
+	unixResp, err := http.Get(fmt.Sprintf("http://%s/join/%s", httpJoinAddr, code))
+	if err != nil || unixResp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /join/%s failed: resp=%v err=%v", code, unixResp, err)
+	}
+	unixScript, err := io.ReadAll(unixResp.Body)
+	_ = unixResp.Body.Close()
+	if err != nil || !strings.Contains(string(unixScript), code) {
+		t.Fatalf("unexpected unix join script: err=%v body=%s", err, string(unixScript))
+	}
+
+	winResp, err := http.Get(fmt.Sprintf("http://%s/join/%s.ps1", httpJoinAddr, code))
+	if err != nil || winResp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /join/%s.ps1 failed: resp=%v err=%v", code, winResp, err)
+	}
+	winScript, err := io.ReadAll(winResp.Body)
+	_ = winResp.Body.Close()
+	if err != nil || !strings.Contains(string(winScript), code) {
+		t.Fatalf("unexpected windows join script: err=%v body=%s", err, string(winScript))
+	}
+
+	if runtime.GOOS == "windows" {
+		cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+			"[void][scriptblock]::Create([Console]::In.ReadToEnd())")
+		cmd.Stdin = strings.NewReader(string(winScript))
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("powershell join script syntax check failed: %v\n%s", err, string(out))
+		}
+		return
+	}
+	cmd := exec.Command("sh", "-n")
+	cmd.Stdin = strings.NewReader(string(unixScript))
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("sh -n join script syntax check failed: %v\n%s", err, string(out))
 	}
 }
 

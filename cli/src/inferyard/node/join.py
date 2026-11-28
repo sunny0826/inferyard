@@ -149,6 +149,10 @@ def _pair_at(
             raw.settimeout(timeout)
             with pair_context().wrap_socket(raw, server_hostname=host) as tls:
                 ca_pem = pinned_ca_pem(peer_certificates(tls), ca_sha256)
+                try:
+                    tls.unwrap()
+                except (OSError, ssl.SSLError):
+                    pass
         with socket.create_connection((host, port), timeout=timeout) as raw:
             raw.settimeout(timeout)
             with pair_context(ca_pem).wrap_socket(raw, server_hostname=host) as tls:
