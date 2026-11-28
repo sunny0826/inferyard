@@ -43,6 +43,7 @@ func (s *Service) beginShutdown() {
 		}
 		s.cancel()
 		s.mu.Unlock()
+		s.closeNodesOnShutdown()
 		go func() {
 			s.speedPreparing.Wait()
 			<-s.queueDone

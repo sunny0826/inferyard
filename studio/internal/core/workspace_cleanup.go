@@ -207,6 +207,44 @@ func (s *Service) CleanWorkspaceArtifacts() (WorkspaceCleanupResult, *ApiError) 
 	return WorkspaceCleanupResult{Removed: removed}, nil
 }
 
+func (s *Service) CleanRemoteReportCache(nodeIDs ...string) (WorkspaceCleanupResult, *ApiError) {
+	if len(nodeIDs) > 1 {
+		return WorkspaceCleanupResult{}, Err("invalid_request")
+	}
+	nodeID := ""
+	if len(nodeIDs) == 1 {
+		nodeID = nodeIDs[0]
+		if nodeID != "" && !validNodeID(nodeID) {
+			return WorkspaceCleanupResult{}, Err("invalid_request")
+		}
+	}
+	root, apiErr := s.remoteReportsRoot()
+	if apiErr != nil {
+		return WorkspaceCleanupResult{}, apiErr
+	}
+	target := root
+	if nodeID != "" {
+		target = filepath.Join(root, nodeID)
+	}
+	info, err := os.Lstat(target)
+	if os.IsNotExist(err) {
+		return WorkspaceCleanupResult{Removed: []string{}}, nil
+	}
+	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return WorkspaceCleanupResult{}, Err("io_error")
+	}
+	if nodeID != "" {
+		parent, err := os.Lstat(root)
+		if err != nil || !parent.IsDir() || parent.Mode()&os.ModeSymlink != 0 {
+			return WorkspaceCleanupResult{}, Err("io_error")
+		}
+	}
+	if err := os.RemoveAll(target); err != nil {
+		return WorkspaceCleanupResult{}, Err("io_error")
+	}
+	return WorkspaceCleanupResult{Removed: []string{target}}, nil
+}
+
 func canonicalProtectedRoots(u UserSettings, paths *BoundPaths) []string {
 	wsEngines := workspaceEnginesRoot(u, paths)
 	raw := activeModelRoots(u, paths)

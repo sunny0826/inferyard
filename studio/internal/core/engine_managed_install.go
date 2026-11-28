@@ -20,9 +20,10 @@ const (
 )
 
 type ManagedEngineInstallRequest struct {
-	Family    string `json:"family"`
-	ReleaseID string `json:"release_id"`
-	BuildID   string `json:"build_id"`
+	Family         string `json:"family"`
+	ReleaseID      string `json:"release_id"`
+	BuildID        string `json:"build_id"`
+	TargetPlatform string `json:"target_platform,omitempty"`
 }
 
 type managedEngineReceipt struct {
@@ -42,8 +43,15 @@ var (
 	managedEngineCommandOutput = installCommandOutput
 )
 
+func managedEngineTargetPlatform(req ManagedEngineInstallRequest) string {
+	if platform := strings.TrimSpace(req.TargetPlatform); platform != "" {
+		return platform
+	}
+	return runtime.GOOS + "/" + runtime.GOARCH
+}
+
 func managedEngineBuild(req ManagedEngineInstallRequest) (EngineFamilyCatalog, EngineRelease, EnginePlatformBuild, *ApiError) {
-	platform := runtime.GOOS + "/" + runtime.GOARCH
+	platform := managedEngineTargetPlatform(req)
 	family, ok := DefaultEngineCatalog().FamilyByID(strings.TrimSpace(req.Family))
 	if !ok {
 		return EngineFamilyCatalog{}, EngineRelease{}, EnginePlatformBuild{}, Err("invalid_request")
@@ -97,6 +105,9 @@ func managedEngineSourceURL(release EngineRelease, build EnginePlatformBuild) st
 }
 
 func (s *Service) CreateManagedEngineInstall(ctx context.Context, req ManagedEngineInstallRequest) (DownloadTask, *ApiError) {
+	if managedEngineTargetPlatform(req) != runtime.GOOS+"/"+runtime.GOARCH {
+		return DownloadTask{}, Err("invalid_request")
+	}
 	family, release, build, failure := managedEngineBuild(req)
 	if failure != nil {
 		return DownloadTask{}, failure

@@ -357,14 +357,7 @@ func readRunInputsConfig(sourcePath, reportDir string) (engineFamily, modelPath 
 	return engineFamily, doc.Model.Name
 }
 
-// BestSpeedFor returns the best recorded throughput for model (optionally filtered to a
-// specific engine). Returns (nil, false) when no valid measurement exists.
-func (s *Service) BestSpeedFor(model, engine string) (*EngineSpeedRecord, bool) {
-	modelKey := NormalizeModelEvidenceKey(model)
-	if modelKey == "" {
-		return nil, false
-	}
-	evidence := s.ModelBenchmarkEvidence()
+func bestSpeedFromEvidence(evidence map[string]ModelEvidenceSummary, modelKey, engine string) (*EngineSpeedRecord, bool) {
 	summary, ok := evidence[modelKey]
 	if !ok || summary.Best == nil {
 		return nil, false
@@ -382,4 +375,35 @@ func (s *Service) BestSpeedFor(model, engine string) (*EngineSpeedRecord, bool) 
 		}
 	}
 	return nil, false
+}
+
+// BestSpeedFor returns the best recorded throughput for model (optionally filtered to a
+// specific engine). Returns (nil, false) when no valid measurement exists.
+func (s *Service) BestSpeedFor(model, engine string) (*EngineSpeedRecord, bool) {
+	modelKey := NormalizeModelEvidenceKey(model)
+	if modelKey == "" {
+		return nil, false
+	}
+	return bestSpeedFromEvidence(s.ModelBenchmarkEvidence(), modelKey, engine)
+}
+
+func (s *Service) ModelBenchmarkEvidenceForNode(nodeID string) map[string]ModelEvidenceSummary {
+	if nodeID == "" || nodeID == LocalNodeID {
+		return s.ModelBenchmarkEvidence()
+	}
+	if !validNodeID(nodeID) {
+		return map[string]ModelEvidenceSummary{}
+	}
+	return s.remoteModelBenchmarkEvidence(nodeID)
+}
+
+func (s *Service) BestSpeedForNode(nodeID, model, engine string) (*EngineSpeedRecord, bool) {
+	if nodeID == "" || nodeID == LocalNodeID {
+		return s.BestSpeedFor(model, engine)
+	}
+	modelKey := normalizeRemoteModelEvidenceKey(model)
+	if !validNodeID(nodeID) || modelKey == "" {
+		return nil, false
+	}
+	return bestSpeedFromEvidence(s.remoteModelBenchmarkEvidence(nodeID), modelKey, engine)
 }

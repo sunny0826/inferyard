@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"inferyard/studio/internal/inferyard"
+	"inferyard/studio/internal/remote"
 	"log"
 	"os"
 	"path/filepath"
@@ -27,6 +28,7 @@ type Options struct {
 	EngineStartTimeout time.Duration
 	Update             UpdateOptions
 	EngineUpdate       EngineUpdateOptions
+	RemoteHub          remote.Hub
 }
 
 type preparingService struct {
@@ -116,6 +118,7 @@ type Service struct {
 	cliUpgradeCancel  context.CancelFunc
 	cliUpgradeOnce    sync.Once
 	caches            serviceCaches
+	nodes             *NodeManager
 }
 
 func New(ctx context.Context, o Options) (*Service, error) {
@@ -175,6 +178,12 @@ func New(ctx context.Context, o Options) (*Service, error) {
 		s.registryRoots = func(string) []string { return []string{s.paths.Engines} }
 	}
 	s.identityReader, s.processSignal, s.orphanStopTimeout = o.ProcessStartTicks, o.SignalProcess, o.OrphanStopTimeout
+	nodes, err := newNodeManager(s, o.RemoteHub)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	s.nodes = nodes
 	s.detectEngineOwner()
 	s.history = RunHistoryResponse{ScannedAt: now(), Batches: []BatchSummary{}, StandaloneRuns: []RunSummary{}}
 	go s.runQueue()
