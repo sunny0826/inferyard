@@ -34,7 +34,7 @@ func TestSettingsViewExposesOnlyWorkspaceDirectory(t *testing.T) {
 	if _, ok := tt.Find("工作区目录"); !ok {
 		t.Fatal("settings page must show 工作区目录")
 	}
-	for _, removed := range []string{"路径设置", "结果目录", "模型目录", "下载目录名", "模型下载目录名", "引擎下载目录名"} {
+	for _, removed := range []string{"路径设置", "结果目录", "模型目录", "下载目录名", "模型下载目录名", "引擎下载目录名", "已有本地引擎", "高级：直接导入已有 installation.json", "自动探测本机引擎"} {
 		if _, ok := tt.Find(removed); ok {
 			t.Fatalf("settings page must not show removed UI text %q", removed)
 		}

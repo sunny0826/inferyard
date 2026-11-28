@@ -123,7 +123,7 @@ inferyard config create \
 
 对于 PolyStrata `installation.json`，还可通过 `--reasoning-effort {none,low,medium,high}` 冻结推理思考强度（开启思考时会自动上调默认输出 token 上限，并保留模型配置中的思考预算参数）。
 
-在 Studio 中，也可通过「模型 → 配置本地引擎」向导或「设置 → 已有本地引擎」直接探测与登记。
+在 Studio 中，也可通过「模型库 → 引擎 → 注册本地引擎」直接探测、生成或导入已有 `installation.json` 完成登记。
 
 ### Windows x64：使用固定 `llama.cpp`（Prism）归档
 

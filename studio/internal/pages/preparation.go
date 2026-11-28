@@ -120,7 +120,6 @@ func (s *viewState) generalSettingsView(c *ui.Context) {
 				s.cleanWorkspaceArtifactsButton(c)
 			})
 		})
-		s.localInstallationsView(c)
 		s.downloadSourceSettingsView(c)
 		s.proxySettingsView(c)
 		s.updateSettingsView(c)
@@ -152,7 +151,6 @@ func (s *viewState) generalSettingsView(c *ui.Context) {
 			s.cleanWorkspaceArtifactsButton(c)
 		},
 	})
-	s.localInstallationsView(c)
 	s.downloadSourceSettingsView(c)
 	s.proxySettingsView(c)
 	s.updateSettingsView(c)

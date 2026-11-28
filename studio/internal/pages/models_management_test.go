@@ -349,11 +349,17 @@ func TestLibraryModelsAndEnginesPolishLayout(t *testing.T) {
 	}
 
 	s.libraryTab = 1
+	s.settings.Settings.EngineInstallations = []string{"/preview/llama-cpp.json"}
 	tt.Frame()
 	if _, ok := tt.AccessByRole(ui.RoleHeading, "可下载引擎"); !ok {
 		t.Fatalf("expected single catalog heading 可下载引擎, texts=%v", tt.Texts())
 	}
 	if _, ok := tt.AccessByRole(ui.RoleHeading, "引擎"); ok {
 		t.Fatalf("unexpected duplicate inner heading 引擎 inside library engines tab")
+	}
+	click(t, tt, "注册本地引擎")
+	tt.Frame()
+	if !tt.HasText("自动探测本机引擎") || !tt.HasText("高级：直接导入已有 installation.json") || !tt.HasText("/preview/llama-cpp.json") {
+		t.Fatalf("library engines registration panel missing merged local engine controls: %v", tt.Texts())
 	}
 }
