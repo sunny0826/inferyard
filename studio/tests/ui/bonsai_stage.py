@@ -45,13 +45,14 @@ def _llama_binary_name() -> str:
     return "llama-server.exe" if sys.platform == "win32" else "llama-server"
 
 
+_BONSAI_GGUF_FILENAMES = frozenset({
+    "ternary-bonsai-2.5-27b-ptq1_0.gguf",
+    "ternary-bonsai-2.5-27b-pq2_0.gguf",
+})
+
+
 def is_bonsai_gguf_filename(name: str) -> bool:
-    lower = name.lower()
-    return (
-        lower.endswith(".gguf")
-        and "bonsai" in lower
-        and ("ptq1_0" in lower or "pq2_0" in lower)
-    )
+    return name.lower() in _BONSAI_GGUF_FILENAMES
 
 
 def _studio_settings_path(user_home: Path) -> Path:
@@ -243,6 +244,11 @@ def resolve_local_bonsai_models(
     if raw_override is not None:
         resolved = raw_override.expanduser().resolve()
         if resolved.is_file():
+            if not is_bonsai_gguf_filename(resolved.name):
+                raise FileNotFoundError(
+                    "INFERYARD_BONSAI_MODEL must be Ternary-Bonsai-2.5-27B-PTQ1_0.gguf "
+                    f"or Ternary-Bonsai-2.5-27B-PQ2_0.gguf: {resolved}"
+                )
             return [
                 BonsaiModelSource(
                     model_dir=resolved.parent,

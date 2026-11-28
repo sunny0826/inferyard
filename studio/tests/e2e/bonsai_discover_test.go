@@ -47,10 +47,8 @@ func llamaServerBinaryName() string {
 }
 
 func isBonsaiGGUFFilename(name string) bool {
-	lower := strings.ToLower(name)
-	return strings.HasSuffix(lower, ".gguf") &&
-		strings.Contains(lower, "bonsai") &&
-		(strings.Contains(lower, "ptq1_0") || strings.Contains(lower, "pq2_0"))
+	return strings.EqualFold(name, "Ternary-Bonsai-2.5-27B-PTQ1_0.gguf") ||
+		strings.EqualFold(name, "Ternary-Bonsai-2.5-27B-PQ2_0.gguf")
 }
 
 func parsePrismBuildFromReceipts(roots ...string) (int, bool) {
@@ -237,6 +235,9 @@ func resolveLocalBonsaiModels(t *testing.T, realHome string) []bonsaiModelSource
 			t.Fatalf("INFERYARD_BONSAI_MODEL missing at %s: %v", abs, err)
 		}
 		if info.Mode().IsRegular() {
+			if !isBonsaiGGUFFilename(filepath.Base(abs)) {
+				t.Fatalf("INFERYARD_BONSAI_MODEL %s must be Ternary-Bonsai-2.5-27B-PTQ1_0.gguf or Ternary-Bonsai-2.5-27B-PQ2_0.gguf", abs)
+			}
 			src := filepath.Join(filepath.Dir(abs), "source.json")
 			if sInfo, sErr := os.Stat(src); sErr != nil || !sInfo.Mode().IsRegular() {
 				src = ""
@@ -318,6 +319,13 @@ func resolveLocalBonsaiModels(t *testing.T, realHome string) []bonsaiModelSource
 
 func stageLocalBonsai(t *testing.T, realHome, workspace string) stagedBonsai {
 	t.Helper()
+	hostInferyard := filepath.Join(realHome, ".inferyard")
+	if info, err := os.Stat(hostInferyard); err == nil && info.IsDir() {
+		hostSnap := snapshotDirState(t, hostInferyard)
+		t.Cleanup(func() {
+			assertDirStateUnchanged(t, "host ~/.inferyard", hostInferyard, hostSnap)
+		})
+	}
 	srcEngineDir, srcEngineBin := resolveLocalBonsaiEngine(t, realHome)
 	models := resolveLocalBonsaiModels(t, realHome)
 

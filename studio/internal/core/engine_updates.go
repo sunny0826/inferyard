@@ -321,51 +321,56 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 
 		// 2. Overlay remote upstream release when available and comparable.
 		if rem, ok := remote[remoteKey]; ok && strings.TrimSpace(rem.Version) != "" && !(familyID == "vllm" && platform == "darwin/arm64" && len(rem.WheelURLs) == 0) {
-			remVer := strings.TrimSpace(rem.Version)
-			for _, cand := range candidates {
-				if cand == "" {
-					continue
-				}
-				cmp, comparable := compareEngineVersions(cand, remVer)
-				if !comparable {
-					continue
-				}
-				preferRemote := !matched
-				if !preferRemote && latest != "" {
-					if rCmp, ok2 := compareEngineVersions(latest, remVer); ok2 && rCmp <= 0 {
-						preferRemote = true
+			llamaAsset, hasLlamaAsset := remoteReleaseAsset{}, false
+			if familyID == "llama-cpp" {
+				llamaAsset, hasLlamaAsset = matchLlamaReleaseAsset(rem.Assets, platform, wantCUDA)
+			}
+			isHomebrew := familyID == "llama-cpp" && hasEntry && isHomebrewEnginePath(resolveEngineExecutablePath(entry))
+			if familyID != "llama-cpp" || hasLlamaAsset || isHomebrew {
+				remVer := strings.TrimSpace(rem.Version)
+				for _, cand := range candidates {
+					if cand == "" {
+						continue
 					}
-				}
-				if preferRemote {
-					installed = cand
-					latest = remVer
-					hasUpdate = cmp < 0
-					source = "remote"
-					releaseID = matchingCatalogReleaseID(family, remVer)
-					if strings.TrimSpace(rem.ReleaseURL) != "" {
-						releaseURL = strings.TrimSpace(rem.ReleaseURL)
+					cmp, comparable := compareEngineVersions(cand, remVer)
+					if !comparable {
+						continue
 					}
-					if strings.TrimSpace(rem.Distribution) != "" {
-						dist = strings.TrimSpace(rem.Distribution)
-					}
-					if len(rem.WheelURLs) > 0 {
-						wheelURLs = append([]string(nil), rem.WheelURLs...)
-					}
-					if familyID == "llama-cpp" {
-						if asset, okAsset := matchLlamaReleaseAsset(rem.Assets, platform, wantCUDA); okAsset {
-							downloadURL = asset.URL
-							assetName = asset.Name
-							assetBytes = asset.Bytes
-						} else {
-							downloadURL, assetName, assetBytes = "", "", 0
+					preferRemote := !matched
+					if !preferRemote && latest != "" {
+						if rCmp, ok2 := compareEngineVersions(latest, remVer); ok2 && rCmp <= 0 {
+							preferRemote = true
 						}
-					} else if familyID == "polystrata" && releaseID == "" && strings.TrimSpace(rem.DownloadURL) != "" {
-						downloadURL = strings.TrimSpace(rem.DownloadURL)
-						assetName = filepath.Base(downloadURL)
-						assetBytes = 0
 					}
+					if preferRemote {
+						installed = cand
+						latest = remVer
+						hasUpdate = cmp < 0
+						source = "remote"
+						releaseID = matchingCatalogReleaseID(family, remVer)
+						if strings.TrimSpace(rem.ReleaseURL) != "" {
+							releaseURL = strings.TrimSpace(rem.ReleaseURL)
+						}
+						if strings.TrimSpace(rem.Distribution) != "" {
+							dist = strings.TrimSpace(rem.Distribution)
+						}
+						if len(rem.WheelURLs) > 0 {
+							wheelURLs = append([]string(nil), rem.WheelURLs...)
+						}
+						if familyID == "llama-cpp" {
+							if hasLlamaAsset {
+								downloadURL, assetName, assetBytes = llamaAsset.URL, llamaAsset.Name, llamaAsset.Bytes
+							} else {
+								downloadURL, assetName, assetBytes = "", "", 0
+							}
+						} else if familyID == "polystrata" && releaseID == "" && strings.TrimSpace(rem.DownloadURL) != "" {
+							downloadURL = strings.TrimSpace(rem.DownloadURL)
+							assetName = filepath.Base(downloadURL)
+							assetBytes = 0
+						}
+					}
+					break
 				}
-				break
 			}
 		}
 

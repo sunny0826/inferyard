@@ -53,10 +53,15 @@ class TestBonsaiRealRunner(unittest.TestCase):
 
         ptq_dir = home / ".inferyard/models/ternary-bonsai-2.5-27b-ptq1"
         pq2_dir = home / ".inferyard/models/ternary-bonsai-2.5-27b-pq2"
+        legacy_dir = home / ".inferyard/models/ternary-bonsai-2-27b"
         ptq_dir.mkdir(parents=True)
         pq2_dir.mkdir(parents=True)
+        legacy_dir.mkdir(parents=True)
         (ptq_dir / "Ternary-Bonsai-2.5-27B-PTQ1_0.gguf").write_bytes(b"p" * 1024)
         (pq2_dir / "Ternary-Bonsai-2.5-27B-PQ2_0.gguf").write_bytes(b"q" * 4096)
+        # Older v2.0 and MTP variants must be ignored even when smaller.
+        (legacy_dir / "Ternary-Bonsai-2-27B-PQ2_0.gguf").write_bytes(b"l" * 512)
+        (ptq_dir / "Ternary-Bonsai-2.5-27B-MTP-PTQ1_0.gguf").write_bytes(b"m" * 256)
 
         return app, cli, home, eng_dir, ptq_dir, pq2_dir
 
@@ -145,6 +150,10 @@ class TestBonsaiRealRunner(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 bonsai_stage.resolve_local_bonsai_engine(
                     home / ".inferyard/engines/llama-cpp-upstream/llama-server"
+                )
+            with self.assertRaises(FileNotFoundError):
+                bonsai_stage.resolve_local_bonsai_models(
+                    home / ".inferyard/models/ternary-bonsai-2-27b/Ternary-Bonsai-2-27B-PQ2_0.gguf"
                 )
 
     def test_runner_stages_smallest_bonsai_isolates_home_and_preserves_host(self) -> None:

@@ -122,8 +122,13 @@ final class BonsaiRealUITests: XCTestCase {
         keepScreenshot("3-Services-Bonsai-Connectivity-OK")
         closeDrawer(closeLabel: "关闭调用示例", markerText: "连通性测试")
 
-        wait("Managed Bonsai card reports real multi-GiB memory", timeout: 15) {
-            !self.anyTextContains("0.0 GiB") && !self.anyTextContains("0.1 GiB")
+        let measuredRSSPred = NSPredicate(
+            format: "label MATCHES %@ OR value MATCHES %@",
+            ".*([3-9]|[1-9][0-9]+)(\\.[0-9]+)? GiB · 实测.*",
+            ".*([3-9]|[1-9][0-9]+)(\\.[0-9]+)? GiB · 实测.*"
+        )
+        wait("Managed Bonsai card reports real multi-GiB measured RSS", timeout: 15) {
+            self.app.descendants(matching: .any).matching(measuredRSSPred).firstMatch.exists
         }
 
         click("停止", timeout: 15)

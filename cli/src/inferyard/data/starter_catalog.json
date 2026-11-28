@@ -319,11 +319,9 @@
       "model_format": "gguf",
       "download_bytes": 5993834848,
       "min_ram_bytes": 17179869184,
-      "min_vram_bytes": 8053063680,
       "min_disk_bytes": 10737418240,
       "platforms": {
-        "Darwin": ["metal"],
-        "Linux": ["cuda"]
+        "Darwin": ["metal"]
       },
       "recommended_context": 16384,
       "quality_rank": 60

@@ -31,17 +31,14 @@ func isNonPrismLlamaEngine(eng core.EngineAsset) bool {
 }
 
 func compatibleStandaloneEngine(model core.ModelAsset, eng core.EngineAsset) bool {
+	if isPrismOnlyGGUF(model) {
+		return model.Format == "gguf" && (eng.Family == "" || eng.Family == "llama-cpp") && !isNonPrismLlamaEngine(eng)
+	}
 	switch eng.Family {
 	case "lmstudio":
 		return false
 	case "", "llama-cpp":
-		if model.Format != "gguf" {
-			return false
-		}
-		if isPrismOnlyGGUF(model) && isNonPrismLlamaEngine(eng) {
-			return false
-		}
-		return true
+		return model.Format == "gguf"
 	case "polystrata":
 		if model.Format == "strata_pack" {
 			return true
@@ -58,23 +55,18 @@ func compatibleStandaloneEngine(model core.ModelAsset, eng core.EngineAsset) boo
 }
 
 func compatibleBenchmarkEngine(model core.ModelAsset, eng core.EngineAsset) bool {
+	if isPrismOnlyGGUF(model) {
+		return model.Format != "directory" && model.Format != "strata_pack" &&
+			(eng.Family == "" || eng.Family == "llama-cpp") && !isNonPrismLlamaEngine(eng)
+	}
 	if eng.Kind != "local_installation" && eng.Family == "" {
-		if model.Format == "directory" || model.Format == "strata_pack" {
-			return false
-		}
-		return !(isPrismOnlyGGUF(model) && isNonPrismLlamaEngine(eng))
+		return model.Format != "directory" && model.Format != "strata_pack"
 	}
 	switch eng.Family {
 	case "lmstudio":
-		return model.Format != "directory" && model.Format != "strata_pack" && !isPrismOnlyGGUF(model)
+		return model.Format != "directory" && model.Format != "strata_pack"
 	case "", "llama-cpp":
-		if model.Format == "directory" || model.Format == "strata_pack" {
-			return false
-		}
-		if isPrismOnlyGGUF(model) && isNonPrismLlamaEngine(eng) {
-			return false
-		}
-		return true
+		return model.Format != "directory" && model.Format != "strata_pack"
 	default:
 		return compatibleStandaloneEngine(model, eng)
 	}

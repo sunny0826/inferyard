@@ -89,12 +89,6 @@ def evaluate_fallback_models(
         platforms = model.get("platforms")
         if isinstance(platforms, dict) and backend not in (platforms.get(system) or ()):
             continue
-        min_vram = model.get("min_vram_bytes")
-        if isinstance(min_vram, int) and min_vram > 0 and backend != "metal":
-            vram = fb_gpu.get("vram_bytes") if isinstance(fb_gpu, dict) else None
-            if not isinstance(vram, int) or vram < min_vram:
-                reasons.append("insufficient_vram")
-                continue
         if ram_capacity < model["min_ram_bytes"]:
             reasons.append("insufficient_ram")
             continue

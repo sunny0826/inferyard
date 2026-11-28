@@ -8,9 +8,10 @@ import (
 
 func TestPrismOnlyGGUFRejectsUpstreamAndLMStudioAndReconcilesToPrism(t *testing.T) {
 	ptq1 := core.ModelAsset{Name: "Ternary-Bonsai-2.5-27B-PTQ1_0.gguf", Path: "/models/Ternary-Bonsai-2.5-27B-PTQ1_0.gguf", Format: "gguf", Available: true}
-	pq2 := core.ModelAsset{Name: "Ternary-Bonsai-2.5-27B-PQ2_0.gguf", Path: "/models/Ternary-Bonsai-2.5-27B-PQ2_0.gguf", Format: "gguf", Available: true}
+	pq2 := core.ModelAsset{Name: "Ternary-Bonsai-2.5-27B-PQ2_0.gguf", Path: "/models/Ternary-Bonsai-2.5-27B-PQ2_0.gguf", Format: "gguf", Architecture: "qwen35", Available: true}
 	upstream := core.EngineAsset{Name: "llama-server · b11146", Family: "llama-cpp", Kind: "local_installation", Version: "b11146", Distribution: "ggml-org"}
 	lmstudio := core.EngineAsset{Name: "LM Studio", Family: "lmstudio", Kind: "local_installation", Version: "0.4.0"}
+	polystrata := core.EngineAsset{Name: "PolyStrata · v0.2.20-poly.5", Family: "polystrata", Kind: "local_installation", Version: "v0.2.20-poly.5"}
 	prism := core.EngineAsset{Name: "llama-cpp-prism · llama-server", Family: "llama-cpp", Version: "prism-b12232-f702476", Distribution: "PrismML"}
 
 	for _, m := range []core.ModelAsset{ptq1, pq2} {
@@ -19,6 +20,9 @@ func TestPrismOnlyGGUFRejectsUpstreamAndLMStudioAndReconcilesToPrism(t *testing.
 		}
 		if compatibleStandaloneEngine(m, lmstudio) || compatibleBenchmarkEngine(m, lmstudio) {
 			t.Fatalf("expected lmstudio to reject %s", m.Name)
+		}
+		if compatibleStandaloneEngine(m, polystrata) || compatibleBenchmarkEngine(m, polystrata) {
+			t.Fatalf("expected polystrata to reject %s even when Architecture=%q", m.Name, m.Architecture)
 		}
 		if !compatibleStandaloneEngine(m, prism) || !compatibleBenchmarkEngine(m, prism) {
 			t.Fatalf("expected PrismML llama.cpp to accept %s", m.Name)
