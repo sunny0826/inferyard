@@ -346,10 +346,14 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	}
 	s.runProgress = b.runProgress
 	s.activeRunDetail = b.activeRunDetail
-	if b.activeRunDetail != nil && b.activeRunDetail.Task.TaskId != prevActiveID && s.detailID == "" {
-		s.casesTablePage = 0
-		s.resourceTablePage = 0
-		s.detailCaseID = ""
+	if s.detailID == "" {
+		if b.activeRunDetail != nil && b.activeRunDetail.Task.TaskId != prevActiveID {
+			s.resetDetailViewState()
+			s.viewedDetailTaskID = b.activeRunDetail.Task.TaskId
+		} else if b.activeRunDetail == nil && prevActiveID != "" {
+			s.resetDetailViewState()
+			s.viewedDetailTaskID = ""
+		}
 	}
 	if s.detailID == b.id {
 		if b.detailError == nil {
@@ -405,7 +409,9 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	} else if s.progress != nil && b.dashboard.failure == nil {
 		s.startup, s.bindingStale = b.dashboard.startup, b.dashboard.stale
 	}
-	s.checks = s.service.EngineChecks()
+	if s.service != nil {
+		s.checks = s.service.EngineChecks()
+	}
 	s.serveSupported = b.serveSupported
 	s.serveProbing = false
 	s.applyServiceStateSnapshot(b.serviceSnap)
@@ -419,7 +425,7 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	if cliKey != s.discoveryCLI {
 		s.discoveryCLI, s.discoveryLoaded = cliKey, false
 	}
-	if !s.discoveryLoaded && !s.discovering {
+	if s.service != nil && !s.discoveryLoaded && !s.discovering {
 		s.refreshDiscovery()
 	}
 	return true

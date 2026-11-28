@@ -309,6 +309,7 @@ type viewState struct {
 	casesTable, samplesTable                                                                                pageTableState
 	casesTablePage, resourceTablePage                                                                       int
 	detailCaseID                                                                                            string
+	viewedDetailTaskID                                                                                      string
 	resourceCache                                                                                           resourceViewCache
 	reportLoadSeq                                                                                           uint64
 	processesLoading                                                                                        bool
@@ -366,15 +367,29 @@ func (s *viewState) finishWork(message string, e *core.ApiError) {
 		s.enqueueStatusToast(message)
 	}
 }
+func (s *viewState) resetDetailViewState() {
+	s.casesTablePage = 0
+	s.resourceTablePage = 0
+	s.detailCaseID = ""
+	if s.casesTable.Selected != nil {
+		*s.casesTable.Selected = -1
+	}
+	if s.samplesTable.Selected != nil {
+		*s.samplesTable.Selected = -1
+	}
+}
+
 func (s *viewState) selectTask(id string) {
+	if s.viewedDetailTaskID != id {
+		s.resetDetailViewState()
+		s.viewedDetailTaskID = id
+	}
 	if active := s.running(); active != nil && active.TaskId == id {
 		s.selected = "benchmarks"
 		s.benchFlowOpen = true
 		s.detailID = ""
-		s.detailCaseID = ""
-		if s.activeRunDetail == nil || s.activeRunDetail.Task.TaskId != id {
-			s.casesTablePage = 0
-			s.resourceTablePage = 0
+		if s.task.stage == "done" {
+			s.task.stage = ""
 		}
 		if s.preview != nil {
 			s.activeRunDetail = s.preview.detail(id)
@@ -387,10 +402,6 @@ func (s *viewState) selectTask(id string) {
 			}
 		}
 		return
-	}
-	if s.detailID != id {
-		s.casesTablePage = 0
-		s.resourceTablePage = 0
 	}
 	if s.preview != nil {
 		s.detailID, s.detail, s.detailError = id, s.preview.detail(id), nil

@@ -8,7 +8,7 @@ import (
 )
 
 func (w *viewState) step() int {
-	if w.task.stage != "" {
+	if w.task.stage != "" && !(w.task.stage == "done" && w.running() != nil) {
 		switch w.task.stage {
 		case "prepare_candidate":
 			if w.localEngine() == nil && !w.hasLocalEngine() && w.progress != nil && w.progress.DevicePreflight.Status == "missing" {
@@ -217,7 +217,7 @@ func (s *viewState) stageAction() string {
 	if s.binding || s.bindingPhase() {
 		action = "bind"
 	}
-	if s.task.stage != "" {
+	if s.task.stage != "" && !(s.task.stage == "done" && s.running() != nil) {
 		action = s.task.stage
 		if action == "prepare_candidate" && s.localEngine() == nil && s.progress != nil && s.progress.DevicePreflight.Status == "missing" {
 			action = "device_check"
