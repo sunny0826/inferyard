@@ -143,16 +143,25 @@ def test_job_failure_records_structured_error_and_rerun_resolves_service(tmp_pat
 
 
 def test_legacy_string_error_receipt_is_migrated_on_load(tmp_path):
-    job_dir = tmp_path / "jobs" / "legacy-1"
-    job_dir.mkdir(parents=True)
-    (job_dir / "job.json").write_text(
-        json.dumps({"job_id": "legacy-1", "status": "error", "error": "RuntimeError"}) + "\n",
-        encoding="utf-8",
-    )
+    for job_id, legacy_status, expected in (
+        ("legacy-1", "error", "failed"),
+        ("legacy-2", "blocked", "failed"),
+        ("legacy-3", "finished", "done"),
+    ):
+        job_dir = tmp_path / "jobs" / job_id
+        job_dir.mkdir(parents=True)
+        (job_dir / "job.json").write_text(
+            json.dumps({"job_id": job_id, "status": legacy_status, "error": "RuntimeError"}) + "\n",
+            encoding="utf-8",
+        )
     runner = JobRunner(tmp_path, Supervisor())
+    assert runner.has_active_jobs() is False
     loaded = runner.progress("legacy-1")
     assert loaded["task_id"] == "legacy-1"
+    assert loaded["state"] == loaded["status"] == "failed"
     assert isinstance(loaded["error"], dict) and loaded["error"]["message"] == "RuntimeError"
+    assert runner.progress("legacy-2")["state"] == "failed"
+    assert runner.progress("legacy-3")["state"] == "done"
 
 
 def test_rerun_prepares_service_binding_from_trial_evidence_inputs_layout(

@@ -15,6 +15,9 @@ from inferyard.node.agent import NodeAgent
 from inferyard.node.credentials import save_pairing
 from inferyard.node.tunnel import TunnelRejected, open_tunnel
 from tests.integration.test_node_pairing import certificates, server_context
+from tests.integration.test_runner import scenario as runner_scenario
+
+scenario = runner_scenario
 
 
 def make_state(tmp_path, paths, port):
@@ -176,3 +179,31 @@ def test_oversized_rpc_result_returns_error_frame():
         ]
 
     asyncio.run(scenario())
+
+
+def test_interrupted_batch_report_export_marks_resumable_run(tmp_path, scenario):
+    from pathlib import Path
+
+    from inferyard.application.execution import execute_async
+    from inferyard.node.report_export import export_report
+    from tests.integration.test_batch_runner import batch
+
+    request, deps = batch(tmp_path, scenario)
+
+    async def cancel_batch():
+        task = asyncio.create_task(execute_async(request, deps))
+        while len(scenario[2]) < 1 and not task.done():
+            await asyncio.sleep(0.001)
+        task.cancel()
+        return await task
+
+    code, result = asyncio.run(cancel_batch())
+    assert code == 130
+    interrupted_run = Path(result.details["runs"][0]).resolve()
+    exported = export_report(
+        state_dir=tmp_path / "state",
+        run_path=str(interrupted_run),
+        out=str(tmp_path / "exported"),
+    )
+    assert exported["resumable_run_paths"] == [str(interrupted_run)]
+    assert exported["rerunnable_run_paths"] == []

@@ -9,6 +9,8 @@ def test_raw_and_existing_report_exports_have_distinct_provenance(tmp_path):
     assert raw["verified_from_raw"] is True
     assert raw["verification"] == "raw_evidence"
     assert raw["report"]["schema_version"] == 3
+    assert raw["rerunnable_run_paths"] == [str(run.resolve())]
+    assert raw["resumable_run_paths"] == []
     validate_document("studio_report", raw["report"])
 
     existing = export_report(
@@ -19,9 +21,13 @@ def test_raw_and_existing_report_exports_have_distinct_provenance(tmp_path):
     assert existing["verified_from_raw"] is False
     assert existing["verification"] == "schema_only"
     assert existing["report"] == raw["report"]
+    assert existing["rerunnable_run_paths"] == [str(run.resolve())]
+    assert existing["resumable_run_paths"] == []
     assert list_reports(tmp_path / "state" / "reports") == []
 
     synced = export_report(state_dir=tmp_path / "state", report_path=raw["path"])
     assert synced["path"] == raw["path"]
     assert synced["report"] == raw["report"]
+    assert synced["rerunnable_run_paths"] == [str(run.resolve())]
+    assert synced["resumable_run_paths"] == []
     assert not (tmp_path / "state" / "reports").exists()

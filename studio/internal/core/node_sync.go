@@ -59,6 +59,12 @@ func decodeRemoteTask(raw json.RawMessage) (RunTask, error) {
 	if record["state"] == nil || record["state"] == "" {
 		record["state"] = record["status"]
 	}
+	switch record["state"] {
+	case "finished":
+		record["state"] = "done"
+	case "error", "blocked", "interrupted":
+		record["state"] = "failed"
+	}
 	encoded, err := json.Marshal(record)
 	if err != nil {
 		return RunTask{}, err

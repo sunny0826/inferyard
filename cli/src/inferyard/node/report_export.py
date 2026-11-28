@@ -67,7 +67,7 @@ def _classify_run_paths(paths: list[str]) -> tuple[list[str], list[str]]:
         run_dir = Path(raw)
         if not run_dir.is_dir():
             continue
-        if (run_dir / "manifest.json").is_file() and (run_dir / "inputs.json").is_file():
+        if (run_dir / "manifest.json").is_file():
             try:
                 trial = read_trial(run_dir)
                 meta = trial.get("run") or {}
@@ -91,7 +91,7 @@ def _classify_run_paths(paths: list[str]) -> tuple[list[str], list[str]]:
                     root,
                     plan,
                     loaded,
-                    options=batch_runner.HistoryLoadOptions(source_identity, None),
+                    options=batch_runner.HistoryLoadOptions(source_identity, batch_runner.history),
                 )
                 pending, interrupted = batch_runner._next(plan, runs)
                 if (

@@ -148,7 +148,7 @@ func (s *viewState) sidebarRemoteQueueRow(c *ui.Context) {
 			running++
 		}
 	}
-	if len(activeJobs) == 0 && !s.busy {
+	if len(activeJobs) == 0 {
 		return
 	}
 	label := tr(c, "sidebar.status.queue_preparing")

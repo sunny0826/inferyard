@@ -51,7 +51,14 @@ class JobRunner:
                 record = json.loads(path.read_text(encoding="utf-8"))
                 if isinstance(record.get("job_id"), str):
                     record.setdefault("task_id", record["job_id"])
-                    record.setdefault("state", record.get("status", "failed"))
+                    raw_state = str(record.get("state") or record.get("status") or "failed")
+                    normalized = {
+                        "finished": "done",
+                        "error": "failed",
+                        "blocked": "failed",
+                        "interrupted": "failed",
+                    }.get(raw_state, raw_state)
+                    _set_state(record, normalized)
                     if isinstance(record.get("error"), str):
                         record["error"] = {
                             "code": "job_failed",
