@@ -126,11 +126,6 @@ func (s *viewState) discoveryBody(c *ui.Context, bindable bool) {
 	s.managedServiceView(c)
 	refreshIconButton(c, tr(c, "engine.discovery.refresh"), s.discovering).Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)
 	errorView(c, s.discoveryError)
-	if s.discoveryError == nil {
-		for _, code := range s.discovery.Limitations {
-			warningBanner(c, human(code))
-		}
-	}
 	compatible := 0
 	for _, service := range s.discovery.Services {
 		for _, endpoint := range service.Endpoints {
@@ -155,9 +150,6 @@ func (s *viewState) discoveryBody(c *ui.Context, bindable bool) {
 			message = tr(c, "engine.discovery.none_found")
 			if s.managedServiceActive() {
 				message = tr(c, "engine.discovery.none_other_found")
-			}
-			if s.discovery.Status == "partial" || len(s.discovery.Limitations) > 0 {
-				message = tr(c, "engine.discovery.partial")
 			}
 		}
 		ui.Text(c, message)

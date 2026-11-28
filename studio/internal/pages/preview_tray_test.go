@@ -40,16 +40,16 @@ func TestPreviewTraySwitchAndRollback(t *testing.T) {
 	}
 }
 
-func TestPreviewHeaderMinimizeToTray(t *testing.T) {
+func TestPreviewHeaderOmitsStandaloneMinimizeToTrayButton(t *testing.T) {
 	p := newPreviewSession(context.Background())
+	p.state.minimizeToTray = true
 	p.state.engineState = core.EngineState{State: "running", ModelName: "Qwen3-8B"}
 	tt := ui.NewTester(func(c *ui.Context) {
 		c.SetTheme(p.themeFor(c))
 		p.state.shellContentTitle(c, nil)
 	}, 900, 120)
 	tt.Frame()
-	click(t, tt, "最小化到系统托盘")
-	if len(p.state.pendingToasts) == 0 || p.state.pendingToasts[len(p.state.pendingToasts)-1].Title != "已最小化到系统托盘（模拟）" {
-		t.Fatalf("expected simulated minimize toast, got %+v", p.state.pendingToasts)
+	if _, ok := tt.AccessByRole(ui.RoleButton, "最小化到系统托盘"); ok || tt.HasText("最小化到系统托盘") {
+		t.Fatalf("header must not render standalone minimize-to-tray button: %v", tt.Texts())
 	}
 }

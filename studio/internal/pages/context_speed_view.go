@@ -63,10 +63,7 @@ func speedStageKind(stage speedStage) stateKind {
 func (s *viewState) speedResultView(c *ui.Context) {
 	t := tokens(c)
 	w, r := s.speed, s.speed.opened
-	s.subpageHeader(c, tr(c, "speed.result.title"), tr(c, "speed.action.back_history"), func() {
-		w.opened, w.readError, w.reading = nil, "", false
-		s.reportsTab = reportsTabSpeed
-	}, func() {
+	s.subpageHeader(c, tr(c, "speed.result.title"), func() {
 		outlineButton(c, tr(c, "speed.action.new_with_combo")).Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
 	})
 	stageKind := speedStageKind(r.stage)

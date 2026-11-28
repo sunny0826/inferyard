@@ -37,6 +37,7 @@ func TestAllIconsParse(t *testing.T) {
 		"Gauge":             Gauge,
 		"Globe":             Globe,
 		"HardDrive":         HardDrive,
+		"History":           History,
 		"Inbox":             Inbox,
 		"Info":              Info,
 		"Layers":            Layers,

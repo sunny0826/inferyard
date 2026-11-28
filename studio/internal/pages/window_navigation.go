@@ -89,6 +89,7 @@ func (s *viewState) resetActivePage(resolved string) {
 	case "benchmarks":
 		s.detailID = ""
 		s.benchmarksTab = benchmarksTabTasks
+		s.historyFromFlow = false
 		s.historyDetailPath = ""
 		if !s.newTaskPending {
 			s.benchFlowOpen = false

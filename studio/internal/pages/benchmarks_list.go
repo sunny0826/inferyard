@@ -21,10 +21,8 @@ func (s *viewState) flowHeader(c *ui.Context, title string) {
 		s.header(c, title)
 		if s.benchFlowOpen && !s.newTaskPending && !s.environmentMissing() {
 			ui.Box(c).Grow(1)
-			if outlineIconButton(c, reicon.ArrowLeft, tr(c, "benchmarks.action.back_list")).Clicked() {
-				s.benchFlowOpen = false
-			}
-			if outlineIconButton(c, reicon.List, tr(c, "reports.tab.history")).Clicked() {
+			if outlineIconButton(c, reicon.History, tr(c, "reports.tab.history")).Clicked() {
+				s.historyFromFlow = true
 				s.benchFlowOpen = false
 				s.benchmarksTab = benchmarksTabHistory
 			}
@@ -89,6 +87,9 @@ func (s *viewState) benchmarksListView(c *ui.Context) {
 
 	ui.Column(c.Key("benchmarks-tabs")).FillWidth().Gap(t.Density.Section).Children(func() {
 		components.Tabs(c, &s.benchmarksTab, components.TabsUnderline, tr(c, "benchmarks.tab.tasks"), tr(c, "reports.tab.history"))
+		if s.benchmarksTab != benchmarksTabHistory {
+			s.historyFromFlow = false
+		}
 		if s.benchmarksTab == benchmarksTabHistory {
 			ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
 				errorView(c, s.historyError)
@@ -157,7 +158,8 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			heading(c, tr(c, "benchmarks.group.recent"), 3).Grow(1)
 			if len(historyRuns) > 0 {
-				if iconButton(c, reicon.List, tr(c, "benchmarks.recent.view_all_history"), components.IconButtonCompact).Clicked() {
+				if iconButton(c, reicon.History, tr(c, "benchmarks.recent.view_all_history"), components.IconButtonCompact).Clicked() {
+					s.historyFromFlow = false
 					s.benchmarksTab = benchmarksTabHistory
 				}
 			}

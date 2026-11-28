@@ -68,16 +68,13 @@ func (s *viewState) shellContentTitle(c *ui.Context, leading func(*ui.Context)) 
 	row := ui.Row(c.Key("content-title-bar")).Fill().AlignItems(ui.Center).Gap(t.Density.Row)
 	availWidth := row.LayoutBounds().W
 	studioTooltipGroup(c, row, func() {
+		if s.shell != nil && !s.shell.LeftExpanded() {
+			s.shellLeftHeader(c)
+		}
 		if leading != nil {
 			leading(c)
 		}
 		ui.Spacer(c)
-		state := s.engineState.State
-		if s.canMinimizeToTray() && (len(s.activeManagedServices()) > 0 || state == "running" || state == "starting" || state == "stopping") {
-			if outlineIconButton(c, reicon.PanelBottomClose, tr(c, "tray.action.minimize")).Clicked() {
-				s.minimizeToTrayAction()
-			}
-		}
 		s.updateHeaderBadge(c)
 		s.notificationBell(c, availWidth)
 	})

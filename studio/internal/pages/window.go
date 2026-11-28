@@ -75,6 +75,7 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 	}
 	shell := sidebar.NewShell(s.shellOptions(title))
 	w := shell.Window()
+	s.shell = shell
 	s.win = w
 	if len(hooks) > 0 {
 		s.minimizeToTrayNow = hooks[0].MinimizeToTray
@@ -233,10 +234,12 @@ type viewState struct {
 	runProgress                                                                                             *core.RunProgress
 	ctx                                                                                                     context.Context
 	service                                                                                                 *core.Service
+	shell                                                                                                   *sidebar.Shell
 	win                                                                                                     *mygo.Window
 	openedReport                                                                                            *reportViewState
 	newSVGStage                                                                                             func() (svgStageView, error)
 	benchmarksTab                                                                                           int
+	historyFromFlow                                                                                         bool
 	reportsTab                                                                                              int
 	refreshMu                                                                                               sync.Mutex
 	bgRefresh                                                                                               bgRefreshCache
@@ -389,6 +392,7 @@ func (s *viewState) selectTask(id string) {
 
 func (s *viewState) shellOptions(title string) sidebar.ShellOptions {
 	options := pageShellOptions(title, "inferyard-studio-main", s.leftNav, s.contentView)
+	options.LeftHeader = s.shellLeftHeader
 	options.ContentTitle = func(c *ui.Context) { s.shellContentTitle(c, nil) }
 	options.Theme = s.themeFor
 	return options
@@ -396,7 +400,14 @@ func (s *viewState) shellOptions(title string) sidebar.ShellOptions {
 
 func (s *viewState) view(c *ui.Context) {
 	ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
-		ui.Column(c).Width(205).Shrink(0).Children(func() { s.leftNav(c) })
+		ui.Box(c).Width(205).Shrink(0).FillHeight().Children(func() {
+			s.leftNav(c)
+			ui.Row(c).Absolute().Top(0).Left(0).Right(0).Height(sidebar.HeaderHeight(c)).
+				AlignItems(ui.Center).Padding(6, 8, 6, 16).Children(func() {
+				ui.Spacer(c)
+				s.shellLeftHeader(c)
+			})
+		})
 		ui.Box(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
 			s.contentView(c)
 			ui.Row(c).Absolute().Top(0).Left(0).Right(0).Height(sidebar.HeaderHeight(c)).

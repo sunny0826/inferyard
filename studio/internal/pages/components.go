@@ -365,19 +365,16 @@ func searchableSelectField(c *ui.Context, name, description, placeholder, emptyF
 	}
 }
 
-func (s *viewState) subpageHeader(c *ui.Context, title, backLabel string, onBack func(), extraActions ...func()) {
+func (s *viewState) subpageHeader(c *ui.Context, title string, extraActions ...func()) {
 	t := tokens(c)
 	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 		s.header(c, title)
-		ui.Box(c).Grow(1)
-		for _, action := range extraActions {
-			if action != nil {
-				action()
-			}
-		}
-		if backLabel != "" && onBack != nil {
-			if outlineIconButton(c, reicon.ArrowLeft, backLabel).Clicked() {
-				onBack()
+		if len(extraActions) > 0 {
+			ui.Box(c).Grow(1)
+			for _, action := range extraActions {
+				if action != nil {
+					action()
+				}
 			}
 		}
 	})

@@ -124,19 +124,15 @@ func TestSpeedResultSampleRowsFit(t *testing.T) {
 
 func TestSpeedResultHeaderBackToHistory(t *testing.T) {
 	w := &speedWorkspace{opened: &speedTask{}, readError: "read failed", reading: true}
-	s := viewState{speed: w}
-	tt := ui.NewTester(func(c *ui.Context) {
-		if w.opened != nil {
-			s.speedResultView(c)
-		}
-	}, 1200, 600)
+	s := viewState{selected: "reports", loaded: true, speed: w}
+	tt := ui.NewTester(s.view, 1200, 600)
 	tt.SetLocale(l10n.LanguageEn)
 	tt.Frame()
 	backLabel := l10n.T(l10n.LanguageEn, "speed.action.back_history")
 	back, ok := tt.AccessByRole(ui.RoleButton, backLabel)
 	combo, hasCombo := tt.AccessByRole(ui.RoleButton, l10n.T(l10n.LanguageEn, "speed.action.new_with_combo"))
 	title, hasTitle := tt.Find(l10n.T(l10n.LanguageEn, "speed.result.title"))
-	if !ok || !hasCombo || !hasTitle || combo.Bounds.X+combo.Bounds.W > back.Bounds.X || title.Y >= back.Bounds.Y+back.Bounds.H || title.Y+title.H <= back.Bounds.Y {
+	if !ok || !hasCombo || !hasTitle || back.Bounds.X+back.Bounds.W > 205 || back.Bounds.X+back.Bounds.W > title.X || title.X+title.W > combo.Bounds.X {
 		t.Fatalf("result header bounds: title=%v combo=%v back=%v", title, combo.Bounds, back.Bounds)
 	}
 	click(t, tt, backLabel)

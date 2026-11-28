@@ -53,7 +53,11 @@ func (s *viewState) servicesView(c *ui.Context) {
 		})
 	}
 
-	section(c, tr(c, "services.section.discovered"), func() {
+	ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
+		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			heading(c, tr(c, "services.section.discovered"), 3).Grow(1)
+			refreshIconButton(c, tr(c, "engine.discovery.refresh"), s.discovering).Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)
+		})
 		s.discoveredServicesSection(c)
 	})
 }
@@ -407,15 +411,7 @@ func (s *viewState) renderIdleManagedCard(c *ui.Context) {
 
 func (s *viewState) discoveredServicesSection(c *ui.Context) {
 	t := tokens(c)
-	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		refreshIconButton(c, tr(c, "engine.discovery.refresh"), s.discovering).Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)
-	})
 	errorView(c, s.discoveryError)
-	if s.discoveryError == nil {
-		for _, code := range s.discovery.Limitations {
-			warningBanner(c, human(code))
-		}
-	}
 	compatible := 0
 	for _, service := range s.discovery.Services {
 		for _, endpoint := range service.Endpoints {
@@ -431,9 +427,6 @@ func (s *viewState) discoveredServicesSection(c *ui.Context) {
 			message = tr(c, "engine.discovery.none_found")
 			if s.managedServiceActive() {
 				message = tr(c, "engine.discovery.none_other_found")
-			}
-			if s.discovery.Status == "partial" || len(s.discovery.Limitations) > 0 {
-				message = tr(c, "engine.discovery.partial")
 			}
 		}
 		ui.Text(c, message).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)

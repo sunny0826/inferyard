@@ -274,22 +274,24 @@ func TestMinimizeToTrayActionAndFailure(t *testing.T) {
 	}
 }
 
-func TestQuitDialogMinimizesWithoutStoppingServices(t *testing.T) {
+func TestQuitDialogBypassesWhenMinimizeToTrayEnabledAndOmitsTrayButton(t *testing.T) {
 	s, _ := servicesP2State(t)
 	s.engineState = core.EngineState{
 		State: "running", Origin: core.EngineOriginStandalone, ModelName: "Qwen3-8B-Q4.gguf",
 	}
-	s.quitDialog.open = true
-	minimized := 0
-	s.minimizeToTrayNow = func() error {
-		minimized++
-		return nil
+	s.minimizeToTray = true
+	if s.shouldShowQuitServiceDialog() {
+		t.Fatal("shouldShowQuitServiceDialog must be false when minimizeToTray is enabled")
 	}
+
+	s.minimizeToTray = false
+	if !s.shouldShowQuitServiceDialog() {
+		t.Fatal("shouldShowQuitServiceDialog must be true when standalone service is running and minimizeToTray is false")
+	}
+	s.quitDialog.open = true
 	tt := newServicesTester(s)
 	tt.Frame()
-	click(t, tt, "最小化到系统托盘")
-	tt.Frame()
-	if minimized != 1 || s.quitDialog.open || s.quitDialog.bypassClose {
-		t.Fatalf("unexpected minimize dialog state: calls=%d dialog=%+v", minimized, s.quitDialog)
+	if tt.HasText("最小化到系统托盘") {
+		t.Fatalf("quitServiceDialog must not render standalone minimize-to-tray button: %v", tt.Texts())
 	}
 }

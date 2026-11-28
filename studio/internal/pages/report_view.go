@@ -129,10 +129,7 @@ func (s *viewState) reportView(c *ui.Context) {
 	if !report.loading && report.failure == nil && len(report.index.Runs) > 0 {
 		title = reportModel(report.index.Runs[report.run])
 	}
-	s.subpageHeader(c, title, tr(c, "reports.detail.back"), func() {
-		s.closeOpenedReport()
-		s.reportsTab = reportsTabList
-	})
+	s.subpageHeader(c, title)
 	if s.openedReport == nil {
 		return
 	}

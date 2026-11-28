@@ -61,6 +61,7 @@ func FolderPlus() *ui.SVG        { return load("folder-plus") }
 func Gauge() *ui.SVG             { return load("gauge") }
 func Globe() *ui.SVG             { return load("globe") }
 func HardDrive() *ui.SVG         { return load("hard-drive") }
+func History() *ui.SVG           { return load("history") }
 func Inbox() *ui.SVG             { return load("inbox") }
 func Info() *ui.SVG              { return load("info-circle") }
 func Layers() *ui.SVG            { return load("layers") }
