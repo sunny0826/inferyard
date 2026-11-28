@@ -45,9 +45,10 @@ func (u EngineUpdateInfo) CanOneClickUpdate() bool {
 		u.Action == EngineUpdateActionVenv)
 }
 
-func latestComparableCatalogVersion(family EngineFamilyCatalog, installed string) (latest, releaseID string, hasUpdate, comparable bool) {
+func latestComparableCatalogVersion(family EngineFamilyCatalog, installed, dist, platform string) (latest, releaseID string, hasUpdate, comparable bool) {
+	releases := catalogReleasesForUpdate(family, dist, platform)
 	var bestComparable, bestReleaseID string
-	for _, rel := range family.Releases {
+	for _, rel := range releases {
 		ver := strings.TrimSpace(rel.Version)
 		if ver == "" {
 			continue
@@ -68,7 +69,7 @@ func latestComparableCatalogVersion(family EngineFamilyCatalog, installed string
 		cmp, ok := compareEngineVersions(installed, bestComparable)
 		return bestComparable, bestReleaseID, ok && cmp < 0, true
 	}
-	for _, rel := range family.Releases {
+	for _, rel := range releases {
 		ver := strings.TrimSpace(rel.Version)
 		if ver != "" {
 			return ver, rel.ID, false, false
@@ -300,14 +301,14 @@ func (s *Service) EngineUpdates() map[string]EngineUpdateInfo {
 			if installed == "" {
 				installed = cand
 			}
-			l, rID, upd, comparable := latestComparableCatalogVersion(family, cand)
+			l, rID, upd, comparable := latestComparableCatalogVersion(family, cand, dist, platform)
 			if comparable {
 				installed, latest, releaseID, hasUpdate, matched = cand, l, rID, upd, true
 				break
 			}
 		}
 		if !matched {
-			latest, releaseID, hasUpdate, _ = latestComparableCatalogVersion(family, installed)
+			latest, releaseID, hasUpdate, _ = latestComparableCatalogVersion(family, installed, dist, platform)
 		}
 
 		source := "catalog"

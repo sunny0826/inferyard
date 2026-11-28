@@ -189,3 +189,26 @@ func normalizeCatalogFamilyID(candidates ...string) string {
 	}
 	return ""
 }
+
+// catalogReleasesForUpdate narrows catalog releases to the target platform and
+// distribution so multi-track families such as llama-cpp do not cross-compare.
+func catalogReleasesForUpdate(family EngineFamilyCatalog, dist, platform string) []EngineRelease {
+	releases := family.ReleasesForPlatform(platform, false)
+	if len(releases) == 0 {
+		releases = family.Releases
+	}
+	d := strings.TrimSpace(dist)
+	if d == "" {
+		return releases
+	}
+	var matched []EngineRelease
+	for _, rel := range releases {
+		if strings.EqualFold(strings.TrimSpace(rel.Distribution), d) {
+			matched = append(matched, rel)
+		}
+	}
+	if len(matched) > 0 {
+		return matched
+	}
+	return releases
+}

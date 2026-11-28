@@ -32,6 +32,24 @@ def test_apple_silicon_48g_includes_mlx_lm_alternative() -> None:
     assert mlx_alt["model_id"] == "model-qwen3-0.6b-mlx"
     assert mlx_alt["backend"] == "metal"
     assert mlx_alt["tier"] == "lightweight"
+    fallback_alt = next(alt for alt in rec["alternatives"] if alt["engine"] == "llama-cpp")
+    assert fallback_alt["model_id"] == "model-bonsai-2.5-27b-pq2"
+
+
+def test_apple_silicon_16g_recommends_bonsai_ptq1_primary() -> None:
+    rec = recommend_starter(_apple_silicon_hw(ram_gib=16, disk_gib=50))
+    assert rec["status"] == "recommended"
+    assert rec["engine"] == "llama-cpp"
+    assert rec["model_id"] == "model-bonsai-2.5-27b-ptq1"
+    assert rec["backend"] == "metal"
+
+
+def test_apple_silicon_24g_moderate_disk_recommends_bonsai_pq2() -> None:
+    rec = recommend_starter(_apple_silicon_hw(ram_gib=24, disk_gib=13))
+    assert rec["status"] == "recommended"
+    assert rec["engine"] == "llama-cpp"
+    assert rec["model_id"] == "model-bonsai-2.5-27b-pq2"
+    assert rec["backend"] == "metal"
 
 
 def test_apple_silicon_low_disk_promotes_mlx_lm_primary() -> None:
@@ -53,6 +71,7 @@ def test_non_apple_host_excludes_mlx_lm() -> None:
     rec = recommend_starter(hw)
     assert rec["status"] == "recommended"
     assert rec["engine"] == "llama-cpp"
+    assert rec["model_id"] == "model-qwen3-4b-q4km"
     assert all(alt["engine"] != "mlx-lm" for alt in rec["alternatives"])
 
 

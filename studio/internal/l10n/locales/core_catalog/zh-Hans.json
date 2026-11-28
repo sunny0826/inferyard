@@ -1,5 +1,7 @@
 {
   "core.catalog.engine.win_cuda.note": "包含引擎与 CUDA 12.4 运行时归档，下载后自动校验并准备。",
+  "core.catalog.model.bonsai_2_5_27b_pq2.title": "Ternary-Bonsai-2.5-27B-PQ2_0（GGUF）",
+  "core.catalog.model.bonsai_2_5_27b_ptq1.title": "Ternary-Bonsai-2.5-27B-PTQ1_0（GGUF）",
   "core.catalog.model.qwen3_0_6b_mlx.note": "目录模型 · mlx-lm（含配置、分词器与权重，下载后自动生成资产清单）。",
   "core.catalog.model.qwen3_0_6b_mlx.title": "Qwen3-0.6B-4bit（目录模型）",
   "core.catalog.model.qwen3_0_6b_q8.title": "Qwen3-0.6B-Q8_0（GGUF）",

@@ -94,4 +94,17 @@ func TestCatalogEntriesAreUniqueAndComplete(t *testing.T) {
 	if !ok || mlxModel.Format != "directory" || !mlxModel.Downloadable() {
 		t.Fatalf("unexpected mlx directory catalog entry: %+v", mlxModel)
 	}
+	for _, id := range []string{"model-bonsai-2.5-27b-ptq1", "model-bonsai-2.5-27b-pq2"} {
+		entry, ok := CatalogEntryByID(id)
+		if !ok || !entry.Downloadable() || entry.MirrorURL == "" || !hexDigest.MatchString(entry.SHA256) {
+			t.Fatalf("unexpected bonsai catalog entry %s: %+v", id, entry)
+		}
+	}
+	macArm, ok := CatalogEntryByID("engine-macos-arm64")
+	if !ok || macArm.Revision != "prism-b12232-f702476" {
+		t.Fatalf("expected macos-arm64 revision prism-b12232-f702476, got %+v", macArm)
+	}
+	if winCPU.Revision != "prism-b10743-adfffbe" {
+		t.Fatalf("expected windows-x64 revision prism-b10743-adfffbe preserved, got %+v", winCPU)
+	}
 }

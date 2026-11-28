@@ -289,7 +289,7 @@ func TestDownloadsEnginesFiltersInstalledAndDrawerPreventsDuplicateInstall(t *te
 
 	s.registry.Engines = []core.EngineAsset{
 		{Name: "mlx-lm · 0.32.2", Family: "mlx-lm", Kind: "local_installation", Version: "0.32.2"},
-		{Name: "llama-cpp-prism · llama-server", Family: "llama-cpp", Version: "prism-b10743-adfffbe"},
+		{Name: "llama-cpp-prism · llama-server", Family: "llama-cpp", Version: "prism-b12232-f702476"},
 	}
 
 	tt := ui.NewTester(func(c *ui.Context) {
@@ -334,11 +334,18 @@ func TestDownloadsEnginesFiltersInstalledAndDrawerPreventsDuplicateInstall(t *te
 		t.Fatalf("expected drawer install button disabled for installed mlx-lm 0.32.2, got ok=%v btn=%+v", ok, btn)
 	}
 
-	// Opening detail drawer for installed llama-cpp prism-b10743-adfffbe disables duplicate download button.
-	uiState.openEngineDrawer("llama-cpp", "llama-cpp-prism-b10743", "darwin/arm64", "engine-macos-arm64")
+	// Opening detail drawer for installed llama-cpp prism-b12232-f702476 disables duplicate download button.
+	uiState.openEngineDrawer("llama-cpp", "llama-cpp-prism-b12232", "darwin/arm64", "engine-macos-arm64")
 	tt.Frame()
 	if btn, ok := tt.AccessByRole(ui.RoleButton, "安装此版本 · llama-cpp"); !ok || !btn.Disabled {
-		t.Fatalf("expected drawer install button disabled for installed llama-cpp prism-b10743-adfffbe, got ok=%v btn=%+v", ok, btn)
+		t.Fatalf("expected drawer install button disabled for installed llama-cpp prism-b12232-f702476, got ok=%v btn=%+v", ok, btn)
+	}
+
+	// Installed older llama-cpp prism-b10743-adfffbe still allows downloading catalog prism-b12232-f702476.
+	s.registry.Engines[1] = core.EngineAsset{Name: "llama-cpp-prism · llama-server", Family: "llama-cpp", Version: "prism-b10743-adfffbe"}
+	tt.Frame()
+	if btn, ok := tt.AccessByRole(ui.RoleButton, "安装此版本 · llama-cpp"); !ok || btn.Disabled {
+		t.Fatalf("expected drawer install button enabled when installed llama-cpp is older prism-b10743-adfffbe, got ok=%v btn=%+v", ok, btn)
 	}
 	uiState.engineDrawerOpen = false
 
