@@ -193,7 +193,7 @@ def recommend(hardware, models, *, model_loaded=False):
                 "estimated_gpu_memory_bytes": None if mode == "metal" else gpu_estimate,
                 "min_available_memory_bytes": reserve,
                 "min_disk_bytes": 5 * GIB,
-                "context_size": min(4096, model.get("context_length") or 4096),
+                "context_size": min(8192, model.get("context_length") or 4096),
                 "threads": min(8, max(1, (hardware.get("logical_cpus") or 2) // 2)),
                 "reason": "unified_memory_fit_estimate"
                 if mode == "metal"

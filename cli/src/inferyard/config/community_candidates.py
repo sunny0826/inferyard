@@ -80,6 +80,16 @@ def fresh_macos(selected, results):
     return current
 
 
+def resolve_max_tokens(bundle: dict, context_size: int) -> int:
+    from inferyard.bundles.registry import effective_execution_hints
+
+    hints = effective_execution_hints(bundle)
+    has_svg = any(case.get("category") == "svg" for case in bundle.get("cases", ()))
+    default_tokens = hints.get("default_max_tokens") or (4096 if has_svg else 512)
+    headroom = min(256, context_size // 2)
+    return min(default_tokens, max(1, context_size - headroom), 8192)
+
+
 def create(request):
     from inferyard.config.workspace_inputs import resolve_candidate_inputs
 
@@ -139,7 +149,8 @@ def create(request):
     repo, revision = source_declaration(
         request.model_source_record, model, repo=request.model_repo, revision=request.model_revision
     )
-    shared = dict(repo=repo, revision=revision, port=request.port)
+    max_tokens = resolve_max_tokens(bundle, selected["context_size"])
+    shared = dict(repo=repo, revision=revision, port=request.port, max_tokens=max_tokens)
     if system == "Darwin":
         from inferyard.config.community_candidates_macos import build_config
         from inferyard.platforms.identity import environment_snapshot
