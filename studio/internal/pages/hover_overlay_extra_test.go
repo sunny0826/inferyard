@@ -158,6 +158,9 @@ func TestResourceChartHoverIntentWarmHandoffAndKeyboard(t *testing.T) {
 	if !ok1 || !ok2 {
 		t.Fatalf("missing resource plots: plot1=%v plot2=%v", ok1, ok2)
 	}
+	if _, okRole := tt.AccessByRole(ui.RoleGroup, "可用内存 GiB曲线"); !okRole {
+		t.Fatalf("expected resource plot to keep RoleGroup accessibility semantics, access=%+v", tt.AccessAll())
+	}
 	y1 := plot1.Y + plot1.H/2
 	y2 := plot2.Y + plot2.H/2
 
