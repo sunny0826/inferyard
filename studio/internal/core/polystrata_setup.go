@@ -103,6 +103,10 @@ func (s *Service) activePolystrataSetupLocked() (*downloadEntry, bool) {
 }
 
 func (s *Service) CreatePolystrataSetup(req PolystrataSetupRequest) (DownloadTask, *ApiError) {
+	return s.createPolystrataSetup(req, nil)
+}
+
+func (s *Service) createPolystrataSetup(req PolystrataSetupRequest, replaced *replacedEngineTarget) (DownloadTask, *ApiError) {
 	if failure := validatePolystrataSetupRequest(req); failure != nil {
 		return DownloadTask{}, failure
 	}
@@ -178,10 +182,11 @@ func (s *Service) CreatePolystrataSetup(req PolystrataSetupRequest) (DownloadTas
 			LogPath:     ptr(filepath.Join(outDir, ".inferyard-setup.log")),
 			StartedAt:   now(),
 		},
-		cancel:     cancel,
-		resume:     resume,
-		polystrata: &reqCopy,
-		dataDir:    dataDir,
+		cancel:         cancel,
+		resume:         resume,
+		polystrata:     &reqCopy,
+		dataDir:        dataDir,
+		replacedEngine: replaced,
 	}
 	s.downloads = append(s.downloads, d)
 	s.Bus.Publish("download.state", map[string]any{"task": clone(d.Task)})
@@ -422,9 +427,11 @@ func (s *Service) runPolystrataSetup(ctx context.Context, binary string, d *down
 				d.Task.Error = regErr
 			}
 			doneOK := d.Task.State == "done"
+			replaced := d.replacedEngine
 			taskSnap := clone(d.Task)
 			s.mu.Unlock()
 			if doneOK {
+				s.cleanupReplacedManagedPolystrataEngine(replaced, instPath)
 				s.VerifyEngines()
 			}
 			s.Bus.Publish("download.state", map[string]any{"task": taskSnap})

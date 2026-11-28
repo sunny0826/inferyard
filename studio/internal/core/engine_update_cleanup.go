@@ -235,3 +235,48 @@ func (s *Service) cleanupReplacedManagedBinaryEngine(replaced *replacedEngineTar
 	})
 	s.checkMu.Unlock()
 }
+
+func (s *Service) resolveReplacedManagedPolystrataTarget(name string, entry registryEntry) *replacedEngineTarget {
+	if entry.installation == "" || strings.TrimSpace(entry.path) == "" {
+		return nil
+	}
+	u := s.userSettings()
+	wsEngines := workspaceEnginesRoot(u, s.paths)
+	resultsRoot := derivedResultsRoot(u, s.paths)
+	rawPath := entry.rawPath
+	if strings.TrimSpace(rawPath) == "" {
+		rawPath = entry.path
+	}
+	installDir, ok := managedPolystrataInstallDir(rawPath, entry.path, wsEngines, resultsRoot)
+	if !ok {
+		return nil
+	}
+	return &replacedEngineTarget{
+		name:    name,
+		dir:     installDir,
+		exePath: resolveEngineExecutablePath(entry),
+		entry:   entry,
+	}
+}
+
+func (s *Service) cleanupReplacedManagedPolystrataEngine(replaced *replacedEngineTarget, newInstPath string) {
+	if replaced == nil || strings.TrimSpace(replaced.dir) == "" || strings.TrimSpace(newInstPath) == "" {
+		return
+	}
+	canonNewInst, err := canonical(newInstPath)
+	if err != nil {
+		return
+	}
+	newInstallDir := filepath.Dir(canonNewInst)
+	if sameFileOrPath(replaced.dir, newInstallDir) || withinCanonicalDir(replaced.dir, newInstallDir) || withinCanonicalDir(newInstallDir, replaced.dir) {
+		return
+	}
+	rawFallback := replaced.entry.rawPath
+	if strings.TrimSpace(rawFallback) == "" {
+		rawFallback = replaced.entry.path
+	}
+	_, _ = s.deleteManagedPolystrataInstall(replaced.name, replaced.entry.path, rawFallback, "", "", replaced)
+	if s.engineUpdater != nil && replaced.exePath != "" {
+		s.engineUpdater.clearBinaryVersion(replaced.exePath)
+	}
+}

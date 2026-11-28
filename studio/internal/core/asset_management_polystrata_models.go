@@ -82,7 +82,7 @@ func appendUniqueAssetFile(files *[]assetFileSize, candidate assetFileSize) {
 
 func findOwningPolystrataDecl(u UserSettings, paths *BoundPaths, wsEnginesRoot, canonCfgPath string) (string, string) {
 	cfgDir := filepath.Dir(canonCfgPath)
-	for _, rawInst := range u.EngineInstallations {
+	for _, rawInst := range allKnownEngineInstallations(u, wsEnginesRoot) {
 		rawBytes, err := installationBytes(rawInst)
 		if err != nil {
 			continue
@@ -164,7 +164,7 @@ func collectOtherPolystrataProtectedRefs(u UserSettings, paths *BoundPaths, wsEn
 			if targetCanonCfg != "" && sameDirectoryEntry(resolved, targetCanonCfg) {
 				continue
 			}
-			if seenCfgInContext(seenContexts, resolved, declWorkDir, declDataDir, false) {
+			if seenCfgInContext(seenContexts, resolved, declWorkDir, declDataDir) {
 				continue
 			}
 			seenContexts = append(seenContexts, polystrataCfgContext{
@@ -198,7 +198,7 @@ func collectOtherPolystrataProtectedRefs(u UserSettings, paths *BoundPaths, wsEn
 		}
 	}
 
-	for _, rawInst := range u.EngineInstallations {
+	for _, rawInst := range allKnownEngineInstallations(u, wsEnginesRoot) {
 		rawBytes, err := installationBytes(rawInst)
 		if err != nil {
 			continue
