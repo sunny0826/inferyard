@@ -144,15 +144,25 @@ func TestStartChainRunsDeviceCheckWhenPreflightMissing(t *testing.T) {
 	}
 }
 
-func TestStartChainRejectsBlockedPreflight(t *testing.T) {
+func TestStartChainStopsWhenOnDemandDeviceCheckBlocked(t *testing.T) {
 	h := newChainHarness()
-	h.progress.DevicePreflight = inferyard.ProgressPreflight{Status: "blocked"}
+	h.preflightMatch = false
+	h.progress.NextAction = "device_check"
+	h.progress.DevicePreflight = inferyard.ProgressPreflight{Status: "missing"}
+	h.progress.Bundles = []inferyard.BundleProgress{
+		{Bundle: "zh-core", Phase: "preflight_missing", NextAction: "device_check"},
+	}
+	h.failAt = 0
+	h.failResult = core.WizardResult{
+		ExitCode:    inferyard.ExitBlocked,
+		Limitations: []string{"insufficient_memory"},
+	}
 
 	_, e := h.run(t, "Ternary-Bonsai-2.5-27B-PQ2_0.gguf", "llama-cpp-prism · llama-server")
-	if e == nil || e.Code != "preflight_missing" {
-		t.Fatalf("expected preflight_missing for blocked preflight, got %v", e)
+	if e == nil || len(e.Limitations) == 0 || e.Limitations[0] != "insufficient_memory" {
+		t.Fatalf("expected insufficient_memory failure from on-demand device-check, got %+v", e)
 	}
-	if len(h.calls) != 0 {
-		t.Fatalf("expected no wizard calls for blocked preflight, got %+v", h.calls)
+	if len(h.calls) != 1 || !strings.HasPrefix(h.calls[0].command, "inferyard device-check ") {
+		t.Fatalf("expected chain to stop after failed device-check without calling config create, got %+v", h.calls)
 	}
 }
