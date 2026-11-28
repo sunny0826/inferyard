@@ -34,9 +34,13 @@ type TrayEngineStatus struct {
 	State       TrayEngineState
 	ActiveCount int
 	Services    []TrayServiceSummary
+	Tunnels     []TrayTunnelSummary
 }
 
 func (s TrayEngineStatus) HasActive() bool {
+	if len(s.Tunnels) > 0 {
+		return true
+	}
 	switch s.State {
 	case TrayEngineStarting, TrayEngineRunning, TrayEngineStopping, TrayEngineFailed, TrayEngineOrphaned:
 		return true

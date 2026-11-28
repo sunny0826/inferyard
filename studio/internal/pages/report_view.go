@@ -34,6 +34,9 @@ func (s *viewState) readReport(reference string) (*core.ReportIndex, *core.ApiEr
 	if s.service == nil {
 		return nil, core.Err("not_found")
 	}
+	if nodeID, reportID, ok := remoteReportReferenceParts(reference); ok {
+		return s.service.RemoteReportIndex(nodeID, reportID)
+	}
 	return s.service.ReportIndex(reference)
 }
 
@@ -83,7 +86,8 @@ func (s *viewState) openReport(reference string) {
 		return
 	}
 
-	if s.service != nil {
+	_, _, remoteRef := remoteReportReferenceParts(reference)
+	if s.service != nil && !remoteRef {
 		if cached, ok := s.service.CachedReportIndex(reference); ok {
 			s.openedReport = &reportViewState{reference: reference, index: cached}
 			if reference != "" && !s.hasCachedReportExclusivity(reference) {
@@ -100,7 +104,7 @@ func (s *viewState) openReport(reference string) {
 	s.reportLoadSeq++
 	seq := s.reportLoadSeq
 	s.openedReport = &reportViewState{reference: reference, loading: true, loadSeq: seq}
-	needExcl := s.service != nil && reference != "" && !s.hasCachedReportExclusivity(reference)
+	needExcl := s.service != nil && !remoteRef && reference != "" && !s.hasCachedReportExclusivity(reference)
 	svc := s.service
 	go func() {
 		index, e := s.readReport(reference)

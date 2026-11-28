@@ -59,6 +59,9 @@ func (s *viewState) activeBackAction(c *ui.Context) (string, func()) {
 			}
 		}
 	case "reports":
+		if s.nodes.compareOpen {
+			return tr(c, "reports.detail.back"), func() { s.nodes.compareOpen = false }
+		}
 		if s.speed != nil && s.speed.opened != nil {
 			return tr(c, "speed.action.back_history"), func() {
 				s.speed.opened, s.speed.readError, s.speed.reading = nil, "", false

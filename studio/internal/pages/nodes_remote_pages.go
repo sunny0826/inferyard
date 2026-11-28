@@ -1,0 +1,119 @@
+package pages
+
+import (
+	"fmt"
+
+	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
+	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
+)
+
+func (s *viewState) remoteNodePage(c *ui.Context, page string) {
+	switch page {
+	case "services":
+		s.remoteServicesView(c)
+	case "library":
+		s.remoteLibraryView(c)
+	case "benchmarks":
+		s.remoteBenchmarksView(c)
+	}
+}
+
+func (s *viewState) remoteLibraryView(c *ui.Context) {
+	node := s.activeNode()
+	s.header(c, tr(c, "library.page.title"))
+	platform := nodePlatformLabel(node)
+	if platform == "" {
+		infoBanner(c, tr(c, "nodes.remote.platform_unknown"))
+		return
+	}
+	heading(c, trf(c, "nodes.remote.library_title", "platform", platform), 2)
+	if len(s.nodes.catalog) == 0 {
+		emptyGuideCard(c, emptyGuideOptions{Icon: reicon.Layers, Title: tr(c, "nodes.remote.library_empty"), Surface: emptyCard})
+		return
+	}
+	for _, family := range s.nodes.catalog {
+		card(c, family.Name, func() {
+			ui.Text(c, family.Description).FontSize(tokens(c).Type.Caption).TextColor(tokens(c).Color.FgSecondary)
+			for _, release := range family.Releases {
+				label := release.Version
+				if release.Recommended {
+					label += " · " + tr(c, "device.recommendation.recommended")
+				}
+				ui.Text(c, label).FontFeatures("tnum")
+				for _, build := range release.Builds {
+					ui.Text(c, build.Platform+" · "+build.Variant).FontSize(tokens(c).Type.Caption).TextColor(tokens(c).Color.FgSecondary)
+				}
+			}
+		})
+	}
+}
+
+func (s *viewState) remoteBenchmarksView(c *ui.Context) {
+	t := tokens(c)
+	node := s.activeNode()
+	s.header(c, tr(c, "benchmarks.page.title"))
+	if len(node.Jobs) == 0 {
+		emptyGuideCard(c, emptyGuideOptions{Icon: reicon.Play, Title: tr(c, "nodes.remote.jobs_empty"), Surface: emptyCard})
+		return
+	}
+	for _, job := range node.Jobs {
+		task := job.Task
+		applyMaterial(c, ui.Row(c.Key("remote-job-"+task.TaskId)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
+			Padding(t.Card.Padding), materialCard).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
+				ui.Text(c, task.TaskId).Bold().SingleLine()
+				ui.Text(c, taskLabelFor(contextLocale(c), task)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			})
+			if job.Progress != nil {
+				ui.Text(c, fmt.Sprintf("%d / %d", job.Progress.Done, valueOrZero(job.Progress.Total))).FontFeatures("tnum")
+			}
+			if !terminal(task.State) && node.Online {
+				if dangerIconButton(c, reicon.Square, tr(c, "nodes.remote.cancel_job")).Clicked() {
+					s.cancelRemoteBenchmark(node.Record.NodeID, task.TaskId)
+				}
+			}
+		})
+	}
+}
+
+func valueOrZero(value *int64) int64 {
+	if value == nil {
+		return 0
+	}
+	return *value
+}
+
+func (s *viewState) cancelRemoteBenchmark(nodeID, jobID string) {
+	s.workAs("cancel-remote-job", func() (string, *core.ApiError) {
+		_, err := s.service.CancelNodeBenchmark(s.nodeContext(), nodeID, jobID)
+		if err != nil {
+			return "", err
+		}
+		s.updateView(s.syncNodeState)
+		return "", nil
+	})
+}
+
+func (s *viewState) sidebarRemoteServiceRow(c *ui.Context) {
+	node := s.activeNode()
+	running := 0
+	for _, service := range node.Services {
+		if service.State == "running" || service.State == "starting" {
+			running++
+		}
+	}
+	label := tr(c, "sidebar.status.service_idle")
+	kind := stateNeutral
+	if running > 0 {
+		label = trf(c, "sidebar.status.services_running_count", "count", running)
+		kind = stateSuccess
+	}
+	s.sidebarStatusRow(c, sidebarStatusSpec{
+		key: "sidebar-remote-engine-status", label: label, ariaLabel: label, kind: kind, progress: -1,
+		onClick: func() { s.navigateTo("services", "") },
+		leading: func() { components.Icon(c, reicon.Server).Size(14, 14).TextColor(stateColor(c, kind)) },
+		open:    new(bool), pop: func(func()) {},
+	})
+}

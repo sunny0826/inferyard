@@ -101,7 +101,11 @@ func StartTrayStatusBridge(ctx context.Context, svc *core.Service, tray *TrayCon
 	if svc == nil || tray == nil {
 		return
 	}
-	push := func() { tray.UpdateStatus(ProjectTrayStatus(svc.Engine(), svc.ManagedServices())) }
+	push := func() {
+		status := ProjectTrayStatus(svc.Engine(), svc.ManagedServices())
+		status.Tunnels = ProjectTrayTunnels(svc.Tunnels(), svc.CloseNodeTunnel)
+		tray.UpdateStatus(status)
+	}
 	if svc.Bus == nil {
 		push()
 		return
@@ -128,7 +132,7 @@ func StartTrayStatusBridge(ctx context.Context, svc *core.Service, tray *TrayCon
 func trayStatusEvents(events []core.Event) bool {
 	for _, event := range events {
 		switch event.Type {
-		case "engine.state", "services.state", "service.exit", "service.exited":
+		case "engine.state", "services.state", "service.exit", "service.exited", "node.tunnel.updated":
 			return true
 		}
 	}

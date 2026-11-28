@@ -28,6 +28,12 @@ func Err(code string) *ApiError {
 		msg = l10n.TR("core.err.cli_unavailable")
 	case "cli_outdated":
 		msg = l10n.TR("core.err.cli_outdated")
+	case "node_offline":
+		msg = l10n.TR("core.err.node_offline")
+	case "node_platform_unknown":
+		msg = l10n.TR("core.err.node_platform_unknown")
+	case "remote_rpc_failed":
+		msg = l10n.TR("core.err.remote_rpc_failed")
 	}
 	return &ApiError{Code: code, Message: msg, Limitations: []string{}}
 }

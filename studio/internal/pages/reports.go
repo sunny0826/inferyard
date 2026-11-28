@@ -12,6 +12,10 @@ const (
 )
 
 func (s *viewState) reportsView(c *ui.Context) {
+	if s.nodes.compareOpen {
+		s.reportCompareView(c)
+		return
+	}
 	if s.speed != nil && s.speed.opened != nil {
 		s.speedResultView(c)
 		return
@@ -28,6 +32,7 @@ func (s *viewState) reportsView(c *ui.Context) {
 		s.header(c, tr(c, "reports.title"))
 		ui.Box(c).Grow(1)
 		if s.reportsTab == reportsTabList {
+			outlineIconButton(c, reicon.Layers, tr(c, "nodes.compare.action")).Disabled(len(s.reportSummaries()) < 2).OnClick(s.openReportComparePicker)
 			outlineIconButton(c, reicon.Plus, tr(c, "reports.action.create_from_history")).OnClick(func() {
 				s.reportDialogOpen = true
 				s.reportDiscardConfirm = false
@@ -43,6 +48,7 @@ func (s *viewState) reportsView(c *ui.Context) {
 		}
 	})
 	s.reportSourcesDialog(c)
+	s.reportComparePicker(c)
 }
 
 func (s *viewState) speedReportsTabView(c *ui.Context) {

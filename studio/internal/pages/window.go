@@ -130,7 +130,10 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 				cursor = next
 				if len(events) > 0 {
 					batch := events
-					s.win.Update(func() { s.ingestCoreEvents(batch) })
+					s.win.Update(func() {
+						s.ingestCoreEvents(batch)
+						s.ingestNodeEvents(batch)
+					})
 				}
 				if mask := refreshMaskFor(events, reset); mask != refreshNone {
 					s.refreshMask(mask)
@@ -170,6 +173,7 @@ func pageID(page string) string {
 
 type viewState struct {
 	settingsViewState
+	nodes                                                                                                   nodeViewState
 	speed                                                                                                   *speedWorkspace
 	preview                                                                                                 previewMode
 	lastEngineVerification                                                                                  time.Time

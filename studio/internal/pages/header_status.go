@@ -58,6 +58,7 @@ type sidebarStatusSpec struct {
 }
 
 func (s *viewState) sidebarStatusArea(c *ui.Context) {
+	s.sidebarTunnelRow(c)
 	s.sidebarServiceRow(c)
 	s.sidebarQueueRow(c)
 	s.sidebarDownloadRow(c)
@@ -81,6 +82,10 @@ func (s *viewState) shellContentTitle(c *ui.Context, leading func(*ui.Context)) 
 }
 
 func (s *viewState) sidebarServiceRow(c *ui.Context) {
+	if s.remoteView() {
+		s.sidebarRemoteServiceRow(c)
+		return
+	}
 	t := tokens(c)
 	q := s.queueActivity()
 	active := s.activeManagedServices()

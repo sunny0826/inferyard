@@ -127,6 +127,7 @@ func (s *viewState) leftNav(c *ui.Context) {
 	ui.Column(c).Fill().MinWidth(0).Padding(sidebar.HeaderHeight(c), 0, t.Density.Row, 0).Children(func() {
 		ui.Scroll(c).Grow(1).FillWidth().Children(func() {
 			ui.Column(c).FillWidth().Padding(t.Density.Tight, t.Density.Row).Gap(t.Density.Row).Children(func() {
+				s.nodeSwitcher(c)
 				if s.service != nil {
 					if paths := s.service.BoundPaths(); paths != nil {
 						ui.Column(c).FillWidth().Padding(0, t.Density.Row, t.Density.Tight, t.Density.Row).Gap(t.Density.Hairline).Children(func() {

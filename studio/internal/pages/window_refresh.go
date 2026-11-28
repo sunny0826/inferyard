@@ -82,6 +82,7 @@ func (s *viewState) bootstrap() {
 			return
 		}
 		s.ready = ready
+		s.syncNodeState()
 		s.applySettings(settings)
 		s.device, s.tasks, s.downloads = device, tasks, downloads
 		s.reconcileLocalPIDs(tasks)
@@ -202,10 +203,12 @@ func (s *viewState) refreshMask(mask refreshMask) {
 	}
 
 	var reports []core.ReportSummary
+	var unifiedReports []core.UnifiedReportSummary
 	var re *core.ApiError
 	var reportExclusivities map[string]string
 	if mask&refreshReports != 0 {
-		_, reports, re = s.service.Reports()
+		unifiedReports, re = s.service.AllReports()
+		reports = localReportSummaries(unifiedReports)
 		if re == nil {
 			s.bgRefresh.reports = reports
 			reportExclusivities = s.service.ReportExclusivities(reports)
@@ -262,7 +265,7 @@ func (s *viewState) refreshMask(mask refreshMask) {
 			epoch: settingsEpoch, mask: mask, device: device, tasks: tasks, downloads: downloads,
 			speedTasks: speedTasks, speedHistoryError: speedHistoryError, runProgress: runProgress, activeRunDetail: activeRunDetail,
 			id: id, detail: detail, detailError: de, settings: settings,
-			history: history, reports: reports, historyError: he, reportsError: re,
+			history: history, reports: reports, unifiedReports: unifiedReports, historyError: he, reportsError: re,
 			ready: ready, progress: progress, progressError: pe, dashboard: dashboard, registry: registry,
 			updateState: updateState, cliUpgrade: cliUpgrade, serveSupported: serveSupported,
 			serviceSnap: svcSnap, hasEvidence: hasEvidence,
@@ -313,6 +316,7 @@ type refreshBatch struct {
 	settings                   core.SettingsResponse
 	history                    core.RunHistoryResponse
 	reports                    []core.ReportSummary
+	unifiedReports             []core.UnifiedReportSummary
 	historyError, reportsError *core.ApiError
 	ready                      core.Readiness
 	progress                   core.ProgressResponse
@@ -374,6 +378,8 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	if mask&refreshReports != 0 {
 		if b.reportsError == nil {
 			s.reports = b.reports
+			s.nodes.unifiedReports = b.unifiedReports
+			s.nodes.reportsLoaded = true
 		}
 		s.reportsError = b.reportsError
 		if b.reportExclusivities != nil {
@@ -403,6 +409,7 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 		s.engineUpdateStatus = b.engineUpdateStatus
 	}
 	s.ready = b.ready
+	s.syncNodeState()
 	if mask&refreshProgress != 0 {
 		s.progress = b.progress.Progress
 		s.applyDashboard(b.dashboard, b.progressError)
