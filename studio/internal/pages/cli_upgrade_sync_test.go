@@ -178,4 +178,68 @@ func TestAutoAndManualCLIUpgradeImmediatelyClearOutdatedPromptBeforeFullRefresh(
 	if sManual.ready.CLI.Status != "ok" || !sManual.serveSupported {
 		t.Fatalf("expected manual upgrade to immediately sync ready=ok and serveSupported=true, got ready=%+v serve=%v", sManual.ready.CLI, sManual.serveSupported)
 	}
+
+	// Case 3: A recovery snapshot captured before a concurrent workspace save must not roll back s.settings or s.ready.Workspace.
+	sRace := readyState("settings")
+	sRace.ctx = ctx
+	sRace.service = svc
+	sRace.ready = preUpgradeReady
+	sRace.applySettings(svc.Settings())
+	sRace.openedReport = &reportViewState{reference: "r1"}
+
+	staleEpochSnap := sRace.captureCLIRecoverySnapshot()
+	newWs := filepath.Join(root, "ws-concurrent")
+	wsPatchRaw, _ := json.Marshal(newWs)
+	if _, saveErr := sRace.persistSettings(map[string]json.RawMessage{"workspace_root": wsPatchRaw}, settingDraft{workspace: newWs}, ""); saveErr != nil {
+		t.Fatalf("persistSettings concurrent workspace: %+v", saveErr)
+	}
+	sRace.openedReport = &reportViewState{reference: "r2"}
+	sRace.applyCLIRecoverySnapshot(staleEpochSnap)
+
+	if got := emptyText(sRace.settings.Effective.WorkspaceRoot); got != newWs {
+		t.Fatalf("applyCLIRecoverySnapshot rolled back workspace_root: got %q want %q", got, newWs)
+	}
+	if sRace.openedReport == nil || sRace.openedReport.reference != "r2" {
+		t.Fatalf("applyCLIRecoverySnapshot unexpectedly reset workspace state: openedReport=%+v", sRace.openedReport)
+	}
+	if sRace.ready.CLI.Status != "ok" {
+		t.Fatalf("expected CLI readiness to still advance to ok despite concurrent workspace save, got %+v", sRace.ready.CLI)
+	}
+
+	// Case 4: Prepare Environment with outdated CLI + uninitialized workspace never renders outdated warning after CLI step finishes.
+	uninitWs := filepath.Join(root, "ws-uninit")
+	sPrep := readyState("dashboard")
+	sPrep.ctx = ctx
+	sPrep.service = svc
+	sPrep.ready = core.Readiness{
+		CLI:       core.InferyardProbe{Status: "outdated", Version: &oldVer},
+		Workspace: core.DirectoryReadiness{Path: &uninitWs, Configured: true},
+	}
+	sPrep.cliUpgrade = core.CLIUpgradeState{Seq: 1, State: core.CLIUpgradeUpgrading, TargetVersion: "0.0.24"}
+	prepUpdates := make(chan func(), 16)
+	sPrep.updateWindow = func(fn func()) { prepUpdates <- fn }
+
+	initWsPatch, _ := json.Marshal(uninitWs)
+	if _, apiErr := svc.UpdateSettings(map[string]json.RawMessage{"workspace_root": initWsPatch}); apiErr != nil {
+		t.Fatal(apiErr)
+	}
+	ttPrep := ui.NewTester(sPrep.contentView, 1120, 800)
+	sPrep.prepareEnvironment()
+	prepDeadline := time.After(3 * time.Second)
+	for sPrep.busy {
+		select {
+		case fn := <-prepUpdates:
+			fn()
+			ttPrep.Frame()
+			if sPrep.cliUpgrade.State == core.CLIUpgradeIdle && ttPrep.HasText("CLI 版本过旧") {
+				t.Fatalf("prepareEnvironment rendered idle + outdated CLI warning mid-flow: %v", ttPrep.Texts())
+			}
+		case <-prepDeadline:
+			t.Fatal("timed out waiting for prepareEnvironment")
+		}
+	}
+	ttPrep.Frame()
+	if sPrep.ready.CLI.Status != "ok" || ttPrep.HasText("CLI 版本过旧") || ttPrep.HasText("CLI 需要升级") {
+		t.Fatalf("prepareEnvironment left outdated CLI state: ready=%+v texts=%v", sPrep.ready, ttPrep.Texts())
+	}
 }

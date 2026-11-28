@@ -12,12 +12,10 @@ import (
 
 type cliRecoverySnapshot struct {
 	valid          bool
+	epoch          uint64
 	cliGen         uint64
 	ready          core.Readiness
-	settings       core.SettingsResponse
 	cliUpgrade     core.CLIUpgradeState
-	device         core.DeviceResponse
-	registry       core.Registry
 	checks         core.EngineCheckOverview
 	serveSupported bool
 }
@@ -49,6 +47,7 @@ func (s *viewState) captureCLIRecoverySnapshot() cliRecoverySnapshot {
 	if s.ctx != nil && s.ctx.Err() != nil {
 		return cliRecoverySnapshot{}
 	}
+	epoch := s.settingsSequence()
 	cliGen := s.service.CLIGeneration()
 	ready := s.service.Readiness()
 	if ready.CLI.Status != "ok" {
@@ -60,12 +59,10 @@ func (s *viewState) captureCLIRecoverySnapshot() cliRecoverySnapshot {
 	}
 	return cliRecoverySnapshot{
 		valid:          true,
+		epoch:          epoch,
 		cliGen:         cliGen,
 		ready:          ready,
-		settings:       s.service.Settings(),
 		cliUpgrade:     s.service.CLIUpgradeStatus(),
-		device:         s.service.Device(),
-		registry:       s.service.Registry(),
 		checks:         s.service.EngineChecks(),
 		serveSupported: s.service.ServeSupported(ctx),
 	}
@@ -79,23 +76,16 @@ func (s *viewState) applyCLIRecoverySnapshot(snap cliRecoverySnapshot) {
 		s.appliedCLIGen = snap.cliGen
 	}
 	wasNotOK := s.ready.CLI.Status != "ok"
-	s.ready = snap.ready
-	s.applySettings(snap.settings)
-	if wasNotOK || (s.device.LastError != nil && s.device.LastError.Code == "cli_outdated") {
-		s.device = snap.device
+	if s.refreshBatchCurrent(snap.epoch) {
+		s.ready = snap.ready
+	} else {
+		s.ready.CLI = snap.ready.CLI
 	}
-	if wasNotOK || (s.registry.ModelError != nil && s.registry.ModelError.Code == "cli_outdated") {
-		prevEngineName, prevModelName := s.engine, s.model
-		prevEnginePath := s.selectedEnginePath()
-		prevModelPath := s.selectedModelPath()
-		s.registry = snap.registry
-		if !s.applyPendingPolystrataSelection(prevEngineName, prevModelName) {
-			s.reconcileSelectedEngine(prevEnginePath)
-			s.reconcileSelectedModel(prevModelPath)
-			if s.engine == "" {
-				s.model = ""
-			}
-		}
+	if s.device.LastError != nil && s.device.LastError.Code == "cli_outdated" {
+		s.device.LastError = nil
+	}
+	if s.registry.ModelError != nil && s.registry.ModelError.Code == "cli_outdated" {
+		s.registry.ModelError = nil
 	}
 	if wasNotOK || !s.checks.Supported {
 		s.checks = snap.checks

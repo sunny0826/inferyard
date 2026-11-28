@@ -442,24 +442,32 @@ func (s *viewState) prepareEnvironment() {
 		}
 		upgradedOutdated := false
 		e := prepareEnvironmentSteps(s.ctx, s.service.Readiness, func(ctx context.Context) (string, *core.ApiError) {
+			var path string
+			var installErr *core.ApiError
 			if s.service.Readiness().CLI.Status == "outdated" {
 				upgradedOutdated = true
-				return s.service.UpgradeCLI(ctx, func(message string) { s.updateView(func() { s.cliInstallStatus = message }) })
+				path, installErr = s.service.UpgradeCLI(ctx, func(message string) { s.updateView(func() { s.cliInstallStatus = message }) })
+			} else {
+				path, installErr = s.service.InstallCLI(ctx, func(message string) { s.updateView(func() { s.cliInstallStatus = message }) })
 			}
-			return s.service.InstallCLI(ctx, func(message string) { s.updateView(func() { s.cliInstallStatus = message }) })
+			if installErr == nil {
+				snap := s.captureCLIRecoverySnapshot()
+				s.updateView(func() { s.applyCLIRecoverySnapshot(snap) })
+			}
+			return path, installErr
 		}, func() *core.ApiError { _, e := s.service.Provision(); return e }, s.service.WizardExecute)
-		if upgradedOutdated {
-			st := s.service.CLIUpgradeStatus()
-			s.updateView(func() { s.applyCLIUpgradeState(st) })
-			if e != nil && st.State == core.CLIUpgradeFailed && st.Error != nil {
-				return "", nil
-			}
-		}
 		if e == nil && s.service != nil {
 			_ = s.service.RefreshAssets()
 			_ = s.service.RefreshDevice()
-			snap := s.captureCLIRecoverySnapshot()
+		}
+		if snap := s.captureCLIRecoverySnapshot(); snap.valid {
 			s.updateView(func() { s.applyCLIRecoverySnapshot(snap) })
+		} else if upgradedOutdated && e != nil {
+			st := s.service.CLIUpgradeStatus()
+			s.updateView(func() { s.applyCLIUpgradeState(st) })
+			if st.State == core.CLIUpgradeFailed && st.Error != nil {
+				return "", nil
+			}
 		}
 		return l10n.TR("dashboard.toast.env_ready"), e
 	})
