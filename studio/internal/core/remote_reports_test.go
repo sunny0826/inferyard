@@ -23,7 +23,7 @@ func makeRemoteReportRaw(t *testing.T, runID, model string, tps float64) json.Ra
 
 func setRemoteReportResponse(peer *mockNodePeer, raw json.RawMessage) {
 	peer.responses[remote.MethodReportExport] = map[string]any{
-		"studio_json": raw, "verified_from_raw": true,
+		"report": raw, "verified_from_raw": true,
 	}
 }
 
@@ -97,8 +97,8 @@ func TestRemoteReportsIsolationComparisonAndOfflineRouting(t *testing.T) {
 	if apiErr != nil || len(all) != 3 {
 		t.Fatalf("unified reports mismatch: reports=%+v err=%v", all, apiErr)
 	}
-	if best, ok := svc.BestSpeedForNode("node-a", model, "llama.cpp"); !ok || best.TokensPerSecond != 60 {
-		t.Fatalf("node A evidence polluted: best=%+v ok=%v", best, ok)
+	if best, ok := svc.BestSpeedForNode("node-a", model, "llama.cpp"); !ok || best.TokensPerSecond != 60 || best.TTFTMs != nil {
+		t.Fatalf("node A evidence polluted or TTFT fabricated: best=%+v ok=%v", best, ok)
 	}
 	if best, ok := svc.BestSpeedForNode("node-b", model, "llama.cpp"); !ok || best.TokensPerSecond != 80 {
 		t.Fatalf("node B evidence polluted: best=%+v ok=%v", best, ok)

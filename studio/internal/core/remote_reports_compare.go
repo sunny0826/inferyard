@@ -10,7 +10,10 @@ type ReportCompareMetrics struct {
 	Rate                   *float64 `json:"rate"`
 	TTFTP50MS              *float64 `json:"ttft_p50_ms"`
 	TTFTP95MS              *float64 `json:"ttft_p95_ms"`
+	LatencyP50Ms           *float64 `json:"latency_p50_ms"`
+	LatencyP95Ms           *float64 `json:"latency_p95_ms"`
 	DecodeTokensPerSecond  *float64 `json:"decode_tokens_per_second"`
+	OutputTokensPerSecond  *float64 `json:"output_tokens_per_second"`
 	PeakMemoryBytes        *float64 `json:"peak_memory_bytes"`
 	PeakWorkingSetBytes    *float64 `json:"peak_working_set_bytes"`
 	PeakTemperatureCelsius *float64 `json:"peak_temperature_celsius"`
@@ -20,6 +23,8 @@ type ReportCompareRun struct {
 	LeftRunID    string                `json:"left_run_id,omitempty"`
 	RightRunID   string                `json:"right_run_id,omitempty"`
 	Model        string                `json:"model,omitempty"`
+	LeftModel    string                `json:"left_model,omitempty"`
+	RightModel   string                `json:"right_model,omitempty"`
 	Left         *ReportCompareMetrics `json:"left"`
 	Right        *ReportCompareMetrics `json:"right"`
 	SpeedupRatio *float64              `json:"speedup_ratio"`
@@ -46,7 +51,7 @@ type ReportComparison struct {
 func metricsForReportRun(run ReportRun) ReportCompareMetrics {
 	metrics := ReportCompareMetrics{
 		Passed: run.Dashboard.Quality.Numerator, Valid: run.Dashboard.Quality.Denominator,
-		TTFTP50MS: run.Dashboard.Latency.P50, TTFTP95MS: run.Dashboard.Latency.P95,
+		LatencyP50Ms: run.Dashboard.Latency.P50, LatencyP95Ms: run.Dashboard.Latency.P95,
 		PeakMemoryBytes: run.Dashboard.SampledPeakRSSBytes,
 	}
 	if metrics.Passed != nil && metrics.Valid != nil && *metrics.Valid > 0 {
@@ -55,6 +60,7 @@ func metricsForReportRun(run ReportRun) ReportCompareMetrics {
 	}
 	if run.Dashboard.Throughput != nil {
 		metrics.DecodeTokensPerSecond = run.Dashboard.Throughput.OutputTokensPerSecond
+		metrics.OutputTokensPerSecond = run.Dashboard.Throughput.OutputTokensPerSecond
 	}
 	return metrics
 }
@@ -117,13 +123,13 @@ func compareReportCases(left, right *ReportRun) []ReportCompareCase {
 			runID = rightRunID
 		}
 	}
-	rightByCase := map[string]ReportRequest{}
-	for _, request := range rightRequests {
-		if _, exists := rightByCase[request.CaseID]; !exists {
-			rightByCase[request.CaseID] = request
-		}
+	rightByCase := map[string][]int{}
+	for i := range rightRequests {
+		caseID := rightRequests[i].CaseID
+		rightByCase[caseID] = append(rightByCase[caseID], i)
 	}
-	matched := map[string]bool{}
+	matched := make([]bool, len(rightRequests))
+	occurrences := map[string]int{}
 	out := []ReportCompareCase{}
 	appendCase := func(caseID string, leftRequest, rightRequest *ReportRequest) {
 		out = append(out, ReportCompareCase{
@@ -133,21 +139,63 @@ func compareReportCases(left, right *ReportRun) []ReportCompareCase {
 	}
 	for i := range leftRequests {
 		request := &leftRequests[i]
+		occurrence := occurrences[request.CaseID]
+		occurrences[request.CaseID]++
 		var other *ReportRequest
-		if matchedRequest, ok := rightByCase[request.CaseID]; ok {
-			other = &matchedRequest
-			matched[request.CaseID] = true
+		indices := rightByCase[request.CaseID]
+		if occurrence < len(indices) {
+			index := indices[occurrence]
+			other = &rightRequests[index]
+			matched[index] = true
 		}
 		appendCase(request.CaseID, request, other)
 	}
 	for i := range rightRequests {
-		request := &rightRequests[i]
-		if !matched[request.CaseID] {
-			appendCase(request.CaseID, nil, request)
-			matched[request.CaseID] = true
+		if !matched[i] {
+			appendCase(rightRequests[i].CaseID, nil, &rightRequests[i])
 		}
 	}
 	return out
+}
+
+type reportRunPair struct {
+	left  *ReportRun
+	right *ReportRun
+}
+
+func reportRunComparisonKey(run ReportRun) string {
+	model := run.Model
+	if strings.Contains(model, "\\") {
+		model = "/" + strings.ReplaceAll(model, "\\", "/")
+	}
+	modelKey := NormalizeModelEvidenceKey(model)
+	return modelKey + "\x00" + strings.ToLower(strings.TrimSpace(run.Facets.BundleLabel))
+}
+
+func pairReportRuns(left, right []ReportRun) []reportRunPair {
+	if len(left) == 1 && len(right) == 1 {
+		return []reportRunPair{{left: &left[0], right: &right[0]}}
+	}
+	rightUsed := make([]bool, len(right))
+	pairs := make([]reportRunPair, 0, len(left)+len(right))
+	for i := range left {
+		pair := reportRunPair{left: &left[i]}
+		key := reportRunComparisonKey(left[i])
+		for j := range right {
+			if !rightUsed[j] && reportRunComparisonKey(right[j]) == key {
+				pair.right = &right[j]
+				rightUsed[j] = true
+				break
+			}
+		}
+		pairs = append(pairs, pair)
+	}
+	for j := range right {
+		if !rightUsed[j] {
+			pairs = append(pairs, reportRunPair{right: &right[j]})
+		}
+	}
+	return pairs
 }
 
 func (s *Service) CompareReports(leftRef, rightRef string) (*ReportComparison, *ApiError) {
@@ -164,28 +212,18 @@ func (s *Service) CompareReports(leftRef, rightRef string) (*ReportComparison, *
 		LeftQuality: aggregateReportQuality(left.Runs), RightQuality: aggregateReportQuality(right.Runs),
 		Runs: []ReportCompareRun{}, Cases: []ReportCompareCase{},
 	}
-	count := len(left.Runs)
-	if len(right.Runs) > count {
-		count = len(right.Runs)
-	}
-	for i := 0; i < count; i++ {
-		var leftRun, rightRun *ReportRun
-		if i < len(left.Runs) {
-			leftRun = &left.Runs[i]
-		}
-		if i < len(right.Runs) {
-			rightRun = &right.Runs[i]
-		}
+	for _, runs := range pairReportRuns(left.Runs, right.Runs) {
 		pair := ReportCompareRun{}
-		if leftRun != nil {
-			metrics := metricsForReportRun(*leftRun)
-			pair.Left, pair.LeftRunID, pair.Model = &metrics, leftRun.Source.RunID, leftRun.Model
+		if runs.left != nil {
+			metrics := metricsForReportRun(*runs.left)
+			pair.Left, pair.LeftRunID, pair.Model = &metrics, runs.left.Source.RunID, runs.left.Model
+			pair.LeftModel = runs.left.Model
 		}
-		if rightRun != nil {
-			metrics := metricsForReportRun(*rightRun)
-			pair.Right, pair.RightRunID = &metrics, rightRun.Source.RunID
+		if runs.right != nil {
+			metrics := metricsForReportRun(*runs.right)
+			pair.Right, pair.RightRunID, pair.RightModel = &metrics, runs.right.Source.RunID, runs.right.Model
 			if pair.Model == "" {
-				pair.Model = rightRun.Model
+				pair.Model = runs.right.Model
 			}
 		}
 		if pair.Left != nil && pair.Right != nil && pair.Left.DecodeTokensPerSecond != nil && pair.Right.DecodeTokensPerSecond != nil && *pair.Left.DecodeTokensPerSecond > 0 {
@@ -193,7 +231,7 @@ func (s *Service) CompareReports(leftRef, rightRef string) (*ReportComparison, *
 			pair.SpeedupRatio = &ratio
 		}
 		comparison.Runs = append(comparison.Runs, pair)
-		comparison.Cases = append(comparison.Cases, compareReportCases(leftRun, rightRun)...)
+		comparison.Cases = append(comparison.Cases, compareReportCases(runs.left, runs.right)...)
 	}
 	return comparison, nil
 }

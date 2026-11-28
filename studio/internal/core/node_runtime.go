@@ -51,7 +51,10 @@ func (m *NodeManager) peerConnected(info remote.NodePeerInfo) {
 		record.DisplayName = info.Hostname
 	}
 	record.OS, record.Arch, record.Platform = info.OS, info.Arch, info.Platform
-	record.CLIVersion, record.HardwareSummary = info.CLIVersion, info.HardwareSummary
+	record.CLIVersion = info.CLIVersion
+	if info.HardwareSummary != "" {
+		record.HardwareSummary = info.HardwareSummary
+	}
 	record.Transport, record.LastSeenAt, record.Revoked = info.Transport, &now, false
 	if record.Transport == "" {
 		record.Transport = NodeTransportMTLS
@@ -76,6 +79,7 @@ func (m *NodeManager) peerConnected(info remote.NodePeerInfo) {
 	if err == nil {
 		m.service.Bus.Publish("node.updated", map[string]any{"node_id": info.NodeID, "record": record})
 	}
+	go m.syncPeerRuntime(info.NodeID)
 }
 
 func (m *NodeManager) peerDisconnected(nodeID string) {
@@ -116,8 +120,8 @@ func (m *NodeManager) handlePeerEvent(event remote.HubEvent) {
 	}
 	switch event.EventName {
 	case remote.EventServiceUpdated:
-		var service EngineState
-		if decodeNodePayload(event.Payload, []string{"service"}, &service) != nil {
+		service, err := decodeRemoteService(event.Payload)
+		if err != nil {
 			return
 		}
 		runtime.mu.Lock()
@@ -125,9 +129,9 @@ func (m *NodeManager) handlePeerEvent(event remote.HubEvent) {
 		runtime.mu.Unlock()
 		m.service.Bus.Publish("node.service.updated", map[string]any{"node_id": event.NodeID, "service": service})
 	case remote.EventServiceExited:
-		var notice ServiceExitNotice
-		if decodeNodePayload(event.Payload, []string{"notice", "exit"}, &notice) != nil {
-			return
+		notice, err := decodeRemoteExitNotice(event.Payload)
+		if err != nil {
+			notice = ServiceExitNotice{LogTail: []string{string(event.Payload)}}
 		}
 		if notice.ID == "" {
 			notice.ID = uuid()
@@ -142,8 +146,8 @@ func (m *NodeManager) handlePeerEvent(event remote.HubEvent) {
 		runtime.mu.Unlock()
 		m.service.Bus.Publish("node.service.exited", map[string]any{"node_id": event.NodeID, "notice": notice})
 	case remote.EventJobUpdated:
-		var task RunTask
-		if decodeNodePayload(event.Payload, []string{"job", "task"}, &task) != nil || task.TaskId == "" {
+		task, err := decodeRemoteTask(event.Payload)
+		if err != nil || task.TaskId == "" {
 			return
 		}
 		runtime.mu.Lock()

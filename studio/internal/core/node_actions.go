@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"inferyard/studio/internal/remote"
-	goruntime "runtime"
 	"strings"
 )
 
@@ -52,8 +51,11 @@ func (s *Service) StartNodeService(ctx context.Context, nodeID string, req NodeS
 		return EngineState{}, err
 	}
 	var service EngineState
-	if len(raw) > 0 && decodeNodePayload(raw, []string{"service"}, &service) != nil {
-		return EngineState{}, Err("remote_rpc_failed")
+	if len(raw) > 0 {
+		var err error
+		if service, err = decodeRemoteService(raw); err != nil {
+			return EngineState{}, Err("remote_rpc_failed")
+		}
 	}
 	if service.ServiceID == "" {
 		service.ServiceID = ServiceIDFor(req.Model, req.Engine)
@@ -81,9 +83,16 @@ func (s *Service) StopNodeService(ctx context.Context, nodeID, serviceID string)
 	}
 	service := EngineState{ServiceID: serviceID, State: "stopping"}
 	if len(raw) > 0 {
-		if err := decodeNodePayload(raw, []string{"service"}, &service); err != nil {
+		var err error
+		if service, err = decodeRemoteService(raw); err != nil {
 			return EngineState{}, Err("remote_rpc_failed")
 		}
+	}
+	if service.ServiceID == "" {
+		service.ServiceID = serviceID
+	}
+	if service.State == "" {
+		service.State = "stopping"
 	}
 	if runtime := s.nodes.runtime(nodeID); runtime != nil {
 		runtime.mu.Lock()
@@ -125,25 +134,35 @@ func (s *Service) GetNodeServiceLogs(ctx context.Context, nodeID, serviceID stri
 }
 
 func decodeRemoteTasks(raw json.RawMessage) ([]RunTask, error) {
-	var tasks []RunTask
-	if json.Unmarshal(raw, &tasks) == nil {
-		return tasks, nil
-	}
-	var envelope struct {
-		Jobs  []RunTask `json:"jobs"`
-		Tasks []RunTask `json:"tasks"`
-	}
-	if json.Unmarshal(raw, &envelope) == nil && (envelope.Jobs != nil || envelope.Tasks != nil) {
-		if envelope.Jobs != nil {
-			return envelope.Jobs, nil
+	var records []json.RawMessage
+	if json.Unmarshal(raw, &records) != nil {
+		var envelope struct {
+			Jobs  []json.RawMessage `json:"jobs"`
+			Tasks []json.RawMessage `json:"tasks"`
 		}
-		return envelope.Tasks, nil
+		if json.Unmarshal(raw, &envelope) == nil && (envelope.Jobs != nil || envelope.Tasks != nil) {
+			if envelope.Jobs != nil {
+				records = envelope.Jobs
+			} else {
+				records = envelope.Tasks
+			}
+		} else {
+			task, err := decodeRemoteTask(raw)
+			if err != nil {
+				return nil, err
+			}
+			return []RunTask{task}, nil
+		}
 	}
-	var task RunTask
-	if err := decodeNodePayload(raw, []string{"job", "task"}, &task); err != nil {
-		return nil, err
+	tasks := make([]RunTask, 0, len(records))
+	for _, record := range records {
+		task, err := decodeRemoteTask(record)
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, task)
 	}
-	return []RunTask{task}, nil
+	return tasks, nil
 }
 
 func actionParams(action string, req any) map[string]any {
@@ -227,166 +246,4 @@ func (s *Service) RerunNodeBenchmark(ctx context.Context, nodeID string, req Nod
 		}
 	}
 	return s.startNodeBenchmark(ctx, nodeID, "rerun", req)
-}
-
-func (s *Service) RefreshNodeDevice(ctx context.Context, nodeID string) (DeviceResponse, *ApiError) {
-	if s.nodes == nil {
-		return DeviceResponse{}, Err("not_found")
-	}
-	runtime := s.nodes.runtime(nodeID)
-	if runtime == nil {
-		return DeviceResponse{}, Err("not_found")
-	}
-	runtime.mu.Lock()
-	if runtime.Refreshing {
-		runtime.mu.Unlock()
-		return DeviceResponse{}, Conflict("refresh_in_progress")
-	}
-	runtime.Refreshing = true
-	runtime.mu.Unlock()
-	var raw json.RawMessage
-	err := s.nodes.call(ctx, nodeID, remote.MethodNodeDeviceCheck, map[string]any{}, &raw)
-	runtime.mu.Lock()
-	runtime.Refreshing = false
-	if err != nil {
-		runtime.DeviceSnapshot.LastError = err
-		runtime.mu.Unlock()
-		return DeviceResponse{}, err
-	}
-	var snapshot json.RawMessage
-	if decodeNodePayload(raw, []string{"snapshot", "device"}, &snapshot) != nil {
-		snapshot = raw
-	}
-	runtime.DeviceSnapshot.Snapshot = append([]byte(nil), snapshot...)
-	captured := now()
-	runtime.DeviceSnapshot.CapturedAt = &captured
-	runtime.DeviceSnapshot.LastError = nil
-	response := clone(runtime.DeviceSnapshot)
-	runtime.mu.Unlock()
-	s.Bus.Publish("node.updated", map[string]any{"node_id": nodeID, "device": snapshot})
-	return response, nil
-}
-
-func (s *Service) RefreshNodeAssets(ctx context.Context, nodeID string) (AssetsState, *ApiError) {
-	if s.nodes == nil {
-		return AssetsState{}, Err("not_found")
-	}
-	runtime := s.nodes.runtime(nodeID)
-	if runtime == nil {
-		return AssetsState{}, Err("not_found")
-	}
-	runtime.mu.Lock()
-	if runtime.AssetsSnapshot.AssetsRefreshing {
-		runtime.mu.Unlock()
-		return AssetsState{}, Conflict("refresh_in_progress")
-	}
-	runtime.AssetsSnapshot.AssetsRefreshing = true
-	runtime.mu.Unlock()
-	var raw json.RawMessage
-	err := s.nodes.call(ctx, nodeID, remote.MethodNodeAssetsScan, map[string]any{}, &raw)
-	runtime.mu.Lock()
-	runtime.AssetsSnapshot.AssetsRefreshing = false
-	if err != nil {
-		runtime.AssetsSnapshot.AssetsError = err
-		runtime.mu.Unlock()
-		return AssetsState{}, err
-	}
-	var snapshot json.RawMessage
-	if decodeNodePayload(raw, []string{"snapshot", "assets"}, &snapshot) != nil {
-		snapshot = raw
-	}
-	runtime.AssetsSnapshot.Snapshot = append([]byte(nil), snapshot...)
-	captured := now()
-	runtime.AssetsSnapshot.CapturedAt = &captured
-	runtime.AssetsSnapshot.AssetsError = nil
-	response := cloneAssetsState(runtime.AssetsSnapshot)
-	runtime.mu.Unlock()
-	s.Bus.Publish("node.updated", map[string]any{"node_id": nodeID, "assets": snapshot})
-	return response, nil
-}
-
-func catalogForPlatform(platform string) []EngineFamilyCatalog {
-	families := DefaultEngineCatalog().Families()
-	out := make([]EngineFamilyCatalog, 0, len(families))
-	for _, family := range families {
-		family.Releases = family.ReleasesForPlatform(platform, false)
-		if len(family.Releases) > 0 {
-			out = append(out, family)
-		}
-	}
-	return out
-}
-
-func (s *Service) EngineCatalogForNode(nodeID string) ([]EngineFamilyCatalog, *ApiError) {
-	if nodeID == "" || nodeID == LocalNodeID {
-		return catalogForPlatform(goruntime.GOOS + "/" + goruntime.GOARCH), nil
-	}
-	if s.nodes == nil || !validNodeID(nodeID) {
-		return nil, Err("not_found")
-	}
-	s.nodes.mu.RLock()
-	record, ok := s.nodes.records[nodeID]
-	s.nodes.mu.RUnlock()
-	if !ok || record.Revoked {
-		return nil, Err("not_found")
-	}
-	platform := strings.TrimSpace(record.Platform)
-	if platform == "" && record.OS != "" && record.Arch != "" {
-		platform = record.OS + "/" + record.Arch
-	}
-	if platform == "" {
-		return nil, Err("node_platform_unknown")
-	}
-	return catalogForPlatform(platform), nil
-}
-
-func (s *Service) InstallNodeManagedEngine(ctx context.Context, nodeID string, req ManagedEngineInstallRequest) (NodeOperation, *ApiError) {
-	if s.nodes == nil || !validNodeID(nodeID) {
-		return NodeOperation{}, Err("invalid_request")
-	}
-	s.nodes.mu.RLock()
-	record, ok := s.nodes.records[nodeID]
-	s.nodes.mu.RUnlock()
-	if !ok || record.Revoked {
-		return NodeOperation{}, Err("not_found")
-	}
-	req.TargetPlatform = strings.TrimSpace(req.TargetPlatform)
-	if req.TargetPlatform == "" {
-		req.TargetPlatform = strings.TrimSpace(record.Platform)
-		if req.TargetPlatform == "" && record.OS != "" && record.Arch != "" {
-			req.TargetPlatform = record.OS + "/" + record.Arch
-		}
-	}
-	if req.TargetPlatform == "" || record.Platform != "" && req.TargetPlatform != record.Platform {
-		return NodeOperation{}, Err("invalid_request")
-	}
-	if _, _, _, err := managedEngineBuild(req); err != nil {
-		return NodeOperation{}, err
-	}
-	var raw json.RawMessage
-	if err := s.nodes.call(ctx, nodeID, remote.MethodNodeEngineInstall, req, &raw); err != nil {
-		return NodeOperation{}, err
-	}
-	operation := NodeOperation{State: "submitted", Detail: raw}
-	if len(raw) > 0 {
-		_ = json.Unmarshal(raw, &operation)
-		if operation.State == "" {
-			operation.State = "submitted"
-		}
-		if len(operation.Detail) == 0 {
-			operation.Detail = raw
-		}
-	}
-	return operation, nil
-}
-
-func (s *Service) CleanNodeWorkspace(ctx context.Context, nodeID string) (WorkspaceCleanupResult, *ApiError) {
-	if s.nodes == nil {
-		return WorkspaceCleanupResult{}, Err("not_found")
-	}
-	var result WorkspaceCleanupResult
-	if err := s.nodes.call(ctx, nodeID, remote.MethodWorkspaceClean, map[string]any{}, &result); err != nil {
-		return WorkspaceCleanupResult{}, err
-	}
-	return result, nil
 }

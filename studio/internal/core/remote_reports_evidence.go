@@ -51,7 +51,7 @@ func (s *Service) remoteModelBenchmarkEvidence(nodeID string) map[string]ModelEv
 				buckets[modelKey] = &bucket{display: run.Model, byEngine: map[string]EngineSpeedRecord{}}
 			}
 			record := EngineSpeedRecord{
-				Engine: engineDisplay, TokensPerSecond: tps, TTFTMs: run.Dashboard.Latency.P50,
+				Engine: engineDisplay, TokensPerSecond: tps, TTFTMs: nil,
 				ReportRef: summary.ReportRef, Exclusivity: ExclusivityUnknown, CreatedAt: str(summary.ModifiedAt),
 			}
 			existing, ok := buckets[modelKey].byEngine[engineKey]
