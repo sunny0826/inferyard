@@ -81,6 +81,7 @@ func seedPreviewNodes(s *viewState) {
 		s.nodes.unifiedReports = kept
 		return core.WorkspaceCleanupResult{}, nil
 	}
+	seedPreviewNodeActions(s)
 }
 
 func previewPairingSession() *remote.PairingSession {
@@ -150,20 +151,30 @@ func previewNodeReportsScene(s *viewState) {
 func previewNodeComparison(left, right string) *core.ReportComparison {
 	passed, valid := int64(104), int64(120)
 	rate := 104.0 / 120.0
-	leftP50, rightP50 := 412.0, 118.0
-	leftP95, rightP95 := 890.0, 260.0
-	leftDecode, rightDecode := 31.2, 68.4
+	leftLatencyP50, rightLatencyP50 := 980.0, 420.0
+	leftLatencyP95, rightLatencyP95 := 1840.0, 760.0
+	leftTTFTP50, leftTTFTP95 := 82.0, 160.0
+	leftOutput, rightOutput := 31.2, 68.4
 	leftMemory, rightMemory := 20.1*float64(1<<30), 19.4*float64(1<<30)
 	leftTemp := 74.2
-	ratio := rightDecode / leftDecode
+	ratio := rightOutput / leftOutput
 	quality := core.ReportCompareMetrics{Passed: &passed, Valid: &valid, Rate: &rate}
-	leftMetrics := &core.ReportCompareMetrics{TTFTP50MS: &leftP50, TTFTP95MS: &leftP95, DecodeTokensPerSecond: &leftDecode, PeakMemoryBytes: &leftMemory, PeakWorkingSetBytes: &leftMemory, PeakTemperatureCelsius: &leftTemp}
-	rightMetrics := &core.ReportCompareMetrics{TTFTP50MS: &rightP50, TTFTP95MS: &rightP95, DecodeTokensPerSecond: &rightDecode, PeakMemoryBytes: &rightMemory, PeakWorkingSetBytes: &rightMemory}
+	leftMetrics := &core.ReportCompareMetrics{
+		LatencyP50Ms: &leftLatencyP50, LatencyP95Ms: &leftLatencyP95, TTFTP50MS: &leftTTFTP50, TTFTP95MS: &leftTTFTP95,
+		OutputTokensPerSecond: &leftOutput, PeakMemoryBytes: &leftMemory, PeakWorkingSetBytes: &leftMemory, PeakTemperatureCelsius: &leftTemp,
+	}
+	rightMetrics := &core.ReportCompareMetrics{
+		LatencyP50Ms: &rightLatencyP50, LatencyP95Ms: &rightLatencyP95,
+		OutputTokensPerSecond: &rightOutput, PeakMemoryBytes: &rightMemory, PeakWorkingSetBytes: &rightMemory,
+	}
 	pass := "pass"
 	latency := 118.0
 	return &core.ReportComparison{
 		LeftRef: left, RightRef: right, LeftQuality: quality, RightQuality: quality,
-		Runs:  []core.ReportCompareRun{{LeftRunID: "run-mac", RightRunID: "run-win", Model: "Qwen3-32B-Q4_K_M", Left: leftMetrics, Right: rightMetrics, SpeedupRatio: &ratio}},
+		Runs: []core.ReportCompareRun{{
+			LeftRunID: "run-mac", RightRunID: "run-win", Model: "Qwen3-32B-Q4_K_M",
+			LeftModel: "Qwen3-32B-Q4_K_M", RightModel: "Qwen3-32B-Q8_0", Left: leftMetrics, Right: rightMetrics, SpeedupRatio: &ratio,
+		}},
 		Cases: []core.ReportCompareCase{{CaseID: "zh-core-001", Left: &core.ReportRequest{CaseID: "zh-core-001", Quality: &pass, LatencyMS: &latency}, Right: &core.ReportRequest{CaseID: "zh-core-001", Quality: &pass, LatencyMS: &latency}}},
 	}
 }

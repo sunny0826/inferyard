@@ -30,3 +30,31 @@ func TestCompareQualityAndRequestMissing(t *testing.T) {
 		t.Fatalf("missing request = %q", got)
 	}
 }
+
+func TestCompareMetricsKeepLatencyTTFTAndOutputDistinct(t *testing.T) {
+	latency, ttft, decode, output := 900.0, 80.0, 25.0, 30.0
+	metrics := &core.ReportCompareMetrics{
+		LatencyP50Ms: &latency, TTFTP50MS: &ttft,
+		DecodeTokensPerSecond: &decode, OutputTokensPerSecond: &output,
+	}
+	if got := metricValue(metrics, "latency_p50"); got != &latency {
+		t.Fatalf("request latency = %v", got)
+	}
+	if got := metricValue(metrics, "ttft_p50"); got != &ttft {
+		t.Fatalf("TTFT = %v", got)
+	}
+	if got := metricValue(metrics, "output"); got != &output {
+		t.Fatalf("output throughput = %v", got)
+	}
+	metrics.OutputTokensPerSecond = nil
+	if got := metricValue(metrics, "output"); got != &decode {
+		t.Fatalf("output fallback = %v", got)
+	}
+	metrics.TTFTP50MS = nil
+	if got := formatCompareNumber(metricValue(metrics, "ttft_p50"), "ms"); got != compareMissing {
+		t.Fatalf("missing TTFT = %q", got)
+	}
+	if got := compareModelName("RightModel", "Fallback"); got != "RightModel" {
+		t.Fatalf("model name = %q", got)
+	}
+}

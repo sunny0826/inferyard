@@ -41,6 +41,9 @@ func (s *viewState) readReport(reference string) (*core.ReportIndex, *core.ApiEr
 }
 
 func (s *viewState) hasCachedReportExclusivity(reference string) bool {
+	if _, _, remote := remoteReportReferenceParts(reference); remote {
+		return false
+	}
 	if s.reportExclusivities == nil || reference == "" {
 		return false
 	}
@@ -57,6 +60,9 @@ func (s *viewState) hasCachedReportExclusivity(reference string) bool {
 }
 
 func (s *viewState) storeReportExclusivity(reference, status string) {
+	if _, _, remote := remoteReportReferenceParts(reference); remote {
+		return
+	}
 	if reference == "" || status == "" {
 		return
 	}
@@ -76,17 +82,17 @@ func (s *viewState) openReport(reference string) {
 	s.historyDetailPath = ""
 	s.closeOpenedReport()
 	s.selected = "reports"
+	_, _, remoteRef := remoteReportReferenceParts(reference)
 
 	if s.preview != nil || (s.win == nil && s.updateWindow == nil) {
 		index, e := s.readReport(reference)
-		if s.preview == nil && s.service != nil && reference != "" && !s.hasCachedReportExclusivity(reference) {
+		if s.preview == nil && s.service != nil && !remoteRef && reference != "" && !s.hasCachedReportExclusivity(reference) {
 			s.storeReportExclusivity(reference, s.service.ReportExclusivity(reference))
 		}
 		s.openedReport = &reportViewState{reference: reference, index: index, failure: e}
 		return
 	}
 
-	_, _, remoteRef := remoteReportReferenceParts(reference)
 	if s.service != nil && !remoteRef {
 		if cached, ok := s.service.CachedReportIndex(reference); ok {
 			s.openedReport = &reportViewState{reference: reference, index: cached}

@@ -9,50 +9,66 @@ import (
 )
 
 type nodeViewState struct {
-	snapshots          []core.NodeSnapshot
-	activeID           string
-	tunnels            []remote.TunnelInfo
-	tunnelsOpen        bool
-	addOpen            bool
-	addMode            int
-	pairOS             int
-	pairing            *remote.PairingSession
-	pairingRequests    []remote.PairingRequest
-	hostKeyRequests    []remote.HostKeyRequest
-	pairingErr         *core.ApiError
-	sshCommand         string
-	sshPassword        string
-	sshParsed          *remote.ParsedSSHCommand
-	sshParsedRaw       string
-	sshErr             *core.ApiError
-	catalog            []core.EngineFamilyCatalog
-	catalogNodeID      string
-	unifiedReports     []core.UnifiedReportSummary
-	reportsLoaded      bool
-	comparePickerOpen  bool
-	compareOpen        bool
-	compareLoading     bool
-	compareLeftRef     string
-	compareRightRef    string
-	comparison         *core.ReportComparison
-	compareErr         *core.ApiError
-	cleanNodeConfirm   bool
-	cleanCacheConfirm  bool
-	logOpen            bool
-	logTitle           string
-	logText            string
-	setActiveNodeFn    func(string) *core.ApiError
-	decidePairingFn    func(remote.PairingDecision) (core.NodeRecord, *core.ApiError)
-	decideHostKeyFn    func(remote.HostKeyDecision) *core.ApiError
-	parseSSHFn         func(string) (remote.ParsedSSHCommand, *core.ApiError)
-	connectSSHFn       func(context.Context, remote.SSHConnectRequest) (core.NodeRecord, *core.ApiError)
-	openTunnelFn       func(context.Context, remote.OpenTunnelRequest) (remote.TunnelInfo, *core.ApiError)
-	closeTunnelFn      func(string) *core.ApiError
-	compareReportsFn   func(string, string) (*core.ReportComparison, *core.ApiError)
-	resumeRemoteFn     func(context.Context, string, string) ([]core.RunTask, *core.ApiError)
-	rerunRemoteFn      func(context.Context, string, string) ([]core.RunTask, *core.ApiError)
-	cleanNodeFn        func(context.Context, string) (core.WorkspaceCleanupResult, *core.ApiError)
-	cleanReportCacheFn func(...string) (core.WorkspaceCleanupResult, *core.ApiError)
+	snapshots              []core.NodeSnapshot
+	activeID               string
+	tunnels                []remote.TunnelInfo
+	tunnelsOpen            bool
+	addOpen                bool
+	addMode                int
+	pairOS                 int
+	pairing                *remote.PairingSession
+	pairingRequests        []remote.PairingRequest
+	hostKeyRequests        []remote.HostKeyRequest
+	pairingErr             *core.ApiError
+	sshCommand             string
+	sshPassword            string
+	sshParsed              *remote.ParsedSSHCommand
+	sshParsedRaw           string
+	sshErr                 *core.ApiError
+	catalog                []core.EngineFamilyCatalog
+	catalogNodeID          string
+	unifiedReports         []core.UnifiedReportSummary
+	reportsLoaded          bool
+	comparePickerOpen      bool
+	compareOpen            bool
+	compareLoading         bool
+	compareLeftRef         string
+	compareRightRef        string
+	comparison             *core.ReportComparison
+	compareErr             *core.ApiError
+	cleanNodeConfirm       bool
+	cleanCacheConfirm      bool
+	logOpen                bool
+	logTitle               string
+	logText                string
+	serviceFormOpen        bool
+	serviceModel           string
+	serviceEngine          string
+	serviceContext         string
+	servicePort            string
+	benchmarkFormOpen      bool
+	benchmarkConfigs       string
+	reportSyncOpen         bool
+	reportSyncNodeID       string
+	reportSyncID           string
+	setActiveNodeFn        func(string) *core.ApiError
+	decidePairingFn        func(remote.PairingDecision) (core.NodeRecord, *core.ApiError)
+	decideHostKeyFn        func(remote.HostKeyDecision) *core.ApiError
+	parseSSHFn             func(string) (remote.ParsedSSHCommand, *core.ApiError)
+	connectSSHFn           func(context.Context, remote.SSHConnectRequest) (core.NodeRecord, *core.ApiError)
+	startPairingFn         func(context.Context, remote.PairingSessionOptions) (remote.PairingSession, *core.ApiError)
+	startServiceFn         func(context.Context, string, core.NodeServiceStartRequest) (core.EngineState, *core.ApiError)
+	startBenchmarkFn       func(context.Context, string, core.NodeBenchmarkStartRequest) ([]core.RunTask, *core.ApiError)
+	installEngineFn        func(context.Context, string, core.ManagedEngineInstallRequest) (core.NodeOperation, *core.ApiError)
+	syncReportFn           func(context.Context, string, string) (core.UnifiedReportSummary, *core.ApiError)
+	fetchRemoteServiceLogs func(string, string) (string, *core.ApiError)
+	openTunnelFn           func(context.Context, remote.OpenTunnelRequest) (remote.TunnelInfo, *core.ApiError)
+	closeTunnelFn          func(string) *core.ApiError
+	compareReportsFn       func(string, string) (*core.ReportComparison, *core.ApiError)
+	resumeRemoteFn         func(context.Context, string, string) ([]core.RunTask, *core.ApiError)
+	rerunRemoteFn          func(context.Context, string, string) ([]core.RunTask, *core.ApiError)
+	cleanNodeFn            func(context.Context, string) (core.WorkspaceCleanupResult, *core.ApiError)
+	cleanReportCacheFn     func(...string) (core.WorkspaceCleanupResult, *core.ApiError)
 }
 
 func remoteReportReferenceParts(reference string) (string, string, bool) {
@@ -110,6 +126,16 @@ func (s *viewState) remoteView() bool {
 	return s.activeNode().Record.NodeID != core.LocalNodeID
 }
 
+func nodeTargetPlatform(node core.NodeSnapshot) string {
+	if platform := strings.TrimSpace(node.Record.Platform); platform != "" {
+		return platform
+	}
+	if node.Record.OS != "" && node.Record.Arch != "" {
+		return node.Record.OS + "/" + node.Record.Arch
+	}
+	return ""
+}
+
 func (s *viewState) tunnelForService(nodeID, serviceID string) *remote.TunnelInfo {
 	for i := range s.nodes.tunnels {
 		tunnel := &s.nodes.tunnels[i]
@@ -118,4 +144,31 @@ func (s *viewState) tunnelForService(nodeID, serviceID string) *remote.TunnelInf
 		}
 	}
 	return nil
+}
+
+func (s *viewState) onlineRemoteNodes() []core.NodeSnapshot {
+	out := []core.NodeSnapshot{}
+	for _, node := range s.nodes.snapshots {
+		if node.Record.NodeID != core.LocalNodeID && node.Online {
+			out = append(out, node)
+		}
+	}
+	return out
+}
+
+func (s *viewState) syncCachedRemoteReportStates() {
+	online := map[string]bool{}
+	for _, node := range s.nodes.snapshots {
+		online[node.Record.NodeID] = node.Online
+	}
+	for i := range s.nodes.unifiedReports {
+		report := &s.nodes.unifiedReports[i]
+		if !report.IsRemote {
+			continue
+		}
+		report.SourceOnline = online[report.NodeID]
+		if !report.SourceOnline {
+			report.CanResume, report.CanRerun = false, false
+		}
+	}
 }

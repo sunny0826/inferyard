@@ -23,6 +23,7 @@ func (s *viewState) remoteServicesView(c *ui.Context) {
 		}
 		inlineBadge(c, label, kind, badgeOptions{Size: sizeSM, Style: badgeDot})
 	})
+	s.remoteServiceStartCard(c, node)
 	for _, notice := range node.ExitNotices {
 		s.remoteExitNoticeCard(c, notice)
 	}
@@ -114,8 +115,27 @@ func (s *viewState) openRemoteServiceLog(nodeID string, service core.EngineState
 	s.nodes.logTitle = s.serviceModelTitle(nil, service)
 	s.nodes.logText = tr(nil, "reports.list.loading")
 	s.nodes.logOpen = true
+	fetch := s.nodes.fetchRemoteServiceLogs
+	if fetch == nil && s.service != nil {
+		fetch = func(nodeID, serviceID string) (string, *core.ApiError) {
+			return s.service.GetNodeServiceLogs(s.nodeContext(), nodeID, serviceID, 200)
+		}
+	}
+	if fetch == nil {
+		s.nodes.logText = core.Err("not_found").Message
+		return
+	}
+	if s.preview != nil {
+		logs, err := fetch(nodeID, service.ServiceID)
+		if err != nil {
+			s.nodes.logText = err.Message
+			return
+		}
+		s.nodes.logText = logs
+		return
+	}
 	go func() {
-		logs, err := s.service.GetNodeServiceLogs(s.nodeContext(), nodeID, service.ServiceID, 200)
+		logs, err := fetch(nodeID, service.ServiceID)
 		s.updateView(func() {
 			if err != nil {
 				s.nodes.logText = err.Message

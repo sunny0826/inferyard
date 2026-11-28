@@ -30,8 +30,8 @@ func TestPreviewNodeScenesStayInMemory(t *testing.T) {
 
 	p.loadScene(previewSceneIndex(t, "节点 · SSH HostKey 三选一"))
 	tt.Frame()
-	if !tt.HasText("SHA256:7m2K9previewFingerprint") {
-		t.Fatalf("host key fingerprint missing: %v", tt.Texts())
+	if !tt.HasText("SHA256:7m2K9previewFingerprint") || !tt.HasText("主机与端口") || !tt.HasText("密钥类型") || !tt.HasText("SHA-256 指纹") {
+		t.Fatalf("host key details missing: %v", tt.Texts())
 	}
 	click(t, tt, "仅本次信任")
 	if len(p.state.nodes.hostKeyRequests) != 0 {
@@ -42,6 +42,11 @@ func TestPreviewNodeScenesStayInMemory(t *testing.T) {
 	tt.Frame()
 	if !tt.HasText("http://127.0.0.1:18001/v1") || len(p.state.nodes.tunnels) != 2 {
 		t.Fatalf("remote tunnels missing: %v", tt.Texts())
+	}
+	click(t, tt, "远端服务日志")
+	tt.Frame()
+	if !tt.HasText("preview logs for qwen-win") || p.state.service != nil {
+		t.Fatalf("remote service logs did not use in-memory preview data: %v", tt.Texts())
 	}
 	localServices := append([]core.EngineState(nil), p.state.managedServices...)
 	p.state.selectViewNode(core.LocalNodeID)
@@ -60,8 +65,12 @@ func TestPreviewNodeScenesStayInMemory(t *testing.T) {
 	if comparison == nil || comparison.Runs[0].Right.PeakTemperatureCelsius != nil {
 		t.Fatalf("expected missing Windows temperature: %+v", comparison)
 	}
-	if !tt.HasText(compareMissing) {
-		t.Fatalf("missing metric was not rendered as em dash: %v", tt.Texts())
+	run := comparison.Runs[0]
+	if run.Left.LatencyP50Ms == nil || run.Left.OutputTokensPerSecond == nil || run.Right.TTFTP50MS != nil || run.RightModel != "Qwen3-32B-Q8_0" {
+		t.Fatalf("comparison fixture does not distinguish metrics: %+v", run)
+	}
+	if !tt.HasText(compareMissing) || !tt.HasText("980.0 ms") || !tt.HasText("31.2 tok/s") || !tt.HasText("Qwen3-32B-Q8_0") {
+		t.Fatalf("comparison metrics were not rendered distinctly: %v", tt.Texts())
 	}
 	assertPreviewHomeClean(t, home)
 }

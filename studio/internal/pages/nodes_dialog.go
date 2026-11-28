@@ -120,9 +120,9 @@ func (s *viewState) hostKeyDialog(c *ui.Context) {
 		panel.Width(c.Theme().Space(130)).Children(func() {
 			ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
 				heading(c, tr(c, "nodes.hostkey.title"), 2)
-				keyValueRow(c, "Host:Port", fmt.Sprintf("%s:%d", request.Host, request.Port), true)
-				keyValueRow(c, "KeyType", request.KeyType, true)
-				keyValueRow(c, "FingerprintSHA256", request.FingerprintSHA256, true)
+				keyValueRow(c, tr(c, "nodes.hostkey.host_port"), fmt.Sprintf("%s:%d", request.Host, request.Port), true)
+				keyValueRow(c, tr(c, "nodes.hostkey.key_type"), request.KeyType, true)
+				keyValueRow(c, tr(c, "nodes.hostkey.fingerprint"), request.FingerprintSHA256, true)
 				if primaryButton(c, tr(c, "nodes.hostkey.trust_save")).Clicked() {
 					s.submitHostKeyDecision(request, remote.HostKeyTrustAndSave)
 				}

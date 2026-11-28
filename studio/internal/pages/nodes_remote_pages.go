@@ -23,12 +23,12 @@ func (s *viewState) remoteNodePage(c *ui.Context, page string) {
 func (s *viewState) remoteLibraryView(c *ui.Context) {
 	node := s.activeNode()
 	s.header(c, tr(c, "library.page.title"))
-	platform := nodePlatformLabel(node)
+	platform := nodeTargetPlatform(node)
 	if platform == "" {
 		infoBanner(c, tr(c, "nodes.remote.platform_unknown"))
 		return
 	}
-	heading(c, trf(c, "nodes.remote.library_title", "platform", platform), 2)
+	heading(c, trf(c, "nodes.remote.library_title", "platform", nodePlatformLabel(node)), 2)
 	if len(s.nodes.catalog) == 0 {
 		emptyGuideCard(c, emptyGuideOptions{Icon: reicon.Layers, Title: tr(c, "nodes.remote.library_empty"), Surface: emptyCard})
 		return
@@ -43,17 +43,32 @@ func (s *viewState) remoteLibraryView(c *ui.Context) {
 				}
 				ui.Text(c, label).FontFeatures("tnum")
 				for _, build := range release.Builds {
-					ui.Text(c, build.Platform+" · "+build.Variant).FontSize(tokens(c).Type.Caption).TextColor(tokens(c).Color.FgSecondary)
+					if build.Platform != platform && build.Platform != "any" {
+						continue
+					}
+					s.remoteEngineBuildRow(c, node, family, release, build, platform)
 				}
 			}
 		})
 	}
 }
 
+func (s *viewState) remoteEngineBuildRow(c *ui.Context, node core.NodeSnapshot, family core.EngineFamilyCatalog, release core.EngineRelease, build core.EnginePlatformBuild, platform string) {
+	t := tokens(c)
+	ui.Row(c.Key("remote-engine-build-" + build.ID)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		ui.Text(c, build.Platform+" · "+build.Variant).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).Grow(1)
+		installable := build.CanManagedVenvInstallOn(platform) || build.CanDirectDownloadOn(platform)
+		if installable && outlineIconButton(c, reicon.Download, tr(c, "nodes.remote.install_engine")).Disabled(s.busy || !node.Online).Clicked() {
+			s.installRemoteEngine(node, family, release, build)
+		}
+	})
+}
+
 func (s *viewState) remoteBenchmarksView(c *ui.Context) {
 	t := tokens(c)
 	node := s.activeNode()
 	s.header(c, tr(c, "benchmarks.page.title"))
+	s.remoteBenchmarkStartCard(c, node)
 	if len(node.Jobs) == 0 {
 		emptyGuideCard(c, emptyGuideOptions{Icon: reicon.Play, Title: tr(c, "nodes.remote.jobs_empty"), Surface: emptyCard})
 		return

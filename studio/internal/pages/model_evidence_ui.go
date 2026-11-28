@@ -170,6 +170,9 @@ func exclusivityBadge(c *ui.Context, status string) {
 
 func (s *viewState) reportExclusivity(ref string) string {
 	ref = strings.TrimSpace(ref)
+	if _, _, remote := remoteReportReferenceParts(ref); remote {
+		return core.ExclusivityUnknown
+	}
 	if ref == "" {
 		return core.ExclusivityUnknown
 	}

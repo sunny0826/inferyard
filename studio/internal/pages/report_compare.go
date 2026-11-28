@@ -82,10 +82,13 @@ func (s *viewState) compareRunCard(c *ui.Context, run core.ReportCompareRun) {
 	t := tokens(c)
 	applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Row).Padding(t.Card.Padding), materialCard).Children(func() {
 		ui.Text(c, run.Model).Bold().FontSize(t.Type.CardTitle)
+		compareMetricRow(c, tr(c, "nodes.compare.models"), compareModelName(run.LeftModel, run.Model), compareModelName(run.RightModel, run.Model))
 		compareMetricRow(c, tr(c, "nodes.compare.quality"), formatCompareQuality(ptrMetrics(run.Left)), formatCompareQuality(ptrMetrics(run.Right)))
+		compareMetricRow(c, tr(c, "nodes.compare.latency_p50"), formatCompareNumber(metricValue(run.Left, "latency_p50"), "ms"), formatCompareNumber(metricValue(run.Right, "latency_p50"), "ms"))
+		compareMetricRow(c, tr(c, "nodes.compare.latency_p95"), formatCompareNumber(metricValue(run.Left, "latency_p95"), "ms"), formatCompareNumber(metricValue(run.Right, "latency_p95"), "ms"))
 		compareMetricRow(c, tr(c, "nodes.compare.ttft_p50"), formatCompareNumber(metricValue(run.Left, "ttft_p50"), "ms"), formatCompareNumber(metricValue(run.Right, "ttft_p50"), "ms"))
 		compareMetricRow(c, tr(c, "nodes.compare.ttft_p95"), formatCompareNumber(metricValue(run.Left, "ttft_p95"), "ms"), formatCompareNumber(metricValue(run.Right, "ttft_p95"), "ms"))
-		compareMetricRow(c, tr(c, "nodes.compare.decode"), formatCompareNumber(metricValue(run.Left, "decode"), "tok/s"), formatCompareNumber(metricValue(run.Right, "decode"), "tok/s"))
+		compareMetricRow(c, tr(c, "nodes.compare.output"), formatCompareNumber(metricValue(run.Left, "output"), "tok/s"), formatCompareNumber(metricValue(run.Right, "output"), "tok/s"))
 		rightRatio := "—"
 		if run.SpeedupRatio != nil {
 			rightRatio = trf(c, "nodes.compare.ratio", "ratio", fmt.Sprintf("%.2f", *run.SpeedupRatio))

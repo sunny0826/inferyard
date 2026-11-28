@@ -14,6 +14,7 @@ func (s *viewState) syncNodeState() {
 		return
 	}
 	s.nodes.snapshots = s.service.Nodes()
+	s.syncCachedRemoteReportStates()
 	s.nodes.activeID = s.service.ActiveViewNodeID()
 	s.nodes.tunnels = s.service.Tunnels()
 	s.nodes.pairingRequests = s.service.PendingPairingRequests()
@@ -47,7 +48,9 @@ func (s *viewState) ingestNodeEvents(events []core.Event) {
 		case "remote_report.imported":
 			sync, syncReports = true, true
 		default:
-			sync = sync || strings.HasPrefix(event.Type, "node.")
+			if strings.HasPrefix(event.Type, "node.") {
+				sync, syncReports = true, true
+			}
 		}
 	}
 	if sync {
@@ -93,6 +96,14 @@ func (s *viewState) selectViewNode(nodeID string) {
 	}
 }
 
+func (s *viewState) nodeDownloadOptions() (string, string) {
+	if s.service == nil {
+		return "", ""
+	}
+	effective := s.service.Settings().Effective
+	return effective.DownloadSource, emptyText(effective.DownloadProxy)
+}
+
 func (s *viewState) openAddNodeDialog() {
 	s.nodes.addOpen = true
 	s.nodes.pairingErr = nil
@@ -103,7 +114,12 @@ func (s *viewState) openAddNodeDialog() {
 		s.nodes.pairing = &session
 		return
 	}
-	session, err := s.service.StartNodePairing(s.ctx, remote.PairingSessionOptions{})
+	start := s.nodes.startPairingFn
+	if start == nil {
+		start = s.service.StartNodePairing
+	}
+	source, proxy := s.nodeDownloadOptions()
+	session, err := start(s.nodeContext(), remote.PairingSessionOptions{DownloadSource: source, DownloadProxy: proxy})
 	if err != nil {
 		s.nodes.pairingErr = err
 		return
@@ -181,7 +197,11 @@ func (s *viewState) connectSSHNode() {
 	if s.nodes.sshParsed == nil || s.busy {
 		return
 	}
-	req := remote.SSHConnectRequest{Command: s.nodes.sshCommand, Password: s.nodes.sshPassword}
+	source, proxy := s.nodeDownloadOptions()
+	req := remote.SSHConnectRequest{
+		Command: s.nodes.sshCommand, Password: s.nodes.sshPassword,
+		DownloadSource: source, DownloadProxy: proxy,
+	}
 	s.nodes.sshPassword = ""
 	if s.preview != nil && s.nodes.connectSSHFn != nil {
 		record, err := s.nodes.connectSSHFn(s.nodeContext(), req)

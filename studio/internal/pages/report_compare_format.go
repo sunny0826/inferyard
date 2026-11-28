@@ -21,11 +21,18 @@ func metricValue(metrics *core.ReportCompareMetrics, name string) *float64 {
 		return nil
 	}
 	switch name {
+	case "latency_p50":
+		return metrics.LatencyP50Ms
+	case "latency_p95":
+		return metrics.LatencyP95Ms
 	case "ttft_p50":
 		return metrics.TTFTP50MS
 	case "ttft_p95":
 		return metrics.TTFTP95MS
-	case "decode":
+	case "output":
+		if metrics.OutputTokensPerSecond != nil {
+			return metrics.OutputTokensPerSecond
+		}
 		return metrics.DecodeTokensPerSecond
 	case "memory":
 		return metrics.PeakMemoryBytes
@@ -36,6 +43,16 @@ func metricValue(metrics *core.ReportCompareMetrics, name string) *float64 {
 	default:
 		return nil
 	}
+}
+
+func compareModelName(model, fallback string) string {
+	if strings.TrimSpace(model) != "" {
+		return model
+	}
+	if strings.TrimSpace(fallback) != "" {
+		return fallback
+	}
+	return compareMissing
 }
 
 func formatCompareQuality(metrics core.ReportCompareMetrics) string {
