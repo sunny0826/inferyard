@@ -264,8 +264,6 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 				Deletable: true,
 			})
 		}
-		s.adoptDownloadedEngine()
-		s.adoptOnlyModel()
 		return
 	}
 	if task.Kind == "engine" && task.RequestedSourceUrl != "" {
@@ -286,7 +284,6 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 			s.checks.Engines = map[string]core.EngineEligibility{}
 		}
 		s.checks.Engines[name] = core.EngineEligibility{State: core.EngineCheckEligible, Family: family, VerificationScope: "installation", Version: version}
-		s.adoptDownloadedEngine()
 		return
 	}
 	if task.Kind == "engine" {
@@ -306,7 +303,6 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 			s.checks.Engines = map[string]core.EngineEligibility{}
 		}
 		s.checks.Engines[name] = core.EngineEligibility{State: core.EngineCheckEligible, Version: "preview"}
-		s.adoptDownloadedEngine()
 	} else {
 		name := task.OutName + " · " + emptyText(task.FileName)
 		assetPath := filepath.Join(task.OutDir, emptyText(task.FileName))
@@ -323,7 +319,6 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 			Available: true,
 			SizeBytes: previewValue(task.DownloadedBytes),
 		})
-		s.adoptOnlyModel()
 	}
 }
 

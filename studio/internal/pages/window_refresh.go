@@ -96,8 +96,6 @@ func (s *viewState) bootstrap() {
 		if engineUpdateStatus.State != "" || engineUpdateStatus.Updates != nil {
 			s.engineUpdateStatus = engineUpdateStatus
 		}
-		s.adoptDownloadedEngine()
-		s.adoptOnlyModel()
 		if s.initDir == "" {
 			s.initDir = emptyText(ready.Workspace.Path)
 		}
@@ -370,20 +368,12 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 		prevEnginePath := s.selectedEnginePath()
 		prevModelPath := s.selectedModelPath()
 		s.registry = b.registry
-		skipEngineAdopt := false
-		skipModelAdopt := false
-		if s.applyPendingPolystrataSelection(prevEngineName, prevModelName) {
-			skipEngineAdopt = true
-			skipModelAdopt = true
-		} else {
-			skipEngineAdopt = s.reconcileSelectedEngine(prevEnginePath)
-			skipModelAdopt = s.reconcileSelectedModel(prevModelPath)
-		}
-		if !skipEngineAdopt {
-			s.adoptDownloadedEngine()
-		}
-		if !skipModelAdopt {
-			s.adoptOnlyModel()
+		if !s.applyPendingPolystrataSelection(prevEngineName, prevModelName) {
+			s.reconcileSelectedEngine(prevEnginePath)
+			s.reconcileSelectedModel(prevModelPath)
+			if s.engine == "" {
+				s.model = ""
+			}
 		}
 	}
 	if b.engineUpdates != nil {

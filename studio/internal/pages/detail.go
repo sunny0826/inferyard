@@ -131,7 +131,7 @@ func (s *viewState) detailView(c *ui.Context) {
 	})
 	if cancelConfirmed {
 		if s.task.stage != "" {
-			s.newBenchmark()
+			s.newBenchmarkWithSelection(s.engine, s.model)
 			return
 		}
 		id := t.TaskId

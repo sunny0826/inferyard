@@ -125,34 +125,39 @@ func TestAdoptPairsLatestPolystrataDownloadAndColocatedConfig(t *testing.T) {
 			newEngName: {State: core.EngineCheckEligible, Family: "polystrata"},
 		},
 	}
-	// Service.Downloads() orders tasks newest-first.
-	s.downloads = []core.DownloadTask{
-		{Kind: "polystrata", State: "done", InstallationPath: ptr(newInst), ModelConfigPath: ptr(newCfg)},
-		{Kind: "polystrata", State: "done", InstallationPath: ptr(oldInst), ModelConfigPath: ptr(oldCfg)},
+	newTask := core.DownloadTask{Kind: "polystrata", State: "done", InstallationPath: ptr(newInst), ModelConfigPath: ptr(newCfg)}
+	oldTask := core.DownloadTask{Kind: "polystrata", State: "done", InstallationPath: ptr(oldInst), ModelConfigPath: ptr(oldCfg)}
+	s.downloads = []core.DownloadTask{newTask, oldTask}
+
+	// Blank task setup stays engine-first without background auto-adoption.
+	s.reconcileCandidateSelection()
+	if s.engine != "" || s.model != "" {
+		t.Fatalf("expected blank selection to stay empty without auto-adoption, got (%q, %q)", s.engine, s.model)
 	}
 
-	s.adoptDownloadedEngine()
-	s.adoptOnlyModel()
+	// Explicit handoff from PolyStrata card pairs the requested installation & model config.
+	if engOK, modOK := s.applyPolystrataSelection(newInst, newCfg); !engOK || !modOK {
+		t.Fatalf("expected applyPolystrataSelection(%q, %q) to match both, got engOK=%v modOK=%v", newInst, newCfg, engOK, modOK)
+	}
 	if s.engine != newEngName || s.model != newModName {
-		t.Fatalf("expected newest completed polystrata pair (%q, %q), got (%q, %q)", newEngName, newModName, s.engine, s.model)
+		t.Fatalf("expected explicit PolyStrata pairing (%q, %q), got (%q, %q)", newEngName, newModName, s.engine, s.model)
 	}
 
-	// When user selects oldEngName and clears model, adoptOnlyModel picks oldModName even though newTask is first.
+	// Switching to another PolyStrata engine keeps compatible strata_pack selection valid.
+	prev := s.engine
+	s.engine = oldEngName
+	s.reconcileModelOnEngineChange(prev)
+	if s.engine != oldEngName || s.model != newModName {
+		t.Fatalf("expected compatible strata_pack model preserved on engine switch, got (%q, %q)", s.engine, s.model)
+	}
+
+	// Single-model PolyStrata setup auto-selects its sole compatible model only after engine is chosen.
+	s.registry.Models = []core.ModelAsset{{Name: oldModName, Format: "strata_pack", Path: oldCfg, Available: true}}
 	s.engine = oldEngName
 	s.model = ""
-	s.adoptOnlyModel()
+	s.reconcileModelOnEngineChange("")
 	if s.model != oldModName {
-		t.Fatalf("expected model matching selected engine %q (%q), got %q", oldEngName, oldModName, s.model)
-	}
-
-	// After restart (empty downloads), co-located strata-*.json in the selected engine's dir wins.
-	s.downloads = nil
-	s.engine = ""
-	s.model = ""
-	s.adoptDownloadedEngine()
-	s.adoptOnlyModel()
-	if s.engine != oldEngName || s.model != oldModName {
-		t.Fatalf("expected co-located pair (%q, %q) when downloads empty, got (%q, %q)", oldEngName, oldModName, s.engine, s.model)
+		t.Fatalf("expected single compatible model %q auto-selected after selecting %q, got %q", oldModName, oldEngName, s.model)
 	}
 }
 
@@ -258,9 +263,9 @@ func TestPolystrataBenchmarkVerifiesAndSelectsWithoutLibraryVisit(t *testing.T) 
 			{Bundle: inferyard.DefaultBundlePelican, Phase: "device_missing", NextAction: "device_check"},
 		},
 	}
-	s.adoptOnlyModel()
-	if s.model == "" {
-		t.Fatalf("expected PolyStrata model auto-selected, got models=%+v", s.registry.Models)
+	s.reconcileCandidateSelection()
+	if s.engine != "" || s.model != "" {
+		t.Fatalf("expected engine & model to remain empty before engine selection, got (%q, %q)", s.engine, s.model)
 	}
 	// Before engine verification completes (s.engine == ""), must not report a false format mismatch.
 	if gotErr := s.localSelectionError(); gotErr != "" {
@@ -291,8 +296,7 @@ func TestPolystrataBenchmarkVerifiesAndSelectsWithoutLibraryVisit(t *testing.T) 
 					if ev.Type == "engine.check" {
 						s.runOnUI(func() {
 							s.checks = svc.EngineChecks()
-							s.adoptDownloadedEngine()
-							s.adoptOnlyModel()
+							s.reconcileCandidateSelection()
 						})
 					}
 				}
@@ -312,26 +316,41 @@ func TestPolystrataBenchmarkVerifiesAndSelectsWithoutLibraryVisit(t *testing.T) 
 		t.Fatalf("frame 1 must not flash %q or %q while verification starts, got:\n%s", noEnginesCopy, mismatchCopy, firstFrameTexts)
 	}
 
+	verifiedPolyName := func() string {
+		for name, el := range s.checks.Engines {
+			if el.Family == "polystrata" && el.State == core.EngineCheckEligible {
+				return name
+			}
+		}
+		return ""
+	}
 	deadline := time.After(5 * time.Second)
-	for s.engine == "" {
+	for verifiedPolyName() == "" {
 		select {
 		case fn := <-uiCallbacks:
 			fn()
 			tt.Frame()
 		case <-deadline:
-			t.Fatalf("timed out waiting for UI callback to adopt PolyStrata engine; checks=%+v", s.checks)
+			t.Fatalf("timed out waiting for UI callback to verify PolyStrata engine; checks=%+v", s.checks)
 		}
 	}
 
 	if checkCalls.Load() == 0 {
 		t.Fatal("expected VerifyEngines to invoke CLI engine check --installation")
 	}
-	if s.localEngine() == nil || s.localEngine().Family != "polystrata" {
-		t.Fatalf("expected PolyStrata engine adopted after verification, got engine=%q checks=%+v", s.engine, s.checks)
+	if s.engine != "" || s.model != "" {
+		t.Fatalf("expected blank flow to stay engine-first after verification, got engine=%q model=%q", s.engine, s.model)
+	}
+	polyName := verifiedPolyName()
+	tt.Click(l10n.TR("dashboard.candidate.engine"))
+	tt.ChooseMenuItem(polyName)
+	tt.Frame()
+	if s.engine != polyName || s.model == "" || !s.hasSelectedUsableEngine() || s.localSelectionError() != "" {
+		t.Fatalf("selecting verified PolyStrata %q should auto-select compatible model without error, got engine=%q model=%q err=%q", polyName, s.engine, s.model, s.localSelectionError())
 	}
 	texts := strings.Join(tt.Texts(), "\n")
 	if strings.Contains(texts, noEnginesCopy) || strings.Contains(texts, mismatchCopy) {
-		t.Fatalf("expected neither %q nor %q once PolyStrata verified, got:\n%s", noEnginesCopy, mismatchCopy, texts)
+		t.Fatalf("expected neither %q nor %q once PolyStrata selected, got:\n%s", noEnginesCopy, mismatchCopy, texts)
 	}
 }
 

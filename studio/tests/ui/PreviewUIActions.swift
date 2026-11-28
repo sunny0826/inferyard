@@ -84,13 +84,35 @@ extension PreviewUITests {
 
     func prepare() {
         click("准备环境")
+        let engineTrigger = app.menuButtons["引擎"].firstMatch
+        wait("engine becomes selectable", timeout: 10) {
+            engineTrigger.exists && engineTrigger.isEnabled
+        }
+        let modelTrigger = app.menuButtons["测评模型"].firstMatch
+        expectExists(modelTrigger, timeout: 5)
+        XCTAssertFalse(modelTrigger.isEnabled, "Model dropdown must stay disabled until an engine is selected")
+        chooseEngine("preview-engine · llama-server")
+        chooseModel("Preview-Model-Q4.gguf · GGUF")
         wait("benchmark becomes available", timeout: 10) {
             self.app.buttons["开始测评"].exists && self.app.buttons["开始测评"].isEnabled
         }
     }
 
-    /// chooseModel picks one entry from the task page's 测评模型 dropdown, the
-    /// only place the pair is chosen. The dropdown lists installed models.
+    /// chooseEngine picks one entry from the task page's 引擎 dropdown, which
+    /// unlocks and filters 测评模型 to compatible models.
+    func chooseEngine(_ label: String) {
+        let trigger = app.menuButtons["引擎"].firstMatch
+        expectExists(trigger, timeout: 10)
+        revealInContent(trigger)
+        trigger.click()
+        let item = app.menuItems[label].firstMatch
+        expectExists(item, timeout: 5)
+        item.click()
+        wait("engine selection closes", timeout: 5) { !item.exists }
+    }
+
+    /// chooseModel picks one entry from the task page's 测评模型 dropdown.
+    /// Requires a usable engine to be selected first.
     func chooseModel(_ label: String) {
         let trigger = app.menuButtons["测评模型"].firstMatch
         expectExists(trigger, timeout: 10)

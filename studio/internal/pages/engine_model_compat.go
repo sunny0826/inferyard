@@ -1,7 +1,9 @@
 package pages
 
 import (
+	"path/filepath"
 	"slices"
+	"strings"
 
 	"inferyard/studio/internal/core"
 )
@@ -74,81 +76,223 @@ func (s *viewState) hasCompatibleUsableBenchmarkEngine(model core.ModelAsset) bo
 	return false
 }
 
-func (s *viewState) candidateModelSuffix(model core.ModelAsset) string {
-	if s == nil || s.engine == "" || s.compatibleModel(model) {
-		return ""
+func (s *viewState) hasSelectedUsableEngine() bool {
+	if s == nil || s.engine == "" {
+		return false
 	}
-	if s.hasCompatibleUsableBenchmarkEngine(model) {
-		return ""
+	if _, ok := s.findEngineAsset(s.engine); !ok {
+		return false
 	}
-	return s.incompatibleModelSuffix(model)
+	return s.isBenchmarkEngineUsable(s.engine)
 }
 
-func (s *viewState) reconcileEngineForModel(modelName string) {
+func (s *viewState) compatibleModelsForSelectedEngine() []core.ModelAsset {
+	if !s.hasSelectedUsableEngine() {
+		return nil
+	}
+	models := make([]core.ModelAsset, 0, len(s.registry.Models))
+	for _, m := range s.registry.Models {
+		if m.Available && s.compatibleModel(m) {
+			models = append(models, m)
+		}
+	}
+	return models
+}
+
+func (s *viewState) resolveCompatibleEngineForModel(modelName string) string {
 	if s == nil || modelName == "" {
-		return
+		return ""
 	}
 	model, ok := s.findModelAsset(modelName)
 	if !ok || !model.Available {
-		return
+		return ""
 	}
 	if s.engine != "" {
 		if currentEng, exists := s.findEngineAsset(s.engine); exists &&
 			s.isBenchmarkEngineUsable(currentEng.Name) &&
 			compatibleBenchmarkEngine(model, currentEng) {
-			return
+			return currentEng.Name
 		}
 	}
 	for _, eng := range s.registry.Engines {
 		if s.isBenchmarkEngineUsable(eng.Name) && compatibleBenchmarkEngine(model, eng) {
-			s.engine = eng.Name
-			return
+			return eng.Name
+		}
+	}
+	return ""
+}
+
+func (s *viewState) reconcileCandidateSelection() {
+	if s == nil {
+		return
+	}
+	if s.engine != "" {
+		if _, ok := s.findEngineAsset(s.engine); !ok {
+			s.engine = ""
+		}
+	}
+	if !s.hasSelectedUsableEngine() {
+		if s.engine == "" || s.eligibility(s.engine).State == core.EngineCheckIneligible {
+			s.model = ""
+		} else if s.model != "" {
+			if m, ok := s.findModelAsset(s.model); !ok || !m.Available || !s.compatibleModel(m) {
+				s.model = ""
+			}
+		}
+		return
+	}
+	if s.lastCandidateInit && s.engine != s.lastCandidateEngine {
+		s.reconcileModelOnEngineChange(s.lastCandidateEngine)
+		return
+	}
+	if s.model != "" {
+		if m, ok := s.findModelAsset(s.model); !ok || !m.Available || !s.compatibleModel(m) {
+			s.model = ""
 		}
 	}
 }
 
-func (s *viewState) reconcileCandidateBeforeRender() {
-	if s == nil {
+func (s *viewState) reconcileModelOnEngineChange(prevEngine string) {
+	if s == nil || s.engine == prevEngine {
 		return
 	}
-	if !s.lastCandidateInit {
-		s.recordCandidateSelection()
+	if !s.hasSelectedUsableEngine() {
+		if s.engine == "" || s.eligibility(s.engine).State == core.EngineCheckIneligible {
+			s.model = ""
+		}
 		return
 	}
-	s.applyCandidateSelectionDiff(s.lastCandidateModel, s.lastCandidateEngine)
-	s.recordCandidateSelection()
+	compat := s.compatibleModelsForSelectedEngine()
+	if s.model != "" {
+		matched := false
+		for _, m := range compat {
+			if m.Name == s.model {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			s.model = ""
+		}
+	}
+	if s.model == "" && !s.skipAutoModelAdopt && len(compat) == 1 {
+		s.model = compat[0].Name
+	}
 }
 
-func (s *viewState) applyCandidateSelectionDiff(prevModel, prevEngine string) {
+func historyEngineMatches(e core.EngineAsset, wantEngine string) bool {
+	if e.Name == wantEngine || e.Family == wantEngine || (e.Path != "" && filepath.Base(e.Path) == filepath.Base(wantEngine)) {
+		return true
+	}
+	if wantEngine == "prism_llama_server_v1" || strings.HasPrefix(wantEngine, "llama_cpp_") {
+		return e.Family == "" || e.Family == "llama-cpp"
+	}
+	return false
+}
+
+func pathEqualsOrContains(dirOrFile, target string) bool {
+	if dirOrFile == "" || target == "" {
+		return false
+	}
+	return target == dirOrFile || strings.HasPrefix(target, dirOrFile+string(filepath.Separator))
+}
+
+func (s *viewState) resolveHistoryRerunSelection(r core.RunSummary) (string, string) {
 	if s == nil {
-		return
+		return "", ""
 	}
-	if s.model != prevModel && s.model != "" {
-		s.reconcileEngineForModel(s.model)
-		return
+	var matchedModel *core.ModelAsset
+	wantPath := cleanMatchPath(emptyText(r.ModelPath))
+	if wantPath != "" {
+		for i := range s.registry.Models {
+			m := &s.registry.Models[i]
+			if m.Available && m.Path != "" && cleanMatchPath(m.Path) == wantPath {
+				matchedModel = m
+				break
+			}
+		}
 	}
-	if s.engine != prevEngine && s.engine != "" && s.model != "" {
-		if m, ok := s.findModelAsset(s.model); ok && !s.compatibleModel(m) {
-			compat := ""
-			compatCount := 0
-			for _, cand := range s.registry.Models {
-				if cand.Available && s.compatibleModel(cand) {
-					compat = cand.Name
-					compatCount++
+	wantModel := strings.TrimSpace(emptyText(r.ModelName))
+	wantServed := strings.TrimSpace(emptyText(r.ServedModel))
+	if matchedModel == nil && (wantModel != "" || wantServed != "") {
+		for i := range s.registry.Models {
+			m := &s.registry.Models[i]
+			if !m.Available {
+				continue
+			}
+			if (wantModel != "" && (m.Name == wantModel || (m.Path != "" && filepath.Base(m.Path) == wantModel))) ||
+				(wantServed != "" && m.Name == wantServed) {
+				matchedModel = m
+				break
+			}
+		}
+	}
+	if matchedModel == nil && wantPath != "" {
+		for i := range s.registry.Models {
+			m := &s.registry.Models[i]
+			if !m.Available || m.Format != "strata_pack" {
+				continue
+			}
+			for _, cp := range m.CoveredPaths {
+				if pathEqualsOrContains(wantPath, cleanMatchPath(cp)) {
+					matchedModel = m
+					break
 				}
 			}
-			if compatCount == 1 {
-				s.model = compat
+			if matchedModel != nil {
+				break
 			}
 		}
 	}
+	if wantFamily := strings.TrimSpace(emptyText(r.EngineFamily)); wantFamily != "" {
+		var familyMatches []core.EngineAsset
+		for _, e := range s.registry.Engines {
+			if s.isBenchmarkEngineUsable(e.Name) && e.Family == wantFamily {
+				familyMatches = append(familyMatches, e)
+			}
+		}
+		if len(familyMatches) == 1 {
+			if matchedModel != nil && compatibleBenchmarkEngine(*matchedModel, familyMatches[0]) {
+				return familyMatches[0].Name, matchedModel.Name
+			}
+			return familyMatches[0].Name, ""
+		}
+		return "", ""
+	}
+	var matchedEngine *core.EngineAsset
+	if wantEngine := strings.TrimSpace(emptyText(r.Engine)); wantEngine != "" {
+		for i := range s.registry.Engines {
+			e := &s.registry.Engines[i]
+			if s.isBenchmarkEngineUsable(e.Name) && historyEngineMatches(*e, wantEngine) {
+				matchedEngine = e
+				break
+			}
+		}
+	}
+	if matchedEngine != nil {
+		if matchedModel != nil && compatibleBenchmarkEngine(*matchedModel, *matchedEngine) {
+			return matchedEngine.Name, matchedModel.Name
+		}
+		return matchedEngine.Name, ""
+	}
+	if matchedModel != nil {
+		var compat []core.EngineAsset
+		for _, eng := range s.registry.Engines {
+			if s.isBenchmarkEngineUsable(eng.Name) && compatibleBenchmarkEngine(*matchedModel, eng) {
+				compat = append(compat, eng)
+			}
+		}
+		if len(compat) == 1 {
+			return compat[0].Name, matchedModel.Name
+		}
+	}
+	return "", ""
 }
 
 func (s *viewState) recordCandidateSelection() {
 	if s == nil {
 		return
 	}
-	s.lastCandidateModel = s.model
 	s.lastCandidateEngine = s.engine
 	s.lastCandidateInit = true
 }

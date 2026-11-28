@@ -191,6 +191,25 @@ func selectField[T comparable](c *ui.Context, name, description string, selected
 	}
 }
 
+func disabledSelectField(c *ui.Context, name, description, placeholder string) {
+	f := ui.Field(c, name, func() {
+		t := tokens(c)
+		empty := ""
+		parts := components.NativeSelect[string](c, &empty, nil)
+		parts.Trigger.
+			MinHeight(t.Control.MD).
+			Padding(t.Density.Tight, c.Theme().Space(6), t.Density.Tight, t.Density.Stack).
+			Radius(t.Radius.Control).
+			Label(name).Value(placeholder).
+			Children(func() {
+				components.Text(c, placeholder).TextColor(t.Color.FgSecondary).SingleLine()
+			})
+	})
+	if description != "" {
+		f.Description(description)
+	}
+}
+
 func segmentedControl[T comparable](c *ui.Context, name string, selected *T, options []components.NativeSelectOption[T]) ui.Element {
 	if len(options) == 0 {
 		return ui.Element{}

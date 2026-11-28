@@ -61,10 +61,9 @@ func (s *viewState) reconcileSelectedEngine(prevEnginePath string) bool {
 				return false
 			}
 		}
-		s.engine = ""
-		return true
 	}
 	s.engine = ""
+	s.model = ""
 	return true
 }
 

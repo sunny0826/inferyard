@@ -141,8 +141,6 @@ func (s *viewState) verifyTaskEngines() {
 				return
 			}
 			s.checks = s.service.EngineChecks()
-			s.adoptDownloadedEngine()
-			s.adoptOnlyModel()
 		}
 		if s.updateWindow != nil {
 			s.updateWindow(apply)

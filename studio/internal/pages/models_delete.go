@@ -54,6 +54,7 @@ func (s *viewState) deleteManagedAssetVerified(kind, name, expectedPath, expecte
 			}
 			if s.engine == name {
 				s.engine = ""
+				s.model = ""
 			}
 		}
 		s.enqueueStatusToast(l10n.TRf("models.asset.toast.deleted_preview", "name", name))
@@ -88,6 +89,7 @@ func (s *viewState) deleteManagedAssetVerified(kind, name, expectedPath, expecte
 		s.model = ""
 	} else if kind == "engine" && s.engine == name {
 		s.engine = ""
+		s.model = ""
 	}
 	s.enqueueStatusToast(l10n.TRf("models.asset.toast.deleted", "name", name))
 }

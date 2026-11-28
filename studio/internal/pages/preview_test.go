@@ -336,3 +336,18 @@ func TestPreviewBenchmarkElapsedUsesVirtualClock(t *testing.T) {
 		t.Fatalf("expected clicking completed speed row in Recent to open speed result, got selected=%q opened=%v", p.state.selected, p.state.speed.opened)
 	}
 }
+
+func TestPreviewPreparationStartsEngineFirst(t *testing.T) {
+	p := newPreviewSession(context.Background())
+	if p.state.engine != "" || p.state.model != "" {
+		t.Fatalf("initial task_preparation scene must start with empty engine & model, got (%q, %q)", p.state.engine, p.state.model)
+	}
+	p.prepareEnvironment()
+	p.advance(2 * time.Second)
+	if p.state.ready.CLI.Status != "ok" || !p.state.preflightReady() {
+		t.Fatalf("expected prepared environment after advance, got cli=%q preflight=%v", p.state.ready.CLI.Status, p.state.preflightReady())
+	}
+	if p.state.engine != "" || p.state.model != "" {
+		t.Fatalf("prepareEnvironment must leave engine & model unselected until user chooses engine, got (%q, %q)", p.state.engine, p.state.model)
+	}
+}

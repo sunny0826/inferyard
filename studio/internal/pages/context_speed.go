@@ -234,8 +234,6 @@ func (s *viewState) speedStartBlockReason() string {
 		return l10n.TR("speed.block.busy")
 	case s.running() != nil:
 		return l10n.TR("speed.block.running")
-	case s.model == "":
-		return l10n.TR("speed.block.no_model")
 	case s.engine == "":
 		return l10n.TR("speed.block.no_engine")
 	case s.engineState.State == "orphaned":
@@ -246,10 +244,18 @@ func (s *viewState) speedStartBlockReason() string {
 	e := s.eligibility(s.engine)
 	switch e.State {
 	case core.EngineCheckEligible:
-		for _, model := range s.registry.Models {
-			if model.Name == s.model && model.ContextLength != nil && s.speed != nil && *model.ContextLength < int64(s.speed.context) {
-				return l10n.TRf("speed.block.model_context_short", "max", fmt.Sprintf("%g", float64(*model.ContextLength)/1024), "target", s.speed.context/1024)
-			}
+		if len(s.compatibleModelsForSelectedEngine()) == 0 {
+			return l10n.TR("dashboard.candidate.no_compatible_models_hint")
+		}
+		if s.model == "" {
+			return l10n.TR("speed.block.no_model")
+		}
+		model, ok := s.findModelAsset(s.model)
+		if !ok || !model.Available || !s.compatibleModel(model) {
+			return l10n.TR("engine.local.error.format_mismatch")
+		}
+		if model.ContextLength != nil && s.speed != nil && *model.ContextLength < int64(s.speed.context) {
+			return l10n.TRf("speed.block.model_context_short", "max", fmt.Sprintf("%g", float64(*model.ContextLength)/1024), "target", s.speed.context/1024)
 		}
 		return ""
 	case core.EngineCheckChecking:
@@ -413,19 +419,16 @@ func (s *viewState) speedTaskActions(c *ui.Context, r *speedTask) {
 }
 
 func (s *viewState) newSpeedTask(r *speedTask) {
-	if r.selectionModel == "" || r.selectionEngine == "" {
+	eng, engOK := s.findEngineAsset(r.selectionEngine)
+	model, modelOK := s.findModelAsset(r.selectionModel)
+	if r.selectionModel == "" || r.selectionEngine == "" ||
+		!engOK || !s.isBenchmarkEngineUsable(eng.Name) ||
+		!modelOK || !model.Available || !compatibleBenchmarkEngine(model, eng) {
 		s.failure = &core.ApiError{Code: "context_speed_assets_unavailable", Message: l10n.TR("speed.error.assets_unavailable")}
 		return
 	}
-	s.newBenchmark()
+	s.newBenchmarkWithSelection(eng.Name, model.Name)
 	s.speed.selected, s.speed.context = true, r.context
-	s.model, s.engine = r.model, r.engine
-	if r.selectionModel != "" {
-		s.model = r.selectionModel
-	}
-	if r.selectionEngine != "" {
-		s.engine = r.selectionEngine
-	}
 }
 
 func (s *viewState) openSpeed(id string) {

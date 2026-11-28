@@ -218,6 +218,14 @@ final class PreviewUITests: XCTestCase {
         selectTab("推荐")
         click("一键安装 PolyStrata")
         click("返回任务")
+        let engineTrigger = app.menuButtons["引擎"].firstMatch
+        wait("downloaded engine becomes selectable", timeout: 15) {
+            engineTrigger.exists && engineTrigger.isEnabled
+        }
+        let modelTrigger = app.menuButtons["测评模型"].firstMatch
+        expectExists(modelTrigger, timeout: 5)
+        XCTAssertFalse(modelTrigger.isEnabled, "Model dropdown must stay disabled until an engine is selected")
+        chooseEngine("PolyStrata · v0.2.20-poly.5")
         wait("downloaded resources unlock benchmark", timeout: 15) {
             self.app.buttons["开始测评"].exists && self.app.buttons["开始测评"].isEnabled
         }

@@ -1,8 +1,6 @@
 package pages
 
 import (
-	"path/filepath"
-
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
@@ -65,94 +63,6 @@ func (s *viewState) reconcileSelectedModel(prevModelPath string) bool {
 	}
 	s.model = ""
 	return false
-}
-
-func (s *viewState) adoptOnlyModel() {
-	if s.model != "" {
-		s.skipAutoModelAdopt = false
-		return
-	}
-	if s.skipAutoModelAdopt {
-		return
-	}
-	name := ""
-	availCount := 0
-	for _, model := range s.registry.Models {
-		if model.Available {
-			name = model.Name
-			availCount++
-		}
-	}
-	if availCount == 1 {
-		s.model = name
-		s.reconcileEngineForModel(name)
-		return
-	}
-	if s.engine != "" {
-		compat := ""
-		compatCount := 0
-		for _, model := range s.registry.Models {
-			if model.Available && s.compatibleModel(model) {
-				compat = model.Name
-				compatCount++
-			}
-		}
-		if compatCount == 1 {
-			s.model = compat
-			return
-		}
-	}
-	selectedEngPath := ""
-	if localEng := s.localEngine(); localEng != nil && localEng.Family == "polystrata" {
-		selectedEngPath = cleanMatchPath(localEng.Path)
-	}
-	for _, task := range s.downloads {
-		if task.Kind != "polystrata" || task.State != "done" || task.ModelConfigPath == nil {
-			continue
-		}
-		if selectedEngPath != "" {
-			taskInst := cleanMatchPath(emptyText(task.InstallationPath))
-			if taskInst == "" {
-				taskInst = cleanMatchPath(emptyText(task.EnginePath))
-			}
-			if taskInst != "" && taskInst != selectedEngPath {
-				continue
-			}
-		}
-		wantPath := cleanMatchPath(*task.ModelConfigPath)
-		if wantPath == "" {
-			continue
-		}
-		for _, model := range s.registry.Models {
-			if !model.Available || model.Format != "strata_pack" {
-				continue
-			}
-			if s.engine != "" && !s.compatibleModel(model) {
-				continue
-			}
-			if cleanMatchPath(model.Path) == wantPath {
-				s.model = model.Name
-				return
-			}
-		}
-	}
-	if localEng := s.localEngine(); localEng != nil && localEng.Family == "polystrata" && localEng.Path != "" {
-		engDir := filepath.Dir(cleanMatchPath(localEng.Path))
-		colocated := ""
-		colocatedCount := 0
-		for _, model := range s.registry.Models {
-			if !model.Available || model.Format != "strata_pack" || !s.compatibleModel(model) {
-				continue
-			}
-			if filepath.Dir(cleanMatchPath(model.Path)) == engDir {
-				colocated = model.Name
-				colocatedCount++
-			}
-		}
-		if colocatedCount == 1 {
-			s.model = colocated
-		}
-	}
 }
 
 func (s *viewState) preparingTask() bool {

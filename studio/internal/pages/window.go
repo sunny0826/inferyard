@@ -215,7 +215,7 @@ type viewState struct {
 	wizardOpenRequested                                                                                     bool
 	wizardPresetFamily                                                                                      string
 	model                                                                                                   string
-	lastCandidateModel, lastCandidateEngine                                                                 string
+	lastCandidateEngine                                                                                     string
 	lastCandidateInit                                                                                       bool
 	announcedPage, promptPage                                                                               string
 	announcedErrors                                                                                         map[string]bool

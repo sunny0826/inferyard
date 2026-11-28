@@ -57,6 +57,8 @@ func cloneRunSummary(r RunSummary) RunSummary {
 	out.ModelName = cloneValPtr(r.ModelName)
 	out.ModelPath = cloneValPtr(r.ModelPath)
 	out.Engine = cloneValPtr(r.Engine)
+	out.EngineFamily = cloneValPtr(r.EngineFamily)
+	out.ServedModel = cloneValPtr(r.ServedModel)
 	out.Bundle = cloneValPtr(r.Bundle)
 	if r.Score != nil {
 		sc := *r.Score
@@ -280,10 +282,12 @@ func (s *Service) scanRunCached(dir, batch string) (cachedRunScan, bool) {
 		FinishedAt:  a.finished,
 		Relation:    text(runDoc["relation"]),
 		ParentRunId: text(runDoc["parent_run_id"]),
-		ModelName:   text(obj(configDoc["model"])["display_name"]),
-		ModelPath:   text(obj(configDoc["model"])["local_path"]),
-		Engine:      text(obj(configDoc["engine"])["adapter"]),
-		Bundle:      text(bundleDoc["bundle_id"]),
+		ModelName:    text(obj(configDoc["model"])["display_name"]),
+		ModelPath:    text(obj(configDoc["model"])["local_path"]),
+		Engine:       text(obj(configDoc["engine"])["adapter"]),
+		EngineFamily: text(obj(configDoc["engine"])["family"]),
+		ServedModel:  text(obj(configDoc["engine"])["served_model"]),
+		Bundle:       text(bundleDoc["bundle_id"]),
 	}
 	if r.BatchPath != "" {
 		v.BatchId = ptr(filepath.Base(r.BatchPath))

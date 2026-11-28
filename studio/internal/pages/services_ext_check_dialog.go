@@ -146,26 +146,24 @@ func (s *viewState) pendingExclusivityMatchesTarget() bool {
 
 func (s *viewState) applyServiceBenchmarkTarget(modelName, engineName string) {
 	unmatchedModel := false
+	resolvedModel := ""
 	if modelName != "" {
-		resolvedModel := ""
 		if m, ok := s.findModelAsset(modelName); ok && m.Available {
 			resolvedModel = m.Name
 		} else {
 			unmatchedModel = true
 		}
-		s.model = resolvedModel
 	}
+	resolvedEngine := ""
 	if engineName != "" {
-		resolvedEngine := ""
 		for _, eng := range s.registry.Engines {
-			if eng.Name == engineName {
+			if eng.Name == engineName && s.isBenchmarkEngineUsable(eng.Name) {
 				resolvedEngine = eng.Name
 				break
 			}
 		}
-		s.engine = resolvedEngine
-	} else if unmatchedModel {
-		s.engine = ""
+	} else if !unmatchedModel && resolvedModel != "" {
+		resolvedEngine = s.resolveCompatibleEngineForModel(resolvedModel)
 	}
 	if s.speed != nil {
 		s.speed.selected = false
@@ -181,6 +179,22 @@ func (s *viewState) applyServiceBenchmarkTarget(modelName, engineName string) {
 		s.requestedDetail = ""
 		s.detailMu.Unlock()
 		s.failure = nil
+	}
+	s.engine = resolvedEngine
+	if resolvedEngine == "" {
+		s.model = ""
+	} else if resolvedModel != "" {
+		if m, ok := s.findModelAsset(resolvedModel); ok && m.Available && s.compatibleModel(m) {
+			s.model = resolvedModel
+		} else {
+			s.model = ""
+		}
+	} else if modelName != "" {
+		s.model = ""
+	} else if s.model != "" {
+		if m, ok := s.findModelAsset(s.model); !ok || !m.Available || !s.compatibleModel(m) {
+			s.model = ""
+		}
 	}
 	s.skipAutoModelAdopt = unmatchedModel
 }
