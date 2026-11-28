@@ -72,11 +72,12 @@ func (s *viewState) reportSourcesDialog(c *ui.Context) {
 	}, func(panel ui.Element) {
 		t := tokens(c)
 		ui.Column(c).FillWidth().Grow(1).MinHeight(0).Gap(t.Density.Stack).Children(func() {
-			errorView(c, s.historyError)
 			ui.Text(c, tr(c, "reports.dialog.select_runs")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			runs := s.historyRuns()
 			if s.historyError != nil {
-				button(c, tr(c, "reports.dialog.retry_load")).AlignSelf(ui.Start).OnClick(s.refreshAction)
+				errorRecoveryBanner(c, s.historyError, func() {
+					refreshIconButton(c, tr(c, "reports.dialog.retry_load"), false).OnClick(s.refreshAction)
+				})
 			} else if !s.loaded || s.hydrating {
 				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 					activitySpinner(c, tr(c, "reports.dialog.loading"))

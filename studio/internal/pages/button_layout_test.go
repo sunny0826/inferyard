@@ -153,3 +153,60 @@ func TestEmptyEngineLinksNavigateToLibrary(t *testing.T) {
 		t.Fatalf("expected candidate register-engine action to open library wizard: selected=%q tab=%d texts=%v", sd.selected, sd.libraryTab, dtt.Texts())
 	}
 }
+
+func TestBenchmarkTaskButtonsPlacement(t *testing.T) {
+	s := readyState("benchmarks")
+	s.tasks = []core.RunTask{{TaskId: "task-1", Kind: "run", State: "running", Bundle: ptr("zh-core")}}
+	s.runProgress = &core.RunProgress{Phase: ptr("formal"), Done: 30, Total: ptr(int64(120))}
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).FillWidth().Children(func() { s.runView(c) }) }, 1120, 900)
+	tt.Frame()
+
+	bundleRect, okTitle := tt.Find("zh-core")
+	detailBtn, okDetail := tt.AccessByRole(ui.RoleButton, tr(nil, "dashboard.run.view_live_detail"))
+	cancelBtn, okCancel := tt.AccessByRole(ui.RoleButton, tr(nil, "common.confirm.cancel_run.label"))
+	statusRect, okStatus := tt.Find(trf(nil, "dashboard.run.cases_progress", "done", 30, "total", 120))
+	if !okTitle || !okDetail || !okCancel || !okStatus {
+		t.Fatalf("missing run elements: title=%v detail=%v cancel=%v status=%v texts=%v", okTitle, okDetail, okCancel, okStatus, tt.Texts())
+	}
+	if detailBtn.Bounds.X < bundleRect.X+bundleRect.W || detailBtn.Bounds.X+detailBtn.Bounds.W > cancelBtn.Bounds.X {
+		t.Fatalf("run action icons should sit right of title with cancel rightmost: title=%+v detail=%+v cancel=%+v", bundleRect, detailBtn.Bounds, cancelBtn.Bounds)
+	}
+	if math.Abs(float64(detailBtn.Bounds.Y-cancelBtn.Bounds.Y)) > 2 || detailBtn.Bounds.Y+detailBtn.Bounds.H > statusRect.Y {
+		t.Fatalf("run action icons should sit on header row above status strip: detail=%+v cancel=%+v status=%+v", detailBtn.Bounds, cancelBtn.Bounds, statusRect)
+	}
+
+	sc := readyState("benchmarks")
+	sc.task.stage = "done"
+	sc.task.report = "/reports/rep-1"
+	ctt := ui.NewTester(func(c *ui.Context) { ui.Column(c).FillWidth().Children(func() { sc.completionView(c) }) }, 1120, 900)
+	ctt.Frame()
+
+	againBtn, okAgain := ctt.AccessByRole(ui.RoleButton, tr(nil, "dashboard.completion.run_again"))
+	viewBtn, okView := ctt.AccessByRole(ui.RoleButton, tr(nil, "dashboard.completion.view_report"))
+	if !okAgain || !okView {
+		t.Fatalf("missing completion action icons: again=%v view=%v texts=%v", okAgain, okView, ctt.Texts())
+	}
+	if againBtn.Bounds.X+againBtn.Bounds.W > viewBtn.Bounds.X || againBtn.Bounds.X <= 500 {
+		t.Fatalf("completion actions should be right-aligned with primary report CTA rightmost: again=%+v view=%+v", againBtn.Bounds, viewBtn.Bounds)
+	}
+
+	sh := readyState("benchmarks")
+	sh.history.StandaloneRuns = []core.RunSummary{{
+		RunId: "run-1", Path: "/results/run-1", ModelName: ptr("Demo.gguf"),
+		Bundle: ptr("zh-core"), Status: "complete", Sealed: true,
+	}}
+	sh.reports = []core.ReportSummary{{ReportId: "rep-1", RunIds: []string{"run-1"}}}
+	sh.historyDetailPath = "/results/run-1"
+	htt := ui.NewTester(func(c *ui.Context) { ui.Column(c).FillWidth().Children(func() { sh.historyOverlays(c) }) }, 1120, 900)
+	htt.Frame()
+
+	rerunBtn, okRerun := htt.AccessByRole(ui.RoleButton, tr(nil, "dashboard.history.rerun_same"))
+	histViewBtn, okHistView := htt.AccessByRole(ui.RoleButton, tr(nil, "dashboard.completion.view_report"))
+	pathRect, okPath := htt.Find(tr(nil, "dashboard.history.run_path_label"))
+	if !okRerun || !okHistView || !okPath {
+		t.Fatalf("missing history drawer elements: rerun=%v view=%v path=%v texts=%v", okRerun, okHistView, okPath, htt.Texts())
+	}
+	if rerunBtn.Bounds.X+rerunBtn.Bounds.W > histViewBtn.Bounds.X || histViewBtn.Bounds.Y < pathRect.Y+pathRect.H {
+		t.Fatalf("history drawer actions should sit in bottom footer below scroll content: rerun=%+v view=%+v path=%+v", rerunBtn.Bounds, histViewBtn.Bounds, pathRect)
+	}
+}

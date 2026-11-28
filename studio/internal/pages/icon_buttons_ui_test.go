@@ -167,4 +167,66 @@ func TestCorePageIconButtons(t *testing.T) {
 			t.Fatalf("copy version icon wrote unexpected clipboard contents: %q", clipboard)
 		}
 	})
+
+	t.Run("BenchmarkTasksFlow", func(t *testing.T) {
+		s := readyState("benchmarks")
+		s.tasks = []core.RunTask{{TaskId: "t1", Kind: "run", State: "running", Bundle: ptr("zh-core")}}
+		runTT := ui.NewTester(s.runView, 1120, 700)
+		runTT.Frame()
+		requireIconButton(t, runTT, tr(nil, "dashboard.run.view_live_detail"))
+		requireIconButton(t, runTT, tr(nil, "common.confirm.cancel_run.label"))
+
+		sf := readyState("benchmarks")
+		sf.engineState = core.EngineState{State: "failed", LogPath: "/tmp/engine.log"}
+		failSvcTT := ui.NewTester(sf.serviceView, 1120, 700)
+		failSvcTT.Frame()
+		requireIconButton(t, failSvcTT, tr(nil, "dashboard.engine_log.open_button"))
+
+		sr := readyState("benchmarks")
+		sr.engineState = core.EngineState{State: "running", Pid: 42, Endpoint: "http://127.0.0.1:8080"}
+		runSvcTT := ui.NewTester(sr.serviceView, 1120, 700)
+		runSvcTT.Frame()
+		requireIconButton(t, runSvcTT, tr(nil, "common.confirm.stop_engine.label"))
+
+		sc := readyState("benchmarks")
+		sc.task.stage = "done"
+		sc.task.report = "/tmp/rep-1"
+		compTT := ui.NewTester(sc.completionView, 1120, 700)
+		compTT.Frame()
+		requireIconButton(t, compTT, tr(nil, "dashboard.completion.run_again"))
+		requireIconButton(t, compTT, tr(nil, "dashboard.completion.view_report"))
+
+		sd := readyState("benchmarks")
+		sd.detailID = "t1"
+		sd.detail = &core.RunTaskDetail{Task: core.RunTask{TaskId: "t1", State: "running", Bundle: ptr("zh-core")}}
+		detailTT := ui.NewTester(sd.detailView, 1120, 700)
+		detailTT.Frame()
+		requireIconButton(t, detailTT, tr(nil, "detail.cancel.label"))
+
+		sa := readyState("benchmarks")
+		sa.speed = &speedWorkspace{current: &speedTask{id: "s1", model: "Demo.gguf", engine: "llama", context: 65536, stage: speedMeasuring, completed: 1}}
+		speedTT := ui.NewTester(sa.speedTaskView, 1120, 800)
+		speedTT.Frame()
+		requireIconButton(t, speedTT, tr(nil, "speed.cancel.label"))
+
+		sa.speed.current.stage = speedDone
+		sa.speed.current.completed = 5
+		speedTT.Frame()
+		requireIconButton(t, speedTT, tr(nil, "speed.action.new_with_combo"))
+		requireIconButton(t, speedTT, tr(nil, "speed.action.view_result"))
+
+		sres := readyState("reports")
+		sres.speed = &speedWorkspace{opened: &speedTask{id: "s1", model: "Demo.gguf", engine: "llama", context: 65536, stage: speedDone, selectionModel: "Demo.gguf", selectionEngine: "llama", summary: &speedSample{}}}
+		resTT := ui.NewTester(sres.speedResultView, 1120, 800)
+		resTT.Frame()
+		requireIconButton(t, resTT, tr(nil, "speed.action.new_with_combo"))
+
+		sh := readyState("reports")
+		selIdx := 0
+		sh.speed = &speedWorkspace{history: []*speedTask{{id: "s1", model: "Demo.gguf", engine: "llama", context: 65536, stage: speedDone}}}
+		sh.speed.historyTable.Selected = &selIdx
+		histTT := ui.NewTester(sh.speedHistoryView, 1120, 800)
+		histTT.Frame()
+		requireIconButton(t, histTT, tr(nil, "speed.history.open_result"))
+	})
 }

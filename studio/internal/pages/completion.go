@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -49,16 +50,18 @@ func (s *viewState) completionView(c *ui.Context) {
 }
 
 func (s *viewState) completionActions(c *ui.Context, path string) {
-	ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
+	t := tokens(c)
+	ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+	studioTooltipGroup(c, ui.Row(c).FillWidth().Justify(ui.End).Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
+		if outlineIconButton(c, reicon.RotateCw, tr(c, "dashboard.completion.run_again")).Clicked() {
+			s.newBenchmark()
+		}
 		if path != "" {
-			if primaryButton(c, tr(c, "dashboard.completion.view_report")).AlignSelf(ui.Start).Clicked() {
+			if primaryIconButton(c, reicon.Eye, tr(c, "dashboard.completion.view_report")).Clicked() {
 				s.openReport(path)
 			}
-		} else if primaryButton(c, tr(c, "dashboard.completion.view_reports")).AlignSelf(ui.Start).Clicked() {
+		} else if primaryIconButton(c, reicon.Eye, tr(c, "dashboard.completion.view_reports")).Clicked() {
 			s.selected = "reports"
-		}
-		if outlineButton(c, tr(c, "dashboard.completion.run_again")).AlignSelf(ui.Start).Clicked() {
-			s.newBenchmark()
 		}
 	})
 }

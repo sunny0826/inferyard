@@ -97,9 +97,9 @@ func (s *viewState) renderSingleExitedNoticeCard(c *ui.Context, notice core.Serv
 		}
 
 		canLaunch := !s.busy && !s.standalone.isPreparing(notice.Model) && (s.serveSupported || s.preview != nil)
-		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			restartLabel := tr(c, "services.exited.action.restart_same")
-			restartBtn := inlineButton(c, components.ButtonPrimary, restartLabel).
+			restartBtn := primaryIconButton(c, reicon.RotateCw, restartLabel).
 				Disabled(!canLaunch || notice.Model == "" || notice.Engine == "")
 			if multi {
 				restartBtn.Label(restartLabel + " · " + modelName)
@@ -108,7 +108,7 @@ func (s *viewState) renderSingleExitedNoticeCard(c *ui.Context, notice core.Serv
 				s.restartFromExitNotice(notice)
 			}
 			adjustLabel := tr(c, "services.exited.action.adjust_params")
-			adjustBtn := inlineButton(c, components.ButtonOutline, adjustLabel).Disabled(!canLaunch)
+			adjustBtn := outlineIconButton(c, reicon.SlidersHorizontal, adjustLabel).Disabled(!canLaunch)
 			if multi {
 				adjustBtn.Label(adjustLabel + " · " + modelName)
 			}
@@ -116,7 +116,7 @@ func (s *viewState) renderSingleExitedNoticeCard(c *ui.Context, notice core.Serv
 				s.openServiceParamsDrawerFromExitNotice(notice)
 			}
 			logLabel := tr(c, "services.exited.action.view_log")
-			logBtn := inlineButton(c, components.ButtonOutline, logLabel).Disabled(strings.TrimSpace(notice.LogPath) == "")
+			logBtn := outlineIconButton(c, reicon.FileText, logLabel).Disabled(strings.TrimSpace(notice.LogPath) == "")
 			if multi {
 				logBtn.Label(logLabel + " · " + modelName)
 			}
@@ -125,7 +125,7 @@ func (s *viewState) renderSingleExitedNoticeCard(c *ui.Context, notice core.Serv
 			}
 			ui.Box(c).Grow(1)
 			dismissLabel := tr(c, "services.exited.action.dismiss")
-			dismissBtn := inlineButton(c, components.ButtonGhost, dismissLabel)
+			dismissBtn := iconButton(c, reicon.X, dismissLabel, components.IconButtonCompact)
 			if multi {
 				dismissBtn.Label(dismissLabel + " · " + modelName)
 			}
@@ -362,13 +362,15 @@ func (s *viewState) recentServicesSection(c *ui.Context) {
 						)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.Danger.Fg)
 					}
 				})
-				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-					if inlineButton(c, components.ButtonOutline, tr(c, "services.recent.action.params")).
-						Label(tr(c, "services.recent.action.params") + " · " + preset.Model).Clicked() {
+				studioTooltipGroup(c, ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row), func() {
+					paramsLabel := tr(c, "services.recent.action.params")
+					if outlineIconButton(c, reicon.SlidersHorizontal, paramsLabel).
+						Label(paramsLabel + " · " + preset.Model).Clicked() {
 						s.openServiceParamsDrawerForPreset(preset)
 					}
-					if inlineButton(c, components.ButtonPrimary, tr(c, "services.recent.action.start")).
-						Label(tr(c, "services.recent.action.start") + " · " + preset.Model).
+					startLabel := tr(c, "services.recent.action.start")
+					if primaryIconButton(c, reicon.Play, startLabel).
+						Label(startLabel + " · " + preset.Model).
 						Disabled(!canLaunch || !modelAvailable || memBlocked).Clicked() {
 						s.startFromPreset(preset)
 					}

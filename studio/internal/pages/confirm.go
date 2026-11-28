@@ -4,6 +4,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -136,6 +137,25 @@ func (s *viewState) quietDestructiveDialog(c *ui.Context, option destructiveOpti
 	return s.destructiveDialogModal(c, option)
 }
 
+func (s *viewState) dangerIconDestructiveAction(c *ui.Context, icon func() *ui.SVG, option destructiveOption) bool {
+	return s.destructiveActionWithTrigger(c, option, true, func(open bool) ui.Element {
+		tip := option.label
+		if open {
+			tip = ""
+		}
+		return dangerIconButton(c, icon, tip).Label(option.label).Disabled(option.disabled)
+	})
+}
+
+func (s *viewState) dangerIconDestructiveDialog(c *ui.Context, icon func() *ui.SVG, option destructiveOption) bool {
+	request := s.destructiveRequestFor(option)
+	c.Key("alertdialog-" + string(option.kind) + "-" + option.id)
+	if dangerIconButton(c, icon, option.label).Disabled(option.disabled).Clicked() {
+		s.pendingDestructive = request
+	}
+	return s.destructiveDialogModal(c, option)
+}
+
 func (s *viewState) destructiveRequestFor(option destructiveOption) destructiveRequest {
 	request := destructiveRequest{kind: string(option.kind), id: option.id}
 	if option.kind == destructiveStopEngine {
@@ -258,13 +278,13 @@ func (w *viewState) cancelRunGate(c *ui.Context, id, state string) bool {
 		disabled:     (w.busy && w.task.stage == "") || state == "cancelling",
 	}
 	if wholeRound {
-		return w.quietDestructiveDialog(c, option)
+		return w.dangerIconDestructiveDialog(c, reicon.Square, option)
 	}
-	return w.quietDestructiveAction(c, option)
+	return w.dangerIconDestructiveAction(c, reicon.Square, option)
 }
 
 func (w *viewState) stopEngineGate(c *ui.Context) bool {
-	return w.destructiveDialog(c, destructiveOption{
+	return w.dangerIconDestructiveDialog(c, reicon.Square, destructiveOption{
 		kind: destructiveStopEngine, label: tr(c, "common.confirm.stop_engine.label"), confirmLabel: tr(c, "common.confirm.stop_engine.confirm"),
 		dismissLabel: tr(c, "common.confirm.stop_engine.dismiss"),
 		prompt:       tr(c, "common.confirm.stop_engine.prompt"),

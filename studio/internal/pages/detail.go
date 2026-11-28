@@ -111,9 +111,9 @@ func (s *viewState) detailView(c *ui.Context) {
 				disabled: (s.busy && s.task.stage == "") || terminal(t.State) || t.State == "cancelling",
 			}
 			if wholeRound {
-				cancelConfirmed = s.quietDestructiveDialog(c, cancelOption)
+				cancelConfirmed = s.dangerIconDestructiveDialog(c, reicon.Square, cancelOption)
 			} else {
-				cancelConfirmed = s.quietDestructiveAction(c, cancelOption)
+				cancelConfirmed = s.dangerIconDestructiveAction(c, reicon.Square, cancelOption)
 			}
 		})
 		runPathRaw := emptyText(t.RunPath)

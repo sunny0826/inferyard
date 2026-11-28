@@ -417,7 +417,8 @@ func (s *viewState) awaitingLocalServiceView(c *ui.Context) {
 			} else if reason != "" {
 				ui.Text(c, reason).FontSize(tokens(c).Type.Caption).TextColor(tokens(c).Color.FgSecondary)
 			}
-			ui.Row(c).AlignItems(ui.Center).Children(func() {
+			ui.Box(c).FillWidth().Height(1).Background(tokens(c).Color.BorderSubtle)
+			ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Children(func() {
 				withDisabledTooltip(c, reason, func() ui.Element {
 					return primaryButton(c, tr(c, "engine.local.handoff.connect_continue")).Disabled(reason != "").OnClick(func() {
 						s.connectHandoffService(task.TaskId, pid)

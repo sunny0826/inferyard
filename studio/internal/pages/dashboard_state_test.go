@@ -9,6 +9,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
 )
@@ -188,8 +189,8 @@ func TestRunDetailButtonGivesPrimaryActionToHandoff(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) {
 		ui.Column(c).Children(func() {
 			s.runView(c)
-			primaryButton(c, "primary")
-			outlineButton(c, "outline")
+			primaryIconButton(c, reicon.Eye, "primary")
+			outlineIconButton(c, reicon.Eye, "outline")
 		})
 	}, 960, 600)
 	for _, tc := range []struct {

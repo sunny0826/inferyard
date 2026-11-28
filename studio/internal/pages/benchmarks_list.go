@@ -155,10 +155,10 @@ func (s *viewState) benchmarksTasksTabView(c *ui.Context) {
 
 	historyRuns := s.historyRuns()
 	ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
-		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		studioTooltipGroup(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			heading(c, tr(c, "benchmarks.group.recent"), 3).Grow(1)
 			if len(historyRuns) > 0 {
-				if iconButton(c, reicon.History, tr(c, "benchmarks.recent.view_all_history"), components.IconButtonCompact).Clicked() {
+				if outlineIconButton(c, reicon.History, tr(c, "benchmarks.recent.view_all_history")).Clicked() {
 					s.historyFromFlow = false
 					s.benchmarksTab = benchmarksTabHistory
 				}
