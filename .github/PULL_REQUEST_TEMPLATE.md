@@ -16,7 +16,7 @@
 - [ ] **Copy review**: Checked capitalization (Title Case for short labels/buttons, Sentence case for sentences), canonical terminology, and concise wording without defensive UI disclaimers.
 - [ ] **Documentation**: Checked whether user-facing docs need updates and updated all affected files (or confirmed N/A):
   - [ ] `README.md` & `README.zh-CN.md` (top-level features, quick start, platforms, links)
-  - [ ] `studio/README.md` & `studio/tests/ui/README.md` (Studio pages, settings, i18n, UI workflows)
+  - [ ] `studio/README.md`, `DESIGN.md` & `studio/tests/ui/README.md` (Studio pages, UI/navigation guidelines, settings, i18n, UI workflows)
   - [ ] `cli/README.md`, `cli/README.zh-CN.md` & `cli/docs/installation.md` (CLI commands, installation, `installation.json`)
   - [ ] `cli/docs/reference/methods-matrix.md` & `cli/docs/experiments/metrics*.md` (methods, metrics, schemas)
   - [ ] No user-facing copy or documentation changes required for this PR
