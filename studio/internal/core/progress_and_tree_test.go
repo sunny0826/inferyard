@@ -211,6 +211,25 @@ func TestReasoningEffortSettingsPersistenceAndBoundPaths(t *testing.T) {
 	if _, apiErr := s.UpdateSettings(map[string]json.RawMessage{"reasoning_mode": json.RawMessage(`"auto"`)}); apiErr == nil || apiErr.Code != "invalid_request" {
 		t.Fatalf("expected invalid_request for unsupported reasoning_mode, got %+v", apiErr)
 	}
+
+	runDir := filepath.Join(t.TempDir(), "run-1")
+	if err := os.MkdirAll(runDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	inputs := `{"documents":{"config":{"payload":{"generation":{"reasoning_mode":"on"}}}}}`
+	if err := os.WriteFile(filepath.Join(runDir, "inputs.json"), []byte(inputs), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if gotEffort, gotMode := readFrozenReasoning(runDir); gotEffort != "" || gotMode != ReasoningModeOn {
+		t.Fatalf("readFrozenReasoning(inputs.json mode=on) = (%q, %q), want (\"\", %q)", gotEffort, gotMode, ReasoningModeOn)
+	}
+	inputsEffort := `{"documents":{"config":{"payload":{"generation":{"reasoning_effort":"high"}}}}}`
+	if err := os.WriteFile(filepath.Join(runDir, "inputs.json"), []byte(inputsEffort), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if gotEffort, gotMode := readFrozenReasoning(runDir); gotEffort != ReasoningEffortHigh || gotMode != "" {
+		t.Fatalf("readFrozenReasoning(inputs.json effort=high) = (%q, %q), want (%q, \"\")", gotEffort, gotMode, ReasoningEffortHigh)
+	}
 }
 
 func TestFinishEngineTreeCleansLateSameGroupShutdownHelperAfterRootExits(t *testing.T) {

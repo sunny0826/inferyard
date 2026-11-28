@@ -121,27 +121,22 @@ func readConfigReasoning(configPath string) (string, string) {
 }
 
 func readFrozenReasoning(runDir string) (string, string) {
-	raw, err := os.ReadFile(filepath.Join(runDir, "config.frozen.json"))
+	raw, err := os.ReadFile(filepath.Join(runDir, "inputs.json"))
 	if err != nil {
 		return "", ""
 	}
-	var doc struct {
-		Generation struct {
-			ReasoningEffort string `json:"reasoning_effort"`
-			ReasoningMode   string `json:"reasoning_mode"`
-		} `json:"generation"`
-	}
-	if json.Unmarshal(raw, &doc) != nil {
+	gen := obj(payload(raw, "config")["generation"])
+	if gen == nil {
 		return "", ""
 	}
 	var effort, mode string
-	if doc.Generation.ReasoningEffort != "" {
-		if parsed, ok := ParseReasoningEffort(doc.Generation.ReasoningEffort); ok {
+	if rawEffort := str(text(gen["reasoning_effort"])); rawEffort != "" {
+		if parsed, ok := ParseReasoningEffort(rawEffort); ok {
 			effort = parsed
 		}
 	}
-	if doc.Generation.ReasoningMode != "" {
-		if parsed, ok := ParseReasoningMode(doc.Generation.ReasoningMode); ok {
+	if rawMode := str(text(gen["reasoning_mode"])); rawMode != "" {
+		if parsed, ok := ParseReasoningMode(rawMode); ok {
 			mode = parsed
 		}
 	}
