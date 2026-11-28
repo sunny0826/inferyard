@@ -342,7 +342,8 @@ func (s *Service) persistSettings(u UserSettings, forceCLIRefresh bool) (Setting
 		s.clearProbeCache()
 		s.evictProgressCache()
 		if !forceCLIRefresh && s.probe(u).Status == "ok" {
-			s.clearCLIUpgradeState()
+			s.warmCompatibleCLI(s.ctx)
+			s.publishCLIUpgradedAndClear()
 		}
 	}
 	if workspaceChanged {

@@ -1,12 +1,112 @@
 package pages
 
 import (
+	"context"
+	"encoding/json"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
 )
+
+type cliRecoverySnapshot struct {
+	valid          bool
+	epoch          uint64
+	cliGen         uint64
+	ready          core.Readiness
+	cliUpgrade     core.CLIUpgradeState
+	checks         core.EngineCheckOverview
+	serveSupported bool
+}
+
+func eventsMayRecoverCLI(events []core.Event, reset bool) bool {
+	if reset {
+		return true
+	}
+	for _, ev := range events {
+		switch ev.Type {
+		case "sync.reset":
+			return true
+		case "cli.upgrade":
+			var payload struct {
+				CLIUpgrade core.CLIUpgradeState `json:"cli_upgrade"`
+			}
+			if json.Unmarshal(ev.Data, &payload) == nil && payload.CLIUpgrade.State == core.CLIUpgradeIdle {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (s *viewState) captureCLIRecoverySnapshot() cliRecoverySnapshot {
+	if s == nil || s.preview != nil || s.service == nil {
+		return cliRecoverySnapshot{}
+	}
+	if s.ctx != nil && s.ctx.Err() != nil {
+		return cliRecoverySnapshot{}
+	}
+	epoch := s.settingsSequence()
+	cliGen := s.service.CLIGeneration()
+	ready := s.service.Readiness()
+	if ready.CLI.Status != "ok" {
+		return cliRecoverySnapshot{}
+	}
+	ctx := s.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return cliRecoverySnapshot{
+		valid:          true,
+		epoch:          epoch,
+		cliGen:         cliGen,
+		ready:          ready,
+		cliUpgrade:     s.service.CLIUpgradeStatus(),
+		checks:         s.service.EngineChecks(),
+		serveSupported: s.service.ServeSupported(ctx),
+	}
+}
+
+func (s *viewState) applyCLIRecoverySnapshot(snap cliRecoverySnapshot) {
+	if !snap.valid || (s.ctx != nil && s.ctx.Err() != nil) {
+		return
+	}
+	if snap.cliGen > s.appliedCLIGen {
+		s.appliedCLIGen = snap.cliGen
+	}
+	wasNotOK := s.ready.CLI.Status != "ok"
+	if s.refreshBatchCurrent(snap.epoch) {
+		s.ready = snap.ready
+	} else {
+		s.ready.CLI = snap.ready.CLI
+	}
+	if s.device.LastError != nil && s.device.LastError.Code == "cli_outdated" {
+		s.device.LastError = nil
+	}
+	if s.registry.ModelError != nil && s.registry.ModelError.Code == "cli_outdated" {
+		s.registry.ModelError = nil
+	}
+	if wasNotOK || !s.checks.Supported {
+		s.checks = snap.checks
+	}
+	s.serveSupported = snap.serveSupported
+	s.serveProbing = false
+	s.applyCLIUpgradeState(snap.cliUpgrade)
+	if wasNotOK {
+		if s.failure != nil && s.failure.Code == "cli_outdated" {
+			s.failure = nil
+			s.failurePage = ""
+		}
+		if s.win != nil && s.progress == nil && s.benchFlowOpen {
+			s.hydrating = true
+		}
+		cliKey := emptyText(snap.ready.CLI.Path) + "|" + emptyText(snap.ready.CLI.Version) + "|" + snap.ready.CLI.Status
+		if cliKey != s.discoveryCLI {
+			s.discoveryCLI, s.discoveryLoaded = cliKey, false
+		}
+	}
+}
 
 func cliOutdatedSummary(version *string) string {
 	cur := strings.TrimSpace(emptyText(version))
@@ -38,11 +138,13 @@ func (s *viewState) upgradeCLI() {
 		_, e := s.service.UpgradeCLI(s.ctx, func(message string) {
 			s.updateView(func() { s.cliInstallStatus = message })
 		})
-		st := s.service.CLIUpgradeStatus()
-		s.updateView(func() { s.applyCLIUpgradeState(st) })
 		if e != nil {
+			st := s.service.CLIUpgradeStatus()
+			s.updateView(func() { s.applyCLIUpgradeState(st) })
 			return "", nil
 		}
+		snap := s.captureCLIRecoverySnapshot()
+		s.updateView(func() { s.applyCLIRecoverySnapshot(snap) })
 		return l10n.TR("onboarding.cli.upgraded"), nil
 	})
 }

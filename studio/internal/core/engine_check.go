@@ -356,6 +356,19 @@ func (s *Service) cacheInstallationCheck(cliKey string, generation uint64, path,
 	s.checks[path] = engineCheckEntry{key: key, verified: true, result: eligibility}
 }
 
+func (s *Service) resetEngineChecks() {
+	if s == nil {
+		return
+	}
+	s.checkMu.Lock()
+	s.checkCLI = ""
+	s.checkGeneration++
+	s.checks = map[string]engineCheckEntry{}
+	s.checkInflight = map[string]bool{}
+	s.checkSupported = true
+	s.checkMu.Unlock()
+}
+
 func (s *Service) EngineChecks() EngineCheckOverview {
 	s.checkMu.Lock()
 	defer s.checkMu.Unlock()
