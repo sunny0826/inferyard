@@ -59,6 +59,7 @@ func (s *viewState) bootstrap() {
 		return
 	}
 	settingsEpoch := s.settingsSequence()
+	cliGen := s.service.CLIGeneration()
 	ready := s.service.Readiness()
 	settings := s.service.Settings()
 	device, tasks, downloads := s.service.Device(), s.service.RunTasks(), s.service.Downloads()
@@ -80,6 +81,9 @@ func (s *viewState) bootstrap() {
 		}
 		if !s.refreshBatchCurrent(settingsEpoch) || s.loaded {
 			return
+		}
+		if cliGen > s.appliedCLIGen {
+			s.appliedCLIGen = cliGen
 		}
 		s.ready = ready
 		s.syncNodeState()
@@ -149,6 +153,7 @@ func (s *viewState) refreshMask(mask refreshMask) {
 		return
 	}
 	settingsEpoch := s.settingsSequence()
+	cliGen := s.service.CLIGeneration()
 	s.runRefreshUI(func() { s.refreshing = true })
 
 	device, tasks, downloads := s.service.Device(), s.service.RunTasks(), s.service.Downloads()
@@ -262,7 +267,7 @@ func (s *viewState) refreshMask(mask refreshMask) {
 		}
 		s.refreshing = false
 		batch := refreshBatch{
-			epoch: settingsEpoch, mask: mask, device: device, tasks: tasks, downloads: downloads,
+			epoch: settingsEpoch, cliGen: cliGen, mask: mask, device: device, tasks: tasks, downloads: downloads,
 			speedTasks: speedTasks, speedHistoryError: speedHistoryError, runProgress: runProgress, activeRunDetail: activeRunDetail,
 			id: id, detail: detail, detailError: de, settings: settings,
 			history: history, reports: reports, unifiedReports: unifiedReports, historyError: he, reportsError: re,
@@ -301,6 +306,7 @@ func (s *viewState) benchmarkNeedsEngineVerify() bool {
 
 type refreshBatch struct {
 	epoch                      uint64
+	cliGen                     uint64
 	full                       bool
 	mask                       refreshMask
 	device                     core.DeviceResponse
@@ -335,8 +341,11 @@ type refreshBatch struct {
 }
 
 func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
-	if !s.refreshBatchCurrent(b.epoch) {
+	if !s.refreshBatchCurrent(b.epoch) || b.cliGen < s.appliedCLIGen {
 		return false
+	}
+	if b.cliGen > s.appliedCLIGen {
+		s.appliedCLIGen = b.cliGen
 	}
 	mask := b.mask
 	if b.full && mask == refreshNone {

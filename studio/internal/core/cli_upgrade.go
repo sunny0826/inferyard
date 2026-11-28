@@ -86,6 +86,41 @@ func (s *Service) clearCLIUpgradeState() {
 	}
 }
 
+func (s *Service) warmCompatibleCLI(ctx context.Context) {
+	if s == nil {
+		return
+	}
+	if ctx == nil {
+		ctx = s.ctx
+	}
+	if ctx == nil || ctx.Err() != nil {
+		return
+	}
+	u := s.userSettings()
+	if p := s.probe(u); p.Status == "ok" && p.Path != nil && *p.Path != "" {
+		_ = s.checkServeSupported(ctx, *p.Path)
+	}
+}
+
+func (s *Service) publishCLIUpgradedAndClear() {
+	if s == nil {
+		return
+	}
+	if s.Bus != nil {
+		_ = s.Bus.Publish("sync.reset", map[string]string{"reason": "cli_upgraded"})
+	}
+	s.clearCLIUpgradeState()
+}
+
+func (s *Service) finishDirectCLIInstall(ctx context.Context) {
+	if s == nil {
+		return
+	}
+	s.evictProgressCache()
+	s.warmCompatibleCLI(ctx)
+	s.publishCLIUpgradedAndClear()
+}
+
 func (s *Service) recoverAfterCLICompatible(u UserSettings) {
 	s.clearProbeCache()
 	s.evictProgressCache()
@@ -102,14 +137,12 @@ func (s *Service) recoverAfterCLICompatible(u UserSettings) {
 		s.assets = AssetsState{}
 	}
 	s.mu.Unlock()
+	s.warmCompatibleCLI(s.ctx)
 	if needRefresh && len(s.allModelsRoots(u)) > 0 {
 		s.RefreshAssets()
 		s.RefreshDevice()
 	}
-	s.clearCLIUpgradeState()
-	if s.Bus != nil {
-		_ = s.Bus.Publish("sync.reset", map[string]string{"reason": "cli_upgraded"})
-	}
+	s.publishCLIUpgradedAndClear()
 }
 
 func (s *Service) StartAutoCLIUpgrade() {
@@ -252,11 +285,8 @@ func (s *Service) upgradeCLI(ctx context.Context, onStatus func(string), retryDe
 		}
 	}
 
-	s.clearProbeCache()
 	s.evictProgressCache()
-	s.clearCLIUpgradeState()
-	if s.Bus != nil {
-		_ = s.Bus.Publish("sync.reset", map[string]string{"reason": "cli_upgraded"})
-	}
+	s.warmCompatibleCLI(upgradeCtx)
+	s.publishCLIUpgradedAndClear()
 	return path, nil
 }

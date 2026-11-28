@@ -218,9 +218,20 @@ func (s *Service) rememberProbe(gen uint64, p string, st os.FileInfo, statErr er
 	s.probeResult = copyProbe(result)
 }
 
-func (s *Service) clearProbeCache() {
+func (s *Service) CLIGeneration() uint64 {
+	if s == nil {
+		return 0
+	}
 	s.probeMu.Lock()
 	defer s.probeMu.Unlock()
+	return s.probeGen
+}
+
+func (s *Service) clearProbeCache() {
+	if s == nil {
+		return
+	}
+	s.probeMu.Lock()
 	s.probeGen++
 	s.probePath = ""
 	s.probeVersion = ""
@@ -234,6 +245,8 @@ func (s *Service) clearProbeCache() {
 	s.serveProbeModTime = 0
 	s.serveProbeChecked = time.Time{}
 	s.serveSupported = false
+	s.probeMu.Unlock()
+	s.resetEngineChecks()
 }
 
 func copyProbe(v InferyardProbe) InferyardProbe {

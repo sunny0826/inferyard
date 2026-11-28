@@ -128,11 +128,21 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 			case <-wake:
 				events, reset, next := service.Bus.After(cursor)
 				cursor = next
-				if len(events) > 0 {
+				var cliSnap cliRecoverySnapshot
+				if eventsMayRecoverCLI(events, reset) {
+					cliSnap = s.captureCLIRecoverySnapshot()
+				}
+				if len(events) > 0 || cliSnap.valid {
 					batch := events
+					snap := cliSnap
 					s.win.Update(func() {
-						s.ingestCoreEvents(batch)
-						s.ingestNodeEvents(batch)
+						if snap.valid {
+							s.applyCLIRecoverySnapshot(snap)
+						}
+						if len(batch) > 0 {
+							s.ingestCoreEvents(batch)
+							s.ingestNodeEvents(batch)
+						}
 					})
 				}
 				if mask := refreshMaskFor(events, reset); mask != refreshNone {
@@ -252,6 +262,7 @@ type viewState struct {
 	snapshotMu                                                                                              sync.Mutex
 	snapshotSeq                                                                                             uint64
 	appliedSnapshotSeq                                                                                      uint64
+	appliedCLIGen                                                                                           uint64
 	requestedDetail                                                                                         string
 	selected, detailID                                                                                      string
 	libraryTab                                                                                              int

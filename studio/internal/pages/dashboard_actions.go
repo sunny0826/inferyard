@@ -458,6 +458,8 @@ func (s *viewState) prepareEnvironment() {
 		if e == nil && s.service != nil {
 			_ = s.service.RefreshAssets()
 			_ = s.service.RefreshDevice()
+			snap := s.captureCLIRecoverySnapshot()
+			s.updateView(func() { s.applyCLIRecoverySnapshot(snap) })
 		}
 		return l10n.TR("dashboard.toast.env_ready"), e
 	})
