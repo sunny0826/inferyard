@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.22
+
+- style(studio): standardize page button placement and adopt icon-only tool actions (#279)
+- feat(studio): merge local engine settings into library (#278)
+- feat(studio): add Geist/Reicon UI design system, font size presets, and unified left-sidebar back nav (#277)
+- fix(studio): clean up replaced managed PolyStrata on upgrade and allow deleting old installs (#276)
+- fix(studio,ci): resolve Nightly macOS UI E2E regressions and move cron off-peak (#275)
+- feat(studio): show expected answer for failed cases in detail modal (#274)
+- refactor: decouple benchmark bundles into root benchmarks/ directory (#273)
+
 ## 0.0.21
 
 - feat(studio): add multi-engine real UI upgrade & run E2E and fix macOS engine upgrades (#270)
