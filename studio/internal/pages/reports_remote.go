@@ -10,7 +10,7 @@ import (
 	"inferyard/studio/internal/l10n"
 )
 
-func (s *viewState) unifiedReportCard(c *ui.Context, report core.UnifiedReportSummary) {
+func (s *viewState) unifiedReportCard(c *ui.Context, report core.UnifiedReportSummary, multiSource bool) {
 	modelHint := ""
 	if !report.Unreadable {
 		modelHint = s.modelIconHint(reportHeadingFor(c, report.ReportSummary))
@@ -22,7 +22,7 @@ func (s *viewState) unifiedReportCard(c *ui.Context, report core.UnifiedReportSu
 	if !report.IsRemote {
 		exclusivity = s.reportExclusivity(report.ReportId)
 	}
-	showSourceBadges := report.IsRemote || len(s.nodes.snapshots) > 1 || s.hasCachedRemoteReports()
+	showSourceBadges := report.IsRemote || multiSource
 	footerNotice := ""
 	if report.IsRemote && !report.SourceOnline {
 		footerNotice = tr(c, "nodes.reports.offline")
@@ -98,12 +98,20 @@ func (s *viewState) openReportComparePicker() {
 	if len(reports) < 2 {
 		return
 	}
-	if s.nodes.compareLeftRef == "" {
+	hasRef := func(ref string) bool {
+		for _, r := range reports {
+			if r.ReportRef == ref {
+				return true
+			}
+		}
+		return false
+	}
+	if !hasRef(s.nodes.compareLeftRef) {
 		s.nodes.compareLeftRef = reports[0].ReportRef
 	}
-	if s.nodes.compareRightRef == "" || s.nodes.compareRightRef == s.nodes.compareLeftRef {
+	if !hasRef(s.nodes.compareRightRef) || s.nodes.compareRightRef == s.nodes.compareLeftRef {
 		s.nodes.compareRightRef = ""
-		for _, report := range reports[1:] {
+		for _, report := range reports {
 			if report.ReportRef != s.nodes.compareLeftRef {
 				s.nodes.compareRightRef = report.ReportRef
 				break

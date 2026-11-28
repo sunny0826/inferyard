@@ -94,6 +94,6 @@ func (s *viewState) clearCleanedWorkspaceState() {
 	s.detailMu.Lock()
 	s.requestedDetail = ""
 	s.detailMu.Unlock()
-	s.nodes.compareOpen, s.nodes.comparePickerOpen, s.nodes.comparison = false, false, nil
+	s.resetReportCompare()
 	s.closeOpenedReport()
 }

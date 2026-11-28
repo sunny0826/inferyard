@@ -64,11 +64,13 @@ func (s *viewState) remoteServiceCard(c *ui.Context, node core.NodeSnapshot, ser
 			ui.Box(c).Grow(1)
 			studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
 				usageLabel := tr(c, "services.card.action.usage")
-				usage := outlineIconButton(c, reicon.Code, usageLabel).Disabled(tunnel == nil)
+				var usage ui.Element
 				if tunnel == nil {
 					usage = iconButtonWithTooltip(c, tr(c, "nodes.remote.usage_requires_tunnel"), func() ui.Element {
 						return outlineIconButton(c, reicon.Code, "").Label(usageLabel).Disabled(true)
 					})
+				} else {
+					usage = outlineIconButton(c, reicon.Code, usageLabel)
 				}
 				if usage.Clicked() && tunnel != nil {
 					apiModel := strings.TrimSpace(service.ServedModel)

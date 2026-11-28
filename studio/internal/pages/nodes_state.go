@@ -165,6 +165,12 @@ func (s *viewState) hasCachedRemoteReports() bool {
 	return false
 }
 
+func (s *viewState) resetReportCompare() {
+	s.nodes.compareOpen, s.nodes.comparePickerOpen, s.nodes.compareLoading = false, false, false
+	s.nodes.comparison, s.nodes.compareErr = nil, nil
+	s.nodes.compareLeftRef, s.nodes.compareRightRef = "", ""
+}
+
 func (s *viewState) syncCachedRemoteReportStates() {
 	online := map[string]bool{}
 	for _, node := range s.nodes.snapshots {

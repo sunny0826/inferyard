@@ -35,9 +35,10 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 		})
 		return
 	}
+	multiSource := len(s.nodes.snapshots) > 1 || s.hasCachedRemoteReports()
 	ui.Column(c).FillWidth().Gap(t.Density.Stack).Children(func() {
 		for _, report := range reports {
-			s.unifiedReportCard(c, report)
+			s.unifiedReportCard(c, report, multiSource)
 		}
 	})
 }

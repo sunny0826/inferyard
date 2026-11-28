@@ -43,8 +43,11 @@ func (s *viewState) loadReportComparison() {
 
 func (s *viewState) reportCompareView(c *ui.Context) {
 	s.subpageHeader(c, tr(c, "nodes.compare.title"), func() {
-		outlineIconButton(c, reicon.Layers, tr(c, "nodes.compare.action")).OnClick(s.openReportComparePicker)
+		outlineIconButton(c, reicon.Layers, tr(c, "nodes.compare.action")).
+			Disabled(s.nodes.compareLoading || len(s.reportSummaries()) < 2).
+			OnClick(s.openReportComparePicker)
 	})
+	defer s.reportComparePicker(c)
 	if s.nodes.compareLoading {
 		pageLoadingSkeleton(c)
 		return
@@ -64,7 +67,6 @@ func (s *viewState) reportCompareView(c *ui.Context) {
 		s.compareRunCard(c, run, leftHeader, rightHeader)
 	}
 	s.compareCasesCard(c, comparison.Cases, leftHeader, rightHeader)
-	s.reportComparePicker(c)
 }
 
 func compareColumnWidth(c *ui.Context) float32 {

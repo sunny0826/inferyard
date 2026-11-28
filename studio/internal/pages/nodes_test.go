@@ -5,7 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 	"inferyard/studio/internal/remote"
 )
 
@@ -132,5 +134,61 @@ func TestNodeErrorMessagesAreLocalized(t *testing.T) {
 		if core.Err(code).Message == "" {
 			t.Fatalf("missing localized error for %q", code)
 		}
+	}
+}
+
+func TestReportCompareErrorReopensPickerAndWorkspaceResetsRefs(t *testing.T) {
+	s := readyState("reports")
+	s.reports = []core.ReportSummary{{ReportId: "r-a"}, {ReportId: "r-b"}}
+	s.nodes.compareOpen = true
+	s.nodes.compareLeftRef, s.nodes.compareRightRef = "r-a", "r-b"
+	s.nodes.compareErr = &core.ApiError{Code: "unreadable", Message: "unreadable report"}
+
+	tt := ui.NewTester(s.view, 1120, 800)
+	tt.Frame()
+	click(t, tt, l10n.TR("nodes.compare.action"))
+	tt.Frame()
+	if !s.nodes.comparePickerOpen {
+		t.Fatal("expected compare picker to open from error state")
+	}
+	if _, ok := tt.AccessByRole(ui.RoleDialog, l10n.TR("nodes.compare.title")); !ok {
+		t.Fatalf("compare picker dialog did not render on error state: %v", tt.Texts())
+	}
+
+	s.resetWorkspace()
+	if s.nodes.compareLeftRef != "" || s.nodes.compareRightRef != "" || s.nodes.compareErr != nil || s.nodes.compareOpen {
+		t.Fatalf("resetWorkspace left stale compare state: %+v", s.nodes)
+	}
+	s.reports = []core.ReportSummary{{ReportId: "r-c"}, {ReportId: "r-d"}}
+	s.openReportComparePicker()
+	if s.nodes.compareLeftRef != "r-c" || s.nodes.compareRightRef != "r-d" {
+		t.Fatalf("compare picker did not default to new workspace reports: left=%q right=%q", s.nodes.compareLeftRef, s.nodes.compareRightRef)
+	}
+}
+
+func TestRemoteServiceCardWithoutTunnelRendersSingleUsageButton(t *testing.T) {
+	s := readyState("services")
+	node := core.NodeSnapshot{
+		Record:   core.NodeRecord{NodeID: "node-a", DisplayName: "Node A"},
+		Online:   true,
+		Services: []core.EngineState{{ServiceID: "svc-1", ModelName: "Qwen", State: "running", Port: 48857}},
+	}
+	s.nodes.snapshots = []core.NodeSnapshot{
+		{Record: core.NodeRecord{NodeID: core.LocalNodeID}, Online: true},
+		node,
+	}
+	s.nodes.activeID = "node-a"
+
+	tt := ui.NewTester(s.view, 1120, 800)
+	tt.Frame()
+	usageLabel := l10n.TR("services.card.action.usage")
+	count := 0
+	for _, item := range tt.AccessAll() {
+		if item.Role == ui.RoleButton && item.Name == usageLabel {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("usage button count = %d, want 1", count)
 	}
 }

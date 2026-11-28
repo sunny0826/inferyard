@@ -28,7 +28,6 @@ type toastSpec struct {
 	OnAction      func()
 	RestoredTitle string
 	Duration      time.Duration
-	Sheen         bool
 	Phase         int
 	CloseOnly     bool
 }
@@ -36,8 +35,6 @@ type toastSpec struct {
 type toastRenderData struct {
 	Kind      toastKind
 	Phase     int
-	Sheen     bool
-	SheenAt   time.Time
 	CreatedAt time.Time
 	Duration  time.Duration
 	ShowClose bool
@@ -81,7 +78,6 @@ func (s *viewState) enqueueStatusToast(title string) {
 		Kind:     toastKindStatus,
 		Title:    title,
 		Duration: statusToastDuration(title),
-		Sheen:    true,
 	})
 }
 
@@ -100,7 +96,6 @@ func (s *viewState) enqueueActionToast(id, title, actionLabel, restoredTitle str
 		OnAction:      onAction,
 		RestoredTitle: strings.TrimSpace(restoredTitle),
 		Duration:      duration,
-		Sheen:         false,
 	})
 }
 
@@ -113,7 +108,6 @@ func (s *viewState) enqueueProgressToast(id, title string) {
 		Kind:     toastKindProgress,
 		Title:    strings.TrimSpace(title),
 		Duration: -1,
-		Sheen:    false,
 	})
 }
 
@@ -132,7 +126,6 @@ func (s *viewState) resolveProgressToast(id, title, actionLabel string, onAction
 		Action:   actionLabel,
 		OnAction: onAction,
 		Duration: duration,
-		Sheen:    true,
 		Phase:    1,
 	})
 }
@@ -186,7 +179,6 @@ func (s *viewState) flushToasts(c *ui.Context) {
 						Kind:     toastKindStatus,
 						Title:    specCopy.RestoredTitle,
 						Duration: 1500 * time.Millisecond,
-						Sheen:    true,
 						Phase:    1,
 					})
 				}
@@ -201,8 +193,6 @@ func (s *viewState) flushToasts(c *ui.Context) {
 			Data: toastRenderData{
 				Kind:      spec.Kind,
 				Phase:     phase,
-				Sheen:     spec.Sheen,
-				SheenAt:   now,
 				CreatedAt: now,
 				Duration:  timeout,
 				ShowClose: showClose,
@@ -239,7 +229,6 @@ func studioToasts(c *ui.Context) {
 			data = toastRenderData{
 				Kind:      toastKindStatus,
 				Phase:     1,
-				Sheen:     true,
 				Duration:  statusToastDuration(toast.Title),
 				ShowClose: toast.Action != "",
 			}

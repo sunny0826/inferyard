@@ -32,28 +32,7 @@ func studioSquareIconButton(
 		b.Label(label)
 		studioTooltip(c, b, label)
 	}
-	var faceBg, faceBorder ui.Color
-	resolved := false
-	b.Draw(func(p *ui.Painter, r ui.Rect) {
-		if !resolved {
-			resolved = true
-			if b.Valid() && !b.IsDisabled() {
-				switch {
-				case b.Pressed():
-					faceBg, faceBorder = pressedBg, pressedBorder
-				case b.Hovered():
-					faceBg, faceBorder = hoverBg, hoverBorder
-				}
-			}
-		}
-		if faceBg.A > 0 {
-			p.Fill(r, faceBg, rad)
-		}
-		if faceBorder.A > 0 {
-			inset := ui.Rect{X: r.X + 0.5, Y: r.Y + 0.5, W: max(0, r.W-1), H: max(0, r.H-1)}
-			p.Stroke(inset, faceBorder, max(0, rad-0.5), 1)
-		}
-	})
+	applyDeferredButtonFace(b, rad, hoverBg, pressedBg, hoverBorder, pressedBorder)
 	b.Children(func() {
 		components.Icon(c, icon).Size(15, 15).TextColor(fg).Role(ui.RoleNone)
 	})
@@ -136,28 +115,7 @@ func refreshIconButton(c *ui.Context, label string, active bool) ui.Element {
 		Background(t.Color.Surface).
 		TextColor(t.Color.FgPrimary).
 		Label(label)
-	var faceBg, faceBorder ui.Color
-	resolved := false
-	b.Draw(func(p *ui.Painter, r ui.Rect) {
-		if !resolved {
-			resolved = true
-			if b.Valid() && !b.IsDisabled() {
-				switch {
-				case b.Pressed():
-					faceBg, faceBorder = t.Color.SurfacePressed, t.Color.BorderStrong
-				case b.Hovered():
-					faceBg, faceBorder = t.Color.SurfaceHover, t.Color.BorderStrong
-				}
-			}
-		}
-		if faceBg.A > 0 {
-			p.Fill(r, faceBg, rad)
-		}
-		if faceBorder.A > 0 {
-			inset := ui.Rect{X: r.X + 0.5, Y: r.Y + 0.5, W: max(0, r.W-1), H: max(0, r.H-1)}
-			p.Stroke(inset, faceBorder, max(0, rad-0.5), 1)
-		}
-	})
+	applyDeferredButtonFace(b, rad, t.Color.SurfaceHover, t.Color.SurfacePressed, t.Color.BorderStrong, t.Color.BorderStrong)
 	state := ui.Local(b, "refresh-icon-spin", func() spinIconState { return spinIconState{} })
 	now := c.Now()
 	if active {
