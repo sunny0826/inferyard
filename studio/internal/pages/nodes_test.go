@@ -159,6 +159,13 @@ func TestReportCompareErrorReopensPickerAndWorkspaceResetsRefs(t *testing.T) {
 	if s.nodes.compareLeftRef != "" || s.nodes.compareRightRef != "" || s.nodes.compareErr != nil || s.nodes.compareOpen {
 		t.Fatalf("resetWorkspace left stale compare state: %+v", s.nodes)
 	}
+	if got := s.reportSummaries(); len(got) != 0 {
+		t.Fatalf("resetWorkspace left stale fallback reports: %+v", got)
+	}
+	s.openReportComparePicker()
+	if s.nodes.comparePickerOpen {
+		t.Fatal("compare picker opened immediately after resetWorkspace before new reports loaded")
+	}
 	s.reports = []core.ReportSummary{{ReportId: "r-c"}, {ReportId: "r-d"}}
 	s.openReportComparePicker()
 	if s.nodes.compareLeftRef != "r-c" || s.nodes.compareRightRef != "r-d" {
