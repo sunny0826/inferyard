@@ -44,7 +44,7 @@ func wizardArgs(command string) ([]string, map[string][]string, *ApiError) {
 	}
 	allowed := map[string]string{
 		"init": "--out", "model acquire": "--source --out --token-env --timeout-seconds", "engine acquire": "--source --out --timeout-seconds",
-		"device-check": "--models-root --out --json", "config create": "--workspace --bundle --engine --runtime-receipt --preflight --results --out --port --model-source --model-repo --model-revision",
+		"device-check": "--models-root --out --json", "config create": "--workspace --bundle --engine --runtime-receipt --preflight --results --out --port --model-source --model-repo --model-revision --reasoning-mode",
 		"config bind": "--candidate --pid --endpoint --out", "run": "--config", "resume": "--from-run --endpoint-url --server-pid", "report": "--runs --out",
 	}
 	flags, ok := allowed[key]
@@ -144,6 +144,9 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 			if res := s.resultsRoot(s.userSettings()); res != nil {
 				args = resourceArg(args, "--results", *res)
 			}
+		}
+		if value(flags, "--reasoning-mode") == "" && s.ReasoningMode() == ReasoningModeOn {
+			args = resourceArg(args, "--reasoning-mode", ReasoningModeOn)
 		}
 	}
 

@@ -985,6 +985,13 @@
                 "medium",
                 "high"
               ]
+            },
+            "reasoning_mode": {
+              "type": "string",
+              "enum": [
+                "off",
+                "on"
+              ]
             }
           },
           "required": [

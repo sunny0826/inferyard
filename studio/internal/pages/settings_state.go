@@ -65,6 +65,12 @@ type settingsViewState struct {
 	reasoningWanted                       string
 	reasoningWantedSeq                    uint64
 	reasoningWorkerRunning                bool
+	reasoningMode                         string
+	reasoningModeSaving                   bool
+	reasoningModeMu                       sync.Mutex
+	reasoningModeWanted                   string
+	reasoningModeWantedSeq                uint64
+	reasoningModeWorkerRunning            bool
 	minimizeToTray, appliedMinimizeToTray bool
 	trayUnavailable                       bool
 	minimizeToTraySaving                  bool

@@ -197,6 +197,39 @@ func TestReasoningEffortSettingsPersistenceAndBoundPaths(t *testing.T) {
 	if _, apiErr := s.UpdateSettings(map[string]json.RawMessage{"reasoning_effort": json.RawMessage(`"ultra"`)}); apiErr == nil || apiErr.Code != "invalid_request" {
 		t.Fatalf("expected invalid_request for unsupported reasoning_effort, got %+v", apiErr)
 	}
+
+	if got := s.ReasoningMode(); got != ReasoningModeOff {
+		t.Fatalf("default ReasoningMode = %q, want %q", got, ReasoningModeOff)
+	}
+	modeResp, apiErr := s.UpdateSettings(map[string]json.RawMessage{"reasoning_mode": json.RawMessage(`"on"`)})
+	if apiErr != nil {
+		t.Fatalf("UpdateSettings(reasoning_mode=on) failed: %+v", apiErr)
+	}
+	if modeResp.Effective.ReasoningMode != ReasoningModeOn || s.ReasoningMode() != ReasoningModeOn {
+		t.Fatalf("expected effective reasoning_mode=on, got %+v", modeResp.Effective)
+	}
+	if _, apiErr := s.UpdateSettings(map[string]json.RawMessage{"reasoning_mode": json.RawMessage(`"auto"`)}); apiErr == nil || apiErr.Code != "invalid_request" {
+		t.Fatalf("expected invalid_request for unsupported reasoning_mode, got %+v", apiErr)
+	}
+
+	runDir := filepath.Join(t.TempDir(), "run-1")
+	if err := os.MkdirAll(runDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	inputs := `{"documents":{"config":{"payload":{"generation":{"reasoning_mode":"on"}}}}}`
+	if err := os.WriteFile(filepath.Join(runDir, "inputs.json"), []byte(inputs), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if gotEffort, gotMode := readFrozenReasoning(runDir); gotEffort != "" || gotMode != ReasoningModeOn {
+		t.Fatalf("readFrozenReasoning(inputs.json mode=on) = (%q, %q), want (\"\", %q)", gotEffort, gotMode, ReasoningModeOn)
+	}
+	inputsEffort := `{"documents":{"config":{"payload":{"generation":{"reasoning_effort":"high"}}}}}`
+	if err := os.WriteFile(filepath.Join(runDir, "inputs.json"), []byte(inputsEffort), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if gotEffort, gotMode := readFrozenReasoning(runDir); gotEffort != ReasoningEffortHigh || gotMode != "" {
+		t.Fatalf("readFrozenReasoning(inputs.json effort=high) = (%q, %q), want (%q, \"\")", gotEffort, gotMode, ReasoningEffortHigh)
+	}
 }
 
 func TestFinishEngineTreeCleansLateSameGroupShutdownHelperAfterRootExits(t *testing.T) {

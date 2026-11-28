@@ -69,6 +69,10 @@ def build_request(
         if port is not None and (type(port) is not int or not 1 <= port <= 65535):
             raise ArgumentError("invalid port")
     if args.command == "config create":
+        if values.get("reasoning_effort") is not None and values.get("reasoning_mode") is not None:
+            raise ArgumentError("--reasoning-effort and --reasoning-mode cannot be used together")
+        if values.get("benchmark_profile") == "context-speed" and values.get("reasoning_mode") == "on":
+            raise ArgumentError("context-speed profile requires reasoning off")
         local = values.get("installation") is not None
         if local:
             if values.get("model_path") is None or values.get("output_root") is None:

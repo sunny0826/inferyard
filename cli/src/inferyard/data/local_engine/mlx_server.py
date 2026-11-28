@@ -30,16 +30,28 @@ GenerationQueue = legacy.GenerationQueue
 def validate_request(body, model):
     if type(body) is not dict or type(body.get("stream")) is not bool:
         raise ValueError("invalid_request")
-    stream = body["stream"]
+    enable_thinking = None
+    cleaned = body
+    if "chat_template_kwargs" in body:
+        kwargs = body["chat_template_kwargs"]
+        if (
+            type(kwargs) is not dict
+            or set(kwargs) != {"enable_thinking"}
+            or type(kwargs["enable_thinking"]) is not bool
+        ):
+            raise ValueError("invalid_request")
+        enable_thinking = kwargs["enable_thinking"]
+        cleaned = {k: v for k, v in body.items() if k != "chat_template_kwargs"}
+    stream = cleaned["stream"]
     if stream:
-        prompt, tokens = legacy.validate_request(body, model)
+        prompt, tokens = legacy.validate_request(cleaned, model)
     else:
-        if "stream_options" in body:
+        if "stream_options" in cleaned:
             raise ValueError("invalid_request")
         prompt, tokens = legacy.validate_request(
-            {**body, "stream": True, "stream_options": {"include_usage": True}}, model
+            {**cleaned, "stream": True, "stream_options": {"include_usage": True}}, model
         )
-    return prompt, tokens, stream
+    return prompt, tokens, stream, enable_thinking
 
 
 def validate_context(value):
@@ -51,6 +63,24 @@ def validate_context(value):
 class MLXBackend(legacy.MLXBackend):
     def __init__(self, model_path, max_model_len):
         super().__init__(model_path, max_model_len=validate_context(max_model_len))
+
+    def prepare_prompt(self, prompt, max_tokens, *, enable_thinking=None):
+        if type(prompt) is list or enable_thinking is None:
+            return super().prepare_prompt(prompt, max_tokens)
+        try:
+            tokens = self.tokenizer.apply_chat_template(
+                [{"role": "user", "content": prompt}],
+                tokenize=True,
+                add_generation_prompt=True,
+                enable_thinking=enable_thinking,
+            )
+        except TypeError:
+            return super().prepare_prompt(prompt, max_tokens)
+        if type(tokens) is not list or not 1 <= len(tokens) <= 32768:
+            raise ValueError("prompt_tokens_out_of_bounds")
+        if self.max_model_len is not None and len(tokens) + max_tokens > self.max_model_len:
+            raise ValueError("context_length_exceeded")
+        return tokens
 
 
 class FormalServer(legacy.DiagnosticServer):
@@ -109,8 +139,8 @@ class Handler(legacy.Handler):
         if self.path != "/v1/chat/completions":
             return self._reply(404, {"error": "unknown_endpoint"})
         try:
-            prompt, tokens, stream = self._body()
-            job = self.server.generations.submit(prompt, tokens)
+            prompt, tokens, stream, enable_thinking = self._body()
+            job = self.server.generations.submit(prompt, tokens, enable_thinking=enable_thinking)
         except (ValueError, UnicodeError, TimeoutError) as exc:
             reason = (
                 "context_length_exceeded"

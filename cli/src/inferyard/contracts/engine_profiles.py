@@ -26,6 +26,7 @@ POLYSTRATA_SUPPORTED_GGUF_ARCHS = (
     "clover_moe",
 )
 REASONING_EFFORT_LEVELS = ("none", "low", "medium", "high")
+REASONING_MODES = ("off", "on")
 TUNING_KEYS = (
     "flash_attention",
     "batch_size",

@@ -41,6 +41,7 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 	initialFontSize := service.FontSize()
 	initialLanguage := service.Language()
 	initialReasoning := service.ReasoningEffort()
+	initialReasoningMode := service.ReasoningMode()
 	initialDownloadSource := service.DownloadSource()
 	initialMinimizeToTray := service.MinimizeToTray()
 	initialKeepServices := service.EffectiveKeepServicesOnQuit()
@@ -64,13 +65,14 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 			languageMode:          initialLanguage,
 			appliedLanguageMode:   initialLanguage,
 			reasoningEffort:       initialReasoning,
+			reasoningMode:         initialReasoningMode,
 			minimizeToTray:        initialMinimizeToTray,
 			appliedMinimizeToTray: false,
 		},
 		keepServicesOnQuit: initialKeepServices,
 		settings: core.SettingsResponse{
-			Settings:  core.UserSettings{DownloadSource: initialDownloadSource, Theme: initialTheme, Accent: initialAccent, FontSize: initialFontSize, Language: initialLanguage, ReasoningEffort: initialReasoning, MinimizeToTray: initialMinimizeToTray},
-			Effective: core.EffectiveSettings{DownloadSource: initialDownloadSource, Theme: initialTheme, Accent: initialAccent, FontSize: initialFontSize, Language: initialLanguage, ReasoningEffort: initialReasoning, MinimizeToTray: initialMinimizeToTray, KeepServicesOnQuit: initialKeepServices},
+			Settings:  core.UserSettings{DownloadSource: initialDownloadSource, Theme: initialTheme, Accent: initialAccent, FontSize: initialFontSize, Language: initialLanguage, ReasoningEffort: initialReasoning, ReasoningMode: initialReasoningMode, MinimizeToTray: initialMinimizeToTray},
+			Effective: core.EffectiveSettings{DownloadSource: initialDownloadSource, Theme: initialTheme, Accent: initialAccent, FontSize: initialFontSize, Language: initialLanguage, ReasoningEffort: initialReasoning, ReasoningMode: initialReasoningMode, MinimizeToTray: initialMinimizeToTray, KeepServicesOnQuit: initialKeepServices},
 		},
 	}
 	shell := sidebar.NewShell(s.shellOptions(title))

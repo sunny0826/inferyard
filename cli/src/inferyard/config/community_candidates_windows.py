@@ -23,6 +23,7 @@ def build_config(
     revision=None,
     port=48857,
     max_tokens=512,
+    reasoning_mode="off",
 ):
     mode = selected["mode"]
     config = deepcopy(CONFIG_DEFAULTS)
@@ -57,7 +58,7 @@ def build_config(
         max_tokens=max_tokens,
         seed=42,
         seed_support="supported",
-        reasoning_mode="off",
+        reasoning_mode=reasoning_mode,
         repeat_penalty=1.0,
         stop=[],
     )
@@ -113,7 +114,7 @@ def build_config(
         "--port",
         str(port),
         "--reasoning",
-        "off",
+        reasoning_mode,
         "--jinja",
         "--log-verbosity",
         "4",

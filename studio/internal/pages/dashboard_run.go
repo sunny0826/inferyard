@@ -254,6 +254,9 @@ func (w *viewState) runViewWithBar(c *ui.Context, embedBar bool) {
 				if w.engine != "" {
 					w.enginePill(c, w.engine)
 				}
+				if thinkingLabel, thinkingKind, ok := taskThinkingBadge(c, *task); ok {
+					inlineBadge(c, thinkingLabel, thinkingKind, badgeOptions{Size: sizeSM, Style: badgeSoft})
+				}
 			})
 			studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
 				cancelConfirmed = w.cancelRunGate(c, id, task.State)

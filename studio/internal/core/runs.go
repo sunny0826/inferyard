@@ -58,7 +58,8 @@ func (s *Service) StartRuns(req StartRunsRequest) ([]RunTask, *ApiError) {
 		}
 		seen[config] = true
 		bundles[bundle] = true
-		entries = append(entries, &runEntry{Task: RunTask{TaskId: uuid(), Kind: "run", State: "starting", Queued: true, ConfigPath: &config, Bundle: &bundle, CreatedAt: now()}, root: root, binary: *p.Path, args: []string{"run", "--config", config}, Resources: []ResourceSample{}, initialExclusivity: normalizeInitialExclusivity(req.InitialExclusivity)})
+		effort, mode := readConfigReasoning(config)
+		entries = append(entries, &runEntry{Task: RunTask{TaskId: uuid(), Kind: "run", State: "starting", Queued: true, ConfigPath: &config, Bundle: &bundle, ReasoningEffort: effort, ReasoningMode: mode, CreatedAt: now()}, root: root, binary: *p.Path, args: []string{"run", "--config", config}, Resources: []ResourceSample{}, initialExclusivity: normalizeInitialExclusivity(req.InitialExclusivity)})
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -135,7 +136,8 @@ func (s *Service) Resume(req ResumeRunRequest) (RunTask, *ApiError) {
 		probeEndpoint = *req.EndpointUrl
 		probePID = int(*req.ServerPid)
 	}
-	t := &runEntry{Task: RunTask{TaskId: uuid(), Kind: "resume", State: "starting", Queued: true, ResumeFrom: &path, Bundle: found.Bundle, CreatedAt: now()}, root: filepath.Dir(path), binary: *p.Path, args: args, Resources: []ResourceSample{}, probeEndpoint: probeEndpoint, probePID: probePID}
+	effort, mode := readFrozenReasoning(path)
+	t := &runEntry{Task: RunTask{TaskId: uuid(), Kind: "resume", State: "starting", Queued: true, ResumeFrom: &path, Bundle: found.Bundle, ReasoningEffort: effort, ReasoningMode: mode, CreatedAt: now()}, root: filepath.Dir(path), binary: *p.Path, args: args, Resources: []ResourceSample{}, probeEndpoint: probeEndpoint, probePID: probePID}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if e := s.admitRunLocked(); e != nil {

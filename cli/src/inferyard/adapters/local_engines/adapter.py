@@ -60,6 +60,10 @@ class LocalEngineAdapter(LabAdapter):
         }
         if config["engine"]["family"] == "polystrata":
             body["reasoning_effort"] = config["generation"].get("reasoning_effort", "none")
+        elif "reasoning_mode" in config["generation"]:
+            body["chat_template_kwargs"] = {
+                "enable_thinking": config["generation"]["reasoning_mode"] == "on"
+            }
         return body
 
     async def _bound(self, deadline):

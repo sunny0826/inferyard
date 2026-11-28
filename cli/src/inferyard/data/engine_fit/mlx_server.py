@@ -172,7 +172,7 @@ class GenerationQueue:
         with self.lock:
             return self.running, self.waiting, int(self.poisoned or self.closing)
 
-    def submit(self, prompt, max_tokens):
+    def submit(self, prompt, max_tokens, *, enable_thinking=None):
         with self.lock:
             if self.poisoned or self.closing:
                 raise RuntimeError("service_poisoned")
@@ -186,7 +186,12 @@ class GenerationQueue:
                     with self.lock:
                         if self.poisoned or self.closing:
                             raise RuntimeError("service_poisoned")
-                    prompt = self.backend.prepare_prompt(prompt, max_tokens)
+                    if enable_thinking is not None:
+                        prompt = self.backend.prepare_prompt(
+                            prompt, max_tokens, enable_thinking=enable_thinking
+                        )
+                    else:
+                        prompt = self.backend.prepare_prompt(prompt, max_tokens)
             job = Job(prompt, max_tokens)
             with self.lock:
                 if self.poisoned or self.closing:

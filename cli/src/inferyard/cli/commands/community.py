@@ -66,6 +66,11 @@ def add_commands(commands):
         choices=("none", "low", "medium", "high"),
         help="polystrata only: freeze generation.reasoning_effort",
     )
+    create.add_argument(
+        "--reasoning-mode",
+        choices=("off", "on"),
+        help="non-polystrata engines: freeze generation.reasoning_mode (off or on)",
+    )
     create.add_argument("--service-pid", dest="server_pid", type=int)
     create.add_argument("--out", type=Path, required=True)
     create.add_argument("--port", type=int, default=48857)

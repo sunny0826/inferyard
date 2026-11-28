@@ -26,6 +26,7 @@ def build_config(
     revision=None,
     port=48857,
     max_tokens=512,
+    reasoning_mode="off",
 ):
     port = 48857 if port is None else port
     if type(port) is not int or not 1 <= port <= 65535:
@@ -63,7 +64,7 @@ def build_config(
             "max_tokens": max_tokens,
             "seed": 42,
             "seed_support": "supported",
-            "reasoning_mode": "off",
+            "reasoning_mode": reasoning_mode,
             "temperature": 0.7,
             "top_p": 0.8,
             "top_k": 20,
@@ -110,10 +111,10 @@ def build_config(
         "--port",
         str(port),
         "--reasoning",
-        "off",
+        reasoning_mode,
         "--jinja",
         "--chat-template-kwargs",
-        '{"enable_thinking":false}',
+        '{"enable_thinking":true}' if reasoning_mode == "on" else '{"enable_thinking":false}',
         "--no-cache-prompt",
         "--no-cache-idle-slots",
         "--cache-ram",
