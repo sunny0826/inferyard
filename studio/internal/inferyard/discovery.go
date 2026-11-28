@@ -136,7 +136,7 @@ func ParseServiceDiscovery(raw []byte, exitCode int) (ServiceDiscovery, error) {
 }
 
 var discoveryEngineFamilies = []string{
-	"llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio", "polystrata",
+	"llama-cpp", "mlx-lm", "vllm", "lmstudio", "polystrata",
 }
 
 func discoveryEndpointFields(raw []byte) bool {

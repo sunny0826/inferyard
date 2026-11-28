@@ -37,7 +37,7 @@ func (s *Service) extractInstalledVersion(ctx context.Context, entry registryEnt
 		}
 	}
 	switch familyID {
-	case "mlx-lm", "vllm", "sglang":
+	case "mlx-lm", "vllm":
 		if ver := readVenvPackageVersion(entry, familyID); ver != "" {
 			return ver
 		}
@@ -151,8 +151,6 @@ func venvDistributionNames(familyID string) []string {
 		return []string{"mlx_lm", "mlx-lm"}
 	case "vllm":
 		return []string{"vllm"}
-	case "sglang":
-		return []string{"sglang"}
 	default:
 		return nil
 	}
@@ -164,8 +162,6 @@ func venvPackageInstallName(familyID string) string {
 		return "mlx-lm"
 	case "vllm":
 		return "vllm"
-	case "sglang":
-		return "sglang"
 	default:
 		return ""
 	}

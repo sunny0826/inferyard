@@ -33,7 +33,6 @@ var localEngineFamilyOptions = []components.NativeSelectOption[string]{
 	{Value: "llama-cpp", Label: "llama.cpp"},
 	{Value: "mlx-lm", Label: "mlx-lm"},
 	{Value: "vllm", Label: "vLLM"},
-	{Value: "sglang", Label: "SGLang"},
 	{Value: "lmstudio", Label: "LM Studio"},
 }
 
@@ -136,7 +135,7 @@ func wizardExecutableLabels(family string) (string, string) {
 	switch family {
 	case "polystrata":
 		return l10n.TR("engine.wizard.exec.polystrata_label"), l10n.TR("engine.wizard.exec.polystrata_desc")
-	case "mlx-lm", "vllm", "sglang":
+	case "mlx-lm", "vllm":
 		return l10n.TR("engine.wizard.exec.venv_label"), l10n.TR("engine.wizard.exec.venv_desc")
 	case "lmstudio":
 		return l10n.TR("engine.wizard.exec.lmstudio_label"), ""

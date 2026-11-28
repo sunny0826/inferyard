@@ -93,20 +93,6 @@ def startup(
             "--gpu-memory-utilization",
             "0.20",
         ]
-    elif family == "sglang":
-        prefix = ["-m", "sglang.launch_server"]
-        args = [
-            "--model-path",
-            str(model),
-            "--context-length",
-            str(context),
-            *([] if standalone else ["--max-running-requests", "1"]),
-            "--enable-metrics",
-            "--disable-cuda-graph",
-            "--mem-fraction-static",
-            "0.15",
-            "--sleep-on-idle",
-        ]
     else:
         raise PreparationError("local_engine_family_unsupported")
     return [*prefix, *args, "--served-model-name", served_model, *network], cwd

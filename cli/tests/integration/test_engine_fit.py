@@ -41,11 +41,7 @@ def fit_service(tmp_path, monkeypatch):
         def do_GET(self):
             if self.path == "/metrics":
                 engine = state["engine"]
-                names = (
-                    ("num_requests_running", "num_requests_waiting")
-                    if engine == "vllm"
-                    else ("num_running_reqs", "num_queue_reqs")
-                )
+                names = ("num_requests_running", "num_requests_waiting")
                 raw = "\n".join(f'{engine}:{n}{{model_name="fixture"}} 0' for n in names) + "\n"
                 self.send_response(200)
                 self.end_headers()

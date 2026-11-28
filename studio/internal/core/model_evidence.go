@@ -60,8 +60,6 @@ func normalizeEvidenceEngine(raw string) (key, display string) {
 		return "mlx-lm", "mlx-lm"
 	case lower == "vllm" || strings.Contains(lower, "vllm"):
 		return "vllm", "vLLM"
-	case lower == "sglang" || strings.Contains(lower, "sglang"):
-		return "sglang", "SGLang"
 	case lower == "lmstudio" || lower == "lm studio" || lower == "lm-studio" || strings.Contains(lower, "lmstudio") || strings.Contains(lower, "lm-studio") || strings.Contains(lower, "lm studio"):
 		return "lmstudio", "LM Studio"
 	case lower == "ollama" || strings.Contains(lower, "ollama"):
@@ -83,8 +81,6 @@ func engineFromReportProfile(eng ReportEngine) (key, display string) {
 			return "mlx-lm", "mlx-lm"
 		case strings.Contains(bin, "vllm"):
 			return "vllm", "vLLM"
-		case strings.Contains(bin, "sglang"):
-			return "sglang", "SGLang"
 		case strings.Contains(bin, "ollama"):
 			return "ollama", "Ollama"
 		case strings.Contains(bin, "lmstudio") || strings.Contains(bin, "lm-studio"):

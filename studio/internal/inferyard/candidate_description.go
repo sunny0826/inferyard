@@ -90,7 +90,7 @@ var candidateWindowsPath = regexp.MustCompile(`^(?:[A-Za-z]:[\\/]|\\\\[^\\/]+[\\
 
 func candidateHash(value string) bool { return candidateDigest.MatchString(value) }
 func localFamily(value string) bool {
-	return slices.Contains([]string{"llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio", "polystrata"}, value)
+	return slices.Contains([]string{"llama-cpp", "mlx-lm", "vllm", "lmstudio", "polystrata"}, value)
 }
 func candidateText(value string) bool {
 	return strings.TrimSpace(value) != "" && !strings.ContainsAny(value, "\x00\r\n")

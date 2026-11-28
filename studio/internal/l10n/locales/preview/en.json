@@ -76,7 +76,7 @@
   "preview.fixture.cat_math": "Arithmetic",
   "preview.fixture.cat_qa": "Knowledge QA",
   "preview.fixture.category": "Simulated Category",
-  "preview.local.fixture_required": "For simulated registration, use a JSON path whose filename contains polystrata, llama-cpp, mlx-lm, vllm, sglang, or lmstudio.",
+  "preview.local.fixture_required": "For simulated registration, use a JSON path whose filename contains polystrata, llama-cpp, mlx-lm, vllm, or lmstudio.",
   "preview.mode_caption": "Simulated data mode",
   "preview.notice.device_refreshed": "Simulated device info updated.",
   "preview.notice.download_cancelled": "Simulated download cancelled.",

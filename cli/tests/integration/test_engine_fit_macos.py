@@ -64,10 +64,7 @@ def native_fit(tmp_path, monkeypatch, capsys):
         nonlocal started
         started += 1
         root = tmp_path / f"service-{started}"
-        module = {
-            "vllm": "vllm.entrypoints.openai.api_server",
-            "sglang": "sglang.launch_server",
-        }[engine]
+        module = {"vllm": "vllm.entrypoints.openai.api_server"}[engine]
         directory = root
         for part in module.split(".")[:-1]:
             directory /= part
@@ -84,7 +81,7 @@ def native_fit(tmp_path, monkeypatch, capsys):
                 "-u",
                 "-m",
                 module,
-                "--model" if engine == "vllm" else "--model-path",
+                "--model",
                 str(startup_model or model),
                 "--engine",
                 engine,

@@ -78,7 +78,6 @@ final class EnginesRealUITests: XCTestCase {
         expectText("可下载引擎", timeout: 15)
         expectText("外部应用", timeout: 15)
         expectText("LM Studio", timeout: 15)
-        expectText("SGLang", timeout: 15)
 
         wait("All staged engines finish initial verification", timeout: 90) {
             self.textExists("已核验")

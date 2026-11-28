@@ -13,7 +13,6 @@ VERSION_PATHS = {
     "llama-cpp": "/props",
     "mlx-lm": "/version",
     "vllm": "/version",
-    "sglang": "/get_server_info",
     "polystrata": "/v1/status",
 }
 _STRATA_LOADED_METRIC = re.compile(

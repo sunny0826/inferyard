@@ -5,7 +5,6 @@ from __future__ import annotations
 import errno
 import json
 import os
-import platform
 import shutil
 import tempfile
 from pathlib import Path
@@ -27,7 +26,7 @@ _STANDARD_LLAMA_PATHS = (
     Path("/opt/homebrew/bin/llama-server"),
     Path("/usr/local/bin/llama-server"),
 )
-_PYTHON_PACKAGE_FAMILIES = ("mlx-lm", "vllm", "sglang")
+_PYTHON_PACKAGE_FAMILIES = ("mlx-lm", "vllm")
 
 
 def _safe_resolve(path: Path) -> Path | None:
@@ -145,12 +144,6 @@ def _has_package_in_site(site: Path, family: str) -> bool:
             (site / "vllm" / "entrypoints" / "openai" / "api_server.py").is_file()
             or (site / "vllm" / "entrypoints" / "openai" / "api_server" / "__init__.py").is_file()
             or (site / "vllm" / "__init__.py").is_file()
-        )
-    if family == "sglang":
-        return (
-            (site / "sglang" / "launch_server.py").is_file()
-            or (site / "sglang" / "launch_server" / "__init__.py").is_file()
-            or (site / "sglang" / "__init__.py").is_file()
         )
     return False
 
@@ -508,10 +501,7 @@ def build_installation(
     if data_dir is not None and family != "polystrata":
         raise PreflightError("local_engine_data_dir_polystrata_only")
 
-    if family == "sglang" and platform.system() == "Darwin":
-        environment = {"SGLANG_USE_MLX": "1"}
-    else:
-        environment = {}
+    environment: dict[str, str] = {}
     payload: dict = {
         "schema_version": SCHEMA_VERSION,
         "definition": "local-engine-installation.v1",

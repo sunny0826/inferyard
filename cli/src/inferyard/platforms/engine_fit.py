@@ -251,10 +251,9 @@ def _startup_model(engine, arguments):
             ):
                 raise PreflightError("engine_fit_model_argument_ambiguous")
             return remaining[0]
-    module, option = {
-        "vllm": ("vllm.entrypoints.openai.api_server", "--model"),
-        "sglang": ("sglang.launch_server", "--model-path"),
-    }[engine]
+    if engine != "vllm":
+        raise PreflightError("engine_fit_invalid_service")
+    module, option = ("vllm.entrypoints.openai.api_server", "--model")
     if cursor == 0 or arguments[cursor : cursor + 2] != ["-m", module]:
         raise PreflightError("engine_fit_startup_entrypoint_unverified")
     remaining, values = arguments[cursor + 2 :], []
@@ -335,7 +334,7 @@ def bind_service(
     _linux(proc_root)
     if lms_path is not None or models_root is not None:
         raise PreflightError("engine_fit_lms_options_wrong_engine")
-    if engine not in ("vllm", "sglang", "llama-cpp") or type(pid) is not int or pid < 1:
+    if engine not in ("vllm", "llama-cpp") or type(pid) is not int or pid < 1:
         raise PreflightError("engine_fit_invalid_service")
     from inferyard.platforms.engine_fit_entrypoints import (
         startup_binding,

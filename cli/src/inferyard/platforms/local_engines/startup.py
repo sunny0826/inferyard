@@ -32,10 +32,7 @@ def normalize_legacy_startup_args(family: str, args: list[str]) -> list[str]:
     if family == "mlx-lm":
         entry = str(files("inferyard").joinpath("data/local_engine/mlx_server.py"))
         return [entry, *tail]
-    module = (
-        "vllm.entrypoints.openai.api_server" if family == "vllm" else "sglang.launch_server"
-    )
-    return ["-m", module, *tail]
+    return ["-m", "vllm.entrypoints.openai.api_server", *tail]
 
 
 def check_environment(actual, expected, *, allowed_extras=None):
@@ -75,7 +72,6 @@ def validate_parameters(config, arguments):
         "llama-cpp": {"-c", "--ctx-size"},
         "mlx-lm": {"--max-model-len"},
         "vllm": {"--max-model-len"},
-        "sglang": {"--context-length"},
     }
     observed_ctx = _optional_value(arguments, context_flags[family])
     if observed_ctx is not None and observed_ctx != str(config["conditions"]["context_size"]):
@@ -130,13 +126,11 @@ def _strip_python_entrypoint(family: str, args: list[str], *, bootstrap_path=Non
         if rest[0].endswith(".py"):
             return rest[1:]
         raise PreflightError("local_engine_entrypoint_mismatch")
-    expected_module = (
-        "vllm.entrypoints.openai.api_server" if family == "vllm" else "sglang.launch_server"
-    )
-    if rest[:2] == ["-m", expected_module]:
-        return rest[2:]
-    if family == "vllm" and len(rest) >= 2 and Path(rest[0]).name == "vllm" and rest[1] == "serve":
-        return rest[2:]
+    if family == "vllm":
+        if rest[:2] == ["-m", "vllm.entrypoints.openai.api_server"]:
+            return rest[2:]
+        if len(rest) >= 2 and Path(rest[0]).name == "vllm" and rest[1] == "serve":
+            return rest[2:]
     raise PreflightError("local_engine_entrypoint_mismatch")
 
 
@@ -177,8 +171,7 @@ def validate_arguments(config, *, bootstrap_path=None):
             reject_credential_arguments(tail[1:])
             model = tail[0]
         else:
-            option = "--model-path" if family == "sglang" else "--model"
-            model = _options(tail, model_options={option}, reject_credentials=True)
+            model = _options(tail, model_options={"--model"}, reject_credentials=True)
     elif family == "llama-cpp":
         model = _options(args, model_options={"-m", "--model"}, reject_credentials=True)
     else:

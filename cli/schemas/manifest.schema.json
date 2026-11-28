@@ -1379,7 +1379,6 @@
                 "llama-cpp",
                 "mlx-lm",
                 "vllm",
-                "sglang",
                 "lmstudio",
                 "polystrata"
               ]

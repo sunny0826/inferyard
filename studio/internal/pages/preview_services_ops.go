@@ -27,9 +27,6 @@ func (p *previewSession) previewEngineMetadata(state string, pid int64, local bo
 		case "vllm":
 			executable = "vllm"
 			modelKind = "directory"
-		case "sglang":
-			executable = "sglang"
-			modelKind = "directory"
 		case "lmstudio":
 			executable = "lms"
 		}
@@ -117,7 +114,7 @@ func (p *previewSession) startPreviewStandalone(op previewStandaloneStart) {
 		adapter = "local_openai_v1"
 	}
 	executable := "llama-server"
-	if family == "polystrata" || family == "vllm" || family == "sglang" {
+	if family == "polystrata" || family == "vllm" {
 		executable = "python"
 	}
 	serviceID := core.ServiceIDFor(op.model, op.engine)

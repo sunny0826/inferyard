@@ -48,7 +48,6 @@
         "llama-cpp",
         "mlx-lm",
         "vllm",
-        "sglang",
         "polystrata"
       ]
     },

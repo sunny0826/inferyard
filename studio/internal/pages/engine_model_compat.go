@@ -20,7 +20,7 @@ func compatibleStandaloneEngine(model core.ModelAsset, eng core.EngineAsset) boo
 			return false
 		}
 		return model.Architecture == "" || slices.Contains(polystrataSupportedGGUFArchs, model.Architecture)
-	case "mlx-lm", "vllm", "sglang":
+	case "mlx-lm", "vllm":
 		return model.Format == "directory"
 	default:
 		return false

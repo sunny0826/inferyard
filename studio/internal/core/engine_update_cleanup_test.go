@@ -34,9 +34,9 @@ func TestLocalInstallationFriendlyDisplayNames(t *testing.T) {
 	extVllmInst := filepath.Join(workspace, "external", "custom-vllm", "installation.json")
 	mustWriteFile(t, extVllmInst, []byte(`{"schema_version":3,"definition":"local-engine-installation.v1","family":"vllm","executable":"python","environment":{}}`), 0o600)
 
-	// 3) Parent directory matching family name -> "SGLang".
-	sameNameInst := filepath.Join(workspace, "external", "sglang", "installation.json")
-	mustWriteFile(t, sameNameInst, []byte(`{"schema_version":3,"definition":"local-engine-installation.v1","family":"sglang","executable":"python","environment":{}}`), 0o600)
+	// 3) Parent directory matching family name -> "vLLM".
+	sameNameInst := filepath.Join(workspace, "external", "vllm", "installation.json")
+	mustWriteFile(t, sameNameInst, []byte(`{"schema_version":3,"definition":"local-engine-installation.v1","family":"vllm","executable":"python","environment":{}}`), 0o600)
 
 	s.settings.EngineInstallations = []string{managedInst, extVllmInst, sameNameInst}
 
@@ -53,8 +53,8 @@ func TestLocalInstallationFriendlyDisplayNames(t *testing.T) {
 	if got := namesByPath[extVllmInst]; got != "vLLM · custom-vllm" {
 		t.Fatalf("external vllm name = %q, want %q", got, "vLLM · custom-vllm")
 	}
-	if got := namesByPath[sameNameInst]; got != "SGLang" {
-		t.Fatalf("same-dir sglang name = %q, want %q", got, "SGLang")
+	if got := namesByPath[sameNameInst]; got != "vLLM" {
+		t.Fatalf("same-dir vllm name = %q, want %q", got, "vLLM")
 	}
 }
 

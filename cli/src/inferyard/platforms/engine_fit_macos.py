@@ -62,7 +62,7 @@ def bind_service(
     )
 
     if (
-        engine not in ("vllm", "sglang", "llama-cpp", "mlx-lm", "lmstudio")
+        engine not in ("vllm", "llama-cpp", "mlx-lm", "lmstudio")
         or type(pid) is not int
         or pid < 1
     ):

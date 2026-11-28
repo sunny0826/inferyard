@@ -142,7 +142,7 @@ func (m *engineUpdateManager) fetchUpstreamRelease(ctx context.Context, client *
 			return m.fetchDarwinVLLMRelease(ctx, client, target.key)
 		}
 		return m.fetchPyPIRelease(ctx, client, target.key, target.family, venvPackageInstallName(target.family))
-	case "mlx-lm", "sglang":
+	case "mlx-lm":
 		return m.fetchPyPIRelease(ctx, client, target.key, target.family, venvPackageInstallName(target.family))
 	default:
 		return remoteEngineRelease{}, fmt.Errorf("unsupported engine family: %s", target.family)

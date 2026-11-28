@@ -12,4 +12,4 @@ mise exec -- uv run --frozen python scripts/export_community.py      # optional 
 ## Corpus & external patches
 
 - `build_context_speed_bundle.py --out-dir NEW_DIR`: generate deterministic `zh-context-speed` draft materials.
-- `patches/*.patch`: zero-context patches for external macOS SGLang/vLLM/OpenCV virtual environments (`git apply --unidiff-zero --check`).
+- `patches/*.patch`: zero-context patches for external macOS vLLM/OpenCV virtual environments (`git apply --unidiff-zero --check`).

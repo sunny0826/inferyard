@@ -48,8 +48,6 @@ func engineUpdateDisplayTitle(familyID, engineName string) string {
 		return "mlx-lm"
 	case "vllm":
 		return "vLLM"
-	case "sglang":
-		return "SGLang"
 	default:
 		if strings.TrimSpace(engineName) != "" {
 			return engineName
