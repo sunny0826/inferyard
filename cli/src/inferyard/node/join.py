@@ -11,6 +11,9 @@ from pathlib import Path
 
 from inferyard import __version__
 from inferyard.contracts.node_protocol import (
+    EVENT_HELLO,
+    EVENT_PING,
+    EVENT_PONG,
     HANDSHAKE_CONTROL_LINE,
     HANDSHAKE_PAIR_LINE,
     MAX_CONTROL_LINE_BYTES,
@@ -19,13 +22,8 @@ from inferyard.contracts.node_protocol import (
     normalize_pair_code,
 )
 from inferyard.node.autostart import AutostartManager, installation_marker
-from inferyard.node.credentials import remove_credentials, save_pairing
-from inferyard.node.tls import (
-    control_context,
-    pair_context,
-    peer_certificates,
-    verify_spki_pin,
-)
+from inferyard.node.credentials import load_config, remove_credentials, save_pairing
+from inferyard.node.tls import control_context, pair_context, peer_certificates, pinned_ca_pem
 
 
 class PairingError(RuntimeError):
@@ -90,8 +88,7 @@ def normalized_os_arch() -> tuple[str, str, str]:
     return os_name, arch, f"{os_name}/{arch}"
 
 
-def pair_hello(code: str, *, autostart: bool, source_hint: str | None) -> dict:
-    snapshot = device_snapshot()
+def _device_fields(snapshot: dict) -> dict:
     hardware = {
         key: snapshot.get(key)
         for key in ("cpu_model", "logical_cpus", "memory_total_bytes", "gpu")
@@ -99,7 +96,6 @@ def pair_hello(code: str, *, autostart: bool, source_hint: str | None) -> dict:
     }
     os_name, arch, plat = normalized_os_arch()
     return {
-        "code": normalize_pair_code(code),
         "hostname": socket.gethostname(),
         "os": os_name,
         "arch": arch,
@@ -107,8 +103,23 @@ def pair_hello(code: str, *, autostart: bool, source_hint: str | None) -> dict:
         "cli_version": __version__,
         "hardware_summary": json.dumps(hardware, ensure_ascii=False, separators=(",", ":")),
         "device_snapshot": snapshot,
-        "autostart_mode": "none" if not autostart else os_name,
+    }
+
+
+def pair_hello(code: str, *, autostart: bool, source_hint: str | None) -> dict:
+    return {
+        "code": normalize_pair_code(code),
+        **_device_fields(device_snapshot()),
+        "autostart_mode": "none" if not autostart else normalized_os_arch()[0],
         "source_hint": source_hint or "",
+    }
+
+
+def node_hello(config: dict, state_dir: Path) -> dict:
+    return {
+        "node_id": config["node_id"],
+        **_device_fields(device_snapshot()),
+        "autostart_installed": (state_dir / "autostart.json").exists(),
     }
 
 
@@ -137,7 +148,10 @@ def _pair_at(
         with socket.create_connection((host, port), timeout=timeout) as raw:
             raw.settimeout(timeout)
             with pair_context().wrap_socket(raw, server_hostname=host) as tls:
-                verify_spki_pin(peer_certificates(tls), ca_sha256)
+                ca_pem = pinned_ca_pem(peer_certificates(tls), ca_sha256)
+        with socket.create_connection((host, port), timeout=timeout) as raw:
+            raw.settimeout(timeout)
+            with pair_context(ca_pem).wrap_socket(raw, server_hostname=host) as tls:
                 tls.sendall(HANDSHAKE_PAIR_LINE.encode("ascii"))
                 tls.sendall(encode_ndjson_frame(hello))
                 with tls.makefile("rb") as stream:
@@ -146,7 +160,9 @@ def _pair_at(
         raise PairingError("pairing_connection_failed", str(exc)) from exc
 
 
-def verify_paired_hub(state_dir: Path, hub: str, *, timeout: float = 15) -> None:
+def verify_paired_hub(
+    state_dir: Path, hub: str, *, timeout: float = 15, config: dict | None = None
+) -> None:
     host, port = parse_hub(hub)
     try:
         with socket.create_connection((host, port), timeout=timeout) as raw:
@@ -154,6 +170,13 @@ def verify_paired_hub(state_dir: Path, hub: str, *, timeout: float = 15) -> None
             context = control_context(state_dir)
             with context.wrap_socket(raw, server_hostname=host) as tls:
                 tls.sendall(HANDSHAKE_CONTROL_LINE.encode("ascii"))
+                hello = node_hello(config or load_config(state_dir), state_dir)
+                tls.sendall(encode_ndjson_frame({"event": EVENT_HELLO, "data": hello}))
+                tls.sendall(encode_ndjson_frame({"event": EVENT_PING, "data": {}}))
+                with tls.makefile("rb") as stream:
+                    response = _receive_response(stream)
+                if response.get("event") != EVENT_PONG:
+                    raise PairingError("paired_hub_verification_failed", "missing control pong")
     except (OSError, ssl.SSLError) as exc:
         raise PairingError("paired_hub_verification_failed", str(exc)) from exc
 
@@ -194,7 +217,7 @@ def join(
         autostart_mode=hello["autostart_mode"],
     )
     try:
-        verify_paired_hub(state_dir, paired_hub or candidates[0])
+        verify_paired_hub(state_dir, paired_hub or candidates[0], config=config)
     except BaseException:
         remove_credentials(state_dir)
         raise

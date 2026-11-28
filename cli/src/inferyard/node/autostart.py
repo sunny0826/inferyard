@@ -111,6 +111,12 @@ class AutostartManager:
             command = windows_task_command(self.state_dir)
             if activate:
                 self.runner(command, check=True, capture_output=True, timeout=30)
+                self.runner(
+                    ["schtasks", "/Run", "/TN", "InferYardAgent"],
+                    check=True,
+                    capture_output=True,
+                    timeout=30,
+                )
             return {"mode": "scheduled_task", "task": "InferYardAgent", "command": command}
         if self.system != "Linux":
             raise ValueError("unsupported autostart platform")

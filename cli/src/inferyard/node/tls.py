@@ -122,20 +122,30 @@ def peer_certificates(tls_socket: ssl.SSLSocket) -> list[bytes]:
     return list(dict.fromkeys(values))
 
 
-def verify_spki_pin(certificates: list[bytes], expected: str) -> str:
+def pinned_ca_pem(certificates: list[bytes], expected: str) -> str:
     pinned = normalize_fingerprint(expected)
-    fingerprints = [spki_sha256(certificate) for certificate in certificates]
-    if not any(hmac.compare_digest(actual, pinned) for actual in fingerprints):
-        raise ssl.SSLError("pinned CA SPKI fingerprint does not match peer certificate chain")
-    return pinned
+    for certificate in certificates:
+        if hmac.compare_digest(spki_sha256(certificate), pinned):
+            return ssl.DER_cert_to_PEM_cert(certificate)
+    raise ssl.SSLError("pinned CA SPKI fingerprint does not match peer certificate chain")
 
 
-def pair_context() -> ssl.SSLContext:
+def verify_spki_pin(certificates: list[bytes], expected: str) -> str:
+    pinned_ca_pem(certificates, expected)
+    return normalize_fingerprint(expected)
+
+
+def pair_context(ca_pem: str | None = None) -> ssl.SSLContext:
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     context.minimum_version = ssl.TLSVersion.TLSv1_3
     context.maximum_version = ssl.TLSVersion.TLSv1_3
-    context.check_hostname = False
-    context.verify_mode = ssl.CERT_NONE
+    if ca_pem is None:
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+    else:
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.check_hostname = True
+        context.load_verify_locations(cadata=ca_pem)
     return context
 
 

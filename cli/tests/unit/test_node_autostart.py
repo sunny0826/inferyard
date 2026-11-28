@@ -68,3 +68,15 @@ def test_windows_task_and_acl_commands_are_user_scoped(tmp_path):
     acl = windows_acl_command(tmp_path / "client.key", "S-1-5-21-100")
     assert acl[:3] == ["icacls", str(tmp_path / "client.key"), "/inheritance:r"]
     assert "*S-1-5-21-100:(OI)(CI)F" in acl
+
+
+def test_windows_install_starts_agent_in_current_session(tmp_path):
+    calls = []
+
+    def run(command, **kwargs):
+        calls.append(command)
+
+    result = AutostartManager(tmp_path, system="Windows", runner=run).install()
+    assert result["mode"] == "scheduled_task"
+    assert [call[:2] for call in calls] == [["schtasks", "/Create"], ["schtasks", "/Run"]]
+    assert calls[1][2:] == ["/TN", "InferYardAgent"]

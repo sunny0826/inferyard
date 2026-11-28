@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-import platform
-import socket
 from pathlib import Path
 
-from inferyard import __version__
 from inferyard.contracts import node_protocol as protocol
 from inferyard.node.credentials import load_config
 from inferyard.node.job_runner import JobRunner
-from inferyard.node.join import normalize_hubs, normalized_os_arch, parse_hub
+from inferyard.node.join import node_hello, normalize_hubs, parse_hub
 from inferyard.node.rpc import NodeRPC, RPCError
 from inferyard.node.service_supervisor import ServiceSupervisor
 from inferyard.node.tls import control_context
@@ -64,18 +61,9 @@ class NodeAgent:
             await self.writer.drain()
 
     def _hello(self) -> dict:
-        os_name, arch, plat = normalized_os_arch()
         return {
             "event": protocol.EVENT_HELLO,
-            "data": {
-                "node_id": self.config["node_id"],
-                "hostname": socket.gethostname(),
-                "os": os_name,
-                "arch": arch,
-                "platform": plat,
-                "cli_version": __version__,
-                "autostart_installed": (self.state_dir / "autostart.json").exists(),
-            },
+            "data": node_hello(self.config, self.state_dir),
         }
 
     async def run_once(self, hub: str) -> None:
@@ -133,6 +121,16 @@ class NodeAgent:
             }
         try:
             await self._send(response)
+        except ValueError as exc:
+            fallback = {
+                "id": request_id,
+                "ok": False,
+                "error": {"code": "response_too_large", "message": str(exc)},
+            }
+            try:
+                await self._send(fallback)
+            except (ConnectionError, OSError):
+                return
         except (ConnectionError, OSError):
             return
 

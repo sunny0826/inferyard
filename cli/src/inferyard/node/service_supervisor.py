@@ -7,8 +7,8 @@ import json
 import os
 import re
 import socket
-import time
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -41,6 +41,29 @@ def log_tail(path: Path, limit: int = 65536) -> str:
             return stream.read().decode("utf-8", errors="replace")
     except FileNotFoundError:
         return ""
+
+
+def log_lines(path: Path) -> list[str]:
+    return log_tail(path).splitlines()[-80:]
+
+
+def _timestamp() -> str:
+    return datetime.now(UTC).isoformat()
+
+
+def _set_status(record: dict, status: str) -> None:
+    record["state"] = status
+    record["status"] = status
+
+
+def _process_matches(record: dict) -> bool:
+    pid, ticks = record.get("pid"), record.get("start_ticks")
+    if type(pid) is not int or type(ticks) is not int:
+        return False
+    try:
+        return process_start_ticks(pid) == ticks
+    except (OSError, PreflightError, psutil.Error):
+        return False
 
 
 def _postorder(process: psutil.Process) -> list[psutil.Process]:
@@ -104,9 +127,20 @@ class ServiceSupervisor:
             try:
                 record = json.loads(path.read_text(encoding="utf-8"))
                 if isinstance(record.get("service_id"), str):
+                    record.setdefault("state", record.get("status"))
+                    if record.get("status") == "running" and not _process_matches(record):
+                        self._mark_exited(record)
                     self.services[record["service_id"]] = record
             except (OSError, ValueError):
                 continue
+
+    def _mark_exited(self, record: dict) -> None:
+        _set_status(record, "exited")
+        record["crashed"] = True
+        record["finished_at"] = _timestamp()
+        log_path = Path(record.get("log_path") or self.root / record["service_id"] / "engine.log")
+        record["log_tail"] = log_lines(log_path)
+        self._save(record)
 
     def _save(self, record: dict) -> None:
         path = self.root / record["service_id"] / "receipt.json"
@@ -133,11 +167,11 @@ class ServiceSupervisor:
         if port in self.allowed_ports:
             return True
         record = self.services.get(service_id or "")
-        return bool(
-            record
-            and record.get("port") == port
-            and record.get("status") in ("running", "stopping")
-        )
+        if not record or record.get("port") != port:
+            return False
+        if record.get("status") == "running" and not _process_matches(record):
+            self._mark_exited(record)
+        return record.get("status") in ("running", "stopping")
 
     def endpoint(self, service_id: str) -> dict:
         record = self._record(service_id)
@@ -153,15 +187,29 @@ class ServiceSupervisor:
         from inferyard.application.types import CommandRequest
         from inferyard.config.serve_plan import prepare
 
+        explicit_installation = params.get("installation")
+        engine = explicit_installation or params.get("engine_path") or params.get("engine")
+        engine_path = Path(engine) if engine else None
+        installation = (
+            engine_path
+            if engine_path is not None
+            and (
+                explicit_installation
+                or engine_path.is_dir()
+                or engine_path.name == "installation.json"
+            )
+            else None
+        )
+        context_size = params.get("context_size")
         request = CommandRequest(
             "serve prepare",
-            model_path=Path(params["model_path"]),
-            installation=Path(params["installation"]) if params.get("installation") else None,
-            engine_path=Path(params["engine_path"]) if params.get("engine_path") else None,
+            model_path=Path(params.get("model_path") or params["model"]),
+            installation=installation,
+            engine_path=None if installation is not None else engine_path,
             runtime_receipt=(
                 Path(params["runtime_receipt"]) if params.get("runtime_receipt") else None
             ),
-            context_size=params["context_size"],
+            context_size=8192 if context_size is None else context_size,
             port=port,
             out=service_dir,
         )
@@ -212,22 +260,35 @@ class ServiceSupervisor:
             if str(exc) != "service_process_unavailable":
                 raise
             start_ticks = None
+        endpoint_url = plan.get("endpoint") or f"http://127.0.0.1:{port}"
+        engine = plan.get("family") or params.get("engine") or params.get("engine_path") or ""
         record = {
             "service_id": service_id,
             "pid": process.pid,
             "start_ticks": start_ticks,
             "port": port,
             "log_path": str(log_path),
-            "status": "running" if start_ticks is not None else "exited",
-            "started_at": time.time(),
+            "started_at": _timestamp(),
+            "finished_at": None,
+            "endpoint_url": endpoint_url,
+            "endpoint": endpoint_url,
+            "model": plan.get("model_path") or params.get("model_path") or params.get("model") or "",
+            "engine": engine,
+            "family": plan.get("family") or engine,
+            "adapter": plan.get("adapter"),
+            "context_size": plan.get("context_size"),
             "exit_code": None,
+            "crashed": False,
             "forced_termination_reason": None,
         }
+        _set_status(record, "running" if start_ticks is not None else "exited")
         self.services[service_id] = record
         self.processes[service_id] = process
         if start_ticks is None:
             record["exit_code"] = await process.wait()
-            record["log_tail"] = log_tail(log_path)
+            record["log_tail"] = log_lines(log_path)
+            record["crashed"] = True
+            record["finished_at"] = _timestamp()
         else:
             self.monitors[service_id] = asyncio.create_task(self._monitor(service_id))
         self._save(record)
@@ -239,17 +300,20 @@ class ServiceSupervisor:
         process = self.processes[service_id]
         exit_code = await process.wait()
         record = self.services[service_id]
-        if record["status"] in ("stopping", "stopped"):
-            record["status"] = "stopped"
-        else:
-            record["status"] = "exited"
-        record.update(exit_code=exit_code, log_tail=log_tail(Path(record["log_path"])))
+        status = "stopped" if record["status"] in ("stopping", "stopped") else "exited"
+        _set_status(record, status)
+        record.update(
+            exit_code=exit_code,
+            log_tail=log_lines(Path(record["log_path"])),
+            crashed=status == "exited",
+            finished_at=_timestamp(),
+        )
         self._save(record)
         await self._event(EVENT_SERVICE_EXITED, record)
 
     async def stop(self, service_id: str, *, timeout: float = 5) -> dict:
         record = self._record(service_id)
-        record["status"] = "stopping"
+        _set_status(record, "stopping")
         self._save(record)
         reason = await asyncio.to_thread(
             terminate_tree, record["pid"], record["start_ticks"], graceful_timeout=timeout
@@ -261,27 +325,23 @@ class ServiceSupervisor:
                 await asyncio.wait_for(process.wait(), timeout=3)
             except TimeoutError:
                 pass
-        record["status"] = "stopped"
-        record["exit_code"] = process.returncode if process is not None else None
-        record["log_tail"] = log_tail(Path(record["log_path"]))
+        _set_status(record, "stopped")
+        record.update(
+            exit_code=process.returncode if process is not None else None,
+            log_tail=log_lines(Path(record["log_path"])),
+            crashed=False,
+            finished_at=_timestamp(),
+        )
         self._save(record)
         await self._event(EVENT_SERVICE_UPDATED, record)
         return dict(record)
 
-    def logs(
-        self, service_id: str, *, limit: int = 65536, max_lines: int | None = None
-    ) -> dict:
+    def logs(self, service_id: str, *, limit: int = 65536, max_lines: int | None = None) -> dict:
         record = self._record(service_id)
         text = log_tail(Path(record["log_path"]), min(max(limit, 1), 1024 * 1024))
-        if max_lines is not None and max_lines > 0:
-            lines = text.splitlines()
-            if len(lines) > max_lines:
-                text = "\n".join(lines[-max_lines:])
-        return {
-            "service_id": service_id,
-            "log": text,
-            "logs": text,
-        }
+        if max_lines and max_lines > 0:
+            text = "\n".join(text.splitlines()[-max_lines:])
+        return {"service_id": service_id, "logs": text}
 
     async def close(self) -> None:
         for task in self.monitors.values():

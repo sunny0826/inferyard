@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import shutil
 from dataclasses import asdict
 from pathlib import Path
 
@@ -23,6 +25,27 @@ class RPCError(RuntimeError):
             "message": self.message,
             **({"details": self.details} if self.details else {}),
         }
+
+
+def _check_cleanup_tree(path: Path) -> None:
+    if path.is_symlink():
+        raise ValueError("workspace_cleanup_symlink_refused")
+    if not path.exists() or not path.is_dir():
+        return
+    for root, directories, files in os.walk(path, followlinks=False):
+        for name in (*directories, *files):
+            if (Path(root) / name).is_symlink():
+                raise ValueError("workspace_cleanup_symlink_refused")
+
+
+def _remove_managed(path: Path) -> str | None:
+    if not path.exists() and not path.is_symlink():
+        return None
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    else:
+        path.unlink()
+    return str(path)
 
 
 class NodeRPC:
@@ -67,7 +90,7 @@ class NodeRPC:
         if method == protocol.METHOD_JOB_LIST:
             return {"jobs": self.jobs.list()}
         if method == protocol.METHOD_JOB_START:
-            return await self.jobs.start(params)
+            return await self.jobs.start_request(params)
         if method == protocol.METHOD_JOB_CANCEL:
             return await self.jobs.cancel(
                 params["job_id"],
@@ -121,10 +144,25 @@ class NodeRPC:
         from inferyard.application.engine_prepare import execute
         from inferyard.application.types import CommandRequest
 
+        source = params.get("source_url") or params.get("source")
+        if not isinstance(source, str) or not source:
+            raise ValueError("engine source URL is required")
+        out = params.get("out")
+        if out:
+            destination = Path(out)
+        else:
+            family, release = params["family"], params["release_id"]
+            allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
+            if not all(
+                isinstance(value, str) and value and set(value) <= set(allowed)
+                for value in (family, release)
+            ):
+                raise ValueError("invalid engine family or release_id")
+            destination = self.workspace / "engines" / f"{family}-{release}"
         request = CommandRequest(
             "engine prepare",
-            engine_source_url=params["source"],
-            out=Path(params["out"]),
+            engine_source_url=source,
+            out=destination,
             expected_sha256=params.get("expected_sha256"),
             runtime_profile=params.get("runtime_profile"),
             runtime_source_url=params.get("runtime_source_url"),
@@ -139,7 +177,35 @@ class NodeRPC:
             raise RPCError("engine_install_failed", ",".join(result.limitations))
         return asdict(result)
 
+    def _managed_clean(self) -> dict:
+        targets = []
+        for record in self.jobs.list():
+            state = record.get("state") or record.get("status")
+            job_id = record.get("job_id") or record.get("task_id")
+            if state not in ("running", "starting") and isinstance(job_id, str):
+                if not job_id or set(job_id) - set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"):
+                    raise ValueError("invalid job_id")
+                targets.append(self.state_dir / "jobs" / job_id / "results")
+        reports = self.state_dir / "reports"
+        _check_cleanup_tree(reports)
+        if reports.is_dir():
+            targets.extend(path for path in reports.glob("export-*"))
+        for name in ("candidates", "bound", "results", "reports"):
+            root = self.workspace / name
+            _check_cleanup_tree(root)
+            if root.exists() and not root.is_dir():
+                raise ValueError("workspace_cleanup_invalid_root")
+            if root.is_dir():
+                targets.extend(root.iterdir())
+        targets = list(dict.fromkeys(targets))
+        for target in targets:
+            _check_cleanup_tree(target)
+        removed = [value for target in targets if (value := _remove_managed(target)) is not None]
+        return {"removed": removed}
+
     def _clean(self, params: dict) -> dict:
+        if not params.get("target"):
+            return self._managed_clean()
         from inferyard.platforms.asset_cleanup import delete_asset_safely
 
         target = Path(params["target"]).absolute()

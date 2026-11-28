@@ -15,13 +15,42 @@ from urllib.parse import urlsplit
 from inferyard.application.types import CommandRequest
 from inferyard.contracts.node_protocol import CANCEL_MARKER_FILENAME, EVENT_JOB_UPDATED
 from inferyard.contracts.validation import Document
-from inferyard.node.service_supervisor import terminate_tree
+
+
+def _timestamp() -> str:
+    return datetime.now(UTC).isoformat()
 
 
 def _write_json(path: Path, value: dict) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
     os.replace(temporary, path)
+
+
+def _validate_loopback(url: str) -> None:
+    parsed = urlsplit(url)
+    if parsed.scheme != "http" or parsed.hostname != "127.0.0.1":
+        raise ValueError("remote jobs require a loopback endpoint")
+
+
+def _validate_frozen_plan(plan_path: Path, expected: dict | None) -> None:
+    from inferyard.config.plan_inputs import read_frozen_plan
+
+    _, workloads = read_frozen_plan(plan_path)
+    for loaded in workloads.values():
+        endpoint = loaded.config.to_dict()["endpoint"]
+        url = endpoint.get("url", "")
+        _validate_loopback(url)
+        if expected is not None:
+            if url != expected.get("url") or endpoint.get("server_pid") != expected.get(
+                "server_pid"
+            ):
+                raise ValueError("frozen plan endpoint does not match expected service binding")
+
+
+def _set_state(record: dict, state: str) -> None:
+    record["state"] = state
+    record["status"] = state
 
 
 class JobRunner:
@@ -37,6 +66,8 @@ class JobRunner:
             try:
                 record = json.loads(path.read_text(encoding="utf-8"))
                 if isinstance(record.get("job_id"), str):
+                    record.setdefault("task_id", record["job_id"])
+                    record.setdefault("state", record.get("status", "failed"))
                     self.jobs[record["job_id"]] = record
             except (OSError, ValueError):
                 continue
@@ -63,7 +94,34 @@ class JobRunner:
         if self.event_sink is not None:
             await self.event_sink(EVENT_JOB_UPDATED, dict(record))
 
-    def _request(self, job_id: str, params: dict) -> tuple[CommandRequest, dict]:
+    def _endpoint_override(self, params: dict) -> dict | None:
+        service_id = params.get("service_id")
+        if service_id:
+            return self.supervisor.endpoint(service_id)
+        endpoint_url = params.get("endpoint_url")
+        if endpoint_url is not None:
+            _validate_loopback(str(endpoint_url))
+            return {
+                "url": str(endpoint_url),
+                "server_pid": params.get("server_pid"),
+            }
+        return None
+
+    def _request(self, job_id: str, params: dict) -> CommandRequest:
+        action = str(params.get("action") or "start").strip().lower()
+        endpoint_override = self._endpoint_override(params)
+        output_root = self.root / job_id / "results"
+        if action in ("resume", "rerun") and params.get("from_run"):
+            from_run = Path(str(params["from_run"]))
+            command = "resume" if action == "resume" else "run"
+            return CommandRequest(
+                command,
+                from_run=from_run,
+                endpoint_url=endpoint_override["url"] if endpoint_override else None,
+                server_pid=endpoint_override.get("server_pid") if endpoint_override else None,
+                output_root=output_root,
+            )
+
         from inferyard.config.loader import load_config
 
         config_path = params.get("config") or params.get("config_path")
@@ -71,16 +129,13 @@ class JobRunner:
             raise ValueError("job config path is required")
         loaded = load_config(config_path)
         config = loaded.config.to_dict()
-        service_id = params.get("service_id")
-        if service_id:
-            endpoint = self.supervisor.endpoint(service_id)
+        if endpoint_override is not None:
+            endpoint = dict(endpoint_override)
         else:
             endpoint = dict(config["endpoint"])
-            parsed = urlsplit(endpoint.get("url", ""))
-            if parsed.scheme != "http" or parsed.hostname != "127.0.0.1":
-                raise ValueError("remote jobs require a loopback endpoint")
-        config["endpoint"].update(endpoint)
-        config["output"]["root"] = str(self.root / job_id / "results")
+            _validate_loopback(endpoint.get("url", ""))
+        config["endpoint"].update({k: v for k, v in endpoint.items() if v is not None})
+        config["output"]["root"] = str(output_root)
         loaded = type(loaded)(
             loaded.source,
             Document.parse("config", config),
@@ -90,31 +145,68 @@ class JobRunner:
             source_missing_reason=loaded.source_missing_reason,
         )
         frozen = params.get("frozen_plan")
-        request = CommandRequest(
+        if frozen:
+            _validate_frozen_plan(Path(frozen), endpoint_override)
+        return CommandRequest(
             "run",
             config=loaded,
             frozen_plan=Path(frozen) if frozen else None,
-            output_root=self.root / job_id / "results",
+            output_root=output_root,
         )
-        return request, endpoint
+
+    async def start_request(self, params: dict) -> dict:
+        action = str(params.get("action") or "start").strip().lower()
+        if action in ("resume", "rerun") and isinstance(params.get("remote_run_paths"), list):
+            paths = params["remote_run_paths"]
+            if not paths:
+                raise ValueError("remote_run_paths must not be empty")
+            records = []
+            for run_path in paths:
+                item = {k: v for k, v in params.items() if k not in ("remote_run_paths", "job_id")}
+                item["from_run"] = run_path
+                records.append(await self.start(item))
+            return {"jobs": records}
+        if isinstance(params.get("config_paths"), list):
+            paths = params["config_paths"]
+            if not paths:
+                raise ValueError("config_paths must not be empty")
+            records = []
+            for config_path in paths:
+                item = {k: v for k, v in params.items() if k not in ("config_paths", "job_id")}
+                item["config_path"] = config_path
+                records.append(await self.start(item))
+            return {"jobs": records}
+        return await self.start(params)
 
     async def start(self, params: dict) -> dict:
         job_id = params.get("job_id") or uuid.uuid4().hex
         if not isinstance(job_id, str) or not job_id or job_id in self.jobs:
             raise ValueError("invalid or duplicate job_id")
-        if any(character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-" for character in job_id):
+        allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
+        if any(character not in allowed for character in job_id):
             raise ValueError("invalid job_id")
         job_dir = self.root / job_id
         job_dir.mkdir(parents=True, exist_ok=False)
-        request, endpoint = self._request(job_id, params)
+        try:
+            request = self._request(job_id, params)
+        except BaseException:
+            try:
+                job_dir.rmdir()
+            except OSError:
+                pass
+            raise
         record = {
             "job_id": job_id,
+            "task_id": job_id,
             "status": "running",
+            "state": "running",
             "code": None,
-            "created_at": datetime.now(UTC).isoformat(),
+            "created_at": _timestamp(),
+            "finished_at": None,
             "evidence_dir": None,
-            "worker_pid": endpoint.get("server_pid"),
-            "worker_start_ticks": endpoint.get("process_start_ticks"),
+            "run_path": None,
+            "worker_pid": None,
+            "worker_start_ticks": None,
             "forced_termination_reason": None,
         }
         self.jobs[job_id] = record
@@ -132,16 +224,22 @@ class JobRunner:
             executor = self.executor
         try:
             code, result = await executor(request)
+            final_state = "done" if code == 0 else "cancelled" if code == 130 else "failed"
+            _set_state(record, final_state)
             record.update(
                 code=code,
-                status="finished" if code == 0 else "cancelled" if code == 130 else "blocked",
+                finished_at=_timestamp(),
                 evidence_dir=result.evidence_dir,
+                run_path=result.evidence_dir,
+                run_id=result.run_id,
                 result=asdict(result),
             )
         except asyncio.CancelledError:
-            record.update(code=130, status="cancelled")
+            _set_state(record, "cancelled")
+            record.update(code=130, finished_at=_timestamp())
         except Exception as exc:
-            record.update(code=4, status="error", error=type(exc).__name__)
+            _set_state(record, "failed")
+            record.update(code=4, finished_at=_timestamp(), error=type(exc).__name__)
         self._save(record)
         await self._event(record)
 
@@ -162,7 +260,7 @@ class JobRunner:
                 "schema_version": 1,
                 "reason": reason,
                 "force": force,
-                "requested_at": datetime.now(UTC).isoformat(),
+                "requested_at": _timestamp(),
             },
         )
         if task is None or task.done():
@@ -178,19 +276,14 @@ class JobRunner:
                 timed_out = True
             except asyncio.CancelledError:
                 pass
-        if task.done() and record["status"] == "running":
-            record["status"] = "cancelled"
-            record["code"] = 130
+        if task.done() and record["state"] == "running":
+            _set_state(record, "cancelled")
+            record.update(code=130, finished_at=_timestamp())
         if timed_out:
-            pid, ticks = record.get("worker_pid"), record.get("worker_start_ticks")
-            if type(pid) is int and type(ticks) is int:
-                forced = await asyncio.to_thread(terminate_tree, pid, ticks, graceful_timeout=0)
-                record["forced_termination_reason"] = forced or "cooperative_drain_timeout"
-            else:
-                record["forced_termination_reason"] = "cooperative_drain_timeout"
-            record["status"] = "cancelled"
-            record["code"] = 130
-            self._save(record)
+            task.cancel()
+            record["forced_termination_reason"] = "cooperative_drain_timeout"
+            _set_state(record, "cancelled")
+            record.update(code=130, finished_at=_timestamp())
         record["cancel_requested"] = True
         record["cancel_completed_at"] = time.time()
         self._save(record)

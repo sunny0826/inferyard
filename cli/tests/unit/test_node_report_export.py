@@ -20,3 +20,8 @@ def test_raw_and_existing_report_exports_have_distinct_provenance(tmp_path):
     assert existing["verification"] == "schema_only"
     assert existing["report"] == raw["report"]
     assert list_reports(tmp_path / "state" / "reports") == []
+
+    synced = export_report(state_dir=tmp_path / "state", report_path=raw["path"])
+    assert synced["path"] == raw["path"]
+    assert synced["report"] == raw["report"]
+    assert not (tmp_path / "state" / "reports").exists()

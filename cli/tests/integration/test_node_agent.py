@@ -1,6 +1,7 @@
 import asyncio
 import json
 import ssl
+from types import SimpleNamespace
 
 import pytest
 
@@ -8,6 +9,7 @@ from inferyard.contracts.node_protocol import (
     HANDSHAKE_CONTROL_LINE,
     HANDSHAKE_TUNNEL_PREFIX,
     decode_ndjson_frame,
+    encode_ndjson_frame,
 )
 from inferyard.node.agent import NodeAgent
 from inferyard.node.credentials import save_pairing
@@ -35,7 +37,12 @@ def authenticated_server_context(paths):
     return context
 
 
-def test_mtls_control_ping_and_rpc(tmp_path):
+def test_mtls_control_ping_and_rpc(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "inferyard.node.join.device_snapshot",
+        lambda: {"cpu_model": "test-cpu", "logical_cpus": 8},
+    )
+
     async def scenario():
         paths = certificates(tmp_path)
         observed = {}
@@ -64,6 +71,8 @@ def test_mtls_control_ping_and_rpc(tmp_path):
         await asyncio.wait_for(finished, 10)
         await asyncio.wait_for(task, 10)
         assert observed["hello"]["data"]["node_id"] == "node-test"
+        assert json.loads(observed["hello"]["data"]["hardware_summary"])["cpu_model"] == "test-cpu"
+        assert observed["hello"]["data"]["device_snapshot"]["logical_cpus"] == 8
         assert observed["pong"] == {"event": "pong", "data": {"sequence": 1}}
         assert observed["rpc"] == {"id": "rpc-1", "ok": True, "result": {"services": []}}
         await agent.close()
@@ -134,5 +143,34 @@ def test_tunnel_bidirectional_sse_bytes_and_port_rejection(tmp_path):
                 service_id="unknown",
                 supervisor=agent.supervisor,
             )
+
+    asyncio.run(scenario())
+
+
+def test_oversized_rpc_result_returns_error_frame():
+    async def scenario():
+        async def call(method, params):
+            return {"blob": "x" * (16 * 1024 * 1024)}
+
+        agent = NodeAgent.__new__(NodeAgent)
+        agent.rpc = SimpleNamespace(call=call)
+        sent = []
+
+        async def send(frame):
+            encode_ndjson_frame(frame)
+            sent.append(frame)
+
+        agent._send = send
+        await agent._answer({"id": "large", "method": "report.export", "params": {}})
+        assert sent == [
+            {
+                "id": "large",
+                "ok": False,
+                "error": {
+                    "code": "response_too_large",
+                    "message": "control frame exceeds maximum allowed size",
+                },
+            }
+        ]
 
     asyncio.run(scenario())

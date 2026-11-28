@@ -29,10 +29,15 @@ def list_reports(reports_root: Path) -> list[dict]:
     return result
 
 
-def _write_existing(source: Path, out: Path) -> dict:
+def _read_existing(source: Path) -> tuple[dict, Path]:
     from inferyard.reporting.studio_report import read_studio_report
 
-    document = read_studio_report(source if source.is_dir() else source.parent)
+    report_dir = source if source.is_dir() else source.parent
+    return read_studio_report(report_dir), report_dir / "studio.json"
+
+
+def _write_existing(source: Path, out: Path) -> dict:
+    document, _ = _read_existing(source)
     new_output(out, [source.resolve()])
     atomic_bytes(out / "studio.json", json_bytes(document))
     return document
@@ -58,12 +63,21 @@ def export_report(
     if bool(run_path) == bool(report_path):
         raise ValueError("exactly one run_path or report_path is required")
     source = Path(run_path or report_path).resolve()
+    verified_from_raw = run_path is not None
+    if not verified_from_raw and out is None:
+        document, report_file = _read_existing(source)
+        validate_document("studio_report", document)
+        return {
+            "path": str(report_file),
+            "report": document,
+            "verified_from_raw": False,
+            "verification": "schema_only",
+        }
     destination = (
         Path(out).absolute()
         if out
         else state_dir / "reports" / f"export-{uuid.uuid4().hex}"
     )
-    verified_from_raw = run_path is not None
     document = (
         _write_raw(source, destination)
         if verified_from_raw
