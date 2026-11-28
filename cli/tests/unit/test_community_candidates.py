@@ -293,3 +293,10 @@ def test_community_candidates_reserve_prompt_headroom_on_4k_context(tmp_path, mo
     cfg = load_config(cand).config.to_dict()
     assert cfg["conditions"]["context_size"] == 4096
     assert cfg["generation"]["max_tokens"] == 3840
+
+    custom_bundle = {
+        "bundle_id": "custom-non-fallback",
+        "execution_hints": {"default_max_tokens": 2048},
+        "cases": [{"case_id": "c1", "category": "qa"}],
+    }
+    assert community_candidates.resolve_max_tokens(custom_bundle, 8192) == 2048
