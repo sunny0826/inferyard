@@ -52,6 +52,14 @@ func (p *previewSession) advance(delta time.Duration) {
 	if p.state.detailID != "" {
 		p.state.detail = p.detail(p.state.detailID)
 	}
+	if active := p.state.running(); active != nil {
+		p.state.activeRunDetail = p.detail(active.TaskId)
+	} else {
+		p.state.activeRunDetail = nil
+		if p.state.detailID == "" {
+			p.state.syncViewedDetailTask("")
+		}
+	}
 }
 
 func (p *previewSession) runClock() {

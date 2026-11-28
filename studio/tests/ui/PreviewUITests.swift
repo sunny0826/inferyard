@@ -80,20 +80,15 @@ final class PreviewUITests: XCTestCase {
         chooseModel(downloadedModelLabel)
         XCTAssertFalse(app.buttons["确认开始新任务"].exists, "Task nav must not ask to confirm")
         click("开始测评")
-        let liveDetailBtn = app.buttons["查看实时详情"].firstMatch
         let cancelTaskBtn = app.buttons["取消任务"].firstMatch
-        expectExists(liveDetailBtn, timeout: 10)
-        expectExists(cancelTaskBtn, timeout: 5)
-        XCTAssertEqual(liveDetailBtn.frame.minY, cancelTaskBtn.frame.minY, accuracy: 1.5, "查看实时详情 and 取消任务 must align on one row")
-        XCTAssertEqual(liveDetailBtn.frame.height, cancelTaskBtn.frame.height, accuracy: 1.0, "查看实时详情 and 取消任务 must match in height")
-        keepScreenshot("Task running without obsolete title")
-        click("查看实时详情", timeout: 10)
+        expectExists(cancelTaskBtn, timeout: 10)
+        XCTAssertFalse(app.buttons["查看实时详情"].exists, "Merged running task page must not render separate 查看实时详情 button")
         expectText("实时进度")
-        let progress = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "正式运行 · ")).firstMatch
+        keepScreenshot("Task running with inline live details")
+        let progress = app.staticTexts.matching(NSPredicate(format: "label ENDSWITH %@", " / 120 题")).firstMatch
         expectExists(progress, timeout: 5)
         let before = progress.label
-        wait("detail progress changes", timeout: 10) { progress.label != before }
-        click("← 返回任务")
+        wait("inline detail progress changes", timeout: 10) { progress.label != before }
         click("查看报告", timeout: 25)
         expectText(downloadedModel)
         expectText("120 个有效样本")
@@ -116,8 +111,7 @@ final class PreviewUITests: XCTestCase {
 
     private func cancellationAllowsAnotherTask() {
         click("开始测评")
-        click("查看实时详情", timeout: 10)
-        click("取消任务")
+        click("取消任务", timeout: 10)
         expectExists(app.buttons["确认取消任务"], timeout: 5)
         keepScreenshot("Cancel asks before discarding the run")
         click("确认取消任务")

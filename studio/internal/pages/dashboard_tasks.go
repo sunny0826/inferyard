@@ -119,6 +119,9 @@ func (s *viewState) resume() {
 				return
 			}
 			s.closeResumeDialog()
+			if s.task.stage == "done" {
+				s.task.stage = ""
+			}
 			s.selected = "benchmarks"
 			s.selectTask(task.TaskId)
 		})

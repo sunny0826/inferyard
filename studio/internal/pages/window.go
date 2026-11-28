@@ -232,6 +232,7 @@ type viewState struct {
 	startup                                                                                                 core.Startup
 	processes                                                                                               []core.ProcessCandidate
 	runProgress                                                                                             *core.RunProgress
+	activeRunDetail                                                                                         *core.RunTaskDetail
 	ctx                                                                                                     context.Context
 	service                                                                                                 *core.Service
 	shell                                                                                                   *sidebar.Shell
@@ -308,6 +309,7 @@ type viewState struct {
 	casesTable, samplesTable                                                                                pageTableState
 	casesTablePage, resourceTablePage                                                                       int
 	detailCaseID                                                                                            string
+	viewedDetailTaskID                                                                                      string
 	resourceCache                                                                                           resourceViewCache
 	reportLoadSeq                                                                                           uint64
 	processesLoading                                                                                        bool
@@ -365,10 +367,45 @@ func (s *viewState) finishWork(message string, e *core.ApiError) {
 		s.enqueueStatusToast(message)
 	}
 }
+func (s *viewState) resetDetailViewState() {
+	s.casesTablePage = 0
+	s.resourceTablePage = 0
+	s.detailCaseID = ""
+	if s.casesTable.Selected != nil {
+		*s.casesTable.Selected = -1
+	}
+	if s.samplesTable.Selected != nil {
+		*s.samplesTable.Selected = -1
+	}
+}
+
+func (s *viewState) syncViewedDetailTask(id string) {
+	if s.viewedDetailTaskID != id {
+		s.resetDetailViewState()
+		s.viewedDetailTaskID = id
+	}
+}
+
 func (s *viewState) selectTask(id string) {
-	if s.detailID != id {
-		s.casesTablePage = 0
-		s.resourceTablePage = 0
+	s.syncViewedDetailTask(id)
+	if active := s.running(); active != nil && active.TaskId == id {
+		s.selected = "benchmarks"
+		s.benchFlowOpen = true
+		s.detailID = ""
+		if s.task.stage == "done" {
+			s.task.stage = ""
+		}
+		if s.preview != nil {
+			s.activeRunDetail = s.preview.detail(id)
+			return
+		}
+		if s.service != nil {
+			if d, e := s.service.RunDetail(id); e == nil {
+				s.activeRunDetail = &d
+				s.runProgress = d.Progress
+			}
+		}
+		return
 	}
 	if s.preview != nil {
 		s.detailID, s.detail, s.detailError = id, s.preview.detail(id), nil

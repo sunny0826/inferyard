@@ -39,9 +39,18 @@ func (s *viewState) syncLiveRunState() {
 	tasks := s.service.RunTasks()
 	s.tasks = tasks
 	s.reconcileLocalPIDs(tasks)
+	prevID := ""
+	if s.activeRunDetail != nil {
+		prevID = s.activeRunDetail.Task.TaskId
+	}
 	if active := activeRunTask(tasks); active != nil {
 		if d, e := s.service.RunDetail(active.TaskId); e == nil {
 			s.runProgress = d.Progress
+			s.activeRunDetail = &d
+			if d.Task.TaskId != prevID && s.detailID == "" {
+				s.resetDetailViewState()
+				s.viewedDetailTaskID = d.Task.TaskId
+			}
 			if s.detailID == active.TaskId {
 				s.detail, s.detailError = &d, nil
 				return
@@ -49,6 +58,11 @@ func (s *viewState) syncLiveRunState() {
 		}
 	} else {
 		s.runProgress = nil
+		s.activeRunDetail = nil
+		if prevID != "" && s.detailID == "" {
+			s.resetDetailViewState()
+			s.viewedDetailTaskID = ""
+		}
 	}
 	if s.detailID != "" {
 		if d, e := s.service.RunDetail(s.detailID); e == nil {

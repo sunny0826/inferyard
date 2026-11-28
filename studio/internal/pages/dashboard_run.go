@@ -256,11 +256,6 @@ func (w *viewState) runViewWithBar(c *ui.Context, embedBar bool) {
 				}
 			})
 			studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
-				detailIconBtn := primaryIconButton
-				if task.AwaitingService {
-					detailIconBtn = outlineIconButton
-				}
-				detailIconBtn(c, reicon.Eye, tr(c, "dashboard.run.view_live_detail")).OnClick(func() { w.selectTask(id) })
 				cancelConfirmed = w.cancelRunGate(c, id, task.State)
 			})
 		})

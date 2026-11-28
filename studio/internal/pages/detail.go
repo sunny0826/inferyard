@@ -76,6 +76,7 @@ func (s *viewState) detailView(c *ui.Context) {
 		return
 	}
 	d := s.detail
+	s.syncViewedDetailTask(d.Task.TaskId)
 	t := d.Task
 	kind := runTaskStateKind(t)
 	scale := stateScale(c, kind)
@@ -144,8 +145,80 @@ func (s *viewState) detailView(c *ui.Context) {
 		})
 	}
 	s.detailProgressCard(c, d)
-	s.resourceView(c, d.Resources)
+	s.resourceViewFor(c, d.Task.TaskId, d.Resources)
 	s.detailCaseDrawer(c, d)
+}
+
+func (s *viewState) activeRunDetailSnapshot() *core.RunTaskDetail {
+	task := s.running()
+	if task == nil {
+		return nil
+	}
+	if s.activeRunDetail != nil && s.activeRunDetail.Task.TaskId == task.TaskId {
+		return s.activeRunDetail
+	}
+	if s.detail != nil && s.detail.Task.TaskId == task.TaskId {
+		return s.detail
+	}
+	if s.preview != nil {
+		if d := s.preview.detail(task.TaskId); d != nil {
+			return d
+		}
+	}
+	return &core.RunTaskDetail{
+		Task:     *task,
+		Progress: s.runProgress,
+	}
+}
+
+func (s *viewState) inlineRunDetailView(c *ui.Context) {
+	d := s.activeRunDetailSnapshot()
+	if d == nil {
+		return
+	}
+	s.syncViewedDetailTask(d.Task.TaskId)
+	s.inlineDetailCasesCard(c, d)
+	s.resourceViewFor(c, d.Task.TaskId, d.Resources)
+	s.detailCaseDrawer(c, d)
+}
+
+func (s *viewState) inlineDetailCasesCard(c *ui.Context, d *core.RunTaskDetail) {
+	tok := tokens(c)
+	isRunning := !terminal(d.Task.State) && d.Task.State != "cancelling"
+	applyMaterial(c, ui.Column(c.Key("inline-detail-cases-card-"+d.Task.TaskId)).FillWidth().MinWidth(0).Gap(tok.Density.CardGap).Padding(tok.Card.Padding), materialCard).Children(func() {
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(tok.Density.Row).Children(func() {
+			heading(c, tr(c, "detail.live_progress_card"), 2)
+			ui.Box(c).Grow(1)
+			if d.Progress != nil {
+				passCount, failCount := countCaseOutcomes(d.Progress.Cases)
+				if passCount > 0 {
+					passKey := "pass"
+					inlineBadge(c, fmt.Sprintf("%s %d", reportQuality(&passKey), passCount), stateSuccess, badgeOptions{Size: sizeSM, Style: badgeSoft})
+				}
+				if failCount > 0 {
+					inlineBadge(c, fmt.Sprintf("%s %d", stateLabel("failed"), failCount), stateDanger, badgeOptions{Size: sizeSM, Style: badgeSoft})
+				}
+			}
+		})
+		if runPathRaw := emptyText(d.Task.RunPath); runPathRaw != "" {
+			applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tok.Density.Row).
+				Padding(tok.Density.Row, tok.Density.Stack), materialSunken).Children(func() {
+				components.Icon(c, reicon.Folder).Size(14, 14).TextColor(tok.Color.FgSecondary).Shrink(0)
+				disp := trf(c, "detail.run_dir", "path", displayName(text(d.Task.RunPath)))
+				pathEl := ui.Text(c, disp).
+					FontSize(tok.Type.Caption).TextColor(tok.Color.FgSecondary).Grow(1).MinWidth(0).SingleLine().TruncateMiddle().Selectable()
+				studioTooltipIfTruncated(c, pathEl, disp, runPathRaw, tok.Type.Caption, false)
+			})
+		}
+		if d.Progress == nil {
+			ui.Row(c.Key("inline-detail-waiting-" + d.Task.TaskId)).FillWidth().Wrap().AlignItems(ui.Center).Gap(tok.Density.Row).Children(func() {
+				ambientLifecycleDot(c, tok.Color.Active, isRunning)
+				ui.Text(c, tr(c, "detail.waiting_progress")).FontSize(tok.Type.Caption).TextColor(tok.Color.FgSecondary)
+			})
+			return
+		}
+		s.detailCasesTable(c, d.Progress)
+	})
 }
 
 func (s *viewState) detailProgressCard(c *ui.Context, d *core.RunTaskDetail) {
@@ -212,14 +285,7 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 	})
 	progressBar(c, val, tr(c, "detail.progress_bar_label")).Height(10)
 
-	var passCount, failCount int
-	for _, item := range p.Cases {
-		if item.State == "failed" {
-			failCount++
-		} else if q := emptyText(item.QualityState); q == "pass" || q == "passed" {
-			passCount++
-		}
-	}
+	passCount, failCount := countCaseOutcomes(p.Cases)
 	applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(tok.Density.Row).
 		Padding(tok.Density.Row, tok.Density.Stack), materialSunken).Children(func() {
 		if isRunning {
@@ -238,6 +304,22 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 		}
 	})
 
+	s.detailCasesTable(c, p)
+}
+
+func countCaseOutcomes(cases []core.CaseProgress) (passCount, failCount int) {
+	for _, item := range cases {
+		if item.State == "failed" {
+			failCount++
+		} else if q := emptyText(item.QualityState); q == "pass" || q == "passed" {
+			passCount++
+		}
+	}
+	return passCount, failCount
+}
+
+func (s *viewState) detailCasesTable(c *ui.Context, p *core.RunProgress) {
+	tok := tokens(c)
 	const detailCasePageSize = 50
 	totalCases := len(p.Cases)
 	pages := max(1, (totalCases+detailCasePageSize-1)/detailCasePageSize)

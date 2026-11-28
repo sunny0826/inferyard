@@ -2,14 +2,12 @@ package pages
 
 import (
 	"context"
-	"image/color"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
-	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
 )
@@ -102,16 +100,14 @@ func TestBenchmarkWorkflowRunDetailAndSpeedLayoutPolish(t *testing.T) {
 	if !tt.HasText("25%") || !tt.HasText("当前题：case-031") {
 		t.Fatalf("expected live run percentage and current case chip, got %v", tt.Texts())
 	}
-	detailBtn, ok1 := tt.AccessByRole(ui.RoleButton, "查看实时详情")
-	cancelBtn, ok2 := tt.AccessByRole(ui.RoleButton, "取消任务")
-	if !ok1 || !ok2 {
-		t.Fatalf("missing run action buttons: detail=%v cancel=%v", ok1, ok2)
+	if _, ok := tt.AccessByRole(ui.RoleButton, "查看实时详情"); ok {
+		t.Fatalf("merged running task page should not render redundant live-detail jump button")
 	}
-	if d := detailBtn.Bounds.Y - cancelBtn.Bounds.Y; d < -1 || d > 1 {
-		t.Fatalf("run action buttons stacked vertically instead of sharing one row: detailY=%.1f cancelY=%.1f", detailBtn.Bounds.Y, cancelBtn.Bounds.Y)
+	if _, ok := tt.AccessByRole(ui.RoleButton, "取消任务"); !ok {
+		t.Fatalf("missing cancel button on running task page")
 	}
-	if d := detailBtn.Bounds.H - cancelBtn.Bounds.H; d < -1 || d > 1 {
-		t.Fatalf("run action button heights differ: detailH=%.1f cancelH=%.1f", detailBtn.Bounds.H, cancelBtn.Bounds.H)
+	if !tt.HasText(l10n.TR("detail.live_progress_card")) || !tt.HasText(l10n.TR("chart.resource.title")) {
+		t.Fatalf("expected merged live detail sections (cases + resources) on running task page, got %v", tt.Texts())
 	}
 
 	s.detailID = "task-1"
@@ -182,36 +178,20 @@ func TestHandoffConnectExplainsDisabledState(t *testing.T) {
 	}
 }
 
-func TestRunDetailButtonGivesPrimaryActionToHandoff(t *testing.T) {
+func TestRunViewKeepsCancelActionWithoutDetailJumpButton(t *testing.T) {
 	s := readyState("benchmarks")
 	s.tasks = []core.RunTask{{TaskId: "run", State: "starting"}}
-	detail := l10n.TR("dashboard.run.view_live_detail")
 	tt := ui.NewTester(func(c *ui.Context) {
 		ui.Column(c).Children(func() {
 			s.runView(c)
-			primaryIconButton(c, reicon.Eye, "primary")
-			outlineIconButton(c, reicon.Eye, "outline")
 		})
 	}, 960, 600)
-	for _, tc := range []struct {
-		waiting bool
-		style   string
-	}{{false, "primary"}, {true, "outline"}} {
-		s.tasks[0].AwaitingService = tc.waiting
-		tt.Frame()
-		img := tt.Image()
-		fill := func(label string) color.Color {
-			t.Helper()
-			button, ok := tt.AccessByRole(ui.RoleButton, label)
-			if !ok {
-				t.Fatalf("missing button %q", label)
-			}
-			r := button.Bounds
-			return img.At(int(r.X+r.W/2), int(r.Y+4))
-		}
-		if fill("primary") == fill("outline") || fill(detail) != fill(tc.style) {
-			t.Fatalf("waiting=%t: expected %s live-detail button", tc.waiting, tc.style)
-		}
+	tt.Frame()
+	if _, ok := tt.AccessByRole(ui.RoleButton, l10n.TR("dashboard.run.view_live_detail")); ok {
+		t.Fatalf("expected redundant live-detail jump button to be removed after merging detail into task view")
+	}
+	if _, ok := tt.AccessByRole(ui.RoleButton, l10n.TR("common.confirm.cancel_run.label")); !ok {
+		t.Fatalf("missing cancel button on run view")
 	}
 }
 
