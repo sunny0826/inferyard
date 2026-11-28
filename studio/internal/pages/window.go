@@ -379,11 +379,15 @@ func (s *viewState) resetDetailViewState() {
 	}
 }
 
-func (s *viewState) selectTask(id string) {
+func (s *viewState) syncViewedDetailTask(id string) {
 	if s.viewedDetailTaskID != id {
 		s.resetDetailViewState()
 		s.viewedDetailTaskID = id
 	}
+}
+
+func (s *viewState) selectTask(id string) {
+	s.syncViewedDetailTask(id)
 	if active := s.running(); active != nil && active.TaskId == id {
 		s.selected = "benchmarks"
 		s.benchFlowOpen = true

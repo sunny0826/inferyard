@@ -52,21 +52,12 @@ func (p *previewSession) advance(delta time.Duration) {
 	if p.state.detailID != "" {
 		p.state.detail = p.detail(p.state.detailID)
 	}
-	prevActiveID := ""
-	if p.state.activeRunDetail != nil {
-		prevActiveID = p.state.activeRunDetail.Task.TaskId
-	}
 	if active := p.state.running(); active != nil {
 		p.state.activeRunDetail = p.detail(active.TaskId)
-		if active.TaskId != prevActiveID && p.state.detailID == "" {
-			p.state.resetDetailViewState()
-			p.state.viewedDetailTaskID = active.TaskId
-		}
 	} else {
 		p.state.activeRunDetail = nil
-		if prevActiveID != "" && p.state.detailID == "" {
-			p.state.resetDetailViewState()
-			p.state.viewedDetailTaskID = ""
+		if p.state.detailID == "" {
+			p.state.syncViewedDetailTask("")
 		}
 	}
 }

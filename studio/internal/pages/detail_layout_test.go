@@ -163,18 +163,31 @@ func TestDetailPaginationAndCaseModalResetAcrossTasks(t *testing.T) {
 	s.tasks = []core.RunTask{active}
 	s.activeRunDetail = &core.RunTaskDetail{Task: active}
 
-	// Open active task A, then open historical task B and flip to page 2.
+	// Open active task A, then open historical task B, flip to page 2, and select row 1.
 	s.selectTask("task-a")
 	s.selectTask("task-b")
 	s.casesTablePage = 2
 	s.resourceTablePage = 1
+	sel := 1
+	s.casesTable.Selected = &sel
 	s.detailCaseID = "case-001"
 
-	// Returning to active task A must reset pagination and case modal state.
-	s.selectTask("task-a")
-	if s.casesTablePage != 0 || s.resourceTablePage != 0 || s.detailCaseID != "" {
-		t.Fatalf("expected reset when switching from task-b back to task-a, got casesPage=%d resPage=%d caseID=%q",
-			s.casesTablePage, s.resourceTablePage, s.detailCaseID)
+	// Back to Benchmarks list then open active flow via "open_flow" (bypassing selectTask):
+	// rendering inlineRunDetailView for task-a must reset pagination, selection, and case modal.
+	s.detailID = ""
+	s.detailCaseID = ""
+	s.benchFlowOpen = true
+	s.activeRunDetail = &core.RunTaskDetail{
+		Task:     active,
+		Progress: &core.RunProgress{Done: 1, Total: ptr(int64(2)), Cases: []core.CaseProgress{{CaseId: "case-001", State: "completed"}}},
+	}
+	tt := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).FillWidth().Children(func() { s.dashboardView(c) })
+	}, 1120, 1000)
+	tt.Frame()
+	if s.casesTablePage != 0 || s.resourceTablePage != 0 || *s.casesTable.Selected != -1 || s.detailCaseID != "" {
+		t.Fatalf("expected reset when returning via open_flow from task-b to task-a, got casesPage=%d resPage=%d sel=%d caseID=%q",
+			s.casesTablePage, s.resourceTablePage, *s.casesTable.Selected, s.detailCaseID)
 	}
 
 	// Simulate active task A finishing while a case modal is open: detailCaseID must clear.

@@ -76,6 +76,7 @@ func (s *viewState) detailView(c *ui.Context) {
 		return
 	}
 	d := s.detail
+	s.syncViewedDetailTask(d.Task.TaskId)
 	t := d.Task
 	kind := runTaskStateKind(t)
 	scale := stateScale(c, kind)
@@ -175,6 +176,7 @@ func (s *viewState) inlineRunDetailView(c *ui.Context) {
 	if d == nil {
 		return
 	}
+	s.syncViewedDetailTask(d.Task.TaskId)
 	s.inlineDetailCasesCard(c, d)
 	s.resourceViewFor(c, d.Task.TaskId, d.Resources)
 	s.detailCaseDrawer(c, d)
