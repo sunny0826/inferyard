@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -20,6 +21,42 @@ import (
 
 func previewSceneZhLabel(labelKey string) string {
 	return l10n.T(l10n.LanguageZhHans, labelKey)
+}
+
+func isolatePreviewHome(t *testing.T) string {
+	t.Helper()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	t.Setenv("XDG_CACHE_HOME", filepath.Join(home, ".cache"))
+	return home
+}
+
+func assertPreviewHomeClean(t *testing.T, home string) {
+	t.Helper()
+	var mygoFontCache string
+	if cacheDir, err := os.UserCacheDir(); err == nil && cacheDir != "" {
+		mygoFontCache = filepath.Join(cacheDir, "mygo", "fonts")
+	}
+	var files []string
+	if err := filepath.WalkDir(home, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if mygoFontCache != "" && path == mygoFontCache {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		files = append(files, path)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(files) != 0 {
+		t.Fatalf("preview mode wrote real files: %v", files)
+	}
 }
 
 func previewTester(p *previewSession, width, height int) *ui.Tester {
@@ -119,9 +156,7 @@ func TestPreviewScenesAllLoadAndSaveSettingsPreservesProxy(t *testing.T) {
 }
 
 func TestPreviewThemeSwitcherSyncsWithSidebarAndStaysInMemory(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	home := isolatePreviewHome(t)
 
 	p := newPreviewSession(context.Background())
 	p.state.selected = "settings"
@@ -192,21 +227,7 @@ func TestPreviewThemeSwitcherSyncsWithSidebarAndStaysInMemory(t *testing.T) {
 			p.state.themeMode, p.state.settings.Effective.Theme)
 	}
 
-	var files []string
-	if err := filepath.WalkDir(home, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if !d.IsDir() {
-			files = append(files, path)
-		}
-		return nil
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if len(files) != 0 {
-		t.Fatalf("preview mode wrote real files: %v", files)
-	}
+	assertPreviewHomeClean(t, home)
 }
 
 func TestPreviewCreateReportCancelledPelicanDoesNotFabricateOKSVG(t *testing.T) {

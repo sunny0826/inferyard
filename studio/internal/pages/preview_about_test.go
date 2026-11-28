@@ -4,15 +4,11 @@ package pages
 
 import (
 	"context"
-	"io/fs"
-	"path/filepath"
 	"testing"
 )
 
 func TestPreviewSettingsAboutTabStaysInMemory(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	home := isolatePreviewHome(t)
 
 	p := newPreviewSession(context.Background())
 	p.state.selected = "settings"
@@ -36,19 +32,5 @@ func TestPreviewSettingsAboutTabStaysInMemory(t *testing.T) {
 		t.Fatalf("preview about copy must not touch real clipboard, got %q", got)
 	}
 
-	var files []string
-	if err := filepath.WalkDir(home, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if !d.IsDir() {
-			files = append(files, path)
-		}
-		return nil
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if len(files) != 0 {
-		t.Fatalf("preview about tab wrote real files: %v", files)
-	}
+	assertPreviewHomeClean(t, home)
 }
