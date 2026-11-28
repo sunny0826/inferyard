@@ -101,3 +101,24 @@ def test_windows_install_registers_hkcu_run_and_spawns_agent(tmp_path):
     assert calls[0][:5] == ["reg", "add", test_key, "/v", "InferYardAgent"]
     manager.uninstall()
     assert calls[1] == ["reg", "delete", test_key, "/v", "InferYardAgent", "/f"]
+
+
+def test_linux_headless_systemd_user_failure_falls_back_to_background_script(
+    tmp_path, monkeypatch
+):
+    import subprocess
+
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    monkeypatch.setattr("inferyard.node.autostart.shutil.which", lambda _: "/usr/bin/systemctl")
+    monkeypatch.setattr("pathlib.Path.is_dir", lambda self: True)
+    calls = []
+
+    def runner(cmd, **kwargs):
+        calls.append(cmd)
+        if cmd[0] == "systemctl":
+            raise subprocess.CalledProcessError(1, cmd)
+
+    result = AutostartManager(tmp_path / "state", system="Linux", runner=runner).install()
+    assert result["mode"] == "background_script"
+    assert not (tmp_path / "xdg" / "systemd" / "user" / "inferyard-agent.service").exists()

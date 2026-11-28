@@ -129,6 +129,17 @@ func (m *NodeManager) handlePeerEvent(event remote.HubEvent) {
 		runtime.mu.Unlock()
 		m.service.Bus.Publish("node.service.updated", map[string]any{"node_id": event.NodeID, "service": service})
 	case remote.EventServiceExited:
+		if record, err := decodeRemoteRecord(event.Payload, []string{"notice", "exit", "service"}); err == nil {
+			if crashed, hasCrashed := record["crashed"].(bool); (hasCrashed && !crashed) || record["status"] == "stopped" || record["state"] == "stopped" {
+				if service, svcErr := decodeRemoteService(event.Payload); svcErr == nil {
+					runtime.mu.Lock()
+					upsertRemoteService(runtime, service)
+					runtime.mu.Unlock()
+					m.service.Bus.Publish("node.service.updated", map[string]any{"node_id": event.NodeID, "service": service})
+				}
+				return
+			}
+		}
 		notice, err := decodeRemoteExitNotice(event.Payload)
 		if err != nil {
 			notice = ServiceExitNotice{LogTail: []string{string(event.Payload)}}

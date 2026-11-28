@@ -55,7 +55,7 @@ func (s *viewState) remoteBenchmarkStartCard(c *ui.Context, node core.NodeSnapsh
 		if !s.nodes.benchmarkFormOpen {
 			return
 		}
-		monoField(c, tr(c, "nodes.remote.config_paths"), tr(c, "nodes.remote.config_paths_hint"), "/workspace/configs/benchmark.json", "", &s.nodes.benchmarkConfigs)
+		monoField(c, tr(c, "nodes.remote.config_paths"), tr(c, "nodes.remote.config_paths_hint"), "/workspace/configs/benchmark.toml", "", &s.nodes.benchmarkConfigs)
 		ui.Row(c).FillWidth().Justify(ui.End).Children(func() {
 			if primaryActionButton(c, tr(c, "nodes.remote.start_benchmark_submit"), s.actionBusy("start-remote-benchmark")).
 				Disabled(s.busy || !node.Online || len(splitRemoteConfigPaths(s.nodes.benchmarkConfigs)) == 0).Clicked() {

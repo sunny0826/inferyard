@@ -22,8 +22,22 @@ func TestSelectViewNodeKeepsOtherNodeState(t *testing.T) {
 	s.nodes.tunnels = []remote.TunnelInfo{tunnel}
 	selected := ""
 	s.nodes.setActiveNodeFn = func(nodeID string) *core.ApiError { selected = nodeID; return nil }
+	s.nodes.serviceFormOpen = true
+	s.nodes.serviceModel = "/node-a/model.gguf"
+	s.nodes.benchmarkFormOpen = true
+	s.nodes.benchmarkConfigs = "/node-a/config.toml"
 	s.selectViewNode("node-a")
+	s.nodes.benchmarkConfigs = "/node-a/config.toml"
 	s.selectViewNode("node-b")
+	if s.nodes.benchmarkConfigs != "" || s.nodes.serviceModel != "" || s.nodes.benchmarkFormOpen || s.nodes.serviceFormOpen {
+		t.Fatalf("switching nodes leaked remote drafts: %+v", s.nodes)
+	}
+	if got := compareSideModel(false, "", "Qwen3"); got != compareMissing {
+		t.Fatalf("missing side model filled with %q, want %q", got, compareMissing)
+	}
+	if got := compareSideModel(true, "", "Qwen3"); got != "Qwen3" {
+		t.Fatalf("present side model = %q, want Qwen3", got)
+	}
 	if selected != "node-b" || s.nodes.activeID != "node-b" {
 		t.Fatalf("unexpected active node: selected=%q active=%q", selected, s.nodes.activeID)
 	}

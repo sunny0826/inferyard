@@ -153,3 +153,17 @@ def test_empty_workspace_clean_preserves_assets_and_active_jobs(tmp_path):
         assert list((rpc.workspace / name).iterdir()) == []
     assert (rpc.workspace / "models" / "model.gguf").is_file()
     assert (rpc.workspace / "engines" / "engine" / "installation.json").is_file()
+
+
+def test_service_stop_is_blocked_while_benchmark_job_is_active(tmp_path):
+    import pytest
+    from inferyard.node.rpc import RPCError
+
+    stopped = []
+    supervisor = SimpleNamespace(stop=lambda sid, timeout=5: stopped.append(sid))
+    jobs = SimpleNamespace(has_active_jobs=lambda: True)
+    rpc = NodeRPC(tmp_path / "state", supervisor, jobs)
+    with pytest.raises(RPCError) as caught:
+        asyncio.run(rpc.call("service.stop", {"service_id": "svc-1"}))
+    assert caught.value.code == "run_active"
+    assert stopped == []

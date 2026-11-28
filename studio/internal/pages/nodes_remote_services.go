@@ -36,10 +36,20 @@ func (s *viewState) remoteServicesView(c *ui.Context) {
 	}
 }
 
+func remoteNodeHasActiveJob(node core.NodeSnapshot) bool {
+	for _, job := range node.Jobs {
+		if !terminal(job.Task.State) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *viewState) remoteServiceCard(c *ui.Context, node core.NodeSnapshot, service core.EngineState) {
 	t := tokens(c)
 	model := s.serviceModelTitle(c, service)
 	tunnel := s.tunnelForService(node.Record.NodeID, service.ServiceID)
+	runActive := remoteNodeHasActiveJob(node)
 	applyMaterial(c, ui.Column(c.Key("remote-service-"+service.ServiceID)).FillWidth().Gap(t.Density.Stack).
 		Padding(t.Card.Padding), materialCard).Children(func() {
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
@@ -52,7 +62,7 @@ func (s *viewState) remoteServiceCard(c *ui.Context, node core.NodeSnapshot, ser
 				if outlineIconButton(c, reicon.FileText, tr(c, "nodes.remote.logs")).Clicked() {
 					s.openRemoteServiceLog(node.Record.NodeID, service)
 				}
-				if dangerIconButton(c, reicon.Square, tr(c, "nodes.remote.stop")).Disabled(s.busy || service.State != "running").Clicked() {
+				if dangerIconButton(c, reicon.Square, tr(c, "nodes.remote.stop")).Disabled(s.busy || service.State != "running" || runActive).Clicked() {
 					s.stopRemoteService(node.Record.NodeID, service.ServiceID)
 				}
 			}

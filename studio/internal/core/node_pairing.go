@@ -139,7 +139,9 @@ func (s *Service) ConnectSSHNode(ctx context.Context, req remote.SSHConnectReque
 		NodeID: session.NodeID, DisplayName: req.DisplayName, Hostname: session.Host,
 		Transport: NodeTransportSSH, SSHCommandSafe: safeSSHCommand(parsed), PairedAt: session.ConnectedAt,
 	}
-	if peer, ok := s.nodes.hub.Peer(session.NodeID); ok {
+	peer, hasPeer := s.nodes.hub.Peer(session.NodeID)
+	online := hasPeer && peer != nil && peer.Connected()
+	if hasPeer && peer != nil {
 		info := peer.Info()
 		record.OS, record.Arch, record.Platform = info.OS, info.Arch, info.Platform
 		record.CLIVersion, record.HardwareSummary = info.CLIVersion, info.HardwareSummary
@@ -152,8 +154,13 @@ func (s *Service) ConnectSSHNode(ctx context.Context, req remote.SSHConnectReque
 	}
 	s.nodes.mu.Lock()
 	s.nodes.records[session.NodeID] = record
-	if s.nodes.runtimes[session.NodeID] == nil {
-		s.nodes.runtimes[session.NodeID] = &RemoteNodeRuntime{NodeID: session.NodeID, Online: true, CLIUpgrade: CLIUpgradeState{State: CLIUpgradeIdle}}
+	runtime := s.nodes.runtimes[session.NodeID]
+	if runtime == nil {
+		s.nodes.runtimes[session.NodeID] = &RemoteNodeRuntime{NodeID: session.NodeID, Online: online, CLIUpgrade: CLIUpgradeState{State: CLIUpgradeIdle}}
+	} else {
+		runtime.mu.Lock()
+		runtime.Online = online
+		runtime.mu.Unlock()
 	}
 	err = s.nodes.persistLocked()
 	s.nodes.mu.Unlock()

@@ -89,6 +89,10 @@ func (s *viewState) selectViewNode(nodeID string) {
 	}
 	s.nodes.activeID = nodeID
 	s.nodes.catalogNodeID = ""
+	s.nodes.serviceFormOpen = false
+	s.nodes.serviceModel, s.nodes.serviceEngine, s.nodes.serviceContext, s.nodes.servicePort = "", "", "", ""
+	s.nodes.benchmarkFormOpen = false
+	s.nodes.benchmarkConfigs = ""
 	s.closeOpenedReport()
 	s.nodes.compareOpen = false
 	if s.preview == nil {

@@ -13,14 +13,16 @@ import (
 const remoteReportRefPrefix = "remote://"
 
 type RemoteReportImportMeta struct {
-	NodeID          string    `json:"node_id"`
-	NodeName        string    `json:"node_name"`
-	Platform        string    `json:"platform"`
-	RemoteReportID  string    `json:"remote_report_id"`
-	RemoteRunIDs    []string  `json:"remote_run_ids"`
-	RemoteRunPaths  []string  `json:"remote_run_paths"`
-	VerifiedFromRaw bool      `json:"verified_from_raw"`
-	ImportedAt      time.Time `json:"imported_at"`
+	NodeID             string    `json:"node_id"`
+	NodeName           string    `json:"node_name"`
+	Platform           string    `json:"platform"`
+	RemoteReportID     string    `json:"remote_report_id"`
+	RemoteRunIDs       []string  `json:"remote_run_ids"`
+	RemoteRunPaths     []string  `json:"remote_run_paths"`
+	ResumableRunPaths  *[]string `json:"resumable_run_paths,omitempty"`
+	RerunnableRunPaths *[]string `json:"rerunnable_run_paths,omitempty"`
+	VerifiedFromRaw    bool      `json:"verified_from_raw"`
+	ImportedAt         time.Time `json:"imported_at"`
 }
 
 type UnifiedReportSummary struct {
@@ -38,10 +40,12 @@ type UnifiedReportSummary struct {
 }
 
 type remoteReportExport struct {
-	Report          json.RawMessage `json:"report"`
-	RemoteRunIDs    []string        `json:"remote_run_ids"`
-	RemoteRunPaths  []string        `json:"remote_run_paths"`
-	VerifiedFromRaw bool            `json:"verified_from_raw"`
+	Report             json.RawMessage `json:"report"`
+	RemoteRunIDs       []string        `json:"remote_run_ids"`
+	RemoteRunPaths     []string        `json:"remote_run_paths"`
+	ResumableRunPaths  *[]string       `json:"resumable_run_paths,omitempty"`
+	RerunnableRunPaths *[]string       `json:"rerunnable_run_paths,omitempty"`
+	VerifiedFromRaw    bool            `json:"verified_from_raw"`
 }
 
 func RemoteReportReference(nodeID, remoteReportID string) string {
@@ -71,7 +75,8 @@ func (s *Service) SyncNodeReport(ctx context.Context, nodeID, remoteReportID str
 	meta := RemoteReportImportMeta{
 		NodeID: nodeID, NodeName: record.DisplayName, Platform: record.Platform,
 		RemoteReportID: remoteReportID, RemoteRunIDs: envelope.RemoteRunIDs,
-		RemoteRunPaths: envelope.RemoteRunPaths, VerifiedFromRaw: envelope.VerifiedFromRaw,
+		RemoteRunPaths: envelope.RemoteRunPaths, ResumableRunPaths: envelope.ResumableRunPaths,
+		RerunnableRunPaths: envelope.RerunnableRunPaths, VerifiedFromRaw: envelope.VerifiedFromRaw,
 		ImportedAt: time.Now().UTC(),
 	}
 	if len(meta.RemoteRunIDs) == 0 {
@@ -119,12 +124,17 @@ func (s *Service) remoteSummary(meta RemoteReportImportMeta, report ReportIndex,
 		s.nodes.mu.RUnlock()
 		online = runtime != nil && snapshotRemoteRuntime(runtime).Online
 	}
-	canRun := online && validRemoteRunPaths(meta.RemoteRunPaths)
+	canResume := online && meta.ResumableRunPaths != nil && len(*meta.ResumableRunPaths) == 1 && validRemoteRunPaths(*meta.ResumableRunPaths)
+	rerunPaths := meta.RemoteRunPaths
+	if meta.RerunnableRunPaths != nil {
+		rerunPaths = *meta.RerunnableRunPaths
+	}
+	canRerun := online && validRemoteRunPaths(rerunPaths)
 	return UnifiedReportSummary{
 		ReportSummary: summary, ReportRef: RemoteReportReference(meta.NodeID, meta.RemoteReportID),
 		NodeID: meta.NodeID, NodeName: meta.NodeName, IsRemote: true,
 		RemoteReportID: meta.RemoteReportID, VerifiedFromRaw: meta.VerifiedFromRaw,
-		SourceOnline: online, CanResume: canRun, CanRerun: canRun,
+		SourceOnline: online, CanResume: canResume, CanRerun: canRerun,
 		RemoteRunPaths: append([]string(nil), meta.RemoteRunPaths...),
 	}
 }
@@ -171,28 +181,48 @@ func validRemoteRunPaths(paths []string) bool {
 	return true
 }
 
-func (s *Service) resumeOrRerunRemoteReport(ctx context.Context, nodeID, remoteReportID, action string) ([]RunTask, *ApiError) {
+func (s *Service) ResumeRemoteReport(ctx context.Context, nodeID, remoteReportID string) ([]RunTask, *ApiError) {
 	meta, apiErr := s.RemoteReportMetadata(nodeID, remoteReportID)
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	if s.nodes == nil || !validRemoteRunPaths(meta.RemoteRunPaths) {
+	if s.nodes == nil {
 		return nil, Err("invalid_request")
 	}
 	if _, apiErr := s.nodes.peer(nodeID); apiErr != nil {
 		return nil, apiErr
 	}
+	if meta.ResumableRunPaths == nil || len(*meta.ResumableRunPaths) != 1 || !validRemoteRunPaths(*meta.ResumableRunPaths) {
+		return nil, Conflict("not_resumable")
+	}
 	params := map[string]any{
 		"remote_report_id": remoteReportID, "remote_run_ids": meta.RemoteRunIDs,
-		"remote_run_paths": meta.RemoteRunPaths,
+		"from_run": (*meta.ResumableRunPaths)[0],
 	}
-	return s.startNodeBenchmark(ctx, nodeID, action, params)
-}
-
-func (s *Service) ResumeRemoteReport(ctx context.Context, nodeID, remoteReportID string) ([]RunTask, *ApiError) {
-	return s.resumeOrRerunRemoteReport(ctx, nodeID, remoteReportID, "resume")
+	return s.startNodeBenchmark(ctx, nodeID, "resume", params)
 }
 
 func (s *Service) RerunRemoteReport(ctx context.Context, nodeID, remoteReportID string) ([]RunTask, *ApiError) {
-	return s.resumeOrRerunRemoteReport(ctx, nodeID, remoteReportID, "rerun")
+	meta, apiErr := s.RemoteReportMetadata(nodeID, remoteReportID)
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	if s.nodes == nil {
+		return nil, Err("invalid_request")
+	}
+	if _, apiErr := s.nodes.peer(nodeID); apiErr != nil {
+		return nil, apiErr
+	}
+	paths := meta.RemoteRunPaths
+	if meta.RerunnableRunPaths != nil {
+		paths = *meta.RerunnableRunPaths
+	}
+	if !validRemoteRunPaths(paths) {
+		return nil, Err("invalid_request")
+	}
+	params := map[string]any{
+		"remote_report_id": remoteReportID, "remote_run_ids": meta.RemoteRunIDs,
+		"remote_run_paths": paths,
+	}
+	return s.startNodeBenchmark(ctx, nodeID, "rerun", params)
 }

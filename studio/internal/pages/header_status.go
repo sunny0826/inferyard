@@ -232,6 +232,10 @@ func (s *viewState) sidebarManagedServicesPopover(c *ui.Context, active []core.E
 }
 
 func (s *viewState) sidebarQueueRow(c *ui.Context) {
+	if s.remoteView() {
+		s.sidebarRemoteQueueRow(c)
+		return
+	}
 	q := s.queueActivity()
 	if !q.active() && !s.busy {
 		return

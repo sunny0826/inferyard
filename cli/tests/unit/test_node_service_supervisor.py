@@ -59,7 +59,12 @@ def test_crash_records_exit_and_never_restarts(tmp_path):
 
 def test_managed_port_and_stop_identity(tmp_path):
     async def scenario():
-        supervisor = ServiceSupervisor(tmp_path)
+        events = []
+
+        async def sink(name, data):
+            events.append((name, data["status"]))
+
+        supervisor = ServiceSupervisor(tmp_path, event_sink=sink)
         record = await supervisor.start(
             {
                 "service_id": "managed",
@@ -71,12 +76,14 @@ def test_managed_port_and_stop_identity(tmp_path):
                 },
             }
         )
+        assert record["status"] == "running"
         assert supervisor.allows_port(48857, "managed")
         assert not supervisor.allows_port(48857, "other")
         assert not supervisor.allows_port(49999, "managed")
         stopped = await supervisor.stop("managed", timeout=.1)
         assert stopped["status"] == "stopped"
         assert not supervisor.allows_port(48857, "managed")
+        assert all(name != "service.exited" for name, _ in events)
         await supervisor.close()
 
     run(scenario())

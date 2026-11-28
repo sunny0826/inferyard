@@ -159,3 +159,18 @@ func TestHubRefreshesServerCertificateWhenCandidateHostsChange(t *testing.T) {
 	}
 	_ = conn.Close()
 }
+
+func TestBootstrapCommandsFallbackAcrossCandidateURLs(t *testing.T) {
+	urls := joinHTTPURLs([]string{"100.84.1.2:48860", "192.168.1.105:48860", "mac.local:48860"}, 48861, "123456")
+	if len(urls) != 3 {
+		t.Fatalf("joinHTTPURLs = %v", urls)
+	}
+	unix := formatUnixBootstrapCommand(urls)
+	if unix == "" || unix[0] != '(' {
+		t.Fatalf("expected multi-URL unix fallback command, got %q", unix)
+	}
+	win := formatWindowsBootstrapCommand(urls)
+	if win == "" || win[:2] != "$s" {
+		t.Fatalf("expected multi-URL windows fallback command, got %q", win)
+	}
+}

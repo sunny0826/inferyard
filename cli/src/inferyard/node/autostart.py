@@ -211,9 +211,17 @@ class AutostartManager:
             systemd_root.mkdir(parents=True, exist_ok=True)
             path.write_text(systemd_unit(self.state_dir), encoding="utf-8")
             if activate:
-                self.runner(["systemctl", "--user", "daemon-reload"], check=True)
-                self.runner(["systemctl", "--user", "enable", "--now", path.name], check=True)
-            return {"mode": "systemd_user", "path": str(path)}
+                try:
+                    self.runner(["systemctl", "--user", "daemon-reload"], check=True)
+                    self.runner(["systemctl", "--user", "enable", "--now", path.name], check=True)
+                except (subprocess.CalledProcessError, OSError):
+                    if self._explicit_directories:
+                        raise
+                    path.unlink(missing_ok=True)
+                else:
+                    return {"mode": "systemd_user", "path": str(path)}
+            else:
+                return {"mode": "systemd_user", "path": str(path)}
         path = self._directory("fallback", self.state_dir) / "start-agent.sh"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(fallback_script(self.state_dir), encoding="utf-8")

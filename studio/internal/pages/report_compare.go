@@ -82,7 +82,7 @@ func (s *viewState) compareRunCard(c *ui.Context, run core.ReportCompareRun) {
 	t := tokens(c)
 	applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Row).Padding(t.Card.Padding), materialCard).Children(func() {
 		ui.Text(c, run.Model).Bold().FontSize(t.Type.CardTitle)
-		compareMetricRow(c, tr(c, "nodes.compare.models"), compareModelName(run.LeftModel, run.Model), compareModelName(run.RightModel, run.Model))
+		compareMetricRow(c, tr(c, "nodes.compare.models"), compareSideModel(run.Left != nil, run.LeftModel, run.Model), compareSideModel(run.Right != nil, run.RightModel, run.Model))
 		compareMetricRow(c, tr(c, "nodes.compare.quality"), formatCompareQuality(ptrMetrics(run.Left)), formatCompareQuality(ptrMetrics(run.Right)))
 		compareMetricRow(c, tr(c, "nodes.compare.latency_p50"), formatCompareNumber(metricValue(run.Left, "latency_p50"), "ms"), formatCompareNumber(metricValue(run.Right, "latency_p50"), "ms"))
 		compareMetricRow(c, tr(c, "nodes.compare.latency_p95"), formatCompareNumber(metricValue(run.Left, "latency_p95"), "ms"), formatCompareNumber(metricValue(run.Right, "latency_p95"), "ms"))

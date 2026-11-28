@@ -65,8 +65,21 @@ func TestRemoteReportsIsolationComparisonAndOfflineRouting(t *testing.T) {
 	rawA = setRemoteReportMemory(t, makeRemoteReportRaw(t, "run-a", model, 60), nil)
 	setRemoteReportResponse(peerA, rawA)
 	summaryA, apiErr := svc.SyncNodeReport(context.Background(), "node-a", "report-shared")
-	if apiErr != nil || !summaryA.VerifiedFromRaw || !summaryA.SourceOnline || !summaryA.CanResume {
-		t.Fatalf("unexpected imported summary: %+v err=%v", summaryA, apiErr)
+	if apiErr != nil || !summaryA.VerifiedFromRaw || !summaryA.SourceOnline || summaryA.CanResume || !summaryA.CanRerun {
+		t.Fatalf("single-run imported summary must allow rerun only: %+v err=%v", summaryA, apiErr)
+	}
+	if _, apiErr := svc.ResumeRemoteReport(context.Background(), "node-a", "report-shared"); apiErr == nil || apiErr.Details["reason"] != "not_resumable" {
+		t.Fatalf("single-run report must reject resume: %+v", apiErr)
+	}
+	peerA.responses[remote.MethodReportExport] = map[string]any{
+		"report":               rawA,
+		"verified_from_raw":    true,
+		"resumable_run_paths":  []string{`C:\Runs\batch\runs\run-a`},
+		"rerunnable_run_paths": []string{`C:\Runs\run-a`},
+	}
+	summaryA, apiErr = svc.SyncNodeReport(context.Background(), "node-a", "report-shared")
+	if apiErr != nil || !summaryA.CanResume || !summaryA.CanRerun {
+		t.Fatalf("batch imported summary should allow resume: %+v err=%v", summaryA, apiErr)
 	}
 	for _, nodeID := range []string{"node-a", "node-b"} {
 		path := filepath.Join(workspace, "remote_reports", nodeID, "report-shared", "studio.json")
@@ -134,9 +147,19 @@ func TestRemoteReportsIsolationComparisonAndOfflineRouting(t *testing.T) {
 	if json.Unmarshal(calls[len(calls)-1].Params, &params) != nil || params["action"] != "resume" {
 		t.Fatalf("resume did not route to source node: %s", calls[len(calls)-1].Params)
 	}
+	if params["from_run"] != `C:\Runs\batch\runs\run-a` {
+		t.Fatalf("resume did not submit single resumable batch run path: %+v", params)
+	}
+	if _, apiErr := svc.RerunRemoteReport(context.Background(), "node-a", "report-shared"); apiErr != nil {
+		t.Fatal(apiErr)
+	}
+	calls = peerA.methodCalls(remote.MethodJobStart)
+	if json.Unmarshal(calls[len(calls)-1].Params, &params) != nil || params["action"] != "rerun" {
+		t.Fatalf("rerun did not route to source node: %s", calls[len(calls)-1].Params)
+	}
 	paths := params["remote_run_paths"].([]any)
 	if paths[0] != `C:\Runs\run-a` {
-		t.Fatalf("resume changed opaque path: %+v", paths)
+		t.Fatalf("rerun changed opaque path: %+v", paths)
 	}
 	peerA.setConnected(false)
 	svc.nodes.peerDisconnected("node-a")

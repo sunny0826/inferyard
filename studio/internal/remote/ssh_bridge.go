@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"time"
 
@@ -175,12 +176,12 @@ func (h *hub) sshAuthMethods(parsed ParsedSSHCommand, password []byte, nodeID st
 			_ = closer.Close()
 		}
 	}
+	var agentClient agent.ExtendedAgent
 	if socket := os.Getenv("SSH_AUTH_SOCK"); socket != "" {
 		conn, err := net.DialTimeout("unix", socket, 2*time.Second)
 		if err == nil {
-			agentClient := agent.NewClient(conn)
+			agentClient = agent.NewClient(conn)
 			closers = append(closers, conn)
-			methods = append(methods, ssh.PublicKeysCallback(agentClient.Signers))
 		}
 	}
 	identityFiles := []string{parsed.IdentityFile}
@@ -206,8 +207,16 @@ func (h *hub) sshAuthMethods(parsed ParsedSSHCommand, password []byte, nodeID st
 			signers = append(signers, signer)
 		}
 	}
-	if len(signers) > 0 {
-		methods = append(methods, ssh.PublicKeys(signers...))
+	if len(signers) > 0 || agentClient != nil {
+		methods = append(methods, ssh.PublicKeysCallback(func() ([]ssh.Signer, error) {
+			combined := slices.Clone(signers)
+			if agentClient != nil {
+				if extra, err := agentClient.Signers(); err == nil {
+					combined = append(combined, extra...)
+				}
+			}
+			return combined, nil
+		}))
 	}
 	if len(password) > 0 {
 		methods = append(methods, ssh.Password(string(password)))

@@ -132,3 +132,60 @@ func (s *viewState) sidebarRemoteServiceRow(c *ui.Context) {
 		open:    new(bool), pop: func(func()) {},
 	})
 }
+
+func (s *viewState) sidebarRemoteQueueRow(c *ui.Context) {
+	node := s.activeNode()
+	var running, waiting int
+	var activeJobs []core.RemoteNodeJob
+	for _, job := range node.Jobs {
+		if terminal(job.Task.State) {
+			continue
+		}
+		activeJobs = append(activeJobs, job)
+		if job.Task.Queued || job.Task.State == "queued" {
+			waiting++
+		} else {
+			running++
+		}
+	}
+	if len(activeJobs) == 0 && !s.busy {
+		return
+	}
+	label := tr(c, "sidebar.status.queue_preparing")
+	if len(activeJobs) > 0 {
+		if waiting > 0 {
+			label = trf(c, "sidebar.status.queue_running_waiting", "running", running, "waiting", waiting)
+		} else {
+			label = trf(c, "sidebar.status.queue_running", "running", running)
+		}
+	}
+	s.sidebarStatusRow(c, sidebarStatusSpec{
+		key: "sidebar-remote-queue-status", label: label, ariaLabel: label, kind: stateActive, progress: -1,
+		leading: func() { components.Icon(c, reicon.Activity).Size(14, 14).TextColor(stateColor(c, stateActive)) },
+		open:    &s.sidebarQueueOpen,
+		pop: func(close func()) {
+			t := tokens(c)
+			ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
+				ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+					heading(c, tr(c, "shell.header.task_queue"), 3).Grow(1)
+					inlineBadge(c, label, stateActive, badgeOptions{Size: sizeSM})
+				})
+				for _, job := range activeJobs {
+					dotKind := stateActive
+					if job.Task.Queued || job.Task.State == "queued" {
+						dotKind = stateNeutral
+					}
+					applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
+						Padding(t.Density.Inset, t.Density.Row), materialSunken).Children(func() {
+						ui.Box(c).Size(6, 6).Radius(t.Radius.Full).Shrink(0).Background(stateColor(c, dotKind))
+						ui.Text(c, job.Task.TaskId+" · "+taskLabelFor(contextLocale(c), job.Task)).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).SingleLine()
+					})
+				}
+				outlineButton(c, tr(c, "sidebar.status.open_benchmarks")).AlignSelf(ui.Start).OnClick(func() {
+					s.navigateTo("benchmarks", "")
+					close()
+				})
+			})
+		},
+	})
+}

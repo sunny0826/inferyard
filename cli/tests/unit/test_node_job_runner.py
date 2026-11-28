@@ -340,3 +340,37 @@ def test_frozen_plan_requires_loopback_and_expected_service(
             await runner.close()
 
     asyncio.run(scenario())
+
+
+def test_multi_config_validation_failure_starts_zero_jobs(tmp_path, config_path):
+    started = []
+
+    async def executor(request):
+        started.append(request)
+        return 0, CommandResult("run", "finished")
+
+    async def scenario():
+        runner = JobRunner(tmp_path, Supervisor(), executor=executor)
+        with pytest.raises((OSError, ValueError)):
+            await runner.start_request(
+                {"action": "start", "config_paths": [str(config_path), str(tmp_path / "missing.toml")]}
+            )
+        assert runner.list() == []
+        assert started == []
+        assert list((tmp_path / "jobs").iterdir()) == []
+        await runner.close()
+
+    asyncio.run(scenario())
+
+
+def test_restarted_runner_reconciles_interrupted_running_job(tmp_path):
+    job_dir = tmp_path / "jobs" / "orphan-run"
+    job_dir.mkdir(parents=True)
+    (job_dir / "job.json").write_text(
+        json.dumps({"job_id": "orphan-run", "status": "running", "state": "running"}) + "\n",
+        encoding="utf-8",
+    )
+    runner = JobRunner(tmp_path, Supervisor())
+    loaded = runner.progress("orphan-run")
+    assert loaded["state"] == loaded["status"] == "failed"
+    assert loaded["error"]["code"] == "agent_restarted"

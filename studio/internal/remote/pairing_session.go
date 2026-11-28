@@ -7,8 +7,50 @@ import (
 	"math/big"
 	"net"
 	"slices"
+	"strings"
 	"time"
 )
+
+func joinHTTPURLs(addrs []string, httpPort int, code string) []string {
+	var urls []string
+	seen := make(map[string]bool)
+	for _, addr := range addrs {
+		host, _, err := net.SplitHostPort(addr)
+		if err != nil || host == "" {
+			continue
+		}
+		if !seen[host] {
+			seen[host] = true
+			urls = append(urls, fmt.Sprintf("http://%s/join/%s", net.JoinHostPort(host, fmt.Sprint(httpPort)), code))
+		}
+	}
+	if len(urls) == 0 {
+		urls = append(urls, fmt.Sprintf("http://%s/join/%s", net.JoinHostPort("127.0.0.1", fmt.Sprint(httpPort)), code))
+	}
+	return urls
+}
+
+func formatUnixBootstrapCommand(urls []string) string {
+	if len(urls) == 1 {
+		return "curl --fail --silent --show-error " + shellQuote(urls[0]) + " | sh"
+	}
+	attempts := make([]string, 0, len(urls))
+	for _, url := range urls {
+		attempts = append(attempts, "curl --fail --silent --show-error --connect-timeout 3 "+shellQuote(url))
+	}
+	return "(" + strings.Join(attempts, " || ") + ") | sh"
+}
+
+func formatWindowsBootstrapCommand(urls []string) string {
+	if len(urls) == 1 {
+		return "irm " + powerShellQuote(urls[0]+".ps1") + " | iex"
+	}
+	quoted := make([]string, 0, len(urls))
+	for _, url := range urls {
+		quoted = append(quoted, powerShellQuote(url+".ps1"))
+	}
+	return "$s = foreach ($u in @(" + strings.Join(quoted, ", ") + ")) { try { irm -TimeoutSec 3 $u; break } catch {} }; if (-not $s) { throw 'Unable to reach InferYard Studio' }; iex $s"
+}
 
 func (h *hub) StartPairingSession(ctx context.Context, opts PairingSessionOptions) (PairingSession, error) {
 	if err := ctx.Err(); err != nil {
@@ -47,10 +89,9 @@ func (h *hub) StartPairingSession(ctx context.Context, opts PairingSessionOption
 		return PairingSession{}, err
 	}
 	httpPort := listenerPort(h.HTTPJoinAddr())
-	httpHost := firstCandidateHost(session.CandidateAddrs)
-	joinURL := fmt.Sprintf("http://%s/join/%s", net.JoinHostPort(httpHost, fmt.Sprint(httpPort)), code)
-	session.UnixCommand = "curl --fail --silent --show-error " + shellQuote(joinURL) + " | sh"
-	session.WindowsCommand = "irm '" + joinURL + ".ps1' | iex"
+	urls := joinHTTPURLs(session.CandidateAddrs, httpPort, code)
+	session.UnixCommand = formatUnixBootstrapCommand(urls)
+	session.WindowsCommand = formatWindowsBootstrapCommand(urls)
 
 	h.mu.Lock()
 	oldRequests := make([]*pendingPairing, 0)

@@ -78,6 +78,8 @@ class NodeRPC:
         if method == protocol.METHOD_SERVICE_START:
             return await self.supervisor.start(params)
         if method == protocol.METHOD_SERVICE_STOP:
+            if getattr(self.jobs, "has_active_jobs", lambda: False)():
+                raise RPCError("run_active", "benchmark run is active on this node")
             return await self.supervisor.stop(
                 params["service_id"], timeout=float(params.get("timeout_seconds", 5))
             )

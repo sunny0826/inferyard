@@ -45,6 +45,13 @@ func metricValue(metrics *core.ReportCompareMetrics, name string) *float64 {
 	}
 }
 
+func compareSideModel(present bool, model, fallback string) string {
+	if !present {
+		return compareMissing
+	}
+	return compareModelName(model, fallback)
+}
+
 func compareModelName(model, fallback string) string {
 	if strings.TrimSpace(model) != "" {
 		return model

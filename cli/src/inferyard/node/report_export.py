@@ -54,6 +54,60 @@ def _write_raw(sources: list[Path], out: Path) -> dict:
     return write_studio_report(sources, out)
 
 
+def _classify_run_paths(paths: list[str]) -> tuple[list[str], list[str]]:
+    from inferyard.analysis.ledger import read_trial
+    from inferyard.evidence.storage import read_json
+    from inferyard.provenance import tool_source_hash
+    from inferyard.runtime import batch_runner
+
+    resumable: list[str] = []
+    rerunnable: list[str] = []
+    source_identity = tool_source_hash()
+    for raw in paths:
+        run_dir = Path(raw)
+        if not run_dir.is_dir():
+            continue
+        if (run_dir / "manifest.json").is_file() and (run_dir / "inputs.json").is_file():
+            try:
+                trial = read_trial(run_dir)
+                meta = trial.get("run") or {}
+                exp = ((trial.get("config") or {}).get("experiment")) or {}
+                if (
+                    meta.get("execution_mode") == "single"
+                    and meta.get("kind") == "run"
+                    and exp.get("profile") != "context-speed.v1"
+                ):
+                    rerunnable.append(raw)
+            except Exception:
+                pass
+        if run_dir.parent.name == "runs" and (run_dir.parent.parent / "batch.json").is_file():
+            try:
+                root = run_dir.parent.parent.resolve()
+                diagnostic = bool(read_json(root / "batch.json").get("diagnostic"))
+                plan, loaded = batch_runner.open_batch(
+                    root, None, diagnostic, source_identity=source_identity
+                )
+                runs, comparison_stop = batch_runner.load_plan_history(
+                    root,
+                    plan,
+                    loaded,
+                    options=batch_runner.HistoryLoadOptions(source_identity, None),
+                )
+                pending, interrupted = batch_runner._next(plan, runs)
+                if (
+                    comparison_stop is None
+                    and not batch_runner._capacity_scan_stopped(plan, runs)
+                    and pending is not None
+                    and interrupted is not None
+                    and "duration" not in interrupted["summary"]
+                    and interrupted["path"].resolve() == run_dir.resolve()
+                ):
+                    resumable.append(raw)
+            except Exception:
+                pass
+    return resumable, rerunnable
+
+
 def export_report(
     *,
     state_dir: Path,
@@ -70,11 +124,20 @@ def export_report(
         source = Path(report_path).resolve()
         document, report_file = _read_existing(source)
         validate_document("studio_report", document)
+        source_paths = [
+            path
+            for run in document.get("runs", [])
+            if isinstance((path := (run.get("source") or {}).get("path")), str) and path
+        ]
+        resumable, rerunnable = _classify_run_paths(source_paths)
         return {
             "path": str(report_file),
             "report": document,
             "verified_from_raw": False,
             "verification": "schema_only",
+            "remote_run_paths": source_paths,
+            "resumable_run_paths": resumable,
+            "rerunnable_run_paths": rerunnable,
         }
     destination = (
         Path(out).absolute()
@@ -87,11 +150,24 @@ def export_report(
         else _write_existing(Path(report_path).resolve(), destination)
     )
     validate_document("studio_report", document)
+    source_paths = (
+        [str(p) for p in raw_inputs]
+        if verified_from_raw
+        else [
+            path
+            for run in document.get("runs", [])
+            if isinstance((path := (run.get("source") or {}).get("path")), str) and path
+        ]
+    )
+    resumable, rerunnable = _classify_run_paths(source_paths)
     return {
         "path": str(destination / "studio.json"),
         "report": document,
         "verified_from_raw": verified_from_raw,
         "verification": "raw_evidence" if verified_from_raw else "schema_only",
+        "remote_run_paths": source_paths,
+        "resumable_run_paths": resumable,
+        "rerunnable_run_paths": rerunnable,
     }
 
 

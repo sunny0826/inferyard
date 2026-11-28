@@ -58,9 +58,25 @@ class JobRunner:
                             "message": record["error"],
                             "limitations": [],
                         }
+                    if record["state"] in ("running", "starting", "queued"):
+                        _set_state(record, "failed")
+                        record.setdefault("code", 4)
+                        record["finished_at"] = record.get("finished_at") or _timestamp()
+                        record["error"] = {
+                            "code": "agent_restarted",
+                            "message": "node agent restarted before benchmark completed",
+                            "limitations": ["agent_restarted"],
+                        }
+                        _write_json(path, record)
                     self.jobs[record["job_id"]] = record
             except (OSError, ValueError):
                 continue
+
+    def has_active_jobs(self) -> bool:
+        return any(
+            record.get("state") in ("running", "starting", "queued")
+            for record in self.jobs.values()
+        )
 
     def list(self) -> list[dict]:
         return [dict(self.jobs[key]) for key in sorted(self.jobs)]
@@ -177,27 +193,36 @@ class JobRunner:
             paths = params["remote_run_paths"]
             if not paths:
                 raise ValueError("remote_run_paths must not be empty")
-            records = []
-            for run_path in paths:
-                item = {k: v for k, v in params.items() if k not in ("remote_run_paths", "job_id")}
-                item["from_run"] = run_path
-                records.append(await self.start(item))
-            return {"jobs": records}
+            items = [
+                {
+                    **{k: v for k, v in params.items() if k not in ("remote_run_paths", "job_id")},
+                    "from_run": run_path,
+                }
+                for run_path in paths
+            ]
+            return {"jobs": await self._start_many(items)}
         if isinstance(params.get("config_paths"), list):
             paths = params["config_paths"]
             if not paths:
                 raise ValueError("config_paths must not be empty")
-            records = []
-            for config_path in paths:
-                item = {k: v for k, v in params.items() if k not in ("config_paths", "job_id")}
-                item["config_path"] = config_path
-                records.append(await self.start(item))
-            return {"jobs": records}
+            items = [
+                {
+                    **{k: v for k, v in params.items() if k not in ("config_paths", "job_id")},
+                    "config_path": config_path,
+                }
+                for config_path in paths
+            ]
+            return {"jobs": await self._start_many(items)}
         return await self.start(params)
 
-    async def start(self, params: dict) -> dict:
+    def _prepare(
+        self, params: dict, *, reserved: set[str] | None = None
+    ) -> tuple[str, Path, CommandRequest]:
+        import shutil
+
         job_id = params.get("job_id") or uuid.uuid4().hex
-        if not isinstance(job_id, str) or not job_id or job_id in self.jobs:
+        taken = reserved or set()
+        if not isinstance(job_id, str) or not job_id or job_id in self.jobs or job_id in taken:
             raise ValueError("invalid or duplicate job_id")
         allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
         if any(character not in allowed for character in job_id):
@@ -207,11 +232,11 @@ class JobRunner:
         try:
             request = self._request(job_id, params)
         except BaseException:
-            try:
-                job_dir.rmdir()
-            except OSError:
-                pass
+            shutil.rmtree(job_dir, ignore_errors=True)
             raise
+        return job_id, job_dir, request
+
+    async def _launch(self, job_id: str, request: CommandRequest) -> dict:
         record = {
             "job_id": job_id,
             "task_id": job_id,
@@ -231,6 +256,26 @@ class JobRunner:
         self.tasks[job_id] = asyncio.create_task(self._execute(request, record))
         await self._event(record)
         return dict(record)
+
+    async def _start_many(self, items: list[dict]) -> list[dict]:
+        import shutil
+
+        prepared: list[tuple[str, Path, CommandRequest]] = []
+        reserved: set[str] = set()
+        try:
+            for item in items:
+                entry = self._prepare(item, reserved=reserved)
+                reserved.add(entry[0])
+                prepared.append(entry)
+        except BaseException:
+            for _, job_dir, _ in prepared:
+                shutil.rmtree(job_dir, ignore_errors=True)
+            raise
+        return [await self._launch(job_id, request) for job_id, _, request in prepared]
+
+    async def start(self, params: dict) -> dict:
+        job_id, _, request = self._prepare(params)
+        return await self._launch(job_id, request)
 
     async def _execute(self, request: CommandRequest, record: dict) -> None:
         if self.executor is None:

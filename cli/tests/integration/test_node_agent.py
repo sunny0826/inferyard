@@ -93,10 +93,11 @@ def test_tunnel_bidirectional_sse_bytes_and_port_rejection(tmp_path):
             writer.write(data)
             await writer.drain()
             writer.close()
+            await writer.wait_closed()
 
         local = await asyncio.start_server(echo, "127.0.0.1", 0)
         local_port = local.sockets[0].getsockname()[1]
-        echoed = asyncio.get_running_loop().create_future()
+        received_all = asyncio.get_running_loop().create_future()
 
         async def hub(reader, writer):
             handshake = await reader.readline()
@@ -113,9 +114,10 @@ def test_tunnel_bidirectional_sse_bytes_and_port_rejection(tmp_path):
             assert handshake == f"{HANDSHAKE_TUNNEL_PREFIX}stream-1\n".encode()
             writer.write(payload)
             await writer.drain()
-            data = await reader.readexactly(len(payload))
-            if not echoed.done():
-                echoed.set_result(data)
+            # Read until EOF (verifies engine connection-close EOF is forwarded over TLS).
+            data = await reader.read()
+            if not received_all.done():
+                received_all.set_result(data)
             writer.close()
             await writer.wait_closed()
 
@@ -126,7 +128,7 @@ def test_tunnel_bidirectional_sse_bytes_and_port_rejection(tmp_path):
         agent = NodeAgent(make_state(tmp_path, paths, port))
         agent.supervisor.allowed_ports.add(local_port)
         task = asyncio.create_task(agent.run_once(f"127.0.0.1:{port}"))
-        assert await asyncio.wait_for(echoed, 10) == payload
+        assert await asyncio.wait_for(received_all, 10) == payload
         await agent.close()
         await asyncio.wait_for(task, 10)
         local.close()

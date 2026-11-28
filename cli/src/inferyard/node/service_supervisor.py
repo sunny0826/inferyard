@@ -308,7 +308,8 @@ class ServiceSupervisor:
             finished_at=_timestamp(),
         )
         self._save(record)
-        await self._event(EVENT_SERVICE_EXITED, record)
+        event = EVENT_SERVICE_EXITED if status == "exited" else EVENT_SERVICE_UPDATED
+        await self._event(event, record)
 
     async def stop(self, service_id: str, *, timeout: float = 5) -> dict:
         record = self._record(service_id)

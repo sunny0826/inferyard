@@ -25,6 +25,8 @@ async def _pump(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> N
         if writer.can_write_eof():
             writer.write_eof()
             await writer.drain()
+        else:
+            writer.close()
     except (ConnectionError, asyncio.IncompleteReadError, OSError):
         pass
 
