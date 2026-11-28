@@ -45,5 +45,10 @@ mise run release <target>
 
 ## 异常恢复与结果汇报
 
-- **中途失败**：严格按 `tools/release.py` 输出的 `Recovery:` 指引说明停在哪个阶段（本地分支 / PR 已开 / PR 已合 `main`），不要覆盖已发布的 GitHub Release 或强推重写已发布 tag；若仅 CI 某一步偶发失败，可提示用户用 `gh run rerun <run_id> --failed` 重跑失败 job。
-- **发布成功**：简明汇报版本号、合并 PR 链接、tag、GitHub Release 链接、PyPI 链接及 `release.yml` 运行结果。
+- **尚未发布前的 `release.yml` 失败（自愈并复用 Tag）**：若 `vX.Y.Z` tag 已推但 `release.yml` 因构建/测试问题失败，且 **GitHub Release 与 PyPI 均未发布（skipped / 未执行）**，直接自主完成恢复与重发，无需停下二次确认：
+  1. 定位首个真实失败步骤并新建分支修复问题，跑完相关本地验证；
+  2. 提交修复 PR，等待 PR CI 通过后 `--squash --delete-branch` 合入 `main`；
+  3. 切回并同步 `main`，删除本地与远端同名 `vX.Y.Z` tag（`git tag -d vX.Y.Z && git push origin :refs/tags/vX.Y.Z`），在最新 `main` 上重新打 `vX.Y.Z` annotated tag 并推送，持续监听新的 `release.yml` 直到发布成功。
+  4. 若仅为 CI 偶发抖动而非代码/测试问题，直接执行 `gh run rerun <run_id> --failed` 重跑并监听至成功。
+- **已发布边界与其他阶段失败**：一旦 GitHub Release 或 PyPI **已经发布**，严禁覆盖已发布的 Release 或删除/强推重写已发布 tag；若在本地分支或发版 PR 阶段失败，按 `tools/release.py` 输出的 `Recovery:` 指引定位修复后继续完成发版。
+- **发布成功**：简明汇报版本号、合并 PR 链接（含任何自愈修复 PR）、tag、GitHub Release 链接、PyPI 链接及 `release.yml` 运行结果。
