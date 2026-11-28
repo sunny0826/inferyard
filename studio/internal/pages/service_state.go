@@ -25,7 +25,16 @@ func (s *viewState) preflightReady() bool {
 	if s.localEngine() != nil {
 		return p != nil && s.ready.Workspace.Initialized
 	}
-	return p != nil && p.DevicePreflight.Status == "ok" && p.DevicePreflight.Path != nil && p.NextAction != "device_check"
+	if p == nil {
+		return false
+	}
+	if p.DevicePreflight.Status == "ok" && p.DevicePreflight.Path != nil && p.NextAction != "device_check" {
+		return true
+	}
+	// When a local_installation engine coexists with binary engines, stageAction
+	// skips the standalone device_check stage; allow starting so runStartChain
+	// and context speed can execute device-check on demand.
+	return s.ready.Workspace.Initialized && s.hasLocalEngine() && p.DevicePreflight.Status == "missing"
 }
 
 func (s *viewState) stopEnabled(active, runActive bool) bool {

@@ -31,15 +31,20 @@ func runStartChain(ctx context.Context, modelName, engineName string,
 		return startChainResult{}, e
 	}
 	p := current.Progress
-	if current.ExitCode != 0 || p == nil || p.DevicePreflight.Status != "ok" || p.DevicePreflight.Path == nil {
+	if current.ExitCode != 0 || p == nil {
 		return startChainResult{}, core.Err("preflight_missing")
 	}
-	match, e := preflightMatch(*p.DevicePreflight.Path, modelName)
-	if e != nil && e.Code != "device_preflight_blocked" {
-		return startChainResult{}, e
-	}
-	if e != nil {
-		match = false
+	match := false
+	if p.DevicePreflight.Status == "ok" && p.DevicePreflight.Path != nil {
+		match, e = preflightMatch(*p.DevicePreflight.Path, modelName)
+		if e != nil && e.Code != "device_preflight_blocked" {
+			return startChainResult{}, e
+		}
+		if e != nil {
+			match = false
+		}
+	} else if p.DevicePreflight.Status != "missing" || modelName == "" {
+		return startChainResult{}, core.Err("preflight_missing")
 	}
 	if !match {
 		out, e := core.NextOutput(p.Workspace, "preflight", "device")
