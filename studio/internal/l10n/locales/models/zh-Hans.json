@@ -45,7 +45,6 @@
   "engine.info.model": "模型",
   "engine.info.params": "参数",
   "engine.info.process": "进程",
-  "engine.local.card_title": "已有本地引擎",
   "engine.local.discovered_hint": "已发现的本机服务（点击填入 PID 与服务地址）：",
   "engine.local.endpoint_example": "例如 http://127.0.0.1:1234",
   "engine.local.error.format_mismatch": "模型格式与所选引擎不匹配，请重新选择。",

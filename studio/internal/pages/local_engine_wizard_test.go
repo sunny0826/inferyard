@@ -234,14 +234,21 @@ func TestCoreDetectAndInitRegisterLocalEngine(t *testing.T) {
 
 func TestWizardPreviewSafeActionsDoNotPerformIO(t *testing.T) {
 	s := settingsState()
+	s.selected = "library"
+	s.libraryTab = libraryTabEngines
+	s.settings.Settings.EngineInstallations = []string{"/preview/llama-cpp.json"}
 	preview := &wizardPreviewStub{}
 	s.preview = preview
 	s.service = nil
 
 	tt := ui.NewTester(func(c *ui.Context) {
-		ui.Column(c).Children(func() { s.localInstallationsView(c) })
+		ui.Column(c).Children(func() { s.localEngineRegistrationView(c) })
 	}, 1120, 1400)
 	tt.Frame()
+
+	if !tt.HasText("高级：直接导入已有 installation.json") || !tt.HasText("/preview/llama-cpp.json") {
+		t.Fatalf("localEngineRegistrationView missing import fold or registered path: %v", tt.Texts())
+	}
 
 	click(t, tt, "自动探测本机引擎")
 	tt.Frame()
@@ -269,5 +276,16 @@ func TestWizardPreviewSafeActionsDoNotPerformIO(t *testing.T) {
 	tt.Frame()
 	if len(preview.intents) != 1 || s.failure != nil {
 		t.Fatalf("preview executable browse failed: intents=%+v failure=%+v", preview.intents, s.failure)
+	}
+
+	// Test removing a registered installation path dispatches preview remove intent.
+	click(t, tt, "移除注册")
+	tt.Frame()
+	if len(preview.intents) != 2 {
+		t.Fatalf("expected 2 preview intents after remove, got %+v", preview.intents)
+	}
+	rem, ok := preview.intents[1].(previewInstallation)
+	if !ok || rem.action != "remove" || rem.path != "/preview/llama-cpp.json" {
+		t.Fatalf("unexpected remove preview intent: %+v", preview.intents[1])
 	}
 }

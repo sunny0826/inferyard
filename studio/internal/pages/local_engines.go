@@ -298,32 +298,30 @@ func (s *viewState) localSelectionView(c *ui.Context) {
 	}
 }
 
-func (s *viewState) localInstallationsView(c *ui.Context) {
-	card(c, tr(c, "engine.local.card_title"), func() {
-		s.localEngineWizardView(c)
-		componentFold(c, tr(c, "engine.local.import_fold"), func() {
-			componentFold(c, tr(c, "engine.local.schema_fold"), func() {
-				ui.Text(c, tr(c, "engine.local.schema_desc"))
-			})
-			s.pathField(c, tr(c, "engine.local.json_path_label"), &s.installationPath, browseInstallation).
-				Error(s.browseError(browseInstallation.key, pathError(s.installationPath)))
-			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-				if primaryActionButton(c, tr(c, "engine.local.import_register"), s.actionBusy("install-register")).Disabled(s.busy || s.installationPath == "" || pathError(s.installationPath) != "").Clicked() {
-					s.changeInstallation("register", s.installationPath)
-				}
-			})
+func (s *viewState) localEngineRegistrationView(c *ui.Context) {
+	s.localEngineWizardView(c)
+	componentFold(c, tr(c, "engine.local.import_fold"), func() {
+		componentFold(c, tr(c, "engine.local.schema_fold"), func() {
+			ui.Text(c, tr(c, "engine.local.schema_desc"))
 		})
-		for _, path := range s.settings.Settings.EngineInstallations {
-			path := path
-			ui.Row(c.Key(path)).FillWidth().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-				pathText := ui.Text(c, path).Grow(1).MinWidth(0).SingleLine().TruncateMiddle().Selectable()
-				studioTooltipIfTruncated(c, pathText, path, path, c.Theme().FontSize, false)
-				if dangerIconButton(c, reicon.Unlink, tr(c, "engine.local.remove_registration")).AlignSelf(ui.Center).Shrink(0).Disabled(s.busy).Clicked() {
-					s.removeInstallationWithUndo(path)
-				}
-			})
-		}
+		s.pathField(c, tr(c, "engine.local.json_path_label"), &s.installationPath, browseInstallation).
+			Error(s.browseError(browseInstallation.key, pathError(s.installationPath)))
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+			if primaryActionButton(c, tr(c, "engine.local.import_register"), s.actionBusy("install-register")).Disabled(s.busy || s.installationPath == "" || pathError(s.installationPath) != "").Clicked() {
+				s.changeInstallation("register", s.installationPath)
+			}
+		})
 	})
+	for _, path := range s.settings.Settings.EngineInstallations {
+		path := path
+		ui.Row(c.Key(path)).FillWidth().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+			pathText := ui.Text(c, path).Grow(1).MinWidth(0).SingleLine().TruncateMiddle().Selectable()
+			studioTooltipIfTruncated(c, pathText, path, path, c.Theme().FontSize, false)
+			if dangerIconButton(c, reicon.Unlink, tr(c, "engine.local.remove_registration")).AlignSelf(ui.Center).Shrink(0).Disabled(s.busy).Clicked() {
+				s.removeInstallationWithUndo(path)
+			}
+		})
+	}
 }
 
 func (s *viewState) removeInstallationWithUndo(path string) {

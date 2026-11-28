@@ -293,7 +293,7 @@ func (s *viewState) libraryEnginesTab(c *ui.Context, pending *pendingAssetDelete
 		if *wizardOpen {
 			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialInset).Children(func() {
 				heading(c, tr(c, "models.wizard.card_title"), 3)
-				s.localEngineWizardView(c)
+				s.localEngineRegistrationView(c)
 				outlineIconButton(c, reicon.ChevronUp, tr(c, "models.action.collapse")).OnClick(func() { *wizardOpen = false })
 			})
 		}

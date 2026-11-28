@@ -45,7 +45,6 @@
   "engine.info.model": "Model",
   "engine.info.params": "Params",
   "engine.info.process": "Process",
-  "engine.local.card_title": "Existing Local Engines",
   "engine.local.discovered_hint": "Discovered local services (click to fill PID and service endpoint):",
   "engine.local.endpoint_example": "e.g. http://127.0.0.1:1234",
   "engine.local.error.format_mismatch": "Model format does not match the selected engine. Please choose another.",

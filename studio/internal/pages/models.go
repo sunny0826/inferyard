@@ -30,7 +30,7 @@ func (s *viewState) modelsView(c *ui.Context) {
 		s.modelsIconPageActions(c, wizardOpen)
 		if *wizardOpen {
 			card(c, tr(c, "models.wizard.card_title"), func() {
-				s.localEngineWizardView(c)
+				s.localEngineRegistrationView(c)
 				outlineIconButton(c, reicon.ChevronUp, tr(c, "models.action.collapse")).OnClick(func() { *wizardOpen = false })
 			})
 		}
