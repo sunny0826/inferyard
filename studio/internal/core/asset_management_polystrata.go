@@ -289,11 +289,20 @@ func (s *Service) deleteManagedPolystrataEngine(name string, eng EngineAsset, ex
 }
 
 func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset, expectedTarget, expectedFP string) (bool, *ApiError) {
+	return s.deleteManagedPolystrataInstall(name, eng.Path, "", expectedTarget, expectedFP, nil)
+}
+
+func (s *Service) deleteManagedPolystrataInstall(name, engPath, rawFallback, expectedTarget, expectedFP string, replaced *replacedEngineTarget) (bool, *ApiError) {
 	s.settingsMu.Lock()
 	defer s.settingsMu.Unlock()
 
 	s.mu.Lock()
-	if s.assetWorkspaceBusyLocked() {
+	if replaced != nil {
+		if s.orphan != nil || len(s.orphanedServices) > 0 || len(s.preparingServices) > 0 || s.deletingAssets > 0 || s.isEngineActiveLocked(replaced.name, replaced.entry) || s.isEngineDirInUseLocked(replaced.dir) {
+			s.mu.Unlock()
+			return false, workspaceBusyError()
+		}
+	} else if s.assetWorkspaceBusyLocked() {
 		s.mu.Unlock()
 		return false, workspaceBusyError()
 	}
@@ -309,32 +318,36 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 
 	rawPath := ""
 	for _, rawInst := range u.EngineInstallations {
-		if canonInst, err := canonical(rawInst); err == nil && sameDirectoryEntry(canonInst, eng.Path) {
+		if canonInst, err := canonical(rawInst); err == nil && sameDirectoryEntry(canonInst, engPath) {
 			rawPath = rawInst
 			break
 		}
 	}
 	if rawPath == "" {
-		rawPath = s.findAssetRawPath("engine", name, eng.Path)
+		rawPath = rawFallback
+	}
+	if rawPath == "" {
+		rawPath = s.findAssetRawPath("engine", name, engPath)
 	}
 	if rawPath == "" {
 		return false, Err("not_found")
 	}
 	wsEngines := workspaceEnginesRoot(u, paths)
 	resultsRoot := derivedResultsRoot(u, paths)
-	installDir, ok := managedPolystrataInstallDir(rawPath, eng.Path, wsEngines, resultsRoot)
+	installDir, ok := managedPolystrataInstallDir(rawPath, engPath, wsEngines, resultsRoot)
 	if !ok {
 		return false, errAssetNotDeletable()
 	}
 	data := s.registry()
-	if polystrataInstallHasExternalDependents(u, paths, wsEngines, eng.Path, installDir, data.engines) {
+	if polystrataInstallHasExternalDependents(u, paths, wsEngines, engPath, installDir, data.engines) {
 		return false, errAssetNotDeletable()
 	}
 	if err := verifyPolystrataRuntimeTreeSafe(installDir, resultsRoot); err != nil {
 		return false, errAssetNotDeletable()
 	}
-	declWorkDir, declDataDir := readPolystrataInstallDirs(eng.Path)
-	migPlans, migErr := snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir, defaultManagedPolystrataDataDirs(u, paths, wsEngines))
+	declWorkDir, declDataDir := readPolystrataInstallDirs(engPath)
+	surviving := survivingInstallsExcluding(u, wsEngines, engPath, installDir)
+	migPlans, migErr := snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir, defaultManagedPolystrataDataDirs(u, paths, wsEngines), surviving, replaced != nil)
 	if migErr != nil {
 		if apiErr, ok := polystrataCredentialApiError(migErr); ok {
 			return false, apiErr
@@ -345,7 +358,7 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 		if !sameFileOrPath(installDir, expectedTarget) {
 			return false, deleteTargetChangedError()
 		}
-		if expectedFP != "" && polystrataEngineDeleteFingerprint(installDir, eng.Path, migPlans) != expectedFP {
+		if expectedFP != "" && polystrataEngineDeleteFingerprint(installDir, engPath, migPlans) != expectedFP {
 			return false, deleteTargetChangedError()
 		}
 	}
@@ -353,10 +366,10 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 	removeRaw := map[string]bool{}
 	for _, rawInst := range u.EngineInstallations {
 		if canonInst, err := canonical(rawInst); err == nil {
-			if sameDirectoryEntry(canonInst, eng.Path) || pathWithinDirSameFS(installDir, canonInst) {
+			if sameDirectoryEntry(canonInst, engPath) || pathWithinDirSameFS(installDir, canonInst) {
 				removeRaw[rawInst] = true
 			}
-		} else if sameDirectoryEntry(rawInst, rawPath) || sameDirectoryEntry(rawInst, eng.Path) {
+		} else if sameDirectoryEntry(rawInst, rawPath) || sameDirectoryEntry(rawInst, engPath) {
 			removeRaw[rawInst] = true
 		}
 	}
@@ -399,15 +412,18 @@ func (s *Service) runDeleteManagedPolystrataEngine(name string, eng EngineAsset,
 
 	s.checkMu.Lock()
 	for path := range s.checks {
-		if sameDirectoryEntry(path, eng.Path) || pathWithinDirSameFS(installDir, path) {
+		if sameDirectoryEntry(path, engPath) || pathWithinDirSameFS(installDir, path) {
 			delete(s.checks, path)
 		}
 	}
 	for path := range s.checkInflight {
-		if sameDirectoryEntry(path, eng.Path) || pathWithinDirSameFS(installDir, path) {
+		if sameDirectoryEntry(path, engPath) || pathWithinDirSameFS(installDir, path) {
 			delete(s.checkInflight, path)
 		}
 	}
+	s.checkNames = slices.DeleteFunc(s.checkNames, func(t engineCheckTarget) bool {
+		return sameDirectoryEntry(t.path, engPath) || pathWithinDirSameFS(installDir, t.path)
+	})
 	s.checkMu.Unlock()
 
 	if rmErr != nil && !os.IsNotExist(rmErr) {

@@ -17,17 +17,16 @@ const maxStrataConfigBytes = 16 << 20
 var polystrataSecretEnvSubstrings = []string{"API_KEY", "TOKEN", "PASSWORD", "SECRET", "AUTH"}
 
 type polystrataCfgContext struct {
-	cfg      string
-	workDir  string
-	dataDir  string
-	checkExe bool
+	cfg     string
+	workDir string
+	dataDir string
 }
 
-func seenCfgInContext(list []polystrataCfgContext, cfg, workDir, dataDir string, checkExe bool) bool {
+func seenCfgInContext(list []polystrataCfgContext, cfg, workDir, dataDir string) bool {
 	nw := filepath.Clean(strings.TrimSpace(workDir))
 	nd := filepath.Clean(strings.TrimSpace(dataDir))
 	for _, item := range list {
-		if item.workDir == nw && item.dataDir == nd && item.checkExe == checkExe && sameDirectoryEntry(item.cfg, cfg) {
+		if item.workDir == nw && item.dataDir == nd && sameDirectoryEntry(item.cfg, cfg) {
 			return true
 		}
 	}
@@ -171,64 +170,12 @@ func rawPathTraversesDir(rawRef string, bases []string, targetDir string) bool {
 	return false
 }
 
-func exeDependsOnInstallDir(exeRaw, cwdRaw, declWorkDir, cfgDir, installDir string) bool {
-	trimmedExe := strings.TrimSpace(exeRaw)
-	if trimmedExe == "" {
-		return false
-	}
-	outBase := strings.TrimSpace(declWorkDir)
-	if outBase == "" {
-		outBase = cfgDir
-	}
-	baseExpr := outBase
-	if trimmedCwd := strings.TrimSpace(cwdRaw); trimmedCwd != "" {
-		if filepath.IsAbs(trimmedCwd) {
-			baseExpr = trimmedCwd
-		} else {
-			baseExpr = strings.TrimRight(outBase, "/\\") + "/" + trimmedCwd
-		}
-	}
-	exeCand := trimmedExe
-	if !filepath.IsAbs(exeCand) {
-		exeCand = strings.TrimRight(baseExpr, "/\\") + "/" + exeCand
-	}
-	if rawPathTraversesDir(exeCand, nil, installDir) {
-		return true
-	}
-	cleanExe := filepath.Clean(filepath.FromSlash(exeCand))
-	if pathWithinDirSameFS(installDir, cleanExe) {
-		return true
-	}
-	if canonExe, err := canonical(cleanExe); err == nil && pathWithinDirSameFS(installDir, canonExe) {
-		return true
-	}
-	return false
-}
-
-func winningRefBase(ref string, bases []string) []string {
-	if filepath.IsAbs(strings.TrimSpace(ref)) {
-		return nil
-	}
-	for _, b := range bases {
-		if _, _, ok := resolvePolystrataAssetRef(ref, []string{b}); ok {
-			return []string{b}
-		}
-	}
-	for _, b := range bases {
-		if len(collectBrokenSplitGGUFShards(ref, []string{b})) > 0 {
-			return []string{b}
-		}
-	}
-	return bases
-}
-
-func survivingPolystrataConfigDependsOnInstallDir(cfgPath, declWorkDir, declDataDir, installDir string, checkExe bool) bool {
+func survivingPolystrataConfigDependsOnInstallDir(cfgPath, declWorkDir, declDataDir, installDir string) bool {
 	raw, err := os.ReadFile(cfgPath)
 	if err != nil {
 		return false
 	}
 	var cfg struct {
-		Exe  string   `json:"exe"`
 		Args []string `json:"args"`
 		Cwd  string   `json:"cwd"`
 	}
@@ -239,10 +186,6 @@ func survivingPolystrataConfigDependsOnInstallDir(cfgPath, declWorkDir, declData
 	_ = json.Unmarshal(raw, &rawMap)
 
 	cfgDir := filepath.Dir(cfgPath)
-	if checkExe && exeDependsOnInstallDir(cfg.Exe, cfg.Cwd, declWorkDir, cfgDir, installDir) {
-		return true
-	}
-
 	origBases := polystrataConfigBases(cfg.Cwd, declWorkDir, cfgDir, declDataDir)
 	refs := extractPolystrataAssetRefs(cfg.Args, rawMap)
 	cwdBase := strings.TrimSpace(declWorkDir)
@@ -308,11 +251,44 @@ func survivingPolystrataConfigDependsOnInstallDir(cfgPath, declWorkDir, declData
 	return !sameAssetFileSets(files, postLenFiles) || !samePathSets(dirs, postLenDirs)
 }
 
+func winningRefBase(ref string, bases []string) []string {
+	if filepath.IsAbs(strings.TrimSpace(ref)) {
+		return nil
+	}
+	for _, b := range bases {
+		if _, _, ok := resolvePolystrataAssetRef(ref, []string{b}); ok {
+			return []string{b}
+		}
+	}
+	for _, b := range bases {
+		if len(collectBrokenSplitGGUFShards(ref, []string{b})) > 0 {
+			return []string{b}
+		}
+	}
+	return bases
+}
+
+func allKnownEngineInstallations(u UserSettings, wsEnginesRoot string) []string {
+	out := make([]string, 0, len(u.EngineInstallations)+4)
+	for _, rawInst := range u.EngineInstallations {
+		if strings.TrimSpace(rawInst) != "" && !containsSameDirEntry(out, rawInst) {
+			out = append(out, rawInst)
+		}
+	}
+	for _, disc := range discoverManagedEngineInstallations(wsEnginesRoot) {
+		if !containsSameDirEntry(out, disc) {
+			out = append(out, disc)
+		}
+	}
+	return out
+}
+
 func polystrataInstallHasExternalDependents(u UserSettings, paths *BoundPaths, wsEnginesRoot, canonInstPath, installDir string, engines []registryEntry) bool {
 	if otherEngineSharesInstallDir(installDir, canonInstPath, engines) {
 		return true
 	}
-	for _, rawInst := range u.EngineInstallations {
+	knownInstalls := allKnownEngineInstallations(u, wsEnginesRoot)
+	for _, rawInst := range knownInstalls {
 		canonOther, err := canonical(rawInst)
 		if err != nil || sameDirectoryEntry(canonOther, canonInstPath) {
 			continue
@@ -351,7 +327,7 @@ func polystrataInstallHasExternalDependents(u UserSettings, paths *BoundPaths, w
 	}
 
 	var seenContexts []polystrataCfgContext
-	checkSurvivingDir := func(dir, declWorkDir, declDataDir string, checkExe bool) bool {
+	checkSurvivingDir := func(dir, declWorkDir, declDataDir string) bool {
 		dirEntries, err := os.ReadDir(dir)
 		if err != nil {
 			return false
@@ -384,28 +360,24 @@ func polystrataInstallHasExternalDependents(u UserSettings, paths *BoundPaths, w
 				return true
 			}
 			if pathWithinDirSameFS(installDir, resolved) {
-				if checkExe {
-					return true
-				}
 				continue
 			}
-			if seenCfgInContext(seenContexts, resolved, declWorkDir, declDataDir, checkExe) {
+			if seenCfgInContext(seenContexts, resolved, declWorkDir, declDataDir) {
 				continue
 			}
 			seenContexts = append(seenContexts, polystrataCfgContext{
-				cfg:      resolved,
-				workDir:  filepath.Clean(strings.TrimSpace(declWorkDir)),
-				dataDir:  filepath.Clean(strings.TrimSpace(declDataDir)),
-				checkExe: checkExe,
+				cfg:     resolved,
+				workDir: filepath.Clean(strings.TrimSpace(declWorkDir)),
+				dataDir: filepath.Clean(strings.TrimSpace(declDataDir)),
 			})
-			if survivingPolystrataConfigDependsOnInstallDir(resolved, declWorkDir, declDataDir, installDir, checkExe) {
+			if survivingPolystrataConfigDependsOnInstallDir(resolved, declWorkDir, declDataDir, installDir) {
 				return true
 			}
 		}
 		return false
 	}
 
-	for _, rawInst := range u.EngineInstallations {
+	for _, rawInst := range knownInstalls {
 		rawBytes, err := installationBytes(rawInst)
 		if err != nil {
 			continue
@@ -418,10 +390,8 @@ func polystrataInstallHasExternalDependents(u UserSettings, paths *BoundPaths, w
 		if json.Unmarshal(rawBytes, &decl) != nil || decl.Family != "polystrata" {
 			continue
 		}
-		canonRaw, cerr := canonical(rawInst)
-		isOtherEngine := cerr == nil && !sameDirectoryEntry(canonRaw, canonInstPath) && !pathWithinDirSameFS(installDir, canonRaw)
 		for _, dir := range polystrataConfigSearchDirs(decl.WorkingDirectory, decl.DataDir) {
-			if checkSurvivingDir(dir, decl.WorkingDirectory, decl.DataDir, isOtherEngine) {
+			if checkSurvivingDir(dir, decl.WorkingDirectory, decl.DataDir) {
 				return true
 			}
 		}
@@ -429,16 +399,16 @@ func polystrataInstallHasExternalDependents(u UserSettings, paths *BoundPaths, w
 	managedDataDirs := defaultManagedPolystrataDataDirs(u, paths, wsEnginesRoot)
 	for _, dd := range managedDataDirs {
 		for _, dir := range polystrataConfigSearchDirs("", dd) {
-			if checkSurvivingDir(dir, "", dd, false) {
+			if checkSurvivingDir(dir, "", dd) {
 				return true
 			}
 		}
 	}
 
 	// Verify surviving Registry models keep identical availability & resolved assets after uninstall.
-	beforeModels, _ := scanPolystrataModelConfigs(u.EngineInstallations, managedDataDirs)
-	afterInstalls := make([]string, 0, len(u.EngineInstallations))
-	for _, rawInst := range u.EngineInstallations {
+	beforeModels, _ := scanPolystrataModelConfigs(knownInstalls, managedDataDirs)
+	afterInstalls := make([]string, 0, len(knownInstalls))
+	for _, rawInst := range knownInstalls {
 		if c, err := canonical(rawInst); err == nil && (sameDirectoryEntry(c, canonInstPath) || pathWithinDirSameFS(installDir, c)) {
 			continue
 		}
@@ -456,6 +426,34 @@ func polystrataInstallHasExternalDependents(u UserSettings, paths *BoundPaths, w
 				}
 				break
 			}
+		}
+	}
+	return false
+}
+
+func survivingInstallsExcluding(u UserSettings, wsEnginesRoot, canonInstPath, installDir string) []string {
+	known := allKnownEngineInstallations(u, wsEnginesRoot)
+	out := make([]string, 0, len(known))
+	for _, rawInst := range known {
+		if c, err := canonical(rawInst); err == nil && (sameDirectoryEntry(c, canonInstPath) || pathWithinDirSameFS(installDir, c)) {
+			continue
+		}
+		out = append(out, rawInst)
+	}
+	return out
+}
+
+func survivingModelAlreadyCovered(survivingInstalls, managedDataDirs []string, installDir, origDisplayName string, origValidFiles []assetFileSize) bool {
+	if len(origValidFiles) == 0 {
+		return false
+	}
+	entries, _ := scanPolystrataModelConfigs(survivingInstalls, managedDataDirs)
+	for _, e := range entries {
+		if pathWithinDirSameFS(installDir, e.path) || !e.model.Available {
+			continue
+		}
+		if e.displayName == origDisplayName && sameAssetFileSets(e.assetFiles, origValidFiles) {
+			return true
 		}
 	}
 	return false

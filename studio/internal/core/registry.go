@@ -265,7 +265,8 @@ func (s *Service) registry() registryData {
 			}
 		}
 	}
-	psModels, psScope := scanPolystrataModelConfigs(u.EngineInstallations, defaultManagedPolystrataDataDirs(u, s.paths, data.wsEngines))
+	installations := allKnownEngineInstallations(u, data.wsEngines)
+	psModels, psScope := scanPolystrataModelConfigs(installations, defaultManagedPolystrataDataDirs(u, s.paths, data.wsEngines))
 	for _, entry := range psModels {
 		if _, found := models[entry.path]; !found {
 			models[entry.path] = len(data.models)
@@ -273,8 +274,6 @@ func (s *Service) registry() registryData {
 		}
 	}
 	data.models = deduplicatePolystrataModels(data.models, psScope)
-	installations := append([]string{}, u.EngineInstallations...)
-	installations = append(installations, discoverManagedEngineInstallations(data.wsEngines)...)
 	data.engines = append(data.engines, installationEntries(installations)...)
 	sort.SliceStable(data.engines, func(i, j int) bool {
 		a, b := data.engines[i], data.engines[j]

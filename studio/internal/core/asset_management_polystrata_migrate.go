@@ -91,8 +91,8 @@ func polystrataMigPlansDigest(plans []migratedPolystrataConfig) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir string, managedDataDirs []string) ([]migratedPolystrataConfig, error) {
-	if len(managedDataDirs) == 0 {
+func snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir string, managedDataDirs, survivingInstalls []string, requireAllValidPreserved bool) ([]migratedPolystrataConfig, error) {
+	if len(managedDataDirs) == 0 && !requireAllValidPreserved {
 		return nil, nil
 	}
 	configDirs := []string{installDir}
@@ -130,9 +130,11 @@ func snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir string, 
 				return nil, fmt.Errorf("%s: %w", name, err)
 			}
 			var cfg struct {
-				Exe  string   `json:"exe"`
-				Args []string `json:"args"`
-				Cwd  string   `json:"cwd"`
+				Exe         string   `json:"exe"`
+				Args        []string `json:"args"`
+				Cwd         string   `json:"cwd"`
+				ModelName   string   `json:"model_name"`
+				DisplayName string   `json:"display_name"`
 			}
 			if json.Unmarshal(raw, &cfg) != nil || strings.TrimSpace(cfg.Exe) == "" || cfg.Args == nil {
 				continue
@@ -146,16 +148,23 @@ func snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir string, 
 			origLenFiles, origLenDirs := resolvePolystrataConfigRefsWithBases(cfg.Args, rawMap, cfgDir, origBases)
 			origRefs := extractPolystrataAssetRefs(cfg.Args, rawMap)
 			origValidFiles, origValidDirs, origValidOK := validatePolystrataAssets(origRefs, cfgDir, origBases)
+			resolvedSrc := srcPath
+			if c, cerr := canonical(srcPath); cerr == nil {
+				resolvedSrc = c
+			}
+			origDisplayName := polystrataConfigDisplayName(cfg.DisplayName, cfg.ModelName, resolvedSrc)
+			covered := origValidOK && survivingModelAlreadyCovered(survivingInstalls, managedDataDirs, installDir, origDisplayName, origValidFiles)
+			migrated := false
 
 			for _, dd := range managedDataDirs {
-				if isSymlinkPath(dd) {
-					continue
-				}
-				if !polystrataRefsScopedToDataDir(origLenFiles, origLenDirs, installDir, dd) {
+				if isSymlinkPath(dd) || !polystrataRefsScopedToDataDir(origLenFiles, origLenDirs, installDir, dd) {
 					continue
 				}
 				if field, hasCred := findPolystrataPlaintextCredentialField(rawMap, cfg.Args); hasCred {
 					return nil, &polystrataCredentialError{configName: name, field: field}
+				}
+				if covered {
+					break
 				}
 
 				clonedMap, rewrittenArgs := rewritePolystrataConfigMapForDataDir(rawMap, cfg.Args, origBases, installDir)
@@ -169,7 +178,11 @@ func snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir string, 
 					return nil, err
 				}
 				plans = append(plans, migratedPolystrataConfig{dd: dd, name: name, payload: rewrittenBytes})
+				migrated = true
 				break
+			}
+			if requireAllValidPreserved && origValidOK && !covered && !migrated {
+				return nil, fmt.Errorf("unpreserved valid model config %s", name)
 			}
 		}
 	}
@@ -328,32 +341,6 @@ func verifyMigratedPolystrataConfig(
 		return fmt.Errorf("migrated config lenient refs differ after relocating to %s", dd)
 	}
 	return nil
-}
-
-func sameAssetFileSets(a, b []assetFileSize) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for _, af := range a {
-		if !slices.ContainsFunc(b, func(bf assetFileSize) bool {
-			return af.size == bf.size && sameFileOrPath(af.path, bf.path)
-		}) {
-			return false
-		}
-	}
-	return true
-}
-
-func samePathSets(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for _, ap := range a {
-		if !slices.ContainsFunc(b, func(bp string) bool { return sameFileOrPath(ap, bp) }) {
-			return false
-		}
-	}
-	return true
 }
 
 func selectMigratedConfigPath(dd, name string, payload []byte) (string, bool, error) {

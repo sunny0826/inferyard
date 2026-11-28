@@ -249,3 +249,29 @@ func collectBrokenSplitGGUFShards(ref string, bases []string) []assetFileSize {
 	}
 	return shards
 }
+
+func sameAssetFileSets(a, b []assetFileSize) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for _, af := range a {
+		if !slices.ContainsFunc(b, func(bf assetFileSize) bool {
+			return af.size == bf.size && sameFileOrPath(af.path, bf.path)
+		}) {
+			return false
+		}
+	}
+	return true
+}
+
+func samePathSets(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for _, ap := range a {
+		if !slices.ContainsFunc(b, func(bp string) bool { return sameFileOrPath(ap, bp) }) {
+			return false
+		}
+	}
+	return true
+}

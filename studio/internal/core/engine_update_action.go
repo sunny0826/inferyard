@@ -232,6 +232,7 @@ func (s *Service) UpdateEngine(engineName string) (DownloadTask, *ApiError) {
 		}
 		var dataDir, backend, family, model, ggufPath string
 		var contextLen int
+		var replaced *replacedEngineTarget
 		if hasEntry && entry.installation != "" {
 			declWorkDir, declDataDir := readPolystrataInstallDirs(entry.installation)
 			instDir := strings.TrimSpace(declWorkDir)
@@ -244,9 +245,10 @@ func (s *Service) UpdateEngine(engineName string) (DownloadTask, *ApiError) {
 			}
 			backend = readPolystrataBackend(instDir)
 			family, model, ggufPath, contextLen = inferPolystrataUpdateSpec(instDir, dataDir)
+			replaced = s.resolveReplacedManagedPolystrataTarget(name, entry)
 		}
 		outName := sanitizeEngineUpdateOutName("polystrata", info.LatestVersion)
-		return s.CreatePolystrataSetup(PolystrataSetupRequest{
+		return s.createPolystrataSetup(PolystrataSetupRequest{
 			Family:   family,
 			Model:    model,
 			Context:  contextLen,
@@ -255,7 +257,7 @@ func (s *Service) UpdateEngine(engineName string) (DownloadTask, *ApiError) {
 			OutName:  outName,
 			DataDir:  dataDir,
 			Backend:  backend,
-		})
+		}, replaced)
 
 	case EngineUpdateActionVenv:
 		if !hasEntry {
