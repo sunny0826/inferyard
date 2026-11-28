@@ -25,7 +25,7 @@ func (s *viewState) canCleanWorkspaceArtifacts() bool {
 }
 
 func (s *viewState) cleanWorkspaceArtifactsButton(c *ui.Context) {
-	if outlineButton(c, tr(c, "settings.workspace.cleanup.action")).
+	if dangerButton(c, tr(c, "settings.workspace.cleanup.action")).
 		Disabled(!s.canCleanWorkspaceArtifacts()).
 		Clicked() {
 		s.cleanArtifactsConfirm = true

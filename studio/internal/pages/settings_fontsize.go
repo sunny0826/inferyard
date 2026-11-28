@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
 )
@@ -89,24 +90,24 @@ func (s *viewState) fontSizeRow(c *ui.Context) {
 	currentLabel := tr(c, currentSpec.labelKey)
 	fieldLabel := tr(c, "settings.appearance.font_size_label")
 
-	ui.Row(c).FillWidth().AlignItems(ui.Center).Wrap().Gap(t.Density.Row).Padding(t.Density.Hairline, 0, 0, 0).Children(func() {
+	ui.Row(c).FillWidth().AlignItems(ui.Center).Wrap().Gap(t.Density.Row).Padding(t.Density.Tight, 0, 0, 0).Children(func() {
 		ui.Text(c, fieldLabel).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(120).SingleLine()
 
 		sel := studioSelect(c, &chosen)
-		sel.Trigger.Width(188).Label(fieldLabel).Value(currentLabel).Children(func() {
+		sel.Trigger.Width(180).Label(fieldLabel).Value(currentLabel).Children(func() {
 			ui.Text(c, currentLabel).SingleLine()
 		})
 		sel.Popup(func(panel ui.Element) {
-			panel.MinWidth(188)
+			panel.MinWidth(180)
 			for _, spec := range studioFontSizeSpecs {
 				itemLabel := tr(c, spec.labelKey)
 				active := spec.id == selected
 				sel.Item(spec.id).Label(itemLabel).Children(func() {
-					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 						txt := ui.Text(c, itemLabel).Grow(1).SingleLine()
 						if active {
 							txt.FontWeight(500).TextColor(t.Color.FgPrimary)
-							studioIcon(c, reicon.Check, t.Color.FgPrimary)
+							components.Icon(c, reicon.Check).Size(15, 15).TextColor(t.Color.FgPrimary).Role(ui.RoleNone)
 						}
 					})
 				})

@@ -113,7 +113,7 @@ func refreshButton(c *ui.Context, label string, active bool) ui.Element {
 		}
 	}
 	b.Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
 			ui.Box(c).Size(14, 14).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
 				icon := components.Icon(c, reicon.RefreshCw).Size(14, 14)
 				if angle != 0 {
@@ -139,7 +139,7 @@ func actionButton(c *ui.Context, variant components.ButtonVariant, label string,
 	}
 	applyButtonOpticalPadding(b, t, sizeMD, side)
 	b.Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
 			if showSpinner {
 				components.Spinner(c, components.SpinnerRing).Size(14, 14).Label(trf(c, "common.loading.action_busy", "label", label))
 			}

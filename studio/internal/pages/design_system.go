@@ -10,12 +10,14 @@ import (
 )
 
 func heading(c *ui.Context, title string, level int) ui.Element {
-	t := tokens(c)
-	weight := 600
+	scale := tokens(c).Type
+	size := scale.Section
 	if level == 1 {
-		weight = 700
+		size = scale.PageTitle
+	} else if level == 2 {
+		size = scale.CardTitle
 	}
-	return ui.Text(c, title).FontWeight(weight).FontSize(t.Type.PageTitle).TextColor(t.Color.FgPrimary).Role(ui.RoleHeading).Level(level)
+	return ui.Text(c, title).Bold().FontSize(size).Role(ui.RoleHeading).Level(level)
 }
 
 func section(c *ui.Context, title string, fn func()) {
@@ -53,7 +55,10 @@ func applySecondaryButtonPalette(c *ui.Context, b ui.Element) ui.Element {
 			}
 		}
 	}
-	b.Background(bg).TextColor(c.Theme().Text).Border(1, border).NoShadow()
+	b.Background(bg).TextColor(c.Theme().Text).Border(1, border)
+	if !b.IsDisabled() {
+		applyShadow(b, tokens(c).Elevation.XS)
+	}
 	return b
 }
 
@@ -65,21 +70,18 @@ const (
 	buttonIconTrailing
 )
 
-// applyButtonOpticalPadding preserves Control.SM/MD/LG vertical sizing on the 4px grid
-// while tightening horizontal padding on the icon side.
+// applyButtonOpticalPadding preserves Control.SM/MD/LG vertical sizing while
+// tightening horizontal padding on the icon side to compensate for SVG viewBox
+// margin (detail.design: Visual Alignment for Buttons with Icon).
 func applyButtonOpticalPadding(b ui.Element, t designTokens, size controlSize, side buttonIconSide) ui.Element {
-	padY, padX := t.Density.Tight, t.Density.Stack
+	padY, padX, inset := t.Density.Tight, t.Density.Stack, float32(3)
 	switch size {
 	case sizeSM:
-		padY, padX = t.Density.Hairline, t.Density.Row
+		padY, padX, inset = t.Density.Hairline, t.Density.Row, 2
 	case sizeLG:
-		padY, padX = t.Density.Row, t.Density.Section
-	default:
-		if side != buttonIconNone {
-			padY = t.Density.Hairline
-		}
+		padY, padX, inset = t.Density.Row, t.Density.Section, 3
 	}
-	padIcon := max(t.Density.Tight, padX-t.Density.Hairline)
+	padIcon := max(4, padX-inset)
 	switch side {
 	case buttonIconLeading:
 		return b.Padding(padY, padX, padY, padIcon)
@@ -98,14 +100,16 @@ func iconLabelButton(c *ui.Context, variant components.ButtonVariant, side butto
 	}
 	applyButtonOpticalPadding(b, t, sizeMD, side)
 	iconSlot := func() {
-		studioIcon(c, icon, ui.Color{})
+		ui.Box(c).Size(14, 14).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+			components.Icon(c, icon).Size(14, 14).Role(ui.RoleNone)
+		})
 	}
 	b.Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Hairline).Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
 			if side == buttonIconLeading {
 				iconSlot()
 			}
-			ui.Text(c, label).FontWeight(500).SingleLine()
+			ui.Text(c, label).SingleLine()
 			if side == buttonIconTrailing {
 				iconSlot()
 			}
@@ -224,6 +228,9 @@ func progressBar(c *ui.Context, value float64, label string) ui.Element {
 	borderColor := t.Color.BorderSubtle
 	trackColor := t.Color.Sunken
 	fillColor := t.Color.Active.Solid
+	if value >= 1 {
+		fillColor = t.Color.Success.Solid
+	}
 	sheenColor := fillColor.Mix(ui.RGB(255, 255, 255), .24)
 	e := ui.Box(c).Height(c.Theme().Space(2)).FillWidth().Role(ui.RoleProgress).Range(0, 1, value).Label(label)
 	e.Draw(func(p *ui.Painter, r ui.Rect) {

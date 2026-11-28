@@ -325,24 +325,10 @@ func (p *previewSession) left(c *ui.Context) {
 					p.syncNativeTheme()
 				}
 				prevLang := p.languageMode
-				langOptions := []string{
-					tr(c, "preview.language.system"),
-					tr(c, "settings.language.en"),
-					tr(c, "settings.language.zh_hans"),
-				}
-				langFieldLabel := tr(c, "preview.language.label")
-				ui.Field(c, langFieldLabel, func() {
-					choice := studioSelect(c, &p.languageMode)
-					curLabel := langOptions[0]
-					if p.languageMode >= 0 && p.languageMode < len(langOptions) {
-						curLabel = langOptions[p.languageMode]
-					}
-					choice.Trigger.Label(langFieldLabel).Value(curLabel).Children(func() { ui.Text(c, curLabel).SingleLine() })
-					choice.Popup(func(ui.Element) {
-						for i, label := range langOptions {
-							choice.Item(i).Label(label).Children(func() { ui.Text(c, label).SingleLine() })
-						}
-					})
+				previewCompactSegmentedField(c, tr(c, "preview.language.label"), &p.languageMode, []components.NativeSelectOption[int]{
+					{Label: tr(c, "preview.language.system"), Value: 0},
+					{Label: tr(c, "settings.language.en"), Value: 1},
+					{Label: tr(c, "settings.language.zh_hans"), Value: 2},
 				})
 				if p.languageMode != prevLang {
 					p.syncStateLanguage()
@@ -388,28 +374,28 @@ func previewCompactSegmentedField[T comparable](c *ui.Context, name string, sele
 	}
 	ui.Field(c, name, func() {
 		seg := ui.SegmentedBase(c, &idx, len(options))
-		trackR := t.Radius.Control
-		trackPad := t.Density.Hairline
-		itemR := t.Radius.Control
-		seg.Track.FillWidth().AlignItems(ui.Center).Gap(t.Density.Hairline).
+		trackR := t.Radius.Floating
+		trackPad := t.Density.Tight
+		itemR := concentricRadius(trackR, trackPad)
+		seg.Track.FillWidth().AlignItems(ui.Center).Gap(2).
 			Padding(trackPad).Radius(trackR).
-			Background(t.Color.Sunken).Label(name).
+			Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).Label(name).
 			Children(func() {
 				for i, option := range options {
 					active := i == idx
 					item := seg.Segment(i).Grow(1).MinWidth(0).
 						AlignItems(ui.Center).Justify(ui.Center).
-						Padding(t.Density.Hairline, t.Density.Hairline).
+						Padding(t.Density.Tight, t.Density.Tight).
 						Radius(itemR).Label(option.Label).Disabled(option.Disabled)
 					if active {
-						item.Background(t.Color.Surface)
+						applyShadow(item.Background(t.Color.Surface).Border(1, t.Color.BorderSubtle), t.Elevation.XS)
 					} else if item.Hovered() && !option.Disabled {
 						item.Background(t.Color.Surface.Alpha(.6))
 					}
 					item.Children(func() {
 						label := ui.Text(c, option.Label).FontSize(t.Type.Caption).SingleLine()
 						if active {
-							label.FontWeight(600).TextColor(t.Color.FgPrimary)
+							label.Bold().TextColor(t.Color.FgPrimary)
 						} else {
 							label.TextColor(t.Color.FgSecondary)
 						}

@@ -166,9 +166,7 @@ func (s *viewState) polystrataDownloadTaskCard(c *ui.Context, task core.Download
 	}
 	metrics := []taskMetric{
 		{tr(c, "downloads.metric.step"), stepVal, stepSub},
-	}
-	if progressVal != stepVal || progressSub != "" {
-		metrics = append(metrics, taskMetric{tr(c, "downloads.metric.progress"), progressVal, progressSub})
+		{tr(c, "downloads.metric.progress"), progressVal, progressSub},
 	}
 	if task.BytesPerSecond != nil {
 		rateSub := ""

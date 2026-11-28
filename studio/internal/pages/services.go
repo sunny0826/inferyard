@@ -5,8 +5,10 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
+	"inferyard/studio/internal/inferyard"
 )
 
 func (s *viewState) servicesView(c *ui.Context) {
@@ -51,11 +53,7 @@ func (s *viewState) servicesView(c *ui.Context) {
 		})
 	}
 
-	ui.Column(c).Gap(t.Density.CardGap).Children(func() {
-		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			heading(c, tr(c, "services.section.discovered"), 3).Grow(1)
-			refreshIconButton(c, tr(c, "engine.discovery.refresh"), s.discovering).Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)
-		})
+	section(c, tr(c, "services.section.discovered"), func() {
 		s.discoveredServicesSection(c)
 	})
 }
@@ -139,11 +137,9 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 	localURL, hasLocal := serviceLocalURL(state)
 	displayURL, hasEndpoint := serviceEndpointDisplay(state)
 
-	cardEl := applyMaterial(c, ui.Column(c.Key("managed-service-card-"+svcKey)).FillWidth().Padding(pad).Gap(t.Density.Row), materialCard).Radius(outerR)
-	cardIntent := cardEl.Hovered() || cardEl.FocusWithin()
-	cardEl.Children(func() {
-		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-			toggleRow := ui.Row(c.Key("toggle-" + svcKey)).Grow(1).MinWidth(0).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).
+	applyMaterial(c, ui.Column(c.Key("managed-service-card-"+svcKey)).FillWidth().Padding(pad).Gap(t.Density.Row), materialCard).Radius(outerR).Children(func() {
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			toggleRow := ui.Row(c.Key("toggle-" + svcKey)).Grow(1).MinWidth(0).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).
 				Role(ui.RoleButton).Focusable().Label(modelName)
 			if toggleRow.Clicked() {
 				s.toggleServiceExpanded(svcKey, idx)
@@ -151,39 +147,39 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 			toggleRow.Children(func() {
 				chevronBox(c, expanded)
 				modelIconBox(c, s.modelIconHint(modelName)+" "+state.Model, 28, innerR)
-				ui.Text(c, modelName).FontWeight(600).FontSize(t.Type.Primary).SingleLine()
+				ui.Text(c, modelName).Bold().FontSize(t.Type.CardTitle).SingleLine()
 				if engineTitle != "" {
 					enginePillWithHint(c, engineTitle, state.Family+" "+state.Adapter+" "+s.engineIconHint(engineTitle)+" "+state.Executable)
 				}
-				if !expanded && ctxStr != "" {
+				if ctxStr != "" {
 					inlineBadge(c, ctxStr, stateNeutral, badgeOptions{Size: sizeSM, Style: badgeOutline})
 				}
 				inlineBadge(c, stateLabelFor(contextLocale(c), state.State), engineStateKind(state.State), badgeOptions{Size: sizeSM, Style: badgeDot})
-				if !expanded && state.Adopted {
+				if state.Adopted {
 					inlineBadge(c, tr(c, "services.card.badge.adopted"), stateInfo, badgeOptions{Size: sizeSM})
 				}
-				if !expanded && state.LANAccess && !hasEndpoint {
+				if state.LANAccess {
 					inlineBadge(c, tr(c, "services.card.badge.lan"), stateWarning, badgeOptions{Size: sizeSM})
 				}
 			})
 			if hasEndpoint {
 				shortAddr := strings.TrimPrefix(strings.TrimPrefix(displayURL, "http://"), "https://")
 				pillLabel := shortAddr
-				if !expanded && state.LANAccess {
+				if state.LANAccess {
 					pillLabel = trf(c, "services.card.lan_listen", "addr", shortAddr)
 				}
-				copyPill := ui.Row(c).AlignSelf(ui.Center).AlignItems(ui.Center).Gap(t.Density.Hairline).
-					Padding(t.Density.Hairline, t.Density.Tight).Radius(innerR).
+				copyPill := ui.Row(c).AlignSelf(ui.Center).AlignItems(ui.Center).Gap(5).
+					Padding(4, 9).Radius(innerR).Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).
 					Role(ui.RoleButton).Focusable().Label(tr(c, "services.card.copy_endpoint"))
 				if copyPill.Hovered() {
-					copyPill.Background(t.Color.SurfaceHover)
+					copyPill.Background(t.Color.SurfaceHover).Border(1, t.Color.BorderDefault)
 				}
 				if copyPill.Clicked() {
 					s.copyServiceEndpoint(c, state)
 				}
 				copyPill.Children(func() {
 					ui.Text(c, pillLabel).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
-					studioIcon(c, reicon.Copy, t.Color.FgTertiary)
+					components.Icon(c, reicon.Copy).Size(12, 12).TextColor(t.Color.FgTertiary)
 				})
 			}
 		})
@@ -192,7 +188,7 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 			return
 		}
 
-		cols := 3
+		cols := 4
 		if compactLayout(c) {
 			cols = 2
 		}
@@ -210,39 +206,24 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 			portCtxParts = append(portCtxParts, ctxStr)
 		}
 		portCtxVal := nonEmptyOrMissing(c, joinParts(portCtxParts))
+		pidSub := ""
+		if state.Pid > 0 {
+			pidSub = fmt.Sprintf("PID %d", state.Pid)
+		}
 		sourceSub := tr(c, "services.card.source.managed")
 		if state.Adopted {
 			sourceSub = tr(c, "services.card.source.adopted")
 		}
-		pidVal := sourceSub
-		if state.Pid > 0 {
-			pidVal = fmt.Sprintf("PID %d", state.Pid)
-		} else {
-			sourceSub = ""
-		}
-		ui.Grid(c).Columns(cols).Gap(t.Density.Section).Children(func() {
-			var portSubParts []string
-			if bestSpeed != nil {
-				var openBest func()
-				if bestSpeed.ReportRef != "" {
-					ref := bestSpeed.ReportRef
-					openBest = func() { s.openReport(ref) }
-				}
-				serviceModelSpeedTile(c, innerR, tr(c, "reports.throughput.title"), modelName, "", bestSpeed, openBest)
-				if state.Pid > 0 {
-					portSubParts = append(portSubParts, fmt.Sprintf("PID %d", state.Pid))
-				}
-				if state.Adopted {
-					portSubParts = append(portSubParts, tr(c, "services.card.badge.adopted"))
-				}
-			} else {
-				serviceMetricTile(c, innerR, tr(c, "services.card.metric.status"), pidVal, sourceSub, true)
+		ui.Grid(c).Columns(cols).Gap(t.Density.Row).Children(func() {
+			var openBest func()
+			if bestSpeed != nil && bestSpeed.ReportRef != "" {
+				ref := bestSpeed.ReportRef
+				openBest = func() { s.openReport(ref) }
 			}
-			if state.LANAccess {
-				portSubParts = append(portSubParts, tr(c, "services.card.badge.lan"))
-			}
+			serviceModelSpeedTile(c, innerR, tr(c, "services.card.metric.model"), modelName, engineTitle, bestSpeed, openBest)
 			serviceMetricTile(c, innerR, tr(c, "services.card.metric.memory"), memVal, execSub, true)
-			serviceMetricTile(c, innerR, tr(c, "services.card.metric.port_context"), portCtxVal, joinParts(portSubParts), true)
+			serviceMetricTile(c, innerR, tr(c, "services.card.metric.port_context"), portCtxVal, pidSub, true)
+			serviceMetricTile(c, innerR, tr(c, "services.card.metric.status"), stateLabelFor(contextLocale(c), state.State), sourceSub, false)
 		})
 
 		if state.State == "starting" || state.State == "stopping" {
@@ -253,51 +234,45 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 			if primaryIconButton(c, reicon.Gauge, tr(c, "services.card.action.benchmark")).Clicked() {
 				s.startBenchmarkForManagedService(state)
 			}
-			secRow := ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row)
-			if !cardIntent {
-				secRow.Opacity(0)
+			if canOpen {
+				if outlineIconButton(c, reicon.ExternalLink, tr(c, "services.card.action.open_web")).Clicked() {
+					s.openEngineWebUI(c, uiURL)
+				}
 			}
-			secRow.Children(func() {
-				if canOpen {
-					if outlineIconButton(c, reicon.ExternalLink, tr(c, "services.card.action.open_web")).Clicked() {
-						s.openEngineWebUI(c, uiURL)
-					}
+			if hasLocal {
+				usageLabel := tr(c, "services.card.action.usage")
+				usageBtn := outlineIconButton(c, reicon.Code, usageLabel)
+				if multi {
+					usageBtn.Label(usageLabel + " · " + modelName)
 				}
-				if hasLocal {
-					usageLabel := tr(c, "services.card.action.usage")
-					usageBtn := outlineIconButton(c, reicon.Code, usageLabel)
-					if multi {
-						usageBtn.Label(usageLabel + " · " + modelName)
+				if usageBtn.Clicked() {
+					apiModel := strings.TrimSpace(state.ServedModel)
+					if apiModel == "" {
+						apiModel = modelName
 					}
-					if usageBtn.Clicked() {
-						apiModel := strings.TrimSpace(state.ServedModel)
-						if apiModel == "" {
-							apiModel = modelName
-						}
-						s.openServiceUsageDrawer(localURL, apiModel, engineTitle)
-					}
+					s.openServiceUsageDrawer(localURL, apiModel, engineTitle)
 				}
-				if state.Origin == core.EngineOriginStandalone || s.serveSupported || s.preview != nil {
-					paramsLabel := tr(c, "services.card.action.params")
-					paramsBtn := outlineIconButton(c, reicon.SlidersHorizontal, paramsLabel)
-					if multi {
-						paramsBtn.Label(paramsLabel + " · " + modelName)
-					}
-					if paramsBtn.Clicked() {
-						s.openServiceParamsDrawerForService(state)
-					}
+			}
+			if state.Origin == core.EngineOriginStandalone || s.serveSupported || s.preview != nil {
+				paramsLabel := tr(c, "services.card.action.params")
+				paramsBtn := outlineIconButton(c, reicon.SlidersHorizontal, paramsLabel)
+				if multi {
+					paramsBtn.Label(paramsLabel + " · " + modelName)
 				}
-				if state.LogPath != "" {
-					logLabel := tr(c, "services.card.action.log")
-					logBtn := outlineIconButton(c, reicon.FileText, logLabel)
-					if multi {
-						logBtn.Label(logLabel + " · " + modelName)
-					}
-					if logBtn.Clicked() {
-						s.openServiceLog(state)
-					}
+				if paramsBtn.Clicked() {
+					s.openServiceParamsDrawerForService(state)
 				}
-			})
+			}
+			if state.LogPath != "" {
+				logLabel := tr(c, "services.card.action.log")
+				logBtn := outlineIconButton(c, reicon.FileText, logLabel)
+				if multi {
+					logBtn.Label(logLabel + " · " + modelName)
+				}
+				if logBtn.Clicked() {
+					s.openServiceLog(state)
+				}
+			}
 			ui.Box(c).Grow(1)
 			stopDisabled := !s.serviceStopEnabled(state, q.active())
 			stopLabel := tr(c, "services.card.action.stop")
@@ -427,5 +402,87 @@ func (s *viewState) renderIdleManagedCard(c *ui.Context) {
 				}
 			})
 		},
+	})
+}
+
+func (s *viewState) discoveredServicesSection(c *ui.Context) {
+	t := tokens(c)
+	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+		refreshIconButton(c, tr(c, "engine.discovery.refresh"), s.discovering).Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)
+	})
+	errorView(c, s.discoveryError)
+	if s.discoveryError == nil {
+		for _, code := range s.discovery.Limitations {
+			warningBanner(c, human(code))
+		}
+	}
+	compatible := 0
+	for _, service := range s.discovery.Services {
+		for _, endpoint := range service.Endpoints {
+			if endpoint.Models != nil && !s.managedEndpoint(service, endpoint) {
+				compatible++
+				s.renderDiscoveredServiceCard(c, service, endpoint)
+			}
+		}
+	}
+	if compatible == 0 && s.discoveryError == nil && !s.discovering {
+		message := tr(c, "engine.discovery.not_loaded")
+		if s.discoveryLoaded {
+			message = tr(c, "engine.discovery.none_found")
+			if s.managedServiceActive() {
+				message = tr(c, "engine.discovery.none_other_found")
+			}
+			if s.discovery.Status == "partial" || len(s.discovery.Limitations) > 0 {
+				message = tr(c, "engine.discovery.partial")
+			}
+		}
+		ui.Text(c, message).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+	}
+}
+
+func (s *viewState) renderDiscoveredServiceCard(c *ui.Context, service inferyard.DiscoveredService, endpoint inferyard.DiscoveredEndpoint) {
+	t := tokens(c)
+	name := displayName(service.ProcessName)
+	cardEl, innerR := compactCard(c, ui.Column(c.Key(fmt.Sprintf("disc-svc-%d-%s", service.PID, endpoint.URL))).FillWidth().Gap(t.Density.Row), t.Density.Stack)
+	cardEl.Children(func() {
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			engineIconBox(c, name, 30, innerR)
+			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
+				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+					ui.Text(c, name).Bold().FontSize(t.Type.Section).SingleLine()
+					inlineBadge(c, tr(c, "services.discovered.external_badge"), stateNeutral, badgeOptions{Size: sizeSM})
+					inlineBadge(c, trf(c, "services.discovered.models_count", "count", len(endpoint.Models)), stateInfo, badgeOptions{Size: sizeSM})
+				})
+				ui.Text(c, fmt.Sprintf("PID %d · %s", service.PID, endpoint.URL)).
+					FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
+			})
+			studioTooltipGroup(c, ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row), func() {
+				if validURL, ok := validLoopbackURL(endpoint.URL); ok {
+					if outlineIconButton(c, reicon.Copy, tr(c, "services.discovered.copy_url")).Clicked() {
+						s.copyEngineEndpoint(c, validURL)
+					}
+					if outlineIconButton(c, reicon.Code, tr(c, "services.discovered.usage")).Clicked() {
+						targetModel := name
+						if len(endpoint.Models) > 0 && strings.TrimSpace(endpoint.Models[0]) != "" {
+							targetModel = endpoint.Models[0]
+						}
+						s.openServiceUsageDrawer(validURL, targetModel, name)
+					}
+				}
+				if outlineIconButton(c, reicon.Gauge, tr(c, "services.discovered.benchmark")).Clicked() {
+					s.startBenchmarkForDiscoveredService(service, endpoint)
+				}
+			})
+		})
+		if endpoint.AmbiguousListener {
+			warningBanner(c, tr(c, "engine.discovery.ambiguous_listener"))
+		}
+		if len(endpoint.Models) > 0 {
+			componentFold(c, trf(c, "engine.discovery.model_catalog_count", "count", fmt.Sprintf("%d", len(endpoint.Models))), func() {
+				for _, model := range endpoint.Models {
+					ui.Text(c, displayName(model)).FontSize(t.Type.Caption)
+				}
+			})
+		}
 	})
 }

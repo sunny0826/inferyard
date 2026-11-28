@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
 )
@@ -98,7 +99,9 @@ func (s *viewState) appearanceSettingsView(c *ui.Context) {
 				s.changeThemeMode(appearanceOptions[idx].value)
 			}
 
+			ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
 			s.accentColorRow(c)
+			ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
 			s.fontSizeRow(c)
 		})
 }
@@ -106,25 +109,27 @@ func (s *viewState) appearanceSettingsView(c *ui.Context) {
 func (s *viewState) appearanceOptionTile(c *ui.Context, item ui.Element, opt appearanceOption, active bool) {
 	t := tokens(c)
 	optLabel := tr(c, opt.labelKey)
-	bg := t.Color.Surface
+	bg := t.Color.Sunken
 	border := t.Color.BorderSubtle
-	borderW := float32(1)
 	if c.Preferences().HighContrast {
 		border = t.Color.BorderDefault
 	}
 	if active {
+		bg = t.Color.Surface
 		if c.Theme().Dark {
 			bg = t.Color.Elevated
 		}
 		border = t.Color.Accent
-		borderW = 2
 	} else if item.Hovered() {
 		bg = t.Color.SurfaceHover
-		border = t.Color.BorderDefault
+		border = t.Color.BorderStrong
 	}
 
 	item.MinWidth(0).Padding(t.Density.Row).Radius(t.Radius.Floating).
-		Background(bg).Border(borderW, border).NoShadow().Label(optLabel)
+		Background(bg).Border(1.5, border).Label(optLabel)
+	if active {
+		applyShadow(item, t.Elevation.XS)
+	}
 
 	iconColor := t.Color.FgSecondary
 	if active {
@@ -133,24 +138,24 @@ func (s *viewState) appearanceOptionTile(c *ui.Context, item ui.Element, opt app
 
 	item.Children(func() {
 		ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
-			appearancePreviewThumb(c, opt.value, t.Color.BorderSubtle)
-			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Padding(0, t.Density.Hairline).Children(func() {
-				studioIcon(c, opt.icon, iconColor)
+			appearancePreviewThumb(c, opt.value, t.Color.BorderDefault)
+			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(6).Padding(0, 2).Children(func() {
+				components.Icon(c, opt.icon).Size(14, 14).TextColor(iconColor)
 				label := ui.Text(c, optLabel).SingleLine()
 				if active {
-					label.FontWeight(600).TextColor(t.Color.FgPrimary)
+					label.Bold().TextColor(t.Color.FgPrimary)
 				} else {
 					label.TextColor(t.Color.FgSecondary)
 				}
 				ui.Spacer(c)
-				checkCircle := ui.Box(c).Size(studioIconBoxSize, studioIconBoxSize).Radius(t.Radius.Full).
+				checkCircle := ui.Box(c).Size(16, 16).Radius(t.Radius.Full).
 					AlignItems(ui.Center).Justify(ui.Center)
 				if active {
 					checkCircle.Background(t.Color.Accent).Children(func() {
-						studioIcon(c, reicon.Check, t.Color.FgOnAccent)
+						components.Icon(c, reicon.Check).Size(10, 10).TextColor(t.Color.FgOnAccent)
 					})
 				} else {
-					checkCircle.Border(1.5, t.Color.BorderDefault)
+					checkCircle.Border(1.5, t.Color.BorderStrong)
 				}
 			})
 		})
@@ -158,7 +163,7 @@ func (s *viewState) appearanceOptionTile(c *ui.Context, item ui.Element, opt app
 }
 
 func appearancePreviewThumb(c *ui.Context, mode string, frameBorder ui.Color) {
-	ui.Box(c).FillWidth().Height(72).Radius(8).Draw(func(p *ui.Painter, r ui.Rect) {
+	ui.Box(c).FillWidth().Height(72).Radius(6).Draw(func(p *ui.Painter, r ui.Rect) {
 		drawThemePreview(p, r, mode, frameBorder)
 	})
 }

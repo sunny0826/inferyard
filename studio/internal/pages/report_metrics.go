@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
 )
@@ -77,12 +78,16 @@ type reportMetricSpec struct {
 
 func reportMetricCard(c *ui.Context, spec reportMetricSpec) {
 	t := tokens(c)
-	applyMaterial(c, ui.Column(c).MinWidth(0).Gap(t.Density.Tight).Padding(t.Metric.PaddingY, t.Metric.PaddingX), materialCard).
+	applyMaterial(c, ui.Column(c).MinWidth(0).Gap(t.Density.Tight+1).Padding(t.Metric.PaddingY, t.Metric.PaddingX), materialCard).
 		Children(func() {
 			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, spec.label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).Grow(1).MinWidth(0).SingleLine()
 				if spec.icon != nil {
-					studioIcon(c, spec.icon, t.Color.FgTertiary)
+					ui.Box(c).Size(22, 22).Radius(t.Radius.SM).Shrink(0).
+						Background(t.Color.Sunken).
+						AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+						components.Icon(c, spec.icon).Size(13, 13).TextColor(t.Color.FgSecondary)
+					})
 				}
 			})
 			valColor := t.Color.FgPrimary
@@ -91,7 +96,7 @@ func reportMetricCard(c *ui.Context, spec reportMetricSpec) {
 			}
 			ui.Text(c, spec.value).Bold().FontSize(t.Type.MetricLarge).FontFeatures("tnum").TextColor(valColor).SingleLine().Selectable()
 			if spec.hasRatio {
-				barColor := t.Color.Accent
+				barColor := stateColor(c, spec.ratioKind)
 				ui.Box(c).FillWidth().Height(4).Draw(func(p *ui.Painter, r ui.Rect) {
 					if r.W <= 0 || r.H <= 0 {
 						return
@@ -215,7 +220,7 @@ func reportStatRow(c *ui.Context, label, value string, muted bool) {
 	if muted || value == "" || value == "—" {
 		valColor = t.Color.FgTertiary
 	}
-	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Tight, 0).Children(func() {
+	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Tight+1, 0).Children(func() {
 		ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).Grow(1).MinWidth(100)
 		el := ui.Text(c, value).FontFeatures("tnum").TextColor(valColor).Selectable().Label(ariaLabel)
 		if !muted && value != "" && value != "—" {

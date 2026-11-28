@@ -403,14 +403,14 @@ func renderLabelTipOverlayNode(c *ui.Context, coord *hoverCoordinator, target ui
 	}
 	tip := ui.Box(c.Key("studio-label-tip")).Absolute().PassThrough().Role(ui.RoleTooltip).
 		MaxWidth(theme.Space(80)).
-		Padding(t.Density.Hairline, t.Density.Tight).
+		Padding(theme.Space(1.25), theme.Space(2)).
 		Radius(t.Radius.Control).
 		Background(t.Color.FgPrimary).
 		TextColor(t.Color.Surface).
 		Shadow(0, 2, 8, 0, ui.RGBA(0, 0, 0, .18)).
 		AttachTo(target, ui.AnchorTop, ui.AnchorBottom).
 		AttachEdgeMargin(t.Density.Row).
-		Margin(0, 0, t.Density.Tight, 0).
+		Margin(0, 0, theme.Space(1.5), 0).
 		Transition(tr)
 	tip.Children(func() {
 		ui.Text(c, text).FontSize(t.Type.Caption).TextColor(t.Color.Surface)

@@ -331,7 +331,7 @@ func engineCardHeader(c *ui.Context, opts engineHeaderOptions) {
 			tile.Border(1, scale.Solid.Alpha(.16))
 		}
 		tile.Children(func() {
-			studioIcon(c, reicon.Server, scale.Fg)
+			components.Icon(c, reicon.Server).Size(15, 15).TextColor(scale.Fg)
 		})
 		heading(c, tr(c, "engine.card.title"), 3).Grow(1).MinWidth(0)
 		if opts.action != nil {
@@ -347,7 +347,7 @@ func engineCardHeader(c *ui.Context, opts engineHeaderOptions) {
 func engineStatusBadge(c *ui.Context, text string, kind stateKind) {
 	t := tokens(c)
 	scale := stateScale(c, kind)
-	pill := ui.Row(c).AlignItems(ui.Center).Justify(ui.Center).Gap(t.Density.Tight).
+	pill := ui.Row(c).AlignItems(ui.Center).Justify(ui.Center).Gap(t.Density.Tight+2).
 		Padding(3, 9).Radius(t.Radius.Full).Background(scale.SubtleBg).Label(text)
 	if c.Preferences().HighContrast {
 		pill.Border(1, scale.Border)
@@ -379,15 +379,16 @@ func (s *viewState) engineEndpointBar(c *ui.Context, state core.EngineState) {
 		return
 	}
 	t := tokens(c)
+	theme := c.Theme()
 	uiURL, canOpen, disabledReason := engineWebUIInfo(state)
 	validURL, hasLoopback := validLoopbackURL(state.Endpoint)
 	bar := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).
-		Padding(t.Density.Hairline, t.Density.Tight).Radius(t.Radius.Inset).
-		Background(t.Color.Sunken)
+		Padding(theme.Space(1), theme.Space(1.5)).Radius(t.Radius.Inset).
+		Background(t.Color.Surface).Border(1, t.Color.BorderDefault)
 	bar.Children(func() {
 		if canOpen {
 			linkBtn := ui.ButtonBase(c).Grow(1).MinWidth(0).
-				Padding(t.Density.Hairline, t.Density.Tight).Radius(t.Radius.Control).
+				Padding(theme.Space(1.25), theme.Space(1.5)).Radius(t.Radius.Control).
 				Label(tr(c, "engine.action.open_webui"))
 			var bg ui.Color
 			switch {
@@ -400,15 +401,15 @@ func (s *viewState) engineEndpointBar(c *ui.Context, state core.EngineState) {
 				linkBtn.Background(bg)
 			}
 			linkBtn.Children(func() {
-				ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-					studioIcon(c, reicon.Globe, t.Color.Info.Fg)
-					ui.Text(c, uiURL).FontSize(t.Type.Body).FontFeatures("tnum").
+				ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
+					components.Icon(c, reicon.Globe).Size(14, 14).TextColor(t.Color.Info.Fg)
+					ui.Text(c, uiURL).FontSize(t.Type.Caption).FontFeatures("tnum").
 						TextColor(t.Color.Info.Fg).Grow(1).MinWidth(0).SingleLine()
-					ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Hairline).
-						Padding(t.Density.Hairline, t.Density.Tight).Radius(t.Radius.Control).Background(t.Color.Info.SubtleBg).Shrink(0).Children(func() {
-						ui.Text(c, tr(c, "engine.action.open_webui")).FontSize(t.Type.Body).FontWeight(600).
+					ui.Row(c).AlignItems(ui.Center).Gap(3).
+						Padding(2, 7).Radius(t.Radius.XS).Background(t.Color.Info.SubtleBg).Shrink(0).Children(func() {
+						ui.Text(c, tr(c, "engine.action.open_webui")).FontSize(t.Type.ShellLabel).Bold().
 							TextColor(t.Color.Info.Fg).SingleLine()
-						studioIcon(c, reicon.ArrowUpRight, t.Color.Info.Fg)
+						components.Icon(c, reicon.ArrowUpRight).Size(12, 12).TextColor(t.Color.Info.Fg)
 					})
 				})
 			})
@@ -417,13 +418,13 @@ func (s *viewState) engineEndpointBar(c *ui.Context, state core.EngineState) {
 				s.openEngineWebUI(c, uiURL)
 			}
 		} else {
-			ui.Row(c).Grow(1).MinWidth(0).AlignItems(ui.Center).Gap(t.Density.Tight).
-				Padding(t.Density.Hairline, t.Density.Tight).Children(func() {
-				studioIcon(c, reicon.Globe, t.Color.FgTertiary)
-				ui.Text(c, loopbackEndpoint(state.Endpoint)).FontSize(t.Type.Body).
+			ui.Row(c).Grow(1).MinWidth(0).AlignItems(ui.Center).Gap(t.Density.Tight+2).
+				Padding(theme.Space(1.25), theme.Space(1.5)).Children(func() {
+				components.Icon(c, reicon.Globe).Size(14, 14).TextColor(t.Color.FgTertiary)
+				ui.Text(c, loopbackEndpoint(state.Endpoint)).FontSize(t.Type.Caption).
 					FontFeatures("tnum").TextColor(t.Color.FgSecondary).Grow(1).MinWidth(0).SingleLine()
 				if disabledReason != "" {
-					ui.Text(c, disabledReason).FontSize(t.Type.Body).
+					ui.Text(c, disabledReason).FontSize(t.Type.ShellLabel).
 						TextColor(t.Color.FgTertiary).SingleLine().Shrink(0)
 				}
 			})

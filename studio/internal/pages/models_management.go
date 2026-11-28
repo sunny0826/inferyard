@@ -234,7 +234,7 @@ func (s *viewState) modelStorageAndRootsView(c *ui.Context) {
 	t := tokens(c)
 	ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-			studioIcon(c, reicon.HardDrive, t.Color.FgSecondary)
+			components.Icon(c, reicon.HardDrive).Size(14, 14).TextColor(t.Color.FgSecondary)
 			ui.Text(c, modelsStorageSummaryText(s.registry)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 		})
 		primaryRoot := emptyText(s.settings.Effective.ModelsRoot)
@@ -249,7 +249,7 @@ func (s *viewState) modelStorageAndRootsView(c *ui.Context) {
 					c.Key("model-root-" + dir)
 					ui.Row(c).FillWidth().MinHeight(t.Control.SM).AlignItems(ui.Center).Gap(t.Density.Row).
 						Padding(t.Density.Hairline, 0).Children(func() {
-						studioIcon(c, reicon.Folder, t.Color.FgSecondary)
+						components.Icon(c, reicon.Folder).Size(14, 14).TextColor(t.Color.FgSecondary)
 						dirText := ui.Text(c, dir).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine().TruncateMiddle()
 						studioTooltipIfTruncated(c, dirText, dir, dir, t.Type.Caption, false)
 						if s.isExtraModelRootDir(dir, primaryRoot) {

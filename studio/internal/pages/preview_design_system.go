@@ -63,8 +63,8 @@ func swatchRim(c *ui.Context) ui.Color {
 func inlineHexChip(c *ui.Context, col ui.Color) {
 	t := tokens(c)
 	rim := swatchRim(c)
-	ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Hairline).Children(func() {
-		ui.Box(c).Size(12, 12).Radius(4).Shrink(0).Background(col).Border(1, rim)
+	ui.Row(c).AlignItems(ui.Center).Gap(5).Children(func() {
+		ui.Box(c).Size(10, 10).Radius(3).Shrink(0).Background(col).Border(1, rim)
 		ui.Text(c, colorHex(col)).FontSize(t.Type.ShellDetail).TextColor(t.Color.FgSecondary).FontFeatures("tnum").SingleLine()
 	})
 }
@@ -95,8 +95,9 @@ func (p *previewSession) dsHeaderCard(c *ui.Context, spec studioAccentSpec) {
 	selected := core.NormalizeAccent(p.accentMode)
 	applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Stack).Padding(t.Card.Padding), materialCard).Children(func() {
 		ui.Row(c).FillWidth().AlignItems(ui.Center).Wrap().Gap(t.Density.Row).Children(func() {
-			ui.Column(c).Grow(1).MinWidth(220).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(220).Gap(t.Density.Hairline).Children(func() {
 				heading(c, tr(c, "preview.ds.title"), 1)
+				ui.Text(c, tr(c, spec.descKey)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			})
 			ui.Row(c).AlignItems(ui.End).Gap(t.Density.Row).Children(func() {
 				prevTheme := p.themeMode
@@ -195,6 +196,7 @@ func (p *previewSession) dsButtonsCard(c *ui.Context, pal paletteColors) {
 	disabledHint := tr(c, "preview.ds.btn.disabled_desc")
 	applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Stack).Padding(t.Card.Padding), materialCard).Children(func() {
 		heading(c, tr(c, "preview.ds.section.buttons"), 2)
+		ui.Text(c, tr(c, "preview.ds.section.buttons_desc")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			primaryButton(c, tr(c, "preview.ds.btn.primary"))

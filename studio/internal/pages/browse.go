@@ -41,17 +41,6 @@ func (s *viewState) pathField(c *ui.Context, label string, value *string, spec b
 	})
 }
 
-func (s *viewState) pathFieldUnlabeled(c *ui.Context, ariaLabel string, value *string, spec browseSpec) ui.Element {
-	return ui.Field(c, "", func() {
-		ui.Row(c).AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-			studioTextBox(c, value).Grow(1).Label(ariaLabel)
-			button(c, tr(c, "browse.button")).Label(trf(c, "browse.button_label", "label", ariaLabel)).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
-				s.browsePath(value, spec)
-			})
-		})
-	})
-}
-
 func (s *viewState) canBrowse() bool {
 	if s.preview != nil {
 		return true

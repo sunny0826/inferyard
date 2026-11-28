@@ -2,6 +2,7 @@ package pages
 
 import (
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
 )
@@ -41,7 +42,11 @@ func (r *reportViewState) categoryView(c *ui.Context, run core.ReportRun) {
 						ui.Text(c, rateText).FontFeatures("tnum").SingleLine()
 						if category.Rate.Numerator != nil && category.Rate.Denominator != nil && *category.Rate.Denominator > 0 {
 							ratio := float64(*category.Rate.Numerator) / float64(*category.Rate.Denominator)
-							reportRatioBar(c, ratio, 56, 4, t.Color.Accent)
+							barColor := t.Color.Success.Solid
+							if ratio < 0.5 {
+								barColor = t.Color.Warning.Solid
+							}
+							reportRatioBar(c, ratio, 56, 5, barColor)
 						}
 					})
 				case 2:
@@ -52,7 +57,7 @@ func (r *reportViewState) categoryView(c *ui.Context, run core.ReportRun) {
 					}
 					ui.Text(c, exclText).FontFeatures("tnum").TextColor(exclColor).SingleLine()
 				}
-			}).Height(c.Theme().Space(8) + c.Theme().Space(9)*float32(min(len(categories), 8)))
+			}).Height(c.Theme().Space(8)*float32(min(len(categories), 8)+1) + 2)
 		})
 	})
 }
@@ -144,10 +149,10 @@ func (r *reportViewState) requestView(c *ui.Context, run core.ReportRun) {
 					}
 					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 						ui.Text(c, reportScaled(request.LatencyMS, 1000, "s")).FontFeatures("tnum").TextColor(latColor).Grow(1).MinWidth(0).SingleLine()
-						studioIcon(c, reicon.ChevronRight, t.Color.FgTertiary)
+						components.Icon(c, reicon.ChevronRight).Size(14, 14).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
 					})
 				}
-			}).Height(c.Theme().Space(8) + c.Theme().Space(10)*float32(min(len(visible), 8)))
+			}).Height(c.Theme().Space(8)*float32(min(len(visible), 8)+1) + 2)
 		})
 		if r.requests.clicked || r.requests.submitted {
 			if idx := selectedRow(&r.requests, len(visible)); idx >= 0 {

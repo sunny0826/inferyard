@@ -15,7 +15,7 @@ func TestRecentContextSpeedRowsIdentifyModelContextAndEngine(t *testing.T) {
 	s.tasks = []core.RunTask{{TaskId: "disk", Kind: "context_speed", State: "done", ContextSpeed: &core.ContextSpeedTask{Model: "registered-model", DisplayModel: "display-model", Context: 32768}}}
 	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.benchmarksTasksTabView(c) }) }, 1120, 1200)
 	kind := l10n.TR("shell.header.context_speed")
-	for _, want := range []string{"Preview-Model-Q4.gguf · 64k · " + kind, "display-model · 32k · " + kind, "preview-engine · " + formatTimestamp(started)} {
+	for _, want := range []string{"Preview-Model-Q4.gguf · 64k · " + kind, "display-model · 32k · " + kind, "preview-engine · " + taskLabel(s.tasks[0]) + " · " + formatTimestamp(started)} {
 		if !tt.HasText(want) {
 			t.Fatalf("recent tasks missing %q: %v", want, tt.Texts())
 		}

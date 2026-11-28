@@ -381,11 +381,12 @@ func (s *viewState) serviceMemoryBudgetBar(c *ui.Context, budget core.ServiceMem
 	}
 }
 
-func serviceMetricTile(c *ui.Context, _ float32, label, value, sub string, tabular bool) {
+func serviceMetricTile(c *ui.Context, radius float32, label, value, sub string, tabular bool) {
 	t := tokens(c)
-	ui.Column(c).FillWidth().Padding(t.Density.Tight, 0).Gap(t.Density.Hairline).Children(func() {
-		ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
-		v := ui.Text(c, value).FontWeight(600).FontSize(t.Type.Primary).TextColor(t.Color.FgPrimary).SingleLine()
+	ui.Column(c).FillWidth().Padding(t.Density.Row).Radius(radius).
+		Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).Gap(2).Children(func() {
+		ui.Text(c, label).FontSize(t.Type.ShellLabel).TextColor(t.Color.FgSecondary).SingleLine()
+		v := ui.Text(c, value).Bold().FontSize(t.Type.Section).TextColor(t.Color.FgPrimary).SingleLine()
 		if tabular {
 			v.FontFeatures("tnum")
 		}

@@ -2,6 +2,7 @@ package pages
 
 import (
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
 )
@@ -10,24 +11,26 @@ func (s *viewState) starterOptionTile(c *ui.Context, st *downloadsUIState, idx i
 	t := tokens(c)
 	installed := s.isStarterOptionInstalled(opt)
 
-	tile := ui.Column(c.Key("starter-option-" + opt.ModelID)).MinWidth(210).Grow(1).Gap(t.Density.Stack).Padding(t.Card.Padding).Radius(t.Radius.Surface).Label(trf(c, "downloads.starter.select_option_label", "id", opt.ModelID))
-	bg := t.Color.Surface
+	tile := ui.Column(c.Key("starter-option-" + opt.ModelID)).MinWidth(210).Grow(1).Gap(t.Density.Row).Padding(t.Density.Stack).Radius(t.Radius.Floating).Label(trf(c, "downloads.starter.select_option_label", "id", opt.ModelID))
+	bg := t.Color.Sunken
 	border := t.Color.BorderSubtle
-	borderW := float32(1)
 	if c.Preferences().HighContrast {
 		border = t.Color.BorderDefault
 	}
 	if selected {
+		bg = t.Color.Surface
 		if c.Theme().Dark {
 			bg = t.Color.Elevated
 		}
 		border = t.Color.Accent
-		borderW = 2
 	} else if tile.Hovered() {
 		bg = t.Color.SurfaceHover
-		border = t.Color.BorderDefault
+		border = t.Color.BorderStrong
 	}
-	tile.Background(bg).Border(borderW, border).NoShadow()
+	tile.Background(bg).Border(1.5, border)
+	if selected {
+		applyShadow(tile, t.Elevation.XS)
+	}
 	tile.OnClick(func() {
 		st.starterChoice = idx
 		if opt.Engine == "polystrata" {
@@ -36,45 +39,48 @@ func (s *viewState) starterOptionTile(c *ui.Context, st *downloadsUIState, idx i
 	})
 
 	tile.Children(func() {
-		// Top row: Model icon + 16px/600 title + engine/backend + selection circle
-		ui.Row(c).FillWidth().AlignItems(ui.Start).Gap(t.Density.Row).Children(func() {
+		// Top row: tier badge, fit badge, installed badge, selection circle
+		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+			ui.Row(c).Grow(1).MinWidth(0).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+				badge(c, starterTierLabel(opt.Tier), starterTierState(opt.Tier), badgeOptions{Style: badgeSoft, Size: sizeSM})
+				if opt.FitLevel != "" {
+					badge(c, deviceLabel(opt.FitLevel), starterFitState(opt.FitLevel), badgeOptions{Style: badgeOutline, Size: sizeSM})
+				}
+				if installed {
+					badge(c, tr(c, "downloads.badge.installed"), stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
+				}
+			})
+			checkCircle := ui.Box(c).Size(16, 16).Radius(t.Radius.Full).AlignItems(ui.Center).Justify(ui.Center).Shrink(0)
+			if selected {
+				checkCircle.Background(t.Color.Accent).Children(func() {
+					components.Icon(c, reicon.Check).Size(10, 10).TextColor(t.Color.FgOnAccent)
+				})
+			} else {
+				checkCircle.Border(1.5, t.Color.BorderStrong)
+			}
+		})
+
+		// Title & Engine/Backend line
+		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			modelIconBox(c, opt.ModelTitle+" "+opt.Family+" "+opt.ModelID, 32, t.Radius.Control)
 			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
-				ui.Text(c, starterOptionTitle(opt)).FontWeight(600).FontSize(t.Type.Primary).TextColor(t.Color.FgPrimary)
+				ui.Text(c, starterOptionTitle(opt)).Bold()
 				engineMeta := starterEngineLabel(opt.Engine)
 				if opt.Backend != "" {
 					engineMeta += " · " + deviceLabel(opt.Backend)
 				}
 				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-					renderBrandEngineIcon(c, opt.Engine, 14, t.Color.FgSecondary)
+					renderBrandEngineIcon(c, opt.Engine, 12, t.Color.FgSecondary)
 					ui.Text(c, engineMeta).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 				})
 			})
-			checkCircle := ui.Box(c).Size(studioIconBoxSize, studioIconBoxSize).Radius(t.Radius.Full).AlignItems(ui.Center).Justify(ui.Center).Shrink(0)
-			if selected {
-				checkCircle.Background(t.Color.Accent).Children(func() {
-					studioIcon(c, reicon.Check, t.Color.FgOnAccent)
-				})
-			} else {
-				checkCircle.Border(1.5, t.Color.BorderDefault)
-			}
-		})
-
-		// Distinguishing badges (tier + non-default fit + installed)
-		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-			badge(c, starterTierLabel(opt.Tier), starterTierState(opt.Tier), badgeOptions{Style: badgeSoft, Size: sizeSM})
-			if opt.FitLevel != "" && opt.FitLevel != "fits" && opt.FitLevel != "recommended" {
-				badge(c, deviceLabel(opt.FitLevel), starterFitState(opt.FitLevel), badgeOptions{Style: badgeSoft, Size: sizeSM})
-			}
-			if installed {
-				badge(c, tr(c, "downloads.badge.installed"), stateSuccess, badgeOptions{Style: badgeSoft, Size: sizeSM})
-			}
 		})
 
 		ui.Spacer(c)
 
-		// Metrics row: Download / RAM / Context (aligned via whitespace, no divider)
-		ui.Row(c).FillWidth().Wrap().Gap(t.Density.Section).Children(func() {
+		// Metrics row: Download / RAM / Context
+		ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+		ui.Row(c).FillWidth().Wrap().Gap(t.Density.Stack).Children(func() {
 			if opt.EstimatedDownloadBytes > 0 {
 				starterTileMetric(c, tr(c, "downloads.starter.metric.download"), formatDownloadBytes(opt.EstimatedDownloadBytes))
 			}

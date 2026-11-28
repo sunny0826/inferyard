@@ -59,27 +59,33 @@ func TestDesignTokensConcentricRadiiAnd4pxGrid(t *testing.T) {
 		"Radius.Modal":    radius.Modal,
 	} {
 		assertOn4pxGrid(t, name, v)
-		if name != "Radius.None" && (v < 8 || v > 40) {
-			t.Fatalf("%s = %v, want in [8, 40]", name, v)
+		if name != "Radius.None" && v < 4 {
+			t.Fatalf("%s = %v, want >= 4", name, v)
 		}
 	}
 
 	if radius.Full < 9999 {
 		t.Fatalf("Radius.Full = %v, want pill/circle radius >= 9999", radius.Full)
 	}
-	if got := concentricRadius(radius.Surface, card.Padding); got != radius.Control {
-		t.Fatalf("card concentric radius = %v, want Radius.Control (%v)", got, radius.Control)
+	if got := concentricRadius(radius.Surface, card.Padding); got != radius.Inset {
+		t.Fatalf("card concentric radius = %v, want Radius.Inset (%v)", got, radius.Inset)
+	}
+	if got := concentricRadius(radius.Modal, spacing.Section); got != radius.Control {
+		t.Fatalf("modal concentric radius = %v, want Radius.Control (%v)", got, radius.Control)
 	}
 	if got := concentricRadius(radius.Modal, spacing.Row); got != radius.LG {
-		t.Fatalf("popover concentric radius = %v, want Radius.LG (%v)", got, radius.LG)
+		t.Fatalf("inbox popover concentric radius = %v, want Radius.LG (%v)", got, radius.LG)
 	}
-	if got := concentricRadius(radius.LG, spacing.Tight); got != radius.Control {
+	if got := concentricRadius(radius.LG, spacing.Row); got != radius.Control {
 		t.Fatalf("toast/inbox card concentric radius = %v, want Radius.Control (%v)", got, radius.Control)
 	}
 	if got := concentricRadius(radius.Floating, spacing.Tight); got != radius.Control {
 		t.Fatalf("floating concentric radius = %v, want Radius.Control (%v)", got, radius.Control)
 	}
-	if got := concentricRadius(4, 8); got != 8 {
-		t.Fatalf("concentricRadius floor = %v, want 8", got)
+	if got := concentricRadius(radius.Inset, spacing.Tight); got != radius.XS {
+		t.Fatalf("inset list-row concentric radius = %v, want Radius.XS (%v)", got, radius.XS)
+	}
+	if got := concentricRadius(4, 8); got != 4 {
+		t.Fatalf("concentricRadius floor = %v, want 4", got)
 	}
 }

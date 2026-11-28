@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
 )
@@ -199,7 +200,7 @@ func reportSectionCard(c *ui.Context, icon func() *ui.SVG, title string, trailin
 	applyMaterial(c, ui.Column(c).FillWidth().MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).Children(func() {
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			if icon != nil {
-				studioIcon(c, icon, t.Color.FgSecondary)
+				components.Icon(c, icon).Size(15, 15).TextColor(t.Color.FgSecondary).Shrink(0)
 			}
 			heading(c, title, 2)
 			if trailing != nil {
@@ -245,7 +246,7 @@ func reportKVRow(c *ui.Context, label, value string, tabular, muted, emphasize b
 }
 
 func reportKVDivider(c *ui.Context) {
-	ui.Box(c).FillWidth().Height(tokens(c).Density.Hairline)
+	ui.Box(c).FillWidth().Height(1).Background(tokens(c).Color.BorderSubtle)
 }
 
 func stopReasonStateKind(raw string) stateKind {

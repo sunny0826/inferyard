@@ -46,20 +46,20 @@ func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 			if i > 0 {
 				lineColor := t.Color.BorderDefault
 				if i <= o.Current {
-					lineColor = t.Color.FgPrimary.Alpha(.22)
+					lineColor = t.Color.Success.Solid.Alpha(.55)
 				}
-				ui.Box(c).Height(2).MinWidth(12).MaxWidth(28).Grow(1).Radius(t.Radius.Full).Background(lineColor)
+				ui.Box(c).Height(2).MinWidth(10).MaxWidth(28).Grow(1).Radius(t.Radius.Full).Background(lineColor)
 			}
 			stepNum := fmt.Sprintf("%d", i+1)
 			switch {
 			case i < o.Current:
 				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-					ui.Box(c).Size(studioIconBoxSize, studioIconBoxSize).Radius(t.Radius.Full).Shrink(0).
-						Background(t.Color.Sunken).
+					ui.Box(c).Size(20, 20).Radius(t.Radius.Full).Shrink(0).
+						Background(t.Color.Success.SubtleBg).Border(1, t.Color.Success.Border).
 						AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-						studioIcon(c, reicon.Check, t.Color.FgSecondary)
+						components.Icon(c, reicon.Check).Size(12, 12).TextColor(t.Color.Success.Fg)
 					})
-					ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
+					ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).SingleLine()
 				})
 			case i == o.Current:
 				scale := t.Color.Active
@@ -67,7 +67,7 @@ func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 					scale = t.Color.Danger
 				}
 				pill := ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).
-					Padding(4, t.Density.Row, 4, 4).Radius(t.Radius.Full).
+					Padding(3, t.Density.Row, 3, 4).Radius(t.Radius.Full).
 					Background(scale.SubtleBg).Border(1, scale.Border).
 					Description(trf(c, "common.phase.current", "label", label))
 				pill.Children(func() {
@@ -302,7 +302,7 @@ func searchableSelectField(c *ui.Context, name, description, placeholder, emptyF
 			}
 			applyMaterial(c, cb.Input.FillWidth().Label(name).Placeholder(placeholder).
 				MinHeight(t.Control.MD).
-				Padding(t.Density.Tight, t.Density.Stack), materialControl).Border(1, border)
+				Padding(c.Theme().Space(1.75), t.Density.Stack), materialControl).Border(1, border)
 
 			visible := options
 			if cb.Filtering() {

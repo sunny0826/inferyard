@@ -8,23 +8,6 @@ import (
 	"inferyard/studio/internal/icons/reicon"
 )
 
-const (
-	studioIconBoxSize   = 24
-	studioIconGlyphSize = 18
-)
-
-// studioIcon renders a Reicon glyph at 18px inside a 24x24 transparent outer box per DESIGN.md.
-func studioIcon(c *ui.Context, icon func() *ui.SVG, color ui.Color) ui.Element {
-	box := ui.Box(c).Size(studioIconBoxSize, studioIconBoxSize).Shrink(0).AlignItems(ui.Center).Justify(ui.Center)
-	box.Children(func() {
-		el := components.Icon(c, icon).Size(studioIconGlyphSize, studioIconGlyphSize).Role(ui.RoleNone)
-		if color.A > 0 {
-			el.TextColor(color)
-		}
-	})
-	return box
-}
-
 // outlineIconButton renders a bordered icon-only button with an accessible label and hover tooltip.
 func outlineIconButton(c *ui.Context, icon func() *ui.SVG, label string) ui.Element {
 	t := tokens(c)
@@ -151,12 +134,10 @@ func refreshIconButton(c *ui.Context, label string, active bool) ui.Element {
 		}
 	}
 	b.Children(func() {
-		ui.Box(c).Size(studioIconBoxSize, studioIconBoxSize).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-			icon := components.Icon(c, reicon.RefreshCw).Size(studioIconGlyphSize, studioIconGlyphSize).TextColor(t.Color.FgPrimary).Role(ui.RoleNone)
-			if angle != 0 {
-				icon.Rotate(angle)
-			}
-		})
+		icon := components.Icon(c, reicon.RefreshCw).Size(15, 15).TextColor(t.Color.FgPrimary)
+		if angle != 0 {
+			icon.Rotate(angle)
+		}
 	})
 	studioTooltip(c, b, label)
 	return b

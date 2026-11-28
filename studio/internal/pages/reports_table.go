@@ -2,6 +2,7 @@ package pages
 
 import (
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
 )
@@ -77,13 +78,13 @@ func reportCard(c *ui.Context, report core.ReportSummary, modelHint, exclusivity
 				ui.Box(c).Size(36, 36).Radius(t.Radius.Inset).Shrink(0).
 					Background(scale.SubtleBg).Border(1, scale.Border).
 					AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-					studioIcon(c, reicon.CircleAlert, semanticAccentColor(c, scale))
+					components.Icon(c, reicon.CircleAlert).Size(17, 17).TextColor(semanticAccentColor(c, scale))
 				})
 			} else {
 				modelIconBox(c, modelHint, 36, t.Radius.Inset)
 			}
-			ui.Column(c).Grow(1).MinWidth(180).Gap(t.Density.Hairline).Children(func() {
-				ui.Text(c, reportHeadingFor(c, report)).FontWeight(600).FontSize(t.Type.Primary).TextColor(t.Color.FgPrimary).SingleLine()
+			ui.Column(c).Grow(1).MinWidth(180).Gap(2).Children(func() {
+				ui.Text(c, reportHeadingFor(c, report)).Bold().FontSize(t.Type.CardTitle).TextColor(t.Color.FgPrimary).SingleLine()
 				ui.Text(c, reportSubheadingFor(c, report)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
 			})
 			ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
@@ -98,27 +99,37 @@ func reportCard(c *ui.Context, report core.ReportSummary, modelHint, exclusivity
 		if report.Unreadable {
 			applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
 				Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
-				studioIcon(c, reicon.CircleAlert, semanticAccentColor(c, t.Color.Danger))
+				components.Icon(c, reicon.CircleAlert).Size(14, 14).TextColor(semanticAccentColor(c, t.Color.Danger))
 				ui.Text(c, tr(c, "reports.list.unreadable_body")).FontSize(t.Type.Caption).TextColor(t.Color.Danger.Fg)
 			})
 		} else if len(report.RunSummaries) > 0 {
-			ui.Column(c).FillWidth().Gap(t.Density.Tight).Children(func() {
-				for _, run := range report.RunSummaries {
+			applyMaterial(c, ui.Column(c).FillWidth().Gap(0).Padding(t.Density.Tight, t.Density.Stack), materialSunken).Children(func() {
+				for i, run := range report.RunSummaries {
+					if i > 0 {
+						ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+					}
 					q := run.Quality
 					hasRatio := q.Numerator != nil && q.Denominator != nil && *q.Denominator > 0
 					dotColor := t.Color.BorderStrong
 					var ratio float64
 					if hasRatio {
 						ratio = float64(*q.Numerator) / float64(*q.Denominator)
-						dotColor = t.Color.Accent
+						if q.Complete {
+							dotColor = t.Color.Success.Solid
+							if ratio < 0.5 {
+								dotColor = t.Color.Warning.Solid
+							}
+						} else {
+							dotColor = t.Color.Active.Solid
+						}
 					}
-					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Hairline, 0).Children(func() {
-						ui.Box(c).Size(8, 8).Radius(t.Radius.Full).Shrink(0).Background(dotColor)
+					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Tight+1, 0).Children(func() {
+						ui.Box(c).Size(6, 6).Radius(t.Radius.Full).Shrink(0).Background(dotColor)
 						ui.Text(c, reportRunLineFor(c, report, run)).
 							FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgPrimary).
 							Grow(1).MinWidth(0).SingleLine().Selectable()
 						if hasRatio {
-							reportRatioBar(c, ratio, 72, 4, dotColor)
+							reportRatioBar(c, ratio, 68, 5, dotColor)
 						}
 					})
 				}

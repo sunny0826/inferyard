@@ -67,7 +67,7 @@ func (s *viewState) downloadSourceSettingsView(c *ui.Context) {
 				}
 			}
 			prev := idx
-			segmentedField(c, tr(c, "settings.download_source.label"), "", &idx, options)
+			segmentedField(c, tr(c, "settings.download_source.label"), tr(c, "settings.download_source.description"), &idx, options)
 			if idx != prev && idx >= 0 && idx < len(downloadSourceOptions) {
 				s.changeDownloadSource(downloadSourceOptions[idx].value)
 			}

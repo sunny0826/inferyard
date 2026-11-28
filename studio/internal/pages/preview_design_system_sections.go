@@ -35,7 +35,8 @@ func (p *previewSession) dsSurfacesCard(c *ui.Context) {
 					box.Radius(t.Radius.Inset).Border(1, t.Color.BorderSubtle)
 				}
 				box.Children(func() {
-					ui.Text(c, tr(c, layer.nameKey)).FontWeight(600).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary)
+					ui.Text(c, tr(c, layer.nameKey)).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary)
+					ui.Text(c, tr(c, "preview.ds.surface.secondary_sample")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 					inlineHexChip(c, layer.col)
 				})
 			}
@@ -50,12 +51,12 @@ func (p *previewSession) dsStatesCard(c *ui.Context) {
 
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			badge(c, tr(c, "preview.ds.state.neutral"), stateNeutral, badgeOptions{Style: badgeSoft})
-			badge(c, tr(c, "preview.ds.state.info"), stateActive, badgeOptions{Style: badgeSoft})
+			badge(c, tr(c, "preview.ds.state.info"), stateInfo, badgeOptions{Style: badgeSoft})
 			badge(c, tr(c, "preview.ds.state.success"), stateSuccess, badgeOptions{Style: badgeSoft})
 			badge(c, tr(c, "preview.ds.state.warning"), stateWarning, badgeOptions{Style: badgeSoft})
 			badge(c, tr(c, "preview.ds.state.danger"), stateDanger, badgeOptions{Style: badgeSoft})
-			badge(c, tr(c, "preview.ds.state.dot"), stateActive, badgeOptions{Style: badgeDot})
-			badge(c, tr(c, "preview.ds.state.outline"), stateNeutral, badgeOptions{Style: badgeOutline})
+			badge(c, tr(c, "preview.ds.state.dot"), stateSuccess, badgeOptions{Style: badgeDot})
+			badge(c, tr(c, "preview.ds.state.outline"), stateInfo, badgeOptions{Style: badgeOutline})
 		})
 
 		ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
@@ -63,8 +64,8 @@ func (p *previewSession) dsStatesCard(c *ui.Context) {
 			noticeBanner(c, noticeBannerOptions{Kind: stateSuccess, Size: bannerCompact, Message: tr(c, "preview.ds.banner.success")})
 			ui.Row(c).FillWidth().AlignItems(ui.Center).Wrap().Gap(t.Density.Row).Children(func() {
 				applyMaterial(c, ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).
-					Padding(t.Density.Tight, t.Density.Stack).Radius(t.Radius.Full), materialFloating).Children(func() {
-					studioIcon(c, reicon.CircleCheck, semanticAccentColor(c, t.Color.Success))
+					Padding(t.Density.Tight+2, t.Density.Stack).Radius(t.Radius.Full), materialFloating).Children(func() {
+					components.Icon(c, reicon.CircleCheck).Size(14, 14).TextColor(semanticAccentColor(c, t.Color.Success))
 					ui.Text(c, tr(c, "preview.ds.banner.success")).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).SingleLine()
 				})
 				if inlineButton(c, components.ButtonGhost, tr(c, "preview.ds.alt.c.try_toast")).Clicked() {
@@ -121,20 +122,20 @@ func (p *previewSession) dsControlsCard(c *ui.Context) {
 		}
 		ui.Grid(c).Columns(cols).Gap(t.Density.Section).Children(func() {
 			ui.Column(c).FillWidth().Gap(t.Density.Stack).Children(func() {
-				monoField(c, tr(c, "preview.ds.control.input"), "", "http://127.0.0.1:48857", "", &p.dsInput)
-				switchField(c, tr(c, "preview.ds.control.switch"), "", &p.dsSwitch)
+				monoField(c, tr(c, "preview.ds.control.input"), tr(c, "preview.ds.control.input_hint"), "http://127.0.0.1:48857", "", &p.dsInput)
+				switchField(c, tr(c, "preview.ds.control.switch"), tr(c, "preview.ds.control.switch_desc"), &p.dsSwitch)
 				components.Checkbox(c, &p.dsCheck, tr(c, "preview.ds.control.checkbox"))
 			})
 			ui.Column(c).FillWidth().Gap(t.Density.Tight).Children(func() {
 				listRow(c, listRowOptions{
-					Leading:  func() { studioIcon(c, reicon.Play, t.Color.FgPrimary) },
+					Leading:  func() { components.Icon(c, reicon.Play).Size(15, 15).TextColor(t.Color.FgPrimary) },
 					Title:    tr(c, "preview.ds.row.selected_title"),
 					Subtitle: tr(c, "preview.ds.row.selected_sub"),
 					Selected: true,
 					Trailing: func() { badge(c, tr(c, "preview.ds.state.success"), stateSuccess, badgeOptions{Size: sizeSM}) },
 				})
 				listRow(c, listRowOptions{
-					Leading:  func() { studioIcon(c, reicon.Server, t.Color.FgSecondary) },
+					Leading:  func() { components.Icon(c, reicon.Server).Size(15, 15).TextColor(t.Color.FgSecondary) },
 					Title:    tr(c, "preview.ds.row.normal_title"),
 					Subtitle: tr(c, "preview.ds.row.normal_sub"),
 					OnClick:  func() {},
@@ -165,8 +166,6 @@ func (p *previewSession) dsChartCard(c *ui.Context) {
 func (p *previewSession) dsTokensAndContrastCard(c *ui.Context, pal paletteColors) {
 	t := tokens(c)
 	rim := swatchRim(c)
-	succBg, succFg, _, _ := badgeColorsFor(c, stateSuccess)
-	warnBg, warnFg, _, _ := badgeColorsFor(c, stateWarning)
 	checks := []struct {
 		labelKey string
 		fg, bg   ui.Color
@@ -178,8 +177,8 @@ func (p *previewSession) dsTokensAndContrastCard(c *ui.Context, pal paletteColor
 		{"preview.ds.contrast.secondary_btn", t.Color.FgPrimary, pal.buttons.secondaryBg},
 		{"preview.ds.contrast.danger_btn", pal.buttons.dangerFg, pal.buttons.dangerBg},
 		{"preview.ds.contrast.danger_solid", ui.Hex("#ffffff"), pal.buttons.dangerSolid},
-		{"preview.ds.contrast.success_badge", succFg, succBg},
-		{"preview.ds.contrast.warning_badge", warnFg, warnBg},
+		{"preview.ds.contrast.success_badge", t.Color.Success.Fg, t.Color.Success.SubtleBg},
+		{"preview.ds.contrast.warning_badge", t.Color.Warning.Fg, t.Color.Warning.SubtleBg},
 	}
 
 	swatches := []struct {
@@ -208,17 +207,13 @@ func (p *previewSession) dsTokensAndContrastCard(c *ui.Context, pal paletteColor
 			for _, chk := range checks {
 				ratio := contrastRatio(chk.fg, chk.bg)
 				kind := stateSuccess
-				grade := "AA"
-				if ratio >= 7.0 {
-					grade = "AAA"
-				} else if ratio < 4.5 {
+				if ratio < 4.5 {
 					kind = stateWarning
-					grade = "LOW"
 				}
 				applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
 					Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
 					ui.Text(c, tr(c, chk.labelKey)).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1)
-					badge(c, fmt.Sprintf("%.2f:1 %s", ratio, grade), kind, badgeOptions{Size: sizeSM})
+					badge(c, fmt.Sprintf("%.2f:1 AA", ratio), kind, badgeOptions{Size: sizeSM})
 				})
 			}
 		})

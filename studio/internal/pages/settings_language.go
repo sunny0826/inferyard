@@ -68,10 +68,10 @@ func (s *viewState) languageSettingsView(c *ui.Context) {
 		}
 	}
 
-	applyMaterial(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Section).Padding(t.Card.Padding), materialCard).
+	applyMaterial(c, ui.Column(c).FillWidth().MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).
 		Children(func() {
-			ui.Row(c).Grow(1).MinWidth(140).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				heading(c, tr(c, "settings.language.heading"), 2)
+			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				heading(c, tr(c, "settings.language.heading"), 2).Grow(1)
 				if selected == core.LanguageSystem {
 					current := trf(c, "settings.language.current", "language", l10n.ResolvedLanguageName(contextLocale(c)))
 					ui.Text(c, current).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
@@ -86,7 +86,7 @@ func (s *viewState) languageSettingsView(c *ui.Context) {
 				}
 			}
 			prev := idx
-			segmentedControl(c, tr(c, "settings.language.label"), &idx, options)
+			segmentedField(c, tr(c, "settings.language.label"), "", &idx, options)
 			if idx != prev && idx >= 0 && idx < len(languageOptions) {
 				s.changeLanguageMode(languageOptions[idx].value)
 			}

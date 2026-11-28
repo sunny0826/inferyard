@@ -368,7 +368,7 @@ func (w *viewState) runViewWithBar(c *ui.Context, embedBar bool) {
 			if w.model != "" {
 				modelIconBox(c, w.modelIconHint(w.model), 30, t.Radius.SM)
 			} else {
-				studioIcon(c, reicon.Play, stateColor(c, stateActive))
+				components.Icon(c, reicon.Play).Size(15, 15).TextColor(stateColor(c, stateActive))
 			}
 			if bundleName := emptyText(task.Bundle); bundleName != "" {
 				ui.Text(c, bundleName).Bold().FontSize(t.Type.Section).TextColor(t.Color.FgPrimary).SingleLine()
@@ -401,9 +401,9 @@ func (w *viewState) runViewWithBar(c *ui.Context, embedBar bool) {
 			elapsed = w.formatTaskElapsed(c, emptyText(task.StartedAt))
 		}
 		row.Children(func() {
-			ui.Text(c, label).FontSize(t.Type.Primary).FontWeight(600).FontFeatures("tnum").TextColor(t.Color.FgPrimary)
+			ui.Text(c, label).FontFeatures("tnum")
 			if elapsed != "" {
-				ui.Text(c, "· "+elapsed).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
+				ui.Text(c, "· "+elapsed).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 			}
 		})
 		id := task.TaskId

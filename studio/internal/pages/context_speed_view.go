@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
@@ -31,7 +32,7 @@ func speedSampleSlots(c *ui.Context, r *speedTask) {
 			ui.Row(c).FillWidth().AlignItems(ui.Center).Justify(ui.Center).Gap(t.Density.Tight).
 				Padding(t.Density.Row).Radius(t.Radius.Control).Background(bg).Border(1, border).Children(func() {
 				if done {
-					studioIcon(c, reicon.Check, fg)
+					components.Icon(c, reicon.Check).Size(12, 12).TextColor(fg)
 				} else if active {
 					ui.Box(c).Size(6, 6).Radius(t.Radius.Full).Background(t.Color.Active.Solid)
 				}

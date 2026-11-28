@@ -48,7 +48,7 @@ func TestFontSizeSettingsDefaultPersistScaleAndUI(t *testing.T) {
 		}, 400, 120)
 		tt.Frame()
 		gotBases[i] = gotBase
-		wantHeading := gotBase * (18.0 / 14.0)
+		wantHeading := gotBase * 1.57
 		if math.Abs(float64(gotHeading-wantHeading)) > 0.05 {
 			t.Fatalf("tier %q PageTitle = %.2f, want %.2f", tier, gotHeading, wantHeading)
 		}

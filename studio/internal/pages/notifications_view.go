@@ -52,7 +52,7 @@ func (s *viewState) notificationBell(c *ui.Context, maxCanvasWidth float32) {
 				if unread > 0 || nc.bellOpen || anchor.Hovered() {
 					iconColor = t.Color.FgPrimary
 				}
-				studioIcon(c, reicon.Bell, iconColor)
+				components.Icon(c, reicon.Bell).Size(16, 16).TextColor(iconColor).Role(ui.RoleNone)
 				if unread > 0 {
 					countText := fmt.Sprintf("%d", unread)
 					if unread > 99 {
@@ -108,7 +108,7 @@ func (s *viewState) notificationInboxPanel(c *ui.Context) {
 				Padding(t.Density.Page, t.Density.Section).Gap(t.Density.Row).Children(func() {
 				ui.Box(c).Size(36, 36).Radius(t.Radius.Full).Background(t.Color.Sunken).
 					AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-					studioIcon(c, reicon.Bell, t.Color.FgTertiary)
+					components.Icon(c, reicon.Bell).Size(16, 16).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
 				})
 				ui.Text(c, tr(c, "notif.empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			})

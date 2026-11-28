@@ -74,7 +74,7 @@ func (s *viewState) libraryHardwareCard(c *ui.Context) {
 	}
 	applyMaterial(c, ui.Column(c.Key("library-hw-card")).FillWidth().Padding(t.Card.Padding).Gap(t.Density.Row), materialCard).Radius(outerR).Children(func() {
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			studioIcon(c, reicon.Cpu, stateColor(c, stateActive))
+			components.Icon(c, reicon.Cpu).Size(16, 16).TextColor(stateColor(c, stateActive))
 			ui.Text(c, summary).Bold().FontSize(t.Type.Body).SingleLine()
 			if missingAssets {
 				inlineBadge(c, tr(c, "library.hw.missing"), stateWarning, badgeOptions{Size: sizeSM})
@@ -202,7 +202,7 @@ func (s *viewState) libraryTabBar(c *ui.Context) {
 						row.Background(t.Color.SurfaceHover)
 					}
 					row.Children(func() {
-						studioIcon(c, tab.icon, fg)
+						components.Icon(c, tab.icon).Size(15, 15).TextColor(fg)
 						txt := ui.Text(c, tab.label).FontSize(t.Type.Body).TextColor(fg).SingleLine()
 						if active {
 							txt.Bold()

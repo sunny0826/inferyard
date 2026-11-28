@@ -127,8 +127,9 @@ func (s *viewState) generalSettingsView(c *ui.Context) {
 		return
 	}
 	settingsFormSection(c, settingsFormOptions{
-		Title: tr(c, "settings.workspace.title"),
-		Dirty: s.workspaceEdited(),
+		Title:       tr(c, "settings.workspace.title"),
+		Description: tr(c, "settings.workspace.description"),
+		Dirty:       s.workspaceEdited(),
 		Fields: func() {
 			s.workspaceField(c)
 		},
@@ -225,7 +226,7 @@ func (s *viewState) applySettings(value core.SettingsResponse) {
 func (s *viewState) workspaceField(c *ui.Context) {
 	loc := contextLocale(c)
 	ui.Column(c).Gap(tokens(c).Density.Row).Children(func() {
-		s.pathFieldUnlabeled(c, tr(c, "settings.workspace.label"), &s.workspace, browseWorkspace).
+		s.pathField(c, tr(c, "settings.workspace.label"), &s.workspace, browseWorkspace).
 			Description(directoryStateFor(loc, s.workspace, s.ready.Workspace, emptyText(s.settings.Effective.WorkspaceRoot))).
 			Error(s.browseError(browseWorkspace.key, settingsPathError(s.workspace, emptyText(s.settings.Effective.WorkspaceRoot))))
 	})
