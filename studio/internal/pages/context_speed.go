@@ -419,11 +419,15 @@ func (s *viewState) speedTaskActions(c *ui.Context, r *speedTask) {
 }
 
 func (s *viewState) newSpeedTask(r *speedTask) {
-	if r.selectionModel == "" || r.selectionEngine == "" {
+	eng, engOK := s.findEngineAsset(r.selectionEngine)
+	model, modelOK := s.findModelAsset(r.selectionModel)
+	if r.selectionModel == "" || r.selectionEngine == "" ||
+		!engOK || !s.isBenchmarkEngineUsable(eng.Name) ||
+		!modelOK || !model.Available || !compatibleBenchmarkEngine(model, eng) {
 		s.failure = &core.ApiError{Code: "context_speed_assets_unavailable", Message: l10n.TR("speed.error.assets_unavailable")}
 		return
 	}
-	s.newBenchmarkWithSelection(r.selectionEngine, r.selectionModel)
+	s.newBenchmarkWithSelection(eng.Name, model.Name)
 	s.speed.selected, s.speed.context = true, r.context
 }
 

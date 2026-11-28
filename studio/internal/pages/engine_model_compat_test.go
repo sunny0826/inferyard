@@ -389,3 +389,63 @@ func TestMLXStandaloneServiceExcludedFromBenchmarkReuse(t *testing.T) {
 		t.Fatal("mlx-lm standalone server (mlx_lm.server) must not be reused directly for formal benchmark runs")
 	}
 }
+
+func TestExplicitHandoffsAndHistoryRerunValidation(t *testing.T) {
+	s := readyState("history")
+	fooModel := core.ModelAsset{Name: "foo.gguf", Path: "/models/foo.gguf", Format: "gguf", Available: true}
+	mlxModel := core.ModelAsset{Name: "qwen-mlx", Path: "/models/qwen-mlx", Format: "directory", Available: true}
+	llamaEng := core.EngineAsset{Name: "llama-prism", Family: "llama-cpp", Path: "/ws/engines/llama/llama-server"}
+	mlxEng := core.EngineAsset{Name: "mlx-lm · 0.32.2", Family: "mlx-lm", Kind: "local_installation", Path: "/ws/engines/mlx/installation.json"}
+	vllmInel := core.EngineAsset{Name: "vllm-bad", Family: "vllm", Path: "/ws/engines/vllm/vllm"}
+
+	s.registry = core.Registry{
+		Models:  []core.ModelAsset{fooModel, mlxModel},
+		Engines: []core.EngineAsset{llamaEng, mlxEng, vllmInel},
+	}
+	s.checks = core.EngineCheckOverview{
+		Supported: true,
+		Engines: map[string]core.EngineEligibility{
+			llamaEng.Name: {State: core.EngineCheckEligible, Family: "llama-cpp"},
+			mlxEng.Name:   {State: core.EngineCheckEligible, Family: "mlx-lm"},
+			vllmInel.Name: {State: core.EngineCheckIneligible, Family: "vllm", Reason: "missing_dep"},
+		},
+	}
+
+	// 1. History rerun resolves ModelPath + CLI adapter (prism_llama_server_v1 / local_openai_v1).
+	fooDisplay, fooPath, prismAdapter := "foo", "/models/foo.gguf", "prism_llama_server_v1"
+	eng, mod := s.resolveHistoryRerunSelection(core.RunSummary{ModelName: &fooDisplay, ModelPath: &fooPath, Engine: &prismAdapter})
+	if eng != llamaEng.Name || mod != fooModel.Name {
+		t.Fatalf("history rerun (foo/prism) got (%q, %q), want (%q, %q)", eng, mod, llamaEng.Name, fooModel.Name)
+	}
+	mlxDisplay, mlxPath, localAdapter := "Qwen3 MLX", "/models/qwen-mlx", "local_openai_v1"
+	eng, mod = s.resolveHistoryRerunSelection(core.RunSummary{ModelName: &mlxDisplay, ModelPath: &mlxPath, Engine: &localAdapter})
+	if eng != mlxEng.Name || mod != mlxModel.Name {
+		t.Fatalf("history rerun (mlx/local_openai_v1) got (%q, %q), want (%q, %q)", eng, mod, mlxEng.Name, mlxModel.Name)
+	}
+
+	// 2. applyPolystrataSelection atomically clears stale pair when no PolyStrata engine exists.
+	s.engine, s.model = llamaEng.Name, fooModel.Name
+	engOK, modOK := s.applyPolystrataSelection("/missing/installation.json", "/missing/strata.json")
+	if engOK || modOK || s.engine != "" || s.model != "" {
+		t.Fatalf("applyPolystrataSelection without PolyStrata must clear stale selection, got engOK=%v modOK=%v (%q, %q)", engOK, modOK, s.engine, s.model)
+	}
+
+	// 3. applyServiceBenchmarkTarget rejects ineligible engine and leaves pair empty.
+	s.engine, s.model = llamaEng.Name, fooModel.Name
+	s.applyServiceBenchmarkTarget(mlxModel.Name, vllmInel.Name)
+	if s.engine != "" || s.model != "" {
+		t.Fatalf("applyServiceBenchmarkTarget with ineligible engine must clear pair, got (%q, %q)", s.engine, s.model)
+	}
+
+	// 4. newSpeedTask rejects ineligible engine or incompatible model without mutating s.engine/s.model.
+	s.engine, s.model, s.failure = llamaEng.Name, fooModel.Name, nil
+	s.newSpeedTask(&speedTask{selectionEngine: vllmInel.Name, selectionModel: mlxModel.Name, context: inferyard.ContextSpeed64K})
+	if s.failure == nil || s.failure.Code != "context_speed_assets_unavailable" || s.engine != llamaEng.Name || s.model != fooModel.Name {
+		t.Fatalf("newSpeedTask with ineligible engine failed expectation: err=%+v (%q, %q)", s.failure, s.engine, s.model)
+	}
+	s.failure = nil
+	s.newSpeedTask(&speedTask{selectionEngine: llamaEng.Name, selectionModel: mlxModel.Name, context: inferyard.ContextSpeed64K})
+	if s.failure == nil || s.failure.Code != "context_speed_assets_unavailable" || s.engine != llamaEng.Name || s.model != fooModel.Name {
+		t.Fatalf("newSpeedTask with incompatible model failed expectation: err=%+v (%q, %q)", s.failure, s.engine, s.model)
+	}
+}

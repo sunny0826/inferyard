@@ -157,7 +157,7 @@ func (s *viewState) applyServiceBenchmarkTarget(modelName, engineName string) {
 	resolvedEngine := ""
 	if engineName != "" {
 		for _, eng := range s.registry.Engines {
-			if eng.Name == engineName {
+			if eng.Name == engineName && s.isBenchmarkEngineUsable(eng.Name) {
 				resolvedEngine = eng.Name
 				break
 			}

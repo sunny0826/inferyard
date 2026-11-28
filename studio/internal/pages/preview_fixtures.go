@@ -107,6 +107,7 @@ func previewPreparation(s *viewState) {
 	s.ready.CLI.Status = "not_found"
 	s.serveSupported = false
 	s.ready.Workspace.Initialized, s.ready.Results.Exists, s.ready.Models.Exists = false, false, false
+	s.model, s.engine = "", ""
 }
 
 func previewValue[T any](value T) *T { return &value }

@@ -180,20 +180,41 @@ func (s *viewState) reconcileModelOnEngineChange(prevEngine string) {
 	}
 }
 
+func historyEngineMatches(e core.EngineAsset, wantEngine string) bool {
+	if e.Name == wantEngine || e.Family == wantEngine || (e.Path != "" && filepath.Base(e.Path) == filepath.Base(wantEngine)) {
+		return true
+	}
+	if wantEngine == "prism_llama_server_v1" || strings.HasPrefix(wantEngine, "llama_cpp_") {
+		return e.Family == "" || e.Family == "llama-cpp"
+	}
+	return false
+}
+
 func (s *viewState) resolveHistoryRerunSelection(r core.RunSummary) (string, string) {
 	if s == nil {
 		return "", ""
 	}
 	var matchedModel *core.ModelAsset
-	if wantModel := strings.TrimSpace(emptyText(r.ModelName)); wantModel != "" {
+	if wantPath := cleanMatchPath(emptyText(r.ModelPath)); wantPath != "" {
 		for i := range s.registry.Models {
 			m := &s.registry.Models[i]
-			if !m.Available {
-				continue
-			}
-			if m.Name == wantModel || (m.Path != "" && filepath.Base(m.Path) == wantModel) {
+			if m.Available && m.Path != "" && cleanMatchPath(m.Path) == wantPath {
 				matchedModel = m
 				break
+			}
+		}
+	}
+	if matchedModel == nil {
+		if wantModel := strings.TrimSpace(emptyText(r.ModelName)); wantModel != "" {
+			for i := range s.registry.Models {
+				m := &s.registry.Models[i]
+				if !m.Available {
+					continue
+				}
+				if m.Name == wantModel || (m.Path != "" && filepath.Base(m.Path) == wantModel) {
+					matchedModel = m
+					break
+				}
 			}
 		}
 	}
@@ -201,10 +222,7 @@ func (s *viewState) resolveHistoryRerunSelection(r core.RunSummary) (string, str
 	if wantEngine := strings.TrimSpace(emptyText(r.Engine)); wantEngine != "" {
 		for i := range s.registry.Engines {
 			e := &s.registry.Engines[i]
-			if !s.isBenchmarkEngineUsable(e.Name) {
-				continue
-			}
-			if e.Name == wantEngine || e.Family == wantEngine || (e.Path != "" && filepath.Base(e.Path) == filepath.Base(wantEngine)) {
+			if s.isBenchmarkEngineUsable(e.Name) && historyEngineMatches(*e, wantEngine) {
 				matchedEngine = e
 				break
 			}
@@ -228,7 +246,6 @@ func (s *viewState) recordCandidateSelection() {
 	if s == nil {
 		return
 	}
-	s.lastCandidateModel = s.model
 	s.lastCandidateEngine = s.engine
 	s.lastCandidateInit = true
 }

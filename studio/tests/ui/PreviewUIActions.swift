@@ -84,6 +84,15 @@ extension PreviewUITests {
 
     func prepare() {
         click("准备环境")
+        let engineTrigger = app.menuButtons["引擎"].firstMatch
+        wait("engine becomes selectable", timeout: 10) {
+            engineTrigger.exists && engineTrigger.isEnabled
+        }
+        let modelTrigger = app.menuButtons["测评模型"].firstMatch
+        expectExists(modelTrigger, timeout: 5)
+        XCTAssertFalse(modelTrigger.isEnabled, "Model dropdown must stay disabled until an engine is selected")
+        chooseEngine("preview-engine · llama-server")
+        chooseModel("Preview-Model-Q4.gguf · GGUF")
         wait("benchmark becomes available", timeout: 10) {
             self.app.buttons["开始测评"].exists && self.app.buttons["开始测评"].isEnabled
         }

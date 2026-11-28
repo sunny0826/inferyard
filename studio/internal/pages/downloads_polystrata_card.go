@@ -327,30 +327,41 @@ func (s *viewState) applyPolystrataSelection(wantInst, wantModel string) (bool, 
 	selectedEngine := ""
 	fallbackEligible := ""
 	fallbackPoly := ""
+	var selectedAssetEng, fallbackEligibleEng, fallbackPolyEng core.EngineAsset
 	for _, eng := range s.registry.Engines {
+		if s.eligibility(eng.Name).State == core.EngineCheckIneligible {
+			continue
+		}
 		if wantInst != "" && cleanMatchPath(eng.Path) == wantInst {
 			selectedEngine = eng.Name
+			selectedAssetEng = eng
 			engineMatched = true
 			break
 		}
 		if eng.Family == "polystrata" {
 			if s.eligibility(eng.Name).State == core.EngineCheckEligible && fallbackEligible == "" {
 				fallbackEligible = eng.Name
+				fallbackEligibleEng = eng
 			} else if fallbackPoly == "" {
 				fallbackPoly = eng.Name
+				fallbackPolyEng = eng
 			}
 		}
 	}
 	if selectedEngine == "" {
 		if fallbackEligible != "" {
 			selectedEngine = fallbackEligible
+			selectedAssetEng = fallbackEligibleEng
 		} else if fallbackPoly != "" {
 			selectedEngine = fallbackPoly
+			selectedAssetEng = fallbackPolyEng
 		}
 	}
-	if selectedEngine != "" {
-		s.engine = selectedEngine
+	if selectedEngine == "" {
+		s.engine, s.model = "", ""
+		return engineMatched, modelMatched
 	}
+	s.engine = selectedEngine
 
 	selectedModel := ""
 	fallbackPack := ""
@@ -375,9 +386,9 @@ func (s *viewState) applyPolystrataSelection(wantInst, wantModel string) (bool, 
 		selectedAsset = fallbackAsset
 		modelMatched = true
 	}
-	if selectedModel != "" && s.engine != "" && s.compatibleModel(selectedAsset) {
+	if selectedModel != "" && compatibleBenchmarkEngine(selectedAsset, selectedAssetEng) {
 		s.model = selectedModel
-	} else if s.engine == "" {
+	} else {
 		s.model = ""
 	}
 	return engineMatched, modelMatched
