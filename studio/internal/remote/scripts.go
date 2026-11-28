@@ -28,7 +28,11 @@ func unixJoinScript(session PairingSession, version, source, proxy string) (stri
 	script.WriteString("#!/bin/sh\nset -eu\n")
 	script.WriteString(unixUVBootstrap())
 	if source != "" {
-		fmt.Fprintf(&script, "export UV_DEFAULT_INDEX=%s\n", shellQuote(source))
+		if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
+			fmt.Fprintf(&script, "export UV_DEFAULT_INDEX=%s\n", shellQuote(source))
+		} else {
+			fmt.Fprintf(&script, "export INFERYARD_MODEL_SOURCE=%s\n", shellQuote(source))
+		}
 	}
 	if proxy != "" {
 		fmt.Fprintf(&script, "export HTTPS_PROXY=%s HTTP_PROXY=%s\n", shellQuote(proxy), shellQuote(proxy))
@@ -57,7 +61,11 @@ func windowsJoinScript(session PairingSession, version, source, proxy string) (s
 	script.WriteString("function Test-Uv($Path) { try { $Have = [version]((& $Path version | Select-Object -First 1) -replace '^uv\\s+','' -replace '\\s.*$',''); return $Have -ge $MinUv } catch { return $false } }\n")
 	script.WriteString("if (-not (Test-Uv $Uv)) { $Cmd = Get-Command uv -ErrorAction SilentlyContinue; if ($Cmd -and (Test-Uv $Cmd.Source)) { $Uv = $Cmd.Source } else { $env:UV_INSTALL_DIR = $UvDir; irm https://astral.sh/uv/install.ps1 | iex; $Uv = Join-Path $UvDir 'uv.exe' } }\n")
 	if source != "" {
-		fmt.Fprintf(&script, "$env:UV_DEFAULT_INDEX = %s\n", powerShellQuote(source))
+		if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
+			fmt.Fprintf(&script, "$env:UV_DEFAULT_INDEX = %s\n", powerShellQuote(source))
+		} else {
+			fmt.Fprintf(&script, "$env:INFERYARD_MODEL_SOURCE = %s\n", powerShellQuote(source))
+		}
 	}
 	if proxy != "" {
 		fmt.Fprintf(&script, "$env:HTTPS_PROXY = %s\n$env:HTTP_PROXY = %s\n", powerShellQuote(proxy), powerShellQuote(proxy))

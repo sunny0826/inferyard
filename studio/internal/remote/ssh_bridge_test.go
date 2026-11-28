@@ -61,20 +61,20 @@ func TestSSHHostKeySaveDeployAndReverseBridge(t *testing.T) {
 		t.Fatalf("known_hosts = %q, err = %v", knownHosts, err)
 	}
 	files := server.credentials()
-	for _, name := range []string{"ca.pem", "client.pem", "client-key.pem"} {
+	for _, name := range []string{"ca.pem", "client.pem", "client.key", "agent_config.json"} {
 		if len(files[name]) == 0 {
 			t.Fatalf("remote credential %s was not deployed", name)
 		}
 	}
 	log := strings.Join(server.commandLog(), "\n")
-	if !strings.Contains(log, "authorized_keys") || !strings.Contains(log, "agent run --hub 127.0.0.1:") {
+	if !strings.Contains(log, "authorized_keys") || !strings.Contains(log, "agent run --state-dir ") || !strings.Contains(log, "--hub 127.0.0.1:") {
 		t.Fatalf("deployment log = %s", log)
 	}
 	pool := x509.NewCertPool()
 	if !pool.AppendCertsFromPEM(files["ca.pem"]) {
 		t.Fatal("invalid deployed CA")
 	}
-	certificate, err := tls.X509KeyPair(files["client.pem"], files["client-key.pem"])
+	certificate, err := tls.X509KeyPair(files["client.pem"], files["client.key"])
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"os"
@@ -57,11 +58,27 @@ func deployRemoteAgent(client *ssh.Client, issued issuedClientCredentials, versi
 	if _, err := runRemoteCommand(client, command, nil); err != nil {
 		return fmt.Errorf("create remote credential directory: %w", err)
 	}
+	configBytes, err := json.MarshalIndent(map[string]any{
+		"schema_version":       1,
+		"node_id":              issued.NodeID,
+		"hub_addrs":            []string{"127.0.0.1:48860"},
+		"ca_file":              "ca.pem",
+		"client_cert_file":     "client.pem",
+		"client_key_file":      "client.key",
+		"autostart_mode":       "none",
+		"allowed_tunnel_ports": []int{},
+	}, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode remote agent config: %w", err)
+	}
 	files := []struct {
 		name string
 		data []byte
 	}{
-		{"ca.pem", issued.CAPEM}, {"client.pem", issued.CertPEM}, {"client-key.pem", issued.KeyPEM},
+		{"ca.pem", issued.CAPEM},
+		{"client.pem", issued.CertPEM},
+		{"client.key", issued.KeyPEM},
+		{"agent_config.json", append(configBytes, '\n')},
 	}
 	for _, file := range files {
 		path := remoteHomeQuote(directory + "/" + file.name)
@@ -71,7 +88,11 @@ func deployRemoteAgent(client *ssh.Client, issued issuedClientCredentials, versi
 	}
 	install := unixUVBootstrap()
 	if source != "" {
-		install += "export UV_DEFAULT_INDEX=" + shellQuote(source) + "; "
+		if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
+			install += "export UV_DEFAULT_INDEX=" + shellQuote(source) + "; "
+		} else {
+			install += "export INFERYARD_MODEL_SOURCE=" + shellQuote(source) + "; "
+		}
 	}
 	if proxy != "" {
 		install += "export HTTPS_PROXY=" + shellQuote(proxy) + " HTTP_PROXY=" + shellQuote(proxy) + "; "
@@ -88,10 +109,8 @@ func startRemoteAgent(client *ssh.Client, nodeID string, reversePort int, versio
 	uv := "\"$HOME/.local/share/inferyard/bin/uv\""
 	command := "UV=" + uv + "; [ -x \"$UV\" ] || UV=$(command -v uv); " +
 		"nohup \"$UV\" tool run --from " + shellQuote(packageSpec(version)) + " inferyard agent run " +
+		"--state-dir " + remoteHomeQuote(directory) + " " +
 		fmt.Sprintf("--hub 127.0.0.1:%d ", reversePort) +
-		"--ca-cert " + remoteHomeQuote(directory+"/ca.pem") + " " +
-		"--client-cert " + remoteHomeQuote(directory+"/client.pem") + " " +
-		"--client-key " + remoteHomeQuote(directory+"/client-key.pem") + " " +
 		"> " + remoteHomeQuote(directory+"/agent.log") + " 2>&1 < /dev/null &"
 	_, err := runRemoteCommand(client, command, nil)
 	if err != nil {

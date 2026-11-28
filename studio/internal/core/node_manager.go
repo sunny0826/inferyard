@@ -227,8 +227,9 @@ func (m *NodeManager) registerCredentials(c remote.PairedNodeCredentials) (NodeR
 		runtime = &RemoteNodeRuntime{NodeID: c.NodeID, CLIUpgrade: CLIUpgradeState{State: CLIUpgradeIdle}}
 		m.runtimes[c.NodeID] = runtime
 	}
+	peer, connected := m.hub.Peer(c.NodeID)
 	runtime.mu.Lock()
-	runtime.Online = true
+	runtime.Online = connected && peer != nil && peer.Connected()
 	runtime.DeviceSnapshot.Snapshot = append([]byte(nil), c.DeviceSnapshot...)
 	runtime.mu.Unlock()
 	return record, nil

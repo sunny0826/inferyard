@@ -60,7 +60,9 @@ class NodeRPC:
             )
         if method == protocol.METHOD_SERVICE_LOGS:
             return self.supervisor.logs(
-                params["service_id"], limit=int(params.get("limit_bytes", 65536))
+                params["service_id"],
+                limit=int(params.get("limit_bytes", 65536)),
+                max_lines=int(params["max_lines"]) if params.get("max_lines") else None,
             )
         if method == protocol.METHOD_JOB_LIST:
             return {"jobs": self.jobs.list()}
@@ -77,11 +79,17 @@ class NodeRPC:
         if method == protocol.METHOD_REPORT_LIST:
             return {"reports": list_reports(self.state_dir / "reports")}
         if method == protocol.METHOD_REPORT_EXPORT:
+            report_path = params.get("report_path")
+            report_id = params.get("remote_report_id") or params.get("report_id")
+            if not report_path and not params.get("run_path") and isinstance(report_id, str):
+                if "/" in report_id or "\\" in report_id or report_id in ("", ".", ".."):
+                    raise RPCError("invalid_params", "invalid report_id")
+                report_path = str(self.state_dir / "reports" / report_id)
             return await asyncio.to_thread(
                 export_report,
                 state_dir=self.state_dir,
                 run_path=params.get("run_path"),
-                report_path=params.get("report_path"),
+                report_path=report_path,
                 out=params.get("out"),
             )
         if method == protocol.METHOD_WORKSPACE_CLEAN:

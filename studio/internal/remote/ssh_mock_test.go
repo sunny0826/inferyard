@@ -136,7 +136,7 @@ func (s *mockSSHServer) handleSession(channel ssh.Channel, requests <-chan *ssh.
 		}
 		s.mu.Lock()
 		s.commands = append(s.commands, payload.Command)
-		for _, name := range []string{"ca.pem", "client.pem", "client-key.pem"} {
+		for _, name := range []string{"ca.pem", "client.pem", "client.key", "agent_config.json"} {
 			if strings.Contains(payload.Command, "cat >") && strings.Contains(payload.Command, "/"+name) {
 				s.files[name] = append([]byte(nil), input...)
 			}

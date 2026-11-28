@@ -105,11 +105,15 @@ func (s *Service) GetNodeServiceLogs(ctx context.Context, nodeID, serviceID stri
 	}
 	var response struct {
 		Logs string `json:"logs"`
+		Log  string `json:"log"`
 		Text string `json:"text"`
 	}
 	if err := decodeNodePayload(raw, nil, &response); err == nil {
 		if response.Logs != "" {
 			return response.Logs, nil
+		}
+		if response.Log != "" {
+			return response.Log, nil
 		}
 		return response.Text, nil
 	}

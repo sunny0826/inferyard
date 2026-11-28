@@ -268,11 +268,19 @@ class ServiceSupervisor:
         await self._event(EVENT_SERVICE_UPDATED, record)
         return dict(record)
 
-    def logs(self, service_id: str, *, limit: int = 65536) -> dict:
+    def logs(
+        self, service_id: str, *, limit: int = 65536, max_lines: int | None = None
+    ) -> dict:
         record = self._record(service_id)
+        text = log_tail(Path(record["log_path"]), min(max(limit, 1), 1024 * 1024))
+        if max_lines is not None and max_lines > 0:
+            lines = text.splitlines()
+            if len(lines) > max_lines:
+                text = "\n".join(lines[-max_lines:])
         return {
             "service_id": service_id,
-            "log": log_tail(Path(record["log_path"]), min(max(limit, 1), 1024 * 1024)),
+            "log": text,
+            "logs": text,
         }
 
     async def close(self) -> None:

@@ -11,7 +11,7 @@ from inferyard import __version__
 from inferyard.contracts import node_protocol as protocol
 from inferyard.node.credentials import load_config
 from inferyard.node.job_runner import JobRunner
-from inferyard.node.join import normalize_hubs, parse_hub
+from inferyard.node.join import normalize_hubs, normalized_os_arch, parse_hub
 from inferyard.node.rpc import NodeRPC, RPCError
 from inferyard.node.service_supervisor import ServiceSupervisor
 from inferyard.node.tls import control_context
@@ -64,14 +64,15 @@ class NodeAgent:
             await self.writer.drain()
 
     def _hello(self) -> dict:
+        os_name, arch, plat = normalized_os_arch()
         return {
             "event": protocol.EVENT_HELLO,
             "data": {
                 "node_id": self.config["node_id"],
                 "hostname": socket.gethostname(),
-                "os": platform.system().lower(),
-                "arch": platform.machine(),
-                "platform": f"{platform.system().lower()}/{platform.machine()}",
+                "os": os_name,
+                "arch": arch,
+                "platform": plat,
                 "cli_version": __version__,
                 "autostart_installed": (self.state_dir / "autostart.json").exists(),
             },
@@ -121,12 +122,13 @@ class NodeAgent:
             if not isinstance(params, dict):
                 raise RPCError("invalid_params", "RPC params must be an object")
             result = await self.rpc.call(frame["method"], params)
-            response = {"id": request_id, "result": result}
+            response = {"id": request_id, "ok": True, "result": result}
         except RPCError as exc:
-            response = {"id": request_id, "error": exc.as_dict()}
+            response = {"id": request_id, "ok": False, "error": exc.as_dict()}
         except Exception as exc:
             response = {
                 "id": request_id,
+                "ok": False,
                 "error": {"code": "internal_error", "message": type(exc).__name__},
             }
         try:

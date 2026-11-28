@@ -78,6 +78,18 @@ def device_snapshot() -> dict:
         return {"status": "unavailable", "reason": type(exc).__name__}
 
 
+def normalized_os_arch() -> tuple[str, str, str]:
+    os_name = platform.system().lower()
+    raw_arch = platform.machine().lower()
+    arch = {
+        "x86_64": "amd64",
+        "amd64": "amd64",
+        "aarch64": "arm64",
+        "arm64": "arm64",
+    }.get(raw_arch, raw_arch)
+    return os_name, arch, f"{os_name}/{arch}"
+
+
 def pair_hello(code: str, *, autostart: bool, source_hint: str | None) -> dict:
     snapshot = device_snapshot()
     hardware = {
@@ -85,16 +97,17 @@ def pair_hello(code: str, *, autostart: bool, source_hint: str | None) -> dict:
         for key in ("cpu_model", "logical_cpus", "memory_total_bytes", "gpu")
         if snapshot.get(key) is not None
     }
+    os_name, arch, plat = normalized_os_arch()
     return {
         "code": normalize_pair_code(code),
         "hostname": socket.gethostname(),
-        "os": platform.system().lower(),
-        "arch": platform.machine(),
-        "platform": f"{platform.system().lower()}/{platform.machine()}",
+        "os": os_name,
+        "arch": arch,
+        "platform": plat,
         "cli_version": __version__,
         "hardware_summary": json.dumps(hardware, ensure_ascii=False, separators=(",", ":")),
         "device_snapshot": snapshot,
-        "autostart_mode": "none" if not autostart else platform.system().lower(),
+        "autostart_mode": "none" if not autostart else os_name,
         "source_hint": source_hint or "",
     }
 

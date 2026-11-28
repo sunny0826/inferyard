@@ -65,7 +65,7 @@ def test_mtls_control_ping_and_rpc(tmp_path):
         await asyncio.wait_for(task, 10)
         assert observed["hello"]["data"]["node_id"] == "node-test"
         assert observed["pong"] == {"event": "pong", "data": {"sequence": 1}}
-        assert observed["rpc"] == {"id": "rpc-1", "result": {"services": []}}
+        assert observed["rpc"] == {"id": "rpc-1", "ok": True, "result": {"services": []}}
         await agent.close()
         server.close()
         await server.wait_closed()
