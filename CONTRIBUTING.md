@@ -3,7 +3,7 @@
 Follow the guide for the subproject you are changing:
 
 - CLI: [Contributing](cli/CONTRIBUTING.md).
-- Studio: [README and checks](studio/README.md).
+- Studio: [README and checks](studio/README.md), [UI design guidelines](DESIGN.md).
 
 Shared repository rules are in [AGENTS.md](AGENTS.md).
 
@@ -28,7 +28,7 @@ Check and update the corresponding docs whenever a PR changes user-visible behav
 | Change Area | Docs to Check & Update |
 | --- | --- |
 | New/changed headline features, supported platforms, or user quick-start flow | `README.md` and `README.zh-CN.md` (keep EN & ZH-CN in sync) |
-| Studio pages, settings, i18n, themes, tray, updates, downloads, or `mise` Studio tasks | `studio/README.md` (and `README.md` / `README.zh-CN.md` if user-facing) |
+| Studio pages, UI/navigation conventions, settings, i18n, themes, tray, updates, downloads, or `mise` Studio tasks | `studio/README.md`, `DESIGN.md` (when UI/navigation conventions change), and `README.md` / `README.zh-CN.md` if user-facing |
 | Studio native macOS UI E2E workflows or launch flags | `studio/tests/ui/README.md` |
 | CLI commands, flags, PyPI install/upgrade, `installation.json`, or bundle presets | `cli/README.md`, `cli/README.zh-CN.md`, and `cli/docs/installation.md` |
 | Exported schemas (`bundle`, `config_input`, `context_speed_result`, `engine_check`, `manifest`, `studio_report`) | Run `mise run schemas` (`export_schemas.py`) and check affected docs |

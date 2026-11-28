@@ -51,6 +51,7 @@ func TestReportViewReadsStudioJSONOnly(t *testing.T) {
 	}
 	defer service.Shutdown(context.Background())
 	s := testState()
+	s.selected = "reports"
 	s.service = service
 	_, s.reports, s.reportsError = service.Reports()
 	if s.reportsError != nil || len(s.reports) != 2 {
@@ -59,7 +60,7 @@ func TestReportViewReadsStudioJSONOnly(t *testing.T) {
 	if _, e := service.ReportIndex("legacy"); e == nil || e.Code != "unsupported_report_format" {
 		t.Fatal("legacy report did not explain its unsupported format", e)
 	}
-	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.reportsView(c) }) }, 1120, 1200)
+	tt := ui.NewTester(s.view, 1120, 1200)
 	if !tt.HasText("Fixture Model Q4") || !tt.HasText("无法读取") || tt.HasText("legacy") {
 		t.Fatal(tt.Texts())
 	}
@@ -106,14 +107,15 @@ func TestReportHeaderBackReturnsToList(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s := testState()
+			s.selected = "reports"
 			tc.report.reference = "sample"
 			s.openedReport, s.reportsTab = &tc.report, reportsTabSpeed
-			tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).FillWidth().Children(func() { s.reportsView(c) }) }, 1120, 1200)
+			tt := ui.NewTester(s.view, 1120, 1200)
 			title, hasTitle := tt.AccessByRole(ui.RoleHeading, tc.title)
 			backLabel := tr(nil, "reports.detail.back")
 			back, hasBack := tt.AccessByRole(ui.RoleButton, backLabel)
-			if !hasTitle || !hasBack || back.Bounds.X < title.Bounds.X+title.Bounds.W || back.Bounds.Y >= title.Bounds.Y+title.Bounds.H || title.Bounds.Y >= back.Bounds.Y+back.Bounds.H {
-				t.Fatalf("unexpected header placement: title=%+v back=%+v", title.Bounds, back.Bounds)
+			if !hasTitle || !hasBack || back.Bounds.X+back.Bounds.W > title.Bounds.X || back.Bounds.X+back.Bounds.W > 205 {
+				t.Fatalf("unexpected left-sidebar back placement: title=%+v back=%+v", title.Bounds, back.Bounds)
 			}
 			click(t, tt, backLabel)
 			if s.openedReport != nil || s.reportsTab != reportsTabList {

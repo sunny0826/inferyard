@@ -3,7 +3,7 @@ package pages
 import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 const (
@@ -31,7 +31,7 @@ func (s *viewState) reportsView(c *ui.Context) {
 				components.Tabs(c, &s.reportsTab, components.TabsUnderline, tr(c, "reports.tab.reports"), tr(c, "reports.tab.context_speed"))
 			})
 			if s.reportsTab == reportsTabList {
-				outlineIconButton(c, lucide.Plus, tr(c, "reports.action.create_from_history")).OnClick(func() {
+				outlineIconButton(c, reicon.Plus, tr(c, "reports.action.create_from_history")).OnClick(func() {
 					s.reportDialogOpen = true
 					s.reportDiscardConfirm = false
 				})
@@ -49,7 +49,7 @@ func (s *viewState) reportsView(c *ui.Context) {
 func (s *viewState) speedReportsTabView(c *ui.Context) {
 	if s.speed == nil || len(s.speed.history) == 0 {
 		emptyGuideCard(c, emptyGuideOptions{
-			Icon:        lucide.Gauge,
+			Icon:        reicon.Gauge,
 			Title:       tr(c, "reports.tab.context_speed"),
 			Description: tr(c, "reports.speed.empty_description"),
 			Surface:     emptyCard,
@@ -85,9 +85,9 @@ func (s *viewState) reportSourcesDialog(c *ui.Context) {
 				})
 			} else if len(runs) == 0 {
 				emptyGuideCard(c, emptyGuideOptions{
-					Icon:        lucide.FileText,
-					Title:       tr(c, "reports.dialog.empty"),
-					Surface:     emptySunken,
+					Icon:    reicon.FileText,
+					Title:   tr(c, "reports.dialog.empty"),
+					Surface: emptySunken,
 					Action: func() {
 						primaryButton(c, tr(c, "reports.action.new_task")).OnClick(func() {
 							s.reportDialogOpen = false

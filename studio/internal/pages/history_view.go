@@ -7,8 +7,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -251,7 +251,7 @@ func (s *viewState) historyView(c *ui.Context) {
 				s.refreshAction()
 			}
 			if len(runs) > 0 {
-				if outlineIconButton(c, lucide.Plus, tr(c, "reports.action.create_from_history")).Clicked() {
+				if outlineIconButton(c, reicon.Plus, tr(c, "reports.action.create_from_history")).Clicked() {
 					s.reportDialogOpen = true
 					s.reportDiscardConfirm = false
 				}
@@ -300,7 +300,7 @@ func (s *viewState) historyView(c *ui.Context) {
 				case 4:
 					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 						ui.Text(c, historyStarted(r)).FontFeatures("tnum").TextColor(t.Color.FgSecondary).Grow(1).MinWidth(0).SingleLine()
-						components.Icon(c, lucide.ChevronRight).Size(14, 14).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
+						components.Icon(c, reicon.ChevronRight).Size(14, 14).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
 					})
 				}
 			}).Height(c.Theme().Space(8)*float32(min(len(filtered), 10)+1) + 2).Label(tableLabel)
@@ -393,7 +393,7 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 
 				studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
 					if repID := s.findReportForRun(run); repID != "" {
-						if primaryIconButton(c, lucide.Eye, tr(c, "dashboard.completion.view_report")).Clicked() {
+						if primaryIconButton(c, reicon.Eye, tr(c, "dashboard.completion.view_report")).Clicked() {
 							s.historyDetailPath = ""
 							s.openReport(repID)
 							return
@@ -408,7 +408,7 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 					}
 					if task := s.findTaskForHistoryRun(run); task != nil {
 						taskID := task.TaskId
-						if outlineIconButton(c, lucide.Info, tr(c, "dashboard.history.live_detail")).Clicked() {
+						if outlineIconButton(c, reicon.Info, tr(c, "dashboard.history.live_detail")).Clicked() {
 							s.historyDetailPath = ""
 							s.selectTask(taskID)
 							s.selected = "benchmarks"
@@ -422,17 +422,17 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 						rerunBlocked = l10n.T(loc, "shell.nav.new_task_hint.round_active")
 					}
 					if rerunBlocked == "" {
-						if outlineIconButton(c, lucide.RotateCw, tr(c, "dashboard.history.rerun_same")).Clicked() {
+						if outlineIconButton(c, reicon.RotateCw, tr(c, "dashboard.history.rerun_same")).Clicked() {
 							s.rerunFromHistoryRun(run)
 							return
 						}
 					} else {
 						iconButtonWithTooltip(c, rerunBlocked, func() ui.Element {
-							return outlineIconButton(c, lucide.RotateCw, "").Label(tr(c, "dashboard.history.rerun_same")).Disabled(true)
+							return outlineIconButton(c, reicon.RotateCw, "").Label(tr(c, "dashboard.history.rerun_same")).Disabled(true)
 						})
 					}
 					if s.canResumeHistoryRun(run) {
-						if outlineIconButton(c, lucide.Play, tr(c, "dashboard.history.resume_button")).Disabled(s.busy).Clicked() {
+						if outlineIconButton(c, reicon.Play, tr(c, "dashboard.history.resume_button")).Disabled(s.busy).Clicked() {
 							source := run
 							s.historyDetailPath = ""
 							s.resumeSource = &source
@@ -443,7 +443,7 @@ func (s *viewState) historyRunDrawer(c *ui.Context) {
 					} else if run.BatchId != nil && run.Status != "complete" && run.Status != "completed" {
 						reason := tr(c, "dashboard.history.not_resumable")
 						iconButtonWithTooltip(c, reason, func() ui.Element {
-							return outlineIconButton(c, lucide.Play, "").Label(tr(c, "dashboard.history.resume_button")).Disabled(true)
+							return outlineIconButton(c, reicon.Play, "").Label(tr(c, "dashboard.history.resume_button")).Disabled(true)
 						})
 					}
 				})

@@ -3,7 +3,7 @@ package pages
 import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 type controlSize int
@@ -178,13 +178,13 @@ func badge(c *ui.Context, label string, kind stateKind, opts badgeOptions) ui.El
 func defaultStateIcon(kind stateKind) func() *ui.SVG {
 	switch kind {
 	case stateSuccess:
-		return lucide.CircleCheck
+		return reicon.CircleCheck
 	case stateWarning:
-		return lucide.TriangleAlert
+		return reicon.TriangleAlert
 	case stateDanger:
-		return lucide.CircleAlert
+		return reicon.CircleAlert
 	default:
-		return lucide.Info
+		return reicon.Info
 	}
 }
 

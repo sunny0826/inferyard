@@ -6,8 +6,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -277,7 +277,7 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 		switch state.State {
 		case "starting", "running", "stopping":
 			if state.Origin == core.EngineOriginStandalone && state.LogPath != "" {
-				outlineIconButton(c, lucide.FileText, tr(c, "engine.action.open_log")).OnClick(func() {
+				outlineIconButton(c, reicon.FileText, tr(c, "engine.action.open_log")).OnClick(func() {
 					s.openEngineCardLog(state.LogPath)
 				})
 			}
@@ -297,7 +297,7 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 		default:
 			errorView(c, state.Error)
 			if state.State == "failed" && state.LogPath != "" {
-				outlineIconButton(c, lucide.FileText, tr(c, "engine.action.open_log")).OnClick(func() {
+				outlineIconButton(c, reicon.FileText, tr(c, "engine.action.open_log")).OnClick(func() {
 					s.openEngineCardLog(state.LogPath)
 				})
 			}
@@ -331,7 +331,7 @@ func engineCardHeader(c *ui.Context, opts engineHeaderOptions) {
 			tile.Border(1, scale.Solid.Alpha(.16))
 		}
 		tile.Children(func() {
-			components.Icon(c, lucide.Server).Size(15, 15).TextColor(scale.Fg)
+			components.Icon(c, reicon.Server).Size(15, 15).TextColor(scale.Fg)
 		})
 		heading(c, tr(c, "engine.card.title"), 3).Grow(1).MinWidth(0)
 		if opts.action != nil {
@@ -402,14 +402,14 @@ func (s *viewState) engineEndpointBar(c *ui.Context, state core.EngineState) {
 			}
 			linkBtn.Children(func() {
 				ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
-					components.Icon(c, lucide.Globe).Size(14, 14).TextColor(t.Color.Info.Fg)
+					components.Icon(c, reicon.Globe).Size(14, 14).TextColor(t.Color.Info.Fg)
 					ui.Text(c, uiURL).FontSize(t.Type.Caption).FontFeatures("tnum").
 						TextColor(t.Color.Info.Fg).Grow(1).MinWidth(0).SingleLine()
 					ui.Row(c).AlignItems(ui.Center).Gap(3).
 						Padding(2, 7).Radius(t.Radius.XS).Background(t.Color.Info.SubtleBg).Shrink(0).Children(func() {
 						ui.Text(c, tr(c, "engine.action.open_webui")).FontSize(t.Type.ShellLabel).Bold().
 							TextColor(t.Color.Info.Fg).SingleLine()
-						components.Icon(c, lucide.ArrowUpRight).Size(12, 12).TextColor(t.Color.Info.Fg)
+						components.Icon(c, reicon.ArrowUpRight).Size(12, 12).TextColor(t.Color.Info.Fg)
 					})
 				})
 			})
@@ -420,7 +420,7 @@ func (s *viewState) engineEndpointBar(c *ui.Context, state core.EngineState) {
 		} else {
 			ui.Row(c).Grow(1).MinWidth(0).AlignItems(ui.Center).Gap(t.Density.Tight+2).
 				Padding(theme.Space(1.25), theme.Space(1.5)).Children(func() {
-				components.Icon(c, lucide.Globe).Size(14, 14).TextColor(t.Color.FgTertiary)
+				components.Icon(c, reicon.Globe).Size(14, 14).TextColor(t.Color.FgTertiary)
 				ui.Text(c, loopbackEndpoint(state.Endpoint)).FontSize(t.Type.Caption).
 					FontFeatures("tnum").TextColor(t.Color.FgSecondary).Grow(1).MinWidth(0).SingleLine()
 				if disabledReason != "" {
@@ -431,7 +431,7 @@ func (s *viewState) engineEndpointBar(c *ui.Context, state core.EngineState) {
 		}
 		if hasLoopback {
 			ui.Box(c).Width(1).Height(16).Background(t.Color.BorderSubtle)
-			if iconButton(c, lucide.Copy, tr(c, "engine.action.copy_endpoint"), components.IconButtonCompact).Clicked() {
+			if iconButton(c, reicon.Copy, tr(c, "engine.action.copy_endpoint"), components.IconButtonCompact).Clicked() {
 				s.copyEngineEndpoint(c, validURL)
 			}
 		}

@@ -6,7 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 const (
@@ -32,7 +32,7 @@ func (s *viewState) libraryView(c *ui.Context) {
 			ui.Box(c).Grow(1)
 			refreshIconButton(c, tr(c, "models.action.rescan"), s.registry.Refreshing).
 				Disabled(s.busy || s.registry.Refreshing).OnClick(s.refreshAssetsAction)
-			outlineIconButton(c, lucide.Settings, tr(c, "downloads.page.settings")).OnClick(func() { s.openGeneralSettings() })
+			outlineIconButton(c, reicon.Settings, tr(c, "downloads.page.settings")).OnClick(func() { s.openGeneralSettings() })
 		})
 
 		s.downloadTaskGuide(c)
@@ -74,7 +74,7 @@ func (s *viewState) libraryHardwareCard(c *ui.Context) {
 	}
 	applyMaterial(c, ui.Column(c.Key("library-hw-card")).FillWidth().Padding(t.Card.Padding).Gap(t.Density.Row), materialCard).Radius(outerR).Children(func() {
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			components.Icon(c, lucide.Cpu).Size(16, 16).TextColor(stateColor(c, stateActive))
+			components.Icon(c, reicon.Cpu).Size(16, 16).TextColor(stateColor(c, stateActive))
 			ui.Text(c, summary).Bold().FontSize(t.Type.Body).SingleLine()
 			if missingAssets {
 				inlineBadge(c, tr(c, "library.hw.missing"), stateWarning, badgeOptions{Size: sizeSM})
@@ -83,10 +83,10 @@ func (s *viewState) libraryHardwareCard(c *ui.Context) {
 			}
 			ui.Box(c).Grow(1)
 			btnLabel := tr(c, "library.hw.expand")
-			btnIcon := lucide.ChevronDown
+			btnIcon := reicon.ChevronDown
 			if s.libraryHwExpanded {
 				btnLabel = tr(c, "library.hw.collapse")
-				btnIcon = lucide.ChevronUp
+				btnIcon = reicon.ChevronUp
 			}
 			if iconButton(c, btnIcon, btnLabel, components.IconButtonCompact).Clicked() {
 				s.libraryHwExpanded = !s.libraryHwExpanded
@@ -165,9 +165,9 @@ func (s *viewState) libraryTabBar(c *ui.Context) {
 		count int
 		icon  func() *ui.SVG
 	}{
-		{libraryTabRecommended, tr(c, "library.tab.recommended"), recCount, lucide.Star},
-		{libraryTabModels, tr(c, "library.tab.models"), len(s.registry.Models), lucide.Box},
-		{libraryTabEngines, tr(c, "library.tab.engines"), len(s.registry.Engines), lucide.Cpu},
+		{libraryTabRecommended, tr(c, "library.tab.recommended"), recCount, reicon.Star},
+		{libraryTabModels, tr(c, "library.tab.models"), len(s.registry.Models), reicon.Box},
+		{libraryTabEngines, tr(c, "library.tab.engines"), len(s.registry.Engines), reicon.Cpu},
 	}
 
 	tabPos := 1
@@ -238,7 +238,7 @@ func (s *viewState) libraryModelsTab(c *ui.Context, pending *pendingAssetDelete)
 		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			heading(c, tr(c, "models.section.installed_models"), 2)
 			ui.Box(c).Grow(1)
-			outlineIconButton(c, lucide.FolderPlus, tr(c, "models.action.add_model_dir")).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
+			outlineIconButton(c, reicon.FolderPlus, tr(c, "models.action.add_model_dir")).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
 				s.pickExtraModelsRoot(emptyText(s.settings.Effective.ModelsRoot))
 			})
 		})
@@ -250,7 +250,7 @@ func (s *viewState) libraryModelsTab(c *ui.Context, pending *pendingAssetDelete)
 		s.modelStorageAndRootsView(c)
 		if len(s.registry.Models) == 0 {
 			emptyGuideCard(c, emptyGuideOptions{
-				Icon:    lucide.Layers,
+				Icon:    reicon.Layers,
 				Title:   tr(c, "models.empty.no_models"),
 				Surface: emptySunken,
 			})
@@ -282,10 +282,10 @@ func (s *viewState) libraryEnginesTab(c *ui.Context, pending *pendingAssetDelete
 			}
 			ui.Box(c).Grow(1)
 			btnLabel := tr(c, "models.action.register_local_engine")
-			btnIcon := lucide.Link
+			btnIcon := reicon.Link
 			if *wizardOpen {
 				btnLabel = tr(c, "models.action.collapse_local_engine")
-				btnIcon = lucide.ChevronUp
+				btnIcon = reicon.ChevronUp
 			}
 			outlineIconButton(c, btnIcon, btnLabel).OnClick(func() { *wizardOpen = !*wizardOpen })
 			s.renderEngineUpdateCheckButton(c)
@@ -294,12 +294,12 @@ func (s *viewState) libraryEnginesTab(c *ui.Context, pending *pendingAssetDelete
 			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.CardGap).Padding(t.Card.Padding), materialInset).Children(func() {
 				heading(c, tr(c, "models.wizard.card_title"), 3)
 				s.localEngineWizardView(c)
-				outlineIconButton(c, lucide.ChevronUp, tr(c, "models.action.collapse")).OnClick(func() { *wizardOpen = false })
+				outlineIconButton(c, reicon.ChevronUp, tr(c, "models.action.collapse")).OnClick(func() { *wizardOpen = false })
 			})
 		}
 		if len(s.registry.Engines) == 0 {
 			emptyGuideCard(c, emptyGuideOptions{
-				Icon:    lucide.Cpu,
+				Icon:    reicon.Cpu,
 				Title:   tr(c, "models.empty.no_engines"),
 				Surface: emptySunken,
 				Action: func() {

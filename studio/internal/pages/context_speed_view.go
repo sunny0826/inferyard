@@ -5,7 +5,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/inferyard"
 	"inferyard/studio/internal/l10n"
 )
@@ -32,7 +32,7 @@ func speedSampleSlots(c *ui.Context, r *speedTask) {
 			ui.Row(c).FillWidth().AlignItems(ui.Center).Justify(ui.Center).Gap(t.Density.Tight).
 				Padding(t.Density.Row).Radius(t.Radius.Control).Background(bg).Border(1, border).Children(func() {
 				if done {
-					components.Icon(c, lucide.Check).Size(12, 12).TextColor(fg)
+					components.Icon(c, reicon.Check).Size(12, 12).TextColor(fg)
 				} else if active {
 					ui.Box(c).Size(6, 6).Radius(t.Radius.Full).Background(t.Color.Active.Solid)
 				}
@@ -63,10 +63,7 @@ func speedStageKind(stage speedStage) stateKind {
 func (s *viewState) speedResultView(c *ui.Context) {
 	t := tokens(c)
 	w, r := s.speed, s.speed.opened
-	s.subpageHeader(c, tr(c, "speed.result.title"), tr(c, "speed.action.back_history"), func() {
-		w.opened, w.readError, w.reading = nil, "", false
-		s.reportsTab = reportsTabSpeed
-	}, func() {
+	s.subpageHeader(c, tr(c, "speed.result.title"), func() {
 		outlineButton(c, tr(c, "speed.action.new_with_combo")).Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
 	})
 	stageKind := speedStageKind(r.stage)
@@ -113,7 +110,7 @@ func (s *viewState) speedResultView(c *ui.Context) {
 			Message: tr(c, "speed.result.incomplete_notice"),
 		})
 	}
-	reportSectionCard(c, lucide.Gauge, tr(c, "speed.result.card_title"), nil, func() {
+	reportSectionCard(c, reicon.Gauge, tr(c, "speed.result.card_title"), nil, func() {
 		if r.summary != nil {
 			ui.Text(c, tr(c, "speed.result.valid_median")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			if r.result != nil && r.result.Summary != nil {
@@ -236,7 +233,7 @@ func (s *viewState) speedHistoryView(c *ui.Context) {
 		return
 	}
 	w := s.speed
-	reportSectionCard(c, lucide.Gauge, tr(c, "speed.history.card_title"), nil, func() {
+	reportSectionCard(c, reicon.Gauge, tr(c, "speed.history.card_title"), nil, func() {
 		selectableTable(&w.historyTable, func(i int) any { return w.history[i].id }, func(i int) string { return w.history[i].id })
 		applyMaterial(c, ui.Box(c).FillWidth().MinWidth(0).Clip(), materialInset).Children(func() {
 			pageTable(c.Key("speed-history"), &w.historyTable, tr(c, "speed.history.table_label"), []ui.TableColumn{

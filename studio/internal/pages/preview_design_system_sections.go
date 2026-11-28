@@ -7,7 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 func (p *previewSession) dsSurfacesCard(c *ui.Context) {
@@ -65,7 +65,7 @@ func (p *previewSession) dsStatesCard(c *ui.Context) {
 			ui.Row(c).FillWidth().AlignItems(ui.Center).Wrap().Gap(t.Density.Row).Children(func() {
 				applyMaterial(c, ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).
 					Padding(t.Density.Tight+2, t.Density.Stack).Radius(t.Radius.Full), materialFloating).Children(func() {
-					components.Icon(c, lucide.CircleCheck).Size(14, 14).TextColor(semanticAccentColor(c, t.Color.Success))
+					components.Icon(c, reicon.CircleCheck).Size(14, 14).TextColor(semanticAccentColor(c, t.Color.Success))
 					ui.Text(c, tr(c, "preview.ds.banner.success")).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).SingleLine()
 				})
 				if inlineButton(c, components.ButtonGhost, tr(c, "preview.ds.alt.c.try_toast")).Clicked() {
@@ -128,14 +128,14 @@ func (p *previewSession) dsControlsCard(c *ui.Context) {
 			})
 			ui.Column(c).FillWidth().Gap(t.Density.Tight).Children(func() {
 				listRow(c, listRowOptions{
-					Leading:  func() { components.Icon(c, lucide.Play).Size(15, 15).TextColor(t.Color.FgPrimary) },
+					Leading:  func() { components.Icon(c, reicon.Play).Size(15, 15).TextColor(t.Color.FgPrimary) },
 					Title:    tr(c, "preview.ds.row.selected_title"),
 					Subtitle: tr(c, "preview.ds.row.selected_sub"),
 					Selected: true,
 					Trailing: func() { badge(c, tr(c, "preview.ds.state.success"), stateSuccess, badgeOptions{Size: sizeSM}) },
 				})
 				listRow(c, listRowOptions{
-					Leading:  func() { components.Icon(c, lucide.Server).Size(15, 15).TextColor(t.Color.FgSecondary) },
+					Leading:  func() { components.Icon(c, reicon.Server).Size(15, 15).TextColor(t.Color.FgSecondary) },
 					Title:    tr(c, "preview.ds.row.normal_title"),
 					Subtitle: tr(c, "preview.ds.row.normal_sub"),
 					OnClick:  func() {},

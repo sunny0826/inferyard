@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -31,7 +31,7 @@ func (s *viewState) modelsView(c *ui.Context) {
 		if *wizardOpen {
 			card(c, tr(c, "models.wizard.card_title"), func() {
 				s.localEngineWizardView(c)
-				outlineIconButton(c, lucide.ChevronUp, tr(c, "models.action.collapse")).OnClick(func() { *wizardOpen = false })
+				outlineIconButton(c, reicon.ChevronUp, tr(c, "models.action.collapse")).OnClick(func() { *wizardOpen = false })
 			})
 		}
 		card(c, tr(c, "models.section.installed_models"), func() {
@@ -43,7 +43,7 @@ func (s *viewState) modelsView(c *ui.Context) {
 			s.modelStorageAndRootsView(c)
 			if len(s.registry.Models) == 0 {
 				emptyGuideCard(c, emptyGuideOptions{
-					Icon:    lucide.Layers,
+					Icon:    reicon.Layers,
 					Title:   tr(c, "models.empty.no_models"),
 					Surface: emptySunken,
 					Action: func() {
@@ -66,7 +66,7 @@ func (s *viewState) modelsView(c *ui.Context) {
 		card(c, tr(c, "models.section.installed_engines"), func() {
 			if len(s.registry.Engines) == 0 {
 				emptyGuideCard(c, emptyGuideOptions{
-					Icon:    lucide.Cpu,
+					Icon:    reicon.Cpu,
 					Title:   tr(c, "models.empty.no_engines"),
 					Surface: emptySunken,
 					Action: func() {
@@ -105,18 +105,18 @@ func (s *viewState) modelsView(c *ui.Context) {
 func (s *viewState) modelsIconPageActions(c *ui.Context, wizardOpen *bool) {
 	t := tokens(c)
 	studioTooltipGroup(c, ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap), func() {
-		outlineIconButton(c, lucide.Download, tr(c, "models.action.download_more")).OnClick(func() {
+		outlineIconButton(c, reicon.Download, tr(c, "models.action.download_more")).OnClick(func() {
 			s.libraryTab = 0
 			s.navigateTo("library", "")
 		})
-		outlineIconButton(c, lucide.FolderPlus, tr(c, "models.action.add_model_dir")).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
+		outlineIconButton(c, reicon.FolderPlus, tr(c, "models.action.add_model_dir")).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
 			s.pickExtraModelsRoot(emptyText(s.settings.Effective.ModelsRoot))
 		})
 		engineLabel := tr(c, "engine.wizard.title")
-		engineIcon := lucide.Link
+		engineIcon := reicon.Link
 		if *wizardOpen {
 			engineLabel = tr(c, "models.action.collapse_add_engine")
-			engineIcon = lucide.ChevronUp
+			engineIcon = reicon.ChevronUp
 		}
 		outlineIconButton(c, engineIcon, engineLabel).OnClick(func() { *wizardOpen = !*wizardOpen })
 		refreshIconButton(c, tr(c, "models.action.refresh"), s.registry.Refreshing || s.refreshing).
@@ -139,7 +139,7 @@ func modelTaskAction(c *ui.Context, s *viewState, model core.ModelAsset) {
 	case s.roundWorkActive():
 		reason = tr(c, "models.action.benchmark_blocked_hint")
 	}
-	if modelRowButtonClicked(c, outlineIconButton, lucide.Gauge, label, model.Name, reason) {
+	if modelRowButtonClicked(c, outlineIconButton, reicon.Gauge, label, model.Name, reason) {
 		s.model = model.Name
 		s.reconcileEngineForModel(model.Name)
 		s.newBenchmark()

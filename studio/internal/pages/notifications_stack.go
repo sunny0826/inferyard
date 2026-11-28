@@ -5,8 +5,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 var notifStackEase = ui.CubicBezier(0.32, 0.72, 0, 1)
@@ -314,7 +314,7 @@ func (s *viewState) notificationCardInner(c *ui.Context, item *studioNotificatio
 							Size(24, 24).Padding(0).Radius(t.Radius.Full).Shrink(0).
 							Label(trf(c, "notif.dismiss_title", "title", item.Title))
 						closeBtn.Children(func() {
-							components.Icon(c, lucide.X).Size(12, 12).TextColor(t.Color.FgSecondary).Role(ui.RoleNone)
+							components.Icon(c, reicon.X).Size(12, 12).TextColor(t.Color.FgSecondary).Role(ui.RoleNone)
 						})
 						studioTooltip(c, closeBtn, tr(c, "notif.dismiss"))
 						if closeBtn.Clicked() {

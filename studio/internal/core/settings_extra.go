@@ -103,6 +103,46 @@ func (s *Service) Accent() string {
 	return NormalizeAccent(s.userSettings().Accent)
 }
 
+func ParseFontSize(raw string) (string, bool) {
+	switch strings.TrimSpace(raw) {
+	case "", FontSizeDefault:
+		return FontSizeDefault, true
+	case FontSizeSmaller:
+		return FontSizeSmaller, true
+	case FontSizeSmall:
+		return FontSizeSmall, true
+	case FontSizeLarge:
+		return FontSizeLarge, true
+	case FontSizeLarger:
+		return FontSizeLarger, true
+	default:
+		return "", false
+	}
+}
+
+func NormalizeFontSize(raw string) string {
+	if normalized, ok := ParseFontSize(raw); ok {
+		return normalized
+	}
+	return FontSizeDefault
+}
+
+// FontSize returns the normalized persisted UI font size preference without probing the CLI.
+func (s *Service) FontSize() string {
+	return NormalizeFontSize(s.userSettings().FontSize)
+}
+
+func isAllowedSettingKey(k string, pathsBound bool) bool {
+	switch k {
+	case "download_source", "download_proxy", "theme", "accent", "font_size", "language", "reasoning_effort", "minimize_to_tray", "keep_services_on_quit":
+		return true
+	case "inferyard_path", "workspace_root", "extra_models_roots":
+		return !pathsBound
+	default:
+		return false
+	}
+}
+
 func NormalizeLanguage(mode string) string {
 	return l10n.NormalizeLanguage(mode)
 }
@@ -249,6 +289,21 @@ func (s *Service) applySettingsPatchExtra(u *UserSettings, key string, raw json.
 		default:
 			return true, Err("invalid_request")
 		}
+		return true, nil
+	case "font_size":
+		var size *string
+		if json.Unmarshal(raw, &size) != nil {
+			return true, Err("invalid_request")
+		}
+		if size == nil {
+			u.FontSize = FontSizeDefault
+			return true, nil
+		}
+		normalized, ok := ParseFontSize(*size)
+		if !ok {
+			return true, Err("invalid_request")
+		}
+		u.FontSize = normalized
 		return true, nil
 	case "language":
 		var lang *string

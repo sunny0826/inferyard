@@ -3,13 +3,13 @@ package pages
 import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 func (r *reportViewState) categoryView(c *ui.Context, run core.ReportRun) {
 	t := tokens(c)
-	reportSectionCard(c, lucide.Layers, tr(c, "reports.tables.categories.title"), nil, func() {
+	reportSectionCard(c, reicon.Layers, tr(c, "reports.tables.categories.title"), nil, func() {
 		categories := run.Dashboard.Categories
 		if len(categories) == 0 {
 			ui.Text(c, tr(c, "reports.tables.categories.empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
@@ -95,10 +95,10 @@ func (r *reportViewState) requestView(c *ui.Context, run core.ReportRun) {
 				if pages > 1 {
 					ui.Text(c, trf(c, "chart.table.page_status", "page", r.requestsPage+1, "totalPages", pages, "count", totalCount)).
 						FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
-					if outlineIconButton(c, lucide.ArrowLeft, tr(c, "reports.tables.requests.prev_page")).Disabled(r.requestsPage == 0).Clicked() {
+					if outlineIconButton(c, reicon.ArrowLeft, tr(c, "reports.tables.requests.prev_page")).Disabled(r.requestsPage == 0).Clicked() {
 						r.requestsPage--
 					}
-					if outlineIconButton(c, lucide.ArrowRight, tr(c, "reports.tables.requests.next_page")).Disabled(r.requestsPage == pages-1).Clicked() {
+					if outlineIconButton(c, reicon.ArrowRight, tr(c, "reports.tables.requests.next_page")).Disabled(r.requestsPage == pages-1).Clicked() {
 						r.requestsPage++
 					}
 				}
@@ -106,7 +106,7 @@ func (r *reportViewState) requestView(c *ui.Context, run core.ReportRun) {
 		}
 	}
 
-	reportSectionCard(c, lucide.FileText, tr(c, "reports.tables.requests.title"), trailing, func() {
+	reportSectionCard(c, reicon.FileText, tr(c, "reports.tables.requests.title"), trailing, func() {
 		if totalCount == 0 {
 			ui.Text(c, tr(c, "reports.tables.requests.empty")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 			return
@@ -149,7 +149,7 @@ func (r *reportViewState) requestView(c *ui.Context, run core.ReportRun) {
 					}
 					ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 						ui.Text(c, reportScaled(request.LatencyMS, 1000, "s")).FontFeatures("tnum").TextColor(latColor).Grow(1).MinWidth(0).SingleLine()
-						components.Icon(c, lucide.ChevronRight).Size(14, 14).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
+						components.Icon(c, reicon.ChevronRight).Size(14, 14).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
 					})
 				}
 			}).Height(c.Theme().Space(8)*float32(min(len(visible), 8)+1) + 2)

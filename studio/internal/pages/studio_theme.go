@@ -46,11 +46,13 @@ func paletteFor(dark bool) paletteColors {
 }
 
 func studioThemeFor(c *ui.Context, dark bool) *ui.Theme {
+	ensureGeistFont()
 	t := theme.Palette(dark)
 	t.Dark = dark
 	applyPalette(t, paletteFor(dark))
 	t.Radius, t.Spacing = 8, 4
-	t.FontSize *= 0.96
+	t.Font = geistFontFamily
+	t.FontSize = applyStudioFontSize(t.FontSize)
 	t.TooltipDelay = labelOpenDelay
 	applyThemePreferences(t, c)
 	return t

@@ -19,8 +19,10 @@ type previewSession struct {
 	ctx                 context.Context
 	state               *viewState
 	win                 *mygo.Window
+	shell               *sidebar.Shell
 	scene               int
 	accentMode          string
+	fontSizeMode        string
 	themeMode           int
 	appliedThemeMode    int
 	languageMode        int
@@ -50,7 +52,9 @@ func NewPreview(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
 	p := newPreviewSession(ctx)
 	shell := sidebar.NewShell(p.shellOptions())
+	p.shell = shell
 	p.win = shell.Window()
+	p.state.shell = shell
 	p.state.win = p.win
 	offHide := p.win.OnHide(func() {
 		if p.state != nil && p.state.openedReport != nil {
@@ -72,6 +76,7 @@ func NewPreview(ctx context.Context) {
 		offShow()
 		offClose()
 		setActiveAccent(core.AccentCobalt)
+		setActiveFontSize(core.FontSizeDefault)
 		if p.state != nil {
 			p.state.closeOpenedReport()
 		}
@@ -82,9 +87,10 @@ func NewPreview(ctx context.Context) {
 
 func newPreviewSession(ctx context.Context) *previewSession {
 	p := &previewSession{
-		ctx:        ctx,
-		accentMode: core.AccentCobalt,
-		dsInput:    "http://127.0.0.1:48857",
+		ctx:          ctx,
+		accentMode:   core.AccentCobalt,
+		fontSizeMode: core.FontSizeDefault,
+		dsInput:      "http://127.0.0.1:48857",
 		dsSwitch:   true,
 		dsCheck:    true,
 	}
@@ -200,8 +206,21 @@ func (p *previewSession) selectAccent(accent string) {
 	p.syncStateAccent()
 }
 
+func (p *previewSession) syncStateFontSize() {
+	size := core.NormalizeFontSize(p.fontSizeMode)
+	p.fontSizeMode = size
+	setActiveFontSize(size)
+	if p.state == nil {
+		return
+	}
+	p.state.fontSizeMode = size
+	p.state.settings.Settings.FontSize = size
+	p.state.settings.Effective.FontSize = size
+}
+
 func (p *previewSession) themeFor(c *ui.Context) *ui.Theme {
 	p.syncStateAccent()
+	p.syncStateFontSize()
 	p.syncStateTheme()
 	p.syncNativeTheme()
 	p.syncStateLanguage()
@@ -216,6 +235,7 @@ func (p *previewSession) themeFor(c *ui.Context) *ui.Theme {
 func (p *previewSession) shellOptions() sidebar.ShellOptions {
 	options := pageShellOptions(l10n.TR("app.title.preview"), "", p.left, p.content)
 	options.Theme = p.themeFor
+	options.LeftHeader = func(c *ui.Context) { p.state.shellLeftHeader(c) }
 	options.ContentTitle = func(c *ui.Context) {
 		p.state.shellContentTitle(c, func(c *ui.Context) {
 			ui.Text(c, tr(c, "preview.content_title")).SingleLine().TextColor(stateColor(c, stateWarning))
@@ -237,10 +257,11 @@ func (p *previewSession) loadScene(index int) {
 	p.details, p.indexes = map[string]*core.RunTaskDetail{}, map[string]*core.ReportIndex{}
 	p.local = nil
 	s := previewBase(p.ctx)
-	s.preview, s.win = p, p.win
+	s.preview, s.shell, s.win = p, p.shell, p.win
 	p.state = s
 	previewScenes[index].apply(s)
 	p.syncStateAccent()
+	p.syncStateFontSize()
 	p.syncStateTheme()
 	p.syncStateLanguage()
 	p.activateScene()

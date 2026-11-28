@@ -180,7 +180,7 @@ func typeTokensFor(t *ui.Theme) typeTokens {
 		Metric:      t.Rem(1.29),
 		MetricLarge: t.Rem(1.71),
 		Body:        t.Rem(1.0),
-		Caption:     max(12, t.Rem(.86)),
+		Caption:     t.Rem(12.0 / (13.0 * 0.96)),
 		ShellLabel:  t.Rem(.75),
 		ShellDetail: t.Rem(.68),
 	}

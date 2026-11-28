@@ -69,19 +69,19 @@ func TestServicesExitedCardAndSidebarAlert(t *testing.T) {
 	gpu := -1
 	s.selected = "benchmarks"
 	s.exitedNotice = &core.ServiceExitNotice{
-		ID:          "exit-1",
-		Model:       "Qwen3-8B-Q4.gguf",
+		ID:            "exit-1",
+		Model:         "Qwen3-8B-Q4.gguf",
 		Engine:        "llama-cpp-default",
 		Port:          8081,
 		RequestedPort: 8081,
 		ContextSize:   16384,
-		GPULayers:   &gpu,
-		LogPath:     "/tmp/service.log",
-		DetectedAt:  "2026-11-25T05:10:00Z",
-		ExitCode:    &exitCode,
-		WhileAway:   true,
-		LogTail:     []string{"ggml_metal: out of memory"},
-		Hint:        core.ExitHintOOM,
+		GPULayers:     &gpu,
+		LogPath:       "/tmp/service.log",
+		DetectedAt:    "2026-11-25T05:10:00Z",
+		ExitCode:      &exitCode,
+		WhileAway:     true,
+		LogTail:       []string{"ggml_metal: out of memory"},
+		Hint:          core.ExitHintOOM,
 	}
 
 	tt := newServicesTester(s)

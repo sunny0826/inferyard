@@ -3,8 +3,8 @@ package pages
 import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 func (s *viewState) reportsTableView(c *ui.Context) {
@@ -24,7 +24,7 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 	}
 	if len(s.reports) == 0 {
 		emptyGuideCard(c, emptyGuideOptions{
-			Icon:        lucide.FileText,
+			Icon:        reicon.FileText,
 			Title:       tr(c, "reports.list.empty_title"),
 			Description: tr(c, "reports.list.empty_description"),
 			Surface:     emptyCard,
@@ -78,7 +78,7 @@ func reportCard(c *ui.Context, report core.ReportSummary, modelHint, exclusivity
 				ui.Box(c).Size(36, 36).Radius(t.Radius.Inset).Shrink(0).
 					Background(scale.SubtleBg).Border(1, scale.Border).
 					AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-					components.Icon(c, lucide.CircleAlert).Size(17, 17).TextColor(semanticAccentColor(c, scale))
+					components.Icon(c, reicon.CircleAlert).Size(17, 17).TextColor(semanticAccentColor(c, scale))
 				})
 			} else {
 				modelIconBox(c, modelHint, 36, t.Radius.Inset)
@@ -91,7 +91,7 @@ func reportCard(c *ui.Context, report core.ReportSummary, modelHint, exclusivity
 				if !report.Unreadable {
 					exclusivityBadge(c, exclusivity)
 				}
-				outlineIconButton(c, lucide.Eye, tr(c, "reports.list.open")).
+				outlineIconButton(c, reicon.Eye, tr(c, "reports.list.open")).
 					Label(trf(c, "reports.list.open_aria", "id", report.ReportId)).
 					OnClick(open)
 			})
@@ -99,7 +99,7 @@ func reportCard(c *ui.Context, report core.ReportSummary, modelHint, exclusivity
 		if report.Unreadable {
 			applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
 				Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
-				components.Icon(c, lucide.CircleAlert).Size(14, 14).TextColor(semanticAccentColor(c, t.Color.Danger))
+				components.Icon(c, reicon.CircleAlert).Size(14, 14).TextColor(semanticAccentColor(c, t.Color.Danger))
 				ui.Text(c, tr(c, "reports.list.unreadable_body")).FontSize(t.Type.Caption).TextColor(t.Color.Danger.Fg)
 			})
 		} else if len(report.RunSummaries) > 0 {

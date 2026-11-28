@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/icons/lucide"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 func pushTestStackNotifications(s *viewState) {
@@ -242,7 +242,7 @@ func TestPopoverSuppressesAnchorTooltipAndReduceMotionWorks(t *testing.T) {
 		popOpen := true
 		view := func(c *ui.Context) {
 			ui.Column(c).Padding(24).Children(func() {
-				anchor := outlineIconButton(c, lucide.Bell, "Bell Tooltip")
+				anchor := outlineIconButton(c, reicon.Bell, "Bell Tooltip")
 				if anchor.Clicked() {
 					popOpen = !popOpen
 				}
@@ -291,8 +291,8 @@ func TestPopoverSuppressesAnchorTooltipAndReduceMotionWorks(t *testing.T) {
 		view := func(c *ui.Context) {
 			ui.Column(c).Padding(16).Gap(12).Children(func() {
 				studioTooltipGroup(c, ui.Row(c).Gap(8), func() {
-					outlineIconButton(c, lucide.Copy, "Reduced Copy")
-					anchor := outlineIconButton(c, lucide.Info, "Reduced Info")
+					outlineIconButton(c, reicon.Copy, "Reduced Copy")
+					anchor := outlineIconButton(c, reicon.Info, "Reduced Info")
 					studioPopover(c, anchor, &popOpen, func(panel ui.Element) {
 						panel.Children(func() { ui.Text(c, "Reduced Popover") })
 					})

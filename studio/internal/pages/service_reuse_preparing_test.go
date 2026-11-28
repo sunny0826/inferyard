@@ -208,4 +208,3 @@ func TestStartBenchmarkReusesRunningLocalStandaloneWithoutStopDialog(t *testing.
 			s.task.start.existingService, s.task.start.localRequest)
 	}
 }
-

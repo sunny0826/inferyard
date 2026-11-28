@@ -119,6 +119,11 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 			setActiveAccent(s.accentMode)
 			s.failurePage = s.selected
 		}
+		if _, hasFontSize := patch["font_size"]; hasFontSize {
+			s.fontSizeMode = core.NormalizeFontSize(p.fontSizeMode)
+			setActiveFontSize(s.fontSizeMode)
+			s.failurePage = s.selected
+		}
 		if _, hasLang := patch["language"]; hasLang {
 			s.languageMode = previewLanguageModeString(p.languageMode)
 			s.syncNativeLocaleIfNeeded()
@@ -146,6 +151,7 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 	value.DownloadSource = core.NormalizeDownloadSource(value.DownloadSource)
 	value.Theme = core.NormalizeTheme(value.Theme)
 	value.Accent = core.NormalizeAccent(value.Accent)
+	value.FontSize = core.NormalizeFontSize(value.FontSize)
 	value.Language = core.NormalizeLanguage(value.Language)
 	value.ReasoningEffort = core.NormalizeReasoningEffort(value.ReasoningEffort)
 	var resultsRoot, modelsRoot, reportsRoot *string
@@ -166,6 +172,7 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		DownloadProxy:      value.DownloadProxy,
 		Theme:              value.Theme,
 		Accent:             value.Accent,
+		FontSize:           value.FontSize,
 		Language:           value.Language,
 		ReasoningEffort:    value.ReasoningEffort,
 		MinimizeToTray:     value.MinimizeToTray,
@@ -191,6 +198,11 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		p.accentMode = value.Accent
 		s.accentMode = value.Accent
 		setActiveAccent(value.Accent)
+	}
+	if _, hasFontSize := patch["font_size"]; hasFontSize {
+		p.fontSizeMode = value.FontSize
+		s.fontSizeMode = value.FontSize
+		setActiveFontSize(value.FontSize)
 	}
 	if _, hasLang := patch["language"]; hasLang {
 		p.languageMode = previewLanguageModeIndex(value.Language)

@@ -8,9 +8,9 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/inferyard"
 )
 
@@ -18,10 +18,10 @@ var navigation = []struct {
 	id, labelKey string
 	icon         func() *ui.SVG
 }{
-	{"benchmarks", "nav.benchmarks", lucide.Play},
-	{"services", "nav.services", lucide.Server},
-	{"library", "nav.library", lucide.Layers},
-	{"reports", "nav.reports", lucide.FileText},
+	{"benchmarks", "nav.benchmarks", reicon.Play},
+	{"services", "nav.services", reicon.Server},
+	{"library", "nav.library", reicon.Layers},
+	{"reports", "nav.reports", reicon.FileText},
 }
 
 type WindowHooks struct {
@@ -38,6 +38,7 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 	}
 	initialTheme := service.Theme()
 	initialAccent := service.Accent()
+	initialFontSize := service.FontSize()
 	initialLanguage := service.Language()
 	initialReasoning := service.ReasoningEffort()
 	initialDownloadSource := service.DownloadSource()
@@ -45,6 +46,7 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 	initialKeepServices := service.EffectiveKeepServicesOnQuit()
 	syncNativeTheme(initialTheme)
 	setActiveAccent(initialAccent)
+	setActiveFontSize(initialFontSize)
 	syncNativeLocale(initialLanguage)
 	s := &viewState{
 		ctx:         ctx,
@@ -58,6 +60,7 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 			themeMode:             initialTheme,
 			appliedThemeMode:      initialTheme,
 			accentMode:            initialAccent,
+			fontSizeMode:          initialFontSize,
 			languageMode:          initialLanguage,
 			appliedLanguageMode:   initialLanguage,
 			reasoningEffort:       initialReasoning,
@@ -66,12 +69,13 @@ func New(ctx context.Context, service *core.Service, page string, hooks ...Windo
 		},
 		keepServicesOnQuit: initialKeepServices,
 		settings: core.SettingsResponse{
-			Settings:  core.UserSettings{DownloadSource: initialDownloadSource, Theme: initialTheme, Accent: initialAccent, Language: initialLanguage, ReasoningEffort: initialReasoning, MinimizeToTray: initialMinimizeToTray},
-			Effective: core.EffectiveSettings{DownloadSource: initialDownloadSource, Theme: initialTheme, Accent: initialAccent, Language: initialLanguage, ReasoningEffort: initialReasoning, MinimizeToTray: initialMinimizeToTray, KeepServicesOnQuit: initialKeepServices},
+			Settings:  core.UserSettings{DownloadSource: initialDownloadSource, Theme: initialTheme, Accent: initialAccent, FontSize: initialFontSize, Language: initialLanguage, ReasoningEffort: initialReasoning, MinimizeToTray: initialMinimizeToTray},
+			Effective: core.EffectiveSettings{DownloadSource: initialDownloadSource, Theme: initialTheme, Accent: initialAccent, FontSize: initialFontSize, Language: initialLanguage, ReasoningEffort: initialReasoning, MinimizeToTray: initialMinimizeToTray, KeepServicesOnQuit: initialKeepServices},
 		},
 	}
 	shell := sidebar.NewShell(s.shellOptions(title))
 	w := shell.Window()
+	s.shell = shell
 	s.win = w
 	if len(hooks) > 0 {
 		s.minimizeToTrayNow = hooks[0].MinimizeToTray
@@ -230,10 +234,12 @@ type viewState struct {
 	runProgress                                                                                             *core.RunProgress
 	ctx                                                                                                     context.Context
 	service                                                                                                 *core.Service
+	shell                                                                                                   *sidebar.Shell
 	win                                                                                                     *mygo.Window
 	openedReport                                                                                            *reportViewState
 	newSVGStage                                                                                             func() (svgStageView, error)
 	benchmarksTab                                                                                           int
+	historyFromFlow                                                                                         bool
 	reportsTab                                                                                              int
 	refreshMu                                                                                               sync.Mutex
 	bgRefresh                                                                                               bgRefreshCache
@@ -386,6 +392,7 @@ func (s *viewState) selectTask(id string) {
 
 func (s *viewState) shellOptions(title string) sidebar.ShellOptions {
 	options := pageShellOptions(title, "inferyard-studio-main", s.leftNav, s.contentView)
+	options.LeftHeader = s.shellLeftHeader
 	options.ContentTitle = func(c *ui.Context) { s.shellContentTitle(c, nil) }
 	options.Theme = s.themeFor
 	return options
@@ -393,7 +400,14 @@ func (s *viewState) shellOptions(title string) sidebar.ShellOptions {
 
 func (s *viewState) view(c *ui.Context) {
 	ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
-		ui.Column(c).Width(205).Shrink(0).Children(func() { s.leftNav(c) })
+		ui.Box(c).Width(205).Shrink(0).FillHeight().Children(func() {
+			s.leftNav(c)
+			ui.Row(c).Absolute().Top(0).Left(0).Right(0).Height(sidebar.HeaderHeight(c)).
+				AlignItems(ui.Center).Padding(6, 8, 6, 16).Children(func() {
+				ui.Spacer(c)
+				s.shellLeftHeader(c)
+			})
+		})
 		ui.Box(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
 			s.contentView(c)
 			ui.Row(c).Absolute().Top(0).Left(0).Right(0).Height(sidebar.HeaderHeight(c)).

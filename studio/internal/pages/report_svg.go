@@ -11,8 +11,8 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/inferyard"
 )
 
@@ -327,7 +327,7 @@ func (s *viewState) reportSVGSection(c *ui.Context, report *reportViewState, run
 		if !runHasSVGCases(run) {
 			return
 		}
-		reportSectionCard(c, lucide.Layers, tr(c, "reports.svg.title"), nil, func() {
+		reportSectionCard(c, reicon.Layers, tr(c, "reports.svg.title"), nil, func() {
 			infoBanner(c, tr(c, "reports.svg.regenerate_hint"))
 		})
 		return
@@ -356,7 +356,7 @@ func (s *viewState) reportSVGSection(c *ui.Context, report *reportViewState, run
 			})
 		}
 	}
-	reportSectionCard(c, lucide.Layers, tr(c, "reports.svg.title"), trailing, func() {
+	reportSectionCard(c, reicon.Layers, tr(c, "reports.svg.title"), trailing, func() {
 		item := outputs[report.svgIndex]
 		applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight+1).Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
 			svgItemHeader(c, run, outputs, report.svgIndex)

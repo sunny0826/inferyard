@@ -7,7 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -115,7 +115,7 @@ func refreshButton(c *ui.Context, label string, active bool) ui.Element {
 	b.Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
 			ui.Box(c).Size(14, 14).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-				icon := components.Icon(c, lucide.RefreshCw).Size(14, 14)
+				icon := components.Icon(c, reicon.RefreshCw).Size(14, 14)
 				if angle != 0 {
 					icon.Rotate(angle)
 				}

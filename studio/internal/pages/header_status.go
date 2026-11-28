@@ -7,8 +7,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -68,16 +68,13 @@ func (s *viewState) shellContentTitle(c *ui.Context, leading func(*ui.Context)) 
 	row := ui.Row(c.Key("content-title-bar")).Fill().AlignItems(ui.Center).Gap(t.Density.Row)
 	availWidth := row.LayoutBounds().W
 	studioTooltipGroup(c, row, func() {
+		if s.shell != nil && !s.shell.LeftExpanded() {
+			s.shellLeftHeader(c)
+		}
 		if leading != nil {
 			leading(c)
 		}
 		ui.Spacer(c)
-		state := s.engineState.State
-		if s.canMinimizeToTray() && (len(s.activeManagedServices()) > 0 || state == "running" || state == "starting" || state == "stopping") {
-			if outlineIconButton(c, lucide.PanelBottomClose, tr(c, "tray.action.minimize")).Clicked() {
-				s.minimizeToTrayAction()
-			}
-		}
 		s.updateHeaderBadge(c)
 		s.notificationBell(c, availWidth)
 	})
@@ -147,7 +144,7 @@ func (s *viewState) sidebarServiceRow(c *ui.Context) {
 		leading: func() {
 			cDot := stateColor(c, kind)
 			if exitedAlert || state == "failed" || state == "orphaned" {
-				components.Icon(c, lucide.CircleAlert).Size(14, 14).TextColor(cDot)
+				components.Icon(c, reicon.CircleAlert).Size(14, 14).TextColor(cDot)
 				return
 			}
 			outer := ui.Box(c).Size(12, 12).Radius(t.Radius.Full).Background(cDot.Alpha(.20)).
@@ -200,20 +197,20 @@ func (s *viewState) sidebarManagedServicesPopover(c *ui.Context, active []core.E
 				})
 				studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Tight), func() {
 					if canOpen {
-						if outlineIconButton(c, lucide.ExternalLink, tr(c, "sidebar.popover.web")).
+						if outlineIconButton(c, reicon.ExternalLink, tr(c, "sidebar.popover.web")).
 							Label(tr(c, "sidebar.popover.web") + " · " + modelName).Clicked() {
 							s.openEngineWebUI(c, uiURL)
 						}
 					}
 					if hasEndpoint {
-						if outlineIconButton(c, lucide.Copy, tr(c, "sidebar.popover.copy")).
+						if outlineIconButton(c, reicon.Copy, tr(c, "sidebar.popover.copy")).
 							Label(tr(c, "sidebar.popover.copy") + " · " + modelName).Clicked() {
 							s.copyServiceEndpoint(c, svc)
 						}
 					}
 					ui.Box(c).Grow(1)
 					stopDisabled := !s.serviceStopEnabled(svc, runActive)
-					if dangerIconButton(c, lucide.Square, tr(c, "sidebar.popover.stop")).
+					if dangerIconButton(c, reicon.Square, tr(c, "sidebar.popover.stop")).
 						Label(tr(c, "sidebar.popover.stop") + " · " + modelName).
 						Disabled(stopDisabled).Clicked() {
 						if svc.ServiceID != "" {
@@ -249,7 +246,7 @@ func (s *viewState) sidebarQueueRow(c *ui.Context) {
 		kind:      stateActive,
 		progress:  -1,
 		leading: func() {
-			components.Icon(c, lucide.Activity).Size(14, 14).TextColor(stateColor(c, stateActive))
+			components.Icon(c, reicon.Activity).Size(14, 14).TextColor(stateColor(c, stateActive))
 		},
 		open: &s.sidebarQueueOpen,
 		pop: func(close func()) {
@@ -306,7 +303,7 @@ func (s *viewState) sidebarDownloadRow(c *ui.Context) {
 		kind:      stateActive,
 		progress:  pct,
 		leading: func() {
-			components.Icon(c, lucide.Download).Size(14, 14).TextColor(stateColor(c, stateActive))
+			components.Icon(c, reicon.Download).Size(14, 14).TextColor(stateColor(c, stateActive))
 		},
 		open: &s.sidebarDownloadOpen,
 		pop: func(close func()) {

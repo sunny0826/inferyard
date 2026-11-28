@@ -216,42 +216,76 @@ func TestExtCheckDialogUsesStudioDialog(t *testing.T) {
 	}
 }
 
-func TestSubpageHeaderRendersActionsAndBack(t *testing.T) {
+func TestSubpageHeaderRendersTitleAndActionsWithoutRightBack(t *testing.T) {
 	s := &viewState{}
-	backed, exported := 0, 0
+	exported := 0
 	tt := ui.NewTester(func(c *ui.Context) {
-		s.subpageHeader(c, "任务详情", "返回", func() { backed++ }, func() {
+		s.subpageHeader(c, "任务详情", func() {
 			if outlineButton(c, "导出").Clicked() {
 				exported++
 			}
 		})
 	}, 900, 200)
-	for _, label := range []string{"任务详情", "导出", "返回"} {
+	for _, label := range []string{"任务详情", "导出"} {
 		if _, ok := tt.Find(label); !ok {
 			t.Fatalf("%q missing from %v", label, tt.Texts())
 		}
 	}
+	if _, ok := tt.Find("返回"); ok {
+		t.Fatalf("subpageHeader must not render a right-aligned back button: %v", tt.Texts())
+	}
 	click(t, tt, "导出")
 	tt.Frame()
-	if exported != 1 || backed != 0 {
-		t.Fatalf("extra action calls = %d, back calls = %d, want 1 and 0", exported, backed)
-	}
-	click(t, tt, "返回")
-	tt.Frame()
-	if backed != 1 {
-		t.Fatalf("back calls = %d, want 1", backed)
+	if exported != 1 {
+		t.Fatalf("extra action calls = %d, want 1", exported)
 	}
 }
 
-func TestSubpageHeaderWithoutBackAction(t *testing.T) {
-	s := &viewState{}
-	tt := ui.NewTester(func(c *ui.Context) {
-		s.subpageHeader(c, "子页标题", "", nil)
-	}, 600, 120)
-	if _, ok := tt.Find("返回"); ok {
-		t.Fatalf("back button rendered without a back label/action: %v", tt.Texts())
+func TestShellLeftHeaderBackAndHistoryReturn(t *testing.T) {
+	s := readyState("benchmarks")
+	tt := ui.NewTester(s.view, 1120, 900)
+	tt.Frame()
+
+	// 1. Entering Run History from Benchmarks task list exposes left-sidebar back button -> returns to Tasks.
+	click(t, tt, "运行历史")
+	tt.Frame()
+	if s.benchmarksTab != benchmarksTabHistory || s.historyFromFlow {
+		t.Fatalf("expected history tab from tasks list, got tab=%d fromFlow=%v", s.benchmarksTab, s.historyFromFlow)
 	}
-	if !tt.HasText("子页标题") {
-		t.Fatalf("subpage title missing from %v", tt.Texts())
+	backList, ok := tt.AccessByRole(ui.RoleButton, "返回测评列表")
+	if !ok || backList.Bounds.X+backList.Bounds.W > 205 {
+		t.Fatalf("expected left-sidebar back button (<=205px), got ok=%v bounds=%+v", ok, backList.Bounds)
+	}
+	click(t, tt, "返回测评列表")
+	tt.Frame()
+	if s.benchmarksTab != benchmarksTabTasks {
+		t.Fatalf("expected back from history to restore tasks tab, got %d", s.benchmarksTab)
+	}
+
+	// 2. Entering Run History from Benchmark Flow header returns back to Benchmark Flow.
+	s.benchFlowOpen = true
+	tt.Frame()
+	click(t, tt, "运行历史")
+	tt.Frame()
+	if s.benchmarksTab != benchmarksTabHistory || s.benchFlowOpen || !s.historyFromFlow {
+		t.Fatalf("expected history opened from flow: tab=%d flow=%v fromFlow=%v", s.benchmarksTab, s.benchFlowOpen, s.historyFromFlow)
+	}
+	click(t, tt, "返回任务")
+	tt.Frame()
+	if !s.benchFlowOpen || s.benchmarksTab != benchmarksTabTasks || s.historyFromFlow {
+		t.Fatalf("expected back from flow-opened history to restore flow: flow=%v tab=%d fromFlow=%v", s.benchFlowOpen, s.benchmarksTab, s.historyFromFlow)
+	}
+}
+
+func TestDiscoveredServicesOmitsLimitationBanners(t *testing.T) {
+	s, _ := servicesP2State(t)
+	s.discoveryLoaded = true
+	s.discovery.Limitations = []string{"process_ownership_unreadable", "process_name_unreadable"}
+	tt := newServicesTester(s)
+	tt.Frame()
+	for _, unwanted := range []string{"部分监听进程不可读", "进程名称不可读"} {
+		if tt.HasText(unwanted) {
+			t.Fatalf("discovered services should omit limitation banner %q: %v", unwanted, tt.Texts())
+		}
 	}
 }

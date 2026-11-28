@@ -4,8 +4,8 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 func errorRecoveryBanner(c *ui.Context, e *core.ApiError, actions func()) {
@@ -25,7 +25,7 @@ func errorRecoveryBanner(c *ui.Context, e *core.ApiError, actions func()) {
 	}
 	noticeBanner(c, noticeBannerOptions{
 		Kind:    stateDanger,
-		Icon:    lucide.CircleAlert,
+		Icon:    reicon.CircleAlert,
 		Message: message,
 		Actions: actions,
 		Details: func() {
@@ -188,7 +188,7 @@ func filterableTable(c *ui.Context, opts filterableTableOptions) {
 				title = tr(c, "common.table.empty_title")
 			}
 			emptyGuideCard(c, emptyGuideOptions{
-				Icon:        lucide.Inbox,
+				Icon:        reicon.Inbox,
 				Title:       title,
 				Description: opts.EmptyDescription,
 				Surface:     emptySunken,
@@ -196,7 +196,7 @@ func filterableTable(c *ui.Context, opts filterableTableOptions) {
 			})
 		case opts.FilteredCount == 0:
 			emptyGuideCard(c, emptyGuideOptions{
-				Icon:        lucide.FileSearch,
+				Icon:        reicon.FileSearch,
 				Title:       tr(c, "common.table.no_match_title"),
 				Description: tr(c, "common.table.no_match_desc"),
 				Surface:     emptySunken,

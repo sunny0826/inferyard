@@ -8,8 +8,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -103,11 +103,11 @@ func (s *viewState) modelCatalogRow(c *ui.Context, st *downloadsUIState, entry c
 			ui.Text(c, meta).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 		})
 		studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
-			outlineIconButton(c, lucide.Info, tr(c, "downloads.models.details_urls")).Label(trf(c, "downloads.models.details_label", "id", entry.ID)).OnClick(func() {
+			outlineIconButton(c, reicon.Info, tr(c, "downloads.models.details_urls")).Label(trf(c, "downloads.models.details_label", "id", entry.ID)).OnClick(func() {
 				st.openModelDrawer(entry.ID)
 			})
 			if downloading {
-				outlineIconButton(c, lucide.Download, tr(c, "downloads.action.downloading")).Label(trf(c, "downloads.models.download_label", "id", entry.ID)).Disabled(true)
+				outlineIconButton(c, reicon.Download, tr(c, "downloads.action.downloading")).Label(trf(c, "downloads.models.download_label", "id", entry.ID)).Disabled(true)
 			} else {
 				s.modelDownloadIconButton(c, tr(c, "downloads.action.download")).Label(trf(c, "downloads.models.download_label", "id", entry.ID)).Disabled(s.busy).OnClick(func() {
 					s.acquireModelSource(activeURL, "")
@@ -119,9 +119,9 @@ func (s *viewState) modelCatalogRow(c *ui.Context, st *downloadsUIState, entry c
 
 func (s *viewState) modelDownloadIconButton(c *ui.Context, label string) ui.Element {
 	if s.downloadPrimaryKind() == "model" {
-		return primaryIconButton(c, lucide.Download, label)
+		return primaryIconButton(c, reicon.Download, label)
 	}
-	return outlineIconButton(c, lucide.Download, label)
+	return outlineIconButton(c, reicon.Download, label)
 }
 
 func (s *viewState) otherPlatformModelRow(c *ui.Context, st *downloadsUIState, entry core.CatalogEntry) {
@@ -138,7 +138,7 @@ func (s *viewState) otherPlatformModelRow(c *ui.Context, st *downloadsUIState, e
 			ui.Text(c, trf(c, "downloads.platform.supported_line", "platforms", core.PlatformLabel(entry.Platform))).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 		})
 		ui.Row(c).Shrink(0).AlignItems(ui.Center).Children(func() {
-			outlineIconButton(c, lucide.Info, tr(c, "downloads.models.details_urls")).Label(trf(c, "downloads.models.details_label", "id", entry.ID)).OnClick(func() {
+			outlineIconButton(c, reicon.Info, tr(c, "downloads.models.details_urls")).Label(trf(c, "downloads.models.details_label", "id", entry.ID)).OnClick(func() {
 				st.openModelDrawer(entry.ID)
 			})
 		})
@@ -205,7 +205,7 @@ func (s *viewState) customModelURLFold(c *ui.Context, st *downloadsUIState) {
 					ui.Text(c, trf(c, "downloads.models.resolved_revision", "revision", resState.resolved.Revision)).Selectable().FontSize(t.Type.Caption)
 					ui.Text(c, trf(c, "downloads.models.resolved_file", "filename", resState.resolved.Filename, "size", sizeText)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 					ui.Text(c, trf(c, "downloads.models.resolved_pinned_url", "url", resState.resolved.PinnedURL)).Selectable().FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
-					outlineIconButton(c, lucide.Copy, tr(c, "downloads.models.copy_pinned_url")).OnClick(func() {
+					outlineIconButton(c, reicon.Copy, tr(c, "downloads.models.copy_pinned_url")).OnClick(func() {
 						s.copyDownloadText(c, tr(c, "downloads.copy_subject.pinned_url"), resState.resolved.PinnedURL)
 					})
 				})
@@ -285,15 +285,15 @@ func (s *viewState) downloadsModelDrawer(c *ui.Context) {
 						ui.Text(c, trf(c, "downloads.engine_drawer.sha256_value", "sha256", entry.SHA256)).Selectable().FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 					}
 					studioTooltipGroup(c, ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight), func() {
-						outlineIconButton(c, lucide.Copy, tr(c, "downloads.action.copy_url")).Label(trf(c, "downloads.model_drawer.copy_url_label", "id", entry.ID)).OnClick(func() {
+						outlineIconButton(c, reicon.Copy, tr(c, "downloads.action.copy_url")).Label(trf(c, "downloads.model_drawer.copy_url_label", "id", entry.ID)).OnClick(func() {
 							s.copyDownloadText(c, tr(c, "downloads.engine_drawer.section.urls"), activeURL)
 						})
 						if !usingMirror && entry.SHA256 != "" {
-							outlineIconButton(c, lucide.Copy, tr(c, "downloads.action.copy_sha256")).Label(trf(c, "downloads.model_drawer.copy_sha256_label", "id", entry.ID)).OnClick(func() {
+							outlineIconButton(c, reicon.Copy, tr(c, "downloads.action.copy_sha256")).Label(trf(c, "downloads.model_drawer.copy_sha256_label", "id", entry.ID)).OnClick(func() {
 								s.copyDownloadText(c, "SHA-256", entry.SHA256)
 							})
 						}
-						outlineIconButton(c, lucide.ExternalLink, tr(c, "downloads.action.open_link")).Label(trf(c, "downloads.model_drawer.open_link_label", "id", entry.ID)).OnClick(func() {
+						outlineIconButton(c, reicon.ExternalLink, tr(c, "downloads.action.open_link")).Label(trf(c, "downloads.model_drawer.open_link_label", "id", entry.ID)).OnClick(func() {
 							s.openDownloadURL(c, modelCatalogTitle(entry), activeURL)
 						})
 					})
@@ -301,14 +301,14 @@ func (s *viewState) downloadsModelDrawer(c *ui.Context) {
 
 				studioTooltipGroup(c, ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
 					if s.isModelEntryDownloading(entry) {
-						outlineIconButton(c, lucide.Download, tr(c, "downloads.action.downloading")).Label(trf(c, "downloads.model_drawer.download_this_label", "id", entry.ID)).Disabled(true)
+						outlineIconButton(c, reicon.Download, tr(c, "downloads.action.downloading")).Label(trf(c, "downloads.model_drawer.download_this_label", "id", entry.ID)).Disabled(true)
 					} else {
-						primaryIconButton(c, lucide.Download, tr(c, "downloads.model_drawer.download_this")).Label(trf(c, "downloads.model_drawer.download_this_label", "id", entry.ID)).Disabled(s.busy).OnClick(func() {
+						primaryIconButton(c, reicon.Download, tr(c, "downloads.model_drawer.download_this")).Label(trf(c, "downloads.model_drawer.download_this_label", "id", entry.ID)).Disabled(s.busy).OnClick(func() {
 							s.acquireModelSource(activeURL, "")
 						})
 					}
 					if repoURL := modelCatalogRepoURL(activeURL); repoURL != "" && repoURL != activeURL {
-						outlineIconButton(c, lucide.ExternalLink, tr(c, "downloads.model_drawer.open_repo")).OnClick(func() {
+						outlineIconButton(c, reicon.ExternalLink, tr(c, "downloads.model_drawer.open_repo")).OnClick(func() {
 							s.openDownloadURL(c, modelCatalogTitle(entry), repoURL)
 						})
 					}

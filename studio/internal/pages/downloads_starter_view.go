@@ -7,8 +7,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 func (s *viewState) downloadsStarterCard(c *ui.Context) {
@@ -142,7 +142,7 @@ func (s *viewState) renderStarterRecommendationPanel(c *ui.Context, contextMode 
 		if hwSummary != "" && contextMode != "library" {
 			applyMaterial(c, ui.Row(c.Key("starter-hardware-strip")).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Inset, t.Density.Stack), materialSunken).Children(func() {
 				ui.Row(c).Grow(1).MinWidth(0).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-					components.Icon(c, lucide.Cpu).Size(14, 14).TextColor(t.Color.FgSecondary)
+					components.Icon(c, reicon.Cpu).Size(14, 14).TextColor(t.Color.FgSecondary)
 					ui.Text(c, trf(c, "downloads.starter.hw_line", "summary", hwSummary)).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).FontFeatures("tnum")
 				})
 				ghostButton(c, tr(c, "downloads.starter.device_details")).OnClick(func() {

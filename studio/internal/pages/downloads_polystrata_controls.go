@@ -7,8 +7,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -89,7 +89,7 @@ func polystrataInstallStatusButton(c *ui.Context, confirmOpen, disabled bool) ui
 	b.Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.Center).Gap(theme.Space(1.5)).Children(func() {
 			if showCancel {
-				components.Icon(c, lucide.X).Size(12, 12).TextColor(fg).Role(ui.RoleNone)
+				components.Icon(c, reicon.X).Size(12, 12).TextColor(fg).Role(ui.RoleNone)
 				ui.Text(c, cancelText).Bold().FontSize(t.Type.Caption).TextColor(fg).SingleLine()
 			} else {
 				components.Spinner(c, components.SpinnerRing).Size(12, 12).TextColor(fg).Label(tr(c, "downloads.polystrata.installing_label"))
@@ -125,9 +125,9 @@ func (s *viewState) polystrataInstallLogSection(c *ui.Context, taskID, logPath s
 		}
 		toggle.Children(func() {
 			ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-				chevron := lucide.ChevronRight
+				chevron := reicon.ChevronRight
 				if *open {
-					chevron = lucide.ChevronDown
+					chevron = reicon.ChevronDown
 				}
 				components.Icon(c, chevron).Size(12, 12).TextColor(fg).Role(ui.RoleNone)
 				ui.Text(c, labelText).FontSize(t.Type.Caption).TextColor(fg).SingleLine()
@@ -160,7 +160,7 @@ func (s *viewState) polystrataInstallLogSection(c *ui.Context, taskID, logPath s
 					}
 					copyBtn.Children(func() {
 						ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-							components.Icon(c, lucide.Copy).Size(11, 11).TextColor(copyFg).Role(ui.RoleNone)
+							components.Icon(c, reicon.Copy).Size(11, 11).TextColor(copyFg).Role(ui.RoleNone)
 							ui.Text(c, tr(c, "downloads.action.copy")).FontSize(max(11, t.Type.Caption-1)).TextColor(copyFg).SingleLine()
 						})
 					})

@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -23,38 +23,38 @@ func updateBadgePresentationFor(locale string, st core.UpdateState) (label strin
 			ver = st.Release.Version
 		}
 		if ver == "" {
-			return l10n.T(locale, "update.badge.available"), stateActive, lucide.ArrowUp, false
+			return l10n.T(locale, "update.badge.available"), stateActive, reicon.ArrowUp, false
 		}
-		return l10n.Tf(locale, "update.badge.available_version", "version", ver), stateActive, lucide.ArrowUp, false
+		return l10n.Tf(locale, "update.badge.available_version", "version", ver), stateActive, reicon.ArrowUp, false
 	case core.UpdateDownloading:
 		if st.TotalBytes != nil && *st.TotalBytes > 0 && st.DownloadedBytes >= 0 {
 			pct := float64(st.DownloadedBytes) * 100 / float64(*st.TotalBytes)
 			if pct > 100 {
 				pct = 100
 			}
-			return l10n.Tf(locale, "update.badge.downloading_pct", "pct", fmt.Sprintf("%.0f", pct)), stateActive, lucide.Download, true
+			return l10n.Tf(locale, "update.badge.downloading_pct", "pct", fmt.Sprintf("%.0f", pct)), stateActive, reicon.Download, true
 		}
-		return l10n.T(locale, "update.badge.downloading"), stateActive, lucide.Download, true
+		return l10n.T(locale, "update.badge.downloading"), stateActive, reicon.Download, true
 	case core.UpdateVerifying:
-		return l10n.T(locale, "update.badge.verifying"), stateActive, lucide.RefreshCw, true
+		return l10n.T(locale, "update.badge.verifying"), stateActive, reicon.RefreshCw, true
 	case core.UpdateReadyToApply:
 		ver := ""
 		if st.Release != nil {
 			ver = st.Release.Version
 		}
 		if ver == "" {
-			return l10n.T(locale, "update.badge.ready"), stateSuccess, lucide.Download, false
+			return l10n.T(locale, "update.badge.ready"), stateSuccess, reicon.Download, false
 		}
-		return l10n.Tf(locale, "update.badge.ready_version", "version", ver), stateSuccess, lucide.Download, false
+		return l10n.Tf(locale, "update.badge.ready_version", "version", ver), stateSuccess, reicon.Download, false
 	case core.UpdateApplying:
-		return l10n.T(locale, "update.badge.applying"), stateActive, lucide.RefreshCw, true
+		return l10n.T(locale, "update.badge.applying"), stateActive, reicon.RefreshCw, true
 	case core.UpdateError:
 		if st.Release != nil {
-			return l10n.T(locale, "update.badge.error"), stateDanger, lucide.CircleAlert, false
+			return l10n.T(locale, "update.badge.error"), stateDanger, reicon.CircleAlert, false
 		}
-		return "", stateNeutral, lucide.Info, false
+		return "", stateNeutral, reicon.Info, false
 	default:
-		return "", stateNeutral, lucide.Info, false
+		return "", stateNeutral, reicon.Info, false
 	}
 }
 

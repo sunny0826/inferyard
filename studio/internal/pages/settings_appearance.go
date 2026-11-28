@@ -6,8 +6,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 type appearanceOption struct {
@@ -17,9 +17,9 @@ type appearanceOption struct {
 }
 
 var appearanceOptions = []appearanceOption{
-	{value: core.ThemeSystem, labelKey: "settings.appearance.system", icon: lucide.Monitor},
-	{value: core.ThemeLight, labelKey: "settings.appearance.light", icon: lucide.Sun},
-	{value: core.ThemeDark, labelKey: "settings.appearance.dark", icon: lucide.Moon},
+	{value: core.ThemeSystem, labelKey: "settings.appearance.system", icon: reicon.Monitor},
+	{value: core.ThemeLight, labelKey: "settings.appearance.light", icon: reicon.Sun},
+	{value: core.ThemeDark, labelKey: "settings.appearance.dark", icon: reicon.Moon},
 }
 
 func themeFromSettings(v core.SettingsResponse) string {
@@ -48,12 +48,14 @@ func (s *viewState) syncNativeThemeIfNeeded() {
 
 func (s *viewState) themeFor(c *ui.Context) *ui.Theme {
 	setActiveAccent(s.accentMode)
+	setActiveFontSize(s.fontSizeMode)
 	s.syncNativeThemeIfNeeded()
 	return resolveStudioTheme(c, s.themeMode)
 }
 
 func (s *viewState) loadThemeSettings(v core.SettingsResponse) {
 	s.loadAccentSettings(v)
+	s.loadFontSizeSettings(v)
 	if s.themeSaving {
 		return
 	}
@@ -99,6 +101,8 @@ func (s *viewState) appearanceSettingsView(c *ui.Context) {
 
 			ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
 			s.accentColorRow(c)
+			ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+			s.fontSizeRow(c)
 		})
 }
 
@@ -148,7 +152,7 @@ func (s *viewState) appearanceOptionTile(c *ui.Context, item ui.Element, opt app
 					AlignItems(ui.Center).Justify(ui.Center)
 				if active {
 					checkCircle.Background(t.Color.Accent).Children(func() {
-						components.Icon(c, lucide.Check).Size(10, 10).TextColor(t.Color.FgOnAccent)
+						components.Icon(c, reicon.Check).Size(10, 10).TextColor(t.Color.FgOnAccent)
 					})
 				} else {
 					checkCircle.Border(1.5, t.Color.BorderStrong)

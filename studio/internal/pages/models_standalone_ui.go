@@ -5,8 +5,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 func (s *viewState) standaloneDrawer(c *ui.Context) {
@@ -197,17 +197,17 @@ func (s *viewState) renderModelStandaloneSubrow(c *ui.Context, m core.ModelAsset
 		studioTooltipGroup(c, ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			if endpoint != "" {
 				ui.Text(c, endpoint).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
-				outlineIconButton(c, lucide.Copy, tr(c, "engine.action.copy_endpoint")).OnClick(func() {
+				outlineIconButton(c, reicon.Copy, tr(c, "engine.action.copy_endpoint")).OnClick(func() {
 					s.copyServiceEndpoint(c, svc)
 				})
 			}
 			if webOK {
-				outlineIconButton(c, lucide.ExternalLink, tr(c, "engine.action.open_webui")).OnClick(func() {
+				outlineIconButton(c, reicon.ExternalLink, tr(c, "engine.action.open_webui")).OnClick(func() {
 					s.openEngineWebUI(c, webURL)
 				})
 			}
 			if logPath != "" {
-				outlineIconButton(c, lucide.FileText, tr(c, "engine.action.open_log")).OnClick(func() {
+				outlineIconButton(c, reicon.FileText, tr(c, "engine.action.open_log")).OnClick(func() {
 					s.openEngineCardLog(logPath)
 				})
 			}
@@ -217,7 +217,7 @@ func (s *viewState) renderModelStandaloneSubrow(c *ui.Context, m core.ModelAsset
 			return
 		}
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			outlineIconButton(c, lucide.FileText, tr(c, "engine.action.open_log")).OnClick(func() {
+			outlineIconButton(c, reicon.FileText, tr(c, "engine.action.open_log")).OnClick(func() {
 				s.openEngineCardLog(logPath)
 			})
 		})
@@ -240,19 +240,19 @@ func (s *viewState) renderModelStandalonePrimaryAction(c *ui.Context, m core.Mod
 		} else if s.busy {
 			reason = tr(c, "models.action.blocked.busy")
 		}
-		if modelRowButtonClicked(c, dangerIconButton, lucide.Square, stopLabel, m.Name, reason) {
+		if modelRowButtonClicked(c, dangerIconButton, reicon.Square, stopLabel, m.Name, reason) {
 			s.pendingDestructive = destructiveRequest{kind: string(destructiveStopStandalone), id: m.Name}
 		}
 		return
 	}
 	label := tr(c, "models.serve.action.start")
 	render := primaryIconButton
-	icon := lucide.Play
+	icon := reicon.Play
 	retry := rowState == "failed"
 	if retry {
 		label = tr(c, "models.serve.action.retry")
 		render = outlineIconButton
-		icon = lucide.RotateCw
+		icon = reicon.RotateCw
 	}
 	reason := s.standaloneStartBlockReason()
 	if reason == "" && s.serveProbing {

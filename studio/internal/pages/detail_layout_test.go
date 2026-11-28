@@ -50,11 +50,13 @@ func TestDetailViewBackButtonClearsDetail(t *testing.T) {
 			Cases: []core.CaseProgress{{CaseId: "case-001", State: "done", QualityState: ptr("pass")}},
 		},
 	}
-	tt := ui.NewTester(func(c *ui.Context) {
-		ui.Column(c).FillWidth().Children(func() { s.detailView(c) })
-	}, 1120, 900)
+	tt := ui.NewTester(s.view, 1120, 900)
 	tt.Frame()
 
+	back, ok := tt.AccessByRole(ui.RoleButton, "← 返回任务")
+	if !ok || back.Bounds.X+back.Bounds.W > 205 {
+		t.Fatalf("expected back button in left sidebar header (<=205px), got ok=%v bounds=%+v", ok, back.Bounds)
+	}
 	click(t, tt, "← 返回任务")
 	tt.Frame()
 	if s.detailID != "" {

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/icons/lucide"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -25,11 +25,11 @@ func TestToolbarTooltipSweepGroupHandoffWarmAndPressDismiss(t *testing.T) {
 	view := func(c *ui.Context) {
 		ui.Column(c).Padding(24).Children(func() {
 			studioTooltipGroup(c, ui.Row(c).AlignItems(ui.Center).Gap(8), func() {
-				if outlineIconButton(c, lucide.Copy, "Action Alpha").Clicked() {
+				if outlineIconButton(c, reicon.Copy, "Action Alpha").Clicked() {
 					clickedA++
 				}
-				outlineIconButton(c, lucide.Code, "Action Beta")
-				outlineIconButton(c, lucide.Play, "Action Gamma")
+				outlineIconButton(c, reicon.Code, "Action Beta")
+				outlineIconButton(c, reicon.Play, "Action Gamma")
 			})
 		})
 	}
@@ -146,7 +146,7 @@ func TestDisabledControlsExposeReasonTooltipOnHoverAndKeyboardFocus(t *testing.T
 		view := func(c *ui.Context) {
 			ui.Row(c).Padding(20).Gap(12).AlignItems(ui.Center).Children(func() {
 				iconButtonWithTooltip(c, "Blocked: round active", func() ui.Element {
-					b := outlineIconButton(c, lucide.Play, "").Label("Run task").Disabled(true)
+					b := outlineIconButton(c, reicon.Play, "").Label("Run task").Disabled(true)
 					if b.Clicked() {
 						clicked++
 					}

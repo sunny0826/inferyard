@@ -42,6 +42,7 @@ mise run test:studio-ui:full
   - 后端/数据层保持真实严谨：缺测保持 `null`（不补 `0`），不覆盖原始运行目录与证据，保留安全停止与进程所有权检查。
   - Studio UI 只清晰呈现数据、状态和必要操作引导，**不要在界面上平铺防御性免责声明或重复解释底层实现边界**；确需交代的指标口径统一收进折叠区或简短标签。
 - **测试测行为与语义，不锁死文案字面**：测试验证数据完整性、状态流转与隔离边界，避免用整句防御性文案作为测试断言。
+- **Studio 界面设计规范**：修改 Studio 页面布局、字阶、配色、图标或壳层导航时，遵循 [DESIGN.md](DESIGN.md)（紧凑原生桌面密度、Geist 字体 + Reicon 线性图标、五档字号缩放、左侧边栏顶部统一返回导航）。
 - **Studio 预览与正式共用页面代码**：预览实现与 fixture 仅进入 `ui_debug && !release` 构建，不执行真实 IO 或持久化用户配置；正式构建与 `ui_debug,release` 拒绝 `--debug-ui`。
 - **安全与隐私底线**：凭据仅通过 `endpoint.api_key_env` 引用且落盘脱敏，不提交模型权重、引擎二进制、真实设备配置、缓存或凭据。不自动重启模型服务，不静默越过主机锁或身份校验。
 - **避免过度防御**：不为极低概率的假设性边界堆砌复杂度；先确认实际场景与收益再扩展。
@@ -63,6 +64,6 @@ first read `.agents/skills/pluvy/SKILL.md` and follow it.
 - 交付改动必须先建分支，不直接提交到 `main`；通过相关检查后保留在本地提交。
 - **每次提交 PR 前必须执行文案与文档检查**（遵循 [CONTRIBUTING.md](CONTRIBUTING.md) 与 [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md)）：
   - 若改动涉及 Studio 用户可见文本，必须同步更新 `studio/internal/l10n/locales/<domain>/{en,zh-Hans}.json`（禁止硬编码中/英文 UI 字符串），并运行 `mise run test:studio` 与 `mise run test:studio:preview` 校验中英文 key/占位符一致与无硬编码中文回归。
-  - 若改动影响 CLI 命令/参数、Studio 页面/设置、安装/运行/发版流程或指标口径，必须同步检查并更新对应文档（`README.md` / `README.zh-CN.md`、`studio/README.md`、`cli/README*.md`、`cli/docs/*`、`studio/tests/ui/README.md`），并确保相对链接有效；若确无文档影响，在 PR 清单中显式确认。
+  - 若改动影响 CLI 命令/参数、Studio 页面/导航规范/设置、安装/运行/发版流程或指标口径，必须同步检查并更新对应文档（`README.md` / `README.zh-CN.md`、`studio/README.md`、`DESIGN.md`、`cli/README*.md`、`cli/docs/*`、`studio/tests/ui/README.md`），并确保相对链接有效；若确无文档影响，在 PR 清单中显式确认。
 - 除执行用户明确下达的发版流程外，未经用户明确同意，不执行 `git push`、创建/合并/关闭 PR 或推送发布 tag。PR 合并使用仓库所有者账号（GitHub 网页或本地 `gh` CLI），不允许 bot 作者提交。
 - 报告变更时简要说明改动内容、实际运行的检查及未验证范围。

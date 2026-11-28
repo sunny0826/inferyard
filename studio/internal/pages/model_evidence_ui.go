@@ -7,8 +7,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 func (s *viewState) modelEvidenceFor(modelName string) (core.ModelEvidenceSummary, bool) {
@@ -214,7 +214,7 @@ func (s *viewState) renderEngineUpdateAction(c *ui.Context, eng core.EngineAsset
 	}
 	if s.engineUpdateTaskActive(eng, upd) {
 		ui.Box(c).Label(tr(c, "models.engine.action.updating")).Children(func() {
-			outlineIconButton(c, lucide.CircleArrowUp, tr(c, "models.engine.action.updating")).
+			outlineIconButton(c, reicon.CircleArrowUp, tr(c, "models.engine.action.updating")).
 				Label(trf(c, "models.engine.action.update_label", "name", eng.Name)).
 				Disabled(true)
 		})
@@ -222,7 +222,7 @@ func (s *viewState) renderEngineUpdateAction(c *ui.Context, eng core.EngineAsset
 	}
 	if upd.CanOneClickUpdate() {
 		ui.Box(c).Label(tr(c, "models.engine.action.one_click_update")).Children(func() {
-			btn := primaryIconButton(c, lucide.CircleArrowUp, tr(c, "models.engine.action.one_click_update")).
+			btn := primaryIconButton(c, reicon.CircleArrowUp, tr(c, "models.engine.action.one_click_update")).
 				Label(trf(c, "models.engine.action.update_label", "name", eng.Name)).
 				Disabled(s.busy)
 			if btn.Clicked() {
@@ -232,7 +232,7 @@ func (s *viewState) renderEngineUpdateAction(c *ui.Context, eng core.EngineAsset
 		return
 	}
 	ui.Box(c).Label(tr(c, "models.engine.action.update")).Children(func() {
-		btn := outlineIconButton(c, lucide.ExternalLink, tr(c, "models.engine.action.update")).
+		btn := outlineIconButton(c, reicon.ExternalLink, tr(c, "models.engine.action.update")).
 			Label(trf(c, "models.engine.action.update_label", "name", eng.Name)).
 			Disabled(s.busy)
 		if btn.Clicked() {

@@ -86,12 +86,6 @@ func (s *viewState) quitServiceDialog(c *ui.Context) {
 			if button(c, tr(c, "services.quit_dialog.cancel")).Clicked() {
 				s.quitDialog.open = false
 			}
-			if s.canMinimizeToTray() {
-				if outlineButton(c, tr(c, "tray.action.minimize")).Clicked() {
-					s.quitDialog.open = false
-					s.minimizeToTrayAction()
-				}
-			}
 			if dangerButton(c, tr(c, "services.quit_dialog.stop_all_and_quit")).Clicked() {
 				s.confirmQuitWithServicePolicy(false)
 			}

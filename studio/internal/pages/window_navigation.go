@@ -5,9 +5,9 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -89,6 +89,7 @@ func (s *viewState) resetActivePage(resolved string) {
 	case "benchmarks":
 		s.detailID = ""
 		s.benchmarksTab = benchmarksTabTasks
+		s.historyFromFlow = false
 		s.historyDetailPath = ""
 		if !s.newTaskPending {
 			s.benchFlowOpen = false
@@ -152,7 +153,7 @@ func (s *viewState) leftNav(c *ui.Context) {
 			ui.Box(c).FillWidth().Padding(t.Density.Tight, 0).Children(func() {
 				ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
 			})
-			s.sidebarNavRow(c, "settings", tr(c, "nav.settings"), lucide.Settings, nil)
+			s.sidebarNavRow(c, "settings", tr(c, "nav.settings"), reicon.Settings, nil)
 		})
 	})
 }
@@ -224,7 +225,7 @@ func (s *viewState) newTaskPlusButton(c *ui.Context) {
 	hint := s.newTaskEntryHintFor(contextLocale(c))
 	label := tr(c, "shell.nav.new_task")
 	if hint == "" {
-		plus := iconButton(c, lucide.Plus, label, components.IconButtonCompact).Size(24, 24).Padding(0).AlignSelf(ui.Center)
+		plus := iconButton(c, reicon.Plus, label, components.IconButtonCompact).Size(24, 24).Padding(0).AlignSelf(ui.Center)
 		if plus.Clicked() {
 			if s.guardLeaveSettings("benchmarks", func() { s.newBenchmark() }) {
 				return
@@ -234,7 +235,7 @@ func (s *viewState) newTaskPlusButton(c *ui.Context) {
 		return
 	}
 	iconButtonWithTooltip(c, hint, func() ui.Element {
-		return iconButton(c, lucide.Plus, "", components.IconButtonCompact).
+		return iconButton(c, reicon.Plus, "", components.IconButtonCompact).
 			Label(label).Size(24, 24).Padding(0).AlignSelf(ui.Center).Disabled(true)
 	})
 }

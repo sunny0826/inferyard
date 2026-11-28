@@ -7,7 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -200,13 +200,13 @@ func (s *viewState) caseModalHeader(c *ui.Context, headerTitle string, item case
 				ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Stack).Children(func() {
 					if hasCat {
 						ui.Row(c).AlignItems(ui.Center).Gap(5).Children(func() {
-							components.Icon(c, lucide.Layers).Size(12, 12).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
+							components.Icon(c, reicon.Layers).Size(12, 12).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
 							ui.Text(c, item.Category).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
 						})
 					}
 					if hasDur {
 						ui.Row(c).AlignItems(ui.Center).Gap(5).Children(func() {
-							components.Icon(c, lucide.Clock).Size(12, 12).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
+							components.Icon(c, reicon.Clock).Size(12, 12).TextColor(t.Color.FgTertiary).Role(ui.RoleNone)
 							ui.Text(c, item.DurationText).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
 						})
 					}
@@ -220,18 +220,18 @@ func (s *viewState) caseModalHeader(c *ui.Context, headerTitle string, item case
 		studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {
 			if item.Total > 1 {
 				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
-					if caseModalIconButton(c, components.ButtonOutline, lucide.ArrowLeft, 13, tr(c, "detail.case_drawer.prev_case"), item.OnPrev == nil).Clicked() && item.OnPrev != nil {
+					if caseModalIconButton(c, components.ButtonOutline, reicon.ArrowLeft, 13, tr(c, "detail.case_drawer.prev_case"), item.OnPrev == nil).Clicked() && item.OnPrev != nil {
 						item.OnPrev()
 					}
 					ui.Text(c, fmt.Sprintf("%d / %d", item.Index+1, item.Total)).
 						FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).SingleLine()
-					if caseModalIconButton(c, components.ButtonOutline, lucide.ArrowRight, 13, tr(c, "detail.case_drawer.next_case"), item.OnNext == nil).Clicked() && item.OnNext != nil {
+					if caseModalIconButton(c, components.ButtonOutline, reicon.ArrowRight, 13, tr(c, "detail.case_drawer.next_case"), item.OnNext == nil).Clicked() && item.OnNext != nil {
 						item.OnNext()
 					}
 				})
 				ui.Box(c).Width(1).Height(18).Shrink(0).Background(t.Color.BorderSubtle)
 			}
-			if caseModalIconButton(c, components.ButtonGhost, lucide.X, 15, tr(c, "common.close"), false).Clicked() {
+			if caseModalIconButton(c, components.ButtonGhost, reicon.X, 15, tr(c, "common.close"), false).Clicked() {
 				onClose()
 			}
 		})
@@ -255,11 +255,11 @@ func (s *viewState) caseModalBody(c *ui.Context, item caseDetailItem, hasPrompt,
 	}
 
 	accentKind := stateActive
-	responseIcon := lucide.CircleCheck
+	responseIcon := reicon.CircleCheck
 	if item.HasQualityBadge {
 		accentKind = item.QualityKind
 		if item.QualityKind == stateDanger {
-			responseIcon = lucide.CircleAlert
+			responseIcon = reicon.CircleAlert
 		}
 	}
 	expectedColor := semanticAccentColor(c, stateScale(c, stateSuccess))
@@ -268,7 +268,7 @@ func (s *viewState) caseModalBody(c *ui.Context, item caseDetailItem, hasPrompt,
 		paneH := estimateSplitPaneHeight(item.Prompt, item.Response, item.ExpectedAnswer, showExpected, bodyMaxH)
 		ui.Row(c).FillWidth().Height(paneH).AlignItems(ui.Stretch).Gap(0).Children(func() {
 			ui.Column(c).Grow(42).MinWidth(0).FillHeight().Background(t.Color.Sunken).Children(func() {
-				s.casePaneHeader(c, lucide.FileText, t.Color.FgTertiary,
+				s.casePaneHeader(c, reicon.FileText, t.Color.FgTertiary,
 					tr(c, "detail.case_drawer.prompt_title"), tr(c, "detail.case_drawer.copy_prompt"),
 					item.Prompt, t.Density.Page, t.Density.Section)
 				ui.Scroll(c.Key("case-prompt-scroll-" + item.Key)).FillWidth().Grow(1).MinHeight(0).Children(func() {
@@ -302,7 +302,7 @@ func (s *viewState) caseModalBody(c *ui.Context, item caseDetailItem, hasPrompt,
 						expectedBox.Grow(1)
 					}
 					expectedBox.Children(func() {
-						s.casePaneHeader(c, lucide.CircleCheck, expectedColor,
+						s.casePaneHeader(c, reicon.CircleCheck, expectedColor,
 							tr(c, "detail.case_drawer.expected_title"), tr(c, "detail.case_drawer.copy_expected"),
 							item.ExpectedAnswer, t.Density.Section, t.Density.Page)
 						ui.Scroll(c.Key("case-expected-scroll-" + item.Key)).FillWidth().Grow(1).MinHeight(0).Children(func() {
@@ -321,7 +321,7 @@ func (s *viewState) caseModalBody(c *ui.Context, item caseDetailItem, hasPrompt,
 		ui.Column(c).FillWidth().Gap(0).Children(func() {
 			if hasPrompt {
 				ui.Column(c).FillWidth().MinHeight(124).Background(t.Color.Sunken).Children(func() {
-					s.casePaneHeader(c, lucide.FileText, t.Color.FgTertiary,
+					s.casePaneHeader(c, reicon.FileText, t.Color.FgTertiary,
 						tr(c, "detail.case_drawer.prompt_title"), tr(c, "detail.case_drawer.copy_prompt"),
 						item.Prompt, t.Density.Page, t.Density.Page)
 					ui.Column(c).FillWidth().Padding(0, t.Density.Page, t.Density.Page, t.Density.Page).Children(func() {
@@ -351,7 +351,7 @@ func (s *viewState) caseModalBody(c *ui.Context, item caseDetailItem, hasPrompt,
 					ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
 				}
 				ui.Column(c).FillWidth().MinHeight(104).Background(t.Color.Sunken).Children(func() {
-					s.casePaneHeader(c, lucide.CircleCheck, expectedColor,
+					s.casePaneHeader(c, reicon.CircleCheck, expectedColor,
 						tr(c, "detail.case_drawer.expected_title"), tr(c, "detail.case_drawer.copy_expected"),
 						item.ExpectedAnswer, t.Density.Page, t.Density.Page)
 					ui.Column(c).FillWidth().Padding(0, t.Density.Page, t.Density.Page, t.Density.Page).Children(func() {
@@ -394,7 +394,7 @@ func (s *viewState) casePaneHeader(c *ui.Context, icon func() *ui.SVG, iconColor
 		Padding(t.Density.Stack+2, padRight, t.Density.Stack, padLeft).Children(func() {
 		components.Icon(c, icon).Size(13, 13).TextColor(iconColor).Shrink(0).Role(ui.RoleNone)
 		ui.Text(c, label).Bold().FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).Grow(1).SingleLine()
-		if caseModalIconButton(c, components.ButtonGhost, lucide.Copy, 14, copyLabel, false).Clicked() {
+		if caseModalIconButton(c, components.ButtonGhost, reicon.Copy, 14, copyLabel, false).Clicked() {
 			s.copyCaseText(c, body)
 		}
 	})

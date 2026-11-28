@@ -5,7 +5,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 // outlineIconButton renders a bordered icon-only button with an accessible label and hover tooltip.
@@ -134,7 +134,7 @@ func refreshIconButton(c *ui.Context, label string, active bool) ui.Element {
 		}
 	}
 	b.Children(func() {
-		icon := components.Icon(c, lucide.RefreshCw).Size(15, 15).TextColor(t.Color.FgPrimary)
+		icon := components.Icon(c, reicon.RefreshCw).Size(15, 15).TextColor(t.Color.FgPrimary)
 		if angle != 0 {
 			icon.Rotate(angle)
 		}

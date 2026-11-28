@@ -4,20 +4,20 @@ import (
 	"testing"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/icons/lucide"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 func TestSharedIconButtonPrimitives(t *testing.T) {
 	var outlineClicked, primaryClicked, dangerClicked, refreshClicked int
 	tt := ui.NewTester(func(c *ui.Context) {
 		ui.Row(c).Gap(8).Children(func() {
-			if outlineIconButton(c, lucide.Copy, "Copy URL").Clicked() {
+			if outlineIconButton(c, reicon.Copy, "Copy URL").Clicked() {
 				outlineClicked++
 			}
-			if primaryIconButton(c, lucide.Play, "Start Service").Clicked() {
+			if primaryIconButton(c, reicon.Play, "Start Service").Clicked() {
 				primaryClicked++
 			}
-			if dangerIconButton(c, lucide.Trash, "Delete Asset").Clicked() {
+			if dangerIconButton(c, reicon.Trash, "Delete Asset").Clicked() {
 				dangerClicked++
 			}
 			if refreshIconButton(c, "Refresh List", true).Clicked() {

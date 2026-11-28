@@ -44,6 +44,13 @@ type settingsViewState struct {
 	accentWantedSeq                       uint64
 	accentWorkerRunning                   bool
 	persistAccent                         func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
+	fontSizeMode                          string
+	fontSizeSaving                        bool
+	fontSizeMu                            sync.Mutex
+	fontSizeWanted                        string
+	fontSizeWantedSeq                     uint64
+	fontSizeWorkerRunning                 bool
+	persistFontSize                       func(map[string]json.RawMessage) (core.SettingsResponse, *core.ApiError)
 	languageMode, appliedLanguageMode     string
 	languageSaving                        bool
 	languageMu                            sync.Mutex

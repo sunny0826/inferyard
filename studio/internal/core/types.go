@@ -38,6 +38,12 @@ const (
 	AccentTerracotta = "terracotta"
 	AccentMono       = "mono"
 
+	FontSizeSmaller = "smaller"
+	FontSizeSmall   = "small"
+	FontSizeDefault = "default"
+	FontSizeLarge   = "large"
+	FontSizeLarger  = "larger"
+
 	LanguageSystem = "system"
 	LanguageEn     = "en"
 	LanguageZhHans = "zh-Hans"
@@ -57,6 +63,7 @@ type UserSettings struct {
 	DownloadProxy       *string  `json:"download_proxy,omitempty"`
 	Theme               string   `json:"theme,omitempty"`
 	Accent              string   `json:"accent,omitempty"`
+	FontSize            string   `json:"font_size,omitempty"`
 	Language            string   `json:"language,omitempty"`
 	ReasoningEffort     string   `json:"reasoning_effort,omitempty"`
 	MinimizeToTray      bool     `json:"minimize_to_tray,omitempty"`
@@ -78,6 +85,7 @@ type EffectiveSettings struct {
 	DownloadProxy      *string  `json:"download_proxy,omitempty"`
 	Theme              string   `json:"theme"`
 	Accent             string   `json:"accent"`
+	FontSize           string   `json:"font_size"`
 	Language           string   `json:"language"`
 	ReasoningEffort    string   `json:"reasoning_effort"`
 	MinimizeToTray     bool     `json:"minimize_to_tray"`

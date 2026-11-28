@@ -6,7 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/icons/lucide"
+	"inferyard/studio/internal/icons/reicon"
 )
 
 func card(c *ui.Context, title string, fn func()) {
@@ -57,7 +57,7 @@ func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 					ui.Box(c).Size(20, 20).Radius(t.Radius.Full).Shrink(0).
 						Background(t.Color.Success.SubtleBg).Border(1, t.Color.Success.Border).
 						AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-						components.Icon(c, lucide.Check).Size(12, 12).TextColor(t.Color.Success.Fg)
+						components.Icon(c, reicon.Check).Size(12, 12).TextColor(t.Color.Success.Fg)
 					})
 					ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).SingleLine()
 				})
@@ -365,19 +365,16 @@ func searchableSelectField(c *ui.Context, name, description, placeholder, emptyF
 	}
 }
 
-func (s *viewState) subpageHeader(c *ui.Context, title, backLabel string, onBack func(), extraActions ...func()) {
+func (s *viewState) subpageHeader(c *ui.Context, title string, extraActions ...func()) {
 	t := tokens(c)
 	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 		s.header(c, title)
-		ui.Box(c).Grow(1)
-		for _, action := range extraActions {
-			if action != nil {
-				action()
-			}
-		}
-		if backLabel != "" && onBack != nil {
-			if outlineIconButton(c, lucide.ArrowLeft, backLabel).Clicked() {
-				onBack()
+		if len(extraActions) > 0 {
+			ui.Box(c).Grow(1)
+			for _, action := range extraActions {
+				if action != nil {
+					action()
+				}
 			}
 		}
 	})

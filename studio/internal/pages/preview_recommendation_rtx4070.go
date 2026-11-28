@@ -208,4 +208,3 @@ const previewSnapshotRTX4070 = `{
 		]
 	}
 }`
-

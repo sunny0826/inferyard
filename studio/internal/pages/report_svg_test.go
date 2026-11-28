@@ -183,7 +183,7 @@ func TestReportSVGStageLifecycleReuseDuplicateCasesAndNewBenchmark(t *testing.T)
 		return st, nil
 	}
 
-	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.reportsView(c) }) }, 1120, 1400)
+	tt := ui.NewTester(s.view, 1120, 1400)
 	tt.Frame()
 	if len(stages) != 1 || len(stages[0].loads) != 1 {
 		t.Fatalf("expected 1 created stage with 1 HTML load, got stages=%d loads=%v", len(stages), stages)

@@ -27,7 +27,16 @@ func previewTester(p *previewSession, width, height int) *ui.Tester {
 		c.SetTheme(p.themeFor(c))
 		opts := p.shellOptions()
 		ui.Row(c).Fill().Children(func() {
-			ui.Column(c).Width(205).Shrink(0).Children(func() { p.left(c) })
+			ui.Box(c).Width(205).Shrink(0).FillHeight().Children(func() {
+				p.left(c)
+				if opts.LeftHeader != nil {
+					ui.Row(c).Absolute().Top(0).Left(0).Right(0).Height(sidebar.HeaderHeight(c)).
+						AlignItems(ui.Center).Padding(6, 8, 6, 16).Children(func() {
+						ui.Spacer(c)
+						opts.LeftHeader(c)
+					})
+				}
+			})
 			ui.Box(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
 				p.content(c)
 				if opts.ContentTitle != nil {
