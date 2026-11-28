@@ -164,6 +164,25 @@ func TestReportCompareErrorReopensPickerAndWorkspaceResetsRefs(t *testing.T) {
 	if s.nodes.compareLeftRef != "r-c" || s.nodes.compareRightRef != "r-d" {
 		t.Fatalf("compare picker did not default to new workspace reports: left=%q right=%q", s.nodes.compareLeftRef, s.nodes.compareRightRef)
 	}
+
+	s.nodes.unifiedReports = []core.UnifiedReportSummary{
+		{ReportSummary: core.ReportSummary{ReportId: "local-1"}, ReportRef: "local-1", NodeID: core.LocalNodeID},
+		{ReportSummary: core.ReportSummary{ReportId: "remote-1"}, ReportRef: "remote://node-a/remote-1", NodeID: "node-a", IsRemote: true},
+	}
+	s.nodes.reportsLoaded = true
+	s.clearCleanedWorkspaceState()
+	if got := s.reportSummaries(); len(got) != 1 || !got[0].IsRemote {
+		t.Fatalf("cleaning local artifacts did not drop local unified reports: %+v", got)
+	}
+	s.openReportComparePicker()
+	if s.nodes.comparePickerOpen {
+		t.Fatal("compare picker opened with fewer than two remaining reports after cleanup")
+	}
+
+	s.resetWorkspace()
+	if s.nodes.reportsLoaded || len(s.nodes.unifiedReports) != 0 {
+		t.Fatalf("resetWorkspace left stale unifiedReports: loaded=%v len=%d", s.nodes.reportsLoaded, len(s.nodes.unifiedReports))
+	}
 }
 
 func TestRemoteServiceCardWithoutTunnelRendersSingleUsageButton(t *testing.T) {

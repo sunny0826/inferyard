@@ -241,6 +241,8 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 			StandaloneRuns: []core.RunSummary{},
 		}
 		s.reports = nil
+		s.nodes.unifiedReports, s.nodes.reportsLoaded = nil, false
+		s.resetReportCompare()
 		s.reportsTab = reportsTabList
 		s.closeOpenedReport()
 	}
