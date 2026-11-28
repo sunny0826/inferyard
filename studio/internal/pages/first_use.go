@@ -289,11 +289,15 @@ func (s *viewState) downloadTaskGuide(c *ui.Context) {
 	if !s.preparingTask() || s.environmentMissing() {
 		return
 	}
+	status := s.downloadGuideStatus()
+	if status == "" {
+		return
+	}
 	t := tokens(c)
 	applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.CardGap).
 		Padding(t.Density.Stack, t.Card.Padding), materialCard).
 		Children(func() {
-			ui.Text(c, s.downloadGuideStatus()).Grow(1).MinWidth(0).TextColor(t.Color.FgSecondary)
+			ui.Text(c, status).Grow(1).MinWidth(0).TextColor(t.Color.FgSecondary)
 			outlineIconButton(c, reicon.ArrowLeft, tr(c, "onboarding.guide.back_dashboard")).Shrink(0).OnClick(func() { s.openBenchmarksFlow() })
 		})
 }
@@ -310,7 +314,7 @@ func (s *viewState) downloadGuideStatus() string {
 	case failed > 0:
 		return l10n.TRf("onboarding.guide.failed", "failed", failed)
 	case assets.model && assets.engine:
-		return l10n.TR("onboarding.guide.ready")
+		return ""
 	default:
 		return l10n.TR("onboarding.guide.prompt")
 	}
