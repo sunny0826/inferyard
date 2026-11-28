@@ -154,7 +154,7 @@ func renderResourcePlotBody(
 
 	holder.Children(func() {
 		base.Plot(c, axes, func(area ui.Element) {
-			area.Label(opts.label).Description(opts.description).Focusable()
+			area.Role(ui.RoleGroup).Label(opts.label).Description(opts.description).Focusable()
 			st := ui.Local(area, "resource-plot-sel", func() resourcePlotLocal { return resourcePlotLocal{last: -1} })
 			n := len(xs)
 			positions := xs

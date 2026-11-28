@@ -31,7 +31,7 @@ GGUF_MODEL_REPO = "unsloth/SmolLM2-135M-Instruct-GGUF"
 GGUF_MODEL_REV = "9e6855bc4be717fca1ef21360a1db4b29d5c559a"
 GGUF_MODEL_FILE = "SmolLM2-135M-Instruct-Q4_K_M.gguf"
 GGUF_MODEL_URL = (
-    f"https://huggingface.co/{GGUF_MODEL_REPO}/resolve/"
+    f"https://huggingface.co/{GGUF_MODEL_REPO}/blob/"
     f"{GGUF_MODEL_REV}/{GGUF_MODEL_FILE}"
 )
 
@@ -44,9 +44,9 @@ MLX_MODEL_NAME = "smollm2-mlx"
 VLLM_BASE_VERSION = "0.31.0"
 VLLM_BASE_WHEELS: tuple[str, ...] = (
     "https://github.com/vllm-project/vllm/releases/download/v0.31.0/"
-    "vllm-0.31.0+cpu-cp312-cp312-macosx_11_0_arm64.whl",
+    "vllm-0.31.0%2Bcpu-cp312-cp312-macosx_11_0_arm64.whl",
     "https://github.com/vllm-project/vllm-metal/releases/download/v0.31.0/"
-    "vllm_metal-0.31.0-cp312-cp312-macosx_11_0_arm64.whl",
+    "vllm_metal-0.31.0-cp312-cp312-macosx_15_0_arm64.whl",
 )
 HF_MODEL_REPO = "HuggingFaceTB/SmolLM2-135M-Instruct"
 HF_MODEL_REV = "12fd25f77366fa6b3b4b768ec3050bf629380bac"
@@ -159,7 +159,8 @@ def ensure_cached_llama_assets(cache_dir: Path, cli: Path, cli_env: dict[str, st
 def ensure_cached_mlx_assets(cache_dir: Path, cli: Path, cli_env: dict[str, str]) -> tuple[Path, Path]:
     venv_dir = cache_dir / "engines/mlx-lm-base"
     py_bin = venv_dir / "bin/python3"
-    if not py_bin.is_file():
+    has_mlx = any(venv_dir.glob("lib/python*/site-packages/mlx_lm-*.dist-info/METADATA"))
+    if not py_bin.is_file() or not has_mlx:
         shutil.rmtree(venv_dir, ignore_errors=True)
         venv_dir.parent.mkdir(parents=True, exist_ok=True)
         uv = _find_uv()
@@ -193,7 +194,8 @@ def ensure_cached_mlx_assets(cache_dir: Path, cli: Path, cli_env: dict[str, str]
 def ensure_cached_vllm_assets(cache_dir: Path) -> tuple[Path, Path]:
     venv_dir = cache_dir / "engines/vllm-base"
     py_bin = venv_dir / "bin/python3"
-    if not py_bin.is_file():
+    has_metal = any(venv_dir.glob("lib/python*/site-packages/vllm_metal-*.dist-info/METADATA"))
+    if not py_bin.is_file() or not has_metal:
         shutil.rmtree(venv_dir, ignore_errors=True)
         venv_dir.parent.mkdir(parents=True, exist_ok=True)
         uv = _find_uv()

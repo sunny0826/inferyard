@@ -421,6 +421,31 @@ class TestEnginesRealRunner(unittest.TestCase):
             self.assertIn("--expected-sha256", prepare_cmds[0])
             self.assertEqual(len(acquire_cmds), 2)
 
+            cli_src = str(Path(__file__).resolve().parents[3] / "cli/src")
+            sys.path.insert(0, cli_src)
+            try:
+                from inferyard.provisioning.model_source import (
+                    parse_directory_source,
+                    parse_source,
+                )
+
+                by_kind = {
+                    cmd[cmd.index("--kind") + 1]: cmd[cmd.index("--source") + 1]
+                    for cmd in acquire_cmds
+                }
+                parsed_gguf = parse_source(by_kind["gguf"])
+                self.assertEqual(parsed_gguf.path, engines_stage.GGUF_MODEL_FILE)
+                parsed_mlx = parse_directory_source(by_kind["directory"])
+                self.assertEqual(parsed_mlx.repository, engines_stage.MLX_MODEL_REPO)
+            finally:
+                sys.path.remove(cli_src)
+
+            catalog_go = (
+                Path(__file__).resolve().parents[2] / "internal/core/catalog_data.go"
+            ).read_text(encoding="utf-8")
+            for wheel_url in engines_stage.VLLM_BASE_WHEELS:
+                self.assertIn(wheel_url, catalog_go)
+
 
 _TEST_METHODS = (
     TestEnginesRealRunner.test_parse_engines_arg_supports_all_lightweight_and_subsets,

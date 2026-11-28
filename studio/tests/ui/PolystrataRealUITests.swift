@@ -93,10 +93,10 @@ final class PolystrataRealUITests: XCTestCase {
         expectText("连通性测试", timeout: 10)
         click("发一条测试请求", timeout: 15)
         let okLine = app.descendants(matching: .any).matching(
-            NSPredicate(format: "label BEGINSWITH %@ OR value BEGINSWITH %@", "HTTP 200 · 延迟 ", "HTTP 200 · 延迟 ")
+            NSPredicate(format: "label BEGINSWITH %@ OR title BEGINSWITH %@", "HTTP 200 · 延迟 ", "HTTP 200 · 延迟 ")
         ).firstMatch
         let replyLine = app.descendants(matching: .any).matching(
-            NSPredicate(format: "label BEGINSWITH %@ OR value BEGINSWITH %@", "回复：", "回复：")
+            NSPredicate(format: "label BEGINSWITH %@ OR title BEGINSWITH %@", "回复：", "回复：")
         ).firstMatch
         wait("Connectivity test returns HTTP 200 and non-empty reply", timeout: 120) {
             if self.anyTextContains("请求失败：") {
@@ -104,7 +104,7 @@ final class PolystrataRealUITests: XCTestCase {
                 return true
             }
             guard okLine.exists && replyLine.exists else { return false }
-            let raw = (replyLine.value as? String) ?? replyLine.label
+            let raw = replyLine.label.isEmpty ? replyLine.title : replyLine.label
             let body = raw.replacingOccurrences(of: "回复：", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
             return !body.isEmpty
         }
@@ -173,12 +173,12 @@ final class PolystrataRealUITests: XCTestCase {
         click("开始测评", timeout: 15)
 
         let abortedLine = app.descendants(matching: .any).matching(
-            NSPredicate(format: "label BEGINSWITH %@ OR value BEGINSWITH %@", "当前任务已中止：", "当前任务已中止：")
+            NSPredicate(format: "label BEGINSWITH %@ OR title BEGINSWITH %@", "当前任务已中止：", "当前任务已中止：")
         ).firstMatch
         let viewReportBtn = app.buttons["查看报告"].firstMatch
         wait("Real PolyStrata benchmark finishes and exposes View Report", timeout: 1200) {
             if abortedLine.exists {
-                let msg = (abortedLine.value as? String) ?? abortedLine.label
+                let msg = abortedLine.label.isEmpty ? abortedLine.title : abortedLine.label
                 XCTFail("Real PolyStrata benchmark aborted: \(msg)")
                 return true
             }
@@ -279,7 +279,7 @@ final class PolystrataRealUITests: XCTestCase {
 
     private func anyTextContains(_ substring: String) -> Bool {
         app.descendants(matching: .any).matching(
-            NSPredicate(format: "label CONTAINS[c] %@ OR value CONTAINS[c] %@", substring, substring)
+            NSPredicate(format: "label CONTAINS[c] %@ OR title CONTAINS[c] %@", substring, substring)
         ).firstMatch.exists
     }
 

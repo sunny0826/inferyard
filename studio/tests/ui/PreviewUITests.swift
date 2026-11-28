@@ -89,10 +89,10 @@ final class PreviewUITests: XCTestCase {
         keepScreenshot("Task running without obsolete title")
         click("查看实时详情", timeout: 10)
         expectText("实时进度")
-        let progress = app.staticTexts.matching(NSPredicate(format: "value BEGINSWITH %@", "正式运行 · ")).firstMatch
+        let progress = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "正式运行 · ")).firstMatch
         expectExists(progress, timeout: 5)
-        let before = progress.value as? String
-        wait("detail progress changes", timeout: 10) { (progress.value as? String) != before }
+        let before = progress.label
+        wait("detail progress changes", timeout: 10) { progress.label != before }
         click("← 返回任务")
         click("查看报告", timeout: 25)
         expectText(downloadedModel)
@@ -184,7 +184,7 @@ final class PreviewUITests: XCTestCase {
         expectText("第 5 次缺测：输入处理：缺少最终计时记录；Prefill：缺少最终计时记录；Decode：缺少最终计时记录")
         for code in ["final_timing_missing", "five_valid_samples_required"] {
             let rawCode = app.descendants(matching: .any).matching(
-                NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", code, code)
+                NSPredicate(format: "label CONTAINS %@ OR title CONTAINS %@", code, code)
             ).firstMatch
             XCTAssertFalse(rawCode.exists, "Reason code \(code) must not leak into localized diagnostics")
         }
@@ -206,7 +206,7 @@ final class PreviewUITests: XCTestCase {
         click("准备环境")
         expectText("准备模型与引擎")
         XCTAssertFalse(text("工作区进度").exists)
-        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "操作失败（")).firstMatch.exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "操作失败（")).firstMatch.exists)
         keepScreenshot("First use with no local assets")
         click("前往模型库")
         expectText("推荐组合")
@@ -215,6 +215,7 @@ final class PreviewUITests: XCTestCase {
         XCTAssertFalse(text("Windows x64").exists)
         XCTAssertFalse(text("Linux x64").exists)
         keepScreenshot("Recommendations for this Mac")
+        selectTab("推荐")
         click("一键安装 PolyStrata")
         click("返回任务")
         wait("downloaded resources unlock benchmark", timeout: 15) {

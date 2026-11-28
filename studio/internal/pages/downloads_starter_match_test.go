@@ -1,9 +1,12 @@
 package pages
 
 import (
+	"encoding/json"
 	"testing"
 
+	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/l10n"
 )
 
 func TestStarterPolystrataNormalizedInstalledMatch(t *testing.T) {
@@ -83,5 +86,32 @@ func TestOpenDownloadsWithStarterExpandedSelectsRecommendedTab(t *testing.T) {
 	s.openDownloadsWithStarterExpanded()
 	if s.selected != "library" || s.libraryTab != libraryTabRecommended {
 		t.Fatalf("got selected=%q libraryTab=%d, want library / %d", s.selected, s.libraryTab, libraryTabRecommended)
+	}
+}
+
+func TestDashboardStarterGoDownloadsNavigatesToRecommendedTab(t *testing.T) {
+	s := &viewState{selected: "benchmarks"}
+	s.device.Snapshot = json.RawMessage(`{
+		"starter_recommendation": {
+			"definition": "starter-recommendation.v1",
+			"status": "recommended",
+			"engine": "llama-cpp",
+			"backend": "metal",
+			"model_id": "model-qwen3-4b-q4km",
+			"model_title": "Qwen3-4B-Q4_K_M (GGUF)",
+			"family": "llama-cpp",
+			"model_format": "gguf",
+			"fit_level": "fits",
+			"tier": "best"
+		}
+	}`)
+	tt := ui.NewTester(func(c *ui.Context) {
+		s.renderStarterRecommendationPanel(c, "dashboard")
+	}, 1200, 900)
+	tt.SetLocale(l10n.LanguageZhHans)
+	tt.Frame()
+	click(t, tt, l10n.T(l10n.LanguageZhHans, "downloads.starter.go_downloads"))
+	if s.selected != "library" || s.libraryTab != libraryTabRecommended {
+		t.Fatalf("dashboard go_downloads navigated to selected=%q libraryTab=%d, want library / %d", s.selected, s.libraryTab, libraryTabRecommended)
 	}
 }
