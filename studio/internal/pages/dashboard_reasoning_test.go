@@ -59,3 +59,20 @@ func TestLaunchSummaryLineShowsThinkingStateAcrossEngines(t *testing.T) {
 		t.Fatalf("polystrata request = %+v, want ReasoningEffort=high and empty ReasoningMode", psReq)
 	}
 }
+
+func TestTaskThinkingBadgeUsesFrozenTaskSetting(t *testing.T) {
+	t.Cleanup(l10n.SetTestLocale(l10n.LanguageEn))
+
+	if label, kind, ok := taskThinkingBadge(nil, core.RunTask{ReasoningMode: core.ReasoningModeOff}); !ok || label != "Thinking: Off" || kind != stateNeutral {
+		t.Fatalf("off badge = (%q, %v, %v), want (Thinking: Off, neutral, true)", label, kind, ok)
+	}
+	if label, kind, ok := taskThinkingBadge(nil, core.RunTask{ReasoningMode: core.ReasoningModeOn}); !ok || label != "Thinking: On" || kind != stateInfo {
+		t.Fatalf("on badge = (%q, %v, %v), want (Thinking: On, info, true)", label, kind, ok)
+	}
+	if label, kind, ok := taskThinkingBadge(nil, core.RunTask{ReasoningEffort: core.ReasoningEffortMedium}); !ok || label != "Thinking: Medium" || kind != stateInfo {
+		t.Fatalf("effort badge = (%q, %v, %v), want (Thinking: Medium, info, true)", label, kind, ok)
+	}
+	if _, _, ok := taskThinkingBadge(nil, core.RunTask{}); ok {
+		t.Fatalf("expected missing frozen reasoning to hide badge")
+	}
+}

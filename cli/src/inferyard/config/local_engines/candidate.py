@@ -358,7 +358,8 @@ def create(request):
     elif resolved_mode == "on":
         reasoning_hints = hints.get("reasoning_max_tokens") or {}
         target_tokens = reasoning_hints.get("medium") or (8192 if has_svg else 4096)
-        max_tokens = min(target_tokens, context, 8192)
+        headroom = min(256, context // 2)
+        max_tokens = min(target_tokens, max(1, context - headroom), 8192)
     else:
         default_tokens = hints.get("default_max_tokens") or (4096 if has_svg else 512)
         max_tokens = min(default_tokens, context, 8192)

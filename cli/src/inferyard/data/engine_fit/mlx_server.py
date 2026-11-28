@@ -187,10 +187,9 @@ class GenerationQueue:
                         if self.poisoned or self.closing:
                             raise RuntimeError("service_poisoned")
                     if enable_thinking is not None:
-                        try:
-                            prompt = self.backend.prepare_prompt(prompt, max_tokens, enable_thinking=enable_thinking)
-                        except TypeError:
-                            prompt = self.backend.prepare_prompt(prompt, max_tokens)
+                        prompt = self.backend.prepare_prompt(
+                            prompt, max_tokens, enable_thinking=enable_thinking
+                        )
                     else:
                         prompt = self.backend.prepare_prompt(prompt, max_tokens)
             job = Job(prompt, max_tokens)

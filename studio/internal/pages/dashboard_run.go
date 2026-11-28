@@ -253,7 +253,8 @@ func (w *viewState) runViewWithBar(c *ui.Context, embedBar bool) {
 				}
 				if w.engine != "" {
 					w.enginePill(c, w.engine)
-					thinkingLabel, thinkingKind := w.activeThinkingBadge(c)
+				}
+				if thinkingLabel, thinkingKind, ok := taskThinkingBadge(c, *task); ok {
 					inlineBadge(c, thinkingLabel, thinkingKind, badgeOptions{Size: sizeSM, Style: badgeSoft})
 				}
 			})

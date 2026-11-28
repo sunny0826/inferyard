@@ -78,3 +78,72 @@ func readConfigWithEndpoint(path string) (string, string, string, int64, int64, 
 	}
 	return path, root, bundleName, pid, ticks, nil
 }
+
+func readConfigReasoning(configPath string) (string, string) {
+	raw, err := os.ReadFile(configPath)
+	if err != nil {
+		return "", ""
+	}
+	section := ""
+	var effort, mode string
+	for _, line := range strings.Split(string(raw), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if strings.HasPrefix(line, "[") {
+			section = strings.Trim(line, "[]")
+			continue
+		}
+		if section != "generation" {
+			continue
+		}
+		k, v, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		var val string
+		if json.Unmarshal([]byte(strings.TrimSpace(v)), &val) != nil {
+			continue
+		}
+		switch strings.TrimSpace(k) {
+		case "reasoning_effort":
+			if parsed, ok := ParseReasoningEffort(val); ok {
+				effort = parsed
+			}
+		case "reasoning_mode":
+			if parsed, ok := ParseReasoningMode(val); ok {
+				mode = parsed
+			}
+		}
+	}
+	return effort, mode
+}
+
+func readFrozenReasoning(runDir string) (string, string) {
+	raw, err := os.ReadFile(filepath.Join(runDir, "config.frozen.json"))
+	if err != nil {
+		return "", ""
+	}
+	var doc struct {
+		Generation struct {
+			ReasoningEffort string `json:"reasoning_effort"`
+			ReasoningMode   string `json:"reasoning_mode"`
+		} `json:"generation"`
+	}
+	if json.Unmarshal(raw, &doc) != nil {
+		return "", ""
+	}
+	var effort, mode string
+	if doc.Generation.ReasoningEffort != "" {
+		if parsed, ok := ParseReasoningEffort(doc.Generation.ReasoningEffort); ok {
+			effort = parsed
+		}
+	}
+	if doc.Generation.ReasoningMode != "" {
+		if parsed, ok := ParseReasoningMode(doc.Generation.ReasoningMode); ok {
+			mode = parsed
+		}
+	}
+	return effort, mode
+}

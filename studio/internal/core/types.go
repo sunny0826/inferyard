@@ -177,6 +177,8 @@ type RunExit struct {
 type RunTask struct {
 	CandidatePath    *string           `json:"candidate_path,omitempty"`
 	EngineFamily     string            `json:"engine_family,omitempty"`
+	ReasoningEffort  string            `json:"reasoning_effort,omitempty"`
+	ReasoningMode    string            `json:"reasoning_mode,omitempty"`
 	PreparationStage string            `json:"preparation_stage,omitempty"`
 	AwaitingService  bool              `json:"awaiting_service,omitempty"`
 	ContextSpeed     *ContextSpeedTask `json:"context_speed,omitempty"`

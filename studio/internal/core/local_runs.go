@@ -93,7 +93,7 @@ func (s *Service) StartCandidateRuns(req CandidateRunsRequest) ([]RunTask, *ApiE
 				local.reused = &copy
 			}
 		}
-		task := RunTask{TaskId: uuid(), Kind: "run", State: "starting", Queued: true, Bundle: &bundle, CreatedAt: now(), CandidatePath: &path, EngineFamily: description.Family}
+		task := RunTask{TaskId: uuid(), Kind: "run", State: "starting", Queued: true, Bundle: &bundle, CreatedAt: now(), CandidatePath: &path, EngineFamily: description.Family, ReasoningEffort: description.Generation.ReasoningEffort, ReasoningMode: description.Generation.ReasoningMode}
 		entries = append(entries, &runEntry{Task: task, root: root, binary: *probe.Path, Resources: []ResourceSample{}, local: local, initialExclusivity: normalizeInitialExclusivity(req.InitialExclusivity)})
 	}
 	s.mu.Lock()

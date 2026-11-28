@@ -269,3 +269,57 @@ def test_local_mlx_server_accepts_chat_template_kwargs() -> None:
         mlx.validate_request({**base, "chat_template_kwargs": {"enable_thinking": "yes"}}, "m")
     with pytest.raises(ValueError, match="invalid_request"):
         mlx.validate_request({**base, "chat_template_kwargs": {"other": True}}, "m")
+
+
+def test_mlx_svg_reasoning_mode_on_reserves_prompt_headroom(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setattr("platform.system", lambda: "Darwin")
+    monkeypatch.setattr("platform.machine", lambda: "arm64")
+    monkeypatch.setattr(
+        "inferyard.config.local_engines.candidate.environment_snapshot",
+        lambda: {"ac_online": True},
+    )
+
+    venv_py = tmp_path / "mlx-venv" / "bin" / "python"
+    venv_py.parent.mkdir(parents=True)
+    venv_py.write_bytes(b"#!/bin/sh\n")
+    venv_py.chmod(0o755)
+    (tmp_path / "mlx-venv" / "pyvenv.cfg").write_text("home = /usr/bin\n", encoding="utf-8")
+    inst_path = tmp_path / "mlx-inst.json"
+    inst_path.write_bytes(json_bytes(build_installation("mlx-lm", venv_py)))
+
+    model_dir = tmp_path / "qwen3-mlx"
+    model_dir.mkdir()
+    (model_dir / "tokenizer_config.json").write_text(
+        '{"chat_template": "{{ messages }}"}', encoding="utf-8"
+    )
+    svg_bundle = _write_bundle(tmp_path / "zh-svg-pelican.json", name="zh-svg-pelican.json")
+
+    out_dir = tmp_path / "cand-mlx-svg"
+    create_candidate(
+        SimpleNamespace(
+            installation=inst_path,
+            model_path=model_dir,
+            bundle_path=svg_bundle,
+            out=out_dir,
+            output_root=tmp_path / "results",
+            context_size=None,
+            served_model=None,
+            port=48857,
+            server_pid=None,
+            model_repo=None,
+            model_revision=None,
+            max_tokens=None,
+            timeout_seconds=None,
+            prompt_cache=None,
+            reasoning_effort=None,
+            reasoning_mode="on",
+        )
+    )
+    loaded = load_config(out_dir / "candidate.toml").config.to_dict()
+    assert loaded["conditions"]["context_size"] == 8192
+    assert loaded["generation"]["reasoning_mode"] == "on"
+    assert loaded["generation"]["max_tokens"] == 7936
+    assert loaded["generation"]["max_tokens"] < loaded["conditions"]["context_size"]

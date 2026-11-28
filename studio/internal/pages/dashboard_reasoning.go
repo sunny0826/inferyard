@@ -54,21 +54,24 @@ func reasoningModeSummaryLabel(mode string) string {
 	return l10n.TR("dashboard.exec.thinking_none")
 }
 
-func (s *viewState) activeThinkingBadge(c *ui.Context) (string, stateKind) {
-	if e := s.localEngine(); e != nil && e.Family == "polystrata" {
-		effort := s.effectiveReasoningEffort()
+func taskThinkingBadge(c *ui.Context, task core.RunTask) (string, stateKind, bool) {
+	if strings.TrimSpace(task.ReasoningEffort) != "" {
+		effort := core.NormalizeReasoningEffort(task.ReasoningEffort)
 		kind := stateNeutral
 		if effort != core.ReasoningEffortNone {
 			kind = stateInfo
 		}
-		return trf(c, "dashboard.exec.thinking_badge", "state", reasoningSummaryLabel(effort)), kind
+		return trf(c, "dashboard.exec.thinking_badge", "state", reasoningSummaryLabel(effort)), kind, true
 	}
-	mode := s.effectiveReasoningMode()
-	kind := stateNeutral
-	if mode == core.ReasoningModeOn {
-		kind = stateInfo
+	if strings.TrimSpace(task.ReasoningMode) != "" {
+		mode := core.NormalizeReasoningMode(task.ReasoningMode)
+		kind := stateNeutral
+		if mode == core.ReasoningModeOn {
+			kind = stateInfo
+		}
+		return trf(c, "dashboard.exec.thinking_badge", "state", reasoningModeSummaryLabel(mode)), kind, true
 	}
-	return trf(c, "dashboard.exec.thinking_badge", "state", reasoningModeSummaryLabel(mode)), kind
+	return "", stateNeutral, false
 }
 
 func (s *viewState) benchmarkReasoningView(c *ui.Context) {
