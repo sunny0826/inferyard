@@ -17,6 +17,7 @@ from inferyard.cli.commands import (
     extensions,
     length,
     model,
+    node,
     overhead,
     public,
     repetition,
@@ -80,4 +81,5 @@ def parser() -> Parser:
     assets.add_commands(commands)
     serve.add_commands(commands)
     service.add_commands(commands)
+    node.add_commands(commands)
     return result
