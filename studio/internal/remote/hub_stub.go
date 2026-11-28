@@ -9,9 +9,6 @@ func NewHub(cfg HubConfig) (Hub, error) {
 	if strings.TrimSpace(cfg.DataDir) == "" {
 		return nil, fmt.Errorf("remote hub data directory is required")
 	}
-	if cfg.ListenAddr == "" {
-		cfg.ListenAddr = fmt.Sprintf(":%d", DefaultHubPort)
-	}
 	if cfg.HTTPJoinAddr == "" {
 		cfg.HTTPJoinAddr = fmt.Sprintf(":%d", DefaultHubPort+1)
 	}

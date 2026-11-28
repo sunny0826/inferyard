@@ -73,25 +73,7 @@ func (h *testHub) dialTLS(t *testing.T, certificate *tls.Certificate) (*tls.Conn
 
 func (h *testHub) beginPairing(t *testing.T) (PairingSession, *tls.Conn, *bufio.Reader, PairingRequest) {
 	t.Helper()
-	session, err := h.hub.StartPairingSession(context.Background(), PairingSessionOptions{TTL: time.Minute})
-	if err != nil {
-		t.Fatal(err)
-	}
-	conn, reader := h.dialTLS(t, nil)
-	if _, err := io.WriteString(conn, HandshakePairPrefix+"\n"); err != nil {
-		t.Fatal(err)
-	}
-	if err := writeJSONLine(conn, pairHello{
-		Code: session.Code, Hostname: "gpu-node", OS: "linux", Arch: "amd64",
-		Platform: "linux/amd64", CLIVersion: "1.2.3", HardwareSummary: "Test GPU",
-	}); err != nil {
-		t.Fatal(err)
-	}
-	request := h.waitEvent(t, HubEventPairingRequested).Pairing
-	if request == nil {
-		t.Fatal("missing pairing request")
-	}
-	return session, conn, reader, *request
+	return h.beginPairingWithTTL(t, time.Minute)
 }
 
 type pairingResponse struct {

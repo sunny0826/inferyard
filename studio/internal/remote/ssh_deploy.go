@@ -106,12 +106,20 @@ func deployRemoteAgent(client *ssh.Client, issued issuedClientCredentials, versi
 
 func startRemoteAgent(client *ssh.Client, nodeID string, reversePort int, version string) error {
 	directory := "$HOME/.inferyard/remote/" + nodeID
+	pidFile := remoteHomeQuote(directory + "/agent.pid")
 	uv := "\"$HOME/.local/share/inferyard/bin/uv\""
-	command := "UV=" + uv + "; [ -x \"$UV\" ] || UV=$(command -v uv); " +
+	command := "umask 077; UV=" + uv + "; [ -x \"$UV\" ] || UV=$(command -v uv); " +
+		"if [ -f " + pidFile + " ]; then " +
+		"old_pid=$(cat " + pidFile + " 2>/dev/null || true); " +
+		"case \"$old_pid\" in ''|*[!0-9]*) ;; *) " +
+		"old_command=$(ps -p \"$old_pid\" -o command= 2>/dev/null || true); " +
+		"case \"$old_command\" in *\"inferyard agent run\"*\"" + directory + "\"*) " +
+		"kill -TERM \"$old_pid\" 2>/dev/null || true ;; esac ;; esac; fi; " +
 		"nohup \"$UV\" tool run --from " + shellQuote(packageSpec(version)) + " inferyard agent run " +
 		"--state-dir " + remoteHomeQuote(directory) + " " +
 		fmt.Sprintf("--hub 127.0.0.1:%d ", reversePort) +
-		"> " + remoteHomeQuote(directory+"/agent.log") + " 2>&1 < /dev/null &"
+		"> " + remoteHomeQuote(directory+"/agent.log") + " 2>&1 < /dev/null & " +
+		"agent_pid=$!; printf '%s\\n' \"$agent_pid\" > " + pidFile + "; chmod 600 " + pidFile
 	_, err := runRemoteCommand(client, command, nil)
 	if err != nil {
 		return fmt.Errorf("start remote InferYard agent: %w", err)

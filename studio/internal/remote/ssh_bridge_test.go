@@ -2,8 +2,11 @@ package remote
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +15,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"golang.org/x/crypto/ssh"
 )
 
 type sshConnectResult struct {
@@ -67,8 +72,14 @@ func TestSSHHostKeySaveDeployAndReverseBridge(t *testing.T) {
 		}
 	}
 	log := strings.Join(server.commandLog(), "\n")
-	if !strings.Contains(log, "authorized_keys") || !strings.Contains(log, "agent run --state-dir ") || !strings.Contains(log, "--hub 127.0.0.1:") {
-		t.Fatalf("deployment log = %s", log)
+	fragments := []string{
+		"authorized_keys", "agent run --state-dir ", "--hub 127.0.0.1:",
+		"agent.pid", "kill -TERM", "agent_pid=$!", "chmod 600",
+	}
+	for _, fragment := range fragments {
+		if !strings.Contains(log, fragment) {
+			t.Fatalf("deployment log missing %q: %s", fragment, log)
+		}
 	}
 	pool := x509.NewCertPool()
 	if !pool.AppendCertsFromPEM(files["ca.pem"]) {
@@ -126,5 +137,64 @@ func TestSSHHostKeyTrustOnceAndReject(t *testing.T) {
 				t.Fatalf("known_hosts unexpectedly written: %v", statErr)
 			}
 		})
+	}
+}
+
+func TestProxyJumpDoesNotReceiveTargetPassword(t *testing.T) {
+	t.Setenv("SSH_AUTH_SOCK", "")
+	server := startMockSSHServer(t)
+	var passwordAttempts []string
+	server.config.PasswordCallback = func(_ ssh.ConnMetadata, password []byte) (*ssh.Permissions, error) {
+		server.mu.Lock()
+		passwordAttempts = append(passwordAttempts, string(password))
+		server.mu.Unlock()
+		return nil, fmt.Errorf("password authentication disabled")
+	}
+	server.config.PublicKeyCallback = func(_ ssh.ConnMetadata, _ ssh.PublicKey) (*ssh.Permissions, error) {
+		return nil, fmt.Errorf("test key rejected")
+	}
+	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	der, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyPath := filepath.Join(t.TempDir(), "jump_key")
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
+	if err := os.WriteFile(keyPath, keyPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	h := startTestHub(t)
+	parsed := ParsedSSHCommand{
+		User: "root", Host: "target.example.com", Port: 22,
+		ProxyJump: fmt.Sprintf("-i %s -p %d root@127.0.0.1", keyPath, listenerPort(server.addr())),
+	}
+	result := make(chan error, 1)
+	go func() {
+		_, _, err := h.hub.dialSSH(context.Background(), parsed, &ssh.ClientConfig{}, []byte("target-secret"))
+		result <- err
+	}()
+	request := h.waitEvent(t, HubEventHostKeyRequested).HostKey
+	if request == nil {
+		t.Fatal("missing jump host key request")
+	}
+	if err := h.hub.DecideHostKey(HostKeyDecision{RequestID: request.RequestID, Option: HostKeyTrustOnce}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-result:
+		if err == nil {
+			t.Fatal("jump authentication unexpectedly succeeded")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("jump authentication did not resolve")
+	}
+	server.mu.Lock()
+	attempts := append([]string(nil), passwordAttempts...)
+	server.mu.Unlock()
+	if len(attempts) != 0 {
+		t.Fatalf("jump received target password attempts: %q", attempts)
 	}
 }

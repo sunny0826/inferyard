@@ -141,7 +141,7 @@ func (h *hub) dialSSH(ctx context.Context, parsed ParsedSSHCommand, config *ssh.
 	if err != nil {
 		return nil, nil, err
 	}
-	jumpAuth, cleanup, err := h.sshAuthMethods(jump, password, sshNodeID(jump))
+	jumpAuth, cleanup, err := h.sshAuthMethods(jump, nil, sshNodeID(jump))
 	if err != nil {
 		return nil, nil, err
 	}

@@ -54,6 +54,9 @@ func ParseSSHCommand(raw string) (ParsedSSHCommand, error) {
 			}
 			break
 		}
+		if len(token) < 2 {
+			return ParsedSSHCommand{}, ErrInvalidSSHCommand
+		}
 		name, value, hasValue := token[:2], "", false
 		if len(token) > 2 {
 			value, hasValue = token[2:], true

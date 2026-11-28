@@ -79,3 +79,24 @@ func TestParseSSHCommandRejectsInjectionAndRemoteCommands(t *testing.T) {
 		})
 	}
 }
+
+func TestParseSSHCommandRejectsIncompleteInput(t *testing.T) {
+	tests := []struct {
+		name    string
+		command string
+	}{
+		{name: "empty", command: ""},
+		{name: "lone dash", command: "ssh -"},
+		{name: "missing port", command: "ssh -p"},
+		{name: "missing identity", command: "ssh -i"},
+		{name: "missing proxy jump", command: "ssh -J"},
+		{name: "missing login", command: "ssh -l"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := ParseSSHCommand(test.command); !errors.Is(err, ErrInvalidSSHCommand) {
+				t.Fatalf("error = %v", err)
+			}
+		})
+	}
+}
