@@ -128,11 +128,21 @@ func (s *viewState) contentView(c *ui.Context) {
 				}
 				switch page {
 				case "services":
-					s.servicesView(c)
+					if s.remoteView() {
+						s.remoteServicesView(c)
+					} else {
+						s.servicesView(c)
+					}
 				case "library":
-					s.libraryView(c)
+					if s.remoteView() {
+						s.remoteLibraryView(c)
+					} else {
+						s.libraryView(c)
+					}
 				case "benchmarks":
-					if s.detailID != "" {
+					if s.remoteView() {
+						s.remoteBenchmarksView(c)
+					} else if s.detailID != "" {
 						s.detailView(c)
 					} else {
 						s.benchmarksView(c)
@@ -177,6 +187,7 @@ func (s *viewState) contentView(c *ui.Context) {
 	s.serviceDrawersAndDialogs(c)
 	s.updateDialog(c)
 	s.updateReadyPrompt(c)
+	s.nodesDialogs(c)
 	s.studioNotifications(c)
 	studioToasts(c)
 }

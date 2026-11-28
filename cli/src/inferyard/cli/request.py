@@ -50,6 +50,13 @@ def build_request(
 
         config_loader = load_config
     values = vars(args)
+    if args.command == "join":
+        from inferyard.contracts.node_protocol import normalize_pair_code
+
+        try:
+            values["code"] = normalize_pair_code(values["code"])
+        except ValueError as exc:
+            raise ArgumentError(str(exc)) from exc
     if args.command == "plan" and bool(values.get("preset")) != bool(values.get("config")):
         raise ArgumentError("--config requires --preset and vice versa")
     if args.command == "compare-plan":

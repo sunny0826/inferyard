@@ -34,10 +34,16 @@ func (s *viewState) readReport(reference string) (*core.ReportIndex, *core.ApiEr
 	if s.service == nil {
 		return nil, core.Err("not_found")
 	}
+	if nodeID, reportID, ok := remoteReportReferenceParts(reference); ok {
+		return s.service.RemoteReportIndex(nodeID, reportID)
+	}
 	return s.service.ReportIndex(reference)
 }
 
 func (s *viewState) hasCachedReportExclusivity(reference string) bool {
+	if _, _, remote := remoteReportReferenceParts(reference); remote {
+		return false
+	}
 	if s.reportExclusivities == nil || reference == "" {
 		return false
 	}
@@ -54,6 +60,9 @@ func (s *viewState) hasCachedReportExclusivity(reference string) bool {
 }
 
 func (s *viewState) storeReportExclusivity(reference, status string) {
+	if _, _, remote := remoteReportReferenceParts(reference); remote {
+		return
+	}
 	if reference == "" || status == "" {
 		return
 	}
@@ -73,17 +82,18 @@ func (s *viewState) openReport(reference string) {
 	s.historyDetailPath = ""
 	s.closeOpenedReport()
 	s.selected = "reports"
+	_, _, remoteRef := remoteReportReferenceParts(reference)
 
 	if s.preview != nil || (s.win == nil && s.updateWindow == nil) {
 		index, e := s.readReport(reference)
-		if s.preview == nil && s.service != nil && reference != "" && !s.hasCachedReportExclusivity(reference) {
+		if s.preview == nil && s.service != nil && !remoteRef && reference != "" && !s.hasCachedReportExclusivity(reference) {
 			s.storeReportExclusivity(reference, s.service.ReportExclusivity(reference))
 		}
 		s.openedReport = &reportViewState{reference: reference, index: index, failure: e}
 		return
 	}
 
-	if s.service != nil {
+	if s.service != nil && !remoteRef {
 		if cached, ok := s.service.CachedReportIndex(reference); ok {
 			s.openedReport = &reportViewState{reference: reference, index: cached}
 			if reference != "" && !s.hasCachedReportExclusivity(reference) {
@@ -100,7 +110,7 @@ func (s *viewState) openReport(reference string) {
 	s.reportLoadSeq++
 	seq := s.reportLoadSeq
 	s.openedReport = &reportViewState{reference: reference, loading: true, loadSeq: seq}
-	needExcl := s.service != nil && reference != "" && !s.hasCachedReportExclusivity(reference)
+	needExcl := s.service != nil && !remoteRef && reference != "" && !s.hasCachedReportExclusivity(reference)
 	svc := s.service
 	go func() {
 		index, e := s.readReport(reference)

@@ -40,6 +40,7 @@ Results stay on your machine. Frozen rules score the quality tasks.
   - **Desktop UX & self-update:** Light / Dark / Follow System themes with live visual previews, 5 selectable accent color themes (`Slate Cobalt` default), and 5 UI font size presets (`Smaller` / `Small` / `Default` / `Large` / `Larger`), compact icon-driven action buttons with tooltips and preserved accessibility labels, system tray integration with live running-engine status (status badge icon, title, tooltip, active service list, and close-to-tray when enabled in Settings), configurable default model download source (`ModelScope` default / `HuggingFace`), scoped HTTP(S) download proxy, and automatic GitHub Releases update checks with one-click SHA-256 verified self-update.
   - **Hardware-aware downloads & assets:** Starter recommendations prioritizing **PolyStrata** on Apple Silicon, NVIDIA CUDA, and AMD ROCm hardware (with one-click 4-stage guided setup/recovery and `llama.cpp` fallback), extensible multi-engine catalog with concise engine descriptions and one-click installs (`PolyStrata`, `llama.cpp`, `mlx-lm` / `vLLM` managed Python venvs, `LM Studio`), unified **Managed** vs. **Linked** lifecycle tracking with safe inspected uninstall for all Studio-installed engines and downloaded models, Hugging Face & ModelScope mirrors, custom URL resolution (`model resolve`), multi-shard GGUF and directory models with streaming progress and resume, plus multi-root model directories.
   - **Tasks & live monitoring:** Automatic CLI version check and automatic CLI upgrade alongside Studio updates (`uv >= 0.13.6`, surfacing an error banner only if the upgrade fails), standard bundles and **Long-Context Speed** testing (`zh-context-speed`: 64K / 128K / 256K), an engine status card with direct Web UI link, live **Resource Curves**, in-app notification inbox, OS notifications, and model-grouped reports.
+  - **Multi-node remote benchmarking & port forwarding:** Connect additional Windows, Linux, or macOS machines to Studio's embedded Ed25519 mTLS 1.3 Hub via a zero-form one-line join command (with explicit pairing confirmation and user-level autostart) or a pasted cloud `ssh` command (with explicit three-way HostKey confirmation and `SSH -R` reverse bridging). Run remote benchmarks over each node's own loopback `127.0.0.1` with cooperative cancellation, expose remote model services locally on `127.0.0.1:1800x/v1` via on-demand mTLS tunnels, and compare local and imported remote `studio.json` reports side by side.
 - **Scriptable CLI subproject.** The [CLI](cli/README.md) subproject
   (`inferyard`) handles preflight checks, host locking, frozen execution,
   evidence sealing, and report projection—invoked automatically by Studio or
@@ -86,7 +87,7 @@ The table describes implementation scope. Automated native desktop UI verificati
   model services it launches (without auto-restarting them) and can bind a
   local service you started yourself after PID and start-time checks.
 - **Explicit non-goals.** InferYard does not use a model as a judge, produce a
-  single cross-dimension ranking, schedule across multiple machines, or test
+  single cross-dimension ranking, run a cloud cluster scheduler, or test
   image/audio models.
 
 ## Documentation

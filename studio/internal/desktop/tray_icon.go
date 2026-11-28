@@ -109,6 +109,7 @@ func buildTrayMenu(status TrayEngineStatus, onShow, onQuit func()) *mygo.Menu {
 	for _, service := range status.Services {
 		items = append(items, &mygo.MenuItem{Label: trayServiceLabel(service), Disabled: true})
 	}
+	items = appendTrayTunnelItems(items, status.Tunnels)
 	items = append(items,
 		mygo.Separator(),
 		&mygo.MenuItem{Label: l10n.TR("tray.show_window"), Click: func(*mygo.MenuItem, *mygo.Window) { onShow() }},
@@ -163,6 +164,9 @@ func trayStateLabel(state TrayEngineState) string {
 }
 
 func trayTitle(status TrayEngineStatus) string {
+	if (status.State == "" || status.State == TrayEngineIdle) && len(status.Tunnels) > 0 {
+		return l10n.TRf("nodes.tray.tunnels", "count", len(status.Tunnels))
+	}
 	if status.State == "" || status.State == TrayEngineIdle {
 		return ""
 	}
@@ -174,6 +178,9 @@ func trayTitle(status TrayEngineStatus) string {
 
 func trayToolTip(status TrayEngineStatus) string {
 	app := l10n.TR("app.name")
+	if (status.State == "" || status.State == TrayEngineIdle) && len(status.Tunnels) > 0 {
+		return app + "\n" + trayTunnelTooltip(status.Tunnels)
+	}
 	if status.State == "" || status.State == TrayEngineIdle {
 		return l10n.TRf("tray.tooltip.idle", "app", app)
 	}

@@ -86,6 +86,11 @@ var previewScenes = []struct {
 	{"preview.scene.update_ready", previewUpdateReadyToApply},
 	{"preview.scene.update_error", previewUpdateError},
 	{"preview.scene.design_system", previewDesignSystemScene},
+	{"preview.scene.nodes_pairing", previewNodePairingScene},
+	{"preview.scene.nodes_pairing_confirm", previewNodePairingConfirmScene},
+	{"preview.scene.nodes_ssh_hostkey", previewNodeSSHScene},
+	{"preview.scene.nodes_remote_services", previewNodeRemoteServicesScene},
+	{"preview.scene.nodes_report_compare", previewNodeReportsScene},
 }
 
 func previewDenseResources(s *viewState) {

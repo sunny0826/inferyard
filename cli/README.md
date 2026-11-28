@@ -40,6 +40,8 @@ uv tool upgrade inferyard
 | `inferyard assets scan` | Read-only scan of local model and engine directories |
 | `inferyard serve prepare` | Generate a loopback `serve-plan.json` (`serve_plan` schema) to launch a local OpenAI-compatible model service without creating a benchmark task (`--model`, `--installation \| --engine \| --runtime-receipt`, `--context-size`, `--port`, `--out`, `--json`) |
 | `inferyard service discover` | Read-only discovery of running loopback inference services (`/health`, `/v1/models`) |
+| `inferyard join` | Pair this machine with an InferYard Studio mTLS 1.3 Hub using a one-time 6-digit code and pinned CA SPKI SHA-256 fingerprint (`--hub`, `--code`, `--ca-sha256`, `--state-dir`, `--no-autostart`, `--source-hint`) |
+| `inferyard agent run\|install-autostart\|uninstall-autostart` | Run the resident stdlib-`ssl` mTLS 1.3 remote node agent (control RPCs, cooperative `cancel.json` benchmark jobs, no-auto-restart service supervisor, on-demand loopback tunnels) or manage user-level autostart |
 | `inferyard plan` | Preview (`--dry-run`) or freeze an experiment plan, including `--preset context-speed` for `zh-context-speed` |
 | `inferyard probe` / `run` / `resume` | Probe a bound service, run a serial or planned benchmark, or resume unexecuted cases |
 | `inferyard verify` / `report` / `speed-results` | Verify sealed runs offline, build a combined `studio.json` report, or read verified context-speed batch results |

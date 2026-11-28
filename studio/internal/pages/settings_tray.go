@@ -78,6 +78,7 @@ func (s *viewState) traySettingsView(c *ui.Context) {
 			s.changeKeepServicesOnQuit(keep)
 		}
 	})
+	s.nodeCleanupSettingsView(c)
 }
 
 func (s *viewState) currentMinimizeToTraySeq() uint64 {

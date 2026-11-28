@@ -39,7 +39,14 @@ def run(
             raise ArgumentError("a command is required; use --help")
         with command_validation(enabled=command in ("run", "resume", "plan", "probe")):
             request = request_factory(args)
-            handler = (handlers or {}).get(request.command, backend)
+            handler = (handlers or {}).get(request.command)
+            if handler is None:
+                if request.command in ("join", "agent run", "agent install-autostart", "agent uninstall-autostart"):
+                    from inferyard.application.dispatcher import execute as node_backend
+
+                    handler = node_backend
+                else:
+                    handler = backend
             code, result = handler(request)
         if code not in (0, 2, 3, 4, 130) or result.command != request.command:
             raise RuntimeError("invalid backend result")

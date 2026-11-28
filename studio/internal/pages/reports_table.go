@@ -22,7 +22,8 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 		})
 		return
 	}
-	if len(s.reports) == 0 {
+	reports := s.reportSummaries()
+	if len(reports) == 0 {
 		emptyGuideCard(c, emptyGuideOptions{
 			Icon:        reicon.FileText,
 			Title:       tr(c, "reports.list.empty_title"),
@@ -35,15 +36,8 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 		return
 	}
 	ui.Column(c).FillWidth().Gap(t.Density.Stack).Children(func() {
-		for _, report := range s.reports {
-			modelHint := ""
-			if !report.Unreadable {
-				modelHint = s.modelIconHint(reportHeadingFor(c, report))
-				if len(report.RunSummaries) > 0 {
-					modelHint += " " + s.modelIconHint(reportText(report.RunSummaries[0].Model))
-				}
-			}
-			reportCard(c, report, modelHint, s.reportExclusivity(report.ReportId), func() { s.openReport(report.ReportId) })
+		for _, report := range reports {
+			s.unifiedReportCard(c, report)
 		}
 	})
 }
