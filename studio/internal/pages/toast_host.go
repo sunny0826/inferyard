@@ -43,11 +43,6 @@ type toastRenderData struct {
 	ShowClose bool
 }
 
-type toastSheenState struct {
-	phase int
-	start time.Time
-}
-
 type toastCountdownState struct {
 	phase     int
 	startedAt time.Time
@@ -218,7 +213,6 @@ func (s *viewState) flushToasts(c *ui.Context) {
 
 func studioToasts(c *ui.Context) {
 	t := tokens(c)
-	dark := c.Theme().Dark
 	reduced := c.Preferences().ReduceMotion
 	const topInset float32 = 8
 
@@ -231,17 +225,6 @@ func studioToasts(c *ui.Context) {
 		exitMotion = &ui.Motion{Opacity: 0}
 		exitDuration = 150 * time.Millisecond
 		resizeDuration = 150 * time.Millisecond
-	}
-
-	surfaceFrom, surfaceTo := ui.Hex("#ffffff"), ui.Hex("#f7f9fc")
-	borderColor := ui.RGBA(214, 219, 227, .95)
-	shadowPrimary := ui.RGBA(17, 24, 39, .08)
-	shadowSecondary := ui.RGBA(17, 24, 39, .05)
-	if dark {
-		surfaceFrom, surfaceTo = t.Color.Elevated, ui.Hex("#282828")
-		borderColor = t.Color.BorderDefault
-		shadowPrimary = ui.RGBA(0, 0, 0, .30)
-		shadowSecondary = ui.RGBA(0, 0, 0, .18)
 	}
 
 	ui.ToastViewportBase(c, func(viewport ui.Element, toasts []ui.Toast) {
@@ -269,42 +252,29 @@ func studioToasts(c *ui.Context) {
 		if data.ShowClose || toast.Action != "" {
 			padRight = t.Density.Row
 		}
-		pill := parts.Root.MinHeight(40).
-			Padding(t.Density.Row, padRight, t.Density.Row, t.Density.Row).
-			Radius(t.Radius.LG).Clip().
-			LinearGradient(ui.LinearGradient{
-				From:  surfaceFrom,
-				To:    surfaceTo,
-				Angle: 180,
-			}).
-			Border(1, borderColor).
-			Shadow(0, 16, 36, 0, shadowPrimary).
-			Shadow(0, 3, 10, 0, shadowSecondary).
-			Transition(ui.ElementTransition{
-				Duration:     resizeDuration,
-				Ease:         toastResizeEase,
-				ExitDuration: exitDuration,
-				ExitEase:     ui.EaseIn,
-				Width:        true,
-				Colors:       reduced,
-				Enter:        enterMotion,
-				Exit:         exitMotion,
-			})
-
-		sheenState := ui.Local(pill, "sheen", func() toastSheenState { return toastSheenState{} })
-		if data.Sheen && sheenState.phase != data.Phase {
-			sheenState.phase = data.Phase
-			sheenState.start = time.Now()
-		}
+		pill := applyShadow(
+			parts.Root.MinHeight(t.Control.MD+4).MaxWidth(560).
+				Padding(t.Density.Row, padRight, t.Density.Row, t.Density.Row).
+				Radius(t.Radius.Floating).Clip().
+				Background(t.Color.Elevated).
+				Border(1, t.Color.BorderDefault),
+			t.Elevation.MD,
+		).Transition(ui.ElementTransition{
+			Duration:     resizeDuration,
+			Ease:         toastResizeEase,
+			ExitDuration: exitDuration,
+			ExitEase:     ui.EaseIn,
+			Width:        true,
+			Colors:       reduced,
+			Enter:        enterMotion,
+			Exit:         exitMotion,
+		})
 
 		pill.Children(func() {
-			ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
+			ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).MinWidth(0).Children(func() {
 				studioToastIcon(c, pill, data, paused, reduced)
 				studioToastBody(c, parts, toast, data, reduced)
 			})
-			if data.Sheen && !reduced {
-				studioToastSheenOverlay(c, sheenState, dark)
-			}
 		})
 	})
 }
@@ -369,14 +339,14 @@ func studioToastBody(c *ui.Context, parts ui.ToastParts, toast ui.Toast, data to
 		}
 	}
 
-	innerRadius := concentricRadius(t.Radius.LG, t.Density.Row)
+	innerRadius := concentricRadius(t.Radius.Floating, t.Density.Row)
 	ui.Row(c.Key(fmt.Sprintf("toast-body-%d", data.Phase))).
-		AlignItems(ui.Center).Gap(t.Density.Row).Transition(contentTransition).Children(func() {
-		ui.Text(c, toast.Title).FontSize(14).FixedLineHeight(20).TextColor(t.Color.FgPrimary).SingleLine()
+		AlignItems(ui.Center).Gap(t.Density.Row).MinWidth(0).Transition(contentTransition).Children(func() {
+		ui.Text(c, toast.Title).FontSize(t.Type.Body).TextColor(t.Color.FgPrimary).MaxWidth(420).MinWidth(0).SingleLine()
 		if toast.Action != "" || data.ShowClose {
-			ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+			ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
 				if toast.Action != "" {
-					btn := parts.ActionButton().Height(28).Padding(0, t.Density.Stack).Radius(innerRadius).
+					btn := parts.ActionButton().MinHeight(t.Control.SM).Padding(0, t.Density.Stack).Radius(innerRadius).
 						AlignItems(ui.Center).Justify(ui.Center).Label(toast.Action)
 					if btn.Pressed() {
 						btn.Background(t.Color.AccentSelection)
@@ -384,12 +354,12 @@ func studioToastBody(c *ui.Context, parts ui.ToastParts, toast ui.Toast, data to
 						btn.Background(t.Color.AccentSubtleBg)
 					}
 					btn.Children(func() {
-						ui.Text(c, toast.Action).FontSize(13).Bold().TextColor(t.Color.Active.Fg).SingleLine()
+						ui.Text(c, toast.Action).FontSize(t.Type.Caption).Bold().TextColor(t.Color.Active.Fg).SingleLine()
 					})
 				}
 				if data.ShowClose {
 					closeLabel := tr(c, "common.toast.dismiss")
-					closeBtn := parts.CloseButton().Size(28, 28).Radius(innerRadius).
+					closeBtn := parts.CloseButton().Size(t.Control.SM, t.Control.SM).Radius(innerRadius).
 						AlignItems(ui.Center).Justify(ui.Center).Label(closeLabel)
 					if closeBtn.Hovered() {
 						closeBtn.Background(t.Color.SurfaceHover)
@@ -463,39 +433,7 @@ func studioCountdownRing(c *ui.Context, host ui.Element, data toastRenderData, p
 			p.AnimationFrame()
 		}
 	}).Children(func() {
-		ui.Text(c, fmt.Sprintf("%d", secs)).FontSize(10).Bold().FontFeatures("tnum").TextColor(t.Color.FgPrimary).SingleLine()
-	})
-}
-
-func studioToastSheenOverlay(c *ui.Context, state *toastSheenState, dark bool) {
-	radius := tokens(c).Radius.LG
-	ui.Box(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).PassThrough().Draw(func(p *ui.Painter, r ui.Rect) {
-		if state.start.IsZero() || r.W <= 0 || r.H <= 0 {
-			return
-		}
-		elapsed := time.Since(state.start)
-		const sheenDuration = 900 * time.Millisecond
-		if elapsed >= sheenDuration {
-			return
-		}
-		p.AnimationFrame()
-		progress := ui.EaseOut(float32(elapsed) / float32(sheenDuration))
-		bandW := max(48, r.W*0.38)
-		x := r.X - bandW + (r.W+bandW*2)*progress
-		alpha := float32(0.55)
-		if dark {
-			alpha = 0.14
-		}
-		p.Clip(r, radius, func() {
-			p.FillGradient(ui.Rect{X: x, Y: r.Y, W: bandW, H: r.H}, ui.LinearGradient{
-				Angle: 90,
-				Stops: []ui.GradientStop{
-					{Color: ui.RGBA(255, 255, 255, 0), At: 0},
-					{Color: ui.RGBA(255, 255, 255, alpha), At: 0.5},
-					{Color: ui.RGBA(255, 255, 255, 0), At: 1},
-				},
-			}, 0)
-		})
+		ui.Text(c, fmt.Sprintf("%d", secs)).FontSize(c.Theme().Rem(.80)).Bold().FontFeatures("tnum").TextColor(t.Color.FgPrimary).SingleLine()
 	})
 }
 

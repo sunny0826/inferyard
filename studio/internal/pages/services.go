@@ -17,7 +17,7 @@ func (s *viewState) servicesView(c *ui.Context) {
 	ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
 			s.header(c, tr(c, "services.page.title"))
-			ui.Text(c, s.servicesSummaryLine(c)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			ui.Text(c, s.servicesSummaryLine(c)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 		})
 		if needsSetup {
 			return
@@ -55,7 +55,7 @@ func (s *viewState) servicesView(c *ui.Context) {
 
 	ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
 		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			heading(c, tr(c, "services.section.discovered"), 3).Grow(1)
+			heading(c, tr(c, "services.section.discovered"), 3).Grow(1).MinWidth(0)
 			refreshIconButton(c, tr(c, "engine.discovery.refresh"), s.discovering).Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)
 		})
 		s.discoveredServicesSection(c)
@@ -151,7 +151,7 @@ func (s *viewState) renderRunningServiceCard(c *ui.Context, state core.EngineSta
 			toggleRow.Children(func() {
 				chevronBox(c, expanded)
 				modelIconBox(c, s.modelIconHint(modelName)+" "+state.Model, 28, innerR)
-				ui.Text(c, modelName).Bold().FontSize(t.Type.CardTitle).SingleLine()
+				ui.Text(c, modelName).Bold().FontSize(t.Type.CardTitle).MinWidth(0).SingleLine()
 				if engineTitle != "" {
 					enginePillWithHint(c, engineTitle, state.Family+" "+state.Adapter+" "+s.engineIconHint(engineTitle)+" "+state.Executable)
 				}

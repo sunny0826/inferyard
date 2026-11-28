@@ -20,12 +20,20 @@ func statusBadge(c *ui.Context, label string, color ui.Color) ui.Element {
 	t := tokens(c)
 	background, foreground := badgeSurfaceColors(theme, color)
 	badge := components.Badge(c, label).
-		Padding(t.Density.Tight, t.Density.Row).Radius(t.Radius.Full).
+		Shrink(0).Padding(t.Density.Tight, t.Density.Row).Radius(t.Radius.Full).
 		TextColor(foreground).Background(background)
 	if c.Preferences().HighContrast {
 		badge.Background(theme.Surface).Border(1, color)
 	}
 	return badge
+}
+
+func solidContrastFg(solid ui.Color) ui.Color {
+	lum := 0.2126*float64(solid.R) + 0.7152*float64(solid.G) + 0.0722*float64(solid.B)
+	if lum > 152 {
+		return ui.Hex("#111827")
+	}
+	return ui.Hex("#ffffff")
 }
 
 func badgeSurfaceColors(t *ui.Theme, tint ui.Color) (background, foreground ui.Color) {
@@ -71,19 +79,21 @@ func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 					Background(scale.SubtleBg).Border(1, scale.Border).
 					Description(trf(c, "common.phase.current", "label", label))
 				pill.Children(func() {
+					stepFontSize := c.Theme().Rem(.86)
 					ui.Box(c).Size(18, 18).Radius(t.Radius.Full).Shrink(0).
 						Background(scale.Solid).
 						AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-						ui.Text(c, stepNum).Bold().FontSize(11).FontFeatures("tnum").TextColor(c.Theme().Surface).SingleLine()
+						ui.Text(c, stepNum).Bold().FontSize(stepFontSize).FontFeatures("tnum").TextColor(solidContrastFg(scale.Solid)).SingleLine()
 					})
 					ui.Text(c, label).Bold().FontSize(t.Type.Caption).TextColor(scale.Fg).SingleLine()
 				})
 			default:
 				ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+					stepFontSize := c.Theme().Rem(.86)
 					ui.Box(c).Size(20, 20).Radius(t.Radius.Full).Shrink(0).
 						Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).
 						AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-						ui.Text(c, stepNum).FontSize(11).FontFeatures("tnum").TextColor(t.Color.FgTertiary).SingleLine()
+						ui.Text(c, stepNum).FontSize(stepFontSize).FontFeatures("tnum").TextColor(t.Color.FgTertiary).SingleLine()
 					})
 					ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary).SingleLine()
 				})
@@ -181,6 +191,7 @@ func selectField[T comparable](c *ui.Context, name, description string, selected
 			}
 		}
 		components.NativeSelect(c, selected, options).Trigger.
+			FillWidth().MinWidth(0).
 			MinHeight(t.Control.MD).
 			Padding(t.Density.Tight, c.Theme().Space(6), t.Density.Tight, t.Density.Stack).
 			Radius(t.Radius.Control).
@@ -197,12 +208,13 @@ func disabledSelectField(c *ui.Context, name, description, placeholder string) {
 		empty := ""
 		parts := components.NativeSelect[string](c, &empty, nil)
 		parts.Trigger.
+			FillWidth().MinWidth(0).
 			MinHeight(t.Control.MD).
 			Padding(t.Density.Tight, c.Theme().Space(6), t.Density.Tight, t.Density.Stack).
 			Radius(t.Radius.Control).
 			Label(name).Value(placeholder).
 			Children(func() {
-				components.Text(c, placeholder).TextColor(t.Color.FgSecondary).SingleLine()
+				components.Text(c, placeholder).TextColor(t.Color.FgSecondary).MinWidth(0).SingleLine()
 			})
 	})
 	if description != "" {

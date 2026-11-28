@@ -289,3 +289,18 @@ func TestDiscoveredServicesOmitsLimitationBanners(t *testing.T) {
 		}
 	}
 }
+
+func TestAddNodeDialogExitTransitionDoesNotPanic(t *testing.T) {
+	s := testState()
+	s.nodes.addOpen = true
+	tt := ui.NewTester(func(c *ui.Context) { s.nodesDialogs(c) }, 900, 700)
+	_ = tt.Image()
+	tt.Key(0, ui.KeyEscape)
+	for range 4 {
+		tt.Frame()
+		_ = tt.Image()
+	}
+	if s.nodes.addOpen {
+		t.Fatal("add node dialog stayed open after Escape")
+	}
+}

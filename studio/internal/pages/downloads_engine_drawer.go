@@ -9,6 +9,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
 )
 
@@ -76,9 +77,9 @@ func (s *viewState) downloadsEngineDrawer(c *ui.Context) {
 								ui.Text(c, note).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 							}
 							if cmd != "" {
-								applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Inset), materialInset).Children(func() {
-									ui.Text(c, cmd).Selectable().FontSize(t.Type.Caption)
-									outlineButton(c, tr(c, "downloads.action.copy_cmd")).OnClick(func() {
+								applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Inset), materialInset).Children(func() {
+									ui.Text(c, cmd).Grow(1).MinWidth(0).Selectable().FontSize(t.Type.Caption)
+									outlineIconButton(c, reicon.Copy, tr(c, "downloads.action.copy_cmd")).OnClick(func() {
 										s.copyDownloadText(c, tr(c, "downloads.copy_subject.install_cmd"), cmd)
 									})
 								})
@@ -133,49 +134,55 @@ func (s *viewState) engineDrawerConfigSection(
 			}
 		}
 		if len(releases) > 1 {
-			ui.Box(c.Key("downloads-drawer-ver-" + family.ID)).Children(func() {
-				chosenID := rel.ID
-				sel := studioSelect(c, &chosenID)
-				sel.Trigger.Label(tr(c, "downloads.engine_drawer.select_version")).Value(rel.Version + " · " + rel.Distribution).Children(func() {
-					ui.Text(c, rel.Version+" · "+rel.Distribution).SingleLine()
-				})
-				sel.Popup(func(ui.Element) {
-					components.ScrollView(c, components.ScrollViewOptions{}).Label(tr(c, "downloads.engine_drawer.version_list")).MaxHeight(220).Children(func() {
-						for _, candidate := range releases {
-							itemLabel := engineReleaseOptionLabel(candidate)
-							sel.Item(candidate.ID).Label(itemLabel).Children(func() {
-								ui.Text(c, itemLabel).SingleLine()
-							})
-						}
+			verLabel := tr(c, "downloads.engine_drawer.select_version")
+			ui.Field(c, verLabel, func() {
+				ui.Box(c.Key("downloads-drawer-ver-" + family.ID)).FillWidth().Children(func() {
+					chosenID := rel.ID
+					sel := studioSelect(c, &chosenID)
+					sel.Trigger.FillWidth().MinWidth(0).Label(verLabel).Value(rel.Version + " · " + rel.Distribution).Children(func() {
+						ui.Text(c, rel.Version+" · "+rel.Distribution).SingleLine()
 					})
+					sel.Popup(func(ui.Element) {
+						components.ScrollView(c, components.ScrollViewOptions{}).Label(tr(c, "downloads.engine_drawer.version_list")).MaxHeight(220).Children(func() {
+							for _, candidate := range releases {
+								itemLabel := engineReleaseOptionLabel(candidate)
+								sel.Item(candidate.ID).Label(itemLabel).Children(func() {
+									ui.Text(c, itemLabel).SingleLine()
+								})
+							}
+						})
+					})
+					if sel.Trigger.Changed() {
+						st.selectedRelease[family.ID] = chosenID
+						st.selectedBuild[family.ID] = ""
+					}
 				})
-				if sel.Trigger.Changed() {
-					st.selectedRelease[family.ID] = chosenID
-					st.selectedBuild[family.ID] = ""
-				}
 			})
 		}
 		if len(platforms) > 1 {
-			ui.Box(c.Key("downloads-drawer-plat-" + family.ID)).Children(func() {
-				chosenPlat := activePlatform
-				sel := studioSelect(c, &chosenPlat)
-				sel.Trigger.Label(tr(c, "downloads.engine_drawer.select_platform")).Value(core.PlatformLabel(activePlatform)).Children(func() {
-					ui.Text(c, core.PlatformLabel(activePlatform)).SingleLine()
-				})
-				sel.Popup(func(ui.Element) {
-					components.ScrollView(c, components.ScrollViewOptions{}).Label(tr(c, "downloads.engine_drawer.platform_list")).MaxHeight(220).Children(func() {
-						for _, plat := range platforms {
-							platLabel := core.PlatformLabel(plat)
-							sel.Item(plat).Label(platLabel).Children(func() {
-								ui.Text(c, platLabel).SingleLine()
-							})
-						}
+			platFieldLabel := tr(c, "downloads.engine_drawer.select_platform")
+			ui.Field(c, platFieldLabel, func() {
+				ui.Box(c.Key("downloads-drawer-plat-" + family.ID)).FillWidth().Children(func() {
+					chosenPlat := activePlatform
+					sel := studioSelect(c, &chosenPlat)
+					sel.Trigger.FillWidth().MinWidth(0).Label(platFieldLabel).Value(core.PlatformLabel(activePlatform)).Children(func() {
+						ui.Text(c, core.PlatformLabel(activePlatform)).SingleLine()
 					})
+					sel.Popup(func(ui.Element) {
+						components.ScrollView(c, components.ScrollViewOptions{}).Label(tr(c, "downloads.engine_drawer.platform_list")).MaxHeight(220).Children(func() {
+							for _, plat := range platforms {
+								platLabel := core.PlatformLabel(plat)
+								sel.Item(plat).Label(platLabel).Children(func() {
+									ui.Text(c, platLabel).SingleLine()
+								})
+							}
+						})
+					})
+					if sel.Trigger.Changed() {
+						st.selectedPlatform[family.ID] = chosenPlat
+						st.selectedBuild[family.ID] = ""
+					}
 				})
-				if sel.Trigger.Changed() {
-					st.selectedPlatform[family.ID] = chosenPlat
-					st.selectedBuild[family.ID] = ""
-				}
 			})
 		}
 		if len(builds) > 1 {
@@ -243,17 +250,17 @@ func (s *viewState) engineDrawerArtifactsSection(c *ui.Context, build core.Engin
 				}
 				ui.Text(c, shaLine).Selectable().FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 			}
-			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+			studioTooltipGroup(c, ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Tight), func() {
 				indexStr := strconv.Itoa(index)
-				outlineButton(c, tr(c, "downloads.engine_drawer.btn.copy_url")).Label(trf(c, "downloads.engine_drawer.copy_url_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
+				outlineIconButton(c, reicon.Copy, tr(c, "downloads.engine_drawer.btn.copy_url")).Label(trf(c, "downloads.engine_drawer.copy_url_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
 					s.copyDownloadText(c, tr(c, "downloads.engine_drawer.section.urls"), artifact.URL)
 				})
 				if sha := strings.TrimSpace(artifact.SHA256); sha != "" {
-					outlineButton(c, tr(c, "downloads.engine_drawer.btn.copy_sha256")).Label(trf(c, "downloads.engine_drawer.copy_sha256_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
+					outlineIconButton(c, reicon.Copy, tr(c, "downloads.engine_drawer.btn.copy_sha256")).Label(trf(c, "downloads.engine_drawer.copy_sha256_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
 						s.copyDownloadText(c, "SHA-256", sha)
 					})
 				}
-				outlineButton(c, tr(c, "downloads.engine_drawer.btn.open_link")).Label(trf(c, "downloads.engine_drawer.open_link_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
+				outlineIconButton(c, reicon.ExternalLink, tr(c, "downloads.engine_drawer.btn.open_link")).Label(trf(c, "downloads.engine_drawer.open_link_label", "buildId", build.ID, "index", indexStr)).OnClick(func() {
 					s.openDownloadURL(c, title, artifact.URL)
 				})
 			})
@@ -271,9 +278,9 @@ func (s *viewState) engineDrawerInstructionsBlock(c *ui.Context, note, cmd strin
 		ui.Text(c, note).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
 	}
 	if cmd != "" {
-		applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Inset), materialInset).Children(func() {
-			ui.Text(c, cmd).Selectable().FontSize(t.Type.Caption)
-			outlineButton(c, tr(c, "downloads.action.copy_cmd")).OnClick(func() {
+		applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Padding(t.Density.Inset), materialInset).Children(func() {
+			ui.Text(c, cmd).Grow(1).MinWidth(0).Selectable().FontSize(t.Type.Caption)
+			outlineIconButton(c, reicon.Copy, tr(c, "downloads.action.copy_cmd")).OnClick(func() {
 				s.copyDownloadText(c, tr(c, "downloads.copy_subject.install_cmd"), cmd)
 			})
 		})

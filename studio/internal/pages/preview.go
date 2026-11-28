@@ -277,7 +277,7 @@ func (p *previewSession) left(c *ui.Context) {
 				ui.Field(c, sceneFieldLabel, func() {
 					choice := studioSelect(c, &p.scene)
 					currentSceneLabel := tr(c, previewScenes[p.scene].labelKey)
-					choice.Trigger.Label(sceneFieldLabel).Value(currentSceneLabel).Children(func() { ui.Text(c, currentSceneLabel).SingleLine() })
+					choice.Trigger.FillWidth().MinWidth(0).Label(sceneFieldLabel).Value(currentSceneLabel).Children(func() { ui.Text(c, currentSceneLabel).SingleLine() })
 					choice.Popup(func(ui.Element) {
 						components.ScrollView(c, components.ScrollViewOptions{}).Label(tr(c, "preview.scene.list_aria")).MaxHeight(280).Children(func() {
 							for i, scene := range previewScenes {
@@ -302,7 +302,7 @@ func (p *previewSession) left(c *ui.Context) {
 				ui.Field(c, paletteFieldLabel, func() {
 					choice := studioSelect(c, &accentIdx)
 					currentPaletteLabel := tr(c, studioAccentSpecs[accentIdx].labelKey)
-					choice.Trigger.Label(paletteFieldLabel).Value(currentPaletteLabel).Children(func() { ui.Text(c, currentPaletteLabel).SingleLine() })
+					choice.Trigger.FillWidth().MinWidth(0).Label(paletteFieldLabel).Value(currentPaletteLabel).Children(func() { ui.Text(c, currentPaletteLabel).SingleLine() })
 					choice.Popup(func(ui.Element) {
 						components.ScrollView(c, components.ScrollViewOptions{}).Label(tr(c, "preview.palette.list_aria")).MaxHeight(220).Children(func() {
 							for i, spec := range studioAccentSpecs {
@@ -328,6 +328,26 @@ func (p *previewSession) left(c *ui.Context) {
 					p.syncStateTheme()
 					p.syncNativeTheme()
 				}
+				fontFieldLabel := tr(c, "settings.appearance.font_size_label")
+				chosenFont := core.NormalizeFontSize(p.fontSizeMode)
+				currentFontLabel := tr(c, studioFontSizeSpecFor(chosenFont).labelKey)
+				ui.Field(c, fontFieldLabel, func() {
+					choice := studioSelect(c, &chosenFont)
+					choice.Trigger.FillWidth().MinWidth(0).Label(fontFieldLabel).Value(currentFontLabel).Children(func() { ui.Text(c, currentFontLabel).SingleLine() })
+					choice.Popup(func(ui.Element) {
+						for _, spec := range studioFontSizeSpecs {
+							label := tr(c, spec.labelKey)
+							choice.Item(spec.id).Label(label).Children(func() { ui.Text(c, label).SingleLine() })
+						}
+					})
+					if choice.Trigger.Changed() && chosenFont != p.fontSizeMode {
+						p.fontSizeMode = chosenFont
+						p.syncStateFontSize()
+						if p.win != nil {
+							p.win.Invalidate()
+						}
+					}
+				})
 				prevLang := p.languageMode
 				previewCompactSegmentedField(c, tr(c, "preview.language.label"), &p.languageMode, []components.NativeSelectOption[int]{
 					{Label: tr(c, "preview.language.system"), Value: 0},
@@ -392,7 +412,11 @@ func previewCompactSegmentedField[T comparable](c *ui.Context, name string, sele
 						Padding(t.Density.Tight, t.Density.Tight).
 						Radius(itemR).Label(option.Label).Disabled(option.Disabled)
 					if active {
-						applyShadow(item.Background(t.Color.Surface).Border(1, t.Color.BorderSubtle), t.Elevation.XS)
+						activeBorder := t.Color.BorderSubtle
+						if c.Preferences().HighContrast {
+							activeBorder = t.Color.Accent
+						}
+						applyShadow(item.Background(t.Color.Surface).Border(1, activeBorder), t.Elevation.XS)
 					} else if item.Hovered() && !option.Disabled {
 						item.Background(t.Color.Surface.Alpha(.6))
 					}

@@ -77,7 +77,7 @@ func (s *viewState) serviceUsageDrawer(c *ui.Context) {
 						})
 						ui.Box(c).Grow(1)
 						snippet := buildUsageSnippet(st.tab, st.baseURL, st.model)
-						if inlineButton(c, components.ButtonOutline, tr(c, "services.usage.copy_code")).Clicked() {
+						if outlineIconButton(c, reicon.Copy, tr(c, "services.usage.copy_code")).Clicked() {
 							s.copyUsageText(c, snippet)
 						}
 					})
@@ -97,14 +97,14 @@ func (s *viewState) serviceUsageDrawer(c *ui.Context) {
 func (s *viewState) usageCopyRow(c *ui.Context, key, label, value, hint string) {
 	t := tokens(c)
 	ui.Column(c.Key("usage-row-"+key)).FillWidth().Gap(t.Density.Hairline).
-		Padding(t.Density.Row).Radius(t.Radius.Control).
+		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.Control).
 		Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).Children(func() {
 		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
 				ui.Text(c, label).FontSize(t.Type.ShellLabel).TextColor(t.Color.FgSecondary).SingleLine()
 				ui.Text(c, nonEmptyOrMissing(c, value)).FontSize(t.Type.Body).FontFeatures("tnum").TextColor(t.Color.FgPrimary).Selectable()
 			})
-			copyBtn := inlineButton(c, components.ButtonOutline, tr(c, "services.usage.copy")).
+			copyBtn := outlineIconButton(c, reicon.Copy, tr(c, "services.usage.copy")).
 				Label(tr(c, "services.usage.copy") + " " + label).
 				Disabled(strings.TrimSpace(value) == "")
 			if copyBtn.Clicked() {
@@ -120,11 +120,10 @@ func (s *viewState) usageCopyRow(c *ui.Context, key, label, value, hint string) 
 func (s *viewState) usageConnectivitySection(c *ui.Context) {
 	t := tokens(c)
 	st := &s.serviceUsage
-	ui.Column(c.Key("service-usage-test")).FillWidth().Gap(t.Density.Row).
-		Padding(t.Density.Stack).Radius(t.Radius.Surface).
-		Background(t.Color.Surface).Border(1, t.Color.BorderSubtle).Children(func() {
+	applyMaterial(c, ui.Column(c.Key("service-usage-test")).FillWidth().Gap(t.Density.Row).
+		Padding(t.Density.Stack), materialInset).Children(func() {
 		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			ui.Text(c, tr(c, "services.usage.test.title")).Bold().FontSize(t.Type.Section).Grow(1)
+			ui.Text(c, tr(c, "services.usage.test.title")).Bold().FontSize(t.Type.Section).Grow(1).MinWidth(0)
 			btn := primaryActionButton(c, tr(c, "services.usage.test.action"), st.testing).
 				Disabled(st.testing || strings.TrimSpace(st.baseURL) == "")
 			if btn.Clicked() {

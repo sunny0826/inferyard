@@ -148,7 +148,7 @@ func TestServicesAutoPortPolicyAndRemovedModelDisabled(t *testing.T) {
 	s.recentServices = []core.ServicePreset{removedPreset}
 	tt := newServicesTester(s)
 	tt.Frame()
-	if info, ok := tt.AccessByRole(ui.RoleButton, "▶ 启动 · Removed-Model.gguf"); !ok || !info.Disabled {
+	if info, ok := tt.AccessByRole(ui.RoleButton, "启动 · Removed-Model.gguf"); !ok || !info.Disabled {
 		t.Fatalf("expected Recent Start button disabled for removed model, got ok=%v info=%+v", ok, info)
 	}
 

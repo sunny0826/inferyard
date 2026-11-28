@@ -11,7 +11,7 @@ func (s *viewState) starterOptionTile(c *ui.Context, st *downloadsUIState, idx i
 	t := tokens(c)
 	installed := s.isStarterOptionInstalled(opt)
 
-	tile := ui.Column(c.Key("starter-option-" + opt.ModelID)).MinWidth(210).Grow(1).Gap(t.Density.Row).Padding(t.Density.Stack).Radius(t.Radius.Floating).Label(trf(c, "downloads.starter.select_option_label", "id", opt.ModelID))
+	tile := ui.Column(c.Key("starter-option-" + opt.ModelID)).MinWidth(210).Grow(1).Gap(t.Density.Row).Padding(t.Density.Stack).Radius(t.Radius.Floating).Role(ui.RoleButton).Focusable().Label(trf(c, "downloads.starter.select_option_label", "id", opt.ModelID))
 	bg := t.Color.Sunken
 	border := t.Color.BorderSubtle
 	if c.Preferences().HighContrast {

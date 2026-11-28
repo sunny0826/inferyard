@@ -58,9 +58,13 @@ func (s *viewState) notificationBell(c *ui.Context, maxCanvasWidth float32) {
 					if unread > 99 {
 						countText = "99+"
 					}
+					badgeBg := paletteFor(theme.Dark).buttons.dangerSolid
+					if badgeBg.A == 0 {
+						badgeBg = t.Color.Danger.Solid
+					}
 					ui.Box(c).MinWidth(18).Height(18).Padding(0, t.Density.Tight).Radius(t.Radius.Full).
-						Background(t.Color.Danger.Solid).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-						ui.Text(c, countText).FontSize(11).Bold().FontFeatures("tnum").TextColor(t.Color.FgOnAccent).SingleLine()
+						Background(badgeBg).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+						ui.Text(c, countText).FontSize(theme.Rem(.86)).Bold().FontFeatures("tnum").TextColor(ui.Hex("#ffffff")).SingleLine()
 					})
 				}
 			})

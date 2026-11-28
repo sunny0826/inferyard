@@ -61,7 +61,7 @@ func (s *viewState) updateHeaderBadge(c *ui.Context) {
 				phase := el.Loop("update-activity", 1400*time.Millisecond, ui.Linear)
 				el.Opacity(.65 + .35*float32((math.Sin(float64(phase)*2*math.Pi)+1)/2))
 			}
-			ui.Text(c, label).FontSize(t.Type.Caption).SingleLine().TextColor(color)
+			ui.Text(c, label).FontSize(t.Type.Caption).FontFeatures("tnum").SingleLine().TextColor(color)
 		})
 	})
 	if b.Clicked() {
@@ -101,7 +101,7 @@ func (s *viewState) updateSettingsView(c *ui.Context) {
 
 func updateExternalButton(c *ui.Context, label string) ui.Element {
 	t := tokens(c)
-	b := styleButtonSize(c, components.Button(c, "", components.ButtonOutline), sizeMD).Label(label)
+	b := outlineButton(c, "").Label(label)
 	applyButtonOpticalPadding(b, t, sizeMD, buttonIconTrailing)
 	b.Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
@@ -324,8 +324,8 @@ func (s *viewState) updateReadyPrompt(c *ui.Context) {
 					notesBtn.Children(func() {
 						ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Hairline).Children(func() {
 							ui.Text(c, notesLabel).FontSize(t.Type.Body).
-								TextColor(t.Color.Accent).Underline().UnderlineOffset(2)
-							components.Icon(c, reicon.ArrowUpRight).Size(13, 13).TextColor(t.Color.Accent).Role(ui.RoleNone)
+								TextColor(t.Color.Info.Fg).Underline().UnderlineOffset(2)
+							components.Icon(c, reicon.ArrowUpRight).Size(13, 13).TextColor(t.Color.Info.Fg).Role(ui.RoleNone)
 						})
 					})
 					if notesBtn.Clicked() {

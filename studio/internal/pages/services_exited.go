@@ -81,9 +81,9 @@ func (s *viewState) renderSingleExitedNoticeCard(c *ui.Context, notice core.Serv
 		if hintText := serviceExitHintText(c, notice.Hint); hintText != "" {
 			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Tight).
 				Padding(t.Density.Tight, t.Density.Row).Radius(innerR).
-				Background(t.Color.Surface).Border(1, scale.Border).Children(func() {
-				components.Icon(c, reicon.Info).Size(14, 14).TextColor(scale.Fg)
-				ui.Text(c, hintText).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1)
+				Background(t.Color.Sunken).Border(1, scale.Border).Children(func() {
+				components.Icon(c, reicon.Info).Size(14, 14).Shrink(0).TextColor(scale.Fg)
+				ui.Text(c, hintText).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0)
 			})
 		}
 		if len(notice.LogTail) > 0 {
@@ -125,7 +125,7 @@ func (s *viewState) renderSingleExitedNoticeCard(c *ui.Context, notice core.Serv
 			}
 			ui.Box(c).Grow(1)
 			dismissLabel := tr(c, "services.exited.action.dismiss")
-			dismissBtn := iconButton(c, reicon.X, dismissLabel, components.IconButtonCompact)
+			dismissBtn := outlineIconButton(c, reicon.X, dismissLabel)
 			if multi {
 				dismissBtn.Label(dismissLabel + " · " + modelName)
 			}
@@ -340,7 +340,7 @@ func (s *viewState) recentServicesSection(c *ui.Context) {
 				modelIconBox(c, s.modelIconHint(preset.Model), 30, innerR)
 				ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Hairline).Children(func() {
 					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-						ui.Text(c, preset.Model).Bold().FontSize(t.Type.Section).SingleLine()
+						ui.Text(c, preset.Model).Bold().FontSize(t.Type.Section).MinWidth(0).SingleLine()
 						s.enginePill(c, preset.Engine)
 						if preset.LANAccess {
 							inlineBadge(c, tr(c, "services.card.badge.lan"), stateWarning, badgeOptions{Size: sizeSM})

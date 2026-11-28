@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/icons/reicon"
 	"inferyard/studio/internal/l10n"
@@ -39,7 +38,7 @@ func (s *viewState) modelsView(c *ui.Context) {
 					ui.Row(c).Grow(1).MinWidth(0).Children(func() {
 						heading(c, tr(c, "models.wizard.card_title"), 2)
 					})
-					if iconButton(c, reicon.ChevronUp, tr(c, "models.action.collapse"), components.IconButtonCompact).Clicked() {
+					if outlineIconButton(c, reicon.ChevronUp, tr(c, "models.action.collapse")).Clicked() {
 						*wizardOpen = false
 					}
 				})
@@ -191,11 +190,13 @@ func modelDetails(model core.ModelAsset) string {
 		parts = append(parts, l10n.TRf("models.detail.context_tokens", "tokens", strconv.FormatInt(*model.ContextLength, 10)))
 	}
 	if !model.Available {
-		reason := deviceLabel(model.Reason)
+		reason := strings.TrimSpace(deviceLabel(model.Reason))
 		if reason == "" {
-			reason = model.Reason
+			reason = strings.TrimSpace(model.Reason)
 		}
-		parts = append(parts, l10n.TRf("models.detail.unavailable_reason", "reason", reason))
+		if reason != "" {
+			parts = append(parts, l10n.TRf("models.detail.unavailable_reason", "reason", reason))
+		}
 	}
 	if len(parts) == 0 {
 		return ""
@@ -221,8 +222,9 @@ func (s *viewState) engineStateLine(engine core.EngineAsset) string {
 	if engine.Family != "" {
 		parts = append(parts, engine.Family)
 	}
-	if engine.Kind == "local_installation" {
-		parts = append(parts, l10n.TR("engine.detail.installation_decl"))
+	declLabel := l10n.TR("engine.detail.installation_decl")
+	if engine.Kind == "local_installation" && !strings.Contains(engine.Source, declLabel) {
+		parts = append(parts, declLabel)
 	}
 	if engine.Source != "" {
 		parts = append(parts, engine.Source)

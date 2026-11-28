@@ -349,17 +349,19 @@ func (r *reportViewState) runPicker(c *ui.Context) {
 	t := tokens(c)
 	pickerLabel := tr(c, "reports.detail.select_run")
 	ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Shrink(0).Children(func() {
-		ui.Text(c, pickerLabel).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
+		ui.Text(c, pickerLabel).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine().Shrink(0)
 		selectRun := studioSelect(c, &r.run)
 		selectRun.Trigger.Label(pickerLabel).Value(reportRunLabel(r.index.Runs[r.run])).Children(func() {
 			ui.Text(c, reportRunLabel(r.index.Runs[r.run])).FontSize(t.Type.Caption).SingleLine()
 		})
 		selectRun.Popup(func(panel ui.Element) {
-			for i, run := range r.index.Runs {
-				selectRun.Item(i).Label(reportRunLabel(run)).Children(func() {
-					ui.Text(c, reportRunLabel(run)).SingleLine()
-				})
-			}
+			components.ScrollView(c, components.ScrollViewOptions{}).Label(pickerLabel).MaxHeight(260).Children(func() {
+				for i, run := range r.index.Runs {
+					selectRun.Item(i).Label(reportRunLabel(run)).Children(func() {
+						ui.Text(c, reportRunLabel(run)).SingleLine()
+					})
+				}
+			})
 		})
 		if selectRun.Trigger.Changed() {
 			r.categories, r.requests = pageTableState{}, pageTableState{}

@@ -161,7 +161,7 @@ func (s *viewState) speedTypeSwitch(c *ui.Context) bool {
 	if want := boolIndex(w.selected); w.typeTabSeen != want {
 		w.typeTab, w.typeTabSeen = want, want
 	}
-	tabs := components.Tabs(c, &w.typeTab, components.TabsUnderline, tr(c, "speed.tab.standard"), tr(c, "speed.tab.context_speed"))
+	tabs := studioUnderlineTabs(c, &w.typeTab, tr(c, "speed.tab.standard"), tr(c, "speed.tab.context_speed"))
 	if tabs.List.Changed() {
 		w.selected, w.typeTabSeen = w.typeTab == 1, w.typeTab
 	}
@@ -342,14 +342,14 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 				modelIconBox(c, s.modelIconHint(r.model), 36, t.Radius.Control)
 				ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
 					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-						ui.Text(c, fmt.Sprintf("%s · %s · %s", r.model, r.engine, speedContext(r.context))).Bold().FontSize(t.Type.Body).TextColor(t.Color.FgPrimary)
-						inlineBadge(c, r.label(), speedStageStateKind(r.stage), badgeOptions{Size: sizeSM, Style: badgeDot})
+						ui.Text(c, fmt.Sprintf("%s · %s · %s", r.model, r.engine, speedContext(r.context))).Bold().FontSize(t.Type.Body).FontFeatures("tnum").TextColor(t.Color.FgPrimary).MinWidth(0)
+						inlineBadge(c, tr(c, speedStageKeys[r.stage]), speedStageStateKind(r.stage), badgeOptions{Size: sizeSM, Style: badgeDot})
 					})
 					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 						if s.preview != nil {
-							ui.Text(c, trf(c, "speed.task.meta_preview", "bundle", inferyard.ContextSpeedBundleID, "id", r.id)).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+							ui.Text(c, trf(c, "speed.task.meta_preview", "bundle", inferyard.ContextSpeedBundleID, "id", r.id)).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 						} else {
-							ui.Text(c, inferyard.ContextSpeedBundleID+" · "+r.id).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+							ui.Text(c, inferyard.ContextSpeedBundleID+" · "+r.id).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
 						}
 						if r.budget > 0 {
 							ui.Text(c, "·").FontSize(t.Type.Caption).TextColor(t.Color.FgTertiary)
@@ -357,7 +357,6 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 						}
 					})
 				})
-				ui.Box(c).Grow(1)
 				ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 					inlineBadge(c, stepCount, stepKind, badgeOptions{Size: sizeSM})
 					if r.active() {

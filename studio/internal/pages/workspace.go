@@ -30,6 +30,7 @@ func (s *viewState) resetWorkspace() {
 	s.benchmarksTab = benchmarksTabTasks
 	s.historyQuery, s.historyStatusFilter, s.historyDetailPath = "", "", ""
 	s.reportsTab = reportsTabList
+	s.nodes.compareOpen, s.nodes.comparePickerOpen, s.nodes.comparison = false, false, nil
 	s.settingsTab = settingsTabGeneral
 	s.closeOpenedReport()
 	s.denied = map[string]bool{}

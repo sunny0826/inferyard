@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/l10n"
 )
@@ -140,7 +139,7 @@ func (s *viewState) downloadsPageView(c *ui.Context) {
 		card(c, tr(c, "downloads.section.tasks"), func() { s.downloadsView(c) })
 	}
 	ui.Column(c.Key("downloads-tabs")).FillWidth().Gap(t.Density.Row).Children(func() {
-		components.Tabs(c, &st.activeTab, components.TabsUnderline, tr(c, "downloads.kind.engine"), tr(c, "downloads.kind.model"))
+		studioUnderlineTabs(c, &st.activeTab, tr(c, "downloads.kind.engine"), tr(c, "downloads.kind.model"))
 		if st.activeTab == 1 {
 			s.downloadsModelsTab(c)
 		} else {

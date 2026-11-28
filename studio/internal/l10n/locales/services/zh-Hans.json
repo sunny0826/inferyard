@@ -43,7 +43,7 @@
   "services.recent.port_fixed": "端口 {port}",
   "services.recent.memory_insufficient": "内存不足（需 {est} GiB，剩余 {remaining} GiB）",
   "services.recent.action.params": "参数",
-  "services.recent.action.start": "▶ 启动",
+  "services.recent.action.start": "启动",
   "services.discovered.external_badge": "外部服务",
   "services.discovered.models_count": "{count} 个模型",
   "services.discovered.copy_url": "复制地址",

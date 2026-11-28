@@ -239,75 +239,72 @@ func (s *viewState) extConnCheckDialog(c *ui.Context) {
 	canDedicated := !d.hasBudget || d.memoryBudget.Enough
 
 	studioDialog(c.Key("ext-conn-check-dialog"), &s.extCheckDialog.open, components.DialogOptions{Label: title}, func(panel ui.Element) {
-		panel.Role(ui.RoleAlertDialog)
-		components.Text(c, title).Bold()
-		components.Text(c, trf(c, "services.ext_check.desc", "port", strconv.Itoa(d.probe.Port))).TextColor(t.Color.FgSecondary)
+		panel.Role(ui.RoleAlertDialog).Width(c.Theme().Space(135)).MaxWidthPercent(92).Children(func() {
+			ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
+				heading(c, title, 2)
+				components.Text(c, trf(c, "services.ext_check.desc", "port", strconv.Itoa(d.probe.Port))).TextColor(t.Color.FgSecondary)
 
-		if len(d.probe.Clients) > 0 {
-			ui.Column(c).FillWidth().Padding(t.Density.Row).Radius(t.Radius.Control).
-				Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).Gap(t.Density.Hairline).Children(func() {
-				ui.Text(c, tr(c, "services.ext_check.clients_label")).Bold().FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary)
-				for _, client := range d.probe.Clients {
-					ui.Text(c, client).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
+				if len(d.probe.Clients) > 0 {
+					applyMaterial(c, ui.Scroll(c).FillWidth().MaxHeight(160), materialSunken).Children(func() {
+						ui.Column(c).FillWidth().Padding(t.Density.Row, t.Density.Stack).Gap(t.Density.Hairline).Children(func() {
+							ui.Text(c, tr(c, "services.ext_check.clients_label")).Bold().FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary)
+							for _, client := range d.probe.Clients {
+								ui.Text(c, client).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
+							}
+						})
+					})
 				}
-			})
-		}
 
-		if d.hasBudget {
-			if canDedicated {
-				components.Text(c, trf(c, "services.ext_check.memory_enough",
-					"remaining", fmt.Sprintf("%.1f", d.memoryBudget.RemainingGB),
-					"est", fmt.Sprintf("%.1f", d.memoryBudget.EstimatedGB),
-				)).TextColor(t.Color.FgSecondary)
-			} else {
-				noticeBanner(c, noticeBannerOptions{
-					Kind: stateWarning,
-					Size: bannerCompact,
-					Message: trf(c, "services.ext_check.memory_insufficient",
-						"remaining", fmt.Sprintf("%.1f", d.memoryBudget.RemainingGB),
-						"est", fmt.Sprintf("%.1f", d.memoryBudget.EstimatedGB),
-					),
+				if d.hasBudget {
+					if canDedicated {
+						components.Text(c, trf(c, "services.ext_check.memory_enough",
+							"remaining", fmt.Sprintf("%.1f", d.memoryBudget.RemainingGB),
+							"est", fmt.Sprintf("%.1f", d.memoryBudget.EstimatedGB),
+						)).FontFeatures("tnum").TextColor(t.Color.FgSecondary)
+					} else {
+						noticeBanner(c, noticeBannerOptions{
+							Kind: stateWarning,
+							Size: bannerCompact,
+							Message: trf(c, "services.ext_check.memory_insufficient",
+								"remaining", fmt.Sprintf("%.1f", d.memoryBudget.RemainingGB),
+								"est", fmt.Sprintf("%.1f", d.memoryBudget.EstimatedGB),
+							),
+						})
+					}
+				}
+
+				applyBenchmarkTarget := func(mode, exclusivity string) {
+					if !d.autoStart {
+						s.applyServiceBenchmarkTarget(d.modelName, d.engineName)
+					}
+					s.pendingExclusivityMode = mode
+					s.pendingExclusivity = exclusivity
+					s.pendingExclusivityModel = strings.TrimSpace(d.modelName)
+					s.pendingExclusivityEngine = strings.TrimSpace(d.engineName)
+					if d.autoStart {
+						s.startBenchmark()
+						return
+					}
+					s.openBenchmarksFlow()
+				}
+
+				ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+				ui.Row(c).FillWidth().Wrap().Justify(ui.End).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+					if button(c, tr(c, "services.ext_check.action.cancel")).Clicked() {
+						s.extCheckDialog.open = false
+					}
+					if outlineButton(c, tr(c, "services.ext_check.action.benchmark_anyway")).Clicked() {
+						s.extCheckDialog.open = false
+						applyBenchmarkTarget("reuse", core.ExclusivityExternal)
+					}
+					if canDedicated {
+						if primaryButton(c, tr(c, "services.ext_check.action.dedicated_instance")).Clicked() {
+							s.extCheckDialog.open = false
+							applyBenchmarkTarget("isolated", "")
+						}
+					}
 				})
-			}
-		}
-
-		applyBenchmarkTarget := func(mode, exclusivity string) {
-			if !d.autoStart {
-				s.applyServiceBenchmarkTarget(d.modelName, d.engineName)
-			}
-			s.pendingExclusivityMode = mode
-			s.pendingExclusivity = exclusivity
-			s.pendingExclusivityModel = strings.TrimSpace(d.modelName)
-			s.pendingExclusivityEngine = strings.TrimSpace(d.engineName)
-			if d.autoStart {
-				s.startBenchmark()
-				return
-			}
-			s.openBenchmarksFlow()
-		}
-
-		ui.Row(c).FillWidth().Wrap().Justify(ui.End).Gap(t.Density.Row).Children(func() {
-			if canDedicated {
-				if button(c, tr(c, "services.ext_check.action.cancel")).Clicked() {
-					s.extCheckDialog.open = false
-				}
-				if outlineButton(c, tr(c, "services.ext_check.action.benchmark_anyway")).Clicked() {
-					s.extCheckDialog.open = false
-					applyBenchmarkTarget("reuse", core.ExclusivityExternal)
-				}
-				if primaryButton(c, tr(c, "services.ext_check.action.dedicated_instance")).Clicked() {
-					s.extCheckDialog.open = false
-					applyBenchmarkTarget("isolated", "")
-				}
-			} else {
-				if outlineButton(c, tr(c, "services.ext_check.action.benchmark_anyway")).Clicked() {
-					s.extCheckDialog.open = false
-					applyBenchmarkTarget("reuse", core.ExclusivityExternal)
-				}
-				if primaryButton(c, tr(c, "services.ext_check.action.cancel")).Clicked() {
-					s.extCheckDialog.open = false
-				}
-			}
+			})
 		})
 	})
 }

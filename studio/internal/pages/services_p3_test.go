@@ -119,7 +119,7 @@ func TestServicesP3MemoryBudgetDisablesRecentAndDrawerStart(t *testing.T) {
 	if !strings.Contains(texts, "内存不足") {
 		t.Fatalf("expected memory insufficient hint on Recent card, got:\n%s", texts)
 	}
-	if info, ok := tt.AccessByRole(ui.RoleButton, "▶ 启动 · Llama-3-8B.gguf"); !ok || !info.Disabled {
+	if info, ok := tt.AccessByRole(ui.RoleButton, "启动 · Llama-3-8B.gguf"); !ok || !info.Disabled {
 		t.Fatalf("expected Recent Start button disabled on memory shortfall, got ok=%v info=%+v", ok, info)
 	}
 

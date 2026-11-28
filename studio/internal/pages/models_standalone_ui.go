@@ -19,74 +19,79 @@ func (s *viewState) standaloneDrawer(c *ui.Context) {
 			return
 		}
 		t := tokens(c)
-		ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
-			keyValueRow(c, tr(c, "models.serve.drawer.model"), modelLabel(model), false)
-			s.verifyTaskEngines()
-			engineOptions := s.standaloneEngineOptions(model)
-			if len(engineOptions) == 0 {
-				if s.checks.Checking > 0 {
-					ui.Text(c, trf(c, "dashboard.candidate.verifying_engines", "count", s.checks.Checking)).TextColor(c.Theme().TextMuted)
-				} else if !s.engineVerifyPending {
-					noticeBanner(c, noticeBannerOptions{
-						Kind:    stateWarning,
-						Size:    bannerCompact,
-						Message: tr(c, "models.serve.drawer.no_engine"),
-					})
+		s.verifyTaskEngines()
+		engineOptions := s.standaloneEngineOptions(model)
+		if len(engineOptions) > 0 {
+			validSelected := false
+			for _, opt := range engineOptions {
+				if opt.Value == s.standalone.engineName {
+					validSelected = true
+					break
 				}
-			} else {
-				validSelected := false
-				for _, opt := range engineOptions {
-					if opt.Value == s.standalone.engineName {
-						validSelected = true
-						break
+			}
+			if !validSelected {
+				s.standalone.engineName = s.defaultStandaloneEngine(model, engineOptions)
+			}
+		}
+		ctxVal, ctxErr := s.resolvedStandaloneContext(model)
+		budgetCtx := ctxVal
+		if budgetCtx <= 0 {
+			budgetCtx = 8192
+		}
+		budget := s.checkMemoryBudget(model.Name, s.standalone.engineName, budgetCtx, nil)
+		memErr := ""
+		if !budget.Known {
+			memErr = s.standaloneMemoryShortfall(model)
+		}
+
+		ui.Scroll(c.Key("standalone-drawer-scroll")).FillWidth().Grow(1).MinHeight(0).Children(func() {
+			ui.Column(c).FillWidth().Gap(t.Density.CardGap).Children(func() {
+				keyValueRow(c, tr(c, "models.serve.drawer.model"), modelLabel(model), false)
+				if len(engineOptions) == 0 {
+					if s.checks.Checking > 0 {
+						ui.Text(c, trf(c, "dashboard.candidate.verifying_engines", "count", s.checks.Checking)).TextColor(c.Theme().TextMuted)
+					} else if !s.engineVerifyPending {
+						noticeBanner(c, noticeBannerOptions{
+							Kind:    stateWarning,
+							Size:    bannerCompact,
+							Message: tr(c, "models.serve.drawer.no_engine"),
+						})
 					}
+				} else {
+					selectField(c, tr(c, "models.serve.drawer.engine"), "", &s.standalone.engineName, engineOptions)
 				}
-				if !validSelected {
-					s.standalone.engineName = s.defaultStandaloneEngine(model, engineOptions)
+
+				ctxOptions := standaloneContextOptions(model)
+				ctxHint := ""
+				if model.ContextLength != nil && *model.ContextLength > 0 {
+					ctxHint = trf(c, "models.serve.drawer.context_limit", "limit", strconv.FormatInt(*model.ContextLength, 10))
 				}
-				selectField(c, tr(c, "models.serve.drawer.engine"), "", &s.standalone.engineName, engineOptions)
-			}
+				selectField(c, tr(c, "models.serve.drawer.context"), ctxHint, &s.standalone.contextPreset, ctxOptions)
+				if s.standalone.contextPreset == standaloneCustomContext {
+					field(c, tr(c, "models.serve.drawer.context_custom_label"), &s.standalone.customContext)
+				}
 
-			ctxOptions := standaloneContextOptions(model)
-			ctxHint := ""
-			if model.ContextLength != nil && *model.ContextLength > 0 {
-				ctxHint = trf(c, "models.serve.drawer.context_limit", "limit", strconv.FormatInt(*model.ContextLength, 10))
-			}
-			selectField(c, tr(c, "models.serve.drawer.context"), ctxHint, &s.standalone.contextPreset, ctxOptions)
-			if s.standalone.contextPreset == standaloneCustomContext {
-				field(c, tr(c, "models.serve.drawer.context_custom_label"), &s.standalone.customContext)
-			}
-
-			ctxVal, ctxErr := s.resolvedStandaloneContext(model)
-			if ctxErr != "" {
-				noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: ctxErr})
-			}
-			budgetCtx := ctxVal
-			if budgetCtx <= 0 {
-				budgetCtx = 8192
-			}
-			budget := s.checkMemoryBudget(model.Name, s.standalone.engineName, budgetCtx, nil)
-			if budget.Known {
-				s.serviceMemoryBudgetBar(c, budget)
-			}
-			memErr := ""
-			if !budget.Known {
-				memErr = s.standaloneMemoryShortfall(model)
-				if memErr != "" {
+				if ctxErr != "" {
+					noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: ctxErr})
+				}
+				if budget.Known {
+					s.serviceMemoryBudgetBar(c, budget)
+				} else if memErr != "" {
 					noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: memErr})
 				}
-			}
-
-			memEnough := !budget.Known || budget.Enough
-			canStart := len(engineOptions) > 0 && s.standalone.engineName != "" && ctxErr == "" && memEnough && memErr == "" && !s.busy && !s.standalone.isPreparing(model.Name)
-			ui.Row(c).FillWidth().Justify(ui.End).Gap(t.Density.Row).Children(func() {
-				outlineButton(c, tr(c, "models.serve.action.cancel")).OnClick(func() {
-					s.standalone.drawerOpen = false
-				})
-				if primaryButton(c, tr(c, "models.serve.action.confirm_start")).Disabled(!canStart).Clicked() {
-					s.launchStandalone(model.Name, s.standalone.engineName, ctxVal)
-				}
 			})
+		})
+
+		memEnough := !budget.Known || budget.Enough
+		canStart := len(engineOptions) > 0 && s.standalone.engineName != "" && ctxErr == "" && memEnough && memErr == "" && !s.busy && !s.standalone.isPreparing(model.Name)
+		ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+		ui.Row(c).FillWidth().Shrink(0).Justify(ui.End).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			button(c, tr(c, "models.serve.action.cancel")).OnClick(func() {
+				s.standalone.drawerOpen = false
+			})
+			if primaryButton(c, tr(c, "models.serve.action.confirm_start")).Disabled(!canStart).Clicked() {
+				s.launchStandalone(model.Name, s.standalone.engineName, ctxVal)
+			}
 		})
 	})
 }

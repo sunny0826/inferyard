@@ -249,7 +249,7 @@ func (s *viewState) speedHistoryView(c *ui.Context) {
 		selectableTable(&w.historyTable, func(i int) any { return w.history[i].id }, func(i int) string { return w.history[i].id })
 		applyMaterial(c, ui.Box(c).FillWidth().MinWidth(0).Clip(), materialInset).Children(func() {
 			pageTable(c.Key("speed-history"), &w.historyTable, tr(c, "speed.history.table_label"), []ui.TableColumn{
-				{Title: tr(c, "speed.history.col_task"), MinWidth: c.Theme().Rem(11)}, {Title: tr(c, "speed.col.model_engine"), MinWidth: c.Theme().Rem(24)},
+				{Title: tr(c, "speed.history.col_task"), MinWidth: c.Theme().Rem(17)}, {Title: tr(c, "speed.col.model_engine"), MinWidth: c.Theme().Rem(20)},
 				{Title: tr(c, "speed.history.col_context"), MinWidth: c.Theme().Rem(6)}, {Title: tr(c, "speed.history.col_status"), MinWidth: c.Theme().Rem(8)},
 			}, len(w.history), func(row, col int) {
 				r := w.history[row]
@@ -261,9 +261,9 @@ func (s *viewState) speedHistoryView(c *ui.Context) {
 				case 2:
 					ui.Text(c, speedContext(r.context)).FontFeatures("tnum").SingleLine()
 				case 3:
-					inlineBadge(c, r.label(), speedStageKind(r.stage), badgeOptions{Size: sizeSM, Style: badgeDot})
+					inlineBadge(c, tr(c, speedStageKeys[r.stage]), speedStageKind(r.stage), badgeOptions{Size: sizeSM, Style: badgeDot})
 				}
-			}).Height(c.Theme().Rem(4)*float32(min(len(w.history), 5)+1) + 2)
+			}).MaxHeight(c.Theme().Rem(4) * 6)
 		})
 		if i := selectedRow(&w.historyTable, len(w.history)); i >= 0 && w.historyTable.submitted {
 			s.openSpeed(w.history[i].id)
@@ -273,7 +273,7 @@ func (s *viewState) speedHistoryView(c *ui.Context) {
 
 func speedIdentity(c *ui.Context, task *speedTask) {
 	t := tokens(c)
-	ui.Column(c).Gap(2).Children(func() {
+	ui.Column(c).MinWidth(0).Gap(2).Children(func() {
 		ui.Text(c, task.model).Bold().SingleLine()
 		ui.Text(c, task.engine).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
 	})

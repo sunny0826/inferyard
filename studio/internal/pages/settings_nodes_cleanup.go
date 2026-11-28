@@ -8,11 +8,17 @@ import (
 )
 
 func (s *viewState) nodeCleanupSettingsView(c *ui.Context) {
+	if !s.remoteView() && len(s.nodes.snapshots) <= 1 && !s.hasCachedRemoteReports() {
+		return
+	}
+	t := tokens(c)
 	node := s.activeNode()
+	cleanCurrentDisabled := s.busy || !node.Online || (node.Record.NodeID == core.LocalNodeID && !s.canCleanWorkspaceArtifacts())
 	card(c, tr(c, "nodes.settings.cleanup_title"), func() {
-		ui.Text(c, trf(c, "nodes.settings.clean_current_desc", "node", nodeDisplayName(node))).FontSize(tokens(c).Type.Caption).TextColor(tokens(c).Color.FgSecondary)
-		ui.Row(c).FillWidth().Justify(ui.End).Children(func() {
-			if dangerButton(c, tr(c, "nodes.settings.clean_current")).Disabled(s.busy || !node.Online).Clicked() {
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Section).Children(func() {
+			ui.Text(c, trf(c, "nodes.settings.clean_current_desc", "node", nodeDisplayName(node))).
+				FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).Grow(1).MinWidth(200)
+			if quietDangerButton(c, tr(c, "nodes.settings.clean_current")).Disabled(cleanCurrentDisabled).Clicked() {
 				if node.Record.NodeID == core.LocalNodeID {
 					s.cleanArtifactsConfirm = true
 				} else {
@@ -20,10 +26,11 @@ func (s *viewState) nodeCleanupSettingsView(c *ui.Context) {
 				}
 			}
 		})
-		ui.Box(c).FillWidth().Height(1).Background(tokens(c).Color.BorderSubtle)
-		ui.Text(c, tr(c, "nodes.settings.clean_cache_desc")).FontSize(tokens(c).Type.Caption).TextColor(tokens(c).Color.FgSecondary)
-		ui.Row(c).FillWidth().Justify(ui.End).Children(func() {
-			if dangerButton(c, tr(c, "nodes.settings.clean_cache")).Disabled(s.busy).Clicked() {
+		ui.Box(c).FillWidth().Height(1).Background(t.Color.BorderSubtle)
+		ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Section).Children(func() {
+			ui.Text(c, tr(c, "nodes.settings.clean_cache_desc")).
+				FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).Grow(1).MinWidth(200)
+			if quietDangerButton(c, tr(c, "nodes.settings.clean_cache")).Disabled(s.busy).Clicked() {
 				s.nodes.cleanCacheConfirm = true
 			}
 		})

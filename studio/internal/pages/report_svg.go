@@ -340,18 +340,20 @@ func (s *viewState) reportSVGSection(c *ui.Context, report *reportViewState, run
 		trailing = func() {
 			pickerLabel := tr(c, "reports.svg.select_case")
 			ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Shrink(0).Children(func() {
-				ui.Text(c, pickerLabel).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
+				ui.Text(c, pickerLabel).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine().Shrink(0)
 				picker := studioSelect(c, &report.svgIndex)
 				current := outputs[report.svgIndex].CaseID
 				picker.Trigger.Label(pickerLabel).Value(current).Children(func() {
 					ui.Text(c, current).FontSize(t.Type.Caption).SingleLine()
 				})
 				picker.Popup(func(ui.Element) {
-					for i, item := range outputs {
-						picker.Item(i).Label(item.CaseID).Children(func() {
-							ui.Text(c, item.CaseID).SingleLine()
-						})
-					}
+					components.ScrollView(c, components.ScrollViewOptions{}).Label(pickerLabel).MaxHeight(260).Children(func() {
+						for i, item := range outputs {
+							picker.Item(i).Label(item.CaseID).Children(func() {
+								ui.Text(c, item.CaseID).FontFeatures("tnum").SingleLine()
+							})
+						}
+					})
 				})
 			})
 		}

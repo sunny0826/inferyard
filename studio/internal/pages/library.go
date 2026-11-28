@@ -68,14 +68,10 @@ func (s *viewState) libraryHardwareCard(c *ui.Context) {
 	snapshot, parseError := parseDeviceSnapshot(s.device.Snapshot)
 	summary := s.hardwareCompactSummary(c, snapshot, parseError)
 
-	outerR := t.Radius.LG
-	if s.libraryHwExpanded {
-		outerR = t.Radius.Surface
-	}
-	applyMaterial(c, ui.Column(c.Key("library-hw-card")).FillWidth().Padding(t.Card.Padding).Gap(t.Density.Row), materialCard).Radius(outerR).Children(func() {
+	applyMaterial(c, ui.Column(c.Key("library-hw-card")).FillWidth().Padding(t.Card.Padding).Gap(t.Density.Row), materialCard).Radius(t.Radius.Surface).Children(func() {
 		studioTooltipGroup(c, ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).Gap(t.Density.Row), func() {
-			components.Icon(c, reicon.Cpu).Size(16, 16).TextColor(stateColor(c, stateActive))
-			ui.Text(c, summary).Bold().FontSize(t.Type.Body).SingleLine()
+			components.Icon(c, reicon.Cpu).Size(16, 16).Shrink(0).TextColor(stateColor(c, stateActive))
+			ui.Text(c, summary).Bold().FontSize(t.Type.Body).FontFeatures("tnum").MinWidth(0).SingleLine()
 			if missingAssets {
 				inlineBadge(c, tr(c, "library.hw.missing"), stateWarning, badgeOptions{Size: sizeSM})
 			} else {
@@ -91,7 +87,7 @@ func (s *viewState) libraryHardwareCard(c *ui.Context) {
 				btnLabel = tr(c, "library.hw.collapse")
 				btnIcon = reicon.ChevronUp
 			}
-			if iconButton(c, btnIcon, btnLabel, components.IconButtonCompact).Clicked() {
+			if outlineIconButton(c, btnIcon, btnLabel).Clicked() {
 				s.libraryHwExpanded = !s.libraryHwExpanded
 			}
 		})
@@ -123,7 +119,10 @@ func (s *viewState) hardwareCompactSummary(c *ui.Context, snapshot deviceObject,
 
 func (s *viewState) libraryHardwareDetails(c *ui.Context, snapshot deviceObject, parseError error) {
 	if snapshot != nil && parseError == nil {
-		deviceHardware(c, snapshot.object("hardware"))
+		t := tokens(c)
+		applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Row, t.Density.Stack), materialSunken).Children(func() {
+			deviceHardwareRows(c, snapshot.object("hardware"))
+		})
 	}
 	deviceErr := s.device.LastError
 	if s.suppressOutdatedCLIError(deviceErr) {
@@ -214,7 +213,7 @@ func (s *viewState) libraryTabBar(c *ui.Context) {
 							cntFg = t.Color.FgPrimary
 						}
 						ui.Box(c).AlignSelf(ui.Center).Padding(1, 7).Radius(t.Radius.Full).Background(cntBg).Children(func() {
-							ui.Text(c, fmt.Sprintf("%d", tab.count)).FontSize(11).FontFeatures("tnum").TextColor(cntFg).SingleLine()
+							ui.Text(c, fmt.Sprintf("%d", tab.count)).FontSize(c.Theme().Rem(.86)).FontFeatures("tnum").TextColor(cntFg).SingleLine()
 						})
 					})
 					barColor := ui.RGBA(0, 0, 0, 0)
@@ -296,7 +295,7 @@ func (s *viewState) libraryEnginesTab(c *ui.Context, pending *pendingAssetDelete
 					ui.Row(c).Grow(1).MinWidth(0).Children(func() {
 						heading(c, tr(c, "models.wizard.card_title"), 3)
 					})
-					if iconButton(c, reicon.ChevronUp, tr(c, "models.action.collapse"), components.IconButtonCompact).Clicked() {
+					if outlineIconButton(c, reicon.ChevronUp, tr(c, "models.action.collapse")).Clicked() {
 						*wizardOpen = false
 					}
 				})

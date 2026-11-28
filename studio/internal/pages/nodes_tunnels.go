@@ -11,11 +11,15 @@ import (
 
 func (s *viewState) tunnelRow(c *ui.Context, tunnel remote.TunnelInfo) {
 	t := tokens(c)
-	applyMaterial(c, ui.Column(c.Key("tunnel-"+tunnel.TunnelID)).FillWidth().Gap(t.Density.Tight).
-		Padding(t.Density.Row).Radius(t.Radius.Control), materialSunken).Children(func() {
-		ui.Text(c, tunnel.NodeName+" · "+tunnel.ModelName).Bold().FontSize(t.Type.Caption).SingleLine()
-		ui.Text(c, fmt.Sprintf(":%d → %s", tunnel.RemotePort, tunnel.LocalURL)).FontSize(t.Type.Caption).FontFeatures("tnum").Selectable()
-		studioTooltipGroup(c, ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row), func() {
+	applyMaterial(c, ui.Row(c.Key("tunnel-"+tunnel.TunnelID)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
+		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.Control), materialSunken).Children(func() {
+		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+			ui.Text(c, tunnel.NodeName+" · "+tunnel.ModelName).Bold().FontSize(t.Type.Caption).SingleLine()
+			ui.Text(c, fmt.Sprintf(":%d → %s", tunnel.RemotePort, tunnel.LocalURL)).
+				FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(t.Color.FgSecondary).
+				SingleLine().TruncateMiddle().Selectable()
+		})
+		studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Tight), func() {
 			if outlineIconButton(c, reicon.Copy, tr(c, "nodes.tunnels.copy")).Label(tr(c, "nodes.tunnels.copy") + " · " + tunnel.ModelName).Clicked() {
 				s.copyTunnelEndpoint(c, tunnel.LocalURL)
 			}
@@ -45,16 +49,14 @@ func (s *viewState) remoteTunnelBar(c *ui.Context, nodeID string, serviceID stri
 	tunnel := s.tunnelForService(nodeID, serviceID)
 	enabled := tunnel != nil
 	before := enabled
-	description := tr(c, "nodes.tunnels.disabled_desc")
-	if tunnel != nil {
-		description = tunnel.LocalURL
-	}
-	applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Row).Padding(t.Density.Row).
-		Radius(t.Radius.Control), materialSunken).Children(func() {
-		labeledSwitchRow(c, tr(c, "nodes.tunnels.map_action"), description, tr(c, "nodes.tunnels.map_action"), &enabled)
+	applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Row).Padding(t.Density.Row, t.Density.Stack).
+		Radius(t.Radius.Inset), materialSunken).Children(func() {
+		labeledSwitchRow(c, tr(c, "nodes.tunnels.map_action"), tr(c, "nodes.tunnels.disabled_desc"), tr(c, "nodes.tunnels.map_action"), &enabled)
 		if tunnel != nil {
-			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				ui.Text(c, tunnel.LocalURL).FontSize(t.Type.Caption).FontFeatures("tnum").Selectable().Grow(1)
+			applyMaterial(c, ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).
+				Padding(t.Density.Tight, t.Density.Row).Radius(t.Radius.Control), materialControl).Children(func() {
+				ui.Text(c, tunnel.LocalURL).FontSize(t.Type.Caption).FontFeatures("tnum").
+					TextColor(t.Color.FgPrimary).Grow(1).MinWidth(0).SingleLine().TruncateMiddle().Selectable()
 				if outlineIconButton(c, reicon.Copy, tr(c, "nodes.tunnels.copy")).Clicked() {
 					s.copyTunnelEndpoint(c, tunnel.LocalURL)
 				}

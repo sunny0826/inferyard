@@ -94,7 +94,7 @@ func (s *viewState) settingsView(c *ui.Context) {
 		s.settingsTab = settingsTabGeneral
 	}
 	ui.Column(c.Key("settings-tabs")).Gap(tokens(c).Density.Section).Children(func() {
-		components.Tabs(c, &s.settingsTab, components.TabsUnderline, tr(c, "settings.tab.general"), tr(c, "settings.tab.about"))
+		studioUnderlineTabs(c, &s.settingsTab, tr(c, "settings.tab.general"), tr(c, "settings.tab.about"))
 		if s.settingsTab == settingsTabAbout {
 			s.aboutSettingsView(c)
 			return

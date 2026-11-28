@@ -42,7 +42,9 @@ func (s *viewState) loadReportComparison() {
 }
 
 func (s *viewState) reportCompareView(c *ui.Context) {
-	s.subpageHeader(c, tr(c, "nodes.compare.title"))
+	s.subpageHeader(c, tr(c, "nodes.compare.title"), func() {
+		outlineIconButton(c, reicon.Layers, tr(c, "nodes.compare.action")).OnClick(s.openReportComparePicker)
+	})
 	if s.nodes.compareLoading {
 		pageLoadingSkeleton(c)
 		return
@@ -55,73 +57,163 @@ func (s *viewState) reportCompareView(c *ui.Context) {
 	if comparison == nil {
 		return
 	}
-	s.compareQualitySummary(c, comparison)
+	leftHeader := s.comparisonReportNameFor(c, comparison.LeftRef)
+	rightHeader := s.comparisonReportNameFor(c, comparison.RightRef)
+	s.compareQualitySummary(c, comparison, leftHeader, rightHeader)
 	for _, run := range comparison.Runs {
-		s.compareRunCard(c, run)
+		s.compareRunCard(c, run, leftHeader, rightHeader)
 	}
-	s.compareCasesCard(c, comparison.Cases)
+	s.compareCasesCard(c, comparison.Cases, leftHeader, rightHeader)
+	s.reportComparePicker(c)
 }
 
-func (s *viewState) compareQualitySummary(c *ui.Context, comparison *core.ReportComparison) {
+func compareColumnWidth(c *ui.Context) float32 {
+	if compactLayout(c) {
+		return c.Theme().Space(36)
+	}
+	return c.Theme().Space(48)
+}
+
+func compareThreeColRow(c *ui.Context, leading, left, right func()) {
 	t := tokens(c)
-	applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Row).Padding(t.Card.Padding), materialCard).Children(func() {
-		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			ui.Text(c, tr(c, "nodes.compare.quality")).Bold().Grow(1)
-			ui.Text(c, s.comparisonReportName(comparison.LeftRef)).FontSize(t.Type.Caption).SingleLine()
-			ui.Text(c, s.comparisonReportName(comparison.RightRef)).FontSize(t.Type.Caption).SingleLine()
+	colW := compareColumnWidth(c)
+	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).Padding(t.Density.Tight+1, 0).Children(func() {
+		ui.Box(c).Grow(1).MinWidth(0).Children(leading)
+		ui.Box(c).Width(colW).Shrink(0).AlignItems(ui.End).Children(left)
+		ui.Box(c).Width(colW).Shrink(0).AlignItems(ui.End).Children(right)
+	})
+}
+
+func compareHeaderStrip(c *ui.Context, titleEl func(), leftHeader, rightHeader string) {
+	t := tokens(c)
+	colW := compareColumnWidth(c)
+	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).Children(func() {
+		ui.Box(c).Grow(1).MinWidth(0).Children(titleEl)
+		ui.Box(c).Width(colW).Shrink(0).AlignItems(ui.End).Children(func() {
+			ui.Text(c, leftHeader).Bold().FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).MaxWidth(colW).SingleLine().TruncateMiddle()
 		})
-		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			ui.Box(c).Grow(1)
-			ui.Text(c, formatCompareQuality(comparison.LeftQuality)).FontSize(t.Type.Metric).FontFeatures("tnum")
-			ui.Text(c, formatCompareQuality(comparison.RightQuality)).FontSize(t.Type.Metric).FontFeatures("tnum")
+		ui.Box(c).Width(colW).Shrink(0).AlignItems(ui.End).Children(func() {
+			ui.Text(c, rightHeader).Bold().FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).MaxWidth(colW).SingleLine().TruncateMiddle()
 		})
 	})
 }
 
-func (s *viewState) compareRunCard(c *ui.Context, run core.ReportCompareRun) {
+func (s *viewState) compareQualitySummary(c *ui.Context, comparison *core.ReportComparison, leftHeader, rightHeader string) {
 	t := tokens(c)
-	applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Row).Padding(t.Card.Padding), materialCard).Children(func() {
-		ui.Text(c, run.Model).Bold().FontSize(t.Type.CardTitle)
-		compareMetricRow(c, tr(c, "nodes.compare.models"), compareSideModel(run.Left != nil, run.LeftModel, run.Model), compareSideModel(run.Right != nil, run.RightModel, run.Model))
-		compareMetricRow(c, tr(c, "nodes.compare.quality"), formatCompareQuality(ptrMetrics(run.Left)), formatCompareQuality(ptrMetrics(run.Right)))
-		compareMetricRow(c, tr(c, "nodes.compare.latency_p50"), formatCompareNumber(metricValue(run.Left, "latency_p50"), "ms"), formatCompareNumber(metricValue(run.Right, "latency_p50"), "ms"))
-		compareMetricRow(c, tr(c, "nodes.compare.latency_p95"), formatCompareNumber(metricValue(run.Left, "latency_p95"), "ms"), formatCompareNumber(metricValue(run.Right, "latency_p95"), "ms"))
-		compareMetricRow(c, tr(c, "nodes.compare.ttft_p50"), formatCompareNumber(metricValue(run.Left, "ttft_p50"), "ms"), formatCompareNumber(metricValue(run.Right, "ttft_p50"), "ms"))
-		compareMetricRow(c, tr(c, "nodes.compare.ttft_p95"), formatCompareNumber(metricValue(run.Left, "ttft_p95"), "ms"), formatCompareNumber(metricValue(run.Right, "ttft_p95"), "ms"))
-		compareMetricRow(c, tr(c, "nodes.compare.output"), formatCompareNumber(metricValue(run.Left, "output"), "tok/s"), formatCompareNumber(metricValue(run.Right, "output"), "tok/s"))
-		rightRatio := "—"
+	applyMaterial(c, ui.Column(c).FillWidth().MinWidth(0).Gap(t.Density.Row).Padding(t.Card.Padding), materialCard).Children(func() {
+		compareHeaderStrip(c, func() {
+			heading(c, tr(c, "nodes.compare.quality"), 2)
+		}, leftHeader, rightHeader)
+		reportKVDivider(c)
+		compareThreeColRow(c,
+			func() {
+				ui.Text(c, tr(c, "nodes.compare.quality")).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine()
+			},
+			func() {
+				val := formatCompareQuality(comparison.LeftQuality)
+				col := t.Color.FgPrimary
+				if val == compareMissing {
+					col = t.Color.FgTertiary
+				}
+				ui.Text(c, val).Bold().FontSize(t.Type.Metric).FontFeatures("tnum").TextColor(col).SingleLine()
+			},
+			func() {
+				val := formatCompareQuality(comparison.RightQuality)
+				col := t.Color.FgPrimary
+				if val == compareMissing {
+					col = t.Color.FgTertiary
+				}
+				ui.Text(c, val).Bold().FontSize(t.Type.Metric).FontFeatures("tnum").TextColor(col).SingleLine()
+			},
+		)
+	})
+}
+
+func (s *viewState) compareRunCard(c *ui.Context, run core.ReportCompareRun, leftHeader, rightHeader string) {
+	t := tokens(c)
+	applyMaterial(c, ui.Column(c).FillWidth().MinWidth(0).Gap(t.Density.Tight).Padding(t.Card.Padding), materialCard).Children(func() {
+		compareHeaderStrip(c, func() {
+			ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).MinWidth(0).Children(func() {
+				modelIconBox(c, s.modelIconHint(run.Model), 28, t.Radius.Inset)
+				ui.Text(c, run.Model).Bold().FontSize(t.Type.CardTitle).MinWidth(0).SingleLine().TruncateMiddle()
+			})
+		}, leftHeader, rightHeader)
+		rightRatio := compareMissing
 		if run.SpeedupRatio != nil {
 			rightRatio = trf(c, "nodes.compare.ratio", "ratio", fmt.Sprintf("%.2f", *run.SpeedupRatio))
 		}
-		compareMetricRow(c, tr(c, "nodes.compare.speedup"), "—", rightRatio)
-		compareMetricRow(c, tr(c, "nodes.compare.memory"), formatCompareBytes(metricValue(run.Left, "memory")), formatCompareBytes(metricValue(run.Right, "memory")))
-		compareMetricRow(c, tr(c, "nodes.compare.working_set"), formatCompareBytes(metricValue(run.Left, "working_set")), formatCompareBytes(metricValue(run.Right, "working_set")))
-		compareMetricRow(c, tr(c, "nodes.compare.temperature"), formatCompareNumber(metricValue(run.Left, "temperature"), "°C"), formatCompareNumber(metricValue(run.Right, "temperature"), "°C"))
+		rows := [][3]string{
+			{tr(c, "nodes.compare.models"), compareSideModel(run.Left != nil, run.LeftModel, run.Model), compareSideModel(run.Right != nil, run.RightModel, run.Model)},
+			{tr(c, "nodes.compare.quality"), formatCompareQuality(ptrMetrics(run.Left)), formatCompareQuality(ptrMetrics(run.Right))},
+			{tr(c, "nodes.compare.latency_p50"), formatCompareNumber(metricValue(run.Left, "latency_p50"), "ms"), formatCompareNumber(metricValue(run.Right, "latency_p50"), "ms")},
+			{tr(c, "nodes.compare.latency_p95"), formatCompareNumber(metricValue(run.Left, "latency_p95"), "ms"), formatCompareNumber(metricValue(run.Right, "latency_p95"), "ms")},
+			{tr(c, "nodes.compare.ttft_p50"), formatCompareNumber(metricValue(run.Left, "ttft_p50"), "ms"), formatCompareNumber(metricValue(run.Right, "ttft_p50"), "ms")},
+			{tr(c, "nodes.compare.ttft_p95"), formatCompareNumber(metricValue(run.Left, "ttft_p95"), "ms"), formatCompareNumber(metricValue(run.Right, "ttft_p95"), "ms")},
+			{tr(c, "nodes.compare.output"), formatCompareNumber(metricValue(run.Left, "output"), "tok/s"), formatCompareNumber(metricValue(run.Right, "output"), "tok/s")},
+			{tr(c, "nodes.compare.speedup"), compareMissing, rightRatio},
+			{tr(c, "nodes.compare.memory"), formatCompareBytes(metricValue(run.Left, "memory")), formatCompareBytes(metricValue(run.Right, "memory"))},
+			{tr(c, "nodes.compare.working_set"), formatCompareBytes(metricValue(run.Left, "working_set")), formatCompareBytes(metricValue(run.Right, "working_set"))},
+			{tr(c, "nodes.compare.temperature"), formatCompareNumber(metricValue(run.Left, "temperature"), "°C"), formatCompareNumber(metricValue(run.Right, "temperature"), "°C")},
+		}
+		for _, row := range rows {
+			reportKVDivider(c)
+			compareMetricRow(c, row[0], row[1], row[2])
+		}
 	})
 }
 
 func compareMetricRow(c *ui.Context, label, left, right string) {
 	t := tokens(c)
-	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-		ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).Grow(1)
-		ui.Text(c, left).FontFeatures("tnum").Selectable()
-		ui.Text(c, right).FontFeatures("tnum").Selectable()
-	})
+	colW := compareColumnWidth(c)
+	renderCell := func(val string) {
+		col := t.Color.FgPrimary
+		if val == compareMissing {
+			col = t.Color.FgTertiary
+		}
+		ui.Text(c, val).FontSize(t.Type.Body).FontFeatures("tnum").TextColor(col).
+			MaxWidth(colW).SingleLine().TruncateMiddle().Selectable()
+	}
+	compareThreeColRow(c,
+		func() { ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary).SingleLine() },
+		func() { renderCell(left) },
+		func() { renderCell(right) },
+	)
 }
 
-func (s *viewState) compareCasesCard(c *ui.Context, cases []core.ReportCompareCase) {
+func (s *viewState) compareCasesCard(c *ui.Context, cases []core.ReportCompareCase, leftHeader, rightHeader string) {
+	if len(cases) == 0 {
+		return
+	}
 	t := tokens(c)
-	applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Row).Padding(t.Card.Padding), materialCard).Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			components.Icon(c, reicon.FileText).Size(15, 15)
-			ui.Text(c, tr(c, "nodes.compare.cases")).Bold()
-		})
-		for _, item := range cases {
-			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				ui.Text(c, item.CaseID).FontSize(t.Type.Caption).Grow(1).MinWidth(0).SingleLine()
-				ui.Text(c, compareRequestSummary(item.Left)).FontSize(t.Type.Caption).FontFeatures("tnum")
-				ui.Text(c, compareRequestSummary(item.Right)).FontSize(t.Type.Caption).FontFeatures("tnum")
+	colW := compareColumnWidth(c)
+	applyMaterial(c, ui.Column(c).FillWidth().MinWidth(0).Gap(t.Density.Tight).Padding(t.Card.Padding), materialCard).Children(func() {
+		compareHeaderStrip(c, func() {
+			ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				components.Icon(c, reicon.FileText).Size(15, 15).Shrink(0).TextColor(t.Color.FgSecondary)
+				heading(c, tr(c, "nodes.compare.cases"), 2)
 			})
+		}, leftHeader, rightHeader)
+		for _, item := range cases {
+			reportKVDivider(c)
+			leftVal := compareRequestSummaryFor(c, item.Left)
+			rightVal := compareRequestSummaryFor(c, item.Right)
+			compareThreeColRow(c,
+				func() { ui.Text(c, item.CaseID).FontSize(t.Type.Caption).FontFeatures("tnum").SingleLine() },
+				func() {
+					col := t.Color.FgPrimary
+					if leftVal == compareMissing {
+						col = t.Color.FgTertiary
+					}
+					ui.Text(c, leftVal).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(col).MaxWidth(colW).SingleLine()
+				},
+				func() {
+					col := t.Color.FgPrimary
+					if rightVal == compareMissing {
+						col = t.Color.FgTertiary
+					}
+					ui.Text(c, rightVal).FontSize(t.Type.Caption).FontFeatures("tnum").TextColor(col).MaxWidth(colW).SingleLine()
+				},
+			)
 		}
 	})
 }

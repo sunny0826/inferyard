@@ -347,7 +347,7 @@ func (s *viewState) resourceTable(c *ui.Context, samples []core.ResourceSample) 
 						cell.TextColor(stateScale(c, stateWarning).Fg)
 					}
 				}
-			}).Height(180).Label(tableLabel)
+			}).MaxHeight(220).Label(tableLabel)
 		})
 	})
 }
