@@ -259,32 +259,12 @@ def test_serve_prepare_installation_dir_and_llama_cpp(capsys, tmp_path):
     assert "--no-cache-prompt" not in plan["argv"]
 
 
-def test_serve_prepare_sglang_vllm_and_unsupported_families(capsys, tmp_path):
+def test_serve_prepare_vllm_mlx_and_unsupported_families(capsys, tmp_path):
     model_dir = tmp_path / "hf-model"
     model_dir.mkdir()
     (model_dir / "config.json").write_text(
         json.dumps({"max_position_embeddings": 65536}), encoding="utf-8"
     )
-
-    sg_inst = _write_installation(tmp_path / "inst-sg", family="sglang", executable_name="python")
-    sg_out = tmp_path / "out-sg"
-    code, _ = _run_cli(
-        capsys,
-        [
-            "serve", "prepare", "--model", str(model_dir), "--installation", str(sg_inst),
-            "--context-size", "16384", "--port", "49030", "--out", str(sg_out), "--json",
-        ],
-    )
-    assert code == 0
-    sg_plan = json.loads((sg_out / "serve-plan.json").read_text(encoding="utf-8"))
-    _assert_valid_serve_plan(sg_plan)
-    assert sg_plan["family"] == "sglang"
-    assert sg_plan["model_kind"] == "directory"
-    assert "--max-running-requests" not in sg_plan["argv"]
-    assert "--context-length" in sg_plan["argv"] and "16384" in sg_plan["argv"]
-    assert Path(sg_plan["working_directory"]).is_dir()
-    assert Path(sg_plan["environment"]["PROMETHEUS_MULTIPROC_DIR"]).is_dir()
-    assert sg_plan["environment"]["SGLANG_RUN_ID"].startswith("inferyard-serve-")
 
     vllm_inst = _write_installation(tmp_path / "inst-vllm", family="vllm", executable_name="python")
     vllm_out = tmp_path / "out-vllm"

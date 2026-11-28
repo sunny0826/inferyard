@@ -16,7 +16,6 @@ func TestBrandSVGsHaveNoUnsupportedFeaturesAndRenderPixels(t *testing.T) {
 		{"llamacpp", svgBrandLlamaCpp},
 		{"polystrata", svgBrandPolyStrata},
 		{"mlx", svgBrandMLX},
-		{"sglang", svgBrandSGLang},
 		{"vllm", svgBrandVLLM},
 		{"ollama", svgBrandOllama},
 		{"lmstudio", svgBrandLMStudio},
@@ -95,8 +94,6 @@ func TestResolveBrandEngineIcon(t *testing.T) {
 		{"strata-poly", svgBrandPolyStrata, true, stateSuccess},
 		{"mlx-lm", svgBrandMLX, false, stateActive},
 		{"mlx_lm.server", svgBrandMLX, false, stateActive},
-		{"SGLang", svgBrandSGLang, true, stateNeutral},
-		{"sglang", svgBrandSGLang, true, stateNeutral},
 		{"vLLM", svgBrandVLLM, true, stateNeutral},
 		{"vllm-metal", svgBrandVLLM, true, stateNeutral},
 		{"Ollama", svgBrandOllama, false, stateNeutral},
@@ -178,7 +175,7 @@ func TestViewStateBrandIconHints(t *testing.T) {
 				{Name: "Preview-Small.gguf", Format: "gguf", Architecture: "qwen3", Path: "/tmp/models/Preview-Small.gguf"},
 			},
 			Engines: []core.EngineAsset{
-				{Name: "my-local-sgl", Family: "sglang"},
+				{Name: "my-local-vllm", Family: "vllm"},
 				{Name: "my-local-mlx", Family: "mlx-lm"},
 				{Name: "my-local-poly", Family: "polystrata"},
 			},
@@ -191,8 +188,8 @@ func TestViewStateBrandIconHints(t *testing.T) {
 	if svg, _ := resolveBrandModelIcon(s.modelIconHint("Preview-Small.gguf · GGUF")); svg != svgBrandQwen {
 		t.Fatalf("expected Preview-Small.gguf · GGUF with qwen3 arch to resolve to Qwen icon")
 	}
-	if svg, _ := resolveBrandEngineIcon(s.engineIconHint("my-local-sgl")); svg != svgBrandSGLang {
-		t.Fatalf("expected my-local-sgl with sglang family to resolve to SGLang icon")
+	if svg, _ := resolveBrandEngineIcon(s.engineIconHint("my-local-vllm")); svg != svgBrandVLLM {
+		t.Fatalf("expected my-local-vllm with vllm family to resolve to vLLM icon")
 	}
 	if svg, _ := resolveBrandEngineIcon(s.engineIconHint("my-local-mlx")); svg != svgBrandMLX {
 		t.Fatalf("expected my-local-mlx with mlx-lm family to resolve to MLX icon")

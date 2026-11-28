@@ -15,7 +15,6 @@ METRICS = {
         "engine_fit:num_requests_waiting 0\nengine_fit:poisoned 0\n"
     ),
     "vllm": "vllm:num_requests_running 0\nvllm:num_requests_waiting 0\n",
-    "sglang": "sglang:num_running_reqs 0\nsglang:num_queue_reqs 0\n",
     "lmstudio": "",
 }
 

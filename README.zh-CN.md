@@ -24,7 +24,7 @@
 - **原生桌面工作台。** [InferYard Studio](studio/README.md) 基于 Go 与 MyGo 构建原生桌面界面，涵盖以下能力：
   - **多语言界面（i18n）：** 内置英文与简体中文（在「设置 → 语言」中切换「跟随系统」/「English」/「简体中文」，无需重启即时生效；支持 `MYGO_LOCALE` 环境变量覆盖及 macOS 应用包本地化）。
   - **桌面交互与自更新：** 浅色 / 深色 / 跟随系统主题实时可视化预览、5 套可选强调色主题（默认工程钴蓝）与 5 档界面字号调节（更小 / 小 / 默认 / 大 / 更大）、带悬停提示与无障碍标签的图标化操作按钮、支持实时展示引擎运行状态的系统托盘（状态角标图标、菜单栏标题、悬停提示、运行中服务清单及开启设置后关闭窗口自动最小化到托盘）、可配置的默认模型下载源（默认 ModelScope，支持切换 HuggingFace）、独立作用域的 HTTP(S) 下载代理，以及自动检查 GitHub Releases 更新与一键 SHA-256 校验自更新。
-  - **硬件感知下载与资产管理：** 硬件感知首装推荐（在 Apple Silicon、NVIDIA CUDA、AMD ROCm 硬件上优先推荐 **PolyStrata**，支持一键 4 阶段引导安装与恢复流程，其余设备平滑回退至 `llama.cpp`）、带引擎简介与一键安装的可扩展多引擎目录（`PolyStrata`、`llama.cpp`、`mlx-lm` / `vLLM` 受管 Python 虚拟环境、`SGLang`、`LM Studio`）、全面纳管所有由本项目下载和安装的引擎（区分已纳管与外部引入、支持安全卸载与取消关联）、Hugging Face 与 ModelScope 镜像、自定义 URL 解析（`model resolve`）、多分片 GGUF 与目录模型流式进度下载与断点续传，以及多根目录模型管理与安全磁盘清理。
+  - **硬件感知下载与资产管理：** 硬件感知首装推荐（在 Apple Silicon、NVIDIA CUDA、AMD ROCm 硬件上优先推荐 **PolyStrata**，支持一键 4 阶段引导安装与恢复流程，其余设备平滑回退至 `llama.cpp`）、带引擎简介与一键安装的可扩展多引擎目录（`PolyStrata`、`llama.cpp`、`mlx-lm` / `vLLM` 受管 Python 虚拟环境、`LM Studio`）、全面纳管所有由本项目下载和安装的引擎（区分已纳管与外部引入、支持安全卸载与取消关联）、Hugging Face 与 ModelScope 镜像、自定义 URL 解析（`model resolve`）、多分片 GGUF 与目录模型流式进度下载与断点续传，以及多根目录模型管理与安全磁盘清理。
   - **任务编排与实时监控：** 自动检测 CLI 版本并在更新后默认一并自动升级 CLI（要求 `uv >= 0.13.6`，仅在升级失败时展示报错提示条）、常规题包与「长上下文专项」（`zh-context-speed`：64K / 128K / 256K）、引擎状态卡片与 Web UI 直达链接、实时「资源曲线」、应用内通知收件箱与系统通知，以及按模型分组的报告浏览。
 - **可独立调用的 CLI 子项目。** [CLI 子项目](cli/README.zh-CN.md)（`inferyard`）负责设备预检、主机互斥锁、冻结执行、证据封存、离线核验与报告投影，既在 Studio 底层自动运转，也支持终端与脚本直接调用。
 
@@ -54,9 +54,9 @@
 
 | 平台 | Studio 界面后端 | 测评与采集范围 |
 | --- | --- | --- |
-| macOS（Apple Silicon，12+） | Metal | 单次与批量运行、PolyStrata（Metal）与 `llama.cpp` / `mlx-lm` / `vLLM` / `SGLang`、CPU/RSS/换页及 AppleSMC 温度采集 |
+| macOS（Apple Silicon，12+） | Metal | 单次与批量运行、PolyStrata（Metal）与 `llama.cpp` / `mlx-lm` / `vLLM`、CPU/RSS/换页及 AppleSMC 温度采集 |
 | Windows x64（10/11） | Direct3D 11（支持 WARP 回退） | PolyStrata（CUDA/HIP）与 `llama.cpp` 串行文本运行、原生进程身份与内存采集 |
-| Linux x64 | GTK 3 与 OpenGL（支持 CPU 渲染回退） | 单次与批量运行、PolyStrata（CUDA/HIP）与 `llama.cpp` / `vLLM` / `SGLang`、CPU/内存采集 |
+| Linux x64 | GTK 3 与 OpenGL（支持 CPU 渲染回退） | 单次与批量运行、PolyStrata（CUDA/HIP）与 `llama.cpp` / `vLLM`、CPU/内存采集 |
 
 表中列出实现范围。自动化原生桌面 UI 验收目前运行在 macOS（Apple Silicon）上，Windows 与 Linux 的原生窗口交互暂未纳入自动化 UI 测试覆盖。各平台准备方式见[安装指南](cli/docs/installation.md)。
 
@@ -87,7 +87,6 @@
 - [llama.cpp](https://github.com/ggml-org/llama.cpp) / [PrismML-Eng/llama.cpp](https://github.com/PrismML-Eng/llama.cpp)
 - [mlx-lm](https://github.com/ml-explore/mlx-lm)
 - [vLLM](https://github.com/vllm-project/vllm) / [vllm-metal](https://github.com/vllm-project/vllm-metal)
-- [SGLang](https://github.com/sgl-project/sglang)
 - [LM Studio](https://lmstudio.ai)
 - [MyGo](https://github.com/egoist/mygo) / [onevra](https://github.com/oneo-me/onevra)
 

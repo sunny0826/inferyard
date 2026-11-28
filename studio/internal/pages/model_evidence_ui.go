@@ -287,8 +287,6 @@ func (s *viewState) triggerEngineUpdate(eng core.EngineAsset, upd core.EngineUpd
 			familyID = "mlx-lm"
 		case strings.Contains(lower, "vllm"):
 			familyID = "vllm"
-		case strings.Contains(lower, "sglang"):
-			familyID = "sglang"
 		case strings.Contains(lower, "lmstudio"):
 			familyID = "lmstudio"
 		}

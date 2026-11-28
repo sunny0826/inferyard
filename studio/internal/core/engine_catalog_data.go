@@ -13,7 +13,6 @@ func DefaultEngineCatalog() *EngineCatalogRegistry {
 		prismLlamaCppProvider(),
 		mlxLMProvider(),
 		vllmProvider(),
-		sglangProvider(),
 		lmStudioProvider(),
 	)
 }

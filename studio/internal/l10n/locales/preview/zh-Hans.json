@@ -76,7 +76,7 @@
   "preview.fixture.cat_math": "数学计算",
   "preview.fixture.cat_qa": "知识问答",
   "preview.fixture.category": "模拟分类",
-  "preview.local.fixture_required": "模拟注册请使用文件名含 polystrata、llama-cpp、mlx-lm、vllm、sglang 或 lmstudio 的 JSON 路径。",
+  "preview.local.fixture_required": "模拟注册请使用文件名含 polystrata、llama-cpp、mlx-lm、vllm 或 lmstudio 的 JSON 路径。",
   "preview.mode_caption": "模拟数据模式",
   "preview.notice.device_refreshed": "模拟设备信息已更新。",
   "preview.notice.download_cancelled": "模拟下载已取消。",

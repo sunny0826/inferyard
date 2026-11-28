@@ -104,13 +104,6 @@ func catalogEntries() []CatalogEntry {
 			Reason: l10n.TR("core.catalog.reason.python_wheel_venv"),
 		},
 		{
-			ID: "engine-sglang", Kind: CatalogEngine, Title: l10n.TR("core.catalog.engine.sglang_source.title"),
-			Family: "sglang", URL: "https://github.com/sgl-project/sglang/archive/e262b44eef1f2bf83e34345276e2bb91a086587e.tar.gz",
-			Bytes: 39545342, SHA256: "75da22de24091dfb7b8758deae145bc62f9b569d88b216c5899d01d61c032290",
-			Revision: "e262b44eef1f2bf83e34345276e2bb91a086587e", Platform: "any",
-			Reason: l10n.TR("core.catalog.reason.source_archive_venv"),
-		},
-		{
 			ID: "engine-lmstudio", Kind: CatalogEngine, Title: "LM Studio",
 			Family: "lmstudio", URL: "https://lmstudio.ai/download",
 			Platform: "any",

@@ -81,7 +81,7 @@ inferyard engine prepare-polystrata \
 
 ### 跨平台本地引擎安装声明（`installation.json`）
 
-在 macOS、Linux 或 Windows 上接入独立安装的 `polystrata`、`llama-cpp`、`mlx-lm`、`vllm`、`sglang` 或 `lmstudio` 时，可先探测本机可执行文件与虚拟环境，再生成并校验 `installation.json`（完整 Schema 见 `inferyard --schema local_engine_installation`）：
+在 macOS、Linux 或 Windows 上接入独立安装的 `polystrata`、`llama-cpp`、`mlx-lm`、`vllm` 或 `lmstudio` 时，可先探测本机可执行文件与虚拟环境，再生成并校验 `installation.json`（完整 Schema 见 `inferyard --schema local_engine_installation`）：
 
 ```bash
 # 只读探测本机引擎二进制与 Python 虚拟环境

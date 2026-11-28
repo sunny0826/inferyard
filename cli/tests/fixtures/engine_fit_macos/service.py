@@ -11,9 +11,8 @@ from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--engine", choices=("vllm", "sglang"), required=True)
+    parser.add_argument("--engine", choices=("vllm",), required=True)
     parser.add_argument("--model")
-    parser.add_argument("--model-path")
     parser.add_argument("--record", type=Path, required=True)
     parser.add_argument("--port", type=int, default=0)
     parser.add_argument("--reuse-port", action="store_true")
@@ -34,13 +33,10 @@ def main():
         def do_GET(self):
             if self.path == "/v1/models":
                 self.respond({"data": [{"id": "native-macos-fixture"}]})
-            elif self.path == {"vllm": "/version", "sglang": "/get_server_info"}[args.engine]:
+            elif self.path == "/version":
                 self.respond({"version": "0.0.1+native-fixture"})
             elif self.path == "/metrics":
-                names = {
-                    "vllm": ("num_requests_running", "num_requests_waiting"),
-                    "sglang": ("num_running_reqs", "num_queue_reqs"),
-                }[args.engine]
+                names = ("num_requests_running", "num_requests_waiting")
                 metrics = "\n".join(f"{args.engine}:{name} 0" for name in names) + "\n"
                 self.respond(metrics.encode(), "text/plain")
             else:

@@ -40,7 +40,7 @@ var (
 		"local",
 	}
 	servePlanModelKinds = []string{"gguf", "directory", "strata_pack"}
-	servePlanFamilies   = []string{"llama-cpp", "mlx-lm", "vllm", "sglang", "polystrata"}
+	servePlanFamilies   = []string{"llama-cpp", "mlx-lm", "vllm", "polystrata"}
 	servePlanAdapters   = []string{"local_openai_v1", "prism_llama_server_v1"}
 )
 

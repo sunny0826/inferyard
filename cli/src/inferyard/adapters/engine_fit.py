@@ -1,8 +1,6 @@
 """Bounded, local-only diagnostic transport for externally managed inference engines.
 
 This protocol provides observations, not independent effective-parameter verification.
-SGLang metrics use colon names (observability/metrics_collector.py); its legacy
-/get_server_info alias still exposes the top-level version field.
 """
 
 from __future__ import annotations
@@ -30,12 +28,10 @@ MAX_RESPONSE_BYTES = 8 * 1024**2
 INSPECTION_TIMEOUT_SECONDS = 10.0
 _METRICS = {
     "vllm": ("vllm:num_requests_running", "vllm:num_requests_waiting"),
-    "sglang": ("sglang:num_running_reqs", "sglang:num_queue_reqs"),
     **COMMON_METRICS,
 }
 _OPTIONAL_METRICS = {
     "vllm": ("vllm:num_requests_swapped",),
-    "sglang": ("sglang:num_grammar_queue_reqs",),
 }
 _LABEL = re.compile(r'\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*"((?:[^"\\\n]|\\[\\"n])*)"\s*')
 _SAMPLE = re.compile(r"([a-zA-Z_:][a-zA-Z0-9_:]*)(?:\{(.*)\})?[ \t]+(\S+)(?:[ \t]+(\S+))?")
@@ -365,7 +361,7 @@ class FitClient:
             return common_service(
                 self.engine, await self._read(path), self.served_model, FitTransportError
             )
-        path = "/version" if self.engine == "vllm" else "/get_server_info"
+        path = "/version"
         version = (await self._read(path)).get("version")
         if not isinstance(version, str) or not re.fullmatch(
             r"[0-9][A-Za-z0-9.+_-]{0,127}", version

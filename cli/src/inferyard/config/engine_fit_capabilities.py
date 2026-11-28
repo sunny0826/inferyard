@@ -18,13 +18,6 @@ def capabilities():
                 "idle_source": "/metrics",
             },
             {
-                "id": "sglang",
-                "platforms": ["Linux", "Darwin"],
-                "model_kind": "directory",
-                "execution": "available",
-                "idle_source": "/metrics",
-            },
-            {
                 "id": "llama-cpp",
                 "platforms": ["Linux", "Darwin", "Windows"],
                 "model_kind": "gguf",

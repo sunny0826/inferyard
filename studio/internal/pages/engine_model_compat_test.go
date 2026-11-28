@@ -231,7 +231,6 @@ func TestDownloadsEnginesFiltersInstalledAndDrawerPreventsDuplicateInstall(t *te
 	s.registry.Engines = append(s.registry.Engines,
 		core.EngineAsset{Name: "PolyStrata · v0.2.20-poly.5", Family: "polystrata", Version: "v0.2.20-poly.5"},
 		core.EngineAsset{Name: "vLLM · v0.31.0", Family: "vllm", Version: "v0.31.0"},
-		core.EngineAsset{Name: "SGLang · e262b44", Family: "sglang", Version: "e262b44"},
 	)
 	tt.Frame()
 	texts := strings.Join(tt.Texts(), "\n")

@@ -65,8 +65,6 @@ func engineFamilyTitle(family, adapter string) string {
 		return "mlx-lm"
 	case "vllm":
 		return "vLLM"
-	case "sglang":
-		return "SGLang"
 	case "lmstudio":
 		return "LM Studio"
 	}

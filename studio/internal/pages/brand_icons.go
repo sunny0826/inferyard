@@ -120,8 +120,6 @@ func resolveBrandEngineIcon(engineName string) (svg *ui.SVG, colorImage bool) {
 	switch {
 	case hasAnySubstring(lower, "polystrata", "strata"):
 		return svgBrandPolyStrata, true
-	case hasAnySubstring(lower, "sglang", "sgl-project", "sgl_"):
-		return svgBrandSGLang, true
 	case strings.Contains(lower, "vllm"):
 		return svgBrandVLLM, true
 	case hasAnySubstring(lower, "lm studio", "lmstudio") || hasBrandToken(lower, "lms"):

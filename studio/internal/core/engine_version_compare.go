@@ -183,8 +183,6 @@ func normalizeCatalogFamilyID(candidates ...string) string {
 			return "mlx-lm"
 		case lower == "vllm" || strings.Contains(lower, "vllm"):
 			return "vllm"
-		case lower == "sglang" || strings.Contains(lower, "sglang"):
-			return "sglang"
 		case lower == "lmstudio" || lower == "lm studio" || lower == "lm-studio" || strings.Contains(lower, "lmstudio"):
 			return "lmstudio"
 		}

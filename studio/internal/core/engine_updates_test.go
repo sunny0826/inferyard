@@ -54,7 +54,7 @@ func TestServiceEngineUpdates(t *testing.T) {
 		{name: "llama-cpp-old", path: "/fake/llama-old", key: "k1"},
 		{name: "mlx-lm-current", path: "/fake/mlx", key: "k2"},
 		{name: "vllm-old", path: "/fake/vllm", key: "k3"},
-		{name: "sglang-git", path: "/fake/sglang", key: "k4"},
+		{name: "vllm-git", path: "/fake/vllm-git", key: "k4"},
 	}
 	svc.checks = map[string]engineCheckEntry{
 		"/fake/llama-old": {
@@ -72,10 +72,10 @@ func TestServiceEngineUpdates(t *testing.T) {
 			verified: true,
 			result:   EngineEligibility{State: EngineCheckEligible, Family: "vllm", Version: "v0.29.0"},
 		},
-		"/fake/sglang": {
+		"/fake/vllm-git": {
 			key:      "k4",
 			verified: true,
-			result:   EngineEligibility{State: EngineCheckEligible, Family: "sglang", Version: "e262b44"},
+			result:   EngineEligibility{State: EngineCheckEligible, Family: "vllm", Version: "e262b44"},
 		},
 	}
 	svc.checkMu.Unlock()
@@ -90,8 +90,8 @@ func TestServiceEngineUpdates(t *testing.T) {
 	if info := updates["vllm-old"]; !info.HasUpdate || info.LatestVersion != "v0.31.0" {
 		t.Fatalf("expected vllm-old update to v0.31.0, got %+v", info)
 	}
-	if info := updates["sglang-git"]; info.HasUpdate {
-		t.Fatalf("expected sglang-git no false-positive update, got %+v", info)
+	if info := updates["vllm-git"]; info.HasUpdate {
+		t.Fatalf("expected vllm-git no false-positive update, got %+v", info)
 	}
 	if info := updates["llama-cpp-old"]; info.ReleaseID == "" || info.ReleaseVersion != "b11146" {
 		t.Fatalf("expected llama-cpp-old ReleaseID and ReleaseVersion populated, got %+v", info)

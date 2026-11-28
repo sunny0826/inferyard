@@ -153,7 +153,6 @@ def _idle(value, engine, instance=None):
     require(type(value["idle"]) is bool and value["source"] == source, "idle_source")
     required = {
         "vllm": ("vllm:num_requests_running", "vllm:num_requests_waiting"),
-        "sglang": ("sglang:num_running_reqs", "sglang:num_queue_reqs"),
         "llama-cpp": ("llamacpp:requests_processing", "llamacpp:requests_deferred"),
         "mlx-lm": (
             "engine_fit:num_requests_running",
@@ -162,7 +161,7 @@ def _idle(value, engine, instance=None):
         ),
         "lmstudio": ("lmstudio:queued", "lmstudio:active"),
     }[engine]
-    optional = {"vllm": "vllm:num_requests_swapped", "sglang": "sglang:num_grammar_queue_reqs"}
+    optional = {"vllm": "vllm:num_requests_swapped"}
     require(type(value["values"]) is list, "idle_values")
     identities, labels_by_metric, numbers = set(), {}, []
     for row in value["values"]:
@@ -364,7 +363,6 @@ def validate_run(plan, run, rows):
         run["service"]["version_source"]
         == {
             "vllm": "/version",
-            "sglang": "/get_server_info",
             "llama-cpp": "/props",
             "mlx-lm": "/version",
             "lmstudio": "not_exposed",

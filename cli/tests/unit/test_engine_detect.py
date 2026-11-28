@@ -43,9 +43,9 @@ def test_detect_conda_and_system_site_packages_venvs(
     base_mlx = base_py_root / "lib" / "python3.12" / "site-packages" / "mlx_lm"
     base_mlx.mkdir(parents=True)
     (base_mlx / "__init__.py").write_text("", encoding="utf-8")
-    other_minor_sglang = base_py_root / "lib" / "python3.11" / "site-packages" / "sglang"
-    other_minor_sglang.mkdir(parents=True)
-    (other_minor_sglang / "__init__.py").write_text("", encoding="utf-8")
+    other_minor_vllm = base_py_root / "lib" / "python3.11" / "site-packages" / "vllm"
+    other_minor_vllm.mkdir(parents=True)
+    (other_minor_vllm / "__init__.py").write_text("", encoding="utf-8")
 
     shared_venv = tmp_path / "system-site-mlx"
     shared_venv.mkdir()
@@ -66,7 +66,7 @@ def test_detect_conda_and_system_site_packages_venvs(
     }
     assert by_family[("vllm", conda_env.resolve())] == conda_py.resolve()
     assert by_family[("mlx-lm", shared_venv.resolve())] == venv_py.resolve()
-    assert ("sglang", shared_venv.resolve()) not in by_family
+    assert ("vllm", shared_venv.resolve()) not in by_family
 
     built = build_installation("vllm", conda_py)
     assert "HF_HUB_OFFLINE" not in built["environment"]

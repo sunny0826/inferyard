@@ -22,7 +22,7 @@ def plan():
         "definition": "engine_fit_plan.v1",
         "model": {"path": "/offline/model", "sha256": digest(files), "files": files},
         "host": {"sha256": "2" * 64, "system": "Linux"},
-        "engines": ["vllm", "sglang"],
+        "engines": ["vllm"],
         "cases": [{"id": "case", "prompt": "<script>alert('prompt')</script> & 测试"}],
         "parameters": {
             "max_tokens": 32,
@@ -40,15 +40,21 @@ def plan():
 
 
 def _idle(engine):
-    names = {
-        "vllm": ["num_requests_running", "num_requests_waiting"],
-        "sglang": ["num_running_reqs", "num_queue_reqs"],
-    }[engine]
+    if engine == "mlx-lm":
+        names = [
+            "engine_fit:num_requests_running",
+            "engine_fit:num_requests_waiting",
+            "engine_fit:poisoned",
+        ]
+        prefix = ""
+    else:
+        names = ["num_requests_running", "num_requests_waiting"]
+        prefix = engine + ":"
     return {
         "idle": True,
         "source": "/metrics",
         "values": [
-            {"metric": engine + ":" + name, "labels": {"model": "offline"}, "value": 0.0}
+            {"metric": prefix + name, "labels": {"model": "offline"}, "value": 0.0}
             for name in names
         ],
     }
@@ -101,7 +107,7 @@ def _data(plan, engine="vllm"):
             "engine": engine,
             "version": "1.0.0",
             "served_model": "offline",
-            "version_source": "/version" if engine == "vllm" else "/get_server_info",
+            "version_source": "/version",
             "measurement_source_sha256": "5" * 64,
             "idle_before": _idle(engine),
         },
@@ -174,17 +180,40 @@ def verify_fixture_plan(plan):
     return plan
 
 
+def _seal_modern_darwin(path, plan, engine):
+    run, rows = _data(plan, engine)
+    run["definition"] = "engine_fit_run.v3"
+    run["platform"] = "Darwin"
+    run["binding"].update(
+        listener_inode=None,
+        listener_identity="macos:tcp:127.0.0.1:8000:pid:123",
+        listener_source="lsof:TCP:LISTEN:pid",
+        cwd_sha256="6" * 64,
+    )
+    run["service"]["version_missing_reason"] = None
+    path.mkdir()
+    seal_run(path, plan, run, rows)
+    return path
+
+
 def test_compare_rejects_duplicates_plans_sources_and_existing_out(tmp_path, plan):
-    left = _seal(tmp_path / "left", plan)
-    right = _seal(tmp_path / "right", plan, "sglang")
+    modern = deepcopy(plan)
+    modern["definition"] = "engine_fit_plan.v2"
+    modern["model"].update(definition="model-assets.v2", kind="directory")
+    modern["host"] = {"sha256": "2" * 64, "platform": "Darwin"}
+    modern["engines"] = ["vllm", "mlx-lm"]
+    verify_fixture_plan(modern)
+
+    left = _seal_modern_darwin(tmp_path / "left", modern, "vllm")
+    right = _seal_modern_darwin(tmp_path / "right", modern, "mlx-lm")
     with pytest.raises(EvidenceError, match="duplicate_engine"):
         compare([left, left], tmp_path / "dup")
     with pytest.raises(EvidenceError, match="output_exists"):
         compare([left, right], tmp_path)
-    changed = deepcopy(plan)
+    changed = deepcopy(modern)
     changed["host"]["sha256"] = "9" * 64
     verify_fixture_plan(changed)
-    other = _seal(tmp_path / "other", changed, "sglang")
+    other = _seal_modern_darwin(tmp_path / "other", changed, "mlx-lm")
     with pytest.raises(EvidenceError, match="comparison_plan_mismatch"):
         compare([left, other], tmp_path / "mismatch")
     out = tmp_path / "comparison"

@@ -172,7 +172,6 @@ def _adopt_running_managed_service(
         "llama-cpp": {"-c", "--ctx-size"},
         "mlx-lm": {"--max-model-len"},
         "vllm": {"--max-model-len"},
-        "sglang": {"--context-length"},
     }[family]
     try:
         obs_ctx = _optional_value(args, ctx_flags)

@@ -155,7 +155,7 @@ func venvUpgradeSupported(familyID, platform string) bool {
 	switch familyID {
 	case "mlx-lm":
 		return true
-	case "vllm", "sglang":
+	case "vllm":
 		return platform != "darwin/arm64" && platform != "darwin/amd64"
 	default:
 		return false
@@ -474,7 +474,7 @@ func resolveEngineUpdateAction(info EngineUpdateInfo, entry registryEntry, hasEn
 			return EngineUpdateActionManaged, ""
 		}
 		return EngineUpdateActionDrawer, ""
-	case "mlx-lm", "vllm", "sglang":
+	case "mlx-lm", "vllm":
 		if hasEntry && venvPythonPath(entry) != "" {
 			if venvUpgradeSupported(info.Family, platform) || (info.Family == "vllm" && platform == "darwin/arm64" && len(info.WheelURLs) > 0) {
 				return EngineUpdateActionVenv, ""

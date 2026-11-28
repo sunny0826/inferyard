@@ -2,9 +2,6 @@ package core
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/json"
-	"fmt"
 	"inferyard/studio/internal/inferyard"
 	"net"
 	"net/url"
@@ -125,7 +122,6 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 	}
 	seen := map[string]bool{}
 	candidates := []CandidateRun{}
-	var sharedInstallation string
 	for _, bundle := range req.Bundles {
 		if ctx.Err() != nil {
 			return nil, Err("cancelled")
@@ -141,21 +137,11 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 		if info, statErr := os.Stat(bundlePath); statErr != nil || info.IsDir() {
 			return nil, Err("invalid_request")
 		}
-		if sharedInstallation == "" {
-			sharedInstallation = selected.installation
-			if family == "sglang" && req.ServicePID == 0 {
-				sharedInstallation, failure = scopedSGLangInstallation(*workspace, sharedInstallation, key)
-				if failure != nil {
-					return nil, failure
-				}
-			}
-		}
-		installation := sharedInstallation
 		output, failure := NextOutput(*workspace, "candidates", bundle)
 		if failure != nil {
 			return nil, failure
 		}
-		args := []string{"config", "create", "--installation", installation, "--model", model,
+		args := []string{"config", "create", "--installation", selected.installation, "--model", model,
 			"--bundle", bundlePath, "--results", *results, "--port", port, "--out", output}
 		if family == "polystrata" && normalizedEffort != "" && normalizedEffort != ReasoningEffortNone {
 			args = append(args, "--reasoning-effort", normalizedEffort)
@@ -183,7 +169,7 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 		if description.Family != family || !modelMatches || description.Assets.Installation == nil {
 			return nil, Err("candidate_mismatch")
 		}
-		if family != "sglang" && description.Assets.Installation.DeclarationSHA256 != declSHA256 {
+		if description.Assets.Installation.DeclarationSHA256 != declSHA256 {
 			return nil, Err("candidate_mismatch")
 		}
 		s.mu.Lock()
@@ -228,53 +214,6 @@ func NextOutput(workspace, category, prefix string) (string, *ApiError) {
 		}
 	}
 	return "", Err("output_name_exhausted")
-}
-
-func scopedSGLangInstallation(workspace, path, key string) (string, *ApiError) {
-	raw, err := installationBytes(path)
-	if err != nil || "installation|"+fmt.Sprintf("%x", sha256.Sum256(raw)) != key {
-		return "", Err("local_engine_installation_changed")
-	}
-	var declaration map[string]json.RawMessage
-	if json.Unmarshal(raw, &declaration) != nil {
-		return "", Err("local_engine_installation_unreadable")
-	}
-	stateRoot, failure := NextOutput(workspace, "service-state", "sglang")
-	if failure != nil {
-		return "", failure
-	}
-	if err := os.MkdirAll(filepath.Dir(stateRoot), 0700); err != nil {
-		return "", Err("internal_error")
-	}
-	if err := os.Mkdir(stateRoot, 0700); err != nil {
-		return "", Err("internal_error")
-	}
-	metrics := filepath.Join(stateRoot, "metrics")
-	if err := os.Mkdir(metrics, 0700); err != nil {
-		return "", Err("internal_error")
-	}
-	declaration["working_directory"], _ = json.Marshal(stateRoot)
-	for _, field := range []string{"environment", "worker_environment"} {
-		var values map[string]string
-		if field == "worker_environment" && declaration[field] == nil {
-			continue
-		}
-		if json.Unmarshal(declaration[field], &values) != nil || values == nil {
-			return "", Err("local_engine_installation_unreadable")
-		}
-		values["SGLANG_RUN_ID"] = "inferyard-" + filepath.Base(stateRoot)
-		values["PROMETHEUS_MULTIPROC_DIR"] = metrics
-		declaration[field], _ = json.Marshal(values)
-	}
-	derived := filepath.Join(stateRoot, "installation.json")
-	data, err := json.MarshalIndent(declaration, "", "  ")
-	if err != nil {
-		return "", Err("internal_error")
-	}
-	if err := os.WriteFile(derived, append(data, '\n'), 0600); err != nil {
-		return "", Err("internal_error")
-	}
-	return derived, nil
 }
 
 func validBindingEndpoint(endpoint string) bool {

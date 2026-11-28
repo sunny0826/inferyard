@@ -35,8 +35,6 @@ func previewLocalEngineVersion(family string) string {
 		return "0.32.2"
 	case "vllm":
 		return "v0.31.0"
-	case "sglang":
-		return "e262b44"
 	case "lmstudio":
 		return "0.3.14"
 	default:
@@ -56,7 +54,7 @@ func previewLocalEngines(s *viewState) {
 	s.registry.Engines = nil
 	s.settings.Settings.EngineInstallations = nil
 	s.checks = core.EngineCheckOverview{Supported: true, Engines: map[string]core.EngineEligibility{}}
-	for _, family := range []string{"polystrata", "llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio"} {
+	for _, family := range []string{"polystrata", "llama-cpp", "mlx-lm", "vllm", "lmstudio"} {
 		name := l10n.TRf("preview.engine.local_name", "family", family)
 		s.registry.Engines = append(s.registry.Engines, core.EngineAsset{Name: name, Family: family, Kind: "local_installation", Source: l10n.TR("preview.source.local_manifest")})
 		s.checks.Engines[name] = core.EngineEligibility{State: core.EngineCheckEligible, Family: family, VerificationScope: "installation", Version: previewLocalEngineVersion(family)}
@@ -83,7 +81,7 @@ func (p *previewSession) installation(op previewInstallation) {
 			return
 		}
 		family := ""
-		for _, name := range []string{"polystrata", "llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio"} {
+		for _, name := range []string{"polystrata", "llama-cpp", "mlx-lm", "vllm", "lmstudio"} {
 			if strings.Contains(filepath.Base(op.path), name) {
 				family = name
 				break

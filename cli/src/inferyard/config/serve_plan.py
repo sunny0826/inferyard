@@ -6,7 +6,6 @@ import hashlib
 import json
 import os
 import platform
-import re
 import tempfile
 from pathlib import Path
 
@@ -25,7 +24,6 @@ from inferyard.provisioning.preparation_io import PreparationError, linked, read
 from inferyard.provisioning.runtime_profiles import exact_value, load_profile, output_files
 from inferyard.provisioning.runtime_verification import inside_file
 
-_RUN_ID_INVALID = re.compile(r"[^A-Za-z0-9_.-]+")
 _UNSUPPORTED_SERVE_FAMILIES = ("lmstudio",)
 _RECEIPT_KEYS = {
     "kind",
@@ -205,11 +203,6 @@ def _resolve_receipt_engine(receipt_path: Path) -> tuple[Path, str]:
     return engine_path, profile["mode"]
 
 
-def _sanitize_run_id(name: str) -> str:
-    cleaned = _RUN_ID_INVALID.sub("-", name).strip(".-")
-    return f"inferyard-serve-{cleaned or 'plan'}"[:128]
-
-
 def _prepare_community(request, model: Path, out: Path, port: int) -> dict:
     if not model.is_file() or model.suffix.lower() != ".gguf":
         raise PreparationError("invalid_input")
@@ -337,14 +330,6 @@ def _prepare_installation(request, model: Path, out: Path, port: int) -> dict:
     )
     environment = dict(installation["environment"])
     working_directory = cwd
-    if family == "sglang":
-        work_dir = out / "sglang-work"
-        metrics_dir = work_dir / "metrics"
-        work_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-        metrics_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-        working_directory = str(work_dir)
-        environment["PROMETHEUS_MULTIPROC_DIR"] = str(metrics_dir)
-        environment["SGLANG_RUN_ID"] = _sanitize_run_id(out.name)
 
     return {
         "schema_version": SCHEMA_VERSION,

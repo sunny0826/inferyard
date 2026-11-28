@@ -47,8 +47,6 @@ func localBackendLabel(family string) string {
 		return l10n.TR("dashboard.exec.backend_mlx_metal")
 	case "vllm":
 		return "vLLM"
-	case "sglang":
-		return "SGLang"
 	case "lmstudio":
 		return "LM Studio"
 	default:
@@ -159,7 +157,7 @@ func (w *viewState) incompatibleModelSuffix(model core.ModelAsset) string {
 	}
 	if e := w.localEngine(); e != nil {
 		switch e.Family {
-		case "mlx-lm", "vllm", "sglang":
+		case "mlx-lm", "vllm":
 			return l10n.TR("dashboard.exec.compat_dir")
 		case "polystrata":
 			if model.Format == "gguf" && model.Architecture != "" {

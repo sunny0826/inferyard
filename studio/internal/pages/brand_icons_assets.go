@@ -17,9 +17,6 @@ var brandPolyStrataSVG []byte
 //go:embed brand_icons/mlx.svg
 var brandMLXSVG []byte
 
-//go:embed brand_icons/sglang-color.svg
-var brandSGLangSVG []byte
-
 //go:embed brand_icons/vllm-color.svg
 var brandVLLMSVG []byte
 
@@ -116,7 +113,6 @@ var (
 	svgBrandLlamaCpp   = ui.MustParseSVG(brandLlamaCppSVG)
 	svgBrandPolyStrata = ui.MustParseSVG(brandPolyStrataSVG)
 	svgBrandMLX        = ui.MustParseSVG(brandMLXSVG)
-	svgBrandSGLang     = ui.MustParseSVG(brandSGLangSVG)
 	svgBrandVLLM       = ui.MustParseSVG(brandVLLMSVG)
 	svgBrandOllama     = ui.MustParseSVG(brandOllamaSVG)
 	svgBrandLMStudio   = ui.MustParseSVG(brandLMStudioSVG)

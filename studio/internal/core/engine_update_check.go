@@ -232,8 +232,6 @@ func (s *Service) collectInstalledUpstreamTargets(ctx context.Context, probeBina
 			seen["mlx-lm"] = engineCheckUpstreamTarget{key: "mlx-lm", family: "mlx-lm", distribution: "PyPI"}
 		case "vllm":
 			seen["vllm"] = engineCheckUpstreamTarget{key: "vllm", family: "vllm", distribution: "PyPI"}
-		case "sglang":
-			seen["sglang"] = engineCheckUpstreamTarget{key: "sglang", family: "sglang", distribution: "PyPI"}
 		}
 	}
 

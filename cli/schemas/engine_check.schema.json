@@ -261,7 +261,6 @@
                         "llama-cpp",
                         "mlx-lm",
                         "vllm",
-                        "sglang",
                         "lmstudio",
                         "polystrata"
                       ]
@@ -328,7 +327,6 @@
                           "llama-cpp",
                           "mlx-lm",
                           "vllm",
-                          "sglang",
                           "lmstudio",
                           "polystrata"
                         ]
@@ -596,7 +594,6 @@
                           "llama-cpp",
                           "mlx-lm",
                           "vllm",
-                          "sglang",
                           "lmstudio",
                           "polystrata"
                         ]
@@ -663,7 +660,6 @@
                             "llama-cpp",
                             "mlx-lm",
                             "vllm",
-                            "sglang",
                             "lmstudio",
                             "polystrata"
                           ]

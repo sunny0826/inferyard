@@ -38,7 +38,7 @@ Results stay on your machine. Frozen rules score the quality tasks.
   Go/MyGo native desktop app featuring:
   - **Multi-language UI (i18n):** English and Simplified Chinese (`Follow System` / `English` / `简体中文` in **Settings → Language**, switching live without restart; supports `MYGO_LOCALE` override and macOS bundle localizations).
   - **Desktop UX & self-update:** Light / Dark / Follow System themes with live visual previews, 5 selectable accent color themes (`Slate Cobalt` default), and 5 UI font size presets (`Smaller` / `Small` / `Default` / `Large` / `Larger`), compact icon-driven action buttons with tooltips and preserved accessibility labels, system tray integration with live running-engine status (status badge icon, title, tooltip, active service list, and close-to-tray when enabled in Settings), configurable default model download source (`ModelScope` default / `HuggingFace`), scoped HTTP(S) download proxy, and automatic GitHub Releases update checks with one-click SHA-256 verified self-update.
-  - **Hardware-aware downloads & assets:** Starter recommendations prioritizing **PolyStrata** on Apple Silicon, NVIDIA CUDA, and AMD ROCm hardware (with one-click 4-stage guided setup/recovery and `llama.cpp` fallback), extensible multi-engine catalog with concise engine descriptions and one-click installs (`PolyStrata`, `llama.cpp`, `mlx-lm` / `vLLM` managed Python venvs, `SGLang`, `LM Studio`), unified **Managed** vs. **Linked** lifecycle tracking with safe inspected uninstall for all Studio-installed engines and downloaded models, Hugging Face & ModelScope mirrors, custom URL resolution (`model resolve`), multi-shard GGUF and directory models with streaming progress and resume, plus multi-root model directories.
+  - **Hardware-aware downloads & assets:** Starter recommendations prioritizing **PolyStrata** on Apple Silicon, NVIDIA CUDA, and AMD ROCm hardware (with one-click 4-stage guided setup/recovery and `llama.cpp` fallback), extensible multi-engine catalog with concise engine descriptions and one-click installs (`PolyStrata`, `llama.cpp`, `mlx-lm` / `vLLM` managed Python venvs, `LM Studio`), unified **Managed** vs. **Linked** lifecycle tracking with safe inspected uninstall for all Studio-installed engines and downloaded models, Hugging Face & ModelScope mirrors, custom URL resolution (`model resolve`), multi-shard GGUF and directory models with streaming progress and resume, plus multi-root model directories.
   - **Tasks & live monitoring:** Automatic CLI version check and automatic CLI upgrade alongside Studio updates (`uv >= 0.13.6`, surfacing an error banner only if the upgrade fails), standard bundles and **Long-Context Speed** testing (`zh-context-speed`: 64K / 128K / 256K), an engine status card with direct Web UI link, live **Resource Curves**, in-app notification inbox, OS notifications, and model-grouped reports.
 - **Scriptable CLI subproject.** The [CLI](cli/README.md) subproject
   (`inferyard`) handles preflight checks, host locking, frozen execution,
@@ -72,9 +72,9 @@ set is reviewed by a person before release; see [task sets](benchmarks/README.md
 
 | Platform | Studio UI backend | Benchmark & telemetry scope |
 | --- | --- | --- |
-| macOS (Apple Silicon, 12+) | Metal | Single and batch runs, PolyStrata (Metal) & `llama.cpp` / `mlx-lm` / `vLLM` / `SGLang`, CPU/RSS/paging and AppleSMC temperature sampling |
+| macOS (Apple Silicon, 12+) | Metal | Single and batch runs, PolyStrata (Metal) & `llama.cpp` / `mlx-lm` / `vLLM`, CPU/RSS/paging and AppleSMC temperature sampling |
 | Windows x64 (10/11) | Direct3D 11 (WARP fallback) | PolyStrata (CUDA/HIP) & `llama.cpp` serial text runs, native process identity and memory sampling |
-| Linux x64 | GTK 3 and OpenGL (CPU fallback) | Single and batch runs, PolyStrata (CUDA/HIP) & `llama.cpp` / `vLLM` / `SGLang`, CPU/memory sampling |
+| Linux x64 | GTK 3 and OpenGL (CPU fallback) | Single and batch runs, PolyStrata (CUDA/HIP) & `llama.cpp` / `vLLM`, CPU/memory sampling |
 
 The table describes implementation scope. Automated native desktop UI verification currently runs on macOS (Apple Silicon); native Windows and Linux window interactions are not yet covered by automated UI tests. See [CLI installation and platform setup](cli/docs/installation.md) (Chinese) for platform setup details.
 
@@ -110,7 +110,6 @@ Thanks to the following projects:
 - [llama.cpp](https://github.com/ggml-org/llama.cpp) / [PrismML-Eng/llama.cpp](https://github.com/PrismML-Eng/llama.cpp)
 - [mlx-lm](https://github.com/ml-explore/mlx-lm)
 - [vLLM](https://github.com/vllm-project/vllm) / [vllm-metal](https://github.com/vllm-project/vllm-metal)
-- [SGLang](https://github.com/sgl-project/sglang)
 - [LM Studio](https://lmstudio.ai)
 - [MyGo](https://github.com/egoist/mygo) / [onevra](https://github.com/oneo-me/onevra)
 

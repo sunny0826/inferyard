@@ -95,7 +95,7 @@ func installationEntries(paths []string) []registryEntry {
 			WorkingDirectory string `json:"working_directory"`
 		}
 		if rawBytes, err := installationBytes(path); err == nil && json.Unmarshal(rawBytes, &display) == nil &&
-			slices.Contains([]string{"llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio", "polystrata"}, display.Family) {
+			slices.Contains([]string{"llama-cpp", "mlx-lm", "vllm", "lmstudio", "polystrata"}, display.Family) {
 			family = display.Family
 			if family == "polystrata" {
 				displayName = polystrataInstallationDisplayName(path, display.WorkingDirectory)
@@ -123,8 +123,6 @@ func installationFamilyDisplayName(family string) string {
 		return "mlx-lm"
 	case "vllm":
 		return "vLLM"
-	case "sglang":
-		return "SGLang"
 	case "llama-cpp":
 		return "llama.cpp"
 	case "lmstudio":
@@ -366,7 +364,7 @@ func (s *Service) InitAndRegisterLocalEngine(ctx context.Context, req InitLocalE
 		ctx = context.Background()
 	}
 	family := strings.TrimSpace(req.Family)
-	if !slices.Contains([]string{"llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio", "polystrata"}, family) {
+	if !slices.Contains([]string{"llama-cpp", "mlx-lm", "vllm", "lmstudio", "polystrata"}, family) {
 		return SettingsResponse{}, Err("invalid_request")
 	}
 	executable := strings.TrimSpace(req.Executable)
