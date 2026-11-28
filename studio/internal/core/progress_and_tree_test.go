@@ -197,6 +197,20 @@ func TestReasoningEffortSettingsPersistenceAndBoundPaths(t *testing.T) {
 	if _, apiErr := s.UpdateSettings(map[string]json.RawMessage{"reasoning_effort": json.RawMessage(`"ultra"`)}); apiErr == nil || apiErr.Code != "invalid_request" {
 		t.Fatalf("expected invalid_request for unsupported reasoning_effort, got %+v", apiErr)
 	}
+
+	if got := s.ReasoningMode(); got != ReasoningModeOff {
+		t.Fatalf("default ReasoningMode = %q, want %q", got, ReasoningModeOff)
+	}
+	modeResp, apiErr := s.UpdateSettings(map[string]json.RawMessage{"reasoning_mode": json.RawMessage(`"on"`)})
+	if apiErr != nil {
+		t.Fatalf("UpdateSettings(reasoning_mode=on) failed: %+v", apiErr)
+	}
+	if modeResp.Effective.ReasoningMode != ReasoningModeOn || s.ReasoningMode() != ReasoningModeOn {
+		t.Fatalf("expected effective reasoning_mode=on, got %+v", modeResp.Effective)
+	}
+	if _, apiErr := s.UpdateSettings(map[string]json.RawMessage{"reasoning_mode": json.RawMessage(`"auto"`)}); apiErr == nil || apiErr.Code != "invalid_request" {
+		t.Fatalf("expected invalid_request for unsupported reasoning_mode, got %+v", apiErr)
+	}
 }
 
 func TestFinishEngineTreeCleansLateSameGroupShutdownHelperAfterRootExits(t *testing.T) {

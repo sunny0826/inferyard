@@ -137,7 +137,11 @@ func launchSummaryLine(w *viewState) string {
 	}
 	if e := w.localEngine(); e != nil {
 		if e.Family == "lmstudio" {
-			return l10n.TRf("dashboard.exec.summary_lmstudio", "backend", localBackendLabel(e.Family))
+			return l10n.TRf(
+				"dashboard.exec.summary_lmstudio",
+				"backend", localBackendLabel(e.Family),
+				"thinking", reasoningModeSummaryLabel(w.effectiveReasoningMode()),
+			)
 		}
 		if e.Family == "polystrata" {
 			return l10n.TRf(
@@ -146,9 +150,18 @@ func launchSummaryLine(w *viewState) string {
 				"thinking", reasoningSummaryLabel(w.effectiveReasoningEffort()),
 			)
 		}
-		return l10n.TRf("dashboard.exec.summary_local", "backend", localBackendLabel(e.Family))
+		return l10n.TRf(
+			"dashboard.exec.summary_local",
+			"backend", localBackendLabel(e.Family),
+			"thinking", reasoningModeSummaryLabel(w.effectiveReasoningMode()),
+		)
 	}
-	return l10n.TRf("dashboard.exec.summary_prism", "backend", prismBackendLabel(w), "context", prismContextSize(w.selectedModel()))
+	return l10n.TRf(
+		"dashboard.exec.summary_prism",
+		"backend", prismBackendLabel(w),
+		"context", prismContextSize(w.selectedModel()),
+		"thinking", reasoningModeSummaryLabel(w.effectiveReasoningMode()),
+	)
 }
 
 func lmStudioHandoffNotice(w *viewState) string {

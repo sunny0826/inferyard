@@ -24,11 +24,155 @@ func (s *viewState) effectiveReasoningEffort() string {
 	return reasoningEffortFromSettings(s.settings)
 }
 
+func reasoningModeFromSettings(v core.SettingsResponse) string {
+	if strings.TrimSpace(v.Effective.ReasoningMode) != "" {
+		return core.NormalizeReasoningMode(v.Effective.ReasoningMode)
+	}
+	return core.NormalizeReasoningMode(v.Settings.ReasoningMode)
+}
+
+func (s *viewState) effectiveReasoningMode() string {
+	if strings.TrimSpace(s.reasoningMode) != "" {
+		return core.NormalizeReasoningMode(s.reasoningMode)
+	}
+	return reasoningModeFromSettings(s.settings)
+}
+
 func (s *viewState) loadReasoningSettings(v core.SettingsResponse) {
-	if s.reasoningSaving {
+	if !s.reasoningSaving {
+		s.reasoningEffort = reasoningEffortFromSettings(v)
+	}
+	if !s.reasoningModeSaving {
+		s.reasoningMode = reasoningModeFromSettings(v)
+	}
+}
+
+func reasoningModeSummaryLabel(mode string) string {
+	if core.NormalizeReasoningMode(mode) == core.ReasoningModeOn {
+		return l10n.TR("dashboard.exec.thinking_on")
+	}
+	return l10n.TR("dashboard.exec.thinking_none")
+}
+
+func (s *viewState) activeThinkingBadge(c *ui.Context) (string, stateKind) {
+	if e := s.localEngine(); e != nil && e.Family == "polystrata" {
+		effort := s.effectiveReasoningEffort()
+		kind := stateNeutral
+		if effort != core.ReasoningEffortNone {
+			kind = stateInfo
+		}
+		return trf(c, "dashboard.exec.thinking_badge", "state", reasoningSummaryLabel(effort)), kind
+	}
+	mode := s.effectiveReasoningMode()
+	kind := stateNeutral
+	if mode == core.ReasoningModeOn {
+		kind = stateInfo
+	}
+	return trf(c, "dashboard.exec.thinking_badge", "state", reasoningModeSummaryLabel(mode)), kind
+}
+
+func (s *viewState) benchmarkReasoningView(c *ui.Context) {
+	if s.engine == "" {
 		return
 	}
-	s.reasoningEffort = reasoningEffortFromSettings(v)
+	if e := s.localEngine(); e != nil && e.Family == "polystrata" {
+		s.polystrataReasoningView(c)
+		return
+	}
+	s.reasoningModeView(c)
+}
+
+func (s *viewState) reasoningModeView(c *ui.Context) {
+	prev := s.effectiveReasoningMode()
+	enabled := prev == core.ReasoningModeOn
+	labeledSwitchRow(
+		c,
+		tr(c, "dashboard.candidate.reasoning_mode"),
+		tr(c, "dashboard.candidate.reasoning_mode_hint"),
+		tr(c, "dashboard.candidate.reasoning_mode_switch"),
+		&enabled,
+	)
+	next := core.ReasoningModeOff
+	if enabled {
+		next = core.ReasoningModeOn
+	}
+	if next != prev {
+		s.changeReasoningMode(next)
+	}
+}
+
+func (s *viewState) changeReasoningMode(mode string) {
+	next := core.NormalizeReasoningMode(mode)
+	if next == s.effectiveReasoningMode() {
+		return
+	}
+	s.reasoningMode = next
+	s.settings.Settings.ReasoningMode = next
+	s.settings.Effective.ReasoningMode = next
+	raw, _ := json.Marshal(next)
+	patch := map[string]json.RawMessage{"reasoning_mode": raw}
+	if s.simulate(previewSettings{patch: patch}) {
+		return
+	}
+	if s.service == nil {
+		return
+	}
+	s.reasoningModeSaving = true
+	s.bumpSettingsEpoch()
+
+	s.reasoningModeMu.Lock()
+	s.reasoningModeWantedSeq++
+	s.reasoningModeWanted = next
+	startWorker := !s.reasoningModeWorkerRunning
+	s.reasoningModeWorkerRunning = true
+	s.reasoningModeMu.Unlock()
+
+	if startWorker {
+		go s.runReasoningModePersistWorker()
+	}
+}
+
+func (s *viewState) runReasoningModePersistWorker() {
+	for {
+		s.reasoningModeMu.Lock()
+		mode := s.reasoningModeWanted
+		seq := s.reasoningModeWantedSeq
+		s.reasoningModeMu.Unlock()
+
+		if s.ctx != nil && s.ctx.Err() != nil {
+			s.reasoningModeMu.Lock()
+			s.reasoningModeWorkerRunning = false
+			s.reasoningModeMu.Unlock()
+			return
+		}
+
+		raw, _ := json.Marshal(mode)
+		value, apiErr := s.service.UpdateSettings(map[string]json.RawMessage{"reasoning_mode": raw})
+
+		s.reasoningModeMu.Lock()
+		latest := seq == s.reasoningModeWantedSeq
+		if latest {
+			s.reasoningModeWorkerRunning = false
+		}
+		s.reasoningModeMu.Unlock()
+
+		if latest {
+			s.runOnUI(func() {
+				s.reasoningModeSaving = false
+				if apiErr != nil {
+					s.failure = apiErr
+					s.failurePage = s.selected
+					return
+				}
+				resolved := reasoningModeFromSettings(value)
+				s.reasoningMode = resolved
+				s.settings.Settings.ReasoningMode = value.Settings.ReasoningMode
+				s.settings.Effective.ReasoningMode = resolved
+				s.bumpSettingsEpoch()
+			})
+			return
+		}
+	}
 }
 
 func reasoningSummaryLabel(effort string) string {

@@ -8,6 +8,7 @@ from inferyard.contracts.engine_profiles import (
     LOCAL_FAMILIES,
     PROMPT_CACHE,
     REASONING_EFFORT_LEVELS,
+    REASONING_MODES,
     TUNING_KEYS,
 )
 from inferyard.contracts.schemas_common import BOOL, HASH, LABEL, TEXT, VERSION, array, enum, obj
@@ -87,6 +88,7 @@ LOCAL_CONFIG_SCHEMA["properties"]["generation"] = obj(
         "temperature": {"type": "number", "const": 0},
         "max_tokens": {"type": "integer", "minimum": 1, "maximum": 8192},
         "reasoning_effort": enum(*REASONING_EFFORT_LEVELS),
+        "reasoning_mode": enum(*REASONING_MODES),
     },
     required=["temperature", "max_tokens"],
 )

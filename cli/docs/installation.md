@@ -121,7 +121,7 @@ inferyard config create \
   --out bench-ops/candidates/zh-core-1
 ```
 
-对于 PolyStrata `installation.json`，还可通过 `--reasoning-effort {none,low,medium,high}` 冻结推理思考强度（开启思考时会自动上调默认输出 token 上限，并保留模型配置中的思考预算参数）。
+对于 PolyStrata `installation.json`，还可通过 `--reasoning-effort {none,low,medium,high}` 冻结推理思考强度（开启思考时会自动上调默认输出 token 上限，并保留模型配置中的思考预算参数）；对于其他本地引擎（`llama-cpp`、`mlx-lm`、`vllm`、`lmstudio`）及 Prism，可通过 `--reasoning-mode {off,on}` 控制是否开启思考模式（开启时同样自动上调默认输出 token 上限）。
 
 在 Studio 中，也可通过「模型库 → 引擎 → 注册本地引擎」直接探测、生成或导入已有 `installation.json` 完成登记。
 

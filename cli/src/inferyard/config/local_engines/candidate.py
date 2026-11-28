@@ -17,7 +17,7 @@ from inferyard.provisioning.preparation_io import (
     sha256,
 )
 from inferyard.config.toml_writer import render
-from inferyard.contracts.engine_profiles import REASONING_EFFORT_LEVELS
+from inferyard.contracts.engine_profiles import REASONING_EFFORT_LEVELS, REASONING_MODES
 from inferyard.contracts.schemas_config import CONFIG_DEFAULTS
 from inferyard.contracts.validation import validate_document, json_bytes
 from inferyard.errors import PreflightError
@@ -215,6 +215,12 @@ def create(request):
             raise PreparationError("invalid_input")
         if family != "polystrata":
             raise PreparationError("reasoning_effort_unsupported")
+    raw_mode = getattr(request, "reasoning_mode", None)
+    if raw_mode is not None:
+        if raw_mode not in REASONING_MODES:
+            raise PreparationError("invalid_input")
+        if family == "polystrata":
+            raise PreparationError("reasoning_mode_unsupported")
     if family == "polystrata":
         system, _ = require_platform(("Darwin", "arm64"), ("Linux", "x64"), ("Windows", "x64"))
     else:
@@ -335,6 +341,7 @@ def create(request):
     hints = effective_execution_hints(bundle)
     has_svg = any(case.get("category") == "svg" for case in bundle.get("cases", ()))
     resolved_effort = (raw_effort or "none") if family == "polystrata" else None
+    resolved_mode = raw_mode if family != "polystrata" else None
     if request.max_tokens is not None:
         max_tokens = request.max_tokens
     elif resolved_effort not in (None, "none"):
@@ -348,6 +355,10 @@ def create(request):
                 else (2048 if resolved_effort == "low" else 4096)
             )
         max_tokens = min(target_tokens, context, 8192)
+    elif resolved_mode == "on":
+        reasoning_hints = hints.get("reasoning_max_tokens") or {}
+        target_tokens = reasoning_hints.get("medium") or (8192 if has_svg else 4096)
+        max_tokens = min(target_tokens, context, 8192)
     else:
         default_tokens = hints.get("default_max_tokens") or (4096 if has_svg else 512)
         max_tokens = min(default_tokens, context, 8192)
@@ -357,6 +368,8 @@ def create(request):
     }
     if resolved_effort is not None:
         generation_section["reasoning_effort"] = resolved_effort
+    if resolved_mode is not None:
+        generation_section["reasoning_mode"] = resolved_mode
 
     config = deepcopy(CONFIG_DEFAULTS)
     config.update(

@@ -56,6 +56,11 @@ def validate_config(config):
         "reasoning_effort is supported for polystrata only",
     )
     require(
+        "reasoning_mode" not in config["generation"] or family != "polystrata",
+        "config.generation.reasoning_mode",
+        "reasoning_mode is supported for non-polystrata local engines only",
+    )
+    require(
         ("binding_path" in config["endpoint"]) == ("binding_sha256" in config["endpoint"]),
         "config.endpoint",
         "binding path and hash must occur together",

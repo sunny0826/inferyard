@@ -17,6 +17,7 @@ type LocalCandidateRequest struct {
 	ServicePID            int64
 	Endpoint              string
 	ReasoningEffort       string
+	ReasoningMode         string
 }
 
 type CandidateRun struct {
@@ -44,6 +45,18 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 	if rawEffort != "" {
 		var ok bool
 		normalizedEffort, ok = ParseReasoningEffort(rawEffort)
+		if !ok {
+			return nil, Err("invalid_request")
+		}
+	}
+	rawMode := strings.TrimSpace(req.ReasoningMode)
+	if rawMode == "" {
+		rawMode = strings.TrimSpace(u.ReasoningMode)
+	}
+	var normalizedMode string
+	if rawMode != "" {
+		var ok bool
+		normalizedMode, ok = ParseReasoningMode(rawMode)
 		if !ok {
 			return nil, Err("invalid_request")
 		}
@@ -145,6 +158,8 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 			"--bundle", bundlePath, "--results", *results, "--port", port, "--out", output}
 		if family == "polystrata" && normalizedEffort != "" && normalizedEffort != ReasoningEffortNone {
 			args = append(args, "--reasoning-effort", normalizedEffort)
+		} else if family != "polystrata" && normalizedMode != "" {
+			args = append(args, "--reasoning-mode", normalizedMode)
 		}
 		if req.ServicePID > 0 {
 			args = append(args, "--service-pid", strconv.FormatInt(req.ServicePID, 10))

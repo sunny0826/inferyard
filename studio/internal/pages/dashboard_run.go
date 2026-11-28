@@ -253,6 +253,8 @@ func (w *viewState) runViewWithBar(c *ui.Context, embedBar bool) {
 				}
 				if w.engine != "" {
 					w.enginePill(c, w.engine)
+					thinkingLabel, thinkingKind := w.activeThinkingBadge(c)
+					inlineBadge(c, thinkingLabel, thinkingKind, badgeOptions{Size: sizeSM, Style: badgeSoft})
 				}
 			})
 			studioTooltipGroup(c, ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(t.Density.Row), func() {

@@ -80,12 +80,16 @@ def fresh_macos(selected, results):
     return current
 
 
-def resolve_max_tokens(bundle: dict, context_size: int) -> int:
+def resolve_max_tokens(bundle: dict, context_size: int, reasoning_mode: str = "off") -> int:
     from inferyard.bundles.registry import effective_execution_hints
 
     hints = effective_execution_hints(bundle)
     has_svg = any(case.get("category") == "svg" for case in bundle.get("cases", ()))
-    default_tokens = hints.get("default_max_tokens") or (4096 if has_svg else 512)
+    if reasoning_mode == "on":
+        reasoning_hints = hints.get("reasoning_max_tokens") or {}
+        default_tokens = reasoning_hints.get("medium") or (8192 if has_svg else 4096)
+    else:
+        default_tokens = hints.get("default_max_tokens") or (4096 if has_svg else 512)
     headroom = min(256, context_size // 2)
     return min(default_tokens, max(1, context_size - headroom), 8192)
 
@@ -149,8 +153,19 @@ def create(request):
     repo, revision = source_declaration(
         request.model_source_record, model, repo=request.model_repo, revision=request.model_revision
     )
-    max_tokens = resolve_max_tokens(bundle, selected["context_size"])
-    shared = dict(repo=repo, revision=revision, port=request.port, max_tokens=max_tokens)
+    reasoning_mode = getattr(request, "reasoning_mode", None) or "off"
+    if reasoning_mode not in ("off", "on"):
+        raise PreparationError("invalid_input")
+    if request.benchmark_profile == "context-speed" and reasoning_mode == "on":
+        raise PreparationError("invalid_input")
+    max_tokens = resolve_max_tokens(bundle, selected["context_size"], reasoning_mode=reasoning_mode)
+    shared = dict(
+        repo=repo,
+        revision=revision,
+        port=request.port,
+        max_tokens=max_tokens,
+        reasoning_mode=reasoning_mode,
+    )
     if system == "Darwin":
         from inferyard.config.community_candidates_macos import build_config
         from inferyard.platforms.identity import environment_snapshot

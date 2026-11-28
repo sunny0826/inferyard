@@ -127,6 +127,7 @@ class CommandRequest:
     reports_root: Path | None = None
     prompt_cache: str | None = None
     reasoning_effort: str | None = None
+    reasoning_mode: str | None = None
     hubs: list[str] | None = None
     code: str | None = None
     ca_sha256: str | None = None

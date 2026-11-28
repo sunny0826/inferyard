@@ -134,7 +134,7 @@ func (s *Service) FontSize() string {
 
 func isAllowedSettingKey(k string, pathsBound bool) bool {
 	switch k {
-	case "download_source", "download_proxy", "theme", "accent", "font_size", "language", "reasoning_effort", "minimize_to_tray", "keep_services_on_quit":
+	case "download_source", "download_proxy", "theme", "accent", "font_size", "language", "reasoning_effort", "reasoning_mode", "minimize_to_tray", "keep_services_on_quit":
 		return true
 	case "inferyard_path", "workspace_root", "extra_models_roots":
 		return !pathsBound
@@ -177,6 +177,29 @@ func NormalizeReasoningEffort(raw string) string {
 // ReasoningEffort returns the normalized persisted benchmark reasoning effort without probing the CLI.
 func (s *Service) ReasoningEffort() string {
 	return NormalizeReasoningEffort(s.userSettings().ReasoningEffort)
+}
+
+func ParseReasoningMode(raw string) (string, bool) {
+	switch strings.TrimSpace(raw) {
+	case "", ReasoningModeOff:
+		return ReasoningModeOff, true
+	case ReasoningModeOn:
+		return ReasoningModeOn, true
+	default:
+		return "", false
+	}
+}
+
+func NormalizeReasoningMode(raw string) string {
+	if normalized, ok := ParseReasoningMode(raw); ok {
+		return normalized
+	}
+	return ReasoningModeOff
+}
+
+// ReasoningMode returns the normalized persisted benchmark thinking toggle without probing the CLI.
+func (s *Service) ReasoningMode() string {
+	return NormalizeReasoningMode(s.userSettings().ReasoningMode)
 }
 
 func ParseDownloadSource(raw string) (string, bool) {
@@ -334,6 +357,21 @@ func (s *Service) applySettingsPatchExtra(u *UserSettings, key string, raw json.
 			return true, Err("invalid_request")
 		}
 		u.ReasoningEffort = normalized
+		return true, nil
+	case "reasoning_mode":
+		var mode *string
+		if json.Unmarshal(raw, &mode) != nil {
+			return true, Err("invalid_request")
+		}
+		if mode == nil {
+			u.ReasoningMode = ReasoningModeOff
+			return true, nil
+		}
+		normalized, ok := ParseReasoningMode(*mode)
+		if !ok {
+			return true, Err("invalid_request")
+		}
+		u.ReasoningMode = normalized
 		return true, nil
 	case "minimize_to_tray":
 		var enabled *bool

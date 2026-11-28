@@ -154,6 +154,7 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 	value.FontSize = core.NormalizeFontSize(value.FontSize)
 	value.Language = core.NormalizeLanguage(value.Language)
 	value.ReasoningEffort = core.NormalizeReasoningEffort(value.ReasoningEffort)
+	value.ReasoningMode = core.NormalizeReasoningMode(value.ReasoningMode)
 	var resultsRoot, modelsRoot, reportsRoot *string
 	if ws := emptyText(value.WorkspaceRoot); ws != "" {
 		resultsRoot = previewValue(filepath.Join(ws, "results"))
@@ -175,6 +176,7 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		FontSize:           value.FontSize,
 		Language:           value.Language,
 		ReasoningEffort:    value.ReasoningEffort,
+		ReasoningMode:      value.ReasoningMode,
 		MinimizeToTray:     value.MinimizeToTray,
 		KeepServicesOnQuit: core.EffectiveKeepServicesOnQuitValue(value),
 	}
@@ -187,6 +189,9 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 	}
 	if _, hasReasoning := patch["reasoning_effort"]; hasReasoning {
 		s.reasoningEffort = value.ReasoningEffort
+	}
+	if _, hasReasoningMode := patch["reasoning_mode"]; hasReasoningMode {
+		s.reasoningMode = value.ReasoningMode
 	}
 	if _, hasTheme := patch["theme"]; hasTheme {
 		p.themeMode = previewThemeModeIndex(value.Theme)

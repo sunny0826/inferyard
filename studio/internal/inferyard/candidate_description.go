@@ -81,6 +81,7 @@ type CandidateGeneration struct {
 	MaxTokens       int64   `json:"max_tokens"`
 	Temperature     float64 `json:"temperature"`
 	ReasoningEffort string  `json:"reasoning_effort,omitempty"`
+	ReasoningMode   string  `json:"reasoning_mode,omitempty"`
 }
 
 var candidateDigest = regexp.MustCompile(`^[a-f0-9]{64}$`)
@@ -327,8 +328,17 @@ func validCandidateParameters(fields map[string]json.RawMessage, local bool, fam
 					return false
 				}
 			}
-		} else if !discoveryFields(fields["generation"], "temperature", "max_tokens") {
-			return false
+		} else {
+			genFields, ok := candidateObject(fields["generation"], []string{"temperature", "max_tokens"}, []string{"reasoning_mode"})
+			if !ok {
+				return false
+			}
+			if rawMode, has := genFields["reasoning_mode"]; has {
+				var mode string
+				if json.Unmarshal(rawMode, &mode) != nil || !slices.Contains([]string{"off", "on"}, mode) {
+					return false
+				}
+			}
 		}
 	}
 	return true

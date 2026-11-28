@@ -223,6 +223,7 @@ func (s *Service) Settings() SettingsResponse {
 		FontSize:           NormalizeFontSize(u.FontSize),
 		Language:           NormalizeLanguage(u.Language),
 		ReasoningEffort:    NormalizeReasoningEffort(u.ReasoningEffort),
+		ReasoningMode:      NormalizeReasoningMode(u.ReasoningMode),
 		MinimizeToTray:     u.MinimizeToTray,
 		KeepServicesOnQuit: EffectiveKeepServicesOnQuitValue(u),
 		ReportsRoot:        s.reportsRoot(u),
@@ -259,7 +260,7 @@ func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResp
 			u.InferyardPath = p
 		}
 	}
-	for _, k := range []string{"extra_models_roots", "download_source", "download_proxy", "theme", "accent", "font_size", "language", "reasoning_effort", "minimize_to_tray", "keep_services_on_quit"} {
+	for _, k := range []string{"extra_models_roots", "download_source", "download_proxy", "theme", "accent", "font_size", "language", "reasoning_effort", "reasoning_mode", "minimize_to_tray", "keep_services_on_quit"} {
 		v, ok := patch[k]
 		if !ok {
 			continue
