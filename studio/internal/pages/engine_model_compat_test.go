@@ -444,6 +444,16 @@ func TestExplicitHandoffsAndHistoryRerunValidation(t *testing.T) {
 	if eng != polyEng.Name || mod != strataMod.Name {
 		t.Fatalf("polystrata pack rerun via ServedModel got (%q, %q), want (%q, %q)", eng, mod, polyEng.Name, strataMod.Name)
 	}
+	polyEng2 := core.EngineAsset{Name: "PolyStrata · v0.2.21", Family: "polystrata", Kind: "local_installation", Path: "/ws/engines/poly2/installation.json"}
+	s.registry.Engines = append(s.registry.Engines, polyEng2)
+	s.checks.Engines[polyEng2.Name] = core.EngineEligibility{State: core.EngineCheckEligible, Family: "polystrata"}
+	if eng, mod = s.resolveHistoryRerunSelection(core.RunSummary{ServedModel: &servedName, EngineFamily: &polyFam}); eng != "" || mod != "" {
+		t.Fatalf("EngineFamily with 2 usable polystrata installs must stay empty, got (%q, %q)", eng, mod)
+	}
+	s.registry.Engines = []core.EngineAsset{llamaEng, vllmElig}
+	if eng, mod = s.resolveHistoryRerunSelection(core.RunSummary{ModelPath: &mlxPath, Engine: &localAdapter, EngineFamily: &mlxFam}); eng != "" || mod != "" {
+		t.Fatalf("missing EngineFamily must not fall back to vllm, got (%q, %q)", eng, mod)
+	}
 	s.registry.Models = []core.ModelAsset{fooModel, mlxModel}
 	s.registry.Engines = []core.EngineAsset{llamaEng, mlxEng, vllmInel}
 

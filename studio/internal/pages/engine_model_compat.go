@@ -244,24 +244,28 @@ func (s *viewState) resolveHistoryRerunSelection(r core.RunSummary) (string, str
 			}
 		}
 	}
-	var matchedEngine *core.EngineAsset
 	if wantFamily := strings.TrimSpace(emptyText(r.EngineFamily)); wantFamily != "" {
-		for i := range s.registry.Engines {
-			e := &s.registry.Engines[i]
+		var familyMatches []core.EngineAsset
+		for _, e := range s.registry.Engines {
 			if s.isBenchmarkEngineUsable(e.Name) && e.Family == wantFamily {
-				matchedEngine = e
-				break
+				familyMatches = append(familyMatches, e)
 			}
 		}
+		if len(familyMatches) == 1 {
+			if matchedModel != nil && compatibleBenchmarkEngine(*matchedModel, familyMatches[0]) {
+				return familyMatches[0].Name, matchedModel.Name
+			}
+			return familyMatches[0].Name, ""
+		}
+		return "", ""
 	}
-	if matchedEngine == nil {
-		if wantEngine := strings.TrimSpace(emptyText(r.Engine)); wantEngine != "" {
-			for i := range s.registry.Engines {
-				e := &s.registry.Engines[i]
-				if s.isBenchmarkEngineUsable(e.Name) && historyEngineMatches(*e, wantEngine) {
-					matchedEngine = e
-					break
-				}
+	var matchedEngine *core.EngineAsset
+	if wantEngine := strings.TrimSpace(emptyText(r.Engine)); wantEngine != "" {
+		for i := range s.registry.Engines {
+			e := &s.registry.Engines[i]
+			if s.isBenchmarkEngineUsable(e.Name) && historyEngineMatches(*e, wantEngine) {
+				matchedEngine = e
+				break
 			}
 		}
 	}
