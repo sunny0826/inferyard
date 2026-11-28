@@ -18,14 +18,12 @@ def test_go_engine_install_aliases_and_default_output(tmp_path, monkeypatch):
         rpc.call(
             "node.engine_install",
             {
-                "family": "mlx-lm",
+                "family": "llama-cpp",
                 "release_id": "release-1",
                 "build_id": "build-1",
+                "install_mode": "direct_download",
                 "target_platform": "darwin/arm64",
                 "source_url": "https://example.test/engine.zip",
-                "wheel_urls": ["https://example.test/engine.whl"],
-                "packages": ["mlx-lm==1.0"],
-                "python": "3.12",
             },
         )
     )
@@ -33,7 +31,54 @@ def test_go_engine_install_aliases_and_default_output(tmp_path, monkeypatch):
     assert len(requests) == 1
     request = requests[0]
     assert request.engine_source_url == "https://example.test/engine.zip"
-    assert request.out == tmp_path / "state" / "workspace" / "engines" / "mlx-lm-release-1"
+    assert request.out == tmp_path / "state" / "workspace" / "engines" / "llama-cpp-release-1"
+
+
+def test_go_engine_install_managed_venv_uses_uv_and_init(tmp_path, monkeypatch):
+    calls = []
+    init_requests = []
+
+    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/uv" if name == "uv" else None)
+    monkeypatch.setattr(
+        "subprocess.run", lambda argv, **kwargs: calls.append(argv) or SimpleNamespace(returncode=0)
+    )
+    monkeypatch.setattr(
+        "inferyard.application.engine_detect.execute",
+        lambda req: init_requests.append(req)
+        or (0, CommandResult("engine init-installation", "prepared", "complete")),
+    )
+    rpc = NodeRPC(tmp_path / "state", None, None)
+    result = asyncio.run(
+        rpc.call(
+            "node.engine_install",
+            {
+                "family": "mlx-lm",
+                "release_id": "release-1",
+                "build_id": "build-1",
+                "install_mode": "managed_venv",
+                "target_platform": "darwin/arm64",
+                "wheel_urls": ["https://example.test/mlx.whl"],
+                "packages": ["mlx-lm==1.0"],
+                "python": "3.12",
+            },
+        )
+    )
+    assert result["install_mode"] == "managed_venv"
+    assert len(calls) == 2 and calls[0][1] == "venv" and calls[1][1:3] == ["pip", "install"]
+    assert "https://example.test/mlx.whl" in calls[1]
+    assert len(init_requests) == 1 and init_requests[0].family == "mlx-lm"
+
+
+def test_report_export_by_job_id_resolves_raw_run(tmp_path):
+    from tests.helpers import fixture_run
+
+    state = tmp_path / "state"
+    run = fixture_run(tmp_path / "raw-run")
+    jobs = SimpleNamespace(jobs={"job-42": {"job_id": "job-42", "evidence_dir": str(run)}})
+    rpc = NodeRPC(state, None, jobs)
+    result = asyncio.run(rpc.call("report.export", {"remote_report_id": "job-42"}))
+    assert result["verified_from_raw"] is True
+    assert result["report"]["schema_version"] == 3
 
 
 def test_empty_workspace_clean_preserves_assets_and_active_jobs(tmp_path):

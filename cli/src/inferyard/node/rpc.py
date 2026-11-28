@@ -102,16 +102,23 @@ class NodeRPC:
         if method == protocol.METHOD_REPORT_LIST:
             return {"reports": list_reports(self.state_dir / "reports")}
         if method == protocol.METHOD_REPORT_EXPORT:
+            run_path = params.get("run_path")
             report_path = params.get("report_path")
             report_id = params.get("remote_report_id") or params.get("report_id")
-            if not report_path and not params.get("run_path") and isinstance(report_id, str):
+            if not report_path and not run_path and isinstance(report_id, str):
                 if "/" in report_id or "\\" in report_id or report_id in ("", ".", ".."):
                     raise RPCError("invalid_params", "invalid report_id")
-                report_path = str(self.state_dir / "reports" / report_id)
+                candidate_report = self.state_dir / "reports" / report_id
+                if (candidate_report / "studio.json").is_file():
+                    report_path = str(candidate_report)
+                else:
+                    run_path = self._resolve_job_run_path(report_id)
+                    if run_path is None:
+                        report_path = str(candidate_report)
             return await asyncio.to_thread(
                 export_report,
                 state_dir=self.state_dir,
-                run_path=params.get("run_path"),
+                run_path=run_path,
                 report_path=report_path,
                 out=params.get("out"),
             )
@@ -140,13 +147,65 @@ class NodeRPC:
             [Path(item) for item in params.get("engine_roots", [])],
         )
 
+    def _resolve_job_run_path(self, report_id: str) -> str | None:
+        record = self.jobs.jobs.get(report_id)
+        if record:
+            raw = record.get("evidence_dir") or record.get("run_path")
+            if isinstance(raw, str) and Path(raw).is_dir():
+                return raw
+        results_dir = self.state_dir / "jobs" / report_id / "results"
+        if results_dir.is_dir():
+            for marker in sorted(results_dir.rglob("inputs.json")):
+                return str(marker.parent)
+        return None
+
+    def _install_managed_venv(self, destination: Path, params: dict) -> dict:
+        import os
+        import shutil
+        import subprocess
+        from inferyard.application.engine_detect import execute as init_execute
+        from inferyard.application.types import CommandRequest
+
+        uv = shutil.which("uv")
+        if not uv:
+            raise RPCError("engine_install_failed", "uv_not_found")
+        destination.mkdir(parents=True, exist_ok=True)
+        venv_dir = destination / "venv"
+        py_ver = str(params.get("python") or "3.12")
+        env = os.environ.copy()
+        proxy = params.get("proxy_origin")
+        if isinstance(proxy, str) and proxy:
+            env["HTTPS_PROXY"] = env["HTTP_PROXY"] = proxy
+        subprocess.run([uv, "venv", "--python", py_ver, str(venv_dir)], check=True, env=env)
+        venv_py = venv_dir / ("Scripts/python.exe" if os.name == "nt" else "bin/python3")
+        wheels = [str(w) for w in (params.get("wheel_urls") or []) if w]
+        pkgs = [str(p) for p in (params.get("packages") or []) if p]
+        if not wheels and not pkgs:
+            raise ValueError("managed_venv requires wheel_urls or packages")
+        subprocess.run(
+            [uv, "pip", "install", "--python", str(venv_py), *wheels, *pkgs],
+            check=True,
+            env=env,
+        )
+        inst_path = destination / "installation.json"
+        code, result = init_execute(
+            CommandRequest(
+                "engine init-installation",
+                family=str(params.get("family") or ""),
+                executable=venv_py,
+                working_directory=destination,
+                runtime_roots=[venv_dir],
+                out=inst_path,
+            )
+        )
+        if code != 0:
+            raise RPCError("engine_install_failed", ",".join(result.limitations))
+        return {"installation_path": str(inst_path), "install_mode": "managed_venv", "status": "done"}
+
     async def _engine_install(self, params: dict) -> dict:
         from inferyard.application.engine_prepare import execute
         from inferyard.application.types import CommandRequest
 
-        source = params.get("source_url") or params.get("source")
-        if not isinstance(source, str) or not source:
-            raise ValueError("engine source URL is required")
         out = params.get("out")
         if out:
             destination = Path(out)
@@ -159,6 +218,14 @@ class NodeRPC:
             ):
                 raise ValueError("invalid engine family or release_id")
             destination = self.workspace / "engines" / f"{family}-{release}"
+        install_mode = str(params.get("install_mode") or "").strip()
+        if install_mode == "managed_venv" or (
+            not install_mode and (params.get("packages") or params.get("wheel_urls"))
+        ):
+            return await asyncio.to_thread(self._install_managed_venv, destination, params)
+        source = params.get("source_url") or params.get("source")
+        if not isinstance(source, str) or not source:
+            raise ValueError("engine source URL is required")
         request = CommandRequest(
             "engine prepare",
             engine_source_url=source,

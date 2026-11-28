@@ -126,20 +126,19 @@ class ServiceSupervisor:
         for path in self.root.glob("*/receipt.json"):
             try:
                 record = json.loads(path.read_text(encoding="utf-8"))
-                if isinstance(record.get("service_id"), str):
-                    record.setdefault("state", record.get("status"))
-                    if record.get("status") == "running" and not _process_matches(record):
-                        self._mark_exited(record)
-                    self.services[record["service_id"]] = record
+                if not isinstance(record.get("service_id"), str):
+                    continue
+                record.setdefault("state", record.get("status"))
+                if record.get("status") in ("running", "stopping") and not _process_matches(record):
+                    self._mark_exited(record)
+                self.services[record["service_id"]] = record
             except (OSError, ValueError):
                 continue
 
     def _mark_exited(self, record: dict) -> None:
         _set_status(record, "exited")
-        record["crashed"] = True
-        record["finished_at"] = _timestamp()
         log_path = Path(record.get("log_path") or self.root / record["service_id"] / "engine.log")
-        record["log_tail"] = log_lines(log_path)
+        record.update(crashed=True, finished_at=_timestamp(), log_tail=log_lines(log_path))
         self._save(record)
 
     def _save(self, record: dict) -> None:
@@ -153,10 +152,9 @@ class ServiceSupervisor:
             await self.event_sink(name, dict(record))
 
     def _record(self, service_id: str) -> dict:
-        try:
-            return self.services[service_id]
-        except KeyError as exc:
-            raise ValueError("unknown service_id") from exc
+        if service_id not in self.services:
+            raise ValueError("unknown service_id")
+        return self.services[service_id]
 
     def list(self) -> list[dict]:
         return [dict(self.services[key]) for key in sorted(self.services)]
@@ -167,11 +165,12 @@ class ServiceSupervisor:
         if port in self.allowed_ports:
             return True
         record = self.services.get(service_id or "")
-        if not record or record.get("port") != port:
+        if not record or record.get("port") != port or record.get("status") != "running":
             return False
-        if record.get("status") == "running" and not _process_matches(record):
+        if not _process_matches(record):
             self._mark_exited(record)
-        return record.get("status") in ("running", "stopping")
+            return False
+        return True
 
     def endpoint(self, service_id: str) -> dict:
         record = self._record(service_id)

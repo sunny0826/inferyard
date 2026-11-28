@@ -86,16 +86,17 @@ func deployRemoteAgent(client *ssh.Client, issued issuedClientCredentials, versi
 			return fmt.Errorf("write remote %s: %w", file.name, err)
 		}
 	}
-	install := unixUVBootstrap()
+	var install string
+	if proxy != "" {
+		install += "export HTTPS_PROXY=" + shellQuote(proxy) + " HTTP_PROXY=" + shellQuote(proxy) + "\n"
+	}
+	install += unixUVBootstrap()
 	if source != "" {
 		if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
 			install += "export UV_DEFAULT_INDEX=" + shellQuote(source) + "; "
 		} else {
 			install += "export INFERYARD_MODEL_SOURCE=" + shellQuote(source) + "; "
 		}
-	}
-	if proxy != "" {
-		install += "export HTTPS_PROXY=" + shellQuote(proxy) + " HTTP_PROXY=" + shellQuote(proxy) + "; "
 	}
 	install += "\"$UV\" tool install --python 3.15 --upgrade " + shellQuote(packageSpec(version))
 	if _, err := runRemoteCommand(client, install, nil); err != nil {

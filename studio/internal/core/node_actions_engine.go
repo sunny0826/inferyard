@@ -119,6 +119,26 @@ func (s *Service) EngineCatalogForNode(nodeID string) ([]EngineFamilyCatalog, *A
 	return catalogForPlatform(platform), nil
 }
 
+func remoteEngineBuild(req ManagedEngineInstallRequest) (EngineFamilyCatalog, EngineRelease, EnginePlatformBuild, *ApiError) {
+	platform := strings.TrimSpace(req.TargetPlatform)
+	family, ok := DefaultEngineCatalog().FamilyByID(strings.TrimSpace(req.Family))
+	if !ok {
+		return EngineFamilyCatalog{}, EngineRelease{}, EnginePlatformBuild{}, Err("invalid_request")
+	}
+	for _, release := range family.ReleasesForPlatform(platform, false) {
+		if release.ID != strings.TrimSpace(req.ReleaseID) {
+			continue
+		}
+		for _, build := range release.Builds {
+			if build.ID == strings.TrimSpace(req.BuildID) &&
+				(build.CanManagedVenvInstallOn(platform) || build.CanDirectDownloadOn(platform)) {
+				return family, release, build, nil
+			}
+		}
+	}
+	return EngineFamilyCatalog{}, EngineRelease{}, EnginePlatformBuild{}, Err("invalid_request")
+}
+
 func (s *Service) InstallNodeManagedEngine(ctx context.Context, nodeID string, req ManagedEngineInstallRequest) (NodeOperation, *ApiError) {
 	if s.nodes == nil || !validNodeID(nodeID) {
 		return NodeOperation{}, Err("invalid_request")
@@ -139,15 +159,19 @@ func (s *Service) InstallNodeManagedEngine(ctx context.Context, nodeID string, r
 	if req.TargetPlatform == "" || record.Platform != "" && req.TargetPlatform != record.Platform {
 		return NodeOperation{}, Err("invalid_request")
 	}
-	_, release, build, failure := managedEngineBuild(req)
+	_, release, build, failure := remoteEngineBuild(req)
 	if failure != nil {
 		return NodeOperation{}, failure
 	}
 	params := map[string]any{
 		"family": req.Family, "release_id": req.ReleaseID, "build_id": req.BuildID,
-		"target_platform": req.TargetPlatform, "source_url": managedEngineSourceURL(release, build),
-		"release_version": release.Version, "python": build.ManagedSpec.Python,
-		"packages": build.ManagedSpec.Packages, "wheel_urls": build.ManagedSpec.WheelURLs,
+		"target_platform": req.TargetPlatform, "install_mode": string(build.AcquireMode),
+		"source_url": managedEngineSourceURL(release, build), "release_version": release.Version,
+	}
+	if build.ManagedSpec != nil {
+		params["python"] = build.ManagedSpec.Python
+		params["packages"] = build.ManagedSpec.Packages
+		params["wheel_urls"] = build.ManagedSpec.WheelURLs
 	}
 	var raw json.RawMessage
 	if err := s.nodes.call(ctx, nodeID, remote.MethodNodeEngineInstall, params, &raw); err != nil {

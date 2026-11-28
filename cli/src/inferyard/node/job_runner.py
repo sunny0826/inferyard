@@ -62,6 +62,7 @@ class JobRunner:
         self.executor = executor
         self.jobs: dict[str, dict] = {}
         self.tasks: dict[str, asyncio.Task] = {}
+        self._exec_lock = asyncio.Lock()
         for path in self.root.glob("*/job.json"):
             try:
                 record = json.loads(path.read_text(encoding="utf-8"))
@@ -107,6 +108,18 @@ class JobRunner:
             }
         return None
 
+    def _default_running_endpoint(self) -> dict | None:
+        list_fn = getattr(self.supervisor, "list", None)
+        if not callable(list_fn):
+            return None
+        for record in list_fn():
+            if record.get("status") == "running" and record.get("service_id"):
+                try:
+                    return self.supervisor.endpoint(record["service_id"])
+                except ValueError:
+                    continue
+        return None
+
     def _request(self, job_id: str, params: dict) -> CommandRequest:
         action = str(params.get("action") or "start").strip().lower()
         endpoint_override = self._endpoint_override(params)
@@ -114,6 +127,12 @@ class JobRunner:
         if action in ("resume", "rerun") and params.get("from_run"):
             from_run = Path(str(params["from_run"]))
             command = "resume" if action == "resume" else "run"
+            if action == "rerun" and (
+                endpoint_override is None or endpoint_override.get("server_pid") is None
+            ):
+                endpoint_override = self._default_running_endpoint()
+                if endpoint_override is None or endpoint_override.get("server_pid") is None:
+                    raise ValueError("running service is required for remote rerun")
             return CommandRequest(
                 command,
                 from_run=from_run,
@@ -223,7 +242,8 @@ class JobRunner:
         else:
             executor = self.executor
         try:
-            code, result = await executor(request)
+            async with self._exec_lock:
+                code, result = await executor(request)
             final_state = "done" if code == 0 else "cancelled" if code == 130 else "failed"
             _set_state(record, final_state)
             record.update(
@@ -239,7 +259,15 @@ class JobRunner:
             record.update(code=130, finished_at=_timestamp())
         except Exception as exc:
             _set_state(record, "failed")
-            record.update(code=4, finished_at=_timestamp(), error=type(exc).__name__)
+            record.update(
+                code=4,
+                finished_at=_timestamp(),
+                error={
+                    "code": "job_failed",
+                    "message": str(exc) or type(exc).__name__,
+                    "limitations": [],
+                },
+            )
         self._save(record)
         await self._event(record)
 

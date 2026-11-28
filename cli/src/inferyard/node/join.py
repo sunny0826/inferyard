@@ -174,9 +174,11 @@ def verify_paired_hub(
                 tls.sendall(encode_ndjson_frame({"event": EVENT_HELLO, "data": hello}))
                 tls.sendall(encode_ndjson_frame({"event": EVENT_PING, "data": {}}))
                 with tls.makefile("rb") as stream:
-                    response = _receive_response(stream)
-                if response.get("event") != EVENT_PONG:
-                    raise PairingError("paired_hub_verification_failed", "missing control pong")
+                    for _ in range(8):
+                        response = _receive_response(stream)
+                        if response.get("event") == EVENT_PONG:
+                            return
+                raise PairingError("paired_hub_verification_failed", "missing control pong")
     except (OSError, ssl.SSLError) as exc:
         raise PairingError("paired_hub_verification_failed", str(exc)) from exc
 

@@ -26,6 +26,9 @@ func unixJoinScript(session PairingSession, version, source, proxy string) (stri
 	}
 	var script strings.Builder
 	script.WriteString("#!/bin/sh\nset -eu\n")
+	if proxy != "" {
+		fmt.Fprintf(&script, "export HTTPS_PROXY=%s HTTP_PROXY=%s\n", shellQuote(proxy), shellQuote(proxy))
+	}
 	script.WriteString(unixUVBootstrap())
 	if source != "" {
 		if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
@@ -33,9 +36,6 @@ func unixJoinScript(session PairingSession, version, source, proxy string) (stri
 		} else {
 			fmt.Fprintf(&script, "export INFERYARD_MODEL_SOURCE=%s\n", shellQuote(source))
 		}
-	}
-	if proxy != "" {
-		fmt.Fprintf(&script, "export HTTPS_PROXY=%s HTTP_PROXY=%s\n", shellQuote(proxy), shellQuote(proxy))
 	}
 	fmt.Fprintf(&script, "\"$UV\" tool install --python 3.15 --upgrade %s\n", shellQuote(packageSpec(version)))
 	script.WriteString("for HUB in")
@@ -55,6 +55,9 @@ func windowsJoinScript(session PairingSession, version, source, proxy string) (s
 	}
 	var script strings.Builder
 	script.WriteString("$ErrorActionPreference = 'Stop'\n")
+	if proxy != "" {
+		fmt.Fprintf(&script, "$env:HTTPS_PROXY = %s\n$env:HTTP_PROXY = %s\n", powerShellQuote(proxy), powerShellQuote(proxy))
+	}
 	script.WriteString("$UvDir = if ($env:INFERYARD_UV_DIR) { $env:INFERYARD_UV_DIR } else { Join-Path $HOME '.local\\share\\inferyard\\bin' }\n")
 	script.WriteString("$Uv = Join-Path $UvDir 'uv.exe'\n")
 	script.WriteString("$MinUv = [version]'0.13.6'\n")
@@ -66,9 +69,6 @@ func windowsJoinScript(session PairingSession, version, source, proxy string) (s
 		} else {
 			fmt.Fprintf(&script, "$env:INFERYARD_MODEL_SOURCE = %s\n", powerShellQuote(source))
 		}
-	}
-	if proxy != "" {
-		fmt.Fprintf(&script, "$env:HTTPS_PROXY = %s\n$env:HTTP_PROXY = %s\n", powerShellQuote(proxy), powerShellQuote(proxy))
 	}
 	fmt.Fprintf(&script, "& $Uv tool install --python 3.15 --upgrade %s\n", powerShellQuote(packageSpec(version)))
 	script.WriteString("$Hubs = @(")

@@ -76,9 +76,16 @@ def test_cancel_timeout_never_terminates_model_service(tmp_path, config_path, mo
 
 def test_go_batch_jobs_and_receipt_fields(tmp_path, config_path):
     requests = []
+    active = 0
+    max_active = 0
 
     async def executor(request):
+        nonlocal active, max_active
+        active += 1
+        max_active = max(max_active, active)
+        await asyncio.sleep(0.01)
         requests.append(request)
+        active -= 1
         return 0, CommandResult("run", "finished", run_id="run-1", evidence_dir="evidence")
 
     async def scenario():
@@ -93,12 +100,43 @@ def test_go_batch_jobs_and_receipt_fields(tmp_path, config_path):
             assert record["created_at"]
             assert record["finished_at"] is None
         await asyncio.gather(*runner.tasks.values())
+        assert max_active == 1
         assert len(requests) == 2
         assert requests[0].output_root != requests[1].output_root
         for record in runner.list():
             assert record["state"] == record["status"] == "done"
             assert record["finished_at"] is not None
             assert record["run_path"] == "evidence"
+        await runner.close()
+
+    asyncio.run(scenario())
+
+
+def test_job_failure_records_structured_error_and_rerun_resolves_service(tmp_path, config_path):
+    class ActiveSupervisor:
+        def list(self):
+            return [{"service_id": "svc-1", "status": "running"}]
+
+        def endpoint(self, service_id):
+            return {"url": "http://127.0.0.1:48857", "server_pid": 4321}
+
+    seen = []
+
+    async def failing_executor(request):
+        seen.append(request)
+        if request.from_run is None:
+            raise RuntimeError("boom")
+        return 0, CommandResult("run", "finished")
+
+    async def scenario():
+        runner = JobRunner(tmp_path, ActiveSupervisor(), executor=failing_executor)
+        await runner.start({"job_id": "fail-1", "config": str(config_path)})
+        await runner.start_request({"action": "rerun", "remote_run_paths": ["/runs/r1"]})
+        await asyncio.gather(*runner.tasks.values())
+        failed = runner.progress("fail-1")
+        assert failed["state"] == "failed"
+        assert isinstance(failed["error"], dict) and failed["error"]["code"] == "job_failed"
+        assert seen[1].server_pid == 4321 and seen[1].endpoint_url == "http://127.0.0.1:48857"
         await runner.close()
 
     asyncio.run(scenario())

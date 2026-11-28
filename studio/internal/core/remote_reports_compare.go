@@ -164,12 +164,7 @@ type reportRunPair struct {
 }
 
 func reportRunComparisonKey(run ReportRun) string {
-	model := run.Model
-	if strings.Contains(model, "\\") {
-		model = "/" + strings.ReplaceAll(model, "\\", "/")
-	}
-	modelKey := NormalizeModelEvidenceKey(model)
-	return modelKey + "\x00" + strings.ToLower(strings.TrimSpace(run.Facets.BundleLabel))
+	return normalizeRemoteModelEvidenceKey(run.Model) + "\x00" + strings.ToLower(strings.TrimSpace(run.Facets.BundleLabel))
 }
 
 func pairReportRuns(left, right []ReportRun) []reportRunPair {
