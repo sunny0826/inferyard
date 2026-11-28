@@ -81,6 +81,40 @@ def test_report_export_by_job_id_resolves_raw_run(tmp_path):
     assert result["report"]["schema_version"] == 3
 
 
+def test_report_export_by_batch_job_id_resolves_nested_runs(tmp_path):
+    from tests.helpers import fixture_run
+
+    state = tmp_path / "state"
+    batch_root = tmp_path / "batch-1"
+    run_a = fixture_run(batch_root / "runs" / "run-a")
+    run_b = fixture_run(batch_root / "runs" / "run-b")
+    jobs = SimpleNamespace(
+        jobs={
+            "batch-job": {
+                "job_id": "batch-job",
+                "evidence_dir": str(batch_root),
+                "result": {"details": {"runs": [str(run_a), str(run_b)]}},
+            }
+        }
+    )
+    rpc = NodeRPC(state, None, jobs)
+    result = asyncio.run(rpc.call("report.export", {"remote_report_id": "batch-job"}))
+    assert result["verified_from_raw"] is True
+    assert len(result["report"]["runs"]) == 2
+
+
+def test_find_uv_discovers_private_inferyard_install_dir(tmp_path, monkeypatch):
+    uv_dir = tmp_path / "private-uv"
+    uv_dir.mkdir()
+    uv_bin = uv_dir / "uv"
+    uv_bin.write_text("#!/bin/sh\n")
+    uv_bin.chmod(0o755)
+    monkeypatch.setenv("INFERYARD_UV_DIR", str(uv_dir))
+    monkeypatch.setattr("shutil.which", lambda name: None)
+    rpc = NodeRPC(tmp_path / "state", None, None)
+    assert rpc._find_uv() == str(uv_bin)
+
+
 def test_empty_workspace_clean_preserves_assets_and_active_jobs(tmp_path):
     state = tmp_path / "state"
     jobs = SimpleNamespace(

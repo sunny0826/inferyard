@@ -168,6 +168,19 @@ func (s *Service) InstallNodeManagedEngine(ctx context.Context, nodeID string, r
 		"target_platform": req.TargetPlatform, "install_mode": string(build.AcquireMode),
 		"source_url": managedEngineSourceURL(release, build), "release_version": release.Version,
 	}
+	if build.Profile != "" {
+		params["runtime_profile"] = build.Profile
+	}
+	for _, artifact := range build.Artifacts {
+		if artifact.Role == "runtime" && artifact.URL != "" {
+			params["runtime_source_url"] = artifact.URL
+			if artifact.SHA256 != "" {
+				params["runtime_expected_sha256"] = artifact.SHA256
+			}
+		} else if artifact.Role != "runtime" && artifact.SHA256 != "" {
+			params["expected_sha256"] = artifact.SHA256
+		}
+	}
 	if build.ManagedSpec != nil {
 		params["python"] = build.ManagedSpec.Python
 		params["packages"] = build.ManagedSpec.Packages

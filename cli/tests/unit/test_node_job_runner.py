@@ -142,6 +142,19 @@ def test_job_failure_records_structured_error_and_rerun_resolves_service(tmp_pat
     asyncio.run(scenario())
 
 
+def test_legacy_string_error_receipt_is_migrated_on_load(tmp_path):
+    job_dir = tmp_path / "jobs" / "legacy-1"
+    job_dir.mkdir(parents=True)
+    (job_dir / "job.json").write_text(
+        json.dumps({"job_id": "legacy-1", "status": "error", "error": "RuntimeError"}) + "\n",
+        encoding="utf-8",
+    )
+    runner = JobRunner(tmp_path, Supervisor())
+    loaded = runner.progress("legacy-1")
+    assert loaded["task_id"] == "legacy-1"
+    assert isinstance(loaded["error"], dict) and loaded["error"]["message"] == "RuntimeError"
+
+
 def test_go_resume_and_rerun_requests(tmp_path):
     requests = []
 

@@ -103,22 +103,26 @@ class NodeRPC:
             return {"reports": list_reports(self.state_dir / "reports")}
         if method == protocol.METHOD_REPORT_EXPORT:
             run_path = params.get("run_path")
+            run_paths = params.get("run_paths")
             report_path = params.get("report_path")
             report_id = params.get("remote_report_id") or params.get("report_id")
-            if not report_path and not run_path and isinstance(report_id, str):
+            if not report_path and not run_path and not run_paths and isinstance(report_id, str):
                 if "/" in report_id or "\\" in report_id or report_id in ("", ".", ".."):
                     raise RPCError("invalid_params", "invalid report_id")
                 candidate_report = self.state_dir / "reports" / report_id
                 if (candidate_report / "studio.json").is_file():
                     report_path = str(candidate_report)
                 else:
-                    run_path = self._resolve_job_run_path(report_id)
-                    if run_path is None:
+                    resolved = self._resolve_job_run_paths(report_id)
+                    if resolved:
+                        run_paths = resolved
+                    else:
                         report_path = str(candidate_report)
             return await asyncio.to_thread(
                 export_report,
                 state_dir=self.state_dir,
                 run_path=run_path,
+                run_paths=run_paths,
                 report_path=report_path,
                 out=params.get("out"),
             )
@@ -147,26 +151,52 @@ class NodeRPC:
             [Path(item) for item in params.get("engine_roots", [])],
         )
 
-    def _resolve_job_run_path(self, report_id: str) -> str | None:
+    def _resolve_job_run_paths(self, report_id: str) -> list[str]:
         record = self.jobs.jobs.get(report_id)
         if record:
+            details = (record.get("result") or {}).get("details") or {}
+            batch_runs = [
+                str(p) for p in (details.get("runs") or []) if isinstance(p, str) and Path(p).is_dir()
+            ]
+            if batch_runs:
+                return batch_runs
             raw = record.get("evidence_dir") or record.get("run_path")
-            if isinstance(raw, str) and Path(raw).is_dir():
-                return raw
+            if isinstance(raw, str):
+                raw_dir = Path(raw)
+                if (raw_dir / "inputs.json").is_file() or (raw_dir / "manifest.json").is_file():
+                    return [str(raw_dir)]
+                if raw_dir.is_dir():
+                    nested = [str(m.parent) for m in sorted(raw_dir.rglob("inputs.json"))]
+                    if nested:
+                        return nested
         results_dir = self.state_dir / "jobs" / report_id / "results"
         if results_dir.is_dir():
-            for marker in sorted(results_dir.rglob("inputs.json")):
-                return str(marker.parent)
-        return None
+            return [str(m.parent) for m in sorted(results_dir.rglob("inputs.json"))]
+        return []
+
+    def _find_uv(self) -> str | None:
+        import os
+        import shutil
+
+        exe = "uv.exe" if os.name == "nt" else "uv"
+        uv_dir = os.environ.get("INFERYARD_UV_DIR")
+        candidates = [
+            Path(uv_dir) / exe if uv_dir else None,
+            Path.home() / ".local" / "share" / "inferyard" / "bin" / exe,
+            Path.home() / ".local" / "bin" / exe,
+        ]
+        for candidate in candidates:
+            if candidate is not None and candidate.is_file() and os.access(candidate, os.X_OK):
+                return str(candidate)
+        return shutil.which("uv")
 
     def _install_managed_venv(self, destination: Path, params: dict) -> dict:
         import os
-        import shutil
         import subprocess
         from inferyard.application.engine_detect import execute as init_execute
         from inferyard.application.types import CommandRequest
 
-        uv = shutil.which("uv")
+        uv = self._find_uv()
         if not uv:
             raise RPCError("engine_install_failed", "uv_not_found")
         destination.mkdir(parents=True, exist_ok=True)
@@ -226,6 +256,7 @@ class NodeRPC:
         source = params.get("source_url") or params.get("source")
         if not isinstance(source, str) or not source:
             raise ValueError("engine source URL is required")
+        destination.parent.mkdir(parents=True, exist_ok=True)
         request = CommandRequest(
             "engine prepare",
             engine_source_url=source,

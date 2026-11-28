@@ -10,11 +10,15 @@ import uuid
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import urlsplit
 
 from inferyard.application.types import CommandRequest
 from inferyard.contracts.node_protocol import CANCEL_MARKER_FILENAME, EVENT_JOB_UPDATED
 from inferyard.contracts.validation import Document
+from inferyard.node.job_binding import (
+    prepare_rerun_binding,
+    validate_frozen_plan,
+    validate_loopback,
+)
 
 
 def _timestamp() -> str:
@@ -25,27 +29,6 @@ def _write_json(path: Path, value: dict) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
     os.replace(temporary, path)
-
-
-def _validate_loopback(url: str) -> None:
-    parsed = urlsplit(url)
-    if parsed.scheme != "http" or parsed.hostname != "127.0.0.1":
-        raise ValueError("remote jobs require a loopback endpoint")
-
-
-def _validate_frozen_plan(plan_path: Path, expected: dict | None) -> None:
-    from inferyard.config.plan_inputs import read_frozen_plan
-
-    _, workloads = read_frozen_plan(plan_path)
-    for loaded in workloads.values():
-        endpoint = loaded.config.to_dict()["endpoint"]
-        url = endpoint.get("url", "")
-        _validate_loopback(url)
-        if expected is not None:
-            if url != expected.get("url") or endpoint.get("server_pid") != expected.get(
-                "server_pid"
-            ):
-                raise ValueError("frozen plan endpoint does not match expected service binding")
 
 
 def _set_state(record: dict, state: str) -> None:
@@ -69,6 +52,12 @@ class JobRunner:
                 if isinstance(record.get("job_id"), str):
                     record.setdefault("task_id", record["job_id"])
                     record.setdefault("state", record.get("status", "failed"))
+                    if isinstance(record.get("error"), str):
+                        record["error"] = {
+                            "code": "job_failed",
+                            "message": record["error"],
+                            "limitations": [],
+                        }
                     self.jobs[record["job_id"]] = record
             except (OSError, ValueError):
                 continue
@@ -101,7 +90,7 @@ class JobRunner:
             return self.supervisor.endpoint(service_id)
         endpoint_url = params.get("endpoint_url")
         if endpoint_url is not None:
-            _validate_loopback(str(endpoint_url))
+            validate_loopback(str(endpoint_url))
             return {
                 "url": str(endpoint_url),
                 "server_pid": params.get("server_pid"),
@@ -127,17 +116,26 @@ class JobRunner:
         if action in ("resume", "rerun") and params.get("from_run"):
             from_run = Path(str(params["from_run"]))
             command = "resume" if action == "resume" else "run"
-            if action == "rerun" and (
-                endpoint_override is None or endpoint_override.get("server_pid") is None
-            ):
-                endpoint_override = self._default_running_endpoint()
+            binding_path = (
+                Path(str(params["service_binding_path"]))
+                if params.get("service_binding_path")
+                else None
+            )
+            if action == "rerun":
                 if endpoint_override is None or endpoint_override.get("server_pid") is None:
-                    raise ValueError("running service is required for remote rerun")
+                    endpoint_override = self._default_running_endpoint()
+                    if endpoint_override is None or endpoint_override.get("server_pid") is None:
+                        raise ValueError("running service is required for remote rerun")
+                if binding_path is None:
+                    binding_path = prepare_rerun_binding(
+                        self.root / job_id, from_run, endpoint_override, _write_json
+                    )
             return CommandRequest(
                 command,
                 from_run=from_run,
                 endpoint_url=endpoint_override["url"] if endpoint_override else None,
                 server_pid=endpoint_override.get("server_pid") if endpoint_override else None,
+                service_binding_path=binding_path,
                 output_root=output_root,
             )
 
@@ -152,7 +150,7 @@ class JobRunner:
             endpoint = dict(endpoint_override)
         else:
             endpoint = dict(config["endpoint"])
-            _validate_loopback(endpoint.get("url", ""))
+            validate_loopback(endpoint.get("url", ""))
         config["endpoint"].update({k: v for k, v in endpoint.items() if v is not None})
         config["output"]["root"] = str(output_root)
         loaded = type(loaded)(
@@ -165,7 +163,7 @@ class JobRunner:
         )
         frozen = params.get("frozen_plan")
         if frozen:
-            _validate_frozen_plan(Path(frozen), endpoint_override)
+            validate_frozen_plan(Path(frozen), endpoint_override)
         return CommandRequest(
             "run",
             config=loaded,

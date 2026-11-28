@@ -43,28 +43,31 @@ def _write_existing(source: Path, out: Path) -> dict:
     return document
 
 
-def _write_raw(source: Path, out: Path) -> dict:
+def _write_raw(sources: list[Path], out: Path) -> dict:
     from inferyard.application.raw_verification import execute
     from inferyard.reporting.studio_report import write_studio_report
 
-    code, result = execute(CommandRequest("verify", run=source), "run")
-    if code != 0 or not (result.details or {}).get("verified"):
-        raise ValueError("raw evidence verification failed")
-    return write_studio_report([source], out)
+    for source in sources:
+        code, result = execute(CommandRequest("verify", run=source), "run")
+        if code != 0 or not (result.details or {}).get("verified"):
+            raise ValueError("raw evidence verification failed")
+    return write_studio_report(sources, out)
 
 
 def export_report(
     *,
     state_dir: Path,
     run_path: str | None = None,
+    run_paths: list[str] | None = None,
     report_path: str | None = None,
     out: str | None = None,
 ) -> dict:
-    if bool(run_path) == bool(report_path):
-        raise ValueError("exactly one run_path or report_path is required")
-    source = Path(run_path or report_path).resolve()
-    verified_from_raw = run_path is not None
+    raw_inputs = [Path(p).resolve() for p in (run_paths or ([run_path] if run_path else []))]
+    if bool(raw_inputs) == bool(report_path):
+        raise ValueError("exactly one run_path/run_paths or report_path is required")
+    verified_from_raw = bool(raw_inputs)
     if not verified_from_raw and out is None:
+        source = Path(report_path).resolve()
         document, report_file = _read_existing(source)
         validate_document("studio_report", document)
         return {
@@ -79,9 +82,9 @@ def export_report(
         else state_dir / "reports" / f"export-{uuid.uuid4().hex}"
     )
     document = (
-        _write_raw(source, destination)
+        _write_raw(raw_inputs, destination)
         if verified_from_raw
-        else _write_existing(source, destination)
+        else _write_existing(Path(report_path).resolve(), destination)
     )
     validate_document("studio_report", document)
     return {
