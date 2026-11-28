@@ -270,7 +270,6 @@
   "onboarding.guide.downloading_and_failed": "Downloading {active} asset(s), {failed} failed.",
   "onboarding.guide.failed": "{failed} download(s) failed.",
   "onboarding.guide.prompt": "Download the required engine and model, then return to Tasks.",
-  "onboarding.guide.ready": "Model and engine are ready. Return to Tasks to start benchmarking.",
   "onboarding.setup.open_settings": "Go to Settings",
   "onboarding.setup.prepare_button": "Prepare Environment",
   "onboarding.setup.progress_label": "Environment setup progress",

@@ -270,7 +270,6 @@
   "onboarding.guide.downloading_and_failed": "正在下载 {active} 项资源，另有 {failed} 项下载失败。",
   "onboarding.guide.failed": "有 {failed} 项下载失败。",
   "onboarding.guide.prompt": "下载所需引擎与模型后返回任务页。",
-  "onboarding.guide.ready": "模型与引擎已就绪，可返回任务页开始测评。",
   "onboarding.setup.open_settings": "前往设置",
   "onboarding.setup.prepare_button": "准备环境",
   "onboarding.setup.progress_label": "环境准备进度",
