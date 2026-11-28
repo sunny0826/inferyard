@@ -298,7 +298,7 @@ func (s *Service) deleteManagedPolystrataInstall(name, engPath, rawFallback, exp
 
 	s.mu.Lock()
 	if replaced != nil {
-		if s.deletingAssets > 0 || s.isEngineActiveLocked(replaced.name, replaced.entry) || s.isEngineDirInUseLocked(replaced.dir) {
+		if s.orphan != nil || len(s.orphanedServices) > 0 || len(s.preparingServices) > 0 || s.deletingAssets > 0 || s.isEngineActiveLocked(replaced.name, replaced.entry) || s.isEngineDirInUseLocked(replaced.dir) {
 			s.mu.Unlock()
 			return false, workspaceBusyError()
 		}
@@ -347,7 +347,7 @@ func (s *Service) deleteManagedPolystrataInstall(name, engPath, rawFallback, exp
 	}
 	declWorkDir, declDataDir := readPolystrataInstallDirs(engPath)
 	surviving := survivingInstallsExcluding(u, wsEngines, engPath, installDir)
-	migPlans, migErr := snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir, defaultManagedPolystrataDataDirs(u, paths, wsEngines), surviving)
+	migPlans, migErr := snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir, defaultManagedPolystrataDataDirs(u, paths, wsEngines), surviving, replaced != nil)
 	if migErr != nil {
 		if apiErr, ok := polystrataCredentialApiError(migErr); ok {
 			return false, apiErr

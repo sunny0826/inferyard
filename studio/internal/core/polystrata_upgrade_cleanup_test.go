@@ -226,4 +226,46 @@ func TestPolystrataManagedCoexistingVersionsDeletableAndUpgradeAutoCleansOld(t *
 	if _, err := os.Stat(filepath.Join(dataDir, "strata-gemma4.json")); err != nil {
 		t.Fatalf("uncovered secondary model strata-gemma4.json must migrate to dataDir: %v", err)
 	}
+
+	// Part 3: Auto-cleanup preserves old managed dir when custom external data_dir has an unmigrated secondary config,
+	// or when an orphaned engine recovery entry (s.orphan) is active.
+	extDataDir := filepath.Join(base, "custom-ps-data")
+	extSecondaryGGUF := filepath.Join(extDataDir, "models", "lfm25-Q4_K_M", "lfm25.gguf")
+	mustWriteFile(t, extSecondaryGGUF, bytes.Repeat([]byte("l"), 256), 0o600)
+	oldCustomDir := filepath.Join(ws, "engines", "polystrata-custom-old")
+	oldCustomInst := setupPolystrataV0220InstallFixture(t, oldCustomDir, extDataDir, "0.2.20", polystrataDefaultSourceURL, polystrataDefaultSourceSHA256)
+	writeStrataConfigFixture(t, filepath.Join(oldCustomDir, "terminal", "strata-lfm25.json"), "lfm25-q4_k_m", []string{
+		"--model", extSecondaryGGUF, "--max-context", "8192",
+	})
+	upSvc.settingsMu.Lock()
+	upSvc.settings.EngineInstallations = append(upSvc.settings.EngineInstallations, oldCustomInst)
+	upSvc.settingsMu.Unlock()
+
+	replacedCustom := &replacedEngineTarget{
+		name:  "PolyStrata · v0.2.20-poly.5",
+		dir:   oldCustomDir,
+		entry: registryEntry{path: oldCustomInst, rawPath: oldCustomInst, installation: oldCustomInst, family: "polystrata"},
+	}
+	newPoly6Inst := filepath.Join(ws, "engines", "polystrata-v0.2.20-poly.6", "installation.json")
+	upSvc.cleanupReplacedManagedPolystrataEngine(replacedCustom, newPoly6Inst)
+	if _, err := os.Stat(oldCustomDir); err != nil {
+		t.Fatalf("expected oldCustomDir kept when custom external data_dir secondary config cannot migrate: %v", err)
+	}
+
+	// Remove the unmigrated config, set s.orphan -> auto-cleanup must still defer while s.orphan is present.
+	_ = os.Remove(filepath.Join(oldCustomDir, "terminal", "strata-lfm25.json"))
+	upSvc.mu.Lock()
+	upSvc.orphan = &orphanEngine{state: EngineState{State: "orphaned"}}
+	upSvc.mu.Unlock()
+	upSvc.cleanupReplacedManagedPolystrataEngine(replacedCustom, newPoly6Inst)
+	if _, err := os.Stat(oldCustomDir); err != nil {
+		t.Fatalf("expected oldCustomDir kept while s.orphan is active: %v", err)
+	}
+	upSvc.mu.Lock()
+	upSvc.orphan = nil
+	upSvc.mu.Unlock()
+	upSvc.cleanupReplacedManagedPolystrataEngine(replacedCustom, newPoly6Inst)
+	if _, err := os.Stat(oldCustomDir); !os.IsNotExist(err) {
+		t.Fatalf("expected oldCustomDir removed once s.orphan cleared and all configs covered, stat err=%v", err)
+	}
 }

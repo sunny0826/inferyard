@@ -91,8 +91,8 @@ func polystrataMigPlansDigest(plans []migratedPolystrataConfig) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir string, managedDataDirs, survivingInstalls []string) ([]migratedPolystrataConfig, error) {
-	if len(managedDataDirs) == 0 {
+func snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir string, managedDataDirs, survivingInstalls []string, requireAllValidPreserved bool) ([]migratedPolystrataConfig, error) {
+	if len(managedDataDirs) == 0 && !requireAllValidPreserved {
 		return nil, nil
 	}
 	configDirs := []string{installDir}
@@ -153,18 +153,17 @@ func snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir string, 
 				resolvedSrc = c
 			}
 			origDisplayName := polystrataConfigDisplayName(cfg.DisplayName, cfg.ModelName, resolvedSrc)
+			covered := origValidOK && survivingModelAlreadyCovered(survivingInstalls, managedDataDirs, installDir, origDisplayName, origValidFiles)
+			migrated := false
 
 			for _, dd := range managedDataDirs {
-				if isSymlinkPath(dd) {
-					continue
-				}
-				if !polystrataRefsScopedToDataDir(origLenFiles, origLenDirs, installDir, dd) {
+				if isSymlinkPath(dd) || !polystrataRefsScopedToDataDir(origLenFiles, origLenDirs, installDir, dd) {
 					continue
 				}
 				if field, hasCred := findPolystrataPlaintextCredentialField(rawMap, cfg.Args); hasCred {
 					return nil, &polystrataCredentialError{configName: name, field: field}
 				}
-				if origValidOK && survivingModelAlreadyCovered(survivingInstalls, managedDataDirs, installDir, origDisplayName, origValidFiles) {
+				if covered {
 					break
 				}
 
@@ -179,7 +178,11 @@ func snapshotPolystrataRootConfigs(installDir, declWorkDir, declDataDir string, 
 					return nil, err
 				}
 				plans = append(plans, migratedPolystrataConfig{dd: dd, name: name, payload: rewrittenBytes})
+				migrated = true
 				break
+			}
+			if requireAllValidPreserved && origValidOK && !covered && !migrated {
+				return nil, fmt.Errorf("unpreserved valid model config %s", name)
 			}
 		}
 	}

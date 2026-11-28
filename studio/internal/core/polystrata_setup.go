@@ -397,14 +397,18 @@ func (s *Service) runPolystrataSetup(ctx context.Context, binary string, d *down
 				Detail:    ptr(l10n.TR("core.polystrata.setup.verifying_installation")),
 			})
 			_, regErr := s.RegisterEngineInstallation(ctx, details.InstallationPath)
+			instPath := details.InstallationPath
+			if c, err := canonical(instPath); err == nil {
+				instPath = c
+			}
+			if regErr == nil {
+				s.cleanupReplacedManagedPolystrataEngine(d.replacedEngine, instPath)
+				s.VerifyEngines()
+			}
 			s.mu.Lock()
 			d.Task.FinishedAt = ptr(now())
 			if details.LogPath != "" {
 				d.Task.LogPath = ptr(details.LogPath)
-			}
-			instPath := details.InstallationPath
-			if c, err := canonical(instPath); err == nil {
-				instPath = c
 			}
 			d.Task.InstallationPath = ptr(instPath)
 			if details.ModelConfigPath != "" {
@@ -416,24 +420,15 @@ func (s *Service) runPolystrataSetup(ctx context.Context, binary string, d *down
 			}
 			switch {
 			case regErr == nil:
-				d.Task.State = "done"
-				d.Task.Stage = ""
-				d.Task.Percent = ptr(100.0)
-				d.Task.EnginePath = ptr(instPath)
+				d.Task.State, d.Task.Stage, d.Task.Percent, d.Task.EnginePath = "done", "", ptr(100.0), ptr(instPath)
 			case ctx.Err() != nil:
 				d.Task.State = "cancelled"
 			default:
-				d.Task.State = "failed"
-				d.Task.Error = regErr
+				d.Task.State, d.Task.Error = "failed", regErr
 			}
 			doneOK := d.Task.State == "done"
-			replaced := d.replacedEngine
 			taskSnap := clone(d.Task)
 			s.mu.Unlock()
-			if doneOK {
-				s.cleanupReplacedManagedPolystrataEngine(replaced, instPath)
-				s.VerifyEngines()
-			}
 			s.Bus.Publish("download.state", map[string]any{"task": taskSnap})
 			if doneOK {
 				go func() {
