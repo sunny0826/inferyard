@@ -8,7 +8,32 @@ import (
 	"inferyard/studio/internal/core"
 )
 
+func isPrismOnlyGGUF(model core.ModelAsset) bool {
+	if model.Format == "directory" || model.Format == "strata_pack" {
+		return false
+	}
+	hay := strings.ToLower(model.Name + " " + model.Path)
+	return strings.Contains(hay, "ptq1_0") || strings.Contains(hay, "pq2_0")
+}
+
+func isNonPrismLlamaEngine(eng core.EngineAsset) bool {
+	if strings.EqualFold(eng.Distribution, "PrismML") {
+		return false
+	}
+	if strings.EqualFold(eng.Distribution, "ggml-org") {
+		return true
+	}
+	hay := strings.ToLower(eng.Name + " " + eng.Path + " " + eng.Version)
+	if strings.Contains(hay, "prism") {
+		return false
+	}
+	return eng.Kind == "local_installation" || strings.TrimSpace(eng.Version) != ""
+}
+
 func compatibleStandaloneEngine(model core.ModelAsset, eng core.EngineAsset) bool {
+	if isPrismOnlyGGUF(model) {
+		return model.Format == "gguf" && (eng.Family == "" || eng.Family == "llama-cpp") && !isNonPrismLlamaEngine(eng)
+	}
 	switch eng.Family {
 	case "lmstudio":
 		return false
@@ -30,11 +55,17 @@ func compatibleStandaloneEngine(model core.ModelAsset, eng core.EngineAsset) boo
 }
 
 func compatibleBenchmarkEngine(model core.ModelAsset, eng core.EngineAsset) bool {
+	if isPrismOnlyGGUF(model) {
+		return model.Format != "directory" && model.Format != "strata_pack" &&
+			(eng.Family == "" || eng.Family == "llama-cpp") && !isNonPrismLlamaEngine(eng)
+	}
 	if eng.Kind != "local_installation" && eng.Family == "" {
 		return model.Format != "directory" && model.Format != "strata_pack"
 	}
 	switch eng.Family {
-	case "", "llama-cpp", "lmstudio":
+	case "lmstudio":
+		return model.Format != "directory" && model.Format != "strata_pack"
+	case "", "llama-cpp":
 		return model.Format != "directory" && model.Format != "strata_pack"
 	default:
 		return compatibleStandaloneEngine(model, eng)

@@ -43,6 +43,7 @@ type EngineAsset struct {
 	Managed        bool
 	InstallMode    string
 	Version        string
+	Distribution   string
 	LatestDownload bool
 	Path           string
 	Deletable      bool
@@ -389,6 +390,9 @@ func (s *Service) buildRegistryFromData(data registryData) Registry {
 	for _, e := range data.engines {
 		eng := e.engine
 		eng.Path = e.path
+		if eng.Family == "llama-cpp" || (eng.Family == "" && strings.Contains(strings.ToLower(eng.Name), "llama")) {
+			eng.Distribution = detectLlamaDistribution(e, eng.Version, "")
+		}
 		eng.Deletable = isEngineAssetDeletable(data.settings, s.paths, e.rawPath, e.path, eng.Kind, eng.Family, data.wsEngines, data.resultsRoot, data.engines)
 		result.Engines = append(result.Engines, eng)
 	}

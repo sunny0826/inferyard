@@ -32,6 +32,24 @@ def test_apple_silicon_48g_includes_mlx_lm_alternative() -> None:
     assert mlx_alt["model_id"] == "model-qwen3-0.6b-mlx"
     assert mlx_alt["backend"] == "metal"
     assert mlx_alt["tier"] == "lightweight"
+    fallback_alt = next(alt for alt in rec["alternatives"] if alt["engine"] == "llama-cpp")
+    assert fallback_alt["model_id"] == "model-bonsai-2.5-27b-pq2"
+
+
+def test_apple_silicon_16g_recommends_bonsai_ptq1_primary() -> None:
+    rec = recommend_starter(_apple_silicon_hw(ram_gib=16, disk_gib=50))
+    assert rec["status"] == "recommended"
+    assert rec["engine"] == "llama-cpp"
+    assert rec["model_id"] == "model-bonsai-2.5-27b-ptq1"
+    assert rec["backend"] == "metal"
+
+
+def test_apple_silicon_24g_moderate_disk_recommends_bonsai_pq2() -> None:
+    rec = recommend_starter(_apple_silicon_hw(ram_gib=24, disk_gib=13))
+    assert rec["status"] == "recommended"
+    assert rec["engine"] == "llama-cpp"
+    assert rec["model_id"] == "model-bonsai-2.5-27b-pq2"
+    assert rec["backend"] == "metal"
 
 
 def test_apple_silicon_low_disk_promotes_mlx_lm_primary() -> None:
@@ -53,7 +71,34 @@ def test_non_apple_host_excludes_mlx_lm() -> None:
     rec = recommend_starter(hw)
     assert rec["status"] == "recommended"
     assert rec["engine"] == "llama-cpp"
+    assert rec["model_id"] == "model-qwen3-4b-q4km"
     assert all(alt["engine"] != "mlx-lm" for alt in rec["alternatives"])
+
+
+def test_linux_cuda_host_excludes_prism_only_bonsai_starter() -> None:
+    from inferyard.platforms.starter_mlx import evaluate_fallback_models
+
+    hw = {
+        "platform": "Linux",
+        "memory_total_bytes": 64 * GIB,
+        "memory_available_bytes": 48 * GIB,
+        "disk_free_bytes": 100 * GIB,
+        "gpu": {
+            "status": "observed",
+            "devices": [{"name": "NVIDIA RTX 4090", "vendor": "nvidia", "cuda_supported": True, "vram_bytes": 24 * GIB}],
+        },
+    }
+    fitting, _, _ = evaluate_fallback_models(
+        hw,
+        load_starter_catalog(),
+        64 * GIB,
+        100 * GIB,
+        fallback_accelerator=lambda _hw: ("cuda", _hw["gpu"]["devices"][0]),
+    )
+    model_ids = [item["model_id"] for item in fitting]
+    assert "model-bonsai-2.5-27b-ptq1" not in model_ids
+    assert "model-bonsai-2.5-27b-pq2" not in model_ids
+    assert model_ids[0] == "model-qwen3-4b-q4km"
 
 
 def test_starter_catalog_fallback_titles_use_ascii_parentheses() -> None:

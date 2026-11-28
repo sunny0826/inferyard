@@ -66,13 +66,13 @@ func prismLlamaCppProvider() EngineCatalogProvider {
 			SupportsWizard: true,
 			Releases: []EngineRelease{
 				{
-					ID:           "llama-cpp-prism-b10743",
-					Version:      "prism-b10743-adfffbe",
-					Revision:     "prism-b10743-adfffbe",
+					ID:           "llama-cpp-prism-b12232",
+					Version:      "prism-b12232-f702476",
+					Revision:     "prism-b12232-f702476",
 					Distribution: "PrismML",
 					Channel:      ReleaseStable,
 					Recommended:  false,
-					ReleaseURL:   "https://github.com/PrismML-Eng/llama.cpp/releases/tag/prism-b10743-adfffbe",
+					ReleaseURL:   "https://github.com/PrismML-Eng/llama.cpp/releases/tag/prism-b12232-f702476",
 					Builds: []EnginePlatformBuild{
 						{
 							ID:          "engine-macos-arm64",
@@ -80,7 +80,7 @@ func prismLlamaCppProvider() EngineCatalogProvider {
 							Variant:     "Metal / CPU",
 							AcquireMode: EngineAcquireDirect,
 							Artifacts: []EngineArtifact{
-								artifactFromCatalog("engine-macos-arm64", "engine", "llama-server", "prism-b10743-adfffbe"),
+								artifactFromCatalog("engine-macos-arm64", "engine", "llama-server", "prism-b12232-f702476"),
 							},
 						},
 						{
@@ -89,9 +89,40 @@ func prismLlamaCppProvider() EngineCatalogProvider {
 							Variant:     "CPU",
 							AcquireMode: EngineAcquireDirect,
 							Artifacts: []EngineArtifact{
-								artifactFromCatalog("engine-macos-x64", "engine", "llama-server", "prism-b10743-adfffbe"),
+								artifactFromCatalog("engine-macos-x64", "engine", "llama-server", "prism-b12232-f702476"),
 							},
 						},
+						{
+							ID:          "engine-linux-x64",
+							Platform:    "linux/amd64",
+							Variant:     "CPU",
+							AcquireMode: EngineAcquireManualArchive,
+							Artifacts: []EngineArtifact{
+								artifactFromCatalog("engine-linux-x64", "engine", "llama-server", "prism-b12232-f702476"),
+							},
+							Note: l10n.TR("core.engine_catalog.note.download_extract_register"),
+						},
+						{
+							ID:          "engine-linux-arm64",
+							Platform:    "linux/arm64",
+							Variant:     "CPU",
+							AcquireMode: EngineAcquireManualArchive,
+							Artifacts: []EngineArtifact{
+								artifactFromCatalog("engine-linux-arm64", "engine", "llama-server", "prism-b12232-f702476"),
+							},
+							Note: l10n.TR("core.engine_catalog.note.download_extract_register"),
+						},
+					},
+				},
+				{
+					ID:           "llama-cpp-prism-b10743",
+					Version:      "prism-b10743-adfffbe",
+					Revision:     "prism-b10743-adfffbe",
+					Distribution: "PrismML",
+					Channel:      ReleaseStable,
+					Recommended:  false,
+					ReleaseURL:   "https://github.com/PrismML-Eng/llama.cpp/releases/tag/prism-b10743-adfffbe",
+					Builds: []EnginePlatformBuild{
 						{
 							ID:          "engine-windows-x64",
 							Platform:    "windows/amd64",
@@ -121,26 +152,6 @@ func prismLlamaCppProvider() EngineCatalogProvider {
 								},
 							},
 							Note: l10n.TR("core.engine_catalog.note.llama_win_cuda"),
-						},
-						{
-							ID:          "engine-linux-x64",
-							Platform:    "linux/amd64",
-							Variant:     "CPU",
-							AcquireMode: EngineAcquireManualArchive,
-							Artifacts: []EngineArtifact{
-								artifactFromCatalog("engine-linux-x64", "engine", "llama-server", "prism-b10743-adfffbe"),
-							},
-							Note: l10n.TR("core.engine_catalog.note.download_extract_register"),
-						},
-						{
-							ID:          "engine-linux-arm64",
-							Platform:    "linux/arm64",
-							Variant:     "CPU",
-							AcquireMode: EngineAcquireManualArchive,
-							Artifacts: []EngineArtifact{
-								artifactFromCatalog("engine-linux-arm64", "engine", "llama-server", "prism-b10743-adfffbe"),
-							},
-							Note: l10n.TR("core.engine_catalog.note.download_extract_register"),
 						},
 					},
 				},

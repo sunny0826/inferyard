@@ -42,7 +42,10 @@ func TestCompareEngineVersions(t *testing.T) {
 func TestServiceEngineUpdates(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	svc, err := New(ctx, Options{SettingsPath: filepath.Join(t.TempDir(), "settings.json")})
+	svc, err := New(ctx, Options{
+		SettingsPath: filepath.Join(t.TempDir(), "settings.json"),
+		EngineUpdate: EngineUpdateOptions{Platform: "darwin/arm64", DisableBackgroundCheck: true},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,9 +149,66 @@ func TestServiceEngineUpdatesPolystrataBuildJSONFallback(t *testing.T) {
 }
 
 func TestServiceEngineUpdatesPrismExpectedReleaseFallback(t *testing.T) {
+	run := func(platform string) EngineUpdateInfo {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		svc, err := New(ctx, Options{
+			SettingsPath: filepath.Join(t.TempDir(), "settings.json"),
+			EngineUpdate: EngineUpdateOptions{Platform: platform, DisableBackgroundCheck: true},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer svc.Shutdown(context.Background())
+
+		svc.checkMu.Lock()
+		svc.checkSupported = true
+		svc.checkNames = []engineCheckTarget{
+			{name: "prism-llama", path: "/fake/prism-llama", key: "prism1"},
+		}
+		svc.checks = map[string]engineCheckEntry{
+			"/fake/prism-llama": {
+				key:      "prism1",
+				verified: true,
+				result: EngineEligibility{
+					State:   EngineCheckEligible,
+					Family:  "llama-cpp",
+					Version: "10743 adfffbe41",
+					Release: "prism-b10743-adfffbe",
+				},
+			},
+		}
+		svc.checkMu.Unlock()
+
+		updates := svc.EngineUpdates()
+		info, ok := updates["prism-llama"]
+		if !ok {
+			t.Fatalf("expected update info for prism-llama (%s), got %+v", platform, updates)
+		}
+		return info
+	}
+
+	macInfo := run("darwin/arm64")
+	if !macInfo.HasUpdate || macInfo.LatestVersion != "prism-b12232-f702476" {
+		t.Fatalf("expected Prism ExpectedRelease fallback on darwin/arm64 to detect update to prism-b12232-f702476, got %+v", macInfo)
+	}
+	if macInfo.InstalledVersion != "prism-b10743-adfffbe" {
+		t.Fatalf("expected InstalledVersion to fall back to prism-b10743-adfffbe, got %+v", macInfo)
+	}
+
+	winInfo := run("windows/amd64")
+	if winInfo.HasUpdate || winInfo.LatestVersion != "prism-b10743-adfffbe" {
+		t.Fatalf("expected Prism on windows/amd64 to stay on prism-b10743-adfffbe without cross-track update, got %+v", winInfo)
+	}
+}
+
+func TestServiceEngineUpdatesPrismWindowsSkipsNonMatchingRemoteAssets(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	svc, err := New(ctx, Options{SettingsPath: filepath.Join(t.TempDir(), "settings.json")})
+	svc, err := New(ctx, Options{
+		SettingsPath: filepath.Join(t.TempDir(), "settings.json"),
+		EngineUpdate: EngineUpdateOptions{Platform: "windows/amd64", DisableBackgroundCheck: true},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,9 +216,7 @@ func TestServiceEngineUpdatesPrismExpectedReleaseFallback(t *testing.T) {
 
 	svc.checkMu.Lock()
 	svc.checkSupported = true
-	svc.checkNames = []engineCheckTarget{
-		{name: "prism-llama", path: "/fake/prism-llama", key: "prism1"},
-	}
+	svc.checkNames = []engineCheckTarget{{name: "prism-llama", path: "/fake/prism-llama", key: "prism1"}}
 	svc.checks = map[string]engineCheckEntry{
 		"/fake/prism-llama": {
 			key:      "prism1",
@@ -173,15 +231,26 @@ func TestServiceEngineUpdatesPrismExpectedReleaseFallback(t *testing.T) {
 	}
 	svc.checkMu.Unlock()
 
-	updates := svc.EngineUpdates()
-	info, ok := updates["prism-llama"]
+	svc.engineUpdater.mu.Lock()
+	svc.engineUpdater.remote["llama-cpp:PrismML"] = remoteEngineRelease{
+		Key:          "llama-cpp:PrismML",
+		Family:       "llama-cpp",
+		Distribution: "PrismML",
+		Version:      "prism-b12232-f702476",
+		ReleaseURL:   "https://github.com/PrismML-Eng/llama.cpp/releases/tag/prism-b12232-f702476",
+		Assets: []remoteReleaseAsset{{
+			Name:  "llama-prism-b12232-bin-macos-arm64.tar.gz",
+			URL:   "https://github.com/PrismML-Eng/llama.cpp/releases/download/prism-b12232-f702476/llama-prism-b12232-bin-macos-arm64.tar.gz",
+			Bytes: 1024,
+		}},
+	}
+	svc.engineUpdater.mu.Unlock()
+
+	info, ok := svc.EngineUpdates()["prism-llama"]
 	if !ok {
-		t.Fatalf("expected update info for prism-llama, got %+v", updates)
+		t.Fatalf("expected update info for prism-llama")
 	}
-	if !info.HasUpdate || info.LatestVersion != "b11146" {
-		t.Fatalf("expected Prism ExpectedRelease fallback to detect update to b11146, got %+v", info)
-	}
-	if info.InstalledVersion != "prism-b10743-adfffbe" {
-		t.Fatalf("expected InstalledVersion to fall back to prism-b10743-adfffbe, got %+v", info)
+	if info.HasUpdate || info.LatestVersion != "prism-b10743-adfffbe" || info.Source != "catalog" {
+		t.Fatalf("expected Windows PrismML to keep catalog baseline when remote lacks Windows archive, got %+v", info)
 	}
 }

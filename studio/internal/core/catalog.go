@@ -52,7 +52,10 @@ func isLlamaArchive(source string) bool {
 	return strings.Contains(lower, "/llama.cpp/releases/") && isEngineArchive(lower)
 }
 
-const catalogEngineBase = "https://github.com/PrismML-Eng/llama.cpp/releases/download/prism-b10743-adfffbe/"
+const (
+	catalogEngineBase        = "https://github.com/PrismML-Eng/llama.cpp/releases/download/prism-b12232-f702476/"
+	catalogEngineWindowsBase = "https://github.com/PrismML-Eng/llama.cpp/releases/download/prism-b10743-adfffbe/"
+)
 
 func (e CatalogEntry) RunsOnCurrentPlatform() bool {
 	return e.Platform == "any" || e.Platform == CurrentPlatform()

@@ -412,6 +412,10 @@ func modelCatalogEngineLabel(entry core.CatalogEntry) string {
 	case "mlx-lm":
 		return "mlx-lm"
 	case "llama-cpp":
+		lower := strings.ToLower(entry.URL)
+		if strings.Contains(lower, "ptq1_0") || strings.Contains(lower, "pq2_0") {
+			return "llama.cpp (PrismML)"
+		}
 		return "llama.cpp / LM Studio"
 	default:
 		return entry.Family

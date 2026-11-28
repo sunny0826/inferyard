@@ -82,9 +82,13 @@ def evaluate_fallback_models(
 ) -> tuple[list[dict], list[str], dict | None]:
     """Evaluate llama.cpp fallback starter models against observed RAM and disk."""
     backend, fb_gpu = fallback_accelerator(hardware)
+    system = hardware.get("platform")
     fitting: list[dict] = []
     reasons: list[str] = []
     for model in catalog["fallback_models"]:
+        platforms = model.get("platforms")
+        if isinstance(platforms, dict) and backend not in (platforms.get(system) or ()):
+            continue
         if ram_capacity < model["min_ram_bytes"]:
             reasons.append("insufficient_ram")
             continue

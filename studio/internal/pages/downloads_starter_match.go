@@ -65,9 +65,15 @@ func (s *viewState) isStarterEngineInstalled(opt starterOption) bool {
 		return s.isEngineFamilyInstalled("mlx-lm")
 	}
 	wantBackend := strings.ToLower(strings.TrimSpace(opt.Backend))
+	modelHay := strings.ToLower(opt.ModelID + " " + opt.ModelTitle)
+	requiresPrism := strings.Contains(modelHay, "ptq1_0") || strings.Contains(modelHay, "pq2_0") ||
+		strings.Contains(modelHay, "ptq1") || strings.Contains(modelHay, "pq2")
 	for _, eng := range s.registry.Engines {
 		isLlama := eng.Family == "llama-cpp" || (eng.Family == "" && strings.Contains(strings.ToLower(eng.Name), "llama"))
 		if !isLlama {
+			continue
+		}
+		if requiresPrism && isNonPrismLlamaEngine(eng) {
 			continue
 		}
 		check, checked := s.checks.Engines[eng.Name]

@@ -299,6 +299,34 @@
   ],
   "fallback_models": [
     {
+      "id": "model-bonsai-2.5-27b-pq2",
+      "engine": "llama-cpp",
+      "title": "Ternary-Bonsai-2.5-27B-PQ2_0 (GGUF)",
+      "model_format": "gguf",
+      "download_bytes": 7253354848,
+      "min_ram_bytes": 25769803776,
+      "min_disk_bytes": 12884901888,
+      "platforms": {
+        "Darwin": ["metal"]
+      },
+      "recommended_context": 16384,
+      "quality_rank": 62
+    },
+    {
+      "id": "model-bonsai-2.5-27b-ptq1",
+      "engine": "llama-cpp",
+      "title": "Ternary-Bonsai-2.5-27B-PTQ1_0 (GGUF)",
+      "model_format": "gguf",
+      "download_bytes": 5993834848,
+      "min_ram_bytes": 17179869184,
+      "min_disk_bytes": 10737418240,
+      "platforms": {
+        "Darwin": ["metal"]
+      },
+      "recommended_context": 16384,
+      "quality_rank": 60
+    },
+    {
       "id": "model-qwen3-4b-q4km",
       "engine": "llama-cpp",
       "title": "Qwen3-4B-Q4_K_M (GGUF)",

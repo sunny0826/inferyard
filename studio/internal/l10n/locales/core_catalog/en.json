@@ -1,5 +1,7 @@
 {
   "core.catalog.engine.win_cuda.note": "Includes the engine and CUDA 12.4 runtime archive, automatically verified and prepared after download.",
+  "core.catalog.model.bonsai_2_5_27b_pq2.title": "Ternary-Bonsai-2.5-27B-PQ2_0 (GGUF)",
+  "core.catalog.model.bonsai_2_5_27b_ptq1.title": "Ternary-Bonsai-2.5-27B-PTQ1_0 (GGUF)",
   "core.catalog.model.qwen3_0_6b_mlx.note": "Directory model · mlx-lm (includes config, tokenizer, and weights; asset manifest generated automatically after download).",
   "core.catalog.model.qwen3_0_6b_mlx.title": "Qwen3-0.6B-4bit (Directory Model)",
   "core.catalog.model.qwen3_0_6b_q8.title": "Qwen3-0.6B-Q8_0 (GGUF)",
